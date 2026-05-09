@@ -1,0 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Patrick+Hand&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-manga: "Bangers", cursive;
+  --font-sketch: "Comic Neue", cursive;
+  --font-hand: "Patrick Hand", cursive;
+}
+
+@layer components {
+  .manga-border {
+    @apply border-[3px] border-black;
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  }
+
+  .manga-card {
+    @apply bg-white border-[3px] border-black shadow-[8px_8px_0px_#000];
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .manga-button {
+    @apply px-4 py-3 bg-white border-[3px] border-black shadow-[8px_8px_0px_#000] text-black font-manga uppercase tracking-wider text-xl block;
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .manga-button:hover {
+    @apply -translate-x-[4px] -translate-y-[4px] shadow-[12px_12px_0px_#000] bg-zinc-50;
+    /* Animated border-radius for "wobble" effect */
+    border-radius: 225px 30px 255px 10px/10px 255px 30px 225px;
+  }
+
+  .sketch-text {
+    @apply font-sketch;
+  }
+}
+
+@keyframes pulse-spotify {
+  0%, 100% { 
+    transform: scale(1) rotate(-1deg);
+    filter: drop-shadow(0 0 10px rgba(29, 185, 84, 0.4));
+  }
+  50% { 
+    transform: scale(1.1) rotate(1deg);
+    filter: drop-shadow(0 0 25px rgba(29, 185, 84, 0.8));
+  }
+}
+
+@keyframes flicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+    opacity: 0.99;
+    filter: drop-shadow(0 0 8px rgba(29, 185, 84, 0.6));
+  }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+    opacity: 0.4;
+    filter: drop-shadow(0 0 2px rgba(29, 185, 84, 0.1));
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
+}
+
+.spotify-king {
+  @apply border-[#1DB954] z-20;
+  animation: pulse-spotify 2.5s infinite ease-in-out;
+}
+
+.spotify-king img {
+  animation: flicker 4s infinite;
+}
+
+.animate-float {
+  animation: float 5s infinite ease-in-out;
+}
+
+@keyframes noise {
+  0% { transform: translate(0,0) }
+  10% { transform: translate(-5%,-5%) }
+  20% { transform: translate(-10%,5%) }
+  30% { transform: translate(5%,-10%) }
+  40% { transform: translate(-5%,15%) }
+  50% { transform: translate(-10%,5%) }
+  60% { transform: translate(15%,0) }
+  70% { transform: translate(0,10%) }
+  80% { transform: translate(-15%,0) }
+  90% { transform: translate(10%,5%) }
+  100% { transform: translate(5%,0) }
+}
+
+.noise-overlay {
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+  opacity: 0.12;
+  z-index: 100;
+  pointer-events: none;
+  animation: noise 0.5s steps(3) infinite;
+}
+
+.scanline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.1) 50%
+  );
+  background-size: 100% 4px;
+  z-index: 101;
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+body {
+  @apply bg-[#121212] min-h-screen text-zinc-900;
+  background-image: radial-gradient(circle at 2px 2px, #333 1px, transparent 0);
+  background-size: 40px 40px;
+}
+
+/* ME BIT GALLERY STYLES */
+@keyframes infinite-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.me-bit-track {
+  display: flex;
+  width: max-content;
+  animation: infinite-scroll 30s linear infinite;
+}
+
+.me-bit-track:hover {
+  animation-play-state: paused;
+}
+
+#me-bit-gallery.expanded-manga-grid .me-bit-track {
+  animation: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  width: 100%;
+  white-space: normal;
+}
+
+#me-bit-gallery {
+  transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.glass-morphism {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
