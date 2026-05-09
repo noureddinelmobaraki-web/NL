@@ -1556,16 +1556,16 @@ requestAnimationFrame(loop);
 `;
 
 const CONFIG_ASSETS = {
-  mainBackground: "/images/hero_bg.jpg",
-  nameHeaderBg: "/images/header_bg.gif",
-  footerDecoration: "/images/footer_deco.gif",
+  mainBackground: "images/hero_bg.jpg",
+  nameHeaderBg: "images/header_bg.gif",
+  footerDecoration: "images/footer_deco.gif",
   spotifyIcon: "https://img.icons8.com/plasticine/1200/spotify--v2.jpg",
-  profileImg: "/images/profile_img.jpg",
-  vaultPlaylistCover: "/images/playlist_cover.jpg",
-  youtubeHighlightsBg: "/images/yt_highlights.gif",
-  gmailBg: "/images/gmail_bg.gif",
-  whatsappBg: "/images/whatsapp_bg.gif",
-  telegramBg: "/images/telegram_bg.gif"
+  profileImg: "images/profile_img.jpg",
+  vaultPlaylistCover: "images/playlist_cover.jpg",
+  youtubeHighlightsBg: "images/yt_highlights.gif",
+  gmailBg: "images/gmail_bg.gif",
+  whatsappBg: "images/whatsapp_bg.gif",
+  telegramBg: "images/telegram_bg.gif"
 };
 
 const STREAMING_PLATFORMS = [
@@ -1635,7 +1635,7 @@ const CONTACT_METHODS = [
     value: "noureddinelmobaraki@gmail.com",
     url: "mailto:noureddinelmobaraki@gmail.com",
     icon: Mail,
-    bg: "/images/gmail_bg.gif",
+    bg: "images/gmail_bg.gif",
     color: "#EA4335"
   },
   {
@@ -1643,7 +1643,7 @@ const CONTACT_METHODS = [
     value: "+212 612-806932",
     url: "https://wa.me/212612806932",
     icon: MessageCircle,
-    bg: "/images/whatsapp_bg.gif",
+    bg: "images/whatsapp_bg.gif",
     color: "#25D366"
   },
   {
@@ -1651,7 +1651,7 @@ const CONTACT_METHODS = [
     value: "+212 612 806932",
     url: "https://t.me/212612806932",
     icon: Send,
-    bg: "/images/telegram_bg.gif",
+    bg: "images/telegram_bg.gif",
     color: "#0088CC"
   }
 ];
@@ -1677,15 +1677,15 @@ const itemVariants = {
 };
 
 const ME_BIT_IMAGES = [
-  "/images/me_bit_1.jpg",
-  "/images/me_bit_2.jpg",
-  "/images/me_bit_3.jpg",
-  "/images/me_bit_4.jpg",
-  "/images/me_bit_5.jpg",
-  "/images/me_bit_6.jpg",
-  "/images/me_bit_7.jpg",
-  "/images/me_bit_8.jpg",
-  "/images/me_bit_9.jpg"
+  "images/me_bit_1.jpg",
+  "images/me_bit_2.jpg",
+  "images/me_bit_3.jpg",
+  "images/me_bit_4.jpg",
+  "images/me_bit_5.jpg",
+  "images/me_bit_6.jpg",
+  "images/me_bit_7.jpg",
+  "images/me_bit_8.jpg",
+  "images/me_bit_9.jpg"
 ];
 
 export default function App() {
@@ -1827,7 +1827,7 @@ export default function App() {
         loop 
         preload="auto"
       >
-        <source src="/music.mp3" type="audio/mpeg" />
+        <source src="music.mp3" type="audio/mpeg" />
         Your browser does not support the audio element.
       </audio>
 
