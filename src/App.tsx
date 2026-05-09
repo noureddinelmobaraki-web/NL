@@ -1556,16 +1556,16 @@ requestAnimationFrame(loop);
 `;
 
 const CONFIG_ASSETS = {
-  mainBackground: "https://i.ibb.co/hFVTQxn5/Picsart-26-04-30-18-39-04-194.jpg",
-  nameHeaderBg: "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3amRybmZ3aXk5aDhvNjA5YzBqazh5ZmFueGdyMmN5dnIxeHU4eWNnbSZlcD12MV9naWZzX3RyZW5kaW5nJmN0PWc/eNTxLwTGW7E64/giphy.gif",
-  footerDecoration: "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExczh6YTg5djUxZGZiZ3pzNnY0dTd4cjdnZ3I4N2F3ajhpZnBtNmphZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vPzbDN4rBxuvtpSpzF/giphy.gif",
+  mainBackground: "/images/hero_bg.jpg",
+  nameHeaderBg: "/images/header_bg.gif",
+  footerDecoration: "/images/footer_deco.gif",
   spotifyIcon: "https://img.icons8.com/plasticine/1200/spotify--v2.jpg",
-  profileImg: "https://i.ibb.co/kgf98Tgz/Picsart-26-04-30-13-37-27-457-1.jpg",
-  vaultPlaylistCover: "https://i.ibb.co/3Y5K2MJc/Picsart-26-05-06-20-09-09-603.jpg",
-  youtubeHighlightsBg: "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExanB1YjUwaWF4ZDhhdXNrNTIyYWxiaDB5amVid20wOXJtNnBib3NieiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/rBz4EnQ4OkkWMRs9Gc/giphy.gif",
-  gmailBg: "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExMjJ4ZHVldWZ6OXkwNzNmZ2Z1am9mZXFzd2FqbWRybXowOTZnN2diYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/dJcwknpHwX8mpmFmSt/giphy.gif",
-  whatsappBg: "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExcmRmbW84cWZmMm1zNnJzeTFrM2Q3YnBheXJzbXpqeXYybHpobWVmcyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/UvPtn1Vlbgy47tvQbn/giphy.gif",
-  telegramBg: "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExbjZkbWNhanlqcXYyY3c5bzN0cXUzMnFrYXQwNGtxeXk0bXd1Y3NmcSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/F8A8yW5xBp2zDLZt1t/giphy.gif"
+  profileImg: "/images/profile_img.jpg",
+  vaultPlaylistCover: "/images/playlist_cover.jpg",
+  youtubeHighlightsBg: "/images/yt_highlights.gif",
+  gmailBg: "/images/gmail_bg.gif",
+  whatsappBg: "/images/whatsapp_bg.gif",
+  telegramBg: "/images/telegram_bg.gif"
 };
 
 const STREAMING_PLATFORMS = [
@@ -1635,7 +1635,7 @@ const CONTACT_METHODS = [
     value: "noureddinelmobaraki@gmail.com",
     url: "mailto:noureddinelmobaraki@gmail.com",
     icon: Mail,
-    bg: "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExMjJ4ZHVldWZ6OXkwNzNmZ2Z1am9mZXFzd2FqbWRybXowOTZnN2diYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/dJcwknpHwX8mpmFmSt/giphy.gif",
+    bg: "/images/gmail_bg.gif",
     color: "#EA4335"
   },
   {
@@ -1643,7 +1643,7 @@ const CONTACT_METHODS = [
     value: "+212 612-806932",
     url: "https://wa.me/212612806932",
     icon: MessageCircle,
-    bg: "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExcmRmbW84cWZmMm1zNnJzeTFrM2Q3YnBheXJzbXpqeXYybHpobWVmcyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/UvPtn1Vlbgy47tvQbn/giphy.gif",
+    bg: "/images/whatsapp_bg.gif",
     color: "#25D366"
   },
   {
@@ -1651,7 +1651,7 @@ const CONTACT_METHODS = [
     value: "+212 612 806932",
     url: "https://t.me/212612806932",
     icon: Send,
-    bg: "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExbjZkbWNhanlqcXYyY3c5bzN0cXUzMnFrYXQwNGtxeXk0bXd1Y3NmcSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/F8A8yW5xBp2zDLZt1t/giphy.gif",
+    bg: "/images/telegram_bg.gif",
     color: "#0088CC"
   }
 ];
@@ -1677,15 +1677,15 @@ const itemVariants = {
 };
 
 const ME_BIT_IMAGES = [
-  "https://i.ibb.co/kg1pvKf0/photo-7-2026-05-08-01-14-41.jpg",
-  "https://i.ibb.co/Jw9V1pGg/photo-1-2026-05-08-01-14-41.jpg",
-  "https://i.ibb.co/b5wdPZzD/photo-6-2026-05-08-01-14-41.jpg",
-  "https://i.ibb.co/cKTF3HR8/photo-5-2026-05-08-01-14-41.jpg",
-  "https://i.ibb.co/XfYKGsvJ/photo-3-2026-05-08-01-14-41.jpg",
-  "https://i.ibb.co/bMD1YMtM/photo-2-2026-05-08-01-14-41.jpg",
-  "https://i.ibb.co/Y7WMG8dy/photo-4-2026-05-08-01-14-41.jpg",
-  "https://i.ibb.co/7x1NxRzv/photo-9-2026-05-08-01-14-41.jpg",
-  "https://i.ibb.co/PJshVjw/photo-10-2026-05-08-01-14-41.jpg"
+  "/images/me_bit_1.jpg",
+  "/images/me_bit_2.jpg",
+  "/images/me_bit_3.jpg",
+  "/images/me_bit_4.jpg",
+  "/images/me_bit_5.jpg",
+  "/images/me_bit_6.jpg",
+  "/images/me_bit_7.jpg",
+  "/images/me_bit_8.jpg",
+  "/images/me_bit_9.jpg"
 ];
 
 export default function App() {
