@@ -1745,11 +1745,17 @@ export default function App() {
     window.addEventListener('click', handleFirstInteraction, { once: true });
     window.addEventListener('touchstart', handleFirstInteraction, { once: true });
     window.addEventListener('keydown', handleFirstInteraction, { once: true });
+    window.addEventListener('scroll', handleFirstInteraction, { once: true });
+    window.addEventListener('wheel', handleFirstInteraction, { once: true });
+    window.addEventListener('mousemove', handleFirstInteraction, { once: true });
 
     return () => {
       window.removeEventListener('click', handleFirstInteraction);
       window.removeEventListener('touchstart', handleFirstInteraction);
       window.removeEventListener('keydown', handleFirstInteraction);
+      window.removeEventListener('scroll', handleFirstInteraction);
+      window.removeEventListener('wheel', handleFirstInteraction);
+      window.removeEventListener('mousemove', handleFirstInteraction);
     };
   }, [startAudio]);
 
@@ -1821,25 +1827,25 @@ export default function App() {
         loop 
         preload="auto"
       >
-        <source src="./music.mp3" type="audio/mpeg" />
+        <source src="/music.mp3" type="audio/mpeg" />
         Your browser does not support the audio element.
       </audio>
 
-      {/* Floating Audio Control Button */}
+      {/* Floating Audio Control Button - Small & Elegant */}
       <button
         onClick={toggleAudio}
-        className="fixed bottom-6 right-6 z-[120] bg-black/40 backdrop-blur-md border border-white/20 p-4 rounded-full text-white hover:bg-black/60 transition-all hover:scale-110 active:scale-95 shadow-2xl group"
+        className="fixed bottom-4 right-4 z-[120] bg-black/30 backdrop-blur-lg border border-white/10 p-2.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
         aria-label="Toggle Background Music"
       >
         {isPlaying ? (
-          <Volume2 className="w-6 h-6 group-hover:animate-pulse" />
+          <Volume2 className="w-4 h-4 group-hover:animate-pulse" />
         ) : (
-          <VolumeX className="w-6 h-6 text-zinc-500" />
+          <VolumeX className="w-4 h-4 text-zinc-500" />
         )}
         
         {/* Tooltip */}
-        <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-black/80 text-white px-3 py-1 rounded-md text-xs font-manga whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/10">
-          {isPlaying ? 'PAUSE MAGIC' : 'PLAY MAGIC'}
+        <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-black/90 text-white px-2 py-0.5 rounded text-[10px] font-mono tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/5 uppercase">
+          {isPlaying ? 'Sound On' : 'Sound Off'}
         </div>
       </button>
 
