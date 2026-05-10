@@ -19,7 +19,7 @@ const songs: Song[] = [
   { id: 3,  title: "TOTAL",                  url: "https://github.com/user-attachments/files/27562017/TOTAL.mp3",                   lrc: "/lrc/TOTAL.lrc" },
   { id: 4,  title: "7CHAYCHI DIMO9RATI",     url: "https://github.com/user-attachments/files/27562028/7CHAYCHI.DIMO9RATI.mp3",     lrc: "/lrc/7CHAYCHI DIMO9RATI.lrc" },
   { id: 5,  title: "A Lot",                  url: "https://github.com/user-attachments/files/27562033/A.Lot.mp3",                   lrc: "/lrc/A Lot.lrc" },
-  { id: 6,  title: "BEAUTIFUL",              url: "https://github.com/user-attachments/files/27562034/BEAUTIFUL.mp3",               lrc: "/lrc/BEAUTIFUL.lrc" },
+  { id: 6,  title: "BEAUTIFUL",              url: "https://github.com/user-attachments/files/27562034/BEAUTIFUL.mp3",               lrc: null },
   { id: 7,  title: "Bouh",                   url: "https://github.com/user-attachments/files/27562039/Bouh.mp3",                    lrc: "/lrc/Bouh.lrc" },
   { id: 8,  title: "Brain Damage",           url: "https://github.com/user-attachments/files/27562042/Brain.Damage.mp3",            lrc: "/lrc/Brain Damage.lrc" },
   { id: 9,  title: "Deal With The Devil",    url: "https://github.com/user-attachments/files/27562043/Deal.With.The.Devil.mp3",    lrc: "/lrc/Deal With The Devil.lrc" },
@@ -59,6 +59,17 @@ const formatTime = (seconds: number) => {
 };
 
 const SNAP_THRESHOLD = 20;
+const MIN_WINDOW_WIDTH = 280;
+const MIN_WINDOW_HEIGHT = 100;
+
+type WindowState = 'normal' | 'maximized' | 'minimized';
+
+interface WindowGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 const applySnapping = (
   newPos: { x: number; y: number },
@@ -93,12 +104,232 @@ const applySnapping = (
   return { x, y };
 };
 
+const WindowFrame = ({ 
+  title, 
+  icon: Icon,
+  geometry, 
+  setGeometry, 
+  zIndex, 
+  onFocus, 
+  isFocused, 
+  onClose,
+  children,
+  otherWindowRect,
+  minHeight = MIN_WINDOW_HEIGHT
+}: { 
+  title: string;
+  icon: any;
+  geometry: WindowGeometry;
+  setGeometry: (g: WindowGeometry) => void;
+  zIndex: number;
+  onFocus: () => void;
+  isFocused: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  otherWindowRect?: WindowGeometry | null;
+  minHeight?: number;
+}) => {
+  const windowRef = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState<WindowState>('normal');
+  const cachedGeometry = useRef<WindowGeometry>(geometry);
+  const rafId = useRef<number | null>(null);
+  
+  const interaction = useRef({
+    isInteracting: false,
+    mode: 'none' as 'move' | 'resize',
+    handle: '' as 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw',
+    startPos: { x: 0, y: 0 },
+    startGeom: { ...geometry }
+  });
+
+  useEffect(() => {
+    if (!interaction.current.isInteracting && state === 'normal') {
+      if (windowRef.current) {
+        windowRef.current.style.transform = `translate3d(${geometry.x}px, ${geometry.y}px, 0)`;
+        windowRef.current.style.width = `${geometry.width}px`;
+        windowRef.current.style.height = `${geometry.height}px`;
+      }
+    }
+  }, [geometry, state]);
+
+  const handlePointerDown = (e: React.PointerEvent, mode: 'move' | 'resize', handle = '') => {
+    if (state === 'maximized' && mode === 'move') return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('input')) return;
+
+    onFocus();
+    interaction.current = {
+      isInteracting: true,
+      mode,
+      handle: handle as any,
+      startPos: { x: e.clientX, y: e.clientY },
+      startGeom: { ...geometry }
+    };
+
+    if (windowRef.current) {
+      windowRef.current.style.pointerEvents = 'none';
+      windowRef.current.setPointerCapture(e.pointerId);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!interaction.current.isInteracting) return;
+
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(() => {
+      const dx = e.clientX - interaction.current.startPos.x;
+      const dy = e.clientY - interaction.current.startPos.y;
+      const { mode, handle, startGeom } = interaction.current;
+
+      let newGeom = { ...startGeom };
+
+      if (mode === 'move') {
+        const rawPos = { x: startGeom.x + dx, y: startGeom.y + dy };
+        const snapped = applySnapping(rawPos, { width: startGeom.width, height: startGeom.height }, otherWindowRect ? [otherWindowRect] : []);
+        newGeom.x = snapped.x;
+        newGeom.y = snapped.y;
+      } else if (mode === 'resize') {
+        if (handle.includes('e')) newGeom.width = Math.max(MIN_WINDOW_WIDTH, startGeom.width + dx);
+        if (handle.includes('s')) newGeom.height = Math.max(minHeight, startGeom.height + dy);
+        if (handle.includes('w')) {
+          const possibleWidth = Math.max(MIN_WINDOW_WIDTH, startGeom.width - dx);
+          newGeom.x = startGeom.x + (startGeom.width - possibleWidth);
+          newGeom.width = possibleWidth;
+        }
+        if (handle.includes('n')) {
+          const possibleHeight = Math.max(minHeight, startGeom.height - dy);
+          newGeom.y = startGeom.y + (startGeom.height - possibleHeight);
+          newGeom.height = possibleHeight;
+        }
+
+        // Viewport clamping
+        newGeom.x = Math.max(0, Math.min(window.innerWidth - newGeom.width, newGeom.x));
+        newGeom.y = Math.max(0, Math.min(window.innerHeight - newGeom.height, newGeom.y));
+      }
+
+      if (windowRef.current) {
+        windowRef.current.style.transform = `translate3d(${newGeom.x}px, ${newGeom.y}px, 0)`;
+        windowRef.current.style.width = `${newGeom.width}px`;
+        windowRef.current.style.height = `${newGeom.height}px`;
+      }
+      
+      // Update internal tracking
+      interaction.current.startGeom = newGeom;
+      interaction.current.startPos = { x: e.clientX, y: e.clientY };
+    });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!interaction.current.isInteracting) return;
+    interaction.current.isInteracting = false;
+    if (windowRef.current) {
+      windowRef.current.style.pointerEvents = 'auto';
+      windowRef.current.releasePointerCapture(e.pointerId);
+    }
+    setGeometry(interaction.current.startGeom);
+  };
+
+  const toggleMaximize = () => {
+    if (state === 'maximized') {
+      setState('normal');
+      setGeometry(cachedGeometry.current);
+    } else {
+      cachedGeometry.current = { ...geometry };
+      setState('maximized');
+      const maxGeom = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+      setGeometry(maxGeom);
+    }
+  };
+
+  return (
+    <div 
+      ref={windowRef}
+      onPointerDown={(e) => handlePointerDown(e, 'move')}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onMouseDown={onFocus}
+      style={{ 
+        position: 'fixed', 
+        left: 0, 
+        top: 0, 
+        zIndex,
+        display: state === 'minimized' ? 'none' : 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
+        border: state === 'maximized' ? 'none' : '2px ridge #ccc',
+        boxShadow: isFocused ? '0 20px 50px rgba(0,0,0,0.9), 0 0 30px rgba(99, 102, 241, 0.3)' : '4px 4px 15px rgba(0,0,0,0.6)',
+        backgroundColor: '#1a1a2e',
+        userSelect: 'none',
+        overflow: 'hidden',
+        transition: 'box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        willChange: 'transform, width, height',
+        contain: 'layout size',
+      }}
+    >
+      {/* 8 Resize Handles */}
+      {state === 'normal' && (
+        <>
+          <div onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'resize', 'n'); }} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', cursor: 'ns-resize', zIndex: 10 }} />
+          <div onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'resize', 's'); }} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px', cursor: 'ns-resize', zIndex: 10 }} />
+          <div onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'resize', 'e'); }} style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: '4px', cursor: 'ew-resize', zIndex: 10 }} />
+          <div onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'resize', 'w'); }} style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '4px', cursor: 'ew-resize', zIndex: 10 }} />
+          <div onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'resize', 'nw'); }} style={{ position: 'absolute', top: 0, left: 0, width: '10px', height: '10px', cursor: 'nwse-resize', zIndex: 11 }} />
+          <div onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'resize', 'ne'); }} style={{ position: 'absolute', top: 0, right: 0, width: '10px', height: '10px', cursor: 'nesw-resize', zIndex: 11 }} />
+          <div onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'resize', 'sw'); }} style={{ position: 'absolute', bottom: 0, left: 0, width: '10px', height: '10px', cursor: 'nesw-resize', zIndex: 11 }} />
+          <div onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'resize', 'se'); }} style={{ position: 'absolute', bottom: 0, right: 0, width: '10px', height: '10px', cursor: 'nwse-resize', zIndex: 11 }} />
+        </>
+      )}
+
+      {/* Control Bar */}
+      <div 
+        style={{
+          height: '32px',
+          background: isFocused ? 'linear-gradient(to right, #0058a3, #2d8acd)' : 'linear-gradient(to right, #444, #666)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 8px',
+          cursor: state === 'maximized' ? 'default' : 'move',
+          flexShrink: 0,
+          borderBottom: '1px solid #003366',
+          transition: 'background 0.2s ease',
+          zIndex: 12
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontFamily: 'Tahoma, sans-serif', fontSize: '12px', fontWeight: 'bold' }}>
+          <Icon size={14} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>{title}</span>
+        </div>
+        <div style={{ display: 'flex', gap: '2px' }}>
+          <button 
+            onClick={toggleMaximize}
+            style={{ width: '21px', height: '21px', backgroundColor: '#3498db', border: '1px solid #fff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, borderRadius: '2px' }}
+          >
+            <div style={{ width: '10px', height: '8px', border: '1px solid white', borderTop: '2px solid white' }} />
+          </button>
+          <button 
+            onClick={onClose}
+            className="hover:brightness-110 active:brightness-90 transition-all font-bold"
+            style={{ width: '21px', height: '21px', backgroundColor: '#c0392b', border: '1px solid #fff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, borderRadius: '2px' }}
+          >
+            <X size={14} strokeWidth={3} />
+          </button>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 const LyricsWindow = ({ 
   song, 
   currentTime, 
   onClose, 
-  position, 
-  setPosition, 
+  geometry, 
+  setGeometry, 
   zIndex, 
   onFocus,
   isFocused,
@@ -107,19 +338,16 @@ const LyricsWindow = ({
   song: Song; 
   currentTime: number; 
   onClose: () => void;
-  position: { x: number; y: number };
-  setPosition: (p: { x: number; y: number }) => void;
+  geometry: WindowGeometry;
+  setGeometry: (g: WindowGeometry) => void;
   zIndex: number;
   onFocus: () => void;
   isFocused: boolean;
-  otherWindowRect: { x: number; y: number; width: number; height: number } | null;
+  otherWindowRect: WindowGeometry | null;
 }) => {
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
-  const windowRef = useRef<HTMLDivElement>(null);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const dragInfo = useRef({ isDragging: false, offset: { x: 0, y: 0 }, currentPos: { x: position.x, y: position.y } });
-  const rafId = useRef<number | null>(null);
 
   useEffect(() => {
     if (song.lrc) {
@@ -130,16 +358,6 @@ const LyricsWindow = ({
         .catch(() => {});
     }
   }, [song.lrc]);
-
-  // Keep internal position in sync if external position moves (e.g. proximity spawning)
-  useEffect(() => {
-    if (!dragInfo.current.isDragging) {
-      dragInfo.current.currentPos = position;
-      if (windowRef.current) {
-        windowRef.current.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
-      }
-    }
-  }, [position]);
 
   const currentLineIndex = useMemo(() => {
     if (lyrics.length === 0) return -1;
@@ -155,10 +373,10 @@ const LyricsWindow = ({
     lineRefs.current.forEach((el, i) => {
       if (!el) return;
       const isActive = i === currentLineIndex;
-      el.style.opacity = isActive ? '1' : '0.3';
+      el.style.opacity = isActive ? '1' : '0.2';
       el.style.color = isActive ? 'var(--primary-accent, #fff)' : '#7a7a9a';
-      el.style.textShadow = isActive ? '0 0 10px rgba(var(--primary-rgb), 0.8), 0 0 20px rgba(var(--primary-rgb), 0.4)' : 'none';
-      el.style.transform = isActive ? 'scale(1.02)' : 'scale(1)';
+      el.style.textShadow = isActive ? '0 0 15px rgba(var(--primary-rgb), 1), 0 0 30px rgba(var(--primary-rgb), 0.5)' : 'none';
+      el.style.transform = isActive ? 'scale(1.04)' : 'scale(1)';
     });
 
     if (currentLineIndex !== -1 && lineRefs.current[currentLineIndex]) {
@@ -166,118 +384,29 @@ const LyricsWindow = ({
     }
   }, [currentLineIndex]);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button')) return;
-
-    onFocus();
-    dragInfo.current.isDragging = true;
-    dragInfo.current.offset = {
-      x: e.clientX - dragInfo.current.currentPos.x,
-      y: e.clientY - dragInfo.current.currentPos.y
-    };
-    
-    if (windowRef.current) {
-      windowRef.current.style.pointerEvents = 'none';
-      windowRef.current.setPointerCapture(e.pointerId);
-    }
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragInfo.current.isDragging) return;
-
-    if (rafId.current) cancelAnimationFrame(rafId.current);
-    rafId.current = requestAnimationFrame(() => {
-      const rawPos = {
-        x: e.clientX - dragInfo.current.offset.x,
-        y: e.clientY - dragInfo.current.offset.y
-      };
-      
-      const snappedPos = applySnapping(rawPos, { width: 320, height: 400 }, otherWindowRect ? [otherWindowRect] : []);
-      
-      dragInfo.current.currentPos = snappedPos;
-      if (windowRef.current) {
-        windowRef.current.style.transform = `translate3d(${snappedPos.x}px, ${snappedPos.y}px, 0)`;
-      }
-    });
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!dragInfo.current.isDragging) return;
-    dragInfo.current.isDragging = false;
-    if (windowRef.current) {
-      windowRef.current.style.pointerEvents = 'auto';
-      windowRef.current.releasePointerCapture(e.pointerId);
-    }
-    setPosition(dragInfo.current.currentPos);
-  };
-
   return (
-    <div 
-      ref={windowRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onMouseDown={onFocus}
-      style={{ 
-        position: 'fixed', 
-        left: 0, 
-        top: 0, 
-        width: '320px', 
-        height: '400px', 
-        zIndex,
-        display: 'flex',
-        flexDirection: 'column',
-        boxSizing: 'border-box',
-        border: '2px ridge #ccc',
-        boxShadow: isFocused ? '0 10px 40px rgba(0,0,0,0.8), 0 0 20px rgba(99, 102, 241, 0.2)' : '4px 4px 15px rgba(0,0,0,0.6)',
-        backgroundColor: '#0d0d1a',
-        userSelect: 'none',
-        overflow: 'hidden',
-        transition: 'box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-        willChange: 'transform'
-      }}
+    <WindowFrame
+      title={`Lyrics - ${song.title}`}
+      icon={Music}
+      geometry={geometry}
+      setGeometry={setGeometry}
+      zIndex={zIndex}
+      onFocus={onFocus}
+      isFocused={isFocused}
+      onClose={onClose}
+      otherWindowRect={otherWindowRect}
     >
-      <div 
-        style={{
-          height: '28px',
-          background: isFocused ? 'linear-gradient(to right, #0058a3, #2d8acd)' : 'linear-gradient(to right, #4a4a4a, #7a7a7a)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 8px',
-          cursor: 'move',
-          flexShrink: 0,
-          borderBottom: '1px solid #003366',
-          transition: 'background 0.2s ease'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'white', fontFamily: 'Tahoma, sans-serif', fontSize: '11px', fontWeight: 'bold' }}>
-          <Music size={12} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>Lyrics - {song.title}</span>
-        </div>
-        <button 
-          onClick={onClose}
-          className="hover:brightness-110 active:brightness-90 transition-all"
-          style={{ width: '21px', height: '21px', backgroundColor: '#c0392b', border: '1px solid #fff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, borderRadius: '2px' }}
-        >
-          <X size={14} />
-        </button>
-      </div>
-
       <div 
         ref={lyricsContainerRef}
         style={{
           flex: 1,
-          padding: '20px',
+          padding: '40px 20px',
           overflowY: 'auto',
           fontFamily: '"Share Tech Mono", monospace',
-          color: '#7a7a9a',
-          lineHeight: 2,
+          background: '#0d0d1a',
           textAlign: 'center',
-          fontSize: '15px',
-          background: '#0d0d1a'
+          fontSize: '18px',
+          lineHeight: 2.2
         }}
         className="no-scrollbar"
       >
@@ -286,9 +415,8 @@ const LyricsWindow = ({
             key={i} 
             ref={el => lineRefs.current[i] = el}
             style={{
-              marginBottom: '1rem',
-              transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-              padding: '4px 0',
+              marginBottom: '1.5rem',
+              transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
               willChange: 'opacity, text-shadow, transform'
             }}
           >
@@ -296,7 +424,7 @@ const LyricsWindow = ({
           </div>
         ))}
       </div>
-    </div>
+    </WindowFrame>
   );
 };
 
@@ -312,8 +440,8 @@ const ControllerWindow = ({
   onNext,
   onPrev,
   onClose,
-  position,
-  setPosition,
+  geometry,
+  setGeometry,
   zIndex,
   onFocus,
   isFocused,
@@ -330,126 +458,28 @@ const ControllerWindow = ({
   onNext: () => void;
   onPrev: () => void;
   onClose: () => void;
-  position: { x: number; y: number };
-  setPosition: (p: { x: number; y: number }) => void;
+  geometry: WindowGeometry;
+  setGeometry: (g: WindowGeometry) => void;
   zIndex: number;
   onFocus: () => void;
   isFocused: boolean;
-  otherWindowRect: { x: number; y: number; width: number; height: number } | null;
+  otherWindowRect: WindowGeometry | null;
 }) => {
-  const windowRef = useRef<HTMLDivElement>(null);
-  const dragInfo = useRef({ isDragging: false, offset: { x: 0, y: 0 }, currentPos: { x: position.x, y: position.y } });
-  const rafId = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!dragInfo.current.isDragging) {
-      dragInfo.current.currentPos = position;
-      if (windowRef.current) {
-        windowRef.current.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
-      }
-    }
-  }, [position]);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('input')) return;
-
-    onFocus();
-    dragInfo.current.isDragging = true;
-    dragInfo.current.offset = {
-      x: e.clientX - dragInfo.current.currentPos.x,
-      y: e.clientY - dragInfo.current.currentPos.y
-    };
-    
-    if (windowRef.current) {
-      windowRef.current.style.pointerEvents = 'none';
-      windowRef.current.setPointerCapture(e.pointerId);
-    }
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragInfo.current.isDragging) return;
-
-    if (rafId.current) cancelAnimationFrame(rafId.current);
-    rafId.current = requestAnimationFrame(() => {
-      const rawPos = {
-        x: e.clientX - dragInfo.current.offset.x,
-        y: e.clientY - dragInfo.current.offset.y
-      };
-      
-      const snappedPos = applySnapping(rawPos, { width: 320, height: 180 }, otherWindowRect ? [otherWindowRect] : []);
-      
-      dragInfo.current.currentPos = snappedPos;
-      if (windowRef.current) {
-        windowRef.current.style.transform = `translate3d(${snappedPos.x}px, ${snappedPos.y}px, 0)`;
-      }
-    });
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!dragInfo.current.isDragging) return;
-    dragInfo.current.isDragging = false;
-    if (windowRef.current) {
-      windowRef.current.style.pointerEvents = 'auto';
-      windowRef.current.releasePointerCapture(e.pointerId);
-    }
-    setPosition(dragInfo.current.currentPos);
-  };
-
   return (
-    <div 
-      ref={windowRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onMouseDown={onFocus}
-      style={{ 
-        position: 'fixed', 
-        left: 0, 
-        top: 0, 
-        width: '320px', 
-        zIndex,
-        display: 'flex',
-        flexDirection: 'column',
-        boxSizing: 'border-box',
-        border: '2px ridge #ccc',
-        boxShadow: isFocused ? '0 10px 40px rgba(0,0,0,0.8), 0 0 20px rgba(99, 102, 241, 0.2)' : '4px 4px 15px rgba(0,0,0,0.6)',
-        backgroundColor: '#1a1a2e',
-        userSelect: 'none',
-        borderRadius: '4px 4px 0 0',
-        transition: 'box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-        willChange: 'transform'
-      }}
+    <WindowFrame
+      title="VLC-XP Controller"
+      icon={Music}
+      geometry={geometry}
+      setGeometry={setGeometry}
+      zIndex={zIndex}
+      onFocus={onFocus}
+      isFocused={isFocused}
+      onClose={onClose}
+      otherWindowRect={otherWindowRect}
+      minHeight={180}
     >
-      <div 
-        style={{
-          height: '28px',
-          background: isFocused ? 'linear-gradient(to right, #0058a3, #2d8acd)' : 'linear-gradient(to right, #4a4a4a, #7a7a7a)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 8px',
-          cursor: 'move',
-          borderBottom: '1px solid #003366',
-          transition: 'background 0.2s ease'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'white', fontFamily: 'Tahoma, sans-serif', fontSize: '11px', fontWeight: 'bold' }}>
-          <Music size={12} />
-          <span>VLC-XP Controller</span>
-        </div>
-        <button 
-          onClick={onClose}
-          className="hover:brightness-110 active:brightness-90 transition-all"
-          style={{ width: '21px', height: '21px', backgroundColor: '#c0392b', border: '1px solid #fff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '2px' }}
-        >
-          <X size={14} />
-        </button>
-      </div>
-
-      <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-         <div style={{ color: 'white', fontSize: '12px', fontFamily: '"Share Tech Mono", monospace', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#1a1a2e', flex: 1 }}>
+         <div style={{ color: 'white', fontSize: '14px', fontFamily: '"Share Tech Mono", monospace', textAlign: 'center', fontWeight: 'bold' }}>
           {song.title}
         </div>
         
@@ -460,28 +490,28 @@ const ControllerWindow = ({
           step="0.1"
           value={currentTime} 
           onChange={(e) => onSeek(parseFloat(e.target.value))}
-          style={{ width: '100%', accentColor: '#2d8acd' }}
+          style={{ width: '100%', accentColor: '#2d8acd', cursor: 'pointer' }}
         />
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#7a7a9a', fontSize: '10px', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#7a7a9a', fontSize: '11px', fontFamily: 'monospace' }}>
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: '10px', marginTop: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: '15px' }}>
           <button onClick={onPrev} className="text-white hover:text-indigo-400 transition-colors">
-            <Music size={18} style={{ transform: 'rotate(180deg)' }} />
+            <Music size={22} style={{ transform: 'rotate(180deg)' }} />
           </button>
           <button onClick={onTogglePlay} className="text-white hover:scale-110 active:scale-95 transition-all">
-            {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
+            {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
           </button>
           <button onClick={onNext} className="text-white hover:text-indigo-400 transition-colors">
-            <Music size={18} />
+            <Music size={22} />
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-          <Volume2 size={14} className="text-zinc-500" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '5px' }}>
+          <Volume2 size={16} className="text-zinc-400" />
           <input 
             type="range" 
             min="0" 
@@ -489,13 +519,14 @@ const ControllerWindow = ({
             step="0.01" 
             value={volume} 
             onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-            style={{ flex: 1, accentColor: '#7a7a9a' }}
+            style={{ flex: 1, accentColor: '#7a7a9a', cursor: 'pointer' }}
           />
         </div>
       </div>
-    </div>
+    </WindowFrame>
   );
 };
+
 
 
 
@@ -536,8 +567,8 @@ const SongCard: React.FC<{
   );
 };
 
-// State for z-index management
-let activeWindow: 'lyrics' | 'controller' | null = null;
+// Geometry lifting for the window system
+const songsGeomBaseline = { width: 340, height: 450 };
 
 export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -548,34 +579,39 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
   const [showWindows, setShowWindows] = useState({ lyrics: false, controller: false });
   const [focusedWindow, setFocusedWindow] = useState<'lyrics' | 'controller' | null>(null);
 
-  // Position lifting for magnetic snapping
-  const [lyricsPos, setLyricsPos] = useState({ x: window.innerWidth - 340, y: 150 });
-  const [ctrlPos, setCtrlPos] = useState({ x: window.innerWidth - 680, y: 150 });
-
-  useEffect(() => {
-    activeWindow = focusedWindow;
-  }, [focusedWindow]);
+  // Geometry lifting for the window system
+  const [lyricsGeom, setLyricsGeom] = useState<WindowGeometry>({ x: window.innerWidth - 380, y: 150, width: 340, height: 450 });
+  const [ctrlGeom, setCtrlGeom] = useState<WindowGeometry>({ x: 40, y: window.innerHeight - 240, width: 340, height: 200 });
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const intervalRef = useRef<number | null>(null);
-
+  const [hasLoaded, setHasLoaded] = useState(false);
+  
   const currentSong = useMemo(() => songs.find(s => s.id === activeId) || null, [activeId]);
 
+  const initAudio = useCallback(() => {
+    if (audioRef.current) return audioRef.current;
+    
+    const audio = new Audio();
+    audio.addEventListener('loadedmetadata', () => {
+      setDuration(audio.duration);
+    });
+    audio.addEventListener('timeupdate', () => {
+      setCurrentTime(audio.currentTime);
+    });
+    audio.addEventListener('ended', () => handleNext());
+    
+    audioRef.current = audio;
+    setHasLoaded(true);
+    return audio;
+  }, []);
+
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-      audioRef.current.addEventListener('loadedmetadata', () => {
-        if (audioRef.current) setDuration(audioRef.current.duration);
-      });
-      audioRef.current.addEventListener('timeupdate', () => {
-        if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
-      });
-      audioRef.current.addEventListener('ended', () => handleNext());
-    }
     return () => {
-      audioRef.current?.pause();
-      audioRef.current = null;
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
     };
   }, []);
 
@@ -587,32 +623,38 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
 
   // Handle proximity spawning when windows first appear
   const handlePlayToggle = (song?: Song) => {
-    if (!audioRef.current) return;
+    const audio = initAudio();
 
     if (song && song.id !== activeId) {
       setActiveId(song.id);
-      audioRef.current.src = song.url;
-      audioRef.current.play();
+      audio.src = song.url;
+      audio.play().catch(() => {});
       setIsPlaying(true);
       onSongPlay();
       
       // Proximity Spawning
       const basePos = { x: window.innerWidth - 400, y: 100 };
-      setLyricsPos(basePos);
-      setCtrlPos({ x: basePos.x - 340, y: basePos.y });
+      setLyricsGeom(prev => ({ ...prev, x: basePos.x, y: basePos.y }));
+      setCtrlGeom(prev => ({ ...prev, x: basePos.x - 360, y: basePos.y }));
       
       setShowWindows({ lyrics: !!song.lrc, controller: true });
       setFocusedWindow('controller');
     } else {
       if (isPlaying) {
-        audioRef.current.pause();
+        if (audioRef.current) audioRef.current.pause();
         setIsPlaying(false);
       } else if (activeId) {
-        audioRef.current.play();
-        setIsPlaying(true);
-        onSongPlay();
-        setShowWindows(prev => ({ ...prev, controller: true, lyrics: currentSong?.lrc ? true : prev.lyrics }));
-        setFocusedWindow('controller');
+        const audio = audioRef.current;
+        if (audio) {
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+          }
+          setIsPlaying(true);
+          onSongPlay();
+          setShowWindows(prev => ({ ...prev, controller: true, lyrics: currentSong?.lrc ? true : prev.lyrics }));
+          setFocusedWindow('controller');
+        }
       }
     }
   };
@@ -680,12 +722,12 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
             onNext={handleNext}
             onPrev={handlePrev}
             onClose={() => setShowWindows(prev => ({ ...prev, controller: false }))}
-            position={ctrlPos}
-            setPosition={setCtrlPos}
+            geometry={ctrlGeom}
+            setGeometry={setCtrlGeom}
             zIndex={focusedWindow === 'controller' ? 10002 : 10001}
             onFocus={() => setFocusedWindow('controller')}
             isFocused={focusedWindow === 'controller'}
-            otherWindowRect={showWindows.lyrics ? { ...lyricsPos, width: 320, height: 400 } : null}
+            otherWindowRect={showWindows.lyrics ? lyricsGeom : null}
           />
         )}
 
@@ -694,12 +736,12 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
             song={currentSong} 
             currentTime={currentTime} 
             onClose={() => setShowWindows(prev => ({ ...prev, lyrics: false }))} 
-            position={lyricsPos}
-            setPosition={setLyricsPos}
+            geometry={lyricsGeom}
+            setGeometry={setLyricsGeom}
             zIndex={focusedWindow === 'lyrics' ? 10002 : 10001}
             onFocus={() => setFocusedWindow('lyrics')}
             isFocused={focusedWindow === 'lyrics'}
-            otherWindowRect={showWindows.controller ? { ...ctrlPos, width: 320, height: 180 } : null}
+            otherWindowRect={showWindows.controller ? ctrlGeom : null}
           />
         )}
       </div>

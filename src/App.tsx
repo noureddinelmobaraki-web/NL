@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { MySongs } from "./components/MySongsPage";
+import { DrawingsPage } from "./components/DrawingsPage";
 
 const GAME_CODE_CONTENT = `<!DOCTYPE html>
 <html lang="en">
@@ -1690,6 +1691,14 @@ const ME_BIT_IMAGES = [
   "images/me_bit_9.jpg"
 ];
 
+const STYLES = {
+  SHADOW_WHITE: { textShadow: '2px 2px 0px rgba(255,255,255,0.8)' },
+  SHADOW_BLACK_LG: { textShadow: '4px 4px 0px rgba(0,0,0,0.8)' },
+  SHADOW_BLACK_SM: { textShadow: '2px 2px 0px rgba(0,0,0,0.5)' },
+  SHADOW_BLACK_SOLID: { textShadow: '2px 2px 0 #000' },
+  CIRCLE: { borderRadius: '50%' }
+};
+
 export default function App() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
@@ -1748,6 +1757,13 @@ export default function App() {
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
   };
+
+  const handleSongPlay = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -1875,6 +1891,7 @@ export default function App() {
                         alt="Selected Shot"
                         className="max-w-full max-h-full object-contain shadow-[0_0_80px_rgba(255,255,255,0.08)] rounded-sm transition-transform duration-700 hover:scale-110"
                         referrerPolicy="no-referrer"
+                        loading="lazy"
                       />
                       
                       {/* Navigation Controls on Main View */}
@@ -1937,6 +1954,7 @@ export default function App() {
                           alt={`Moment ${idx + 1}`} 
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
+                          loading="lazy"
                         />
                         {selectedImageIndex === idx && (
                           <div className="absolute inset-0 bg-white/10 backdrop-none" />
@@ -1991,212 +2009,220 @@ export default function App() {
         {/* Navigation Tabs */}
         <motion.div 
           variants={itemVariants}
-          className="flex justify-center sm:justify-start gap-4 mb-4"
+          className="flex flex-wrap justify-center sm:justify-start gap-4 mb-4"
         >
           <button 
             onClick={() => scrollToSection('me-bit-gallery')}
-            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[8px_8px_0px_rgba(255,255,255,0.2)] hover:shadow-[12px_12px_0px_#fff] -translate-y-1"
+            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[12px_12px_0px_#fff] -translate-y-1"
           >
             ME BIT
           </button>
           <button 
             onClick={() => scrollToSection('my-songs-section')}
-            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[8px_8px_0px_rgba(255,255,255,0.2)] hover:shadow-[12px_12px_0px_#fff] -translate-y-1"
+            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[12px_12px_0px_#fff] -translate-y-1"
           >
             MY SONGS
+          </button>
+          <button 
+            onClick={() => scrollToSection('drawings-section')}
+            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[8px_8px_0px_rgba(255,255,255,0.2)] hover:shadow-[12px_12px_0px_#fff] -translate-y-1"
+          >
+            MY DRAWINGS
           </button>
         </motion.div>
 
         <div className="flex flex-col gap-14">
-          {/* Top Contact Section */}
-          <motion.div 
-            variants={itemVariants}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full"
-          >
-          {CONTACT_METHODS.map((method, idx) => (
-            <a
-              key={method.name}
-              href={method.url}
-              target="_blank"
-              rel="noreferrer"
-              className="manga-border group relative flex flex-col items-center justify-center p-6 border-[4px] border-black overflow-hidden bg-white transition-all duration-300 hover:scale-[1.05] hover:-rotate-1 active:scale-95 shadow-[8px_8px_0px_#000]"
+            {/* Top Contact Section */}
+            <motion.div 
+              variants={itemVariants}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full"
             >
-              {/* GIF Background */}
-              <div 
-                className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-500 group-hover:scale-110 opacity-30 blur-[2px] group-hover:blur-0"
-                style={{ backgroundImage: `url('${method.bg}')` }}
-              />
-              {/* Content Overlay */}
-              <div className="relative z-10 flex flex-col items-center gap-2">
+            {CONTACT_METHODS.map((method, idx) => (
+              <a
+                key={method.name}
+                href={method.url}
+                target="_blank"
+                rel="noreferrer"
+                className="manga-border group relative flex flex-col items-center justify-center p-6 border-[4px] border-black overflow-hidden bg-white transition-all duration-300 hover:scale-[1.05] hover:-rotate-1 active:scale-95 shadow-[8px_8px_0px_#000]"
+              >
+                {/* GIF Background */}
                 <div 
-                  className="p-3 bg-black text-white manga-border border-white/20 shadow-[4px_4px_0px_rgba(0,0,0,0.5)] group-hover:bg-white group-hover:text-black transition-colors"
-                  style={{ borderRadius: '50%' }}
-                >
-                  <method.icon className="w-8 h-8" />
+                  className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-500 group-hover:scale-110 opacity-30 blur-[2px] group-hover:blur-0"
+                  style={{ backgroundImage: `url('${method.bg}')` }}
+                />
+                {/* Content Overlay */}
+                <div className="relative z-10 flex flex-col items-center gap-2">
+                  <div 
+                    className="p-3 bg-black text-white manga-border border-white/20 shadow-[4px_4px_0px_rgba(0,0,0,0.5)] group-hover:bg-white group-hover:text-black transition-colors"
+                    style={STYLES.CIRCLE}
+                  >
+                    <method.icon className="w-8 h-8" />
+                  </div>
+                  <span className="font-manga text-2xl font-black text-black uppercase tracking-tighter" style={STYLES.SHADOW_WHITE}>
+                    {method.name}
+                  </span>
+                  <span className="text-xs font-bold text-black/70 bg-white/80 px-2 py-0.5 manga-border border-black truncate max-w-full">
+                    {method.value}
+                  </span>
                 </div>
-                <span className="font-manga text-2xl font-black text-black uppercase tracking-tighter" style={{ textShadow: '2px 2px 0px rgba(255,255,255,0.8)' }}>
-                  {method.name}
-                </span>
-                <span className="text-xs font-bold text-black/70 bg-white/80 px-2 py-0.5 manga-border border-black truncate max-w-full">
-                  {method.value}
+              </a>
+            ))}
+          </motion.div>
+          
+          {/* Editorial Header Section */}
+          <motion.header 
+            variants={itemVariants}
+            className="flex flex-col md:flex-row items-end justify-between gap-6 w-full"
+          >
+            <div 
+              className="manga-border p-8 flex-1 min-w-[60%] relative group overflow-hidden border-[4px] border-black transition-all duration-500 hover:scale-[1.01]"
+              id="header-card"
+            >
+              {/* Header Background Image with Zoom & Pan Hover Effect */}
+              <div 
+                className="absolute inset-0 z-[-1] bg-cover bg-center transition-all duration-700 blur-[3px] group-hover:blur-0 group-hover:scale-125 group-hover:translate-y-[-10%]"
+                style={{ backgroundImage: `url('${CONFIG_ASSETS.nameHeaderBg}')` }}
+              />
+              {/* Dark Overlay for Text Legibility */}
+              <div className="absolute inset-0 z-[-1] bg-black/40 transition-opacity group-hover:opacity-30" />
+              
+              <h1 
+                className="font-manga text-5xl md:text-7xl font-black uppercase tracking-tight text-white leading-none"
+                style={STYLES.SHADOW_BLACK_LG}
+              >
+                Noureddin El Mobaraki
+              </h1>
+              
+              <div className="mt-6 flex items-center gap-4 text-white font-bold uppercase italic border-t-2 border-white/50 pt-4">
+                <span className="text-xl font-manga" style={STYLES.SHADOW_BLACK_SM}>Casablanca 📍</span>
+                <span className="text-sm bg-black text-white px-3 py-1 manga-border border-white/30 truncate">
+                  "NL" | "Nordine GB"
                 </span>
               </div>
-            </a>
-          ))}
-        </motion.div>
-        
-        {/* Editorial Header Section */}
-        <motion.header 
-          variants={itemVariants}
-          className="flex flex-col md:flex-row items-end justify-between gap-6 w-full"
-        >
-          <div 
-            className="manga-border p-8 flex-1 min-w-[60%] relative group overflow-hidden border-[4px] border-black transition-all duration-500 hover:scale-[1.01]"
-            id="header-card"
-          >
-            {/* Header Background Image with Zoom & Pan Hover Effect */}
-            <div 
-              className="absolute inset-0 z-[-1] bg-cover bg-center transition-all duration-700 blur-[3px] group-hover:blur-0 group-hover:scale-125 group-hover:translate-y-[-10%]"
-              style={{ backgroundImage: `url('${CONFIG_ASSETS.nameHeaderBg}')` }}
-            />
-            {/* Dark Overlay for Text Legibility */}
-            <div className="absolute inset-0 z-[-1] bg-black/40 transition-opacity group-hover:opacity-30" />
-            
-            <h1 
-              className="font-manga text-5xl md:text-7xl font-black uppercase tracking-tight text-white leading-none"
-              style={{ textShadow: '4px 4px 0px rgba(0,0,0,0.8)' }}
-            >
-              Noureddin El Mobaraki
-            </h1>
-            
-            <div className="mt-6 flex items-center gap-4 text-white font-bold uppercase italic border-t-2 border-white/50 pt-4">
-              <span className="text-xl font-manga" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>Casablanca 📍</span>
-              <span className="text-sm bg-black text-white px-3 py-1 manga-border border-white/30 truncate">
-                "NL" | "Nordine GB"
-              </span>
+              <p 
+                className="mt-4 font-hand text-2xl text-white leading-tight max-w-xl"
+                style={{ 
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,0.1)',
+                  filter: 'drop-shadow(2px 2px 2px #000)'
+                }}
+              >
+                <span className="text-yellow-400">“24 years old.</span> Just a simple <span className="text-zinc-400">5/10</span> kind of person. I’m into <span className="border-b-2 border-dashed border-red-500">drawing</span>, cooking for fun, and overthinking <span className="text-cyan-300">random stuff</span> that probably helps nobody. That’s pretty much it.”
+              </p>
             </div>
-            <p 
-              className="mt-4 font-hand text-2xl text-white leading-tight max-w-xl"
-              style={{ 
-                textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,0.1)',
-                filter: 'drop-shadow(2px 2px 2px #000)'
-              }}
-            >
-              <span className="text-yellow-400">“24 years old.</span> Just a simple <span className="text-zinc-400">5/10</span> kind of person. I’m into <span className="border-b-2 border-dashed border-red-500">drawing</span>, cooking for fun, and overthinking <span className="text-cyan-300">random stuff</span> that probably helps nobody. That’s pretty much it.”
-            </p>
-          </div>
 
-          {/* Profile Image Square Box */}
-          <div 
-            className="manga-card bg-white p-0 flex flex-col items-center justify-center w-48 aspect-square hidden md:flex rotate-2 hover:rotate-0 transition-transform overflow-hidden border-[3px] border-black"
-          >
-            <img 
-              src={CONFIG_ASSETS.profileImg} 
-              alt="Profile" 
-              className="w-full h-full object-cover" 
-              referrerPolicy="no-referrer"
-            />
-          </div>
-
-        </motion.header>
-
-        {/* Highlights Section - Spotify Vault & YouTube */}
-        <motion.section 
-          variants={itemVariants}
-          className="grid grid-cols-1 md:grid-cols-2 gap-8"
-        >
-          {/* The Vault - Playlist Section */}
-          <div className="flex flex-col gap-4">
-            <h3 className="font-manga text-xl font-bold bg-white text-black inline-block px-4 py-1 manga-border w-fit -rotate-2 shadow-[3px_3px_0px_#000]">
-              ■ THE VAULT
-            </h3>
-            <a 
-              href="https://open.spotify.com/playlist/2NdDhxkVxypu1MkuVRCgId?si=R2iXNEuyQxOHwRwPPs_t7w"
-              target="_blank"
-              rel="noreferrer"
-              id="vault-playlist"
-              className="group relative overflow-hidden border-[3px] border-black transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
-              style={{ borderRadius: '12px 5px 18px 8px / 8px 18px 5px 12px' }}
+            {/* Profile Image Square Box */}
+            <div 
+              className="manga-card bg-white p-0 flex flex-col items-center justify-center w-48 aspect-square hidden md:flex rotate-2 hover:rotate-0 transition-transform overflow-hidden border-[3px] border-black"
             >
               <img 
-                src={CONFIG_ASSETS.vaultPlaylistCover} 
-                alt="NL fv songs of all time" 
-                className="absolute inset-0 w-full h-full object-cover filter brightness-[0.8] group-hover:brightness-100 transition-all"
+                src={CONFIG_ASSETS.profileImg} 
+                alt="Profile" 
+                className="w-full h-full object-cover" 
+                referrerPolicy="no-referrer"
+                loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-4">
-                <span className="font-hand text-3xl text-white">NL fv songs of all time</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <Music2 className="w-5 h-5 text-[#1DB954]" />
-                  <span className="text-sm text-zinc-300 uppercase font-manga tracking-widest">Listen on Spotify</span>
-                </div>
-              </div>
-            </a>
-          </div>
+            </div>
 
-          {/* YouTube Highlights Section */}
-          <div className="flex flex-col gap-4">
-            <h3 className="font-manga text-xl font-bold bg-black text-white inline-block px-4 py-1 manga-border w-fit rotate-1 shadow-[3px_3px_0px_#fff] border-white">
-              ■ HIGHLIGHTS
-            </h3>
-            <a 
-              href="https://www.youtube.com/@nourdin_el_mobaraki"
-              target="_blank"
-              rel="noreferrer"
-              className="group relative overflow-hidden border-[3px] border-black transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
-              style={{ borderRadius: '5px 15px 8px 20px / 15px 8px 20px 5px' }}
-            >
-              <div 
-                className="absolute inset-0 bg-cover bg-center filter grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
-                style={{ backgroundImage: `url('${CONFIG_ASSETS.youtubeHighlightsBg}')` }}
-              />
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-                <Youtube className="w-16 h-16 text-white drop-shadow-[0_0_15px_red] mb-2" />
-                <span className="font-manga text-3xl text-white uppercase tracking-tighter" style={{ textShadow: '2px 2px 0 #000' }}>
-                  Watch on YouTube
-                </span>
-              </div>
-            </a>
-          </div>
-        </motion.section>
+          </motion.header>
 
-        <main className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          
-          {/* Streaming Platforms Section */}
-          <motion.section variants={itemVariants} className="flex flex-col gap-6">
-            <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit -rotate-1 shadow-[4px_4px_0px_#000]">
-              ■ STREAMING PLATFORMS
-            </h2>
-            
-            <div className="grid grid-cols-2 gap-4">
-              {STREAMING_PLATFORMS.map((platform, idx) => (
-                <div
-                  key={platform.name}
-                  id={`stream-${idx}`}
-                >
-                  <a
-                    href={platform.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={`manga-button flex items-center gap-3 group ${platform.isSpotify ? 'spotify-king' : ''}`}
-                  >
-                    {platform.isSpotify ? (
-                      <img src={CONFIG_ASSETS.spotifyIcon} alt="Spotify" className="w-8 h-8 shrink-0 object-contain drop-shadow-[0_0_8px_#1DB954]" referrerPolicy="no-referrer" />
-                    ) : (
-                      <platform.icon className="w-6 h-6 shrink-0" />
-                    )}
-                    <span className="text-base sm:text-lg whitespace-nowrap overflow-hidden text-ellipsis">{platform.name}</span>
-                  </a>
+          {/* Highlights Section - Spotify Vault & YouTube */}
+          <motion.section 
+            variants={itemVariants}
+            className="grid grid-cols-1 md:grid-cols-2 gap-8"
+          >
+            {/* The Vault - Playlist Section */}
+            <div className="flex flex-col gap-4">
+              <h3 className="font-manga text-xl font-bold bg-white text-black inline-block px-4 py-1 manga-border w-fit -rotate-2 shadow-[3px_3px_0px_#000]">
+                ■ THE VAULT
+              </h3>
+              <a 
+                href="https://open.spotify.com/playlist/2NdDhxkVxypu1MkuVRCgId?si=R2iXNEuyQxOHwRwPPs_t7w"
+                target="_blank"
+                rel="noreferrer"
+                id="vault-playlist"
+                className="group relative overflow-hidden border-[3px] border-black transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
+                style={{ borderRadius: '12px 5px 18px 8px / 8px 18px 5px 12px' }}
+              >
+                <img 
+                  src={CONFIG_ASSETS.vaultPlaylistCover} 
+                  alt="NL fv songs of all time" 
+                  className="absolute inset-0 w-full h-full object-cover filter brightness-[0.8] group-hover:brightness-100 transition-all"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-4">
+                  <span className="font-hand text-3xl text-white">NL fv songs of all time</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Music2 className="w-5 h-5 text-[#1DB954]" />
+                    <span className="text-sm text-zinc-300 uppercase font-manga tracking-widest">Listen on Spotify</span>
+                  </div>
                 </div>
-              ))}
+              </a>
+            </div>
+
+            {/* YouTube Highlights Section */}
+            <div className="flex flex-col gap-4">
+              <h3 className="font-manga text-xl font-bold bg-black text-white inline-block px-4 py-1 manga-border w-fit rotate-1 shadow-[3px_3px_0px_#fff] border-white">
+                ■ HIGHLIGHTS
+              </h3>
+              <a 
+                href="https://www.youtube.com/@nourdin_el_mobaraki"
+                target="_blank"
+                rel="noreferrer"
+                className="group relative overflow-hidden border-[3px] border-black transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
+                style={{ borderRadius: '5px 15px 8px 20px / 15px 8px 20px 5px' }}
+              >
+                <div 
+                  className="absolute inset-0 bg-cover bg-center filter grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
+                  style={{ backgroundImage: `url('${CONFIG_ASSETS.youtubeHighlightsBg}')` }}
+                />
+                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                  <Youtube className="w-16 h-16 text-white drop-shadow-[0_0_15px_red] mb-2" />
+                  <span className="font-manga text-3xl text-white uppercase tracking-tighter" style={STYLES.SHADOW_BLACK_SOLID}>
+                    Watch on YouTube
+                  </span>
+                </div>
+              </a>
             </div>
           </motion.section>
 
-          {/* Social Channels Section */}
-          <motion.section variants={itemVariants} className="flex flex-col gap-6">
-            <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit rotate-1 shadow-[4px_4px_0px_#000]">
-              ■ SOCIAL CHANNELS
-            </h2>
+          <main className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            
+            {/* Streaming Platforms Section */}
+            <motion.section variants={itemVariants} className="flex flex-col gap-6">
+              <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit -rotate-1 shadow-[4px_4px_0px_#000]">
+                ■ STREAMING PLATFORMS
+              </h2>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {STREAMING_PLATFORMS.map((platform, idx) => (
+                  <div
+                    key={platform.name}
+                    id={`stream-${idx}`}
+                  >
+                    <a
+                      href={platform.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={`manga-button flex items-center gap-3 group ${platform.isSpotify ? 'spotify-king' : ''}`}
+                    >
+                      {platform.isSpotify ? (
+                        <img src={CONFIG_ASSETS.spotifyIcon} alt="Spotify" className="w-8 h-8 shrink-0 object-contain drop-shadow-[0_0_8px_#1DB954]" referrerPolicy="no-referrer" loading="lazy" />
+                      ) : (
+                        <platform.icon className="w-6 h-6 shrink-0" />
+                      )}
+                      <span className="text-base sm:text-lg whitespace-nowrap overflow-hidden text-ellipsis">{platform.name}</span>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+
+            {/* Social Channels Section */}
+            <motion.section variants={itemVariants} className="flex flex-col gap-6">
+              <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit rotate-1 shadow-[4px_4px_0px_#000]">
+                ■ SOCIAL CHANNELS
+              </h2>
             
             <div className="flex flex-col gap-5">
               {SOCIAL_CHANNELS.map((channel, idx) => (
@@ -2259,6 +2285,7 @@ export default function App() {
                     alt={`Me bit ${idx}`}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
+                    loading="lazy"
                   />
                   <div className="absolute inset-0 bg-black/20 group-hover/item:bg-transparent transition-colors" />
                 </div>
@@ -2276,21 +2303,27 @@ export default function App() {
         </motion.section>
 
         {/* My Songs Section - Now right after Me bit */}
-        <motion.div 
-          variants={itemVariants} 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          <MySongs 
-            onSongPlay={() => {
-              if (audioRef.current) {
-                audioRef.current.pause();
-                setIsPlaying(false);
-              }
-            }} 
-          />
-        </motion.div>
+          <motion.div 
+            variants={itemVariants} 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            id="my-songs-section"
+          >
+            <MySongs 
+              onSongPlay={handleSongPlay} 
+            />
+          </motion.div>
+
+          {/* My Drawings Section */}
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+          >
+            <DrawingsPage onSongPlay={handleSongPlay} />
+          </motion.div>
 
         {/* THE GAME BOX Section */}
         <motion.section 
@@ -2337,7 +2370,7 @@ export default function App() {
         </motion.section>
       </div>
 
-        {/* Editorial Footer */}
+      {/* Editorial Footer */}
         <motion.footer 
           variants={itemVariants}
           className="mt-10 flex flex-col items-center gap-8 border-t-4 border-black pt-10"
@@ -2349,6 +2382,7 @@ export default function App() {
             alt="Footer Decoration"
             className="w-full max-w-[600px] border-[3px] border-black shadow-[10px_10px_0px_#000] rounded-xl hover:scale-[1.02] transition-transform animate-float"
             referrerPolicy="no-referrer"
+            loading="lazy"
           />
 
           <div className="flex flex-col md:flex-row justify-between items-center w-full gap-6">
