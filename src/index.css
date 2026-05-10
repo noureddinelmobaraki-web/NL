@@ -382,3 +382,11 @@ button {
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+.cursor-hover {
+  width: 48px !important;
+  height: 48px !important;
+  border-color: rgba(255,255,255,0.9) !important;
+  margin-top: -8px;
+  margin-left: -8px;
+}

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Play, Pause, Volume2, Music, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDeviceType } from '../hooks/useDeviceType';
+import { extractDominantColor } from '../utils/extractColors';
+import { ActiveSong } from '../App';
 
 interface LyricLine {
   time: number;
@@ -12,10 +14,11 @@ interface Song {
   title: string;
   url: string;
   lrc: string | null;
+  cover?: string;
 }
 
 const songs: Song[] = [
-  { id: 1,  title: "TRI9 TBAWE9",           url: "https://github.com/user-attachments/files/27562010/TRI9.TBAWE9.mp3",             lrc: "/lrc/TRI9 TBAWE9.lrc" },
+  { id: 1,  title: "TRI9 TBAWE9",           url: "https://github.com/user-attachments/files/27562010/TRI9.TBAWE9.mp3",             lrc: "/lrc/TRI9 TBAWE9.lrc", cover: "/images/playlist_cover.jpg" },
   { id: 2,  title: "VETO",                   url: "https://github.com/user-attachments/files/27562012/VETO.mp3",                    lrc: "/lrc/VETO.lrc" },
   { id: 3,  title: "TOTAL",                  url: "https://github.com/user-attachments/files/27562017/TOTAL.mp3",                   lrc: "/lrc/TOTAL.lrc" },
   { id: 4,  title: "7CHAYCHI DIMO9RATI",     url: "https://github.com/user-attachments/files/27562028/7CHAYCHI.DIMO9RATI.mp3",     lrc: "/lrc/7CHAYCHI DIMO9RATI.lrc" },
@@ -337,26 +340,19 @@ const WindowFrame = ({
 const LyricsWindowContent = ({ 
   song, 
   currentTime, 
-  onSeek 
+  onSeek,
+  lyrics = [],
+  isMobilePlayer = false
 }: { 
   song: Song; 
   currentTime: number; 
   onSeek: (time: number) => void;
+  lyrics?: LyricLine[];
+  isMobilePlayer?: boolean;
 }) => {
-  const [lyrics, setLyrics] = useState<LyricLine[]>([]);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const { isMobile } = useDeviceType();
-
-  useEffect(() => {
-    if (song.lrc) {
-      const filename = song.lrc.split('/').pop();
-      fetch(`${import.meta.env.BASE_URL}lrc/${filename}`)
-        .then(res => res.text())
-        .then(text => setLyrics(parseLRC(text)))
-        .catch(() => {});
-    }
-  }, [song.lrc]);
 
   const currentLineIndex = useMemo(() => {
     if (lyrics.length === 0) return -1;
@@ -374,32 +370,43 @@ const LyricsWindowContent = ({
     lineRefs.current.forEach((el, i) => {
       if (!el) return;
       const isActive = i === currentLineIndex;
-      const isHovered = hoveredLine === i;
-      el.style.opacity = isActive ? '1' : (isHovered ? '0.7' : '0.2');
-      el.style.color = isActive ? 'var(--primary-accent, #fff)' : (isHovered ? 'rgba(255,255,255,0.7)' : '#7a7a9a');
-      el.style.textShadow = isActive ? '0 0 15px rgba(var(--primary-rgb), 1), 0 0 30px rgba(var(--primary-rgb), 0.5)' : 'none';
-      el.style.transform = isActive ? 'scale(1.04)' : 'scale(1)';
-      el.style.background = isHovered ? 'rgba(255,255,255,0.05)' : 'transparent';
-      el.style.borderRadius = '4px';
+
+      if (isMobilePlayer) {
+        el.style.opacity = '1';
+        el.style.color = isActive ? 'white' : 'rgba(255,255,255,0.35)';
+        el.style.fontSize = isActive ? '19px' : '17px';
+        el.style.fontWeight = isActive ? 'bold' : 'normal';
+        el.style.textShadow = isActive ? '0 0 12px rgba(255,255,255,0.5)' : 'none';
+        el.style.transform = 'none';
+        el.style.background = 'transparent';
+      } else {
+        const isHovered = hoveredLine === i;
+        el.style.opacity = isActive ? '1' : (isHovered ? '0.7' : '0.2');
+        el.style.color = isActive ? 'var(--primary-accent, #fff)' : (isHovered ? 'rgba(255,255,255,0.7)' : '#7a7a9a');
+        el.style.textShadow = isActive ? '0 0 15px rgba(var(--primary-rgb), 1), 0 0 30px rgba(var(--primary-rgb), 0.5)' : 'none';
+        el.style.transform = isActive ? 'scale(1.04)' : 'scale(1)';
+        el.style.background = isHovered ? 'rgba(255,255,255,0.05)' : 'transparent';
+        el.style.borderRadius = '4px';
+      }
     });
 
     if (currentLineIndex !== -1 && lineRefs.current[currentLineIndex]) {
       lineRefs.current[currentLineIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [currentLineIndex, hoveredLine]);
+  }, [currentLineIndex, hoveredLine, isMobilePlayer]);
 
   return (
     <div 
       ref={lyricsContainerRef}
       style={{
         flex: 1,
-        padding: isMobile ? '20px 16px' : '40px 20px',
+        padding: isMobilePlayer ? '24px 20px' : (isMobile ? '20px 16px' : '40px 20px'),
         overflowY: 'auto',
-        fontFamily: '"Share Tech Mono", monospace',
+        fontFamily: isMobilePlayer ? "'Share Tech Mono', monospace" : '"Share Tech Mono", monospace',
         background: 'transparent',
         textAlign: 'center',
-        fontSize: isMobile ? '17px' : '18px',
-        lineHeight: 2.2,
+        fontSize: isMobilePlayer ? '17px' : (isMobile ? '17px' : '18px'),
+        lineHeight: isMobilePlayer ? 1.8 : 2.2,
         WebkitOverflowScrolling: 'touch'
       }}
       className={`no-scrollbar selectable h-full`}
@@ -409,36 +416,47 @@ const LyricsWindowContent = ({
           key={i} 
           ref={el => lineRefs.current[i] = el}
           onClick={() => onSeek(line.time)}
-          onMouseEnter={() => setHoveredLine(i)}
-          onMouseLeave={() => setHoveredLine(null)}
+          onMouseEnter={() => !isMobilePlayer && setHoveredLine(i)}
+          onMouseLeave={() => !isMobilePlayer && setHoveredLine(null)}
           onTouchStart={() => {
-            setHoveredLine(i);
-            setTimeout(() => setHoveredLine(null), 200);
+            if (!isMobilePlayer) {
+              setHoveredLine(i);
+              setTimeout(() => setHoveredLine(null), 200);
+            }
           }}
           style={{
-            marginBottom: '1.5rem',
+            padding: isMobilePlayer ? '10px 0' : '4px 8px',
+            marginBottom: isMobilePlayer ? '0' : '1.5rem',
             transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
             willChange: 'opacity, text-shadow, transform',
             cursor: 'pointer',
-            padding: '4px 8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px'
           }}
         >
-          <span style={{ 
-            opacity: hoveredLine === i ? 1 : 0, 
-            transition: 'opacity 150ms',
-            fontSize: '10px',
-            color: 'white'
-          }}>▶</span>
+          {!isMobilePlayer && (
+            <span style={{ 
+              opacity: hoveredLine === i ? 1 : 0, 
+              transition: 'opacity 150ms',
+              fontSize: '10px',
+              color: 'white'
+            }}>▶</span>
+          )}
           {line.text}
         </div>
       ))}
       {lyrics.length === 0 && (
-        <div className="text-zinc-500 font-mono italic mt-20">
-          {song.lrc ? "Loading lyrics..." : "No lyrics available"}
+        <div style={{
+          color: isMobilePlayer ? 'rgba(255,255,255,0.3)' : '#7a7a9a',
+          fontSize: isMobilePlayer ? '15px' : '14px',
+          fontFamily: 'monospace',
+          fontStyle: 'italic',
+          marginTop: '40px',
+          textAlign: 'center'
+        }}>
+          {song.lrc ? "Loading lyrics..." : (isMobilePlayer ? "ما كاينش ترجمة لهاد الأغنية" : "No lyrics available")}
         </div>
       )}
     </div>
@@ -455,7 +473,8 @@ const LyricsWindow = ({
   zIndex, 
   onFocus,
   isFocused,
-  otherWindowRect
+  otherWindowRect,
+  lyrics
 }: { 
   song: Song; 
   currentTime: number; 
@@ -467,6 +486,7 @@ const LyricsWindow = ({
   onFocus: () => void;
   isFocused: boolean;
   otherWindowRect: WindowGeometry | null;
+  lyrics: LyricLine[];
 }) => {
   return (
     <WindowFrame
@@ -481,133 +501,30 @@ const LyricsWindow = ({
       otherWindowRect={otherWindowRect}
     >
       <div className="flex-1 bg-[#0d0d1a] overflow-hidden">
-        <LyricsWindowContent song={song} currentTime={currentTime} onSeek={onSeek} />
+        <LyricsWindowContent song={song} currentTime={currentTime} onSeek={onSeek} lyrics={lyrics} />
       </div>
     </WindowFrame>
   );
 };
-
-const ControllerWindow = ({ 
-  song, 
-  isPlaying, 
-  currentTime, 
-  duration, 
-  volume,
-  onTogglePlay, 
-  onSeek, 
-  onVolumeChange,
-  onNext,
-  onPrev,
-  onClose,
-  geometry,
-  setGeometry,
-  zIndex,
-  onFocus,
-  isFocused,
-  otherWindowRect
-}: { 
-  song: Song; 
-  isPlaying: boolean; 
-  currentTime: number; 
-  duration: number;
-  volume: number;
-  onTogglePlay: () => void;
-  onSeek: (val: number) => void;
-  onVolumeChange: (val: number) => void;
-  onNext: () => void;
-  onPrev: () => void;
-  onClose: () => void;
-  geometry: WindowGeometry;
-  setGeometry: (g: WindowGeometry) => void;
-  zIndex: number;
-  onFocus: () => void;
-  isFocused: boolean;
-  otherWindowRect: WindowGeometry | null;
-}) => {
-  const seekPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  return (
-    <WindowFrame
-      title="VLC-XP Controller"
-      icon={Music}
-      geometry={geometry}
-      setGeometry={setGeometry}
-      zIndex={zIndex}
-      onFocus={onFocus}
-      isFocused={isFocused}
-      onClose={onClose}
-      otherWindowRect={otherWindowRect}
-      minHeight={180}
-    >
-      <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#1a1a2e', flex: 1 }}>
-         <div style={{ color: 'white', fontSize: '14px', fontFamily: '"Share Tech Mono", monospace', textAlign: 'center', fontWeight: 'bold' }}>
-          {song.title}
-        </div>
-        
-        <input 
-          type="range" 
-          min="0" 
-          max={duration || 0} 
-          step="0.1"
-          value={currentTime} 
-          onChange={(e) => onSeek(parseFloat(e.target.value))}
-          className="seek-bar"
-          style={{ 
-            background: `linear-gradient(to right, #fff ${seekPercent}%, rgba(255,255,255,0.2) ${seekPercent}%)` 
-          }}
-        />
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#7a7a9a', fontSize: '11px', fontFamily: 'monospace' }}>
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: '15px' }}>
-          <button onClick={onPrev} className="text-white hover:text-indigo-400 transition-colors">
-            <Music size={22} style={{ transform: 'rotate(180deg)' }} />
-          </button>
-          <button onClick={onTogglePlay} className="text-white hover:scale-110 active:scale-95 transition-all">
-            {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
-          </button>
-          <button onClick={onNext} className="text-white hover:text-indigo-400 transition-colors">
-            <Music size={22} />
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '5px' }}>
-          <Volume2 size={16} className="text-zinc-400" />
-          <input 
-            type="range" 
-            min="0" 
-            max="1" 
-            step="0.01" 
-            value={volume} 
-            onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-            style={{ flex: 1, accentColor: '#7a7a9a', cursor: 'pointer' }}
-          />
-        </div>
-      </div>
-    </WindowFrame>
-  );
-};
-
-
-
 
 const SongCard: React.FC<{ 
   song: Song; 
   index: number;
   isActive: boolean; 
+  isActiveInBar: boolean;
   isPlaying: boolean;
   isWaiting: boolean;
-  onPlay: () => void 
+  onPlay: () => void;
+  setLyricsOpen: (open: boolean) => void;
 }> = ({ 
   song, 
   index,
   isActive, 
+  isActiveInBar,
   isPlaying,
   isWaiting,
-  onPlay 
+  onPlay,
+  setLyricsOpen
 }) => {
   return (
     <div className={`bg-zinc-900/90 border p-5 rounded-lg flex flex-col gap-3 transition-all hover:border-white/20 group ${isActive ? 'border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'border-white/5'}`}>
@@ -622,44 +539,98 @@ const SongCard: React.FC<{
           </div>
         </div>
         
-        <button
-          onClick={onPlay}
-          className={`w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shrink-0 ${isActive && isPlaying ? 'bg-indigo-500 text-white' : 'bg-white text-black'}`}
-        >
-          {isActive && isWaiting ? (
-            <div className="spinner" />
-          ) : (
-            isActive && isPlaying ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" className="ml-1" />
+        <div className="flex items-center gap-3">
+          {song.lrc && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); setLyricsOpen(true); }}
+              className="text-[10px] uppercase tracking-wider font-bold text-indigo-400 hover:text-white transition-colors border border-indigo-500/30 px-2 py-1 rounded"
+            >
+              Lyrics
+            </button>
           )}
-        </button>
+          {!isActiveInBar && (
+            <button
+              onClick={onPlay}
+              className={`w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shrink-0 ${isActive && isPlaying ? 'bg-indigo-500 text-white' : 'bg-white text-black'}`}
+            >
+              {isActive && isWaiting ? (
+                <div className="spinner" />
+              ) : (
+                isActive && isPlaying ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" className="ml-1" />
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-// Geometry lifting for the window system
-const songsGeomBaseline = { width: 340, height: 450 };
-
-export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
+export const MySongs = ({ 
+  onSongPlay,
+  onActiveSongChange 
+}: { 
+  onSongPlay: () => void;
+  onActiveSongChange: (data: ActiveSong | null) => void;
+}) => {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
-  const [showWindows, setShowWindows] = useState({ lyrics: false, controller: false });
-  const [focusedWindow, setFocusedWindow] = useState<'lyrics' | 'controller' | null>(null);
+  const [showWindows, setShowWindows] = useState({ lyrics: false });
+  const [focusedWindow, setFocusedWindow] = useState<'lyrics' | null>(null);
   const [isWaiting, setIsWaiting] = useState(false);
-  const [mobilePlayerOpen, setMobilePlayerOpen] = useState(false);
+  const [mobileFullscreen, setMobileFullscreen] = useState<number | null>(null);
+  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+  const [lrcCache, setLrcCache] = useState<Record<number, LyricLine[]>>({});
+  const [ambientColor, setAmbientColor] = useState('20, 20, 30');
   const { isMobile } = useDeviceType();
 
   // Geometry lifting for the window system
   const [lyricsGeom, setLyricsGeom] = useState<WindowGeometry>({ x: window.innerWidth - 380, y: 150, width: 340, height: 450 });
-  const [ctrlGeom, setCtrlGeom] = useState<WindowGeometry>({ x: 40, y: window.innerHeight - 240, width: 340, height: 200 });
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
   
   const currentSong = useMemo(() => songs.find(s => s.id === activeId) || null, [activeId]);
+
+  useEffect(() => {
+    if (activeId && currentSong && currentSong.lrc && !lrcCache[activeId]) {
+      const filename = currentSong.lrc.split('/').pop();
+      fetch(`${import.meta.env.BASE_URL}lrc/${filename}`)
+        .then(res => res.text())
+        .then(text => {
+          const parsed = parseLRC(text);
+          setLrcCache(prev => ({ ...prev, [activeId]: parsed }));
+        })
+        .catch(() => {});
+    }
+  }, [activeId, currentSong, lrcCache]);
+
+  // Ambient Mode Color Extraction
+  useEffect(() => {
+    if (currentSong?.cover) {
+      const img = new Image();
+      img.src = currentSong.cover;
+      img.onload = () => {
+        extractDominantColor(img, (color) => setAmbientColor(color));
+      };
+      img.onerror = () => {
+        setAmbientColor('20, 20, 30');
+      };
+    } else {
+      setAmbientColor('20, 20, 30');
+    }
+  }, [activeId, currentSong]);
+
+  useEffect(() => {
+    if (mobileFullscreen !== null) {
+      setTimeout(() => setIsOverlayOpen(true), 10);
+    } else {
+      setIsOverlayOpen(false);
+    }
+  }, [mobileFullscreen]);
 
   const handleNext = useCallback(() => {
     if (!activeId) return;
@@ -675,12 +646,21 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
     handlePlayToggle(songs[prevIdx]);
   }, [activeId]);
 
-  const handlePlayToggle = (song?: Song) => {
+  const initAudio = useCallback(() => {
+    if (audioRef.current) return audioRef.current;
+    
+    const audio = new Audio();
+    audioRef.current = audio;
+    setHasLoaded(true);
+    return audio;
+  }, []);
+
+  const handlePlayToggle = useCallback((song?: Song) => {
     const audio = initAudio();
 
     if (song && song.id !== activeId) {
       if (isMobile) {
-        setMobilePlayerOpen(true);
+        setMobileFullscreen(song.id);
       }
       setActiveId(song.id);
       audio.src = song.url;
@@ -692,13 +672,14 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
       onSongPlay();
       
       // Proximity Spawning
-      const basePos = { x: window.innerWidth - 400, y: 100 };
-      setLyricsGeom(prev => ({ ...prev, x: basePos.x, y: basePos.y }));
-      setCtrlGeom(prev => ({ ...prev, x: basePos.x - 360, y: basePos.y }));
+      if (window.innerWidth > 768) {
+        const basePos = { x: window.innerWidth - 400, y: 100 };
+        setLyricsGeom(prev => ({ ...prev, x: basePos.x, y: basePos.y }));
+      }
       
       if (!isMobile) {
-        setShowWindows({ lyrics: !!song.lrc, controller: true });
-        setFocusedWindow('controller');
+        setShowWindows({ lyrics: !!song.lrc });
+        setFocusedWindow(song.lrc ? 'lyrics' : null);
       }
     } else {
       if (isPlaying) {
@@ -714,34 +695,42 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
           setIsPlaying(true);
           onSongPlay();
           if (isMobile) {
-            setMobilePlayerOpen(true);
-          } else {
-            setShowWindows(prev => ({ ...prev, controller: true, lyrics: currentSong?.lrc ? true : prev.lyrics }));
-            setFocusedWindow('controller');
+            setMobileFullscreen(activeId);
           }
         }
       }
     }
-  };
+  }, [activeId, isMobile, isPlaying, onSongPlay, currentSong, initAudio]);
 
-  const initAudio = useCallback(() => {
-    if (audioRef.current) return audioRef.current;
-    
-    const audio = new Audio();
-    audio.addEventListener('loadedmetadata', () => {
-      setDuration(audio.duration);
-    });
-    audio.addEventListener('timeupdate', () => {
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
-    });
-    audio.addEventListener('waiting', () => setIsWaiting(true));
-    audio.addEventListener('canplay', () => setIsWaiting(false));
-    audio.addEventListener('playing', () => setIsWaiting(false));
-    audio.addEventListener('ended', () => handleNext());
-    
-    audioRef.current = audio;
-    setHasLoaded(true);
-    return audio;
+      setDuration(audio.duration || 0);
+    };
+    const onWaiting = () => setIsWaiting(true);
+    const onCanPlay = () => setIsWaiting(false);
+    const onPlaying = () => setIsWaiting(false);
+    const onEnded = () => handleNext();
+
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('waiting', onWaiting);
+    audio.addEventListener('canplay', onCanPlay);
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('ended', onEnded);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('waiting', onWaiting);
+      audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('ended', onEnded);
+    };
   }, [handleNext]);
 
   useEffect(() => {
@@ -790,18 +779,46 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
     }
   }, [volume]);
 
-  const handleSeek = (val: number) => {
+  const handleSeek = useCallback((val: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = val;
       setCurrentTime(val);
     }
-  };
+  }, []);
+
+  // Notify parent of state changes
+  useEffect(() => {
+    if (onActiveSongChange) {
+      if (activeId && currentSong) {
+        onActiveSongChange({
+          id: activeId,
+          title: currentSong.title,
+          audioRef: audioRef,
+          isPlaying,
+          currentTime,
+          duration,
+          onPlayPause: () => handlePlayToggle(),
+          onPrev: handlePrev,
+          onNext: handleNext,
+        });
+      } else {
+        onActiveSongChange(null);
+      }
+    }
+  }, [activeId, isPlaying, currentTime, duration, onActiveSongChange, handlePrev, handleNext, handlePlayToggle, currentSong]);
 
   const seekPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <section id="my-songs-section" className="w-full py-20 px-6 sm:px-12 bg-black/40 backdrop-blur-sm border-y border-white/5 font-sans selection:bg-indigo-500/30">
-      <div className="max-w-6xl mx-auto">
+    <section 
+      id="my-songs-section" 
+      className="w-full py-20 px-6 sm:px-12 backdrop-blur-sm border-y border-white/5 font-sans selection:bg-indigo-500/30 relative"
+      style={{
+        background: `radial-gradient(ellipse at top, rgba(${ambientColor}, 0.3) 0%, transparent 70%), black`,
+        transition: 'background 1500ms ease'
+      }}
+    >
+      <div className="max-w-6xl mx-auto relative z-10">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-16">
           <div className="space-y-4">
             <h1 className="text-6xl sm:text-8xl font-black italic tracking-tighter uppercase leading-none text-white">
@@ -822,137 +839,174 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
               index={i}
               song={song} 
               isActive={activeId === song.id}
+              isActiveInBar={activeId === song.id && !isMobile}
               isPlaying={isPlaying}
               isWaiting={isWaiting}
               onPlay={() => handlePlayToggle(song)}
+              setLyricsOpen={(open) => {
+                setActiveId(song.id);
+                if (isMobile) {
+                  setMobileFullscreen(song.id);
+                } else {
+                  setShowWindows(prev => ({ ...prev, lyrics: open }));
+                  setFocusedWindow('lyrics');
+                }
+              }}
             />
           ))}
         </div>
 
-        {activeId && currentSong && showWindows.controller && !isMobile && (
-          <ControllerWindow 
-            song={currentSong}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            volume={volume}
-            onTogglePlay={() => handlePlayToggle()}
-            onSeek={handleSeek}
-            onVolumeChange={setVolume}
-            onNext={handleNext}
-            onPrev={handlePrev}
-            onClose={() => setShowWindows(prev => ({ ...prev, controller: false }))}
-            geometry={ctrlGeom}
-            setGeometry={setCtrlGeom}
-            zIndex={focusedWindow === 'controller' ? 10002 : 10001}
-            onFocus={() => setFocusedWindow('controller')}
-            isFocused={focusedWindow === 'controller'}
-            otherWindowRect={showWindows.lyrics ? lyricsGeom : null}
-          />
-        )}
-
-        {isMobile && mobilePlayerOpen && currentSong && (
-          <div className="mobile-fullscreen slide-up" style={{ 
-            background: 'linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%)',
-            display: 'flex',
-            flexDirection: 'column',
-            paddingBottom: 'var(--safe-bottom)',
-            zIndex: 9005
-          }}>
-            <div className="flex items-center justify-between px-6 pt-[calc(var(--safe-top)+12px)]">
-              <button className="flex items-center gap-2 text-white font-bold" onClick={() => {
-                if (audioRef.current) audioRef.current.pause();
-                setIsPlaying(false);
-                setMobilePlayerOpen(false);
-              }}>
+        {isMobile && mobileFullscreen !== null && currentSong && (
+          <div 
+            className={`mobile-fullscreen-player ${isOverlayOpen ? 'open' : ''}`}
+            style={{ 
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9500,
+              backgroundColor: '#080808',
+              background: 'linear-gradient(180deg, #080808 0%, #111122 100%)',
+              display: 'flex',
+              flexDirection: 'column',
+              paddingTop: 'env(safe-area-inset-top)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+              transition: 'transform 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: isOverlayOpen ? 'translateY(0)' : 'translateY(100%)',
+              color: 'white'
+            }}
+          >
+            {/* HEADER */}
+            <header style={{ 
+              height: '56px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              padding: '0 16px',
+              borderBottom: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              <button 
+                onClick={() => setMobileFullscreen(null)}
+                style={{
+                  background: 'transparent',
+                  color: 'white',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  border: 'none',
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
                 <ChevronLeft size={20} /> Back
               </button>
-              <div className="text-zinc-500 font-mono text-xs">
-                {songs.findIndex(s => s.id === activeId) + 1} / {songs.length}
+              <div style={{
+                maxWidth: '60%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontWeight: 'bold',
+                fontSize: '16px'
+              }}>
+                {currentSong.title}
               </div>
+              <div style={{ minWidth: '44px' }} />
+            </header>
+
+            {/* LYRICS PANEL */}
+            <div className="flex-1 overflow-hidden">
+               <LyricsWindowContent 
+                 song={currentSong} 
+                 currentTime={currentTime} 
+                 onSeek={handleSeek} 
+                 isMobilePlayer={true} 
+                 lyrics={activeId ? lrcCache[activeId] : []}
+               />
             </div>
-            
-            <div className="flex-1 flex flex-col px-6 py-10 gap-8 overflow-hidden">
-              <div className="space-y-1 text-center shrink-0">
-                <div className="overflow-hidden w-full">
-                  <h2 className={`text-3xl font-bold text-white selectable ${currentSong.title.length > 20 && isPlaying ? 'marquee' : ''}`}>
-                    {currentSong.title}
-                  </h2>
-                </div>
-                <p className="text-indigo-400/60 font-mono text-sm tracking-widest uppercase">NL</p>
+
+            {/* CONTROLS BAR */}
+            <div style={{
+              padding: '24px 20px',
+              paddingBottom: 'max(env(safe-area-inset-bottom), 32px)',
+              background: 'rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              flexShrink: 0
+            }}>
+              {/* Row 1: Seek Bar */}
+              <input 
+                type="range"
+                min={0}
+                max={duration || 0}
+                value={currentTime}
+                step={0.1}
+                onChange={(e) => handleSeek(parseFloat(e.target.value))}
+                style={{
+                  width: '100%',
+                  accentColor: 'white',
+                  height: '4px',
+                  marginBottom: '8px',
+                  cursor: 'pointer'
+                }}
+              />
+
+              {/* Row 2: Time */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '12px',
+                color: 'rgba(255,255,255,0.4)',
+                marginBottom: '20px',
+                fontFamily: 'monospace'
+              }}>
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
               </div>
 
-              <div className="w-full space-y-2 shrink-0">
-                <input 
-                  type="range" 
-                  min="0" 
-                  max={duration || 0} 
-                  step="0.1"
-                  value={currentTime} 
-                  onChange={(e) => handleSeek(parseFloat(e.target.value))}
-                  className="seek-bar"
-                  style={{ 
-                    background: `linear-gradient(to right, #fff ${seekPercent}%, rgba(255,255,255,0.2) ${seekPercent}%)` 
-                  }}
-                />
-                <div className="flex justify-between text-zinc-500 font-mono text-xs">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center gap-10 shrink-0">
-                <button onClick={handlePrev} className="p-4 text-white hover:bg-white/10 rounded-full transition-all">
+              {/* Row 3: Controls */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '48px'
+              }}>
+                <button 
+                  onClick={handlePrev}
+                  style={{ background: 'transparent', color: 'white', border: 'none', padding: '12px' }}
+                >
                   <ChevronLeft size={32} />
                 </button>
+
                 <button 
-                  onClick={() => handlePlayToggle()} 
-                  className="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl"
+                  onClick={() => handlePlayToggle()}
+                  style={{
+                    background: 'white',
+                    color: 'black',
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: 'none',
+                    fontSize: '24px',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                  }}
                 >
-                  {isWaiting ? (
-                    <div className="spinner !w-10 !h-10 !border-gray-300 !border-t-black" />
+                   {isWaiting ? (
+                    <div className="spinner !w-8 !h-8 !border-gray-300 !border-t-black" />
                   ) : (
-                    isPlaying ? <Pause size={40} fill="currentColor" /> : <Play size={40} fill="currentColor" className="ml-1" />
+                    isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />
                   )}
                 </button>
-                <button onClick={handleNext} className="p-4 text-white hover:bg-white/10 rounded-full transition-all">
+
+                <button 
+                  onClick={handleNext}
+                  style={{ background: 'transparent', color: 'white', border: 'none', padding: '12px' }}
+                >
                   <ChevronRight size={32} />
                 </button>
-              </div>
-
-              <div className="flex items-center gap-4 px-4 bg-white/5 py-4 rounded-2xl shrink-0">
-                <Volume2 size={20} className="text-zinc-400" />
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.01" 
-                  value={volume} 
-                  onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="seek-bar"
-                  style={{ 
-                    background: `linear-gradient(to right, #fff ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%)` 
-                  }}
-                />
-              </div>
-
-              <div className="flex-1 flex flex-col min-h-0 bg-black/40 rounded-3xl border border-white/5 overflow-hidden">
-                <div className="p-4 border-b border-white/5 text-center text-[10px] tracking-widest text-zinc-600 uppercase font-bold">
-                  Lyrics
-                </div>
-                <div className="flex-1 overflow-y-auto no-scrollbar p-6">
-                  {currentSong.lrc ? (
-                    <LyricsWindowContent 
-                      song={currentSong} 
-                      currentTime={currentTime} 
-                      onSeek={handleSeek}
-                    />
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-zinc-700 font-mono italic">
-                      No lyrics available
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </div>
@@ -969,7 +1023,8 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
             zIndex={focusedWindow === 'lyrics' ? 10002 : 10001}
             onFocus={() => setFocusedWindow('lyrics')}
             isFocused={focusedWindow === 'lyrics'}
-            otherWindowRect={showWindows.controller ? ctrlGeom : null}
+            otherWindowRect={null}
+            lyrics={lrcCache[activeId] || []}
           />
         )}
       </div>

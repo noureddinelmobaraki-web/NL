@@ -24,12 +24,15 @@ import {
   VolumeX
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { MySongs } from "./components/MySongsPage";
 import { DrawingsPage } from "./components/DrawingsPage";
 import { useDeviceType } from "./hooks/useDeviceType";
 import { Sarahni } from "./components/Sarahni";
+import { NowPlayingBar } from "./components/NowPlayingBar";
+import { AudioVisualizer } from "./components/AudioVisualizer";
+import { CustomCursor } from "./components/CustomCursor";
 
 const GAME_CODE_CONTENT = `<!DOCTYPE html>
 <html lang="en">
@@ -1701,6 +1704,18 @@ const STYLES = {
   CIRCLE: { borderRadius: '50%' }
 };
 
+export interface ActiveSong {
+  id: number;
+  title: string;
+  audioRef: React.RefObject<HTMLAudioElement>;
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  onPlayPause: () => void;
+  onNext: () => void;
+  onPrev: () => void;
+}
+
 export default function App() {
   const { isMobile } = useDeviceType();
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
@@ -1709,6 +1724,20 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [activeSong, setActiveSong] = useState<ActiveSong | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      setScrollProgress(progress);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -1781,6 +1810,19 @@ export default function App() {
 
   return (
     <>
+      <CustomCursor />
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        height: '3px',
+        width: `${scrollProgress}%`,
+        background: 'linear-gradient(to right, #ffffff, rgba(255,255,255,0.4))',
+        zIndex: 99999,
+        transition: 'width 50ms linear',
+        pointerEvents: 'none',
+        transformOrigin: 'left',
+      }} />
       {!loaded && (
         <LoadingScreen 
           onComplete={() => setLoaded(true)} 
@@ -2347,6 +2389,7 @@ export default function App() {
           >
             <MySongs 
               onSongPlay={handleSongPlay} 
+              onActiveSongChange={setActiveSong}
             />
           </motion.div>
 
@@ -2444,6 +2487,15 @@ export default function App() {
       </motion.div>
         </div>
       </div>
+      <NowPlayingBar 
+        activeSong={activeSong}
+        onClose={() => {
+          if (activeSong?.audioRef.current) {
+            activeSong.audioRef.current.pause();
+          }
+          setActiveSong(null);
+        }}
+      />
     </>
   );
 }
