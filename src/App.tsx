@@ -1703,10 +1703,24 @@ export default function App() {
     const tryPlay = () => audio.play().then(() => setIsPlaying(true)).catch(() => {});
     tryPlay();
     const handlers = ['scroll','click','keydown','touchstart','mousemove','wheel'];
-    const once = () => { tryPlay(); handlers.forEach(e => document.removeEventListener(e, once)); };
+    const once = () => { 
+      audio.play().then(() => {
+        if (!audio.paused) {
+          setIsPlaying(true);
+          handlers.forEach(e => document.removeEventListener(e, once));
+        }
+      }).catch(() => {});
+    };
     handlers.forEach(e => document.addEventListener(e, once, { passive: true }));
     return () => handlers.forEach(e => document.removeEventListener(e, once));
   }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.play().then(() => setIsPlaying(true)).catch(() => {});
+  }, [loaded]);
 
   const toggleAudio = () => {
     if (!audioRef.current) return;
