@@ -52,11 +52,12 @@ const videos = [
 interface VideoCardProps {
   index: number;
   activeIndex: number;
+  isMobile: boolean;
   videoRefCallback: (el: HTMLVideoElement | null) => void;
   observer: IntersectionObserver | null;
 }
 
-const VideoCard = memo(({ index, activeIndex, videoRefCallback, observer }: VideoCardProps) => {
+const VideoCard = memo(({ index, activeIndex, isMobile, videoRefCallback, observer }: VideoCardProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isActive = index === activeIndex;
 
@@ -70,25 +71,26 @@ const VideoCard = memo(({ index, activeIndex, videoRefCallback, observer }: Vide
   return (
     <div 
       ref={containerRef}
-      className={`${isActive ? 'relative' : 'absolute top-0'} left-0 w-full flex items-center justify-center transition-all duration-500 ease-out pointer-events-none`}
+      className={`${isActive ? (isMobile ? 'relative w-full' : 'relative') : 'absolute top-0'} left-0 w-full flex items-center justify-center transition-all duration-500 ease-out pointer-events-none`}
       style={{
-        transform: `translateX(${(index - activeIndex) * 102}%)`,
+        transform: isMobile ? `translateX(${(index - activeIndex) * 100}%)` : `translateX(${(index - activeIndex) * 102}%)`,
         zIndex: isActive ? 10 : 5,
-        opacity: Math.abs(index - activeIndex) > 1 ? 0.05 : activeIndex === index ? 1 : 0.4
+        opacity: isMobile ? (isActive ? 1 : 0) : (Math.abs(index - activeIndex) > 1 ? 0.05 : activeIndex === index ? 1 : 0.4)
       }}
     >
       <div 
         className="relative shadow-2xl transition-all duration-500 bg-black flex-shrink-0"
         style={{
-          width: 'min(340px, 85vw)',
-          aspectRatio: '9 / 16',
+          width: isMobile ? '100vw' : 'min(340px, 85vw)',
+          height: isMobile ? 'calc(100dvh - var(--safe-top) - var(--safe-bottom))' : 'auto',
+          aspectRatio: isMobile ? 'auto' : '9 / 16',
           position: 'relative',
           overflow: 'hidden',
-          borderRadius: '16px',
+          borderRadius: isMobile ? '0' : '16px',
           background: '#000',
           flexShrink: 0,
           margin: '0 auto',
-          transform: isActive ? 'scale(1)' : 'scale(0.85)',
+          transform: (isActive || isMobile) ? 'scale(1)' : 'scale(0.85)',
           pointerEvents: 'auto'
         }}
       >
@@ -238,6 +240,26 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
     setIsOpen(true);
   };
 
+  const [showArrows, setShowArrows] = useState(true);
+  const arrowTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetArrowTimer = useCallback(() => {
+    setShowArrows(true);
+    if (arrowTimeoutRef.current) clearTimeout(arrowTimeoutRef.current);
+    arrowTimeoutRef.current = setTimeout(() => {
+      setShowArrows(false);
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && isMobile) {
+      resetArrowTimer();
+    }
+    return () => {
+      if (arrowTimeoutRef.current) clearTimeout(arrowTimeoutRef.current);
+    };
+  }, [isOpen, isMobile, resetArrowTimer]);
+
   return (
     <section id="drawings-section" className="w-full py-20 px-6 sm:px-12 font-sans overflow-hidden">
       <div className="max-w-6xl mx-auto">
@@ -266,7 +288,7 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
                 >
                   <video
                     src={url}
-                    preload="none"
+                    preload="metadata"
                     muted
                     playsInline
                     poster="" 
@@ -308,39 +330,82 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
           {isOpen && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+              animate={{ opacity: 1, height: isMobile ? '100dvh' : 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="relative w-full mt-5"
+              className={`relative w-full ${isMobile ? 'mobile-fullscreen' : 'mt-5'}`}
+              style={isMobile ? { zIndex: 9010, background: '#000' } : {}}
             >
               <div 
-                className="relative w-full bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden"
+                className={`relative w-full ${isMobile ? '' : 'bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden'}`}
                 style={{ 
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   width: '100%',
-                  padding: '20px 0'
+                  padding: isMobile ? '0' : '20px 0',
+                  height: isMobile ? '100%' : 'auto'
                 }}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
+                onTouchStart={(e) => {
+                  handleTouchStart(e);
+                  if (isMobile) resetArrowTimer();
+                }}
+                onTouchEnd={(e) => {
+                  handleTouchEnd(e);
+                  if (isMobile) resetArrowTimer();
+                }}
+                onClick={() => {
+                  if (isMobile) resetArrowTimer();
+                }}
               >
-                <button 
-                  onClick={() => setIsOpen(false)} 
-                  className="absolute top-6 right-6 z-50 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
-                >
-                  <X size={24} />
-                </button>
+                {isMobile ? (
+                  <button className="mobile-back-btn" onClick={() => setIsOpen(false)}>
+                    <ChevronLeft size={20} /> Back
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => setIsOpen(false)} 
+                    className="absolute top-6 right-6 z-50 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
+                  >
+                    <X size={24} />
+                  </button>
+                )}
                 <div className="absolute inset-0 z-0" onClick={() => setIsOpen(false)} />
-                <div className="relative z-10 w-full flex flex-col items-center">
+                <div className={`relative z-10 w-full flex flex-col items-center ${isMobile ? 'h-full' : ''}`}>
                   {videos.map((_, index) => (
                     <VideoCard 
                       key={index}
                       index={index}
                       activeIndex={activeIndex}
+                      isMobile={isMobile}
                       videoRefCallback={el => videoRefs.current[index] = el}
                       observer={observerRef.current}
                     />
                   ))}
+                  {isMobile && (
+                    <AnimatePresence>
+                      {showArrows && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="contents"
+                        >
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); prevVideo(); resetArrowTimer(); }}
+                            className="fixed left-2 top-1/2 -translate-y-1/2 z-[9200] w-11 h-11 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm border border-white/20 text-white"
+                          >
+                            <ChevronLeft size={24} />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); nextVideo(); resetArrowTimer(); }}
+                            className="fixed right-2 top-1/2 -translate-y-1/2 z-[9200] w-11 h-11 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm border border-white/20 text-white"
+                          >
+                            <ChevronRight size={24} />
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  )}
                   {!isMobile && (
                     <>
                       <button 
@@ -359,7 +424,14 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
                       </button>
                     </>
                   )}
-                  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 bg-black/50 backdrop-blur-md px-6 py-2 rounded-full border border-white/10">
+                  <div 
+                    className={`absolute z-30 bg-black/50 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 transition-all`}
+                    style={{
+                      bottom: isMobile ? 'calc(var(--safe-bottom) + 20px)' : '10px',
+                      left: '50%',
+                      transform: 'translateX(-50%)'
+                    }}
+                  >
                     <span className="text-white font-mono text-sm tracking-widest">
                       {activeIndex + 1} <span className="mx-2 text-zinc-500">/</span> {videos.length}
                     </span>

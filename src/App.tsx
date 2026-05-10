@@ -28,6 +28,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { MySongs } from "./components/MySongsPage";
 import { DrawingsPage } from "./components/DrawingsPage";
+import { useDeviceType } from "./hooks/useDeviceType";
+import { Sarahni } from "./components/Sarahni";
 
 const GAME_CODE_CONTENT = `<!DOCTYPE html>
 <html lang="en">
@@ -1700,6 +1702,7 @@ const STYLES = {
 };
 
 export default function App() {
+  const { isMobile } = useDeviceType();
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -1863,60 +1866,68 @@ export default function App() {
             />
             
             {/* Close Button */}
-            <motion.button 
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              onClick={() => setIsGalleryOpen(false)}
-              className="absolute top-6 right-6 sm:top-10 sm:right-10 z-[110] text-white hover:text-white hover:bg-red-600 transition-all bg-black/50 p-3 rounded-full border border-white/20 shadow-xl"
-            >
-              <X className="w-8 h-8" />
-            </motion.button>
+            {isMobile ? (
+              <button className="mobile-back-btn" onClick={() => setIsGalleryOpen(false)}>
+                <ChevronLeft className="w-5 h-5" /> Back
+              </button>
+            ) : (
+              <motion.button 
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                onClick={() => setIsGalleryOpen(false)}
+                className="absolute top-6 right-6 sm:top-10 sm:right-10 z-[110] text-white hover:text-white hover:bg-red-600 transition-all bg-black/50 p-3 rounded-full border border-white/20 shadow-xl"
+              >
+                <X className="w-8 h-8" />
+              </motion.button>
+            )}
 
-            <div className="relative w-full h-full flex flex-col gap-6 z-[105] overflow-hidden">
+            <div className={`relative w-full h-full flex flex-col z-[105] overflow-hidden ${isMobile ? 'pt-[calc(var(--safe-top)+60px)]' : 'gap-6'}`}>
               {/* Gallery Content */}
-              <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
+              <div className={`flex-1 flex flex-col md:flex-row overflow-hidden ${isMobile ? '' : 'gap-6'}`}>
                 
                 {/* Main View Area */}
-                <div className="flex-1 glass-morphism rounded-3xl relative flex items-center justify-center overflow-hidden shadow-inner group">
+                <div className={`${isMobile ? 'order-1' : 'flex-1'} glass-morphism rounded-3xl relative flex items-center justify-center overflow-hidden shadow-inner group`}>
                   {selectedImageIndex !== null ? (
                     <motion.div
                       key={selectedImageIndex}
                       initial={{ opacity: 0, scale: 0.9, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                      className="w-full h-full p-4 sm:p-8 flex items-center justify-center cursor-zoom-in"
+                      className={`w-full h-full flex items-center justify-center cursor-zoom-in ${isMobile ? 'p-0' : 'p-4 sm:p-8'}`}
                     >
                       <img 
                         src={ME_BIT_IMAGES[selectedImageIndex]}
                         alt="Selected Shot"
-                        className="max-w-full max-h-full object-contain shadow-[0_0_80px_rgba(255,255,255,0.08)] rounded-sm transition-transform duration-700 hover:scale-110"
+                        className={`${isMobile ? 'w-full h-full object-cover' : 'max-w-full max-h-full object-contain'} shadow-[0_0_80px_rgba(255,255,255,0.08)] rounded-sm transition-transform duration-700 hover:scale-110`}
                         referrerPolicy="no-referrer"
                         loading="lazy"
                       />
                       
                       {/* Navigation Controls on Main View */}
-                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 pointer-events-none">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const prev = selectedImageIndex > 0 ? selectedImageIndex - 1 : ME_BIT_IMAGES.length - 1;
-                            setSelectedImageIndex(prev);
-                          }}
-                          className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 pointer-events-auto hover:bg-white hover:text-black hover:scale-110 transition-all shadow-2xl"
-                        >
-                          <ChevronLeft className="w-10 h-10" />
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const next = selectedImageIndex < ME_BIT_IMAGES.length - 1 ? selectedImageIndex + 1 : 0;
-                            setSelectedImageIndex(next);
-                          }}
-                          className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 pointer-events-auto hover:bg-white hover:text-black hover:scale-110 transition-all shadow-2xl"
-                        >
-                          <ChevronRight className="w-10 h-10" />
-                        </button>
-                      </div>
+                      {!isMobile && (
+                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 pointer-events-none">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const prev = selectedImageIndex > 0 ? selectedImageIndex - 1 : ME_BIT_IMAGES.length - 1;
+                              setSelectedImageIndex(prev);
+                            }}
+                            className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 pointer-events-auto hover:bg-white hover:text-black hover:scale-110 transition-all shadow-2xl"
+                          >
+                            <ChevronLeft className="w-10 h-10" />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const next = selectedImageIndex < ME_BIT_IMAGES.length - 1 ? selectedImageIndex + 1 : 0;
+                              setSelectedImageIndex(next);
+                            }}
+                            className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 pointer-events-auto hover:bg-white hover:text-black hover:scale-110 transition-all shadow-2xl"
+                          >
+                            <ChevronRight className="w-10 h-10" />
+                          </button>
+                        </div>
+                      )}
                     </motion.div>
                   ) : (
                     <div className="text-zinc-600 font-manga text-3xl animate-pulse tracking-widest">
@@ -1925,75 +1936,99 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Thumbnails Sidebar */}
-                <div className="w-full md:w-96 flex flex-col gap-6 glass-morphism p-6 rounded-3xl overflow-hidden shadow-2xl">
-                  <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
-                    <div className="flex flex-col">
-                      <h3 className="font-manga text-white text-2xl tracking-tight leading-none uppercase">Shot Archive</h3>
-                      <span className="font-hand text-zinc-400 text-sm mt-1 italic">Moments in time</span>
-                    </div>
-                    <div className="bg-white/10 px-3 py-1 rounded-full text-zinc-100 font-mono text-xs">
-                      {selectedImageIndex !== null ? selectedImageIndex + 1 : 0} / {ME_BIT_IMAGES.length}
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1 overflow-y-auto grid grid-cols-5 md:grid-cols-2 gap-3 pr-2 custom-scrollbar pb-4 content-start">
+                {/* Thumbnails Interaction for Mobile */}
+                {isMobile && (
+                  <div className="order-2 w-full h-[100px] overflow-x-auto flex items-center gap-2 px-4 py-2 border-t border-white/10 bg-black/50 backdrop-blur-md">
                     {ME_BIT_IMAGES.map((src, idx) => (
                       <button
                         key={idx}
                         onClick={() => setSelectedImageIndex(idx)}
                         className={`
-                          relative aspect-[3/4] rounded-xl border-2 overflow-hidden transition-all duration-300 transform
+                          relative h-full aspect-[3/4] rounded-lg border-2 overflow-hidden transition-all duration-300 shrink-0
                           ${selectedImageIndex === idx 
-                            ? 'border-white scale-95 shadow-[0_0_20px_white/20] ring-4 ring-white/10' 
-                            : 'border-transparent hover:border-white/30 opacity-40 hover:opacity-100 hover:scale-[1.02]'}
+                            ? 'border-white scale-95' 
+                            : 'border-transparent opacity-50'}
                         `}
                       >
-                        <img 
-                          src={src} 
-                          alt={`Moment ${idx + 1}`} 
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                          loading="lazy"
-                        />
-                        {selectedImageIndex === idx && (
-                          <div className="absolute inset-0 bg-white/10 backdrop-none" />
-                        )}
+                        <img src={src} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </button>
                     ))}
                   </div>
-                </div>
+                )}
+
+                {/* Thumbnails Sidebar - Desktop only */}
+                {!isMobile && (
+                  <div className="w-full md:w-96 flex flex-col gap-6 glass-morphism p-6 rounded-3xl overflow-hidden shadow-2xl">
+                    <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <div className="flex flex-col">
+                        <h3 className="font-manga text-white text-2xl tracking-tight leading-none uppercase">Shot Archive</h3>
+                        <span className="font-hand text-zinc-400 text-sm mt-1 italic">Moments in time</span>
+                      </div>
+                      <div className="bg-white/10 px-3 py-1 rounded-full text-zinc-100 font-mono text-xs">
+                        {selectedImageIndex !== null ? selectedImageIndex + 1 : 0} / {ME_BIT_IMAGES.length}
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto grid grid-cols-5 md:grid-cols-2 gap-3 pr-2 custom-scrollbar pb-4 content-start">
+                      {ME_BIT_IMAGES.map((src, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedImageIndex(idx)}
+                          className={`
+                            relative aspect-[3/4] rounded-xl border-2 overflow-hidden transition-all duration-300 transform
+                            ${selectedImageIndex === idx 
+                              ? 'border-white scale-95 shadow-[0_0_20px_white/20] ring-4 ring-white/10' 
+                              : 'border-transparent hover:border-white/30 opacity-40 hover:opacity-100 hover:scale-[1.02]'}
+                          `}
+                        >
+                          <img 
+                            src={src} 
+                            alt={`Moment ${idx + 1}`} 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                          />
+                          {selectedImageIndex === idx && (
+                            <div className="absolute inset-0 bg-white/10 backdrop-none" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Enhanced Info Footer */}
-              <motion.div 
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="bg-white p-8 manga-border border-black shadow-[12px_12px_0px_#fff] flex flex-col md:flex-row justify-between items-center gap-6"
-              >
-                <div className="flex items-center gap-6">
-                  <div className="p-4 bg-black text-white rounded-2xl shadow-lg -rotate-3 group-hover:rotate-0 transition-transform">
-                    <Maximize2 className="w-8 h-8" />
+              {/* Enhanced Info Footer - Desktop only */}
+              {!isMobile && (
+                <motion.div 
+                  initial={{ y: 50, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="bg-white p-8 manga-border border-black shadow-[12px_12px_0px_#fff] flex flex-col md:flex-row justify-between items-center gap-6"
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="p-4 bg-black text-white rounded-2xl shadow-lg -rotate-3 group-hover:rotate-0 transition-transform">
+                      <Maximize2 className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h4 className="font-manga text-3xl font-black uppercase text-black leading-none tracking-tight">Theater Mode</h4>
+                      <p className="font-hand text-zinc-500 text-xl mt-1">Curated photography and sketches from Noordine's private collection.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-manga text-3xl font-black uppercase text-black leading-none tracking-tight">Theater Mode</h4>
-                    <p className="font-hand text-zinc-500 text-xl mt-1">Curated photography and sketches from Noordine's private collection.</p>
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-zinc-400 font-mono text-xs uppercase tracking-widest">
+                      <span>Arrows to navigate</span>
+                      <div className="w-1 h-1 bg-zinc-300 rounded-full" />
+                      <span>ESC to close</span>
+                    </div>
+                    <button 
+                      onClick={() => setIsGalleryOpen(false)}
+                      className="manga-button bg-black text-white px-10 py-3 font-manga text-2xl hover:bg-zinc-800 tracking-tighter"
+                    >
+                      LEAVE THEATER
+                    </button>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-4 justify-center">
-                  <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-zinc-400 font-mono text-xs uppercase tracking-widest">
-                    <span>Arrows to navigate</span>
-                    <div className="w-1 h-1 bg-zinc-300 rounded-full" />
-                    <span>ESC to close</span>
-                  </div>
-                  <button 
-                    onClick={() => setIsGalleryOpen(false)}
-                    className="manga-button bg-black text-white px-10 py-3 font-manga text-2xl hover:bg-zinc-800 tracking-tighter"
-                  >
-                    LEAVE THEATER
-                  </button>
-                </div>
-              </motion.div>
+                </motion.div>
+              )}
             </div>
           </motion.div>
         )}
@@ -2313,6 +2348,16 @@ export default function App() {
             <MySongs 
               onSongPlay={handleSongPlay} 
             />
+          </motion.div>
+
+          {/* Sarahni Section */}
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+          >
+            <Sarahni />
           </motion.div>
 
           {/* My Drawings Section */}
