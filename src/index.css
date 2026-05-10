@@ -120,6 +120,10 @@
   opacity: 0.2;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   @apply bg-[#121212] min-h-screen text-zinc-900;
   background-image: radial-gradient(circle at 2px 2px, #333 1px, transparent 0);

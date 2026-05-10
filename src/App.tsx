@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { LoadingScreen } from "./components/LoadingScreen";
+import { MySongs } from "./components/MySongsPage";
 
 const GAME_CODE_CONTENT = `<!DOCTYPE html>
 <html lang="en">
@@ -1697,6 +1698,13 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -1980,12 +1988,31 @@ export default function App() {
         animate="visible"
         className="relative z-10 w-full max-w-5xl flex flex-col gap-14"
       >
-
-        {/* Top Contact Section */}
+        {/* Navigation Tabs */}
         <motion.div 
           variants={itemVariants}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full"
+          className="flex justify-center sm:justify-start gap-4 mb-4"
         >
+          <button 
+            onClick={() => scrollToSection('me-bit-gallery')}
+            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[8px_8px_0px_rgba(255,255,255,0.2)] hover:shadow-[12px_12px_0px_#fff] -translate-y-1"
+          >
+            ME BIT
+          </button>
+          <button 
+            onClick={() => scrollToSection('my-songs-section')}
+            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[8px_8px_0px_rgba(255,255,255,0.2)] hover:shadow-[12px_12px_0px_#fff] -translate-y-1"
+          >
+            MY SONGS
+          </button>
+        </motion.div>
+
+        <div className="flex flex-col gap-14">
+          {/* Top Contact Section */}
+          <motion.div 
+            variants={itemVariants}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full"
+          >
           {CONTACT_METHODS.map((method, idx) => (
             <a
               key={method.name}
@@ -2133,7 +2160,6 @@ export default function App() {
           </div>
         </motion.section>
 
-        {/* Editorial Grid Main Content */}
         <main className="grid grid-cols-1 md:grid-cols-2 gap-10">
           
           {/* Streaming Platforms Section */}
@@ -2195,59 +2221,76 @@ export default function App() {
               ))}
             </div>
           </motion.section>
+        </main>
 
-          {/* ME bit Interactive Gallery */}
-          <motion.section 
-            variants={itemVariants}
-            className="flex flex-col gap-4 mt-8"
+        {/* ME bit Interactive Gallery - Moved out of grid to be more prominent */}
+        <motion.section 
+          variants={itemVariants}
+          className="flex flex-col gap-4 mt-8"
+          id="me-bit-gallery"
+        >
+          <div className="flex justify-between items-end">
+            <h2 className="font-manga text-3xl font-bold text-white text-left tracking-wider">
+              ME bit
+            </h2>
+            <span className="font-hand text-zinc-400 text-sm italic mb-1">Click to enter theater mode</span>
+          </div>
+          
+          <div 
+            onClick={() => {
+              setIsGalleryOpen(true);
+              if (selectedImageIndex === null) setSelectedImageIndex(0);
+            }}
+            className="relative w-full border-[4px] border-black bg-white p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[280px]"
           >
-            <div className="flex justify-between items-end">
-              <h2 className="font-manga text-3xl font-bold text-white text-left tracking-wider">
-                ME bit
-              </h2>
-              <span className="font-hand text-zinc-400 text-sm italic mb-1">Click to enter theater mode</span>
+            <div className="me-bit-track flex gap-[10px]">
+              {[...ME_BIT_IMAGES, ...ME_BIT_IMAGES].map((src, idx) => (
+                <div 
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedImageIndex(idx % ME_BIT_IMAGES.length);
+                    setIsGalleryOpen(true);
+                  }}
+                  className="inline-block h-[250px] w-auto aspect-[3/4] shrink-0 border-[2px] border-black overflow-hidden relative group/item"
+                >
+                  <img 
+                    src={src}
+                    alt={`Me bit ${idx}`}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
+                  />
+                  <div className="absolute inset-0 bg-black/20 group-hover/item:bg-transparent transition-colors" />
+                </div>
+              ))}
             </div>
             
-            <div 
-              id="me-bit-gallery"
-              onClick={() => {
-                setIsGalleryOpen(true);
-                if (selectedImageIndex === null) setSelectedImageIndex(0);
-              }}
-              className="relative w-full border-[4px] border-black bg-white p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[280px]"
-            >
-              <div className="me-bit-track flex gap-[10px]">
-                {[...ME_BIT_IMAGES, ...ME_BIT_IMAGES].map((src, idx) => (
-                  <div 
-                    key={idx}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedImageIndex(idx % ME_BIT_IMAGES.length);
-                      setIsGalleryOpen(true);
-                    }}
-                    className="inline-block h-[250px] w-auto aspect-[3/4] shrink-0 border-[2px] border-black overflow-hidden relative group/item"
-                  >
-                    <img 
-                      src={src}
-                      alt={`Me bit ${idx}`}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
-                    />
-                    <div className="absolute inset-0 bg-black/20 group-hover/item:bg-transparent transition-colors" />
-                  </div>
-                ))}
-              </div>
-              
-              {/* Overlay hint */}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                <div className="bg-white text-black p-4 manga-border border-black flex items-center gap-3 scale-90 group-hover:scale-100 transition-transform shadow-[5px_5px_0_black]">
-                  <Maximize2 className="w-6 h-6" />
-                  <span className="font-manga text-xl font-bold">OPEN GALLERY</span>
-                </div>
+            {/* Overlay hint */}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+              <div className="bg-white text-black p-4 manga-border border-black flex items-center gap-3 scale-90 group-hover:scale-100 transition-transform shadow-[5px_5px_0_black]">
+                <Maximize2 className="w-6 h-6" />
+                <span className="font-manga text-xl font-bold">OPEN GALLERY</span>
               </div>
             </div>
-          </motion.section>
-        </main>
+          </div>
+        </motion.section>
+
+        {/* My Songs Section - Now right after Me bit */}
+        <motion.div 
+          variants={itemVariants} 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+        >
+          <MySongs 
+            onSongPlay={() => {
+              if (audioRef.current) {
+                audioRef.current.pause();
+                setIsPlaying(false);
+              }
+            }} 
+          />
+        </motion.div>
 
         {/* THE GAME BOX Section */}
         <motion.section 
@@ -2292,6 +2335,7 @@ export default function App() {
             </div>
           </div>
         </motion.section>
+      </div>
 
         {/* Editorial Footer */}
         <motion.footer 
