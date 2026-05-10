@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { LoadingScreen } from "./components/LoadingScreen";
 
 const GAME_CODE_CONTENT = `<!DOCTYPE html>
 <html lang="en">
@@ -1692,90 +1693,28 @@ export default function App() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  
-  // Audio State & Logic
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const playPromiseRef = useRef<Promise<void> | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-
-  const startAudio = useCallback(() => {
-    if (audioRef.current) {
-      // Avoid multiple concurrent play requests
-      if (playPromiseRef.current) return;
-
-      playPromiseRef.current = audioRef.current.play();
-      
-      playPromiseRef.current.then(() => {
-        playPromiseRef.current = null;
-        setIsPlaying(true);
-        // Fade in logic: 0.05 every 200ms until 0.5
-        if (audioRef.current) {
-          audioRef.current.volume = 0;
-          let vol = 0;
-          const interval = setInterval(() => {
-            if (!audioRef.current || audioRef.current.paused) {
-              clearInterval(interval);
-              return;
-            }
-            vol += 0.05;
-            if (vol >= 0.5) {
-              audioRef.current.volume = 0.5;
-              clearInterval(interval);
-            } else {
-              audioRef.current.volume = vol;
-            }
-          }, 200);
-        }
-      }).catch((error) => {
-        playPromiseRef.current = null;
-        console.log("Playback failed:", error);
-        // Autoplay likely blocked
-      });
-    }
-  }, []);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    // Initial attempt
-    startAudio();
+    const audio = audioRef.current;
+    if (!audio) return;
+    const tryPlay = () => audio.play().then(() => setIsPlaying(true)).catch(() => {});
+    tryPlay();
+    const handlers = ['scroll','click','keydown','touchstart','mousemove','wheel'];
+    const once = () => { tryPlay(); handlers.forEach(e => document.removeEventListener(e, once)); };
+    handlers.forEach(e => document.addEventListener(e, once, { passive: true }));
+    return () => handlers.forEach(e => document.removeEventListener(e, once));
+  }, []);
 
-    const handleFirstInteraction = () => {
-      startAudio();
-    };
-
-    window.addEventListener('click', handleFirstInteraction, { once: true });
-    window.addEventListener('touchstart', handleFirstInteraction, { once: true });
-    window.addEventListener('keydown', handleFirstInteraction, { once: true });
-    window.addEventListener('scroll', handleFirstInteraction, { once: true });
-    window.addEventListener('wheel', handleFirstInteraction, { once: true });
-    window.addEventListener('mousemove', handleFirstInteraction, { once: true });
-
-    return () => {
-      window.removeEventListener('click', handleFirstInteraction);
-      window.removeEventListener('touchstart', handleFirstInteraction);
-      window.removeEventListener('keydown', handleFirstInteraction);
-      window.removeEventListener('scroll', handleFirstInteraction);
-      window.removeEventListener('wheel', handleFirstInteraction);
-      window.removeEventListener('mousemove', handleFirstInteraction);
-    };
-  }, [startAudio]);
-
-  const toggleAudio = async () => {
+  const toggleAudio = () => {
     if (!audioRef.current) return;
-
     if (isPlaying) {
-      // If a play request is still pending, wait for it before pausing
-      if (playPromiseRef.current) {
-        try {
-          await playPromiseRef.current;
-        } catch (e) {
-          // Play failed, no need to pause
-          return;
-        }
-      }
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      startAudio();
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
   };
 
@@ -1791,9 +1730,12 @@ export default function App() {
   }, []);
 
   return (
-    <div 
-      className="min-h-screen w-full relative flex flex-col items-center py-10 px-6 sm:px-10 overflow-x-hidden"
-    >
+    <>
+      {!loaded && <LoadingScreen onComplete={() => setLoaded(true)} />}
+      <div style={{ opacity: loaded ? 1 : 0, transition: 'opacity 500ms ease-in' }}>
+        <div 
+          className="min-h-screen w-full relative flex flex-col items-center py-10 px-6 sm:px-10 overflow-x-hidden"
+        >
       {/* Retro Overlays */}
       <div className="noise-overlay" />
       <div className="scanline" />
@@ -2345,6 +2287,8 @@ export default function App() {
           </div>
         </motion.footer>
       </motion.div>
-    </div>
+        </div>
+      </div>
+    </>
   );
 }
