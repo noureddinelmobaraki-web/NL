@@ -1700,19 +1700,28 @@ export default function App() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const tryPlay = () => audio.play().then(() => setIsPlaying(true)).catch(() => {});
-    tryPlay();
-    const handlers = ['scroll','click','keydown','touchstart','mousemove','wheel'];
-    const once = () => {
-      audio.play().then(() => {
-        if (!audio.paused) {
+
+    // Step 1: start muted — browsers always allow this
+    audio.muted = true;
+    audio.play().then(() => {
+      // Step 2: unmute immediately after playback starts
+      setTimeout(() => {
+        audio.muted = false;
+        setIsPlaying(true);
+      }, 300);
+    }).catch(() => {
+      // Fallback if even muted play fails
+      audio.muted = false;
+      const handlers = ['scroll','click','keydown','touchstart','mousemove','wheel'];
+      const once = () => {
+        audio.play().then(() => {
           setIsPlaying(true);
           handlers.forEach(e => document.removeEventListener(e, once));
-        }
-      }).catch(() => {});
-    };
-    handlers.forEach(e => document.addEventListener(e, once, { passive: true }));
-    return () => handlers.forEach(e => document.removeEventListener(e, once));
+        }).catch(() => {});
+      };
+      handlers.forEach(e => document.addEventListener(e, once, { passive: true }));
+      return () => handlers.forEach(e => document.removeEventListener(e, once));
+    });
   }, []);
 
   useEffect(() => {
@@ -1745,7 +1754,16 @@ export default function App() {
 
   return (
     <>
-      {!loaded && <LoadingScreen onComplete={() => setLoaded(true)} />}
+      {!loaded && (
+        <LoadingScreen 
+          onComplete={() => setLoaded(true)} 
+          onAudioUnlock={() => {
+            const audio = audioRef.current;
+            if (!audio) return;
+            audio.play().then(() => setIsPlaying(true)).catch(() => {});
+          }}
+        />
+      )}
       <div style={{ opacity: loaded ? 1 : 0, transition: 'opacity 500ms ease-in' }}>
         <div 
           className="min-h-screen w-full relative flex flex-col items-center py-10 px-6 sm:px-10 overflow-x-hidden"
