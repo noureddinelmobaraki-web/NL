@@ -101,6 +101,7 @@ const LyricsWindow = ({
   setPosition, 
   zIndex, 
   onFocus,
+  isFocused,
   otherWindowRect
 }: { 
   song: Song; 
@@ -110,13 +111,15 @@ const LyricsWindow = ({
   setPosition: (p: { x: number; y: number }) => void;
   zIndex: number;
   onFocus: () => void;
+  isFocused: boolean;
   otherWindowRect: { x: number; y: number; width: number; height: number } | null;
 }) => {
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragOffset = useRef({ x: 0, y: 0 });
+  const windowRef = useRef<HTMLDivElement>(null);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dragInfo = useRef({ isDragging: false, offset: { x: 0, y: 0 }, currentPos: { x: position.x, y: position.y } });
+  const rafId = useRef<number | null>(null);
 
   useEffect(() => {
     if (song.lrc) {
@@ -127,6 +130,16 @@ const LyricsWindow = ({
         .catch(() => {});
     }
   }, [song.lrc]);
+
+  // Keep internal position in sync if external position moves (e.g. proximity spawning)
+  useEffect(() => {
+    if (!dragInfo.current.isDragging) {
+      dragInfo.current.currentPos = position;
+      if (windowRef.current) {
+        windowRef.current.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
+      }
+    }
+  }, [position]);
 
   const currentLineIndex = useMemo(() => {
     if (lyrics.length === 0) return -1;
@@ -139,53 +152,77 @@ const LyricsWindow = ({
   }, [lyrics, currentTime]);
 
   useEffect(() => {
+    lineRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const isActive = i === currentLineIndex;
+      el.style.opacity = isActive ? '1' : '0.3';
+      el.style.color = isActive ? 'var(--primary-accent, #fff)' : '#7a7a9a';
+      el.style.textShadow = isActive ? '0 0 10px rgba(var(--primary-rgb), 0.8), 0 0 20px rgba(var(--primary-rgb), 0.4)' : 'none';
+      el.style.transform = isActive ? 'scale(1.02)' : 'scale(1)';
+    });
+
     if (currentLineIndex !== -1 && lineRefs.current[currentLineIndex]) {
       lineRefs.current[currentLineIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [currentLineIndex]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+
     onFocus();
-    setIsDragging(true);
-    dragOffset.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+    dragInfo.current.isDragging = true;
+    dragInfo.current.offset = {
+      x: e.clientX - dragInfo.current.currentPos.x,
+      y: e.clientY - dragInfo.current.currentPos.y
+    };
+    
+    if (windowRef.current) {
+      windowRef.current.style.pointerEvents = 'none';
+      windowRef.current.setPointerCapture(e.pointerId);
+    }
   };
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        const rawPos = { x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y };
-        const snappedPos = applySnapping(rawPos, { width: 320, height: 400 }, otherWindowRect ? [otherWindowRect] : []);
-        setPosition(snappedPos);
-      }
-    };
-    const handleMouseUp = () => setIsDragging(false);
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, otherWindowRect, setPosition]);
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragInfo.current.isDragging) return;
 
-  const getPercent = (index: number) => {
-    if (index !== currentLineIndex) return index < currentLineIndex ? 100 : 0;
-    const current = lyrics[index];
-    const next = lyrics[index + 1];
-    if (!next) return 100;
-    const dur = next.time - current.time;
-    const elapsed = currentTime - current.time;
-    return Math.min(100, Math.max(0, (elapsed / dur) * 100));
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(() => {
+      const rawPos = {
+        x: e.clientX - dragInfo.current.offset.x,
+        y: e.clientY - dragInfo.current.offset.y
+      };
+      
+      const snappedPos = applySnapping(rawPos, { width: 320, height: 400 }, otherWindowRect ? [otherWindowRect] : []);
+      
+      dragInfo.current.currentPos = snappedPos;
+      if (windowRef.current) {
+        windowRef.current.style.transform = `translate3d(${snappedPos.x}px, ${snappedPos.y}px, 0)`;
+      }
+    });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!dragInfo.current.isDragging) return;
+    dragInfo.current.isDragging = false;
+    if (windowRef.current) {
+      windowRef.current.style.pointerEvents = 'auto';
+      windowRef.current.releasePointerCapture(e.pointerId);
+    }
+    setPosition(dragInfo.current.currentPos);
   };
 
   return (
     <div 
+      ref={windowRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       onMouseDown={onFocus}
       style={{ 
         position: 'fixed', 
-        left: position.x, 
-        top: position.y, 
+        left: 0, 
+        top: 0, 
         width: '320px', 
         height: '400px', 
         zIndex,
@@ -193,25 +230,27 @@ const LyricsWindow = ({
         flexDirection: 'column',
         boxSizing: 'border-box',
         border: '2px ridge #ccc',
-        boxShadow: activeWindow === 'lyrics' ? '0 10px 30px rgba(0,0,0,0.8)' : '4px 4px 10px rgba(0,0,0,0.5)',
+        boxShadow: isFocused ? '0 10px 40px rgba(0,0,0,0.8), 0 0 20px rgba(99, 102, 241, 0.2)' : '4px 4px 15px rgba(0,0,0,0.6)',
         backgroundColor: '#0d0d1a',
         userSelect: 'none',
         overflow: 'hidden',
-        transition: 'box-shadow 0.2s ease'
+        transition: 'box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+        willChange: 'transform'
       }}
     >
       <div 
-        onMouseDown={handleMouseDown}
         style={{
           height: '28px',
-          background: 'linear-gradient(to right, #0058a3, #2d8acd)',
+          background: isFocused ? 'linear-gradient(to right, #0058a3, #2d8acd)' : 'linear-gradient(to right, #4a4a4a, #7a7a7a)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0 8px',
           cursor: 'move',
           flexShrink: 0,
-          borderBottom: '1px solid #003366'
+          borderBottom: '1px solid #003366',
+          transition: 'background 0.2s ease'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'white', fontFamily: 'Tahoma, sans-serif', fontSize: '11px', fontWeight: 'bold' }}>
@@ -220,6 +259,7 @@ const LyricsWindow = ({
         </div>
         <button 
           onClick={onClose}
+          className="hover:brightness-110 active:brightness-90 transition-all"
           style={{ width: '21px', height: '21px', backgroundColor: '#c0392b', border: '1px solid #fff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, borderRadius: '2px' }}
         >
           <X size={14} />
@@ -241,41 +281,20 @@ const LyricsWindow = ({
         }}
         className="no-scrollbar"
       >
-        {lyrics.map((line, i) => {
-          const isActive = i === currentLineIndex;
-          const p = getPercent(i);
-          return (
-            <div 
-              key={i} 
-              ref={el => lineRefs.current[i] = el}
-              style={{
-                marginBottom: '1rem',
-                position: 'relative',
-                transition: 'all 0.3s ease',
-                padding: '4px 0',
-                ...(isActive ? {
-                  color: 'white',
-                  fontWeight: 'bold',
-                  transform: 'scale(1.05)'
-                } : {})
-              }}
-            >
-              {line.text}
-              {isActive && (
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: `linear-gradient(to right, rgba(var(--primary-rgb), 0.4) ${p}%, transparent ${p}%)`,
-                  backdropFilter: 'blur(4px)',
-                  mixBlendMode: 'difference',
-                  borderRadius: '4px',
-                  pointerEvents: 'none',
-                  zIndex: 10
-                }} />
-              )}
-            </div>
-          );
-        })}
+        {lyrics.map((line, i) => (
+          <div 
+            key={i} 
+            ref={el => lineRefs.current[i] = el}
+            style={{
+              marginBottom: '1rem',
+              transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+              padding: '4px 0',
+              willChange: 'opacity, text-shadow, transform'
+            }}
+          >
+            {line.text}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -297,6 +316,7 @@ const ControllerWindow = ({
   setPosition,
   zIndex,
   onFocus,
+  isFocused,
   otherWindowRect
 }: { 
   song: Song; 
@@ -314,74 +334,116 @@ const ControllerWindow = ({
   setPosition: (p: { x: number; y: number }) => void;
   zIndex: number;
   onFocus: () => void;
+  isFocused: boolean;
   otherWindowRect: { x: number; y: number; width: number; height: number } | null;
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const dragOffset = useRef({ x: 0, y: 0 });
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    onFocus();
-    setIsDragging(true);
-    dragOffset.current = { x: e.clientX - position.x, y: e.clientY - position.y };
-  };
+  const windowRef = useRef<HTMLDivElement>(null);
+  const dragInfo = useRef({ isDragging: false, offset: { x: 0, y: 0 }, currentPos: { x: position.x, y: position.y } });
+  const rafId = useRef<number | null>(null);
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        const rawPos = { x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y };
-        const snappedPos = applySnapping(rawPos, { width: 320, height: 180 }, otherWindowRect ? [otherWindowRect] : []);
-        setPosition(snappedPos);
+    if (!dragInfo.current.isDragging) {
+      dragInfo.current.currentPos = position;
+      if (windowRef.current) {
+        windowRef.current.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
       }
-    };
-    const handleMouseUp = () => setIsDragging(false);
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
     }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+  }, [position]);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('input')) return;
+
+    onFocus();
+    dragInfo.current.isDragging = true;
+    dragInfo.current.offset = {
+      x: e.clientX - dragInfo.current.currentPos.x,
+      y: e.clientY - dragInfo.current.currentPos.y
     };
-  }, [isDragging, otherWindowRect, setPosition]);
+    
+    if (windowRef.current) {
+      windowRef.current.style.pointerEvents = 'none';
+      windowRef.current.setPointerCapture(e.pointerId);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragInfo.current.isDragging) return;
+
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(() => {
+      const rawPos = {
+        x: e.clientX - dragInfo.current.offset.x,
+        y: e.clientY - dragInfo.current.offset.y
+      };
+      
+      const snappedPos = applySnapping(rawPos, { width: 320, height: 180 }, otherWindowRect ? [otherWindowRect] : []);
+      
+      dragInfo.current.currentPos = snappedPos;
+      if (windowRef.current) {
+        windowRef.current.style.transform = `translate3d(${snappedPos.x}px, ${snappedPos.y}px, 0)`;
+      }
+    });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!dragInfo.current.isDragging) return;
+    dragInfo.current.isDragging = false;
+    if (windowRef.current) {
+      windowRef.current.style.pointerEvents = 'auto';
+      windowRef.current.releasePointerCapture(e.pointerId);
+    }
+    setPosition(dragInfo.current.currentPos);
+  };
 
   return (
     <div 
+      ref={windowRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       onMouseDown={onFocus}
       style={{ 
         position: 'fixed', 
-        left: position.x, 
-        top: position.y, 
+        left: 0, 
+        top: 0, 
         width: '320px', 
         zIndex,
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
         border: '2px ridge #ccc',
-        boxShadow: activeWindow === 'controller' ? '0 10px 30px rgba(0,0,0,0.8)' : '4px 4px 10px rgba(0,0,0,0.5)',
+        boxShadow: isFocused ? '0 10px 40px rgba(0,0,0,0.8), 0 0 20px rgba(99, 102, 241, 0.2)' : '4px 4px 15px rgba(0,0,0,0.6)',
         backgroundColor: '#1a1a2e',
         userSelect: 'none',
         borderRadius: '4px 4px 0 0',
-        transition: 'box-shadow 0.2s ease'
+        transition: 'box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+        willChange: 'transform'
       }}
     >
       <div 
-        onMouseDown={handleMouseDown}
         style={{
           height: '28px',
-          background: 'linear-gradient(to right, #0058a3, #2d8acd)',
+          background: isFocused ? 'linear-gradient(to right, #0058a3, #2d8acd)' : 'linear-gradient(to right, #4a4a4a, #7a7a7a)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0 8px',
           cursor: 'move',
-          borderBottom: '1px solid #003366'
+          borderBottom: '1px solid #003366',
+          transition: 'background 0.2s ease'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'white', fontFamily: 'Tahoma, sans-serif', fontSize: '11px', fontWeight: 'bold' }}>
           <Music size={12} />
           <span>VLC-XP Controller</span>
         </div>
-        <button onClick={onClose} style={{ width: '21px', height: '21px', backgroundColor: '#c0392b', border: '1px solid #fff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '2px' }}>
+        <button 
+          onClick={onClose}
+          className="hover:brightness-110 active:brightness-90 transition-all"
+          style={{ width: '21px', height: '21px', backgroundColor: '#c0392b', border: '1px solid #fff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '2px' }}
+        >
           <X size={14} />
         </button>
       </div>
@@ -434,6 +496,8 @@ const ControllerWindow = ({
     </div>
   );
 };
+
+
 
 const SongCard: React.FC<{ 
   song: Song; 
@@ -620,6 +684,7 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
             setPosition={setCtrlPos}
             zIndex={focusedWindow === 'controller' ? 10002 : 10001}
             onFocus={() => setFocusedWindow('controller')}
+            isFocused={focusedWindow === 'controller'}
             otherWindowRect={showWindows.lyrics ? { ...lyricsPos, width: 320, height: 400 } : null}
           />
         )}
@@ -633,6 +698,7 @@ export const MySongs = ({ onSongPlay }: { onSongPlay: () => void }) => {
             setPosition={setLyricsPos}
             zIndex={focusedWindow === 'lyrics' ? 10002 : 10001}
             onFocus={() => setFocusedWindow('lyrics')}
+            isFocused={focusedWindow === 'lyrics'}
             otherWindowRect={showWindows.controller ? { ...ctrlPos, width: 320, height: 180 } : null}
           />
         )}
