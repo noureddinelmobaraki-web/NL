@@ -1703,7 +1703,7 @@ export default function App() {
     const tryPlay = () => audio.play().then(() => setIsPlaying(true)).catch(() => {});
     tryPlay();
     const handlers = ['scroll','click','keydown','touchstart','mousemove','wheel'];
-    const once = () => { 
+    const once = () => {
       audio.play().then(() => {
         if (!audio.paused) {
           setIsPlaying(true);
