@@ -54,19 +54,29 @@ interface VideoCardProps {
   activeIndex: number;
   isMobile: boolean;
   videoRefCallback: (el: HTMLVideoElement | null) => void;
-  observer: IntersectionObserver | null;
 }
 
-const VideoCard = memo(({ index, activeIndex, isMobile, videoRefCallback, observer }: VideoCardProps) => {
+const VideoCard = memo(({ index, activeIndex, isMobile, videoRefCallback }: VideoCardProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isActive = index === activeIndex;
+  const isNear = Math.abs(index - activeIndex) <= 1;
+  const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el || !observer) return;
-    observer.observe(el);
-    return () => observer.unobserve(el);
-  }, [observer]);
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        setShouldLoad(entry.isIntersecting || isNear);
+      });
+    }, { rootMargin: '400px' });
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [isNear]);
+
+  const src = (shouldLoad || isNear) ? videos[index] : "";
 
   return (
     <div 
@@ -94,22 +104,71 @@ const VideoCard = memo(({ index, activeIndex, isMobile, videoRefCallback, observ
           pointerEvents: 'auto'
         }}
       >
-        <video
-          ref={videoRefCallback}
-          playsInline
-          loop
-          muted={false}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center center'
-          }}
-        />
+        {src && (
+          <video
+            ref={videoRefCallback}
+            src={src}
+            playsInline
+            loop
+            muted={false}
+            preload={isActive ? "auto" : "metadata"}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center center'
+            }}
+          />
+        )}
       </div>
+    </div>
+  );
+});
+
+const VideoPreview = memo(({ url }: { url: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      });
+    }, { rootMargin: '200px' });
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="w-full aspect-[9/16] bg-zinc-900 cursor-pointer">
+      {shouldLoad && (
+        <video
+          src={url}
+          preload="none"
+          muted
+          playsInline
+          onMouseOver={e => {
+            const v = e.currentTarget as HTMLVideoElement;
+            v.play().catch(() => {});
+          }}
+          onMouseOut={e => {
+            const v = e.currentTarget as HTMLVideoElement;
+            v.pause();
+            if (v.readyState > 0) v.currentTime = 0;
+          }}
+          className="w-full h-full object-cover rounded-[8px] block"
+        />
+      )}
     </div>
   );
 });
@@ -119,16 +178,17 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const { isMobile } = useDeviceType();
   const touchStart = useRef<number | null>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>(new Array(videos.length).fill(null));
 
   const playVideo = useCallback((index: number) => {
     const v = videoRefs.current[index];
     if (!v) return;
-    if (!v.src || !v.src.includes(videos[index])) {
-      v.src = videos[index];
-      v.load();
+    
+    // Safety check for src
+    if (!v.src || !v.src.includes(videos[index].split('/').pop() || '')) {
+       v.src = videos[index];
     }
+
     const attempt = () => {
       const playPromise = v.play();
       if (playPromise !== undefined) {
@@ -142,25 +202,18 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
     if (v.readyState >= 3) {
       attempt();
     } else {
-      v.addEventListener('canplay', attempt, { once: true });
+      const handler = () => {
+        attempt();
+        v.removeEventListener('canplay', handler);
+      };
+      v.addEventListener('canplay', handler);
     }
   }, []);
 
   useEffect(() => {
     if (isOpen) {
-      observerRef.current = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            // Handled in activeIndex effect
-          }
-        });
-      }, { rootMargin: '0px 400px' });
-      
       playVideo(activeIndex);
     } else {
-      observerRef.current?.disconnect();
-      observerRef.current = null;
-      
       videoRefs.current.forEach(v => {
         if (v) {
           v.pause();
@@ -169,7 +222,6 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
         }
       });
     }
-    return () => observerRef.current?.disconnect();
   }, [isOpen, activeIndex, playVideo]);
 
   useEffect(() => {
@@ -177,19 +229,6 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
 
     playVideo(activeIndex);
     
-    // PRELOAD neighbors
-    [-1, 1].forEach(offset => {
-      const i = activeIndex + offset;
-      if (i >= 0 && i < videos.length) {
-        const v = videoRefs.current[i];
-        if (v && !v.src) {
-          v.src = videos[i];
-          v.preload = 'metadata';
-          v.load();
-        }
-      }
-    });
-
     // Pause all except active
     videoRefs.current.forEach((v, i) => {
       if (i !== activeIndex && v && !v.paused) {
@@ -241,7 +280,7 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
   };
 
   const [showArrows, setShowArrows] = useState(true);
-  const arrowTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const arrowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetArrowTimer = useCallback(() => {
     setShowArrows(true);
@@ -286,33 +325,7 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
                   className="bg-[#1a1a1a] rounded-[8px] overflow-hidden"
                   onClick={() => openGallery(i)}
                 >
-                  <video
-                    src={url}
-                    preload="metadata"
-                    muted
-                    playsInline
-                    poster="" 
-                    onMouseOver={e => {
-                      const v = e.currentTarget as HTMLVideoElement;
-                      const playPromise = v.play();
-                      if (playPromise !== undefined) {
-                        playPromise.catch(() => {});
-                      }
-                    }}
-                    onMouseOut={e => { 
-                      const v = e.currentTarget as HTMLVideoElement;
-                      v.pause(); 
-                      if (v.readyState > 0) v.currentTime = 0; 
-                    }}
-                    style={{
-                      width: '100%',
-                      aspectRatio: '9 / 16',
-                      objectFit: 'cover',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      display: 'block'
-                    }}
-                  />
+                  <VideoPreview url={url} />
                 </div>
               ))}
             </div>
@@ -378,7 +391,6 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
                       activeIndex={activeIndex}
                       isMobile={isMobile}
                       videoRefCallback={el => videoRefs.current[index] = el}
-                      observer={observerRef.current}
                     />
                   ))}
                   {isMobile && (

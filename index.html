@@ -2,6 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Emergency fix for "Cannot set property fetch of #<Window> which has only a getter"
+      (function() {
+        try {
+          const originalFetch = window.fetch;
+          if (originalFetch) {
+            Object.defineProperty(window, 'fetch', {
+              get: function() { return originalFetch; },
+              set: function() { console.warn('Blocked attempt to overwrite window.fetch'); },
+              configurable: true,
+              enumerable: true
+            });
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -31,26 +47,12 @@
 
     <title>NL</title>
     <link rel="icon" type="image/jpeg" href="/images/profile_img.jpg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <script>
-      (function() {
-        try {
-          const originalFetch = window.fetch;
-          Object.defineProperty(window, 'fetch', {
-            get: function() { return originalFetch; },
-            set: function(v) { 
-              console.warn('Attempted to overwrite window.fetch, ignoring to prevent crash.');
-            },
-            configurable: true,
-            enumerable: true
-          });
-        } catch (e) {
-          // If we can't define it (e.g. not configurable), at least we tried
-        }
-      })();
-    </script>
+    
+    <!-- Resource Hints -->
+    <link rel="preconnect" href="https://github.com" crossorigin>
+    <link rel="preconnect" href="https://img.icons8.com" crossorigin>
+    <link rel="dns-prefetch" href="https://api.emailjs.com">
+    <link rel="preload" as="image" href="/images/profile_img.jpg" fetchpriority="high">
   </head>
   <body>
     <div id="root"></div>

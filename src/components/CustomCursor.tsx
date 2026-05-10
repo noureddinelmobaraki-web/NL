@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 export const CustomCursor = () => {
   const dotRef = useRef<HTMLDivElement>(null);
@@ -30,7 +30,6 @@ export const CustomCursor = () => {
       const dx = pos.current.x - ringPos.current.x;
       const dy = pos.current.y - ringPos.current.y;
 
-      // Stop updating if close enough to avoid infinite micro-updates
       if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
         moving.current = false;
         return;
@@ -45,40 +44,32 @@ export const CustomCursor = () => {
       }
     };
 
-    const onEnterLink = () => {
-      ringRef.current?.classList.add('cursor-hover');
+    const onMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('a, button, [role="button"], input, select')) {
+        ringRef.current?.classList.add('cursor-hover');
+      }
     };
-    const onLeaveLink = () => {
-      ringRef.current?.classList.remove('cursor-hover');
+
+    const onMouseOut = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('a, button, [role="button"], input, select')) {
+        ringRef.current?.classList.remove('cursor-hover');
+      }
     };
 
     document.addEventListener('mousemove', onMove);
-    
-    // Initial assignment
-    document.querySelectorAll('a, button').forEach(el => {
-      el.addEventListener('mouseenter', onEnterLink);
-      el.addEventListener('mouseleave', onLeaveLink);
-    });
-
-    // Observer for dynamic elements
-    const observer = new MutationObserver(() => {
-      document.querySelectorAll('a, button').forEach(el => {
-        el.removeEventListener('mouseenter', onEnterLink);
-        el.removeEventListener('mouseleave', onLeaveLink);
-        el.addEventListener('mouseenter', onEnterLink);
-        el.addEventListener('mouseleave', onLeaveLink);
-      });
-    });
-    
-    observer.observe(document.body, { childList: true, subtree: true });
+    document.addEventListener('mouseover', onMouseOver);
+    document.addEventListener('mouseout', onMouseOut);
 
     animate();
 
     return () => {
       document.body.style.cursor = '';
       document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseover', onMouseOver);
+      document.removeEventListener('mouseout', onMouseOut);
       cancelAnimationFrame(animRef.current);
-      observer.disconnect();
     };
   }, []);
 

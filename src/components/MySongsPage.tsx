@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Play, Pause, Volume2, Music, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
+import { Play, Pause, Music, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDeviceType } from '../hooks/useDeviceType';
 import { extractDominantColor } from '../utils/extractColors';
 import { ActiveSong } from '../App';
@@ -144,7 +144,8 @@ const WindowFrame = ({
     mode: 'none' as 'move' | 'resize',
     handle: '' as 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw',
     startPos: { x: 0, y: 0 },
-    startGeom: { ...geometry }
+    startGeom: { ...geometry },
+    currentGeom: { ...geometry }
   });
 
   useEffect(() => {
@@ -169,7 +170,8 @@ const WindowFrame = ({
       mode,
       handle: handle as any,
       startPos: { x: e.clientX, y: e.clientY },
-      startGeom: { ...geometry }
+      startGeom: { ...geometry },
+      currentGeom: { ...geometry }
     };
 
     if (windowRef.current) {
@@ -219,9 +221,7 @@ const WindowFrame = ({
         windowRef.current.style.height = `${newGeom.height}px`;
       }
       
-      // Update internal tracking
-      interaction.current.startGeom = newGeom;
-      interaction.current.startPos = { x: e.clientX, y: e.clientY };
+      interaction.current.currentGeom = newGeom;
     });
   };
 
@@ -232,7 +232,7 @@ const WindowFrame = ({
       windowRef.current.style.pointerEvents = 'auto';
       windowRef.current.releasePointerCapture(e.pointerId);
     }
-    setGeometry(interaction.current.startGeom);
+    setGeometry(interaction.current.currentGeom);
   };
 
   const toggleMaximize = () => {
@@ -414,7 +414,7 @@ const LyricsWindowContent = ({
       {lyrics.map((line, i) => (
         <div 
           key={i} 
-          ref={el => lineRefs.current[i] = el}
+          ref={el => { lineRefs.current[i] = el; }}
           onClick={() => onSeek(line.time)}
           onMouseEnter={() => !isMobilePlayer && setHoveredLine(i)}
           onMouseLeave={() => !isMobilePlayer && setHoveredLine(null)}
@@ -507,16 +507,7 @@ const LyricsWindow = ({
   );
 };
 
-const SongCard: React.FC<{ 
-  song: Song; 
-  index: number;
-  isActive: boolean; 
-  isActiveInBar: boolean;
-  isPlaying: boolean;
-  isWaiting: boolean;
-  onPlay: () => void;
-  setLyricsOpen: (open: boolean) => void;
-}> = ({ 
+const SongCard = memo(({ 
   song, 
   index,
   isActive, 
@@ -525,6 +516,15 @@ const SongCard: React.FC<{
   isWaiting,
   onPlay,
   setLyricsOpen
+}: { 
+  song: Song; 
+  index: number;
+  isActive: boolean; 
+  isActiveInBar: boolean;
+  isPlaying: boolean;
+  isWaiting: boolean;
+  onPlay: () => void;
+  setLyricsOpen: (open: boolean) => void;
 }) => {
   return (
     <div className={`bg-zinc-900/90 border p-5 rounded-lg flex flex-col gap-3 transition-all hover:border-white/20 group ${isActive ? 'border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'border-white/5'}`}>
@@ -564,7 +564,7 @@ const SongCard: React.FC<{
       </div>
     </div>
   );
-};
+});
 
 export const MySongs = ({ 
   onSongPlay,
@@ -577,7 +577,7 @@ export const MySongs = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.7);
+  const [volume] = useState(0.7);
   const [showWindows, setShowWindows] = useState({ lyrics: false });
   const [focusedWindow, setFocusedWindow] = useState<'lyrics' | null>(null);
   const [isWaiting, setIsWaiting] = useState(false);
@@ -588,10 +588,14 @@ export const MySongs = ({
   const { isMobile } = useDeviceType();
 
   // Geometry lifting for the window system
-  const [lyricsGeom, setLyricsGeom] = useState<WindowGeometry>({ x: window.innerWidth - 380, y: 150, width: 340, height: 450 });
+  const [lyricsGeom, setLyricsGeom] = useState<WindowGeometry>(() => ({ 
+    x: typeof window !== 'undefined' ? window.innerWidth - 380 : 0, 
+    y: 150, 
+    width: 340, 
+    height: 450 
+  }));
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
   
   const currentSong = useMemo(() => songs.find(s => s.id === activeId) || null, [activeId]);
 
@@ -651,7 +655,6 @@ export const MySongs = ({
     
     const audio = new Audio();
     audioRef.current = audio;
-    setHasLoaded(true);
     return audio;
   }, []);
 
@@ -765,9 +768,11 @@ export const MySongs = ({
 
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.src = "";
+        audio.load();
         audioRef.current = null;
       }
     };
@@ -807,7 +812,29 @@ export const MySongs = ({
     }
   }, [activeId, isPlaying, currentTime, duration, onActiveSongChange, handlePrev, handleNext, handlePlayToggle, currentSong]);
 
-  const seekPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const renderedSongs = useMemo(() => {
+    return songs.map((song, i) => (
+      <SongCard 
+        key={song.id} 
+        index={i}
+        song={song} 
+        isActive={activeId === song.id}
+        isActiveInBar={activeId === song.id && !isMobile}
+        isPlaying={isPlaying}
+        isWaiting={isWaiting}
+        onPlay={() => handlePlayToggle(song)}
+        setLyricsOpen={(open: boolean) => {
+          setActiveId(song.id);
+          if (isMobile) {
+            setMobileFullscreen(song.id);
+          } else {
+            setShowWindows(prev => ({ ...prev, lyrics: open }));
+            setFocusedWindow('lyrics');
+          }
+        }}
+      />
+    ));
+  }, [activeId, isPlaying, isWaiting, isMobile, handlePlayToggle]);
 
   return (
     <section 
@@ -833,27 +860,7 @@ export const MySongs = ({
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {songs.map((song, i) => (
-            <SongCard 
-              key={song.id} 
-              index={i}
-              song={song} 
-              isActive={activeId === song.id}
-              isActiveInBar={activeId === song.id && !isMobile}
-              isPlaying={isPlaying}
-              isWaiting={isWaiting}
-              onPlay={() => handlePlayToggle(song)}
-              setLyricsOpen={(open) => {
-                setActiveId(song.id);
-                if (isMobile) {
-                  setMobileFullscreen(song.id);
-                } else {
-                  setShowWindows(prev => ({ ...prev, lyrics: open }));
-                  setFocusedWindow('lyrics');
-                }
-              }}
-            />
-          ))}
+          {renderedSongs}
         </div>
 
         {isMobile && mobileFullscreen !== null && currentSong && (

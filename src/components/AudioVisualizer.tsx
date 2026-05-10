@@ -2,16 +2,17 @@ import React, { useEffect, useRef } from 'react';
 import { useDeviceType } from '../hooks/useDeviceType';
 
 interface AudioVisualizerProps {
-  audioRef: React.RefObject<HTMLAudioElement>;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
   isPlaying: boolean;
 }
+
+const audioSourceCache = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
 
 export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const { isMobile } = useDeviceType();
 
   useEffect(() => {
@@ -34,10 +35,12 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
     // Init AudioContext once
     if (!audioCtxRef.current) {
       try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        audioCtxRef.current = new AudioContextClass();
-        analyserRef.current = audioCtxRef.current.createAnalyser();
-        analyserRef.current.fftSize = 128; // Reduced for performance
+        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        const ctx = new AudioContextClass();
+        audioCtxRef.current = ctx;
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 128; 
+        analyserRef.current = analyser;
       } catch (e) {
         console.error('AudioContext init failed:', e);
       }
@@ -51,13 +54,15 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
     if (!audio || !audioCtxRef.current || !analyserRef.current) return;
 
     try {
-      if (!sourceRef.current) {
-        sourceRef.current = audioCtxRef.current.createMediaElementSource(audio);
-        sourceRef.current.connect(analyserRef.current);
-        analyserRef.current.connect(audioCtxRef.current.destination);
+      let source = audioSourceCache.get(audio);
+      if (!source) {
+        source = audioCtxRef.current.createMediaElementSource(audio);
+        audioSourceCache.set(audio, source);
       }
+      source.connect(analyserRef.current);
+      analyserRef.current.connect(audioCtxRef.current.destination);
     } catch (e) {
-      // Already connected or CORS issue
+      // Already connected
       try {
         analyserRef.current.connect(audioCtxRef.current.destination);
       } catch (_) {}

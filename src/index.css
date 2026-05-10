@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Patrick+Hand&display=swap');
+/* Self-hosted Fonts */
+@import "@fontsource/bangers";
+@import "@fontsource/comic-neue";
+@import "@fontsource/patrick-hand";
+@import "@fontsource/share-tech-mono";
+
 @import "tailwindcss";
 
 :root {
