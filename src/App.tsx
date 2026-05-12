@@ -23,11 +23,12 @@ import {
   VolumeX
 } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import React from 'react';
 import { LoadingScreen } from "./components/LoadingScreen";
-const MySongsPage = lazy(() => import('./components/MySongsPage').then(m => ({default: m.MySongs})));
-const DrawingsPage = lazy(() => import('./components/DrawingsPage').then(m => ({default: m.DrawingsPage})));
+import { MySongs } from './components/MySongsPage';
+import { DrawingsPage } from './components/DrawingsPage';
+import { Sarahni } from './components/Sarahni';
 import { GameShell } from './games/GameShell';
 import { GameSelector } from './games/GameSelector';
 import { TetrisGame } from './games/tetris/TetrisGame';
@@ -39,7 +40,6 @@ import { FroggerGame } from './games/frogger/FroggerGame';
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useParallax } from "./hooks/useParallax";
 import { useFocusTrap } from "./hooks/useFocusTrap";
-const Sarahni = lazy(() => import('./components/Sarahni').then(m => ({default: m.Sarahni})));
 import { NowPlayingBar } from "./components/NowPlayingBar";
 import { MobileNavBar } from "./components/MobileNavBar";
 import { CustomCursor } from "./components/CustomCursor";
@@ -55,16 +55,16 @@ import { ScrollProgress } from "./components/ScrollProgress";
 import { ResponsiveImage } from "./components/ResponsiveImage";
 
 const CONFIG_ASSETS = {
-  mainBackground: "/images/hero_bg.jpg",
-  nameHeaderBg: "/images/header_bg.gif",
-  footerDecoration: "/images/footer_deco.gif",
+  mainBackground: "./images/hero_bg.jpg",
+  nameHeaderBg: "./images/header_bg.gif",
+  footerDecoration: "./images/footer_deco.gif",
   spotifyIcon: "https://img.icons8.com/plasticine/1200/spotify--v2.jpg",
-  profileImg: "/images/profile_img.jpg",
-  vaultPlaylistCover: "/images/playlist_cover.jpg",
-  youtubeHighlightsBg: "/images/yt_highlights.gif",
-  gmailBg: "/images/gmail_bg.gif",
-  whatsappBg: "/images/whatsapp_bg.gif",
-  telegramBg: "/images/telegram_bg.gif"
+  profileImg: "./images/profile_img.jpg",
+  vaultPlaylistCover: "./images/playlist_cover.jpg",
+  youtubeHighlightsBg: "./images/yt_highlights.gif",
+  gmailBg: "./images/gmail_bg.gif",
+  whatsappBg: "./images/whatsapp_bg.gif",
+  telegramBg: "./images/telegram_bg.gif"
 };
 
 const STREAMING_PLATFORMS: StreamingPlatform[] = [
@@ -963,7 +963,7 @@ export default function App() {
             id="my-songs-section"
           >
           <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>...</div>}>
-            <MySongsPage 
+            <MySongs 
               onSongPlay={handleSongPlay} 
               onActiveSongChange={setActiveSong}
             />
