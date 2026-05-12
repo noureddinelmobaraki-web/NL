@@ -192,20 +192,11 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   useEffect(() => {
-    const base = import.meta.env.BASE_URL || './';
-    const fetchUrl = (base.endsWith('/') ? base : base + '/') + 'data/videos.json';
-    
-    fetch(fetchUrl)
+    fetch('/data/videos.json')
       .then(res => res.json())
       .then(data => {
-        const resolvedData = data.map((v: any) => ({
-          ...v,
-          poster: v.poster.startsWith('/') 
-            ? (base.endsWith('/') ? base : base + '/') + v.poster.slice(1) 
-            : v.poster
-        }));
-        setVideos(resolvedData);
-        videoRefs.current = new Array(resolvedData.length).fill(null);
+        setVideos(data);
+        videoRefs.current = new Array(data.length).fill(null);
       })
       .catch(console.error);
   }, []);

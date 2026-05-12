@@ -55,16 +55,16 @@ import { ScrollProgress } from "./components/ScrollProgress";
 import { ResponsiveImage } from "./components/ResponsiveImage";
 
 const CONFIG_ASSETS = {
-  mainBackground: "./images/hero_bg.jpg",
-  nameHeaderBg: "./images/header_bg.gif",
-  footerDecoration: "./images/footer_deco.gif",
+  mainBackground: "/images/hero_bg.jpg",
+  nameHeaderBg: "/images/header_bg.gif",
+  footerDecoration: "/images/footer_deco.gif",
   spotifyIcon: "https://img.icons8.com/plasticine/1200/spotify--v2.jpg",
-  profileImg: "./images/profile_img.jpg",
-  vaultPlaylistCover: "./images/playlist_cover.jpg",
-  youtubeHighlightsBg: "./images/yt_highlights.gif",
-  gmailBg: "./images/gmail_bg.gif",
-  whatsappBg: "./images/whatsapp_bg.gif",
-  telegramBg: "./images/telegram_bg.gif"
+  profileImg: "/images/profile_img.jpg",
+  vaultPlaylistCover: "/images/playlist_cover.jpg",
+  youtubeHighlightsBg: "/images/yt_highlights.gif",
+  gmailBg: "/images/gmail_bg.gif",
+  whatsappBg: "/images/whatsapp_bg.gif",
+  telegramBg: "/images/telegram_bg.gif"
 };
 
 const STREAMING_PLATFORMS: StreamingPlatform[] = [
