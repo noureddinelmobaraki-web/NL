@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
+import { prefersReducedMotion } from '../utils/perf';
+
 type Phase = 'visible' | 'fading' | 'hidden';
 export const LoadingScreen = ({ onComplete, onAudioUnlock }: { onComplete: () => void, onAudioUnlock: () => void }) => {
   const [phase, setPhase] = useState<Phase>('visible');
@@ -6,6 +8,7 @@ export const LoadingScreen = ({ onComplete, onAudioUnlock }: { onComplete: () =>
   const videoRef = useRef<HTMLVideoElement>(null);
   const doneRef = useRef(false);
   useEffect(() => {
+    if (prefersReducedMotion()) return;
     let count = 0;
     const iv = setInterval(() => { count = (count + 1) % 4; setDots('.'.repeat(count)); }, 400);
     return () => clearInterval(iv);

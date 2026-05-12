@@ -1,8 +1,16 @@
-import React, { useState, useRef } from 'react';
-import emailjs from '@emailjs/browser';
+import React, { useState, useRef, useEffect } from 'react';
 
 type Mode = 'anonymous' | 'named';
 type Status = 'idle' | 'sending' | 'success' | 'error';
+
+declare global {
+  interface Window {
+    turnstile: {
+      render: (container: HTMLElement, options: any) => string;
+      reset: (id: string) => void;
+    };
+  }
+}
 
 export const Sarahni = () => {
   const [mode, setMode] = useState<Mode>('anonymous');
@@ -10,59 +18,172 @@ export const Sarahni = () => {
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const sendCount = useRef(0);
-  const sessionBlocked = useRef(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [sendLog, setSendLog] = useState<string[]>([]);
+  
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const widgetId = useRef<string | null>(null);
+
+  // Hydrate send log from localStorage
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return;
+      const saved = localStorage.getItem('sarahni_send_log');
+      if (saved) {
+        const parsed: string[] = JSON.parse(saved);
+        const now = new Date().getTime();
+        const oneDay = 24 * 60 * 60 * 1000;
+        
+        // Filter out entries older than 24 hours
+        const validEntries = parsed.filter(ts => {
+          const time = new Date(ts).getTime();
+          return now - time < oneDay;
+        });
+        
+        setSendLog(validEntries);
+        if (validEntries.length >= 3) {
+          setIsBlocked(true);
+        }
+        
+        // Update storage with cleaned entries
+        localStorage.setItem('sarahni_send_log', JSON.stringify(validEntries));
+      }
+    } catch (e) {
+      console.warn('Failed to parse or access send log', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    const renderWidget = () => {
+      try {
+        if (typeof window !== 'undefined' && window.turnstile && turnstileContainerRef.current && !widgetId.current) {
+          const siteKey = (import.meta.env && import.meta.env.VITE_TURNSTILE_SITE_KEY) || '1x00000000000000000000AA';
+          widgetId.current = window.turnstile.render(turnstileContainerRef.current, {
+            sitekey: siteKey,
+            callback: (token: string) => {
+              setTurnstileToken(token);
+              setErrorMsg('');
+            },
+            'expired-callback': () => setTurnstileToken(null),
+            'error-callback': () => {
+              setErrorMsg('حدث خطأ في الكابتشا، يرجى تحديث الصفحة');
+              setTurnstileToken(null);
+            },
+            theme: 'dark',
+          });
+        }
+      } catch (err) {
+        console.error('Turnstile render error:', err);
+        setErrorMsg('فشل تحميل نظام الحماية، يرجى المحاولة لاحقاً');
+      }
+    };
+
+    // Check if script is loaded
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      let isMounted = true;
+      const interval = setInterval(() => {
+        if (!isMounted) {
+          clearInterval(interval);
+          return;
+        }
+        if (window.turnstile) {
+          renderWidget();
+          clearInterval(interval);
+        }
+      }, 500);
+      return () => {
+        isMounted = false;
+        clearInterval(interval);
+      };
+    }
+    return undefined;
+  }, [status]); // Re-render widget on status resets
 
   const handleSend = async () => {
-    if (sessionBlocked.current) return;
+    if (isBlocked) return;
+    
     if (message.trim().length < 3) {
       setErrorMsg('الرسالة قصيرة جداً');
       return;
     }
-    if (sendCount.current >= 3) {
-      sessionBlocked.current = true;
+
+    if (!turnstileToken) {
+      setErrorMsg('يرجى التحقق من الكابتشا أولاً');
+      return;
+    }
+
+    if (sendLog.length >= 3) {
+      setIsBlocked(true);
       return;
     }
 
     setStatus('sending');
     setErrorMsg('');
 
-    const templateParams = {
-      sender_name: mode === 'anonymous'
-        ? 'مجهول'
-        : (senderName.trim() || 'مجهول'),
-      message: message.trim(),
-      time: new Date().toLocaleString('ar-MA', {
-        timeZone: 'Africa/Casablanca'
-      }),
-    };
-
     try {
-      await emailjs.send(
-        'service_715qfyk',
-        'template_rvp2u2k',
-        templateParams,
-        '4jAqmjHZpNREKOgNR'
-      );
-      sendCount.current += 1;
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender_name: mode === 'anonymous' ? 'مجهول' : (senderName.trim() || 'مجهول'),
+          message: message.trim(),
+          turnstile_token: turnstileToken
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'فشل الإرسال');
+      }
+
+      const newTimestamp = new Date().toISOString();
+      const updatedLog = [...sendLog, newTimestamp];
+      
+      setSendLog(updatedLog);
+      try {
+        localStorage.setItem('sarahni_send_log', JSON.stringify(updatedLog));
+      } catch (e) {
+        console.warn('Failed to save send log', e);
+      }
+      
       setStatus('success');
       setMessage('');
       setSenderName('');
+      setTurnstileToken(null);
+      
+      // Reset Turnstile for next time if count < 3
+      if (widgetId.current) {
+          window.turnstile.reset(widgetId.current);
+      }
+
       setTimeout(() => {
-        if (sendCount.current >= 3) {
-          sessionBlocked.current = true;
+        if (updatedLog.length >= 3) {
+          setIsBlocked(true);
         } else {
           setStatus('idle');
         }
       }, 4000);
-    } catch {
+    } catch (err: any) {
       setStatus('error');
-      setErrorMsg('فشل الإرسال، حاول مرة أخرى');
+      setErrorMsg(err.message || 'فشل الإرسال، حاول مرة أخرى');
+      
+      // Reset Turnstile on error so user can retry
+      if (widgetId.current) {
+        window.turnstile.reset(widgetId.current);
+      }
+      setTurnstileToken(null);
+      
       setTimeout(() => setStatus('idle'), 3000);
     }
   };
 
-  if (sessionBlocked.current) {
+  if (isBlocked) {
     return (
       <section dir="rtl" style={styles.section}>
         <div style={styles.card}>
@@ -123,14 +244,26 @@ export const Sarahni = () => {
               </span>
             </div>
 
+            {/* Turnstile Widget Container */}
+            <div 
+              ref={turnstileContainerRef} 
+              style={{ 
+                margin: '16px 0', 
+                display: 'flex', 
+                justifyContent: 'center',
+                minHeight: '65px' 
+              }} 
+            />
+
             {errorMsg && <p style={styles.error}>{errorMsg}</p>}
 
             <button
               onClick={handleSend}
-              disabled={status === 'sending'}
+              disabled={status === 'sending' || !turnstileToken}
               style={{
                 ...styles.sendBtn,
-                opacity: status === 'sending' ? 0.7 : 1
+                opacity: (status === 'sending' || !turnstileToken) ? 0.6 : 1,
+                cursor: (status === 'sending' || !turnstileToken) ? 'not-allowed' : 'pointer'
               }}
             >
               {status === 'sending' ? (
@@ -167,12 +300,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#ffffff',
     marginBottom: '8px',
     textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: '0.9rem',
-    color: 'rgba(255,255,255,0.45)',
-    textAlign: 'center',
-    marginBottom: '24px',
   },
   toggleRow: {
     display: 'flex',

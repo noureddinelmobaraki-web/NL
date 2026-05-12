@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <script>
-      // Emergency fix for "Cannot set property fetch of #<Window> which has only a getter"
+      // SEC-003: Harden window.fetch against unauthorized overwrites from third-party scripts
       (function() {
         try {
           const originalFetch = window.fetch;
-          if (originalFetch) {
+          if (originalFetch && !Object.getOwnPropertyDescriptor(window, 'fetch')?.get) {
             Object.defineProperty(window, 'fetch', {
               get: function() { return originalFetch; },
-              set: function() { console.warn('Blocked attempt to overwrite window.fetch'); },
-              configurable: true,
-              enumerable: true
+              set: function() { /* Block modification silently */ },
+              configurable: false,
+              enumerable: false
             });
           }
         } catch (e) {}
@@ -24,16 +24,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#000000">
 
-    <!-- Primary Meta -->
-    <meta name="description" content="NL — Noureddin El Mobaraki. Music, Art & More from Casablanca.">
+    <!-- SEO -->
+    <meta name="description" content="NL — Noureddin El Mobaraki. Moroccan rapper and music producer from Casablanca. Music, Art & Drawings.">
     <meta name="author" content="Noureddin El Mobaraki">
-    <meta name="keywords" content="NL, Nordine, rap, moroccan music, Casablanca, artist">
+    <meta name="keywords" content="NL, Noureddin, rap, moroccan music, Casablanca, darija rap, artist">
+    <link rel="canonical" href="https://noureddinelmobaraki-web.github.io/NL/">
 
-    <!-- Open Graph (WhatsApp, Facebook, LinkedIn) -->
+    <!-- Open Graph (WhatsApp, Facebook) -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://noureddinelmobaraki-web.github.io/NL/">
     <meta property="og:title" content="NL — Noureddin El Mobaraki">
-    <meta property="og:description" content="Music, Art & Drawings from Casablanca.">
+    <meta property="og:description" content="Moroccan rapper and music producer from Casablanca. Music, Art & Drawings.">
     <meta property="og:image" content="https://noureddinelmobaraki-web.github.io/NL/images/profile_img.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -42,17 +43,34 @@
     <!-- Twitter/X Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="NL — Noureddin El Mobaraki">
-    <meta name="twitter:description" content="Music, Art & Drawings from Casablanca.">
+    <meta name="twitter:description" content="Moroccan rapper and music producer from Casablanca.">
     <meta name="twitter:image" content="https://noureddinelmobaraki-web.github.io/NL/images/profile_img.jpg">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "MusicArtist",
+      "name": "NL",
+      "alternateName": ["Noureddin El Mobaraki", "Nordine GB"],
+      "url": "https://noureddinelmobaraki-web.github.io/NL/",
+      "image": "https://noureddinelmobaraki-web.github.io/NL/images/profile_img.jpg",
+      "description": "Moroccan rapper and music producer from Casablanca",
+      "genre": ["Rap", "Hip-Hop", "Moroccan Rap"],
+      "foundingLocation": { "@type": "Place", "name": "Casablanca, Morocco" },
+      "email": "noureddinelmobaraki@gmail.com"
+    }
+    </script>
 
     <title>NL</title>
     <link rel="icon" type="image/jpeg" href="/images/profile_img.jpg" />
     
-    <!-- Resource Hints -->
-    <link rel="preconnect" href="https://github.com" crossorigin>
-    <link rel="preconnect" href="https://img.icons8.com" crossorigin>
+    <!-- Performance -->
+    <link rel="preload" as="image" href="/NL/images/hero_bg.jpg" fetchpriority="high">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="dns-prefetch" href="https://api.emailjs.com">
-    <link rel="preload" as="image" href="/images/profile_img.jpg" fetchpriority="high">
+    <link rel="dns-prefetch" href="https://github.com">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,12 +1,28 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
+import { visualizer } from 'rollup-plugin-visualizer';
+import { compression } from 'vite-plugin-compression2';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
   return {
-    base: '/NL/',
-    plugins: [react(), tailwindcss()],
+    base: '/',
+    plugins: [
+      react(), 
+      tailwindcss(),
+      compression({
+        algorithms: ['brotliCompress'],
+        exclude: [/\.(br)$/, /\.(gz)$/],
+        deleteOriginalAssets: false
+      }),
+      mode === 'analyze' && visualizer({
+        open: false,
+        filename: 'stats.html',
+        gzipSize: true,
+        brotliSize: true,
+      })
+    ].filter(Boolean),
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -14,34 +30,36 @@ export default defineConfig(() => {
     },
     build: {
       target: 'es2020',
-      minify: 'esbuild',
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        }
+      },
       cssCodeSplit: true,
+      sourcemap: false,
+      reportCompressedSize: true,
+      chunkSizeWarningLimit: 800,
+      assetsInlineLimit: 0,
+      modulePreload: {
+        polyfill: false
+      },
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
-                return 'react-vendor';
-              }
-              if (id.includes('framer-motion') || id.includes('motion')) {
-                return 'motion-vendor';
-              }
-              if (id.includes('lucide-react')) {
-                return 'icons-vendor';
-              }
-              if (id.includes('@emailjs')) {
-                return 'email-vendor';
-              }
-              return 'vendor'; // everything else
-            }
+            if (id.includes('node_modules/react')) return 'react-vendor';
+            if (id.includes('node_modules/framer-motion')) return 'framer';
+            if (id.includes('src/games/')) return 'games';
+            if (id.includes('src/components/DrawingsPage')) return 'drawings';
+            if (id.includes('src/components/Sarahni')) return 'sarahni';
+            if (id.includes('src/components/LyricsEngine')) return 'lyrics';
             return undefined;
-          },
-        },
+          }
+        }
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
     },
   };

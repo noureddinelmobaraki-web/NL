@@ -1,21 +1,29 @@
 import React, { useEffect, useRef } from 'react';
 import { useDeviceType } from '../hooks/useDeviceType';
+import { isLowEndDevice } from '../utils/perf';
 
 interface AudioVisualizerProps {
   audioRef: React.RefObject<HTMLAudioElement | null>;
   isPlaying: boolean;
 }
 
-const audioSourceCache = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
+// Global cache to persist graph nodes across re-mounts and avoid InvalidStateError (SEC-004)
+const audioGraphCache = new WeakMap<HTMLAudioElement, {
+  ctx: AudioContext;
+  source: MediaElementAudioSourceNode;
+  analyser: AnalyserNode;
+  isConnected: boolean;
+}>();
 
 export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
   const { isMobile } = useDeviceType();
 
   useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
     const handleResize = () => {
       if (canvasRef.current) {
         canvasRef.current.width = window.innerWidth;
@@ -23,7 +31,7 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
       }
     };
 
-    if (!isPlaying || !audioRef.current) {
+    if (!isPlaying) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (canvasRef.current) {
         const ctx = canvasRef.current.getContext('2d');
@@ -32,46 +40,47 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
       return;
     }
     
-    // Init AudioContext once
-    if (!audioCtxRef.current) {
+    // Initialize or Retrieve from Cache
+    let graph = audioGraphCache.get(audio);
+    if (!graph) {
       try {
-        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        
         const ctx = new AudioContextClass();
-        audioCtxRef.current = ctx;
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 128; 
-        analyserRef.current = analyser;
+        const source = ctx.createMediaElementSource(audio);
+        
+        graph = { ctx, source, analyser, isConnected: false };
+        audioGraphCache.set(audio, graph);
       } catch (e) {
-        console.error('AudioContext init failed:', e);
+        // Fallback for browsers that block auto-init or have cross-origin issues
+        return;
       }
     }
 
-    if (audioCtxRef.current?.state === 'suspended') {
-      audioCtxRef.current.resume();
+    const { ctx, source, analyser } = graph;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
     }
 
-    const audio = audioRef.current;
-    if (!audio || !audioCtxRef.current || !analyserRef.current) return;
-
-    try {
-      let source = audioSourceCache.get(audio);
-      if (!source) {
-        source = audioCtxRef.current.createMediaElementSource(audio);
-        audioSourceCache.set(audio, source);
-      }
-      source.connect(analyserRef.current);
-      analyserRef.current.connect(audioCtxRef.current.destination);
-    } catch (e) {
-      // Already connected
+    // Connect nodes if not already marked as connected
+    if (!graph.isConnected) {
       try {
-        analyserRef.current.connect(audioCtxRef.current.destination);
-      } catch (_) {}
+        source.connect(analyser);
+        analyser.connect(ctx.destination);
+        graph.isConnected = true;
+      } catch (e) {
+        // Fallback catch for already connected states
+        graph.isConnected = true;
+      }
     }
 
     const canvas = canvasRef.current;
-    if (!canvas || !analyserRef.current) return;
-    const ctx = canvas.getContext('2d')!;
-    const analyser = analyserRef.current;
+    if (!canvas) return;
+    const canvasCtx = canvas.getContext('2d')!;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
@@ -79,34 +88,33 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
     window.addEventListener('resize', handleResize);
 
     let frameCount = 0;
+    const lowEnd = isLowEndDevice();
     const draw = () => {
       animFrameRef.current = requestAnimationFrame(draw);
       
-      // Mobile throttling: skip every other frame
+      // Performance throttling
       frameCount++;
-      if (isMobile && frameCount % 2 !== 0) return;
+      if ((isMobile || lowEnd) && frameCount % 2 !== 0) return;
 
       analyser.getByteFrequencyData(dataArray);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw mirrored bars from center bottom
       const barCount = bufferLength;
       const barWidth = (canvas.width / 2) / barCount;
       
       for (let i = 0; i < barCount; i++) {
         const barHeight = (dataArray[i] / 255) * (canvas.height * 0.35);
-        const alpha = Math.min(0.2, (dataArray[i] / 255) * 0.4); // Subtle reactive opacity
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        const alpha = Math.min(0.2, (dataArray[i] / 255) * 0.4); 
+        canvasCtx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
         
-        // Right side
-        ctx.fillRect(
+        // Mirrored visualization
+        canvasCtx.fillRect(
           canvas.width / 2 + i * barWidth,
           canvas.height - barHeight,
           barWidth - 1,
           barHeight
         );
-        // Left side (mirrored)
-        ctx.fillRect(
+        canvasCtx.fillRect(
           canvas.width / 2 - (i + 1) * barWidth,
           canvas.height - barHeight,
           barWidth - 1,
@@ -118,14 +126,22 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      
+      // Clean up connections on unmount as requested
+      if (graph && graph.isConnected) {
+        try {
+          source.disconnect(analyser);
+          analyser.disconnect(ctx.destination);
+          graph.isConnected = false;
+        } catch (e) {}
       }
     };
   }, [isPlaying, audioRef, isMobile]);
 
   return (
     <canvas
+      id="audio-visualizer-canvas"
       ref={canvasRef}
       style={{
         position: 'fixed',
@@ -136,7 +152,7 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
         pointerEvents: 'none',
         zIndex: 0,
         opacity: isPlaying ? 1 : 0,
-        transition: 'opacity 1s ease',
+        transition: 'opacity 1.5s ease',
         willChange: 'transform',
         imageRendering: 'pixelated'
       }}

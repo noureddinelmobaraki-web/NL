@@ -15,6 +15,28 @@
 <div id="hint">A / D move • SPACE jump (double) • J attack • K dash • L spirit-burst • P pause</div>
 <script>
 "use strict";
+
+/* ---------- Parent Communication (SEC-002) ---------- */
+const PARENT_ORIGIN = window.location.origin === 'null' ? '*' : window.location.origin; // Using * for null origin, otherwise specific origin
+function sendToParent(type, data = {}) {
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type, data }, PARENT_ORIGIN === 'null' ? '*' : PARENT_ORIGIN);
+    }
+  } catch (e) {
+    console.warn('Failed to notify parent:', e);
+  }
+}
+
+// Global score sync listener
+window.addEventListener('message', e => {
+  if (!e.data || typeof e.data !== 'object') return;
+  const { type, data } = e.data;
+  if (type === 'BEST_SCORE_DATA') {
+    game.bestScore = data.score || 0;
+  }
+});
+
 /* =========================================================
    LUMENFALL — THE LAST EMBER
    A handcrafted single-file 2D action platformer.
@@ -304,7 +326,7 @@ let game={
   stage:0,
   shards:0,
   score:0,
-  bestScore:+(localStorage.getItem('lumenfall_best')||0),
+  bestScore:0, // Will be hydrated from parent
   time:0,
   hud:{flash:0},
   unlocks:{dash:false,burst:false,doubleJump:true},
@@ -572,7 +594,10 @@ function updatePlayer(){
       setTimeout(()=>{
         if(game.stage>=STAGES.length-1){
           game.state=STATE.WIN;SFX.win();
-          if(game.score>game.bestScore){game.bestScore=game.score;localStorage.setItem('lumenfall_best',game.score);}
+          if(game.score>game.bestScore){
+            game.bestScore=game.score;
+            sendToParent('SET_BEST_SCORE', { score: game.score });
+          }
         } else {
           // unlock progression
           if(game.stage===0){game.unlocks.dash=true;}
@@ -829,6 +854,10 @@ function render(){
 /* ---------- Boot ---------- */
 loadStage(0); // pre-build
 game.state=STATE.MENU;
+
+// Request initial score from parent
+sendToParent('GET_BEST_SCORE');
+
 requestAnimationFrame(loop);
 </script>
 </body>

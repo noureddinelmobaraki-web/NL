@@ -1,136 +1,61 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar-MA" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 — الصفحة غير موجودة</title>
-    <link rel="icon" type="image/jpeg" href="/NL/images/profile_img.jpg">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background-color: #0a0a0a;
-            color: #ffffff;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Animated Background Particles */
-        body::before, body::after {
-            content: "";
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            background: transparent;
-            z-index: -1;
-        }
-
-        body::before {
-            box-shadow: 
-                20vw 10vh #fff, 40vw 30vh #fff, 60vw 20vh #fff, 80vw 40vh #fff,
-                15vw 60vh #fff, 35vw 80vh #fff, 55vw 70vh #fff, 75vw 90vh #fff,
-                10vw 20vh #fff, 90vw 10vh #fff, 50vw 50vh #fff;
-            animation: float 20s linear infinite;
-            opacity: 0.2;
-        }
-
-        body::after {
-            box-shadow: 
-                25vw 15vh #fff, 45vw 35vh #fff, 65vw 25vh #fff, 85vw 45vh #fff,
-                20vw 65vh #fff, 40vw 85vh #fff, 60vw 75vh #fff, 80vw 95vh #fff;
-            animation: float 30s linear infinite reverse;
-            opacity: 0.1;
-        }
-
-        @keyframes float {
-            from { transform: translateY(0); }
-            to { transform: translateY(-100vh); }
-        }
-
-        .container {
-            text-align: center;
-            z-index: 1;
-            padding: 20px;
-        }
-
-        .error-code {
-            font-size: 8rem;
-            font-weight: 700;
-            margin-bottom: 0;
-            line-height: 1;
-            letter-spacing: -2px;
-            animation: glitch 4s infinite;
-            position: relative;
-        }
-
-        @keyframes glitch {
-            0%, 90%, 100% { text-shadow: none; }
-            92% { text-shadow: -2px 0 #ff0040, 2px 0 #00ffff; }
-            94% { text-shadow: 2px 0 #ff0040, -2px 0 #00ffff; }
-            96% { text-shadow: -2px 0 #ff0040, 2px 0 #00ffff; }
-        }
-
-        .subtitle {
-            font-size: 1.5rem;
-            margin-top: 10px;
-            color: #ffffff;
-            font-weight: 400;
-        }
-
-        .muted {
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.4);
-            margin-top: 5px;
-            display: block;
-        }
-
-        .back-btn {
-            display: inline-block;
-            margin-top: 40px;
-            padding: 12px 32px;
-            background-color: #ffffff;
-            color: #000000;
-            text-decoration: none;
-            border-radius: 50px;
-            font-weight: 700;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        .back-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-            opacity: 0.9;
-        }
-
-        @media (max-width: 480px) {
-            .error-code {
-                font-size: 6rem;
-            }
-            .subtitle {
-                font-size: 1.2rem;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — NL</title>
+  <link rel="icon" type="image/jpeg" href="/NL/images/profile_img.jpg">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      color: white;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 20px;
+    }
+    .code {
+      font-size: clamp(5rem, 20vw, 10rem);
+      font-weight: 900;
+      color: rgba(255,255,255,0.08);
+      letter-spacing: -0.05em;
+      line-height: 1;
+      animation: glitch 5s infinite;
+    }
+    @keyframes glitch {
+      0%, 88%, 100% { text-shadow: none; }
+      90% { text-shadow: -3px 0 #ff0040, 3px 0 #00ffff; }
+      92% { text-shadow: 3px 0 #ff0040, -3px 0 #00ffff; }
+      94% { text-shadow: -3px 0 #ff0040, 3px 0 #00ffff; }
+    }
+    h1 { font-size: 1.5rem; font-weight: 700; margin: 8px 0 4px; }
+    p { color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-bottom: 24px; }
+    a {
+      display: inline-block;
+      background: white;
+      color: black;
+      text-decoration: none;
+      padding: 12px 28px;
+      border-radius: 100px;
+      font-weight: 700;
+      font-size: 15px;
+      transition: opacity 200ms;
+    }
+    a:hover { opacity: 0.85; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="error-code">404</h1>
-        <p class="subtitle">هاد الصفحة ما كاينش</p>
-        <span class="muted">Page not found</span>
-        <a href="https://noureddinelmobaraki-web.github.io/NL/" class="back-btn">← رجع للموقع</a>
-    </div>
+  <div class="code">404</div>
+  <h1>هاد الصفحة ما كاينش</h1>
+  <p>Page not found</p>
+  <a href="/NL/">← ارجع للموقع</a>
+  <script>
+    window.addEventListener('online', () => window.location.href = '/NL/');
+  </script>
 </body>
 </html>

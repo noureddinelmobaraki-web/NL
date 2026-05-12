@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { prefersReducedMotion, isLowEndDevice } from '../utils/perf';
 
 export const CustomCursor = () => {
   const dotRef = useRef<HTMLDivElement>(null);
@@ -10,7 +11,8 @@ export const CustomCursor = () => {
 
   useEffect(() => {
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (isTouch) return;
+    const lowPerformance = isLowEndDevice() || prefersReducedMotion();
+    if (isTouch || lowPerformance) return;
 
     document.body.style.cursor = 'none';
 
@@ -74,7 +76,8 @@ export const CustomCursor = () => {
   }, []);
 
   const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-  if (isTouch) return null;
+  const lowPerformance = typeof window !== 'undefined' && (isLowEndDevice() || prefersReducedMotion());
+  if (isTouch || lowPerformance) return null;
 
   return (
     <>
