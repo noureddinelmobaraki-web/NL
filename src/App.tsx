@@ -442,7 +442,7 @@ export default function App() {
       {/* Floating Audio Control Button - Small & Elegant */}
       <button
         onClick={toggleAudio}
-        className="fixed z-[120] bg-black/30 backdrop-blur-lg border border-white/10 p-2.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
+        className="fixed z-[9000] bg-black/30 backdrop-blur-lg border border-white/10 p-2.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
         style={{
           bottom: isMobile ? 'calc(56px + env(safe-area-inset-bottom) + 16px)' : '16px',
           right: '16px',

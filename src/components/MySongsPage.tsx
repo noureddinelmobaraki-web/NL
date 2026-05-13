@@ -112,8 +112,9 @@ const SongCard = memo(({
     <motion.div 
       layout
       layoutId={`song-${song.id}`}
+      onClick={onPlay}
       className={`
-        song-card relative overflow-hidden p-6 rounded-2xl flex flex-col gap-4 transition-all duration-700
+        song-card relative overflow-hidden p-6 rounded-2xl flex flex-col gap-4 transition-all duration-700 cursor-pointer
         ${isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)]' : 'shadow-lg hover:shadow-xl'}
       `}
       style={{
@@ -810,13 +811,10 @@ export const MySongs = ({
           }
         }
         .rainbow-text {
-          background: linear-gradient(90deg, #ff3d00, #ffea00, #00e676, #00e5ff, #2979ff, #d500f9, #ff3d00);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: shine 5s linear infinite;
+          color: #FFD700;
+          text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
           font-weight: 900 !important;
+          letter-spacing: -0.01em;
         }
         @keyframes pulse-glow {
           0%, 100% { box-shadow: 0 0 4px rgba(139,92,246,0.3); }

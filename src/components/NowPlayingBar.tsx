@@ -140,10 +140,20 @@ export const NowPlayingBar = ({
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            style={{ color: "rgba(255,255,255,0.3)", padding: "4px", marginLeft: '4px' }}
+            style={{ 
+              color: "rgba(255,255,255,0.4)", 
+              padding: isMobile ? "12px" : "8px", 
+              marginLeft: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: isMobile ? "44px" : "auto",
+              minHeight: isMobile ? "44px" : "auto"
+            }}
             className="hover:text-white"
+            aria-label="Close Player"
           >
-            <X size={16} />
+            <X size={isMobile ? 20 : 16} />
           </button>
         </div>
       </div>
