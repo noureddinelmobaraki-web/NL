@@ -1,16 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import emailjs from '@emailjs/browser';
 
 type Mode = 'anonymous' | 'named';
 type Status = 'idle' | 'sending' | 'success' | 'error';
 
-declare global {
-  interface Window {
-    turnstile: {
-      render: (container: HTMLElement, options: any) => string;
-      reset: (id: string) => void;
-    };
-  }
-}
+const EMAILJS_SERVICE = 'service_715qfyk';
+const EMAILJS_TEMPLATE = 'template_rvp2u2k';
+const EMAILJS_KEY = '4jAqmjHZpNREKOgNR';
 
 export const Sarahni = () => {
   const [mode, setMode] = useState<Mode>('anonymous');
@@ -18,13 +14,9 @@ export const Sarahni = () => {
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [sendLog, setSendLog] = useState<string[]>([]);
   
-  const turnstileContainerRef = useRef<HTMLDivElement>(null);
-  const widgetId = useRef<string | null>(null);
-
   // Hydrate send log from localStorage
   useEffect(() => {
     try {
@@ -54,64 +46,11 @@ export const Sarahni = () => {
     }
   }, []);
 
-  useEffect(() => {
-    const renderWidget = () => {
-      try {
-        if (typeof window !== 'undefined' && window.turnstile && turnstileContainerRef.current && !widgetId.current) {
-          const siteKey = (import.meta.env && import.meta.env.VITE_TURNSTILE_SITE_KEY) || '1x00000000000000000000AA';
-          widgetId.current = window.turnstile.render(turnstileContainerRef.current, {
-            sitekey: siteKey,
-            callback: (token: string) => {
-              setTurnstileToken(token);
-              setErrorMsg('');
-            },
-            'expired-callback': () => setTurnstileToken(null),
-            'error-callback': () => {
-              setErrorMsg('حدث خطأ في الكابتشا، يرجى تحديث الصفحة');
-              setTurnstileToken(null);
-            },
-            theme: 'dark',
-          });
-        }
-      } catch (err) {
-        console.error('Turnstile render error:', err);
-        setErrorMsg('فشل تحميل نظام الحماية، يرجى المحاولة لاحقاً');
-      }
-    };
-
-    // Check if script is loaded
-    if (window.turnstile) {
-      renderWidget();
-    } else {
-      let isMounted = true;
-      const interval = setInterval(() => {
-        if (!isMounted) {
-          clearInterval(interval);
-          return;
-        }
-        if (window.turnstile) {
-          renderWidget();
-          clearInterval(interval);
-        }
-      }, 500);
-      return () => {
-        isMounted = false;
-        clearInterval(interval);
-      };
-    }
-    return undefined;
-  }, [status]); // Re-render widget on status resets
-
   const handleSend = async () => {
     if (isBlocked) return;
     
     if (message.trim().length < 3) {
       setErrorMsg('الرسالة قصيرة جداً');
-      return;
-    }
-
-    if (!turnstileToken) {
-      setErrorMsg('يرجى التحقق من الكابتشا أولاً');
       return;
     }
 
@@ -124,23 +63,18 @@ export const Sarahni = () => {
     setErrorMsg('');
 
     try {
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      await emailjs.send(
+        EMAILJS_SERVICE,
+        EMAILJS_TEMPLATE,
+        {
           sender_name: mode === 'anonymous' ? 'مجهول' : (senderName.trim() || 'مجهول'),
           message: message.trim(),
-          turnstile_token: turnstileToken
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'فشل الإرسال');
-      }
+          time: new Date().toLocaleString('ar-MA', {
+            timeZone: 'Africa/Casablanca'
+          }),
+        },
+        EMAILJS_KEY
+      );
 
       const newTimestamp = new Date().toISOString();
       const updatedLog = [...sendLog, newTimestamp];
@@ -155,13 +89,7 @@ export const Sarahni = () => {
       setStatus('success');
       setMessage('');
       setSenderName('');
-      setTurnstileToken(null);
       
-      // Reset Turnstile for next time if count < 3
-      if (widgetId.current) {
-          window.turnstile.reset(widgetId.current);
-      }
-
       setTimeout(() => {
         if (updatedLog.length >= 3) {
           setIsBlocked(true);
@@ -169,16 +97,9 @@ export const Sarahni = () => {
           setStatus('idle');
         }
       }, 4000);
-    } catch (err: any) {
+    } catch (err) {
       setStatus('error');
-      setErrorMsg(err.message || 'فشل الإرسال، حاول مرة أخرى');
-      
-      // Reset Turnstile on error so user can retry
-      if (widgetId.current) {
-        window.turnstile.reset(widgetId.current);
-      }
-      setTurnstileToken(null);
-      
+      setErrorMsg('فشل الإرسال، حاول مرة أخرى');
       setTimeout(() => setStatus('idle'), 3000);
     }
   };
@@ -191,6 +112,12 @@ export const Sarahni = () => {
           border: '4px solid #000',
           boxShadow: '8px 8px 0 #000, 14px 14px 0 rgba(0,0,0,0.15)'
         }}>
+          {/* MacOS traffic light buttons */}
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', border: '1px solid rgba(0,0,0,0.3)' }} />
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', border: '1px solid rgba(0,0,0,0.3)' }} />
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', border: '1px solid rgba(0,0,0,0.3)' }} />
+          </div>
           <p style={styles.blocked}>وصلت رسايلك، شكراً على صراحتك</p>
         </div>
       </section>
@@ -267,26 +194,15 @@ export const Sarahni = () => {
               </span>
             </div>
 
-            {/* Turnstile Widget Container */}
-            <div 
-              ref={turnstileContainerRef} 
-              style={{ 
-                margin: '16px 0', 
-                display: 'flex', 
-                justifyContent: 'center',
-                minHeight: '65px' 
-              }} 
-            />
-
             {errorMsg && <p style={styles.error}>{errorMsg}</p>}
 
             <button
               onClick={handleSend}
-              disabled={status === 'sending' || !turnstileToken}
+              disabled={status === 'sending'}
               style={{
                 ...styles.sendBtn,
-                opacity: (status === 'sending' || !turnstileToken) ? 0.6 : 1,
-                cursor: (status === 'sending' || !turnstileToken) ? 'not-allowed' : 'pointer'
+                opacity: status === 'sending' ? 0.6 : 1,
+                cursor: status === 'sending' ? 'not-allowed' : 'pointer'
               }}
               className="manga-card-hover hover:-translate-x-0.5 hover:-translate-y-0.5 hover:!shadow-[7px_7px_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:!shadow-[3px_3px_0_#000]"
             >
@@ -438,12 +354,6 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     padding: '20px 0',
     animation: 'fadeIn 400ms ease',
-  },
-  checkmark: {
-    fontSize: '3rem',
-    color: '#4ade80',
-    marginBottom: '12px',
-    animation: 'scaleIn 400ms ease',
   },
   successText: {
     fontSize: '1.2rem',

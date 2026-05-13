@@ -17,6 +17,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@emailjs/browser": "4.4.1",
     "@fontsource/bangers": "^5.2.8",
     "@fontsource/comic-neue": "^5.2.7",
     "@fontsource/patrick-hand": "^5.2.8",

@@ -43,7 +43,6 @@ import { useParallax } from "./hooks/useParallax";
 import { useFocusTrap } from "./hooks/useFocusTrap";
 import { NowPlayingBar } from "./components/NowPlayingBar";
 import { MobileNavBar } from "./components/MobileNavBar";
-import { CustomCursor } from "./components/CustomCursor";
 import { AudioVisualizer } from "./components/AudioVisualizer";
 import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { 
@@ -56,7 +55,7 @@ import { ScrollProgress } from "./components/ScrollProgress";
 import { ResponsiveImage } from "./components/ResponsiveImage";
 
 const CONFIG_ASSETS = {
-  mainBackground: "./images/hero_bg.jpg",
+  mainBackground: "./images/hero_bg.webp",
   nameHeaderBg: "./images/header_bg.gif",
   footerDecoration: "./images/footer_deco.gif",
   spotifyIcon: "https://img.icons8.com/plasticine/1200/spotify--v2.jpg",
@@ -404,7 +403,6 @@ export default function App() {
       <a href="#main-content" className="skip-to-content">
         Skip to main content
       </a>
-      <CustomCursor />
       <AudioVisualizer audioRef={audioRef} isPlaying={isPlaying} />
       <ScrollProgress />
       {!loaded && (
