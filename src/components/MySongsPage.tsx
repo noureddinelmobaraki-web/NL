@@ -593,17 +593,22 @@ export const MySongs = ({
   }, [activeId, audioStatus, isMobile, handlePlayToggle, currentTime, duration, handleSeek, volume]);
 
   const handleShare = (song: Song) => {
-    const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}share/song-${song.id}.html`;
+    const baseUrl = window.location.origin + import.meta.env.BASE_URL;
+    const shareUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}share/song-${song.id}.html`;
     
-    if (navigator.share) {
+    if (navigator.share && isMobile) {
       navigator.share({
         title: `${song.title} | NRADIO`,
-        text: `Listen to ${song.title} on NRADIO`,
+        text: `Listen to ${song.title} by NL on NRADIO`,
         url: shareUrl,
-      }).catch(() => {});
+      }).catch((err) => {
+        if (err.name !== 'AbortError') {
+          // Fallback to clipboard if share fails
+          navigator.clipboard.writeText(shareUrl);
+        }
+      });
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert('Link copied to clipboard!');
     }
   };
 

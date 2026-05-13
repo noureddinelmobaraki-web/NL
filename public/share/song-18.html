@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LMORPHINIYA 33 | NRADIO</title>
     
+    <!-- Open Graph / Meta Tags -->
     <meta property="og:type" content="music.song">
     <meta property="og:url" content="https://noureddinelmobaraki.github.io/nradio/?s=18">
     <meta property="og:title" content="LMORPHINIYA 33 | Listen on NRADIO">
@@ -12,16 +13,27 @@
     <meta property="og:image" content="https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/18.%20LMORPHINIYA%2033%20-%20Background.webp">
     <meta property="og:site_name" content="NRADIO">
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="LMORPHINIYA 33 | Listen on NRADIO">
     <meta name="twitter:description" content="Click to listen to LMORPHINIYA 33 by NL on NRADIO.">
     <meta name="twitter:image" content="https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/18.%20LMORPHINIYA%2033%20-%20Background.webp">
 
     <script>
-        window.location.href = "../../?s=18";
+        // Redirect human users to the main app with the song parameter
+        // We use relative path because it's in public/share/
+        window.location.href = "../?s=18";
     </script>
+    <style>
+        body { background: #050505; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; text-align: center; }
+        .loader { border: 2px solid rgba(255,255,255,0.1); border-top: 2px solid #6366f1; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body style="background: #050505; color: white;">
-    <p>Opening <b>LMORPHINIYA 33</b> in NRADIO...</p>
+<body>
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <div class="loader"></div>
+        <p>Opening <b>LMORPHINIYA 33</b> in NRADIO...</p>
+    </div>
 </body>
 </html>

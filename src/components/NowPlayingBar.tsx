@@ -2,6 +2,7 @@ import { Play, Pause, X, SkipForward, SkipBack, Share2, Check } from "lucide-rea
 import { ActiveSong } from "../types";
 import { useState, useCallback } from "react";
 import { useDeviceType } from "../hooks/useDeviceType";
+import { motion } from "framer-motion";
 
 interface NowPlayingBarProps {
   activeSong: ActiveSong | null;
@@ -125,16 +126,52 @@ export const NowPlayingBar = ({
           <button
             onClick={handleShare}
             style={{ 
-              color: showCopied ? "#4ade80" : "rgba(255,255,255,0.6)", 
+              color: showCopied ? "#4ade80" : "rgba(255,255,255,0.4)", 
               padding: "8px", 
               borderRadius: "50%", 
-              transition: "all 0.2s",
-              position: 'relative'
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              position: 'relative',
+              background: showCopied ? "rgba(74, 222, 128, 0.1)" : "transparent",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             className="hover:bg-white/10"
             title="Share Song"
           >
-            {showCopied ? <Check size={18} /> : <Share2 size={18} />}
+            {showCopied ? (
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.5, opacity: 0 }}
+              >
+                <Check size={18} strokeWidth={3} />
+              </motion.div>
+            ) : (
+              <Share2 size={18} />
+            )}
+            {showCopied && !isMobile && (
+              <motion.span
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  position: 'absolute',
+                  top: '-30px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'rgba(74, 222, 128, 0.9)',
+                  color: 'black',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                  pointerEvents: 'none'
+                }}
+              >
+                LINK COPIED
+              </motion.span>
+            )}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); activeSong?.onPlayPause(); }}

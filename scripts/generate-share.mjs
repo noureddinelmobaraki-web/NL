@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+// MUST MATCH THE BASE IN vite.config.ts
 const domain = "https://noureddinelmobaraki.github.io/nradio";
 
 const songs = [
@@ -37,6 +38,7 @@ if (!fs.existsSync(shareDir)) {
 }
 
 songs.forEach(song => {
+  // Use raw github url for OG image to ensure it works even before the site is built/deployed
   const imageUrl = `https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/${encodeURIComponent(song.image)}`;
   
   const html = `<!DOCTYPE html>
@@ -46,6 +48,7 @@ songs.forEach(song => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${song.title} | NRADIO</title>
     
+    <!-- Open Graph / Meta Tags -->
     <meta property="og:type" content="music.song">
     <meta property="og:url" content="${domain}/?s=${song.id}">
     <meta property="og:title" content="${song.title} | Listen on NRADIO">
@@ -53,21 +56,32 @@ songs.forEach(song => {
     <meta property="og:image" content="${imageUrl}">
     <meta property="og:site_name" content="NRADIO">
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${song.title} | Listen on NRADIO">
     <meta name="twitter:description" content="Click to listen to ${song.title} by NL on NRADIO.">
     <meta name="twitter:image" content="${imageUrl}">
 
     <script>
-        window.location.href = "../../?s=${song.id}";
+        // Redirect human users to the main app with the song parameter
+        // We use relative path because it's in public/share/
+        window.location.href = "../?s=${song.id}";
     </script>
+    <style>
+        body { background: #050505; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; text-align: center; }
+        .loader { border: 2px solid rgba(255,255,255,0.1); border-top: 2px solid #6366f1; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body style="background: #050505; color: white;">
-    <p>Opening <b>${song.title}</b> in NRADIO...</p>
+<body>
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <div class="loader"></div>
+        <p>Opening <b>${song.title}</b> in NRADIO...</p>
+    </div>
 </body>
 </html>`;
 
   fs.writeFileSync(path.join(shareDir, `song-${song.id}.html`), html);
 });
 
-console.log("Generated share pages.");
+console.log("Successfully generated share pages in /public/share/");

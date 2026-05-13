@@ -7,7 +7,7 @@ import { compression } from 'vite-plugin-compression2';
 
 export default defineConfig(({ mode }) => {
   return {
-    base: './',
+    base: '/nradio/',
     plugins: [
       react(), 
       tailwindcss(),
