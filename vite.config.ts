@@ -7,7 +7,7 @@ import { compression } from 'vite-plugin-compression2';
 
 export default defineConfig(({ mode }) => {
   return {
-    base: '/NL/',
+    base: './',
     plugins: [
       react(), 
       tailwindcss(),

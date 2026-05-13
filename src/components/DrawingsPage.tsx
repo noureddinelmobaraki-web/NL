@@ -133,8 +133,8 @@ const CrossfadeImage = () => {
   }, []);
   
   const images = [
-    '/images/DRAW.jpeg',
-    '/images/DRAW2.jpeg',
+    `${import.meta.env.BASE_URL}images/DRAW.jpeg`,
+    `${import.meta.env.BASE_URL}images/DRAW2.jpeg`,
   ];
   
   return (

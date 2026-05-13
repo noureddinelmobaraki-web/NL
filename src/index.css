@@ -144,6 +144,234 @@
   .sketch-text {
     @apply font-sketch;
   }
+
+  .retro-shadow-sm {
+    box-shadow: 3px 3px 0px #000, 6px 6px 0px rgba(0, 0, 0, 0.15);
+  }
+  .retro-shadow-md {
+    box-shadow: 5px 5px 0px #000, 9px 9px 0px rgba(0, 0, 0, 0.15), 14px 14px 0px rgba(0, 0, 0, 0.08);
+  }
+  .retro-shadow-lg {
+    box-shadow: 8px 8px 0px #000, 14px 14px 0px rgba(0, 0, 0, 0.2), 20px 20px 0px rgba(0, 0, 0, 0.1);
+  }
+  .retro-shadow-white {
+    box-shadow: 5px 5px 0px #fff, 9px 9px 0px rgba(255, 255, 255, 0.15);
+  }
+
+  .halftone-bg {
+    position: relative;
+  }
+  .halftone-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.15) 1px, transparent 0);
+    background-size: 8px 8px;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: inherit;
+  }
+
+  .glitch-text {
+    position: relative;
+  }
+  .glitch-text::before,
+  .glitch-text::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+  .glitch-text:hover::before {
+    opacity: 0.8;
+    animation: glitch-1 0.3s steps(2) 1;
+  }
+  .glitch-text:hover::after {
+    opacity: 0.8;
+    animation: glitch-2 0.3s steps(2) 1;
+  }
+
+  .manga-panel {
+    border: 4px solid #000;
+    box-shadow: 8px 8px 0 #000;
+    position: relative;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(4px);
+  }
+  .manga-panel::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+  }
+
+  .speed-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: speed-lines-fade 0.4s ease-out forwards;
+  }
+
+  .manga-card-hover {
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+  }
+  .manga-card-hover::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  .manga-card-hover:hover::before {
+    opacity: 1;
+  }
+
+  .scroll-to-top {
+    position: fixed;
+    bottom: 80px;
+    right: 16px;
+    z-index: 500;
+    width: 44px;
+    height: 44px;
+    background: #000;
+    border: 3px solid #fff;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 4px 4px 0 #fff;
+    transition: all 0.2s ease;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  .scroll-to-top.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .scroll-to-top:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 #fff;
+  }
+
+  .manga-highlight {
+    background: linear-gradient(to right, #ff0040, #ff6b00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .manga-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .manga-underline::after {
+    content: "";
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #000;
+    transform: skewX(-10deg);
+  }
+
+  .manga-divider {
+    height: 4px;
+    background: repeating-linear-gradient(90deg, #000 0px, #000 20px, transparent 20px, transparent 30px);
+    margin: 8px 0;
+  }
+}
+
+@keyframes glitch-1 {
+  0% {
+    clip-path: inset(40% 0 61% 0);
+    transform: translate(-2px, 0);
+  }
+  20% {
+    clip-path: inset(92% 0 1% 0);
+    transform: translate(2px, 0);
+  }
+  40% {
+    clip-path: inset(43% 0 1% 0);
+    transform: translate(-2px, 0);
+  }
+  60% {
+    clip-path: inset(25% 0 58% 0);
+    transform: translate(2px, 0);
+  }
+  80% {
+    clip-path: inset(54% 0 7% 0);
+    transform: translate(-2px, 0);
+  }
+  100% {
+    clip-path: inset(58% 0 43% 0);
+    transform: translate(2px, 0);
+  }
+}
+@keyframes glitch-2 {
+  0% {
+    clip-path: inset(65% 0 8% 0);
+    transform: translate(2px, 0);
+    color: #ff0040;
+  }
+  20% {
+    clip-path: inset(20% 0 70% 0);
+    transform: translate(-2px, 0);
+  }
+  40% {
+    clip-path: inset(80% 0 5% 0);
+    transform: translate(2px, 0);
+    color: #00ffff;
+  }
+  60% {
+    clip-path: inset(10% 0 80% 0);
+    transform: translate(-2px, 0);
+  }
+  80% {
+    clip-path: inset(50% 0 30% 0);
+    transform: translate(2px, 0);
+    color: #ff0040;
+  }
+  100% {
+    clip-path: inset(35% 0 50% 0);
+    transform: translate(-2px, 0);
+  }
+}
+@keyframes speed-lines-fade {
+  from {
+    opacity: 0.6;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+@media (hover: none) {
+  .manga-button:active {
+    transform: translate(4px, 4px) !important;
+    box-shadow: 4px 4px 0 #000 !important;
+  }
+  .manga-card:active {
+    transform: translate(2px, 2px) !important;
+    box-shadow: 3px 3px 0 #000 !important;
+  }
 }
 
 @keyframes pulse-spotify {

@@ -29,6 +29,7 @@ import { LoadingScreen } from "./components/LoadingScreen";
 import { MySongs } from './components/MySongsPage';
 import { DrawingsPage } from './components/DrawingsPage';
 import { Sarahni } from './components/Sarahni';
+import { LensGallery } from './components/LensGallery';
 import { GameShell } from './games/GameShell';
 import { GameSelector } from './games/GameSelector';
 import { TetrisGame } from './games/tetris/TetrisGame';
@@ -134,7 +135,7 @@ const CONTACT_METHODS: ContactMethod[] = [
     value: "noureddinelmobaraki@gmail.com",
     url: "mailto:noureddinelmobaraki@gmail.com",
     icon: Mail,
-    bg: "images/gmail_bg.gif",
+    bg: `${import.meta.env.BASE_URL}images/gmail_bg.gif`,
     color: "#EA4335"
   },
   {
@@ -142,7 +143,7 @@ const CONTACT_METHODS: ContactMethod[] = [
     value: "+212 612-806932",
     url: "https://wa.me/212612806932",
     icon: MessageCircle,
-    bg: "images/whatsapp_bg.gif",
+    bg: `${import.meta.env.BASE_URL}images/whatsapp_bg.gif`,
     color: "#25D366"
   },
   {
@@ -150,7 +151,7 @@ const CONTACT_METHODS: ContactMethod[] = [
     value: "+212 612 806932",
     url: "https://t.me/212612806932",
     icon: Send,
-    bg: "images/telegram_bg.gif",
+    bg: `${import.meta.env.BASE_URL}images/telegram_bg.gif`,
     color: "#0088CC"
   }
 ];
@@ -175,16 +176,17 @@ const itemVariants: Variants = {
   }
 };
 
+const _B = import.meta.env.BASE_URL;
 const ME_BIT_IMAGES = [
-  "/images/me_bit_1.jpg",
-  "/images/me_bit_2.jpg",
-  "/images/me_bit_3.jpg",
-  "/images/me_bit_4.jpg",
-  "/images/me_bit_5.jpg",
-  "/images/me_bit_6.jpg",
-  "/images/me_bit_7.jpg",
-  "/images/me_bit_8.jpg",
-  "/images/me_bit_9.jpg"
+  `${_B}images/me_bit_1.jpg`,
+  `${_B}images/me_bit_2.jpg`,
+  `${_B}images/me_bit_3.jpg`,
+  `${_B}images/me_bit_4.jpg`,
+  `${_B}images/me_bit_5.jpg`,
+  `${_B}images/me_bit_6.jpg`,
+  `${_B}images/me_bit_7.jpg`,
+  `${_B}images/me_bit_8.jpg`,
+  `${_B}images/me_bit_9.jpg`,
 ];
 
 const STYLES = {
@@ -199,6 +201,7 @@ export default function App() {
   const { isMobile } = useDeviceType();
   const parallaxRef = useParallax(isMobile ? 0 : 20);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [isLensGalleryOpen, setIsLensGalleryOpen] = useState(false);
   const galleryRef = useFocusTrap(isGalleryOpen);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -209,6 +212,7 @@ export default function App() {
   const [activeSong, setActiveSong] = useState<ActiveSong | null>(null);
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState('home');
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);
@@ -291,7 +295,7 @@ export default function App() {
         (event.source as WindowProxy)?.postMessage({ 
           type: 'BEST_SCORE_DATA', 
           data: { score: parseInt(bestScore, 10) } 
-        }, { targetOrigin: '*' });
+        }, { targetOrigin: 'null' });
       } else if (type === 'SET_BEST_SCORE') {
         const newScore = parseInt(data.score, 10);
         if (isNaN(newScore)) return;
@@ -377,6 +381,23 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    const onOpen = () => {
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+    window.addEventListener('gallery:open', onOpen);
+    return () => window.removeEventListener('gallery:open', onOpen);
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
 
   return (
     <>
@@ -433,7 +454,7 @@ export default function App() {
         loop 
         preload="auto"
       >
-        <source src="music.mp3" type="audio/mpeg" />
+        <source src={`${import.meta.env.BASE_URL}music.mp3`} type="audio/mpeg" />
         Your browser does not support the audio element.
       </audio>
 
@@ -678,6 +699,12 @@ export default function App() {
           >
             MY DRAWINGS
           </button>
+          <button
+            onClick={() => setIsLensGalleryOpen(true)}
+            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[8px_8px_0px_rgba(255,255,255,0.2)] hover:shadow-[12px_12px_0px_#fff] -translate-y-1"
+          >
+            📷 LENS
+          </button>
         </motion.div>
 
         <div className="flex flex-col gap-14">
@@ -692,7 +719,7 @@ export default function App() {
                 href={method.url}
                 target="_blank"
                 rel="noreferrer"
-                className="manga-border group relative flex flex-col items-center justify-center p-6 border-[4px] border-black overflow-hidden bg-white transition-all duration-300 hover:scale-[1.05] hover:-rotate-1 active:scale-95 shadow-[8px_8px_0px_#000]"
+                className="manga-border group relative flex flex-col items-center justify-center p-6 border-[4px] border-black overflow-hidden bg-white transition-all duration-300 hover:scale-[1.05] hover:-rotate-1 active:scale-95 shadow-[8px_8px_0px_#000] manga-card-hover"
               >
                 {/* GIF Background */}
                 <div 
@@ -725,7 +752,7 @@ export default function App() {
           >
             <div 
               lang="en"
-              className="manga-border p-8 flex-1 min-w-[60%] relative group overflow-hidden border-[4px] border-black transition-all duration-500 hover:scale-[1.01]"
+              className="manga-border p-8 flex-1 min-w-[60%] relative group overflow-hidden border-[4px] border-black transition-all duration-500 hover:scale-[1.01] halftone-bg"
               id="header-card"
             >
               {/* Header Background Image with Zoom & Pan Hover Effect */}
@@ -737,8 +764,9 @@ export default function App() {
               <div className="absolute inset-0 z-[-1] bg-black/40 transition-opacity group-hover:opacity-30" />
               
               <h1 
-                className="font-manga text-5xl md:text-7xl font-black uppercase tracking-tight text-white leading-none"
+                className="font-manga text-5xl md:text-7xl font-black uppercase tracking-tight text-white leading-none glitch-text"
                 style={STYLES.SHADOW_BLACK_LG}
+                data-text="Noureddin El Mobaraki"
               >
                 Noureddin El Mobaraki
               </h1>
@@ -844,6 +872,7 @@ export default function App() {
               <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit -rotate-1 shadow-[4px_4px_0px_#000]">
                 ■ STREAMING PLATFORMS
               </h2>
+              <div className="manga-divider" />
               
               <div className="grid grid-cols-2 gap-4">
                 {STREAMING_PLATFORMS.map((platform, idx) => (
@@ -855,7 +884,7 @@ export default function App() {
                       href={platform.url}
                       target="_blank"
                       rel="noreferrer"
-                      className={`manga-button flex items-center gap-3 group ${platform.isSpotify ? 'spotify-king' : ''}`}
+                      className={`manga-button flex items-center gap-3 group manga-card-hover ${platform.isSpotify ? 'spotify-king' : ''}`}
                     >
                       {platform.isSpotify ? (
                         <img src={CONFIG_ASSETS.spotifyIcon} alt="Spotify" className="w-8 h-8 shrink-0 object-contain drop-shadow-[0_0_8px_#1DB954]" referrerPolicy="no-referrer" loading="lazy" />
@@ -874,6 +903,7 @@ export default function App() {
               <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit rotate-1 shadow-[4px_4px_0px_#000]">
                 ■ SOCIAL CHANNELS
               </h2>
+              <div className="manga-divider" />
             
             <div className="flex flex-col gap-5">
               {SOCIAL_CHANNELS.map((channel, idx) => (
@@ -912,13 +942,14 @@ export default function App() {
             </h2>
             <span className="font-hand text-zinc-400 text-sm italic mb-1">Click to enter theater mode</span>
           </div>
+          <div className="manga-divider" />
           
           <div 
             onClick={() => {
               setIsGalleryOpen(true);
               if (selectedImageIndex === null) setSelectedImageIndex(0);
             }}
-            className="relative w-full border-[4px] border-black bg-white p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[280px]"
+            className="relative w-full border-[4px] border-black bg-white p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[280px] manga-panel"
           >
             <div className="me-bit-track flex gap-[10px]">
               {[...ME_BIT_IMAGES, ...ME_BIT_IMAGES].map((src, idx) => (
@@ -950,6 +981,64 @@ export default function App() {
                 <Maximize2 className="w-6 h-6" aria-hidden="true" />
                 <span className="font-manga text-xl font-bold">OPEN GALLERY</span>
               </div>
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section
+          variants={itemVariants}
+          className="flex flex-col gap-4 mt-4"
+          id="lens-section"
+        >
+          <div className="flex justify-between items-end">
+            <h2 className="font-manga text-3xl font-bold text-white tracking-wider">
+              THROUGH THE LENS
+            </h2>
+          </div>
+          <div className="manga-divider" />
+
+          {/* Thumbnail trigger */}
+          <div
+            onClick={() => setIsLensGalleryOpen(true)}
+            className="relative w-full border-[4px] border-black bg-black overflow-hidden group cursor-pointer shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[200px]"
+            role="button"
+            aria-label="Open photography gallery"
+            tabIndex={0}
+            onKeyDown={e => { if (e.key === 'Enter') setIsLensGalleryOpen(true); }}
+          >
+            {/* Background: photo.gif */}
+            <div
+              className="absolute inset-0 bg-cover bg-center transition-all duration-700 group-hover:scale-110 opacity-60 group-hover:opacity-80"
+              style={{ backgroundImage: `url('${import.meta.env.BASE_URL}images/photo.gif')` }}
+            />
+            {/* Sunlight/Glass shimmer overlay */}
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 1,
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 40%, rgba(255,230,100,0.08) 70%, rgba(255,255,255,0.12) 100%)',
+              pointerEvents: 'none',
+            }} />
+            <div style={{
+              position: 'absolute', top: '-30%', left: '-10%', zIndex: 1,
+              width: '60%', height: '160%',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)',
+              transform: 'rotate(-15deg)',
+              pointerEvents: 'none',
+            }} />
+
+            {/* Hover CTA */}
+            <div className="absolute inset-0 flex items-end justify-center pb-6 z-20">
+              <span style={{
+                fontFamily: 'var(--font-hand)',
+                fontSize: '13px',
+                fontWeight: 400,
+                color: 'rgba(255,255,255,0.6)',
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                opacity: 0,
+                transition: 'opacity 300ms ease',
+              }} className="group-hover:!opacity-100">
+                open gallery
+              </span>
             </div>
           </div>
         </motion.section>
@@ -1004,6 +1093,7 @@ export default function App() {
             <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit -rotate-1 shadow-[4px_4px_0px_#000]">
               ■ THE GAME BOX
             </h2>
+            <div className="manga-divider" />
             
             <div 
               className="relative border-[5px] border-black shadow-[12px_12px_0px_#000] rounded-none overflow-hidden group min-h-[440px] flex items-center justify-center"
@@ -1047,7 +1137,7 @@ export default function App() {
       {/* Editorial Footer */}
         <motion.footer 
           variants={itemVariants}
-          className="mt-10 flex flex-col items-center gap-8 border-t-4 border-black pt-10 pb-20"
+          className="mt-10 flex flex-col items-center gap-8 border-t-4 border-black pt-10 pb-20 retro-shadow-white"
         >
           {/* Footer Decoration Image with Float Animation */}
           <ResponsiveImage 
@@ -1080,6 +1170,18 @@ export default function App() {
           setActiveSong(null);
         }}
       />
+      <LensGallery
+        isOpen={isLensGalleryOpen}
+        onClose={() => setIsLensGalleryOpen(false)}
+      />
+      <button
+        className={`scroll-to-top ${showScrollTop ? 'visible' : ''}`}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Scroll to top"
+        style={{ fontFamily: 'var(--font-manga)' }}
+      >
+        ↑
+      </button>
       {isMobile && <MobileNavBar currentPage={currentPage} onNavigate={handleNavigate} />}
     </>
   );
