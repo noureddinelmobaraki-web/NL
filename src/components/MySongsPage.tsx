@@ -25,31 +25,31 @@ const resolveAsset = (path: string | null) => {
 };
 
 const songs: Song[] = [
-  { id: 1,  title: "TRI9 TBAWE9",           url: "https://github.com/user-attachments/files/27562010/TRI9.TBAWE9.mp3",             lrc: resolveAsset("/lrc/TRI9 TBAWE9.lrc")!, backgroundImage: ASSETS.songs.backgrounds[0] },
-  { id: 2,  title: "VETO",                   url: "https://github.com/user-attachments/files/27562012/VETO.mp3",                    lrc: resolveAsset("/lrc/VETO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[1] },
-  { id: 3,  title: "TOTAL",                  url: "https://github.com/user-attachments/files/27562017/TOTAL.mp3",                   lrc: resolveAsset("/lrc/TOTAL.lrc")!, backgroundImage: ASSETS.songs.backgrounds[2] },
-  { id: 4,  title: "7CHAYCHI DIMO9RATI",     url: "https://github.com/user-attachments/files/27562028/7CHAYCHI.DIMO9RATI.mp3",     lrc: resolveAsset("/lrc/7CHAYCHI DIMO9RATI.lrc")!, backgroundImage: ASSETS.songs.backgrounds[3] },
-  { id: 5,  title: "A Lot",                  url: "https://github.com/user-attachments/files/27562033/A.Lot.mp3",                   lrc: resolveAsset("/lrc/A Lot.lrc")!, backgroundImage: ASSETS.songs.backgrounds[4] },
-  { id: 6,  title: "BEAUTIFUL",              url: "https://github.com/user-attachments/files/27562034/BEAUTIFUL.mp3",               lrc: null, backgroundImage: ASSETS.songs.backgrounds[5] },
-  { id: 7,  title: "Bouh",                   url: "https://github.com/user-attachments/files/27562039/Bouh.mp3",                    lrc: resolveAsset("/lrc/Bouh.lrc")!, backgroundImage: ASSETS.songs.backgrounds[6] },
-  { id: 8,  title: "Brain Damage",           url: "https://github.com/user-attachments/files/27562042/Brain.Damage.mp3",            lrc: resolveAsset("/lrc/Brain Damage.lrc")!, backgroundImage: ASSETS.songs.backgrounds[7] },
-  { id: 9,  title: "Deal With The Devil",    url: "https://github.com/user-attachments/files/27562043/Deal.With.The.Devil.mp3",    lrc: resolveAsset("/lrc/Deal With The Devil.lrc")!, backgroundImage: ASSETS.songs.backgrounds[8] },
-  { id: 10, title: "Dokhana V2",             url: "https://github.com/user-attachments/files/27562044/Dokhana.V2.mp3",              lrc: null, backgroundImage: ASSETS.songs.backgrounds[9] },
-  { id: 11, title: "GOUROU",                 url: "https://github.com/user-attachments/files/27562046/GOUROU.mp3",                  lrc: resolveAsset("/lrc/GOUROU.lrc")!, backgroundImage: ASSETS.songs.backgrounds[10] },
-  { id: 12, title: "ITCHY W SCRATCHY",       url: "https://github.com/user-attachments/files/27562047/ITCHY.W.SCRATCHY.mp3",       lrc: null, backgroundImage: ASSETS.songs.backgrounds[11] },
-  { id: 13, title: "KOUN NADI",              url: "https://github.com/user-attachments/files/27562048/KOUN.NADI.mp3",               lrc: resolveAsset("/lrc/KOUN NADI.lrc")!, backgroundImage: ASSETS.songs.backgrounds[12] },
-  { id: 14, title: "L'AI Could Never",       url: "https://github.com/user-attachments/files/27562049/L.AI.Could.Never.mp3",       lrc: resolveAsset("/lrc/L'AI Could Never.lrc")!, backgroundImage: ASSETS.songs.backgrounds[13] },
-  { id: 15, title: "L'bayda Mon Amour",      url: "https://github.com/user-attachments/files/27562051/L.bayda.Mon.Amour.mp3",      lrc: resolveAsset("/lrc/L'bayda Mon Amour.lrc")!, backgroundImage: ASSETS.songs.backgrounds[14] },
-  { id: 16, title: "Let The Rhythm Hit 'em", url: "https://github.com/user-attachments/files/27562053/Let.The.Rhythm.Hit.em.mp3",  lrc: resolveAsset("/lrc/Let The Rhythm Hit 'em.lrc")!, backgroundImage: ASSETS.songs.backgrounds[15] },
-  { id: 17, title: "LMORPHINIYA 31",         url: "https://github.com/user-attachments/files/27562055/LMORPHINIYA.31.mp3",          lrc: null, backgroundImage: ASSETS.songs.backgrounds[16] },
-  { id: 18, title: "LMORPHINIYA 33",         url: "https://github.com/user-attachments/files/27562057/LMORPHINIYA.33.mp3",          lrc: null, backgroundImage: ASSETS.songs.backgrounds[17] },
-  { id: 19, title: "LMORPHINIYA 1013",       url: "https://github.com/user-attachments/files/27562059/LMORPHINIYA.1013.mp3",       lrc: resolveAsset("/lrc/LMORPHINIYA 1013.lrc")!, backgroundImage: ASSETS.songs.backgrounds[18] },
-  { id: 20, title: "Lmorphinya 19 V2",       url: "https://github.com/user-attachments/files/27562060/Lmorphinya.19.V2.mp3",       lrc: null, backgroundImage: ASSETS.songs.backgrounds[19] },
-  { id: 21, title: "MAGNETO",                url: "https://github.com/user-attachments/files/27562061/MAGNETO.mp3",                 lrc: resolveAsset("/lrc/MAGNETO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[20] },
-  { id: 22, title: "None Shall Pass",        url: "https://github.com/user-attachments/files/27562062/None.Shall.Pass.mp3",        lrc: resolveAsset("/lrc/None Shall Pass.lrc")!, backgroundImage: ASSETS.songs.backgrounds[21] },
-  { id: 23, title: "Ohio",                   url: "https://github.com/user-attachments/files/27562063/Ohio.mp3",                   lrc: resolveAsset("/lrc/OHIO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[22] },
-  { id: 24, title: "Ostora",                 url: "https://github.com/user-attachments/files/27562064/Ostora.mp3",                  lrc: resolveAsset("/lrc/Ostora.lrc")!, backgroundImage: ASSETS.songs.backgrounds[23] },
-  { id: 25, title: "Tromso",                 url: "https://github.com/user-attachments/files/27562065/Tromso.mp3",                  lrc: resolveAsset("/lrc/Tromso.lrc")!, backgroundImage: ASSETS.songs.backgrounds[24] },
+  { id: 1,  title: "TRI9 TBAWE9",           url: "https://github.com/user-attachments/files/27562010/TRI9.TBAWE9.mp3",             lrc: resolveAsset("/lrc/TRI9 TBAWE9.lrc")!, backgroundImage: ASSETS.songs.backgrounds[0], sharePath: "/share/song-1.html" },
+  { id: 2,  title: "VETO",                   url: "https://github.com/user-attachments/files/27562012/VETO.mp3",                    lrc: resolveAsset("/lrc/VETO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[1], sharePath: "/share/song-2.html" },
+  { id: 3,  title: "TOTAL",                  url: "https://github.com/user-attachments/files/27562017/TOTAL.mp3",                   lrc: resolveAsset("/lrc/TOTAL.lrc")!, backgroundImage: ASSETS.songs.backgrounds[2], sharePath: "/share/song-3.html" },
+  { id: 4,  title: "7CHAYCHI DIMO9RATI",     url: "https://github.com/user-attachments/files/27562028/7CHAYCHI.DIMO9RATI.mp3",     lrc: resolveAsset("/lrc/7CHAYCHI DIMO9RATI.lrc")!, backgroundImage: ASSETS.songs.backgrounds[3], sharePath: "/share/song-4.html" },
+  { id: 5,  title: "A Lot",                  url: "https://github.com/user-attachments/files/27562033/A.Lot.mp3",                   lrc: resolveAsset("/lrc/A Lot.lrc")!, backgroundImage: ASSETS.songs.backgrounds[4], sharePath: "/share/song-5.html" },
+  { id: 6,  title: "BEAUTIFUL",              url: "https://github.com/user-attachments/files/27562034/BEAUTIFUL.mp3",               lrc: null, backgroundImage: ASSETS.songs.backgrounds[5], sharePath: "/share/song-6.html" },
+  { id: 7,  title: "Bouh",                   url: "https://github.com/user-attachments/files/27562039/Bouh.mp3",                    lrc: resolveAsset("/lrc/Bouh.lrc")!, backgroundImage: ASSETS.songs.backgrounds[6], sharePath: "/share/song-7.html" },
+  { id: 8,  title: "Brain Damage",           url: "https://github.com/user-attachments/files/27562042/Brain.Damage.mp3",            lrc: resolveAsset("/lrc/Brain Damage.lrc")!, backgroundImage: ASSETS.songs.backgrounds[7], sharePath: "/share/song-8.html" },
+  { id: 9,  title: "Deal With The Devil",    url: "https://github.com/user-attachments/files/27562043/Deal.With.The.Devil.mp3",    lrc: resolveAsset("/lrc/Deal With The Devil.lrc")!, backgroundImage: ASSETS.songs.backgrounds[8], sharePath: "/share/song-9.html" },
+  { id: 10, title: "Dokhana V2",             url: "https://github.com/user-attachments/files/27562044/Dokhana.V2.mp3",              lrc: null, backgroundImage: ASSETS.songs.backgrounds[9], sharePath: "/share/song-10.html" },
+  { id: 11, title: "GOUROU",                 url: "https://github.com/user-attachments/files/27562046/GOUROU.mp3",                  lrc: resolveAsset("/lrc/GOUROU.lrc")!, backgroundImage: ASSETS.songs.backgrounds[10], sharePath: "/share/song-11.html" },
+  { id: 12, title: "ITCHY W SCRATCHY",       url: "https://github.com/user-attachments/files/27562047/ITCHY.W.SCRATCHY.mp3",       lrc: null, backgroundImage: ASSETS.songs.backgrounds[11], sharePath: "/share/song-12.html" },
+  { id: 13, title: "KOUN NADI",              url: "https://github.com/user-attachments/files/27562048/KOUN.NADI.mp3",               lrc: resolveAsset("/lrc/KOUN NADI.lrc")!, backgroundImage: ASSETS.songs.backgrounds[12], sharePath: "/share/song-13.html" },
+  { id: 14, title: "L'AI Could Never",       url: "https://github.com/user-attachments/files/27562049/L.AI.Could.Never.mp3",       lrc: resolveAsset("/lrc/L'AI Could Never.lrc")!, backgroundImage: ASSETS.songs.backgrounds[13], sharePath: "/share/song-14.html" },
+  { id: 15, title: "L'bayda Mon Amour",      url: "https://github.com/user-attachments/files/27562051/L.bayda.Mon.Amour.mp3",      lrc: resolveAsset("/lrc/L'bayda Mon Amour.lrc")!, backgroundImage: ASSETS.songs.backgrounds[14], sharePath: "/share/song-15.html" },
+  { id: 16, title: "Let The Rhythm Hit 'em", url: "https://github.com/user-attachments/files/27562053/Let.The.Rhythm.Hit.em.mp3",  lrc: resolveAsset("/lrc/Let The Rhythm Hit 'em.lrc")!, backgroundImage: ASSETS.songs.backgrounds[15], sharePath: "/share/song-16.html" },
+  { id: 17, title: "LMORPHINIYA 31",         url: "https://github.com/user-attachments/files/27562055/LMORPHINIYA.31.mp3",          lrc: null, backgroundImage: ASSETS.songs.backgrounds[16], sharePath: "/share/song-17.html" },
+  { id: 18, title: "LMORPHINIYA 33",         url: "https://github.com/user-attachments/files/27562057/LMORPHINIYA.33.mp3",          lrc: null, backgroundImage: ASSETS.songs.backgrounds[17], sharePath: "/share/song-18.html" },
+  { id: 19, title: "LMORPHINIYA 1013",       url: "https://github.com/user-attachments/files/27562059/LMORPHINIYA.1013.mp3",       lrc: resolveAsset("/lrc/LMORPHINIYA 1013.lrc")!, backgroundImage: ASSETS.songs.backgrounds[18], sharePath: "/share/song-19.html" },
+  { id: 20, title: "Lmorphinya 19 V2",       url: "https://github.com/user-attachments/files/27562060/Lmorphinya.19.V2.mp3",       lrc: null, backgroundImage: ASSETS.songs.backgrounds[19], sharePath: "/share/song-20.html" },
+  { id: 21, title: "MAGNETO",                url: "https://github.com/user-attachments/files/27562061/MAGNETO.mp3",                 lrc: resolveAsset("/lrc/MAGNETO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[20], sharePath: "/share/song-21.html" },
+  { id: 22, title: "None Shall Pass",        url: "https://github.com/user-attachments/files/27562062/None.Shall.Pass.mp3",        lrc: resolveAsset("/lrc/None Shall Pass.lrc")!, backgroundImage: ASSETS.songs.backgrounds[21], sharePath: "/share/song-22.html" },
+  { id: 23, title: "Ohio",                   url: "https://github.com/user-attachments/files/27562063/Ohio.mp3",                   lrc: resolveAsset("/lrc/OHIO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[22], sharePath: "/share/song-23.html" },
+  { id: 24, title: "Ostora",                 url: "https://github.com/user-attachments/files/27562064/Ostora.mp3",                  lrc: resolveAsset("/lrc/Ostora.lrc")!, backgroundImage: ASSETS.songs.backgrounds[23], sharePath: "/share/song-24.html" },
+  { id: 25, title: "Tromso",                 url: "https://github.com/user-attachments/files/27562065/Tromso.mp3",                  lrc: resolveAsset("/lrc/Tromso.lrc")!, backgroundImage: ASSETS.songs.backgrounds[24], sharePath: "/share/song-25.html" },
 ];
 
 const PRIMARY_RGB = "99, 102, 241"; 
@@ -92,7 +92,8 @@ const SongCard = memo(({
   duration,
   onSeek,
   volume,
-  onVolumeChange
+  onVolumeChange,
+  onShare
 }: { 
   song: Song; 
   index: number;
@@ -107,7 +108,17 @@ const SongCard = memo(({
   onSeek?: (val: number) => void;
   volume?: number;
   onVolumeChange?: (val: number) => void;
+  onShare?: () => void;
 }) => {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onShare?.();
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
   return (
     <motion.div 
       layout
@@ -188,22 +199,35 @@ const SongCard = memo(({
               </button>
             )}
             {!isActiveInBar && (
-              <button
-                onClick={onPlay}
-                className={`
-                  w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg
-                  ${isActive && isPlaying 
-                    ? 'bg-white text-black scale-110' 
-                    : 'bg-indigo-600/90 text-white hover:bg-indigo-500 hover:scale-105 active:scale-95'}
-                `}
-                aria-label={isActive && isPlaying ? "Pause" : "Play"}
-              >
-                {isActive && isWaiting ? (
-                  <div className="spinner !w-5 !h-5 border-white border-t-transparent" aria-hidden="true" />
-                ) : (
-                  isActive && isPlaying ? <Pause size={20} fill="currentColor" aria-hidden="true" /> : <Play size={20} fill="currentColor" className="ml-0.5" aria-hidden="true" />
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleShareClick}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isCopied ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/20'}`}
+                  title="Share"
+                >
+                  {isCopied ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                  )}
+                </button>
+                <button
+                  onClick={onPlay}
+                  className={`
+                    w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg
+                    ${isActive && isPlaying 
+                      ? 'bg-white text-black scale-110' 
+                      : 'bg-indigo-600/90 text-white hover:bg-indigo-500 hover:scale-105 active:scale-95'}
+                  `}
+                  aria-label={isActive && isPlaying ? "Pause" : "Play"}
+                >
+                  {isActive && isWaiting ? (
+                    <div className="spinner !w-5 !h-5 border-white border-t-transparent" aria-hidden="true" />
+                  ) : (
+                    isActive && isPlaying ? <Pause size={20} fill="currentColor" aria-hidden="true" /> : <Play size={20} fill="currentColor" className="ml-0.5" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -530,6 +554,7 @@ export const MySongs = ({
           onPlayPause: () => handlePlayToggle(),
           onPrev: handlePrev,
           onNext: handleNext,
+          onShare: () => handleShare(currentSong),
         });
       } else {
         onActiveSongChange(null);
@@ -553,6 +578,7 @@ export const MySongs = ({
         volume={volume}
         onVolumeChange={setVolume}
         onPlay={() => handlePlayToggle(song)}
+        onShare={() => handleShare(song)}
         setLyricsOpen={(open: boolean) => {
           setActiveId(song.id);
           if (isMobile) {
@@ -565,6 +591,46 @@ export const MySongs = ({
       />
     ));
   }, [activeId, audioStatus, isMobile, handlePlayToggle, currentTime, duration, handleSeek, volume]);
+
+  const handleShare = (song: Song) => {
+    const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}share/song-${song.id}.html`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: `${song.title} | NRADIO`,
+        text: `Listen to ${song.title} on NRADIO`,
+        url: shareUrl,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert('Link copied to clipboard!');
+    }
+  };
+
+  // Deep-linking effect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const songId = params.get('s');
+    let timer: NodeJS.Timeout | undefined;
+    
+    if (songId) {
+      const id = parseInt(songId);
+      const song = songs.find(s => s.id === id);
+      if (song) {
+        // Delay slightly to ensure UI is ready
+        timer = setTimeout(() => {
+          handlePlayToggle(song);
+          const element = document.getElementById('my-songs-section');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 1000);
+      }
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
   return (
     <section 

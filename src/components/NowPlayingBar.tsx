@@ -1,6 +1,6 @@
-import { Play, Pause, X, SkipForward, SkipBack } from "lucide-react";
+import { Play, Pause, X, SkipForward, SkipBack, Share2, Check } from "lucide-react";
 import { ActiveSong } from "../types";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useDeviceType } from "../hooks/useDeviceType";
 
 interface NowPlayingBarProps {
@@ -14,6 +14,16 @@ export const NowPlayingBar = ({
 }: NowPlayingBarProps) => {
   const { isMobile } = useDeviceType();
   const [isHovered, setIsHovered] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
+  
+  const handleShare = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (activeSong) {
+      activeSong.onShare();
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
+    }
+  }, [activeSong]);
   
   const isVisible = !!activeSong;
   const progress = (activeSong?.duration || 0) > 0 
@@ -111,6 +121,20 @@ export const NowPlayingBar = ({
             className="hover:bg-white/10"
           >
             <SkipBack size={18} fill="currentColor" />
+          </button>
+          <button
+            onClick={handleShare}
+            style={{ 
+              color: showCopied ? "#4ade80" : "rgba(255,255,255,0.6)", 
+              padding: "8px", 
+              borderRadius: "50%", 
+              transition: "all 0.2s",
+              position: 'relative'
+            }}
+            className="hover:bg-white/10"
+            title="Share Song"
+          >
+            {showCopied ? <Check size={18} /> : <Share2 size={18} />}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); activeSong?.onPlayPause(); }}

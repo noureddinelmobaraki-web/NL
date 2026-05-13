@@ -65,7 +65,8 @@ export const ASSETS = {
       new URL('../assets/images/songs/23. Ohio - Background.webp', import.meta.url).href,
       new URL('../assets/images/songs/24. Ostora - Background.webp', import.meta.url).href,
       new URL('../assets/images/songs/25. Tromso - Background.webp', import.meta.url).href,
-    ]
+    ],
+    sharePaths: Array.from({ length: 25 }, (_, i) => `${import.meta.env.BASE_URL}share/song-${i + 1}.html`)
   },
   gallery: {
     draw1: new URL('../assets/images/gallery/DRAW.webp', import.meta.url).href,
