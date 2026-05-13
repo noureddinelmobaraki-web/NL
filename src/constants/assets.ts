@@ -1,0 +1,79 @@
+
+// Helper to resolve paths if needed, though importing is preferred for Vite
+export const ASSETS = {
+  profile: {
+    main: new URL('../assets/images/profile/profile_img.webp', import.meta.url).href,
+    photo: new URL('../assets/images/profile/photo.webp', import.meta.url).href,
+    headerBg: new URL('../assets/images/profile/header_bg.webp', import.meta.url).href,
+    heroBg: new URL('../assets/images/profile/hero_bg.webp', import.meta.url).href,
+    footerDeco: new URL('../assets/images/profile/footer_deco.gif', import.meta.url).href,
+    me_bits: [
+      new URL('../assets/images/profile/me_bit_1.webp', import.meta.url).href,
+      new URL('../assets/images/profile/me_bit_2.webp', import.meta.url).href,
+      new URL('../assets/images/profile/me_bit_3.webp', import.meta.url).href,
+      new URL('../assets/images/profile/me_bit_4.webp', import.meta.url).href,
+      new URL('../assets/images/profile/me_bit_5.webp', import.meta.url).href,
+      new URL('../assets/images/profile/me_bit_6.webp', import.meta.url).href,
+      new URL('../assets/images/profile/me_bit_7.webp', import.meta.url).href,
+      new URL('../assets/images/profile/me_bit_8.webp', import.meta.url).href,
+      new URL('../assets/images/profile/me_bit_9.webp', import.meta.url).href,
+    ],
+    lens: [
+      new URL('../assets/images/profile/Lens Gallery/1.webp', import.meta.url).href,
+      new URL('../assets/images/profile/Lens Gallery/2.webp', import.meta.url).href,
+      new URL('../assets/images/profile/Lens Gallery/3.webp', import.meta.url).href,
+      new URL('../assets/images/profile/Lens Gallery/4.webp', import.meta.url).href,
+      new URL('../assets/images/profile/Lens Gallery/5.webp', import.meta.url).href,
+      new URL('../assets/images/profile/Lens Gallery/6.webp', import.meta.url).href,
+      new URL('../assets/images/profile/Lens Gallery/7.webp', import.meta.url).href,
+      new URL('../assets/images/profile/Lens Gallery/8.webp', import.meta.url).href,
+      new URL('../assets/images/profile/Lens Gallery/9.webp', import.meta.url).href,
+    ],
+    contacts: {
+      gmail: new URL('../assets/images/profile/gmail_bg.webp', import.meta.url).href,
+      whatsapp: new URL('../assets/images/profile/whatsapp_bg.webp', import.meta.url).href,
+      telegram: new URL('../assets/images/profile/telegram_bg.webp', import.meta.url).href,
+    }
+  },
+  songs: {
+    playlistCover: new URL('../assets/images/songs/playlist_cover.webp', import.meta.url).href,
+    gameBackground: new URL('../assets/images/songs/game Background.webp', import.meta.url).href,
+    ytHighlights: new URL('../assets/images/songs/yt_highlights.webp', import.meta.url).href,
+    backgrounds: [
+      new URL('../assets/images/songs/01. TRI9 TBA... - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/02. VETO - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/03. TOTAL - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/04. 7CHAYCH... - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/05. A Lot - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/06. BEAUTIFUL - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/07. Bouh - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/08. Brain Da... - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/09. Deal With... - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/10. Dokhana V2 - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/11. GOUROU - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/12. ITCHY W SCRATCHY - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/13. KOUN NADI - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/14. L\'AI Could... - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/15. L\'bayda M... - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/16. Let The R... - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/17. LMORPHINIYA 31 - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/18. LMORPHINIYA 33 - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/19. LMORPHI... - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/20. Lmorphinya 19 V2 - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/21. MAGNETO - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/22. None Sha... - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/23. Ohio - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/24. Ostora - Background.webp', import.meta.url).href,
+      new URL('../assets/images/songs/25. Tromso - Background.webp', import.meta.url).href,
+    ]
+  },
+  gallery: {
+    draw1: new URL('../assets/images/gallery/DRAW.webp', import.meta.url).href,
+    draw2: new URL('../assets/images/gallery/DRAW2.webp', import.meta.url).href,
+  },
+  media: {
+    music: new URL('../assets/media/music.mp3', import.meta.url).href,
+    lensMusic: 'https://github.com/user-attachments/assets/6a55e330-2007-4109-b030-6661cb26e320',
+    opening: new URL('../assets/media/opening.mp4', import.meta.url).href,
+  }
+};

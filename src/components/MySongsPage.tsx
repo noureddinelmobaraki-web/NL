@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo, Suspense } from 'react';
-import { Play, Pause, ChevronLeft, ChevronRight, Volume2 } from 'lucide-react';
+import { Play, Pause, ChevronLeft, ChevronRight, Volume2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDeviceType } from '../hooks/useDeviceType';
 import { extractDominantColorCached } from '../utils/extractColors';
+import { ASSETS } from '../constants/assets';
+import { audioManager } from '../audio/audioManager';
 import { 
   ActiveSong, 
   Song, 
@@ -16,38 +18,38 @@ import { LyricsWindowContent, LyricsWindow, parseLRC } from './LyricsEngine';
 const resolveAsset = (path: string | null) => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  // Remove leading slash if present then prepend BASE_URL
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  // Use manifest for most assets, handle LRC specially if needed
   const base = import.meta.env.BASE_URL || './';
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
   return (base.endsWith('/') ? base : base + '/') + cleanPath;
 };
 
 const songs: Song[] = [
-  { id: 1,  title: "TRI9 TBAWE9",           url: "https://github.com/user-attachments/files/27562010/TRI9.TBAWE9.mp3",             lrc: resolveAsset("/lrc/TRI9 TBAWE9.lrc")!, backgroundImage: resolveAsset("/images/songs Background/01. TRI9 TBA... - Background.jpeg")! },
-  { id: 2,  title: "VETO",                   url: "https://github.com/user-attachments/files/27562012/VETO.mp3",                    lrc: resolveAsset("/lrc/VETO.lrc")!, backgroundImage: resolveAsset("/images/songs Background/02. VETO - Background.jpeg")! },
-  { id: 3,  title: "TOTAL",                  url: "https://github.com/user-attachments/files/27562017/TOTAL.mp3",                   lrc: resolveAsset("/lrc/TOTAL.lrc")!, backgroundImage: resolveAsset("/images/songs Background/03. TOTAL - Background.jpeg")! },
-  { id: 4,  title: "7CHAYCHI DIMO9RATI",     url: "https://github.com/user-attachments/files/27562028/7CHAYCHI.DIMO9RATI.mp3",     lrc: resolveAsset("/lrc/7CHAYCHI DIMO9RATI.lrc")!, backgroundImage: resolveAsset("/images/songs Background/04. 7CHAYCH... - Background.jpeg")! },
-  { id: 5,  title: "A Lot",                  url: "https://github.com/user-attachments/files/27562033/A.Lot.mp3",                   lrc: resolveAsset("/lrc/A Lot.lrc")!, backgroundImage: resolveAsset("/images/songs Background/05. A Lot - Background.jpeg")! },
-  { id: 6,  title: "BEAUTIFUL",              url: "https://github.com/user-attachments/files/27562034/BEAUTIFUL.mp3",               lrc: null, backgroundImage: resolveAsset("/images/songs Background/06. BEAUTIFUL - Background.jpeg")! },
-  { id: 7,  title: "Bouh",                   url: "https://github.com/user-attachments/files/27562039/Bouh.mp3",                    lrc: resolveAsset("/lrc/Bouh.lrc")!, backgroundImage: resolveAsset("/images/songs Background/07. Bouh - Background.jpeg")! },
-  { id: 8,  title: "Brain Damage",           url: "https://github.com/user-attachments/files/27562042/Brain.Damage.mp3",            lrc: resolveAsset("/lrc/Brain Damage.lrc")!, backgroundImage: resolveAsset("/images/songs Background/08. Brain Da... - Background.jpeg")! },
-  { id: 9,  title: "Deal With The Devil",    url: "https://github.com/user-attachments/files/27562043/Deal.With.The.Devil.mp3",    lrc: resolveAsset("/lrc/Deal With The Devil.lrc")!, backgroundImage: resolveAsset("/images/songs Background/09. Deal With... - Background.jpeg")! },
-  { id: 10, title: "Dokhana V2",             url: "https://github.com/user-attachments/files/27562044/Dokhana.V2.mp3",              lrc: null, backgroundImage: resolveAsset("/images/songs Background/10. Dokhana V2 - Background.jpeg")! },
-  { id: 11, title: "GOUROU",                 url: "https://github.com/user-attachments/files/27562046/GOUROU.mp3",                  lrc: resolveAsset("/lrc/GOUROU.lrc")!, backgroundImage: resolveAsset("/images/songs Background/11. GOUROU - Background.jpeg")! },
-  { id: 12, title: "ITCHY W SCRATCHY",       url: "https://github.com/user-attachments/files/27562047/ITCHY.W.SCRATCHY.mp3",       lrc: null, backgroundImage: resolveAsset("/images/songs Background/12. ITCHY W SCRATCHY - Background.jpeg")! },
-  { id: 13, title: "KOUN NADI",              url: "https://github.com/user-attachments/files/27562048/KOUN.NADI.mp3",               lrc: resolveAsset("/lrc/KOUN NADI.lrc")!, backgroundImage: resolveAsset("/images/songs Background/13. KOUN NADI - Background.jpeg")! },
-  { id: 14, title: "L'AI Could Never",       url: "https://github.com/user-attachments/files/27562049/L.AI.Could.Never.mp3",       lrc: resolveAsset("/lrc/L'AI Could Never.lrc")!, backgroundImage: resolveAsset("/images/songs Background/14. L'AI Could... - Background.jpeg")! },
-  { id: 15, title: "L'bayda Mon Amour",      url: "https://github.com/user-attachments/files/27562051/L.bayda.Mon.Amour.mp3",      lrc: resolveAsset("/lrc/L'bayda Mon Amour.lrc")!, backgroundImage: resolveAsset("/images/songs Background/15. L'bayda M... - Background.jpeg")! },
-  { id: 16, title: "Let The Rhythm Hit 'em", url: "https://github.com/user-attachments/files/27562053/Let.The.Rhythm.Hit.em.mp3",  lrc: resolveAsset("/lrc/Let The Rhythm Hit 'em.lrc")!, backgroundImage: resolveAsset("/images/songs Background/16. Let The R... - Background.jpeg")! },
-  { id: 17, title: "LMORPHINIYA 31",         url: "https://github.com/user-attachments/files/27562055/LMORPHINIYA.31.mp3",          lrc: null, backgroundImage: resolveAsset("/images/songs Background/17. LMORPHINIYA 31 - Background.jpeg")! },
-  { id: 18, title: "LMORPHINIYA 33",         url: "https://github.com/user-attachments/files/27562057/LMORPHINIYA.33.mp3",          lrc: null, backgroundImage: resolveAsset("/images/songs Background/18. LMORPHINIYA 33 - Background.jpeg")! },
-  { id: 19, title: "LMORPHINIYA 1013",       url: "https://github.com/user-attachments/files/27562059/LMORPHINIYA.1013.mp3",       lrc: resolveAsset("/lrc/LMORPHINIYA 1013.lrc")!, backgroundImage: resolveAsset("/images/songs Background/19. LMORPHI... - Background.png")! },
-  { id: 20, title: "Lmorphinya 19 V2",       url: "https://github.com/user-attachments/files/27562060/Lmorphinya.19.V2.mp3",       lrc: null, backgroundImage: resolveAsset("/images/songs Background/20. Lmorphinya 19 V2 - Background.png")! },
-  { id: 21, title: "MAGNETO",                url: "https://github.com/user-attachments/files/27562061/MAGNETO.mp3",                 lrc: resolveAsset("/lrc/MAGNETO.lrc")!, backgroundImage: resolveAsset("/images/songs Background/21. MAGNETO - Background.png")! },
-  { id: 22, title: "None Shall Pass",        url: "https://github.com/user-attachments/files/27562062/None.Shall.Pass.mp3",        lrc: resolveAsset("/lrc/None Shall Pass.lrc")!, backgroundImage: resolveAsset("/images/songs Background/22. None Sha... - Background.jpeg")! },
-  { id: 23, title: "Ohio",                   url: "https://github.com/user-attachments/files/27562063/Ohio.mp3",                   lrc: resolveAsset("/lrc/OHIO.lrc")!, backgroundImage: resolveAsset("/images/songs Background/23. Ohio - Background.jpeg")! },
-  { id: 24, title: "Ostora",                 url: "https://github.com/user-attachments/files/27562064/Ostora.mp3",                  lrc: resolveAsset("/lrc/Ostora.lrc")!, backgroundImage: resolveAsset("/images/songs Background/24. Ostora - Background.jpeg")! },
-  { id: 25, title: "Tromso",                 url: "https://github.com/user-attachments/files/27562065/Tromso.mp3",                  lrc: resolveAsset("/lrc/Tromso.lrc")!, backgroundImage: resolveAsset("/images/songs Background/25. Tromso - Background.jpeg")! },
+  { id: 1,  title: "TRI9 TBAWE9",           url: "https://github.com/user-attachments/files/27562010/TRI9.TBAWE9.mp3",             lrc: resolveAsset("/lrc/TRI9 TBAWE9.lrc")!, backgroundImage: ASSETS.songs.backgrounds[0] },
+  { id: 2,  title: "VETO",                   url: "https://github.com/user-attachments/files/27562012/VETO.mp3",                    lrc: resolveAsset("/lrc/VETO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[1] },
+  { id: 3,  title: "TOTAL",                  url: "https://github.com/user-attachments/files/27562017/TOTAL.mp3",                   lrc: resolveAsset("/lrc/TOTAL.lrc")!, backgroundImage: ASSETS.songs.backgrounds[2] },
+  { id: 4,  title: "7CHAYCHI DIMO9RATI",     url: "https://github.com/user-attachments/files/27562028/7CHAYCHI.DIMO9RATI.mp3",     lrc: resolveAsset("/lrc/7CHAYCHI DIMO9RATI.lrc")!, backgroundImage: ASSETS.songs.backgrounds[3] },
+  { id: 5,  title: "A Lot",                  url: "https://github.com/user-attachments/files/27562033/A.Lot.mp3",                   lrc: resolveAsset("/lrc/A Lot.lrc")!, backgroundImage: ASSETS.songs.backgrounds[4] },
+  { id: 6,  title: "BEAUTIFUL",              url: "https://github.com/user-attachments/files/27562034/BEAUTIFUL.mp3",               lrc: null, backgroundImage: ASSETS.songs.backgrounds[5] },
+  { id: 7,  title: "Bouh",                   url: "https://github.com/user-attachments/files/27562039/Bouh.mp3",                    lrc: resolveAsset("/lrc/Bouh.lrc")!, backgroundImage: ASSETS.songs.backgrounds[6] },
+  { id: 8,  title: "Brain Damage",           url: "https://github.com/user-attachments/files/27562042/Brain.Damage.mp3",            lrc: resolveAsset("/lrc/Brain Damage.lrc")!, backgroundImage: ASSETS.songs.backgrounds[7] },
+  { id: 9,  title: "Deal With The Devil",    url: "https://github.com/user-attachments/files/27562043/Deal.With.The.Devil.mp3",    lrc: resolveAsset("/lrc/Deal With The Devil.lrc")!, backgroundImage: ASSETS.songs.backgrounds[8] },
+  { id: 10, title: "Dokhana V2",             url: "https://github.com/user-attachments/files/27562044/Dokhana.V2.mp3",              lrc: null, backgroundImage: ASSETS.songs.backgrounds[9] },
+  { id: 11, title: "GOUROU",                 url: "https://github.com/user-attachments/files/27562046/GOUROU.mp3",                  lrc: resolveAsset("/lrc/GOUROU.lrc")!, backgroundImage: ASSETS.songs.backgrounds[10] },
+  { id: 12, title: "ITCHY W SCRATCHY",       url: "https://github.com/user-attachments/files/27562047/ITCHY.W.SCRATCHY.mp3",       lrc: null, backgroundImage: ASSETS.songs.backgrounds[11] },
+  { id: 13, title: "KOUN NADI",              url: "https://github.com/user-attachments/files/27562048/KOUN.NADI.mp3",               lrc: resolveAsset("/lrc/KOUN NADI.lrc")!, backgroundImage: ASSETS.songs.backgrounds[12] },
+  { id: 14, title: "L'AI Could Never",       url: "https://github.com/user-attachments/files/27562049/L.AI.Could.Never.mp3",       lrc: resolveAsset("/lrc/L'AI Could Never.lrc")!, backgroundImage: ASSETS.songs.backgrounds[13] },
+  { id: 15, title: "L'bayda Mon Amour",      url: "https://github.com/user-attachments/files/27562051/L.bayda.Mon.Amour.mp3",      lrc: resolveAsset("/lrc/L'bayda Mon Amour.lrc")!, backgroundImage: ASSETS.songs.backgrounds[14] },
+  { id: 16, title: "Let The Rhythm Hit 'em", url: "https://github.com/user-attachments/files/27562053/Let.The.Rhythm.Hit.em.mp3",  lrc: resolveAsset("/lrc/Let The Rhythm Hit 'em.lrc")!, backgroundImage: ASSETS.songs.backgrounds[15] },
+  { id: 17, title: "LMORPHINIYA 31",         url: "https://github.com/user-attachments/files/27562055/LMORPHINIYA.31.mp3",          lrc: null, backgroundImage: ASSETS.songs.backgrounds[16] },
+  { id: 18, title: "LMORPHINIYA 33",         url: "https://github.com/user-attachments/files/27562057/LMORPHINIYA.33.mp3",          lrc: null, backgroundImage: ASSETS.songs.backgrounds[17] },
+  { id: 19, title: "LMORPHINIYA 1013",       url: "https://github.com/user-attachments/files/27562059/LMORPHINIYA.1013.mp3",       lrc: resolveAsset("/lrc/LMORPHINIYA 1013.lrc")!, backgroundImage: ASSETS.songs.backgrounds[18] },
+  { id: 20, title: "Lmorphinya 19 V2",       url: "https://github.com/user-attachments/files/27562060/Lmorphinya.19.V2.mp3",       lrc: null, backgroundImage: ASSETS.songs.backgrounds[19] },
+  { id: 21, title: "MAGNETO",                url: "https://github.com/user-attachments/files/27562061/MAGNETO.mp3",                 lrc: resolveAsset("/lrc/MAGNETO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[20] },
+  { id: 22, title: "None Shall Pass",        url: "https://github.com/user-attachments/files/27562062/None.Shall.Pass.mp3",        lrc: resolveAsset("/lrc/None Shall Pass.lrc")!, backgroundImage: ASSETS.songs.backgrounds[21] },
+  { id: 23, title: "Ohio",                   url: "https://github.com/user-attachments/files/27562063/Ohio.mp3",                   lrc: resolveAsset("/lrc/OHIO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[22] },
+  { id: 24, title: "Ostora",                 url: "https://github.com/user-attachments/files/27562064/Ostora.mp3",                  lrc: resolveAsset("/lrc/Ostora.lrc")!, backgroundImage: ASSETS.songs.backgrounds[23] },
+  { id: 25, title: "Tromso",                 url: "https://github.com/user-attachments/files/27562065/Tromso.mp3",                  lrc: resolveAsset("/lrc/Tromso.lrc")!, backgroundImage: ASSETS.songs.backgrounds[24] },
 ];
 
 const PRIMARY_RGB = "99, 102, 241"; 
@@ -349,7 +351,7 @@ export const MySongs = ({
       artist: 'NL',
       album: 'NL Collection',
       artwork: [
-        { src: currentSong.cover || '/images/playlist_cover.jpg', sizes: '512x512', type: 'image/jpeg' }
+        { src: currentSong.cover || ASSETS.songs.playlistCover, sizes: '512x512', type: 'image/webp' }
       ]
     });
 
@@ -421,7 +423,8 @@ export const MySongs = ({
       setActiveId(song.id);
       audio.src = song.url;
       audio.load();
-      audio.play().catch((e) => console.error("Playback error:", e));
+      audioManager.register('song', audio, 0.7);
+      audioManager.play('song');
       onSongPlay();
       
       // Proximity Spawning
@@ -436,9 +439,9 @@ export const MySongs = ({
       }
     } else {
       if (audioStatus === 'playing') {
-        audio.pause();
+        audioManager.pause('song');
       } else if (activeId) {
-        audio.play().catch((e) => console.error("Playback error:", e));
+        audioManager.play('song');
         onSongPlay();
         if (isMobile) {
           setMobileFullscreen(activeId);
@@ -641,19 +644,37 @@ export const MySongs = ({
                   gap: '4px'
                 }}
               >
-                <ChevronLeft size={20} /> Back
+                <ChevronLeft size={20} />
               </button>
               <div style={{
-                maxWidth: '60%',
+                flex: 1,
+                textAlign: 'center',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 fontWeight: 'bold',
-                fontSize: '16px'
+                fontSize: '16px',
+                padding: '0 8px'
               }}>
                 {currentSong.title}
               </div>
-              <div style={{ minWidth: '44px' }} />
+              <button 
+                onClick={() => setMobileFullscreen(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                }}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
             </header>
 
             {/* LYRICS PANEL */}

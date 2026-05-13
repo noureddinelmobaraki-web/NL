@@ -53,18 +53,20 @@ import {
 } from "./types";
 import { ScrollProgress } from "./components/ScrollProgress";
 import { ResponsiveImage } from "./components/ResponsiveImage";
+import { ASSETS } from "./constants/assets";
+import { audioManager } from "./audio/audioManager";
 
 const CONFIG_ASSETS = {
-  mainBackground: "./images/hero_bg.webp",
-  nameHeaderBg: "./images/header_bg.gif",
-  footerDecoration: "./images/footer_deco.gif",
+  mainBackground: ASSETS.profile.heroBg,
+  nameHeaderBg: ASSETS.profile.headerBg,
+  footerDecoration: ASSETS.profile.footerDeco,
   spotifyIcon: "https://img.icons8.com/plasticine/1200/spotify--v2.jpg",
-  profileImg: "./images/profile_img.jpg",
-  vaultPlaylistCover: "./images/playlist_cover.jpg",
-  youtubeHighlightsBg: "./images/yt_highlights.gif",
-  gmailBg: "./images/gmail_bg.gif",
-  whatsappBg: "./images/whatsapp_bg.gif",
-  telegramBg: "./images/telegram_bg.gif"
+  profileImg: ASSETS.profile.main,
+  vaultPlaylistCover: ASSETS.songs.playlistCover,
+  youtubeHighlightsBg: ASSETS.songs.ytHighlights,
+  gmailBg: ASSETS.profile.contacts.gmail,
+  whatsappBg: ASSETS.profile.contacts.whatsapp,
+  telegramBg: ASSETS.profile.contacts.telegram
 };
 
 const STREAMING_PLATFORMS: StreamingPlatform[] = [
@@ -134,7 +136,7 @@ const CONTACT_METHODS: ContactMethod[] = [
     value: "noureddinelmobaraki@gmail.com",
     url: "mailto:noureddinelmobaraki@gmail.com",
     icon: Mail,
-    bg: `${import.meta.env.BASE_URL}images/gmail_bg.gif`,
+    bg: ASSETS.profile.contacts.gmail,
     color: "#EA4335"
   },
   {
@@ -142,7 +144,7 @@ const CONTACT_METHODS: ContactMethod[] = [
     value: "+212 612-806932",
     url: "https://wa.me/212612806932",
     icon: MessageCircle,
-    bg: `${import.meta.env.BASE_URL}images/whatsapp_bg.gif`,
+    bg: ASSETS.profile.contacts.whatsapp,
     color: "#25D366"
   },
   {
@@ -150,7 +152,7 @@ const CONTACT_METHODS: ContactMethod[] = [
     value: "+212 612 806932",
     url: "https://t.me/212612806932",
     icon: Send,
-    bg: `${import.meta.env.BASE_URL}images/telegram_bg.gif`,
+    bg: ASSETS.profile.contacts.telegram,
     color: "#0088CC"
   }
 ];
@@ -175,18 +177,7 @@ const itemVariants: Variants = {
   }
 };
 
-const _B = import.meta.env.BASE_URL;
-const ME_BIT_IMAGES = [
-  `${_B}images/me_bit_1.jpg`,
-  `${_B}images/me_bit_2.jpg`,
-  `${_B}images/me_bit_3.jpg`,
-  `${_B}images/me_bit_4.jpg`,
-  `${_B}images/me_bit_5.jpg`,
-  `${_B}images/me_bit_6.jpg`,
-  `${_B}images/me_bit_7.jpg`,
-  `${_B}images/me_bit_8.jpg`,
-  `${_B}images/me_bit_9.jpg`,
-];
+const ME_BIT_IMAGES = ASSETS.profile.me_bits;
 
 const STYLES = {
   SHADOW_WHITE: { textShadow: '2px 2px 0px rgba(255,255,255,0.8)' },
@@ -314,42 +305,38 @@ export default function App() {
     const audio = audioRef.current;
     if (!audio || audioIntent === 'user-paused') return;
 
-    // Consolidated Play Logic (Autoplay + Loaded Transition)
-    // Runs when intent is 'initial' (autoplay) or 'user-playing' (manual)
     const canTryPlay = audioIntent === 'user-playing' || (audioIntent === 'initial' && loaded);
-    if (!canTryPlay) {
-      if (audioIntent !== 'initial') return;
-    }
+    if (!canTryPlay) return;
 
-    const abortController = new AbortController();
-    const { signal } = abortController;
-
-    // Complex Autoplay Strategy
-    audio.muted = true;
-    audio.play().then(() => {
-      const timeoutId = setTimeout(() => {
-        // Only proceed if the effect hasn't been cleaned up (signal aborted)
-        if (!signal.aborted) {
-          audio.muted = false;
-          setIsPlaying(true);
-        }
-      }, 300);
-      signal.addEventListener('abort', () => clearTimeout(timeoutId));
-    }).catch(() => {
-      const handlers = ['scroll', 'click', 'keydown', 'touchstart', 'mousemove', 'wheel'];
-      const once = () => {
-        if (!signal.aborted) {
-          audio.play().then(() => {
-            setIsPlaying(true);
-            handlers.forEach(e => document.removeEventListener(e, once));
-          }).catch(() => {});
-        }
+    // Use audioManager to handle playing/fading
+    if (audioIntent === 'user-playing') {
+      audioManager.unpauseBg();
+      setIsPlaying(true);
+    } else if (audioIntent === 'initial' && loaded) {
+      // Background autoplay attempt with mute trick if needed
+      audio.muted = true;
+      audioManager.unpauseBg();
+      
+      const onInteraction = () => {
+        audio.muted = false;
+        setIsPlaying(true);
+        setAudioIntent('user-playing');
+        window.removeEventListener('click', onInteraction);
+        window.removeEventListener('scroll', onInteraction);
       };
-      handlers.forEach(e => document.addEventListener(e, once, { passive: true, signal }));
-    });
-
-    return () => abortController.abort();
+      window.addEventListener('click', onInteraction, { once: true });
+      window.addEventListener('scroll', onInteraction, { once: true, passive: true });
+    }
   }, [audioIntent, loaded]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioManager.register('bg', audioRef.current, 0.7);
+      audioManager.setStateCallback((playing) => {
+        setIsPlaying(playing);
+      });
+    }
+  }, []);
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -361,34 +348,30 @@ export default function App() {
   const toggleAudio = () => {
     if (!audioRef.current) return;
     if (isPlaying) {
-      audioRef.current.pause();
+      audioManager.pause('bg');
       setIsPlaying(false);
       setAudioIntent('user-paused');
     } else {
-      audioRef.current.play().then(() => {
-        setIsPlaying(true);
-        setAudioIntent('user-playing');
-      }).catch(() => {});
+      audioManager.unpauseBg();
+      setIsPlaying(true);
+      setAudioIntent('user-playing');
     }
   };
 
   const handleSongPlay = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-      setAudioIntent('user-paused');
-    }
+    // We just update the UI state. AudioManager handles the actual audio background suspension.
+    setIsPlaying(false);
   }, []);
 
   useEffect(() => {
-    const onOpen = () => {
-      if (audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-    };
+    const onOpen = () => audioManager.play('lens');
+    const onClose = () => audioManager.pause('lens');
     window.addEventListener('gallery:open', onOpen);
-    return () => window.removeEventListener('gallery:open', onOpen);
+    window.addEventListener('gallery:close', onClose);
+    return () => {
+      window.removeEventListener('gallery:open', onOpen);
+      window.removeEventListener('gallery:close', onClose);
+    };
   }, []);
 
   useEffect(() => {
@@ -452,14 +435,18 @@ export default function App() {
         loop 
         preload="auto"
       >
-        <source src={`${import.meta.env.BASE_URL}music.mp3`} type="audio/mpeg" />
+        <source src={ASSETS.media.music} />
         Your browser does not support the audio element.
       </audio>
 
       {/* Floating Audio Control Button - Small & Elegant */}
       <button
         onClick={toggleAudio}
-        className="fixed bottom-4 right-4 z-[120] bg-black/30 backdrop-blur-lg border border-white/10 p-2.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
+        className="fixed z-[120] bg-black/30 backdrop-blur-lg border border-white/10 p-2.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
+        style={{
+          bottom: isMobile ? 'calc(56px + env(safe-area-inset-bottom) + 16px)' : '16px',
+          right: '16px',
+        }}
         aria-label="Toggle Background Music"
       >
         {isPlaying ? (
@@ -1007,7 +994,7 @@ export default function App() {
             {/* Background: photo.gif */}
             <div
               className="absolute inset-0 bg-cover bg-center transition-all duration-700 group-hover:scale-110 opacity-60 group-hover:opacity-80"
-              style={{ backgroundImage: `url('${import.meta.env.BASE_URL}images/photo.gif')` }}
+              style={{ backgroundImage: `url('${ASSETS.profile.photo}')` }}
             />
             {/* Sunlight/Glass shimmer overlay */}
             <div style={{
@@ -1096,7 +1083,7 @@ export default function App() {
             <div 
               className="relative border-[5px] border-black shadow-[12px_12px_0px_#000] rounded-none overflow-hidden group min-h-[440px] flex items-center justify-center"
               style={{
-                backgroundImage: `url('${import.meta.env.BASE_URL}images/game Background.jpeg')`,
+                backgroundImage: `url('${ASSETS.songs.gameBackground}')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
@@ -1106,8 +1093,8 @@ export default function App() {
               <div className="relative z-10 w-full h-full flex items-center justify-center p-4">
                 {activeGame === null ? (
                   <GameSelector onSelect={(id) => {
-                    if (isPlaying && audioRef.current) {
-                      audioRef.current.pause();
+                    if (isPlaying) {
+                      audioManager.pause('bg');
                       setIsPlaying(false);
                     }
                     setActiveGame(id);
@@ -1117,8 +1104,9 @@ export default function App() {
                     title={activeGame.toUpperCase()}
                     onClose={() => {
                       setActiveGame(null);
-                      if (audioIntent !== 'user-paused' && audioRef.current) {
-                        audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+                      if (audioIntent !== 'user-paused') {
+                        audioManager.unpauseBg();
+                        setIsPlaying(true);
                       }
                     }}
                     style={gameShellStyle}

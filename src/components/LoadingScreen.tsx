@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { prefersReducedMotion } from '../utils/perf';
+import { ASSETS } from '../constants/assets';
 
 type Phase = 'visible' | 'fading' | 'hidden';
 export const LoadingScreen = ({ onComplete, onAudioUnlock }: { onComplete: () => void, onAudioUnlock: () => void }) => {
@@ -30,7 +31,7 @@ export const LoadingScreen = ({ onComplete, onAudioUnlock }: { onComplete: () =>
       style={{ position:'fixed', inset:0, zIndex:9999, background:'black',
         opacity: phase === 'fading' ? 0 : 1, transition:'opacity 600ms ease-out',
         display:'flex', flexDirection: 'column', alignItems:'center', justifyContent:'center', overflow:'hidden', cursor: 'pointer' }}>
-      <video ref={videoRef} src={`${import.meta.env.BASE_URL}videos/opening.mp4`} autoPlay muted playsInline
+      <video ref={videoRef} src={ASSETS.media.opening} autoPlay muted playsInline
         preload="auto" onEnded={finish}
         style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} />
       <div style={{ position:'relative', zIndex:1, color:'white',

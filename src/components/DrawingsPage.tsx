@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, X, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 import { useDeviceType } from '../hooks/useDeviceType';
+import { ASSETS } from '../constants/assets';
 
 interface VideoData {
   id: string;
@@ -110,7 +111,7 @@ const VideoCard = memo(({
             videoRef.current = el;
             onRef(el, index);
           }}
-          poster={video.poster.startsWith('/images/posters/') ? '/images/me_bit_1.jpg' : video.poster}
+          poster={video.poster.startsWith('/images/posters/') ? ASSETS.profile.me_bits[0] : video.poster}
           aria-label={`Drawing work ${index + 1} of ${total}`}
           playsInline
           loop
@@ -133,8 +134,8 @@ const CrossfadeImage = () => {
   }, []);
   
   const images = [
-    `${import.meta.env.BASE_URL}images/DRAW.jpeg`,
-    `${import.meta.env.BASE_URL}images/DRAW2.jpeg`,
+    ASSETS.gallery.draw1,
+    ASSETS.gallery.draw2,
   ];
   
   return (
