@@ -84,7 +84,7 @@ export const CustomCursor = () => {
       <div ref={dotRef} style={{
         position: 'fixed', top: 0, left: 0,
         width: 8, height: 8,
-        background: 'white',
+        background: 'var(--text-primary)',
         borderRadius: '50%',
         pointerEvents: 'none',
         zIndex: 999999,
@@ -93,7 +93,7 @@ export const CustomCursor = () => {
       <div ref={ringRef} style={{
         position: 'fixed', top: 0, left: 0,
         width: 32, height: 32,
-        border: '1.5px solid rgba(255,255,255,0.6)',
+        border: '1.5px solid var(--text-secondary)',
         borderRadius: '50%',
         pointerEvents: 'none',
         zIndex: 999998,

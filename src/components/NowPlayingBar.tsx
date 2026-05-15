@@ -72,11 +72,11 @@ export const NowPlayingBar = ({
         maxWidth: "540px",
         width: "95vw",
         minHeight: isHovered && !isMobile && !isTablet ? "100px" : "64px",
-        background: 'linear-gradient(135deg, rgba(var(--ambient-rgb, 20,20,30), 0.35), rgba(15,15,20,0.55))',
+        background: 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.55), rgba(var(--bg-page-rgb), 0.65))',
         backdropFilter: 'blur(28px) saturate(180%)',
         WebkitBackdropFilter: 'blur(28px) saturate(180%)',
         borderRadius: "28px",
-        border: '1px solid rgba(255, 255, 255, 0.10)',
+        border: '1px solid var(--border-subtle)',
         boxShadow: '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)',
         zIndex: 8000,
         padding: "0 16px",
@@ -99,21 +99,21 @@ export const NowPlayingBar = ({
               bottom: 'calc(100% + 12px)',
               right: '16px',
               width: '240px',
-              background: 'rgba(20, 20, 25, 0.95)',
+              background: 'var(--bg-elevated)',
               backdropFilter: 'blur(16px)',
               borderRadius: '20px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid var(--border-subtle)',
               padding: '16px',
               boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
               zIndex: 8001
             }}
           >
-            <h4 style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '12px' }}>UP NEXT</h4>
+            <h4 style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '12px' }}>UP NEXT</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {activeSong.nextSongs.map(song => (
                 <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <img src={song.cover} alt="" style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
-                  <span style={{ fontSize: '12px', color: 'white', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</span>
                 </div>
               ))}
             </div>
@@ -136,7 +136,7 @@ export const NowPlayingBar = ({
               position: 'absolute', 
               inset: '-4px', 
               borderRadius: '50%', 
-              background: `rgba(var(--ambient-rgb), 0.3)`, 
+              background: `rgba(var(--bg-page-rgb), 0.3)`, 
               filter: 'blur(8px)',
               opacity: activeSong?.isPlaying ? 1 : 0,
               transition: 'opacity 1s'
@@ -171,7 +171,7 @@ export const NowPlayingBar = ({
         {/* Center: Info */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <span style={{ 
-            color: "white", 
+            color: "var(--text-primary)", 
             fontSize: "14px", 
             fontWeight: "700", 
             whiteSpace: "nowrap", 
@@ -181,7 +181,7 @@ export const NowPlayingBar = ({
           }}>
             {activeSong?.title}
           </span>
-          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold', letterSpacing: '0.15em', marginTop: '1px' }}>
+          <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 'bold', letterSpacing: '0.15em', marginTop: '1px' }}>
             NOW PLAYING
           </span>
         </div>
@@ -191,7 +191,7 @@ export const NowPlayingBar = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginRight: '8px' }}>
             <button
                onClick={() => activeSong?.onShuffleToggle()}
-               style={{ color: activeSong?.isShuffle ? '#818cf8' : 'rgba(255,255,255,0.4)', padding: '8px' }}
+               style={{ color: activeSong?.isShuffle ? 'var(--accent-indigo)' : 'var(--text-muted)', padding: '8px' }}
                className="hover:scale-110 active:scale-95 transition-all"
                title="Shuffle"
             >
@@ -199,7 +199,7 @@ export const NowPlayingBar = ({
             </button>
             <button
                onClick={() => activeSong?.onRepeatToggle()}
-               style={{ color: activeSong?.repeatMode !== 'off' ? '#818cf8' : 'rgba(255,255,255,0.4)', padding: '8px' }}
+               style={{ color: activeSong?.repeatMode !== 'off' ? 'var(--accent-indigo)' : 'var(--text-muted)', padding: '8px' }}
                className="hover:scale-110 active:scale-95 transition-all"
                title="Repeat"
             >
@@ -213,7 +213,7 @@ export const NowPlayingBar = ({
           {!isMobile && !isTablet && (
             <button
               onClick={() => activeSong?.onPrev()}
-              style={{ color: "rgba(255,255,255,0.6)", padding: "10px" }}
+              style={{ color: "var(--text-secondary)", padding: "10px" }}
               className="hover:bg-white/5 rounded-full transition-all"
             >
               <SkipBack size={20} fill="currentColor" />
@@ -230,8 +230,8 @@ export const NowPlayingBar = ({
               alignItems: "center", 
               justifyContent: "center", 
               borderRadius: "50%", 
-              background: "white", 
-              color: "black",
+              background: "var(--text-primary)", 
+              color: "var(--text-inverse)",
               boxShadow: '0 4px 15px rgba(255,255,255,0.2)',
               margin: '0 4px'
             }}
@@ -243,7 +243,7 @@ export const NowPlayingBar = ({
           {!isMobile && !isTablet && (
             <button
               onClick={() => activeSong?.onNext()}
-              style={{ color: "rgba(255,255,255,0.6)", padding: "10px" }}
+              style={{ color: "var(--text-secondary)", padding: "10px" }}
               className="hover:bg-white/5 rounded-full transition-all"
             >
               <SkipForward size={20} fill="currentColor" />
@@ -254,7 +254,7 @@ export const NowPlayingBar = ({
           {!isMobile && !isTablet && isHovered && (
              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px' }}>
-                   {activeSong?.volume === 0 ? <VolumeX size={16} style={{ color: 'rgba(255,255,255,0.4)' }} /> : <Volume2 size={16} style={{ color: 'rgba(255,255,255,0.6)' }} />}
+                   {activeSong?.volume === 0 ? <VolumeX size={16} style={{ color: 'var(--text-muted)' }} /> : <Volume2 size={16} style={{ color: 'var(--text-secondary)' }} />}
                    <input 
                       type="range"
                       min={0}
@@ -263,13 +263,13 @@ export const NowPlayingBar = ({
                       value={activeSong?.volume}
                       onChange={(e) => activeSong?.onVolumeChange(parseFloat(e.target.value))}
                       className="volume-slider"
-                      style={{ flex: 1, height: '3px', cursor: 'pointer', accentColor: 'white' }}
+                      style={{ flex: 1, height: '3px', cursor: 'pointer', accentColor: 'var(--text-primary)' }}
                    />
                 </div>
                 <button
                   onClick={() => setShowQueue(!showQueue)}
-                  style={{ color: showQueue ? 'white' : 'rgba(255,255,255,0.4)', padding: '8px' }}
-                  className="hover:text-white transition-colors"
+                  style={{ color: showQueue ? 'var(--text-primary)' : 'var(--text-muted)', padding: '8px' }}
+                  className="hover:text-[var(--text-primary)] transition-colors"
                   title="Queue"
                 >
                   <ListMusic size={18} />
@@ -280,7 +280,7 @@ export const NowPlayingBar = ({
           <button
             onClick={handleShare}
             style={{ 
-              color: showCopied ? "#4ade80" : "rgba(255,255,255,0.4)", 
+              color: showCopied ? "var(--accent-green)" : "var(--text-muted)", 
               padding: "10px", 
               borderRadius: "50%", 
               transition: "all 0.3s",
@@ -295,10 +295,10 @@ export const NowPlayingBar = ({
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
             style={{ 
-              color: "rgba(255,255,255,0.3)", 
+              color: "var(--text-muted)", 
               padding: "10px", 
             }}
-            className="hover:text-white transition-colors"
+            className="hover:text-[var(--text-primary)] transition-colors"
             aria-label="Close"
           >
             <X size={18} />
@@ -329,7 +329,7 @@ export const NowPlayingBar = ({
               style={{ 
                 width: '100%', 
                 height: '4px',
-                background: `linear-gradient(to right, white ${progress}%, rgba(255,255,255,0.15) ${progress}%)`,
+                background: `linear-gradient(to right, var(--text-primary) ${progress}%, var(--border-subtle) ${progress}%)`,
                 appearance: 'none',
                 cursor: 'pointer',
                 borderRadius: '2px',
@@ -338,7 +338,7 @@ export const NowPlayingBar = ({
               className="seek-slider"
             />
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "rgba(255,255,255,0.3)", fontVariantNumeric: "tabular-nums" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
             <span>{formatTime(activeSong?.currentTime || 0)}</span>
             <span>{formatTime(activeSong?.duration || 0)}</span>
           </div>
@@ -350,7 +350,7 @@ export const NowPlayingBar = ({
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           height: '3px',
-          background: `linear-gradient(to right, white ${progress}%, transparent ${progress}%)`,
+          background: `linear-gradient(to right, var(--text-primary) ${progress}%, transparent ${progress}%)`,
           opacity: 0.8,
           transition: "opacity 300ms",
           borderBottomLeftRadius: '28px',
@@ -367,10 +367,10 @@ export const NowPlayingBar = ({
           -webkit-appearance: none;
           width: 8px;
           height: 8px;
-          background: white;
+          background: var(--text-primary);
           border-radius: 50%;
           transition: transform 0.2s;
-          box-shadow: 0 0 10px rgba(255,255,255,0.5);
+          box-shadow: 0 0-10px rgba(var(--bg-page-rgb), 0.5);
         }
         .seek-slider:hover::-webkit-slider-thumb {
           transform: scale(1.75);
@@ -382,7 +382,7 @@ export const NowPlayingBar = ({
            -webkit-appearance: none;
            width: 10px;
            height: 10px;
-           background: white;
+           background: var(--text-primary);
            border-radius: 50%;
         }
       `}</style>

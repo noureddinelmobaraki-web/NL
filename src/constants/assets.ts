@@ -62,16 +62,16 @@ export const ASSETS = {
     ],
     // The share paths must be absolute relative to the domain for reliable OG tags, 
     // but in code we use them to generate links.
-    sharePaths: Array.from({ length: 25 }, (_, i) => `/nradio/share/song-${i + 1}.html`)
+    sharePaths: Array.from({ length: 25 }, (_, i) => `/NL/share/song-${i + 1}.html`)
   },
   gallery: {
     draw1: new URL('../assets/images/gallery/DRAW.webp', import.meta.url).href,
     draw2: new URL('../assets/images/gallery/DRAW2.webp', import.meta.url).href,
   },
   media: {
-    music: '/nradio/media/music.mp3',
+    music: '/NL/media/music.mp3',
     lensMusic: 'https://github.com/user-attachments/assets/6a55e330-2007-4109-b030-6661cb26e320',
     meBitMusic: 'https://github.com/user-attachments/assets/e12ed81c-ed5c-4cd9-952c-001a9bfc652f',
-    opening: '/nradio/media/opening.mp4',
+    opening: '/NL/media/opening.mp4',
   }
 };

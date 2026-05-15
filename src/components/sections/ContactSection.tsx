@@ -55,7 +55,7 @@ export const ContactSection = () => {
         href={method.url}
         target="_blank"
         rel="noreferrer"
-        className="manga-border group relative flex flex-col items-center justify-center p-6 border-[4px] border-black overflow-hidden bg-white transition-all duration-300 hover:scale-[1.05] hover:-rotate-1 active:scale-95 shadow-[8px_8px_0px_#000] manga-card-hover md:min-h-[120px]"
+        className="manga-border group relative flex flex-col items-center justify-center p-6 border-[4px] border-[var(--ink-color)] overflow-hidden bg-[var(--paper-color)] transition-all duration-300 hover:scale-[1.05] hover:-rotate-1 active:scale-95 shadow-[8px_8px_0px_var(--manga-shadow-color)] manga-card-hover md:min-h-[120px]"
       >
         {/* GIF Background */}
         <div 
@@ -65,15 +65,15 @@ export const ContactSection = () => {
         {/* Content Overlay */}
         <div className="relative z-10 flex flex-col items-center gap-2">
           <div 
-            className="p-3 bg-black text-white manga-border border-white/20 shadow-[4px_4px_0px_rgba(0,0,0,0.5)] group-hover:bg-white group-hover:text-black transition-colors"
+            className="p-3 bg-[var(--ink-color)] text-[var(--text-inverse)] manga-border border-white/20 shadow-[4px_4px_0px_rgba(0,0,0,0.5)] group-hover:bg-[var(--paper-color)] group-hover:text-[var(--ink-color)] transition-colors"
             style={STYLES.CIRCLE}
           >
             <method.icon className="w-8 h-8" aria-hidden="true" />
           </div>
-          <span className="font-manga text-2xl font-black text-black uppercase tracking-tighter" style={STYLES.SHADOW_WHITE}>
+          <span className="font-manga text-2xl font-black text-[var(--ink-color)] uppercase tracking-tighter">
             {method.name}
           </span>
-          <span className="text-xs font-bold text-black/70 bg-white/80 px-2 py-0.5 manga-border border-black truncate max-w-full">
+          <span className="text-xs font-bold text-[var(--text-muted)] bg-[var(--bg-glass)] px-2 py-0.5 manga-border border-[var(--ink-color)] truncate max-w-full">
             {method.value}
           </span>
         </div>

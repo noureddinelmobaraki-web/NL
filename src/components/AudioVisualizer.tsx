@@ -105,7 +105,7 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
       for (let i = 0; i < barCount; i++) {
         const barHeight = (dataArray[i] / 255) * (canvas.height * 0.35);
         const alpha = Math.min(0.2, (dataArray[i] / 255) * 0.4); 
-        canvasCtx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        canvasCtx.fillStyle = `rgba(var(--text-primary-rgb, 255, 255, 255), ${alpha})`;
         
         // Mirrored visualization
         canvasCtx.fillRect(

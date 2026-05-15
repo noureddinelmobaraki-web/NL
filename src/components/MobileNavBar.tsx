@@ -29,8 +29,8 @@ export const MobileNavBar = ({ currentPage, onNavigate, isBgPlaying, onToggleBg 
         left: 0,
         right: 0,
         height: isTablet ? '60px' : '56px',
-        background: 'rgb(8, 8, 12)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+        background: 'var(--bg-elevated)',
+        borderTop: '1px solid var(--border-subtle)',
         display: 'grid',
         gridTemplateColumns: `repeat(${tabs.length}, 1fr)`,
         zIndex: 7000,
@@ -56,7 +56,7 @@ export const MobileNavBar = ({ currentPage, onNavigate, isBgPlaying, onToggleBg 
                 border: 'none',
                 padding: 0,
                 cursor: 'pointer',
-                color: isBgPlaying ? '#FFD700' : 'rgba(255, 255, 255, 0.35)',
+                color: isBgPlaying ? 'var(--accent-yellow)' : 'var(--text-muted)',
                 transition: 'color 0.2s',
               }}
             >
@@ -85,7 +85,7 @@ export const MobileNavBar = ({ currentPage, onNavigate, isBgPlaying, onToggleBg 
               border: 'none',
               padding: 0,
               cursor: 'pointer',
-              color: isActive ? 'white' : 'rgba(255, 255, 255, 0.35)',
+              color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
               transition: 'color 0.2s',
             }}
           >
@@ -97,7 +97,7 @@ export const MobileNavBar = ({ currentPage, onNavigate, isBgPlaying, onToggleBg 
                   left: '20%',
                   right: '20%',
                   height: '2px',
-                  background: 'white',
+                  background: 'var(--text-primary)',
                   borderRadius: '0 0 2px 2px'
                 }} 
                 aria-hidden="true"

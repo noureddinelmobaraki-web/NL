@@ -14,19 +14,18 @@ export function parseLRC(text: string): LyricLine[] {
 }
 
 const aeroWindowStyle: React.CSSProperties = {
-  background: 'linear-gradient(180deg, rgba(200,220,255,0.18) 0%, rgba(150,190,255,0.10) 40%, rgba(100,150,240,0.08) 100%)',
-  backdropFilter: 'blur(8px)',
-  WebkitBackdropFilter: 'blur(8px)',
-  border: '1px solid rgba(255,255,255,0.4)',
-  borderTop: '1.5px solid rgba(255,255,255,0.8)',
+  background: 'var(--bg-glass-strong)',
+  backdropFilter: 'var(--backdrop-blur)',
+  WebkitBackdropFilter: 'var(--backdrop-blur)',
+  border: '1px solid var(--border-subtle)',
+  borderTop: '1.5px solid var(--border-strong)',
   borderRadius: '8px 8px 4px 4px',
-  boxShadow: '0 0 0 1px rgba(0,80,200,0.2), 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
 };
 
 const aeroTitlebarStyle: React.CSSProperties = {
-  background: 'linear-gradient(180deg, rgba(180,215,255,0.7) 0%, rgba(140,190,255,0.5) 45%, rgba(100,165,255,0.6) 50%, rgba(120,185,255,0.4) 100%)',
-  borderBottom: '1px solid rgba(100,160,255,0.4)',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)',
+  background: 'var(--bg-elevated)',
+  borderBottom: '1px solid var(--border-subtle)',
 };
 
 const WindowFrame = ({ 
@@ -127,9 +126,9 @@ const WindowFrame = ({
         }}
         onMouseDown={handleMouseDown}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#002050', fontFamily: 'Segoe UI, Tahoma, sans-serif', fontSize: '13px', fontWeight: 500 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontFamily: 'Segoe UI, Tahoma, sans-serif', fontSize: '13px', fontWeight: 500 }}>
           <Icon size={16} aria-hidden="true" style={{ opacity: 0.8 }} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px', textShadow: '0 0 10px rgba(255,255,255,0.8)' }}>{title}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px', textShadow: '0 0 10px rgba(var(--bg-page-rgb),0.5)' }}>{title}</span>
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
           <button 
@@ -137,16 +136,15 @@ const WindowFrame = ({
             style={{ 
               width: '28px', 
               height: '18px', 
-              background: 'rgba(255,255,255,0.2)', 
-              border: '1px solid rgba(0,0,0,0.2)', 
-              color: '#002050', 
+              background: 'rgba(var(--text-primary-rgb),0.1)', 
+              border: '1px solid var(--border-subtle)', 
+              color: 'var(--text-primary)', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
               padding: 0, 
               borderRadius: '3px', 
               cursor: 'pointer',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4)'
             }}
             aria-label={state === 'maximized' ? 'Restore' : 'Maximize'}
           >
@@ -214,17 +212,17 @@ export const LyricsWindowContent = memo(({
       const isActive = i === currentLineIndex;
 
       if (isMobilePlayer) {
-        el.style.color = isActive ? '#e0f0ff' : 'rgba(255,255,255,0.35)';
+        el.style.color = isActive ? 'var(--text-primary)' : 'var(--text-muted)';
         el.style.fontSize = isActive ? '19px' : '17px';
         el.style.fontWeight = isActive ? 'bold' : 'normal';
-        el.style.textShadow = isActive ? '0 0 12px rgba(100,180,255,0.8)' : 'none';
+        el.style.textShadow = isActive ? '0 0 12px var(--accent-indigo)' : 'none';
       } else {
         const isHovered = hoveredLine === i;
         el.style.opacity = isActive ? '1' : (isHovered ? '0.7' : '0.2');
-        el.style.color = isActive ? '#e0f0ff' : (isHovered ? 'rgba(255,255,255,0.7)' : '#7a7a9a');
-        el.style.textShadow = isActive ? '0 0 12px rgba(100,180,255,0.8)' : 'none';
+        el.style.color = isActive ? 'var(--text-primary)' : (isHovered ? 'var(--text-secondary)' : 'var(--text-muted)');
+        el.style.textShadow = isActive ? '0 0 12px var(--accent-indigo)' : 'none';
         el.style.transform = isActive ? 'scale(1.04)' : 'scale(1)';
-        el.style.background = isHovered ? 'rgba(255,255,255,0.05)' : 'transparent';
+        el.style.background = isHovered ? 'var(--bg-glass)' : 'transparent';
       }
     });
 

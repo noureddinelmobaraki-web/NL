@@ -254,14 +254,14 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
       <div className="max-w-6xl mx-auto">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
           <div className="space-y-4">
-            <h1 className="text-6xl sm:text-8xl font-black italic tracking-tighter uppercase leading-none text-white">
+            <h1 className="text-6xl sm:text-8xl font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)]">
               MY DRAWINGS
             </h1>
           </div>
-          <div className="h-px flex-1 bg-zinc-800 hidden sm:block mx-12 mb-4" />
+          <div className="h-px flex-1 bg-[var(--border-subtle)] hidden sm:block mx-12 mb-4" />
           <div className="text-right">
-            <span className="text-red-500 font-mono text-xl">{videos.length}</span>
-            <span className="text-zinc-600 text-xs uppercase tracking-widest ml-2">Works total</span>
+            <span className="text-[var(--accent-red)] font-mono text-xl">{videos.length}</span>
+            <span className="text-[var(--text-muted)] text-xs uppercase tracking-widest ml-2">Works total</span>
           </div>
         </header>
 
@@ -269,12 +269,12 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
           <div className="space-y-8 mt-10">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full">
               {videos.slice(0, 6).map((video, i) => (
-                <div key={video.id} className="bg-[#1a1a1a] rounded-[8px] overflow-hidden" onClick={() => { setActiveIndex(i); setIsOpen(true); }}>
+                <div key={video.id} className="bg-[var(--bg-elevated)] rounded-[8px] overflow-hidden" onClick={() => { setActiveIndex(i); setIsOpen(true); }}>
                   <VideoPreview index={i} />
                 </div>
               ))}
             </div>
-            <button onClick={() => setIsOpen(true)} className="manga-button !py-4 !px-8 text-xl bg-white text-black shadow-[8px_8px_0px_#000] hover:shadow-[12px_12px_0px_#000] transition-all">
+            <button onClick={() => setIsOpen(true)} className="manga-button !py-4 !px-8 text-xl bg-[var(--paper-color)] text-[var(--text-primary)] shadow-[8px_8px_0px_var(--manga-shadow-color)] hover:shadow-[12px_12px_0px_var(--manga-shadow-color)] transition-all">
               VIEW ALL {videos.length} →
             </button>
           </div>
@@ -290,7 +290,7 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
               style={isMobile ? { zIndex: 9010, background: '#000' } : {}}
             >
               <div 
-                className={`relative w-full ${isMobile ? '' : 'bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden'}`}
+                className={`relative w-full ${isMobile ? '' : 'bg-[var(--bg-glass-strong)] backdrop-blur-xl rounded-2xl border border-[var(--border-subtle)] overflow-hidden'}`}
                 style={{ height: isMobile ? '100%' : 'auto', padding: isMobile ? '0' : '20px 0' }}
                 onTouchStart={() => { if (isMobile) resetArrowTimer(); }}
                 onClick={() => { if (isMobile) resetArrowTimer(); }}

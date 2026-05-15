@@ -15,7 +15,48 @@
 
 @import "tailwindcss";
 
-:root {
+:root, [data-theme="dark"] {
+  /* Surfaces */
+  --bg-page: #0a0a0e;
+  --bg-page-rgb: 10, 10, 14;
+  --bg-elevated: #15151a;
+  --bg-overlay: rgba(18, 18, 22, 0.85);
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --bg-glass-strong: rgba(255, 255, 255, 0.08);
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-primary-rgb: 255, 255, 255;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.4);
+  --text-inverse: #0a0a0e;
+
+  /* Borders & dividers */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --ink-color: #ffffff;
+  --paper-color: #1a1a1f;
+
+  /* Shadows (manga shadows must invert!) */
+  --manga-shadow-color: #ffffff;
+  --manga-shadow: 8px 8px 0 var(--manga-shadow-color);
+
+  /* Accents (kept brand consistent) */
+  --accent-indigo: #818cf8;
+  --accent-purple: #a78bfa;
+  --accent-gold: #FFD700;
+  --accent-red: #ef4444;
+
+  /* Halftone dots */
+  --halftone-color: rgba(255, 255, 255, 0.06);
+
+  /* Backgrounds for special sections */
+  --hero-overlay: rgba(18, 18, 18, 0.50);
+  --noise-opacity: 0.03;
+  --backdrop-blur: 28px;
+
+  color-scheme: dark;
+
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -23,20 +64,60 @@
 }
 
 [data-theme="manga-paper"] {
-  --bg-overlay: rgba(245, 240, 230, 0.95);
-  --text-primary: #000;
-  --page-bg: #f5f0e6;
+  /* Surfaces — manga page cream */
+  --bg-page: #f5efe0;
+  --bg-page-rgb: 245, 239, 224;
+  --bg-elevated: #fdf8ec;
+  --bg-overlay: rgba(253, 248, 236, 0.85);
+  --bg-glass: rgba(0, 0, 0, 0.04);
+  --bg-glass-strong: rgba(0, 0, 0, 0.08);
+
+  /* Text — ink black */
+  --text-primary: #0a0a0a;
+  --text-primary-rgb: 10, 10, 10;
+  --text-secondary: rgba(0, 0, 0, 0.7);
+  --text-muted: rgba(0, 0, 0, 0.45);
+  --text-inverse: #fdf8ec;
+
+  /* Borders */
+  --border-subtle: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.35);
+  --ink-color: #0a0a0a;
+  --paper-color: #fdf8ec;
+
+  /* Manga shadow stays black on light bg */
+  --manga-shadow-color: #0a0a0a;
+  --manga-shadow: 8px 8px 0 var(--manga-shadow-color);
+
+  /* Accents — slightly darker for contrast */
+  --accent-indigo: #4f46e5;
+  --accent-purple: #7c3aed;
+  --accent-gold: #d97706;
+  --accent-red: #dc2626;
+
+  --halftone-color: rgba(0, 0, 0, 0.10);
+  --hero-overlay: rgba(245, 239, 224, 0.55);
+  --noise-opacity: 0.05;
+  --backdrop-blur: 14px;
+
+  color-scheme: light;
 }
 
-[data-theme="manga-paper"] .fixed.inset-0 {
-  background: rgba(245, 240, 230, 0.92) !important;
+*, *::before, *::after {
+  box-sizing: border-box;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-[data-theme="manga-paper"] h1,
-[data-theme="manga-paper"] h2,
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+
 [data-theme="manga-paper"] .font-manga {
-  color: #000 !important;
-  text-shadow: 2px 2px 0px rgba(0,0,0,0.3) !important;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.15) !important;
+}
+
+[data-theme="manga-paper"] img.invert-on-light {
+  filter: invert(1);
 }
 
 @theme {
@@ -56,11 +137,14 @@
   * {
     -webkit-tap-highlight-color: transparent;
   }
-  
-  /* Prevent text size inflation on mobile */
-  body {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; }
   }
 }
 
@@ -195,24 +279,32 @@
 
 @layer components {
   .manga-border {
-    @apply border-[3px] border-black;
+    border: 3px solid var(--ink-color);
     border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
   }
 
   .manga-card {
-    @apply bg-white border-[3px] border-black shadow-[8px_8px_0px_#000];
+    background: var(--paper-color);
+    border: 3px solid var(--ink-color);
+    box-shadow: var(--manga-shadow);
     border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
 
   .manga-button {
-    @apply px-4 py-3 bg-white border-[3px] border-black shadow-[8px_8px_0px_#000] text-black font-manga uppercase tracking-wider text-xl block;
+    @apply px-4 py-3 font-manga uppercase tracking-wider text-xl block;
+    background: var(--paper-color);
+    border: 3px solid var(--ink-color);
+    color: var(--ink-color);
+    box-shadow: var(--manga-shadow);
     border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
 
   .manga-button:hover {
-    @apply -translate-x-[4px] -translate-y-[4px] shadow-[12px_12px_0px_#000] bg-zinc-50;
+    @apply -translate-x-[4px] -translate-y-[4px];
+    box-shadow: var(--manga-shadow);
+    background: var(--bg-elevated);
     /* Animated border-radius for "wobble" effect */
     border-radius: 225px 30px 255px 10px/10px 255px 30px 225px;
   }
@@ -222,16 +314,16 @@
   }
 
   .retro-shadow-sm {
-    box-shadow: 3px 3px 0px #000, 6px 6px 0px rgba(0, 0, 0, 0.15);
+    box-shadow: 3px 3px 0px var(--ink-color), 6px 6px 0px var(--halftone-color);
   }
   .retro-shadow-md {
-    box-shadow: 5px 5px 0px #000, 9px 9px 0px rgba(0, 0, 0, 0.15), 14px 14px 0px rgba(0, 0, 0, 0.08);
+    box-shadow: 5px 5px 0px var(--ink-color), 9px 9px 0px var(--halftone-color), 14px 14px 0px rgba(0, 0, 0, 0.08);
   }
   .retro-shadow-lg {
-    box-shadow: 8px 8px 0px #000, 14px 14px 0px rgba(0, 0, 0, 0.2), 20px 20px 0px rgba(0, 0, 0, 0.1);
+    box-shadow: 8px 8px 0px var(--ink-color), 14px 14px 0px var(--halftone-color), 20px 20px 0px rgba(0, 0, 0, 0.1);
   }
   .retro-shadow-white {
-    box-shadow: 5px 5px 0px #fff, 9px 9px 0px rgba(255, 255, 255, 0.15);
+    box-shadow: 5px 5px 0px var(--ink-color), 9px 9px 0px var(--halftone-color);
   }
 
   .halftone-bg {
@@ -241,7 +333,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.15) 1px, transparent 0);
+    background-image: radial-gradient(circle at 1px 1px, var(--halftone-color) 1px, transparent 0);
     background-size: 8px 8px;
     pointer-events: none;
     z-index: 0;
@@ -271,17 +363,17 @@
   }
 
   .manga-panel {
-    border: 4px solid #000;
-    box-shadow: 8px 8px 0 #000;
+    border: 4px solid var(--ink-color);
+    box-shadow: var(--manga-shadow);
     position: relative;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-glass);
     backdrop-filter: blur(4px);
   }
   .manga-panel::after {
     content: "";
     position: absolute;
     inset: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-subtle);
     pointer-events: none;
   }
 
@@ -322,8 +414,8 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: rgba(0,0,0,0.8);
-    color: white;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -333,7 +425,7 @@
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid var(--border-subtle);
     box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
     backdrop-filter: blur(8px);
   }
@@ -351,7 +443,8 @@
 
   .scroll-to-top:hover {
     transform: scale(1.1);
-    background: #000;
+    background: var(--bg-page);
+    border-color: var(--border-strong);
   }
 
   .manga-highlight {
@@ -372,13 +465,13 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: #000;
+    background: var(--ink-color);
     transform: skewX(-10deg);
   }
 
   .manga-divider {
     height: 4px;
-    background: repeating-linear-gradient(90deg, #000 0px, #000 20px, transparent 20px, transparent 30px);
+    background: repeating-linear-gradient(90deg, var(--ink-color) 0px, var(--ink-color) 20px, transparent 20px, transparent 30px);
     margin: 8px 0;
   }
 
@@ -601,8 +694,10 @@ html {
 }
 
 body {
-  @apply bg-[#121212] min-h-screen text-zinc-900;
-  background-image: radial-gradient(circle at 2px 2px, #333 1px, transparent 0);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
+  background-image: radial-gradient(circle at 2px 2px, var(--halftone-color) 1px, transparent 0);
   background-size: 40px 40px;
   overflow-x: hidden;
   max-width: 100vw;
@@ -615,6 +710,8 @@ body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* Allow text selection only in lyrics and song titles */
@@ -747,15 +844,15 @@ button {
 }
 
 .glass-morphism {
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--bg-glass-strong);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-subtle);
 }
 
 .cursor-hover {
   width: 48px !important;
   height: 48px !important;
-  border-color: rgba(255,255,255,0.9) !important;
+  border-color: var(--text-primary) !important;
   margin-top: -8px;
   margin-left: -8px;
 }
@@ -764,15 +861,15 @@ button {
   position: absolute;
   top: -100px;
   left: 0;
-  background: #fff;
-  color: #000;
+  background: var(--paper-color);
+  color: var(--ink-color);
   padding: 12px 24px;
   z-index: 999999;
   font-weight: bold;
   font-family: var(--font-manga);
   text-transform: uppercase;
-  border-bottom: 4px solid #000;
-  border-right: 4px solid #000;
+  border-bottom: 4px solid var(--ink-color);
+  border-right: 4px solid var(--ink-color);
   transition: top 0.2s ease-in-out;
 }
 

@@ -31,7 +31,7 @@ export const HighlightsSection = ({
     >
       {/* The Vault - Playlist Section */}
       <div className="flex flex-col gap-4">
-        <h3 lang="en" className="font-manga text-xl font-bold bg-white text-black inline-block px-4 py-1 manga-border w-fit -rotate-2 shadow-[3px_3px_0px_#000]">
+        <h3 lang="en" className="font-manga text-xl font-bold bg-[var(--paper-color)] text-[var(--ink-color)] inline-block px-4 py-1 manga-border w-fit -rotate-2 shadow-[3px_3px_0px_var(--manga-shadow-color)] border-[var(--ink-color)]">
           ■ THE VAULT
         </h3>
         <a 
@@ -39,7 +39,7 @@ export const HighlightsSection = ({
           target="_blank"
           rel="noreferrer"
           id="vault-playlist"
-          className="group relative overflow-hidden border-[3px] border-black transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
+          className="group relative overflow-hidden border-[3px] border-[var(--ink-color)] transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
           style={{ borderRadius: '12px 5px 18px 8px / 8px 18px 5px 12px' }}
         >
           <ResponsiveImage 
@@ -60,14 +60,14 @@ export const HighlightsSection = ({
 
       {/* YouTube Highlights Section */}
       <div className="flex flex-col gap-4">
-        <h3 lang="en" className="font-manga text-xl font-bold bg-black text-white inline-block px-4 py-1 manga-border w-fit rotate-1 shadow-[3px_3px_0px_#fff] border-white">
+        <h3 lang="en" className="font-manga text-xl font-bold bg-[var(--ink-color)] text-[var(--text-inverse)] inline-block px-4 py-1 manga-border w-fit rotate-1 shadow-[3px_3px_0px_var(--manga-shadow-color)] border-[var(--border-strong)]">
           ■ HIGHLIGHTS
         </h3>
         <a 
           href="https://www.youtube.com/@nourdin_el_mobaraki"
           target="_blank"
           rel="noreferrer"
-          className="group relative overflow-hidden border-[3px] border-black transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
+          className="group relative overflow-hidden border-[3px] border-[var(--ink-color)] transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
           style={{ borderRadius: '5px 15px 8px 20px / 15px 8px 20px 5px' }}
         >
           <div 

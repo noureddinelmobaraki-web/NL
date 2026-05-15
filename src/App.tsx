@@ -92,18 +92,33 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [ambientColor, setAmbientColor] = useState<string | null>(null);
-  const [theme, setTheme] = useState<'dark' | 'manga-paper'>(() => {
+  const [theme, setTheme] = useState<'dark' | 'light' | 'system'>(() => {
     try {
-      return (localStorage.getItem('nl-theme') as 'dark' | 'manga-paper') || 'dark';
+      return (localStorage.getItem('nl-theme') as 'dark' | 'light' | 'system') || 'system';
     } catch {
-      return 'dark';
+      return 'system';
     }
   });
 
   useEffect(() => {
+    const resolved = theme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'manga-paper')
+      : (theme === 'dark' ? 'dark' : 'manga-paper');
+    document.documentElement.setAttribute('data-theme', resolved);
     try {
       localStorage.setItem('nl-theme', theme);
     } catch {}
+  }, [theme]);
+
+  // Also listen to system changes when in 'system' mode
+  useEffect(() => {
+    if (theme !== 'system') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => {
+      document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'manga-paper');
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, [theme]);
 
   useEffect(() => {
@@ -275,7 +290,6 @@ export default function App() {
       )}
       <div 
         style={{ opacity: loaded ? 1 : 0, transition: 'opacity 500ms ease-in' }}
-        data-theme={theme}
       >
         <div 
           className="min-h-screen w-full relative flex flex-col items-center py-10 px-4 sm:px-8 md:px-10 lg:px-10 overflow-x-hidden"
@@ -292,9 +306,9 @@ export default function App() {
       />
       <div className="fixed inset-0 z-[-1] pointer-events-none" style={{
         background: ambientColor 
-          ? `linear-gradient(to bottom, ${ambientColor}18 0%, rgba(18,18,18,0.50) 40%)`
-          : 'rgba(18,18,18,0.45)',
-        backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0)',
+          ? `linear-gradient(to bottom, ${ambientColor}18 0%, var(--hero-overlay) 40%)`
+          : 'var(--hero-overlay)',
+        backgroundImage: 'radial-gradient(circle at 2px 2px, var(--halftone-color) 1px, transparent 0)',
         backgroundSize: '40px 40px',
         transition: 'background 1.5s ease',
       }} />
@@ -313,10 +327,13 @@ export default function App() {
       {/* Floating Audio Control Button - Small & Elegant */}
       <button
         onClick={toggleAudio}
-        className="fixed z-[9000] bg-black/30 backdrop-blur-lg border border-white/10 p-2.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
+        className="fixed z-[9000] backdrop-blur-lg border p-2.5 rounded-full transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
         style={{
           bottom: (isMobile || isTablet) ? 'calc(60px + env(safe-area-inset-bottom) + 16px)' : '16px',
           right: '16px',
+          background: 'var(--bg-glass-strong)',
+          borderColor: 'var(--border-subtle)',
+          color: 'var(--text-secondary)'
         }}
         aria-label="Toggle Background Music"
       >
@@ -522,26 +539,27 @@ export default function App() {
                 <motion.div 
                   initial={{ y: 50, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  className="bg-white p-8 manga-border border-black shadow-[12px_12px_0px_#fff] flex flex-col md:flex-row justify-between items-center gap-6"
+                  className="p-8 manga-border border-[var(--ink-color)] shadow-[12px_12px_0px_var(--manga-shadow-color)] flex flex-col md:flex-row justify-between items-center gap-6"
+                  style={{ background: 'var(--paper-color)' }}
                 >
                   <div className="flex items-center gap-6">
-                    <div className="p-4 bg-black text-white rounded-2xl shadow-lg -rotate-3 group-hover:rotate-0 transition-transform">
+                    <div className="p-4 bg-[var(--ink-color)] text-[var(--text-inverse)] rounded-2xl shadow-lg -rotate-3 group-hover:rotate-0 transition-transform">
                       <Maximize2 className="w-8 h-8" aria-hidden="true" />
                     </div>
                     <div>
-                      <h4 className="font-manga text-3xl font-black uppercase text-black leading-none tracking-tight">Theater Mode</h4>
-                      <p className="font-hand text-zinc-500 text-xl mt-1">Curated photography and sketches from Noordine's private collection.</p>
+                      <h4 className="font-manga text-3xl font-black uppercase text-[var(--ink-color)] leading-none tracking-tight">Theater Mode</h4>
+                      <p className="font-hand text-[var(--text-muted)] text-xl mt-1">Curated photography and sketches from Noordine's private collection.</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-4 justify-center">
-                    <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-zinc-400 font-mono text-xs uppercase tracking-widest">
+                    <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[var(--bg-glass)] rounded-full text-[var(--text-muted)] font-mono text-xs uppercase tracking-widest">
                       <span>Arrows to navigate</span>
-                      <div className="w-1 h-1 bg-zinc-300 rounded-full" />
+                      <div className="w-1 h-1 bg-[var(--border-subtle)] rounded-full" />
                       <span>ESC to close</span>
                     </div>
                     <button 
                       onClick={() => setIsGalleryOpen(false)}
-                      className="manga-button bg-black text-white px-10 py-3 font-manga text-2xl hover:bg-zinc-800 tracking-tighter"
+                      className="manga-button bg-[var(--ink-color)] text-[var(--text-inverse)] px-10 py-3 font-manga text-2xl hover:opacity-90 tracking-tighter"
                     >
                       LEAVE THEATER
                     </button>
@@ -621,10 +639,10 @@ export default function App() {
           id="me-bit-gallery"
         >
           <div className="flex justify-between items-end">
-            <h2 className="font-manga text-fluid-section font-bold text-white text-left tracking-wider">
+            <h2 className="font-manga text-fluid-section font-bold text-[var(--text-primary)] text-left tracking-wider">
               ME bit
             </h2>
-            <span className="font-hand text-zinc-400 text-sm italic mb-1">Click to enter theater mode</span>
+            <span className="font-hand text-[var(--text-muted)] text-sm italic mb-1">Click to enter theater mode</span>
           </div>
           <div className="manga-divider" />
           
@@ -633,7 +651,7 @@ export default function App() {
               setIsGalleryOpen(true);
               if (selectedImageIndex === null) setSelectedImageIndex(0);
             }}
-            className="relative w-full border-[4px] border-black bg-white p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[220px] sm:h-[260px] md:h-[280px] manga-panel"
+            className="relative w-full border-[4px] border-[var(--ink-color)] bg-[var(--paper-color)] p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[220px] sm:h-[260px] md:h-[280px] manga-panel"
           >
             <div className="me-bit-track flex gap-[10px]">
               {[...ME_BIT_IMAGES, ...ME_BIT_IMAGES].map((src, idx) => (
@@ -661,7 +679,7 @@ export default function App() {
             
             {/* Overlay hint */}
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-              <div className="bg-white text-black p-4 manga-border border-black flex items-center gap-3 scale-90 group-hover:scale-100 transition-transform shadow-[5px_5px_0_black]">
+              <div className="p-4 manga-border flex items-center gap-3 scale-90 group-hover:scale-100 transition-transform shadow-[5px_5px_0_var(--ink-color)]" style={{ background: 'var(--paper-color)', color: 'var(--ink-color)', borderColor: 'var(--ink-color)' }}>
                 <Maximize2 className="w-6 h-6" aria-hidden="true" />
                 <span className="font-manga text-xl font-bold">OPEN GALLERY</span>
               </div>
@@ -675,7 +693,7 @@ export default function App() {
           id="lens-section"
         >
           <div className="flex justify-between items-end">
-            <h2 className="font-manga text-fluid-section font-bold text-white tracking-wider">
+            <h2 className="font-manga text-fluid-section font-bold text-[var(--text-primary)] tracking-wider">
               THROUGH THE LENS
             </h2>
           </div>
@@ -684,7 +702,7 @@ export default function App() {
           {/* Thumbnail trigger */}
           <div
             onClick={() => setIsLensGalleryOpen(true)}
-            className="relative w-full border-[4px] border-black bg-black overflow-hidden group cursor-pointer shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[160px] sm:h-[200px]"
+            className="relative w-full border-[4px] border-[var(--ink-color)] bg-black overflow-hidden group cursor-pointer shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[160px] sm:h-[200px]"
             role="button"
             aria-label="Open photography gallery"
             tabIndex={0}
@@ -776,23 +794,23 @@ export default function App() {
       {/* Editorial Footer */}
         <motion.footer 
           variants={itemVariants}
-          className="mt-10 flex flex-col items-center gap-8 border-t-4 border-black pt-10 pb-20 retro-shadow-white"
+          className="mt-10 flex flex-col items-center gap-8 border-t-4 border-[var(--ink-color)] pt-10 pb-20 retro-shadow-white"
         >
           {/* Footer Decoration Image with Float Animation */}
           <ResponsiveImage 
             src={CONFIG_ASSETS.footerDecoration}
             alt="Footer Decoration"
-            className="w-full max-w-[600px] border-[3px] border-black shadow-[10px_10px_0px_#000] rounded-xl hover:scale-[1.02] transition-transform animate-float"
+            className="w-full max-w-[600px] border-[3px] border-[var(--ink-color)] shadow-[10px_10px_0px_var(--manga-shadow-color)] rounded-xl hover:scale-[1.02] transition-transform animate-float"
             loading="lazy"
           />
 
           <div className="flex flex-col md:flex-row justify-between items-center w-full gap-6">
             <div className="flex gap-4">
-              <div className="w-4 h-4 bg-black manga-border rounded-none" />
-              <div className="w-4 h-4 bg-black manga-border rounded-none" />
-              <div className="w-4 h-4 bg-black manga-border rounded-none" />
+              <div className="w-4 h-4 bg-[var(--ink-color)] manga-border rounded-none" />
+              <div className="w-4 h-4 bg-[var(--ink-color)] manga-border rounded-none" />
+              <div className="w-4 h-4 bg-[var(--ink-color)] manga-border rounded-none" />
             </div>
-            <p className="font-manga text-2xl text-black bg-white px-6 py-1 manga-border -rotate-1 shadow-[4px_4px_0px_#000] italic text-center md:text-left">
+            <p className="font-manga text-2xl text-[var(--text-primary)] bg-[var(--paper-color)] px-6 py-1 manga-border -rotate-1 shadow-[4px_4px_0px_var(--manga-shadow-color)] italic text-center md:text-left">
               NL // NOURDINE GB © 2026
             </p>
           </div>
@@ -816,18 +834,24 @@ export default function App() {
       >
         ↑
       </button>
-      <button
-        onClick={() => setTheme(t => t === 'dark' ? 'manga-paper' : 'dark')}
-        className="fixed z-[9000] bg-black/30 border border-white/10 p-2.5 rounded-full text-white/80 hover:bg-black/50 transition-all hover:scale-105 active:scale-90 shadow-xl"
-        style={{
-          top: 'calc(env(safe-area-inset-top) + 20px)',
-          right: '20px',
-          fontSize: '16px',
-        }}
-        aria-label="Toggle theme"
-      >
-        {theme === 'dark' ? '🌑' : '📄'}
-      </button>
+        <button
+          onClick={() => {
+            const next = theme === 'system' ? 'dark' : theme === 'dark' ? 'light' : 'system';
+            setTheme(next);
+          }}
+          className="fixed z-[9000] border p-2.5 rounded-full transition-all hover:scale-105 active:scale-90 shadow-xl"
+          style={{
+            top: 'calc(env(safe-area-inset-top) + 20px)',
+            right: '20px',
+            fontSize: '16px',
+            background: 'var(--bg-glass-strong)',
+            borderColor: 'var(--border-subtle)',
+            color: 'var(--text-secondary)'
+          }}
+          aria-label="Toggle theme"
+        >
+          {theme === 'system' ? '🌓' : theme === 'dark' ? '🌑' : '☀️'}
+        </button>
       {(isMobile || isTablet) && (
         <MobileNavBar 
           currentPage={currentPage} 

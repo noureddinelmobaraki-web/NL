@@ -27,7 +27,7 @@ export const HeroSection = () => {
     >
       <div 
         lang="en"
-        className="manga-border p-8 flex-1 min-w-[60%] relative group overflow-hidden border-[4px] border-black transition-all duration-500 hover:scale-[1.01] halftone-bg"
+        className="manga-border p-8 flex-1 min-w-[60%] relative group overflow-hidden border-[4px] border-[var(--ink-color)] transition-all duration-500 hover:scale-[1.01] halftone-bg"
         id="header-card"
       >
         {/* Header Background Image with Zoom & Pan Hover Effect */}
@@ -51,7 +51,7 @@ export const HeroSection = () => {
         
         <div className="mt-6 flex items-center gap-4 text-white font-bold uppercase italic border-t-2 border-white/50 pt-4">
           <span className="text-xl font-manga" style={STYLES.SHADOW_BLACK_SM}>Casablanca 📍</span>
-          <span className="text-sm bg-black text-white px-3 py-1 manga-border border-white/30 truncate">
+          <span className="text-sm bg-[var(--ink-color)] text-[var(--text-inverse)] px-3 py-1 manga-border border-white/30 truncate">
             "NL" | "Nordine GB"
           </span>
         </div>
@@ -69,7 +69,8 @@ export const HeroSection = () => {
 
       {/* Profile Image Square Box */}
       <div 
-        className={`manga-card bg-white p-0 flex flex-col items-center justify-center ${isTablet ? 'w-40 h-40' : 'w-48'} aspect-square hidden md:flex rotate-2 hover:rotate-0 transition-transform overflow-hidden border-[3px] border-black`}
+        className={`manga-card p-0 flex flex-col items-center justify-center ${isTablet ? 'w-40 h-40' : 'w-48'} aspect-square hidden md:flex rotate-2 hover:rotate-0 transition-transform overflow-hidden border-[3px] border-[var(--ink-color)]`}
+        style={{ background: 'var(--paper-color)' }}
       >
         <ResponsiveImage 
           src={ASSETS.profile.main} 

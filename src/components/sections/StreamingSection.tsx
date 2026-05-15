@@ -87,7 +87,7 @@ export const StreamingSection = () => {
     <main className="grid grid-cols-1 md:grid-cols-2 gap-10">
       {/* Streaming Platforms Section */}
       <motion.section variants={itemVariants} className="flex flex-col gap-6" lang="en">
-        <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit -rotate-1 shadow-[4px_4px_0px_#000]">
+        <h2 className="font-manga text-2xl font-bold bg-[var(--paper-color)] text-[var(--ink-color)] inline-block px-5 py-2 manga-border w-fit -rotate-1 shadow-[4px_4px_0px_var(--manga-shadow-color)] border-[var(--ink-color)]">
           ■ STREAMING PLATFORMS
         </h2>
         <div className="manga-divider" />
@@ -124,7 +124,7 @@ export const StreamingSection = () => {
 
       {/* Social Channels Section */}
       <motion.section variants={itemVariants} className="flex flex-col gap-6" lang="en">
-        <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit rotate-1 shadow-[4px_4px_0px_#000]">
+        <h2 className="font-manga text-2xl font-bold bg-[var(--paper-color)] text-[var(--ink-color)] inline-block px-5 py-2 manga-border w-fit rotate-1 shadow-[4px_4px_0px_var(--manga-shadow-color)] border-[var(--ink-color)]">
           ■ SOCIAL CHANNELS
         </h2>
         <div className="manga-divider" />

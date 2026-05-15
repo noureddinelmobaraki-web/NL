@@ -7,7 +7,7 @@
     
     <!-- Open Graph / Meta Tags -->
     <meta property="og:type" content="music.song">
-    <meta property="og:url" content="https://noureddinelmobaraki.github.io/nradio/?s=10">
+    <meta property="og:url" content="https://noureddinelmobaraki-web.github.io/NL/?s=10">
     <meta property="og:title" content="Dokhana V2 | Listen on NRADIO">
     <meta property="og:description" content="Click to listen to Dokhana V2 by NL on NRADIO.">
     <meta property="og:image" content="https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/10.%20Dokhana%20V2%20-%20Background.webp">
@@ -21,19 +21,20 @@
 
     <script>
         // Redirect human users to the main app with the song parameter
-        // We use relative path because it's in public/share/
-        window.location.href = "../?s=10";
+        window.location.href = "../../?s=10";
     </script>
     <style>
         body { background: #050505; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; text-align: center; }
         .loader { border: 2px solid rgba(255,255,255,0.1); border-top: 2px solid #6366f1; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        a { color: #6366f1; text-decoration: none; }
     </style>
 </head>
 <body>
     <div style="display: flex; flex-direction: column; align-items: center;">
         <div class="loader"></div>
         <p>Opening <b>Dokhana V2</b> in NRADIO...</p>
+        <p style="font-size: 12px; opacity: 0.5;">If not redirected, <a href="../../?s=10">click here</a>.</p>
     </div>
 </body>
 </html>

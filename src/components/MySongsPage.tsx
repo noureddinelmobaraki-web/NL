@@ -72,7 +72,7 @@ export const MySongs = ({
             ? (base2.endsWith('/') ? base2 : base2 + '/') + `lrc/${s.lrcFile}.lrc`
             : null,
           backgroundImage: ASSETS.songs.backgrounds[s.bgIndex],
-          sharePath: `/nradio/share/song-${s.id}.html`
+          sharePath: `/NL/share/song-${s.id}.html`
         }));
         setSongs(mapped);
       });
@@ -517,11 +517,11 @@ export const MySongs = ({
       id="my-songs-section" 
       className="w-full py-24 px-6 sm:px-12 font-sans selection:bg-indigo-500/30 relative overflow-hidden"
       style={{
-        background: `radial-gradient(ellipse at 50% 0%, rgba(${ambientColor}, 0.25) 0%, transparent 65%), rgba(255,255,255,0.03)`,
+        background: `radial-gradient(ellipse at 50% 0%, rgba(${ambientColor}, 0.25) 0%, transparent 65%), var(--bg-glass)`,
         backdropFilter: 'blur(14px) saturate(160%)',
         WebkitBackdropFilter: 'blur(14px) saturate(160%)',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        borderTop: '1px solid var(--border-subtle)',
+        borderBottom: '1px solid var(--border-subtle)',
         transition: 'background 1500ms ease'
       }}
     >
@@ -532,18 +532,18 @@ export const MySongs = ({
       <div className="max-w-6xl mx-auto relative z-10">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-20">
           <div className="space-y-2">
-            <h1 className="text-fluid-title font-black italic tracking-tighter uppercase leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+            <h1 className="text-fluid-title font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)] drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
               MY SONGS
             </h1>
             <div className="flex items-center gap-3">
-              <div className="h-1 w-12 bg-indigo-500" />
-              <p className="text-zinc-500 font-medium tracking-[0.2em] text-xs uppercase">Curated Soundscape</p>
+              <div className="h-1 w-12 bg-[var(--accent-indigo)]" />
+              <p className="text-[var(--text-muted)] font-medium tracking-[0.2em] text-xs uppercase">Curated Soundscape</p>
             </div>
           </div>
           <div className="text-right flex flex-col items-end">
             <div className="flex items-baseline gap-2">
-              <span className="text-indigo-500 font-mono text-4xl font-bold tracking-tighter">{songs.length}</span>
-              <span className="text-zinc-500 text-sm font-medium uppercase tracking-[0.3em] pb-1">Tracks</span>
+              <span className="text-[var(--accent-indigo)] font-mono text-4xl font-bold tracking-tighter">{songs.length}</span>
+              <span className="text-[var(--text-muted)] text-sm font-medium uppercase tracking-[0.3em] pb-1">Tracks</span>
             </div>
           </div>
         </header>
@@ -561,15 +561,14 @@ export const MySongs = ({
               position: 'fixed',
               inset: 0,
               zIndex: 9500,
-              backgroundColor: '#080808',
-              background: 'linear-gradient(180deg, #080808 0%, #111122 100%)',
+              background: 'var(--bg-page)',
               display: 'flex',
               flexDirection: 'column',
               paddingTop: 'env(safe-area-inset-top)',
               paddingBottom: 'env(safe-area-inset-bottom)',
               transition: 'transform 350ms cubic-bezier(0.4, 0, 0.2, 1)',
               transform: isOverlayOpen ? 'translateY(0)' : 'translateY(100%)',
-              color: 'white'
+              color: 'var(--text-primary)'
             }}
           >
             {/* HEADER */}
@@ -579,13 +578,13 @@ export const MySongs = ({
               alignItems: 'center', 
               justifyContent: 'space-between', 
               padding: '0 16px',
-              borderBottom: '1px solid rgba(255,255,255,0.05)'
+              borderBottom: '1px solid var(--border-subtle)'
             }}>
               <button 
                 onClick={() => setMobileFullscreen(null)}
                 style={{
                   background: 'transparent',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   fontSize: '15px',
                   fontWeight: 600,
                   border: 'none',
@@ -613,8 +612,8 @@ export const MySongs = ({
               <button 
                 onClick={() => setMobileFullscreen(null)}
                 style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  color: 'white',
+                  background: 'var(--bg-glass-strong)',
+                  color: 'var(--text-primary)',
                   width: '32px',
                   height: '32px',
                   borderRadius: '50%',
@@ -645,8 +644,8 @@ export const MySongs = ({
             <div style={{
               padding: '24px 20px',
               paddingBottom: 'max(env(safe-area-inset-bottom), 32px)',
-              background: 'rgba(0,0,0,0.85)',
-              borderTop: '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--bg-overlay)',
+              borderTop: '1px solid var(--border-subtle)',
               flexShrink: 0
             }}>
               {/* Row 1: Seek Bar */}
@@ -659,7 +658,7 @@ export const MySongs = ({
                 onChange={(e) => handleSeek(parseFloat(e.target.value))}
                 style={{
                   width: '100%',
-                  accentColor: 'white',
+                  accentColor: 'var(--ink-color)',
                   height: '4px',
                   marginBottom: '8px',
                   cursor: 'pointer'
@@ -671,7 +670,7 @@ export const MySongs = ({
                 display: 'flex',
                 justifyContent: 'space-between',
                 fontSize: '12px',
-                color: 'rgba(255,255,255,0.4)',
+                color: 'var(--text-muted)',
                 marginBottom: '20px',
                 fontFamily: 'monospace'
               }}>
@@ -688,7 +687,7 @@ export const MySongs = ({
               }}>
                 <button 
                   onClick={handlePrev}
-                  style={{ background: 'transparent', color: 'white', border: 'none', padding: '12px' }}
+                  style={{ background: 'transparent', color: 'var(--text-primary)', border: 'none', padding: '12px' }}
                 >
                   <ChevronLeft size={32} />
                 </button>
@@ -696,8 +695,8 @@ export const MySongs = ({
                 <button 
                   onClick={() => handlePlayToggle()}
                   style={{
-                    background: 'white',
-                    color: 'black',
+                    background: 'var(--text-primary)',
+                    color: 'var(--text-inverse)',
                     width: '64px',
                     height: '64px',
                     borderRadius: '50%',
@@ -718,7 +717,7 @@ export const MySongs = ({
 
                 <button 
                   onClick={handleNext}
-                  style={{ background: 'transparent', color: 'white', border: 'none', padding: '12px' }}
+                  style={{ background: 'transparent', color: 'var(--text-primary)', border: 'none', padding: '12px' }}
                 >
                   <ChevronRight size={32} />
                 </button>

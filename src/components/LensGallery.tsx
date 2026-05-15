@@ -213,7 +213,9 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'space-between',
-      background: isMobile ? '#000' : 'linear-gradient(180deg, #f0ece8 0%, #e8e4df 40%, #ddd8d2 100%)',
+      background: isMobile ? '#000' : 'var(--bg-page)',
+      backgroundPosition: 'center',
+      backgroundSize: 'cover',
       overflow: 'hidden',
       height: isMobile ? '100dvh' : '100vh',
       paddingTop: isMobile ? 'env(safe-area-inset-top)' : '0',
@@ -228,7 +230,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
       {!isMobile && (
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.15) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(var(--bg-page-rgb), 0.25) 100%)',
         }} />
       )}
 
@@ -243,11 +245,11 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
         {/* Title */}
         <div style={{
           fontFamily: isMobile ? 'inherit' : 'var(--font-manga)', 
-          color: isMobile ? '#fff' : '#1a1a1a',
+          color: isMobile ? '#fff' : 'var(--text-primary)',
           fontSize: isMobile ? 'clamp(16px, 5vw, 22px)' : '18px', 
           fontWeight: isMobile ? 700 : 400,
           letterSpacing: isMobile ? '-0.02em' : '0.15em',
-          textShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.3)' : '0 0 20px rgba(255,255,255,0.3)',
+          textShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.3)' : '0 0 20px rgba(var(--bg-page-rgb), 0.3)',
         }}>
           THROUGH THE LENS
         </div>
@@ -255,11 +257,11 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
         {/* Controls row */}
         <div style={{ display: 'flex', gap: isMobile ? '8px' : '12px', alignItems: 'center' }}>
           <button onClick={toggleMute} style={{
-            background: isMobile ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
-            border: isMobile ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.12)',
+            background: isMobile ? 'rgba(255,255,255,0.15)' : 'rgba(var(--bg-page-rgb), 0.08)',
+            border: isMobile ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border-subtle)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
-            color: isMobile ? '#fff' : '#333',
+            color: isMobile ? '#fff' : 'var(--text-primary)',
             width: isMobile ? '44px' : '36px', 
             height: isMobile ? '44px' : '36px',
             borderRadius: '50%', cursor: 'pointer',
@@ -274,7 +276,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
             border: isMobile ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(200,50,50,0.25)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
-            color: isMobile ? '#fff' : '#c0392b',
+            color: isMobile ? '#fff' : 'var(--accent-red)',
             width: isMobile ? '44px' : '36px', 
             height: isMobile ? '44px' : '36px',
             borderRadius: '50%', cursor: 'pointer',
