@@ -1,5 +1,5 @@
 import { useState, memo } from 'react';
-import { Play, Pause, Volume2 } from 'lucide-react';
+import { Play, Pause, Volume2, SkipBack, SkipForward } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Song, LyricLine } from '../types';
 import { LyricsWindowContent } from './LyricsEngine';
@@ -41,6 +41,9 @@ export interface SongCardProps {
   isPlaying: boolean;
   isWaiting: boolean;
   onPlay: () => void;
+  onPlayPause?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
   setLyricsOpen: (val: boolean | ((prev: boolean) => boolean)) => void;
   isLyricsOpen?: boolean;
   lyrics?: LyricLine[];
@@ -66,6 +69,9 @@ export const SongCard = memo(({
   isPlaying,
   isWaiting,
   onPlay,
+  onPlayPause,
+  onPrev,
+  onNext,
   setLyricsOpen,
   isLyricsOpen = false,
   lyrics = [],
@@ -94,6 +100,13 @@ export const SongCard = memo(({
       layout
       layoutId={`song-${song.id}`}
       onClick={onPlay}
+      onPointerEnter={() => {
+        if (song.url.includes('.m3u8')) {
+          import('../hooks/useHlsAudio').then(({ preloadAllSongs }) => {
+            preloadAllSongs([song.url], 4, 1, 0);
+          });
+        }
+      }}
       className={`
         song-card relative overflow-hidden p-6 rounded-2xl flex flex-col gap-4 transition-all duration-700 cursor-pointer
         ${isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)]' : 'shadow-lg hover:shadow-xl'}
@@ -245,6 +258,94 @@ export const SongCard = memo(({
         {/* Controls shown when active */}
         {isActive && (
           <div className="mt-2 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* Full Playback Controls */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              padding: '4px 0 8px',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              marginBottom: '4px',
+            }}>
+              {/* Previous Song */}
+              <button
+                onClick={(e) => { e.stopPropagation(); onPrev?.(); }}
+                style={{
+                  width: '40px', height: '40px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.7)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                }}
+                className="hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
+                aria-label="Previous song"
+              >
+                <SkipBack size={16} fill="currentColor" />
+              </button>
+
+              {/* Play / Pause — main CTA */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPlayPause?.();
+                }}
+                style={{
+                  width: '52px', height: '52px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: '50%',
+                  background: isPlaying ? 'rgba(255,255,255,0.95)' : 'white',
+                  color: 'black',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                  flexShrink: 0,
+                }}
+                className="hover:scale-110 active:scale-90"
+                aria-label={isPlaying ? 'Pause' : 'Play'}
+                aria-pressed={isPlaying}
+              >
+                {isWaiting ? (
+                  <div style={{
+                    width: '20px', height: '20px',
+                    border: '2px solid rgba(0,0,0,0.3)',
+                    borderTopColor: 'black',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite',
+                  }} />
+                ) : isPlaying ? (
+                  <Pause size={22} fill="currentColor" />
+                ) : (
+                  <Play size={22} fill="currentColor" style={{ marginLeft: '2px' }} />
+                )}
+              </button>
+
+              {/* Next Song */}
+              <button
+                onClick={(e) => { e.stopPropagation(); onNext?.(); }}
+                style={{
+                  width: '40px', height: '40px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.7)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                }}
+                className="hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
+                aria-label="Next song"
+              >
+                <SkipForward size={16} fill="currentColor" />
+              </button>
+            </div>
+
             {/* Seek Bar */}
             <div className="space-y-1">
               <input 

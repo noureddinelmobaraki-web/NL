@@ -81,6 +81,7 @@ export default function App() {
   const [isLensGalleryOpen, setIsLensGalleryOpen] = useState(false);
   const [isMeBitPlaying, setIsMeBitPlaying] = useState(false);
   const meBitAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lensAudioRef = useRef<HTMLAudioElement | null>(null);
   const galleryRef = useFocusTrap(isGalleryOpen);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -130,15 +131,28 @@ export default function App() {
         meBitAudioRef.current = audio;
         audioManager.register('mebit', audio, 0.6);
       }
-      audioManager.play('mebit');
+      audioManager.play('mebit'); // Fire-and-forget
       setIsMeBitPlaying(true);
     } else {
       if (meBitAudioRef.current) {
-        audioManager.pause('mebit');
+        audioManager.pause('mebit'); // Fire-and-forget
         setIsMeBitPlaying(false);
       }
     }
   }, [isGalleryOpen]);
+
+  // Ensure lens is registered as soon as gallery opens
+  useEffect(() => {
+    if (isLensGalleryOpen) {
+      if (!lensAudioRef.current) {
+        const audio = new Audio(ASSETS.media.lensMusic);
+        audio.loop = true;
+        audio.preload = 'auto';
+        lensAudioRef.current = audio;
+        audioManager.register('lens', audio, 0.7);
+      }
+    }
+  }, [isLensGalleryOpen]);
 
   const toggleMeBitAudio = () => {
     if (!meBitAudioRef.current) return;
@@ -246,7 +260,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const onOpen = () => audioManager.play('lens');
+    const onOpen = () => {
+      // Small delay ensures register() call in LensGallery or App.tsx effect completes
+      audioManager.play('lens');
+    };
     const onClose = () => audioManager.pause('lens');
     window.addEventListener('gallery:open', onOpen);
     window.addEventListener('gallery:close', onClose);

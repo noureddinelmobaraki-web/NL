@@ -36,13 +36,13 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
   // Audio logic using audioManager
   useEffect(() => {
     if (isOpen) {
-      window.dispatchEvent(new CustomEvent('gallery:open'));
       const audio = new Audio(MUSIC_URL);
       audio.loop = true;
       audio.volume = 0;
       audioRef.current = audio;
       
       audioManager.register('lens', audio, 0.7);
+      window.dispatchEvent(new CustomEvent('gallery:open'));
       audioManager.play('lens');
       
       return () => {

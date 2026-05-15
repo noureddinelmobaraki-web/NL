@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback, Suspense } from 'rea
 import { Play, Pause, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { useDeviceType } from '../hooks/useDeviceType';
+import { useHlsAudio, preloadAllSongs, preloadSong } from '../hooks/useHlsAudio';
 import { extractDominantColorCached } from '../utils/extractColors';
 import { ASSETS } from '../constants/assets';
 import { audioManager } from '../audio/audioManager';
@@ -75,6 +76,27 @@ export const MySongs = ({
           sharePath: `/NL/share/song-${s.id}.html`
         }));
         setSongs(mapped);
+        
+        // [1] Preload first 6 songs immediately
+        mapped.slice(0, 6).forEach(s => preloadSong(s.url));
+
+        const firstFiveUrls = mapped.slice(0, 5).map(s => s.url);
+
+        // انتظر تفاعل المستخدم أو 4 ثوانٍ ثم ابدأ
+        const startPreload = () => {
+          preloadAllSongs(firstFiveUrls, 4, 2, 600);  // 5 أغاني × 4 ثواني فقط، 2 بالتوازي
+          window.removeEventListener('pointerdown', startPreload);
+          window.removeEventListener('scroll', startPreload);
+        };
+        window.addEventListener('pointerdown', startPreload, { once: true, passive: true });
+        window.addEventListener('scroll', startPreload, { once: true, passive: true });
+        setTimeout(startPreload, 4000);  // fallback تلقائي بعد 4 ثواني
+
+        // قائمة الباقي تُحمَّل تدريجياً بعد 15 ثانية
+        setTimeout(() => {
+          const remaining = mapped.slice(5).map(s => s.url);
+          preloadAllSongs(remaining, 4, 1, 1500);  // واحدة بواحدة كل 1.5 ثانية
+        }, 15000);
       });
   }, []);
 
@@ -86,11 +108,26 @@ export const MySongs = ({
   const prewarmDoneForId = useRef<number | null>(null);
 
   const audioTagRef = useRef<HTMLAudioElement | null>(null);
+  const pendingPlayRef = useRef(false); // true = play as soon as HLS is ready
   
   const currentSong = useMemo(() => songs.find(s => s.id === activeId) || null, [activeId, songs]);
 
+  useHlsAudio(audioTagRef, currentSong?.url, () => {
+    // Called when HLS manifest is parsed and audio is ready to play
+    if (pendingPlayRef.current) {
+      pendingPlayRef.current = false;
+      audioManager.register('song', audioTagRef.current!, 0.7);
+      audioManager.play('song');
+    }
+  });
+
   const preloadDuration = useCallback((song: Song) => {
     if (durationCache[song.id]) return;
+    // Skip HLS songs — setting audio.src to .m3u8 doesn't work in Chrome without hls.js
+    // Duration will be populated naturally when the song is played
+    const isHls = song.url.endsWith('.m3u8') || song.url.includes('/index.m3u8');
+    if (isHls) return;
+    
     const audio = new Audio();
     audio.preload = 'metadata';
     audio.onloadedmetadata = () => {
@@ -132,7 +169,13 @@ export const MySongs = ({
             const idx = songs.findIndex(s => s.id === activeId);
             const nextSong = songs[(idx + 1) % songs.length];
             if (nextSong) {
-              fetch(nextSong.url, { headers: { Range: 'bytes=0-512000' } }).catch(() => {});
+              // For HLS: just fetch the manifest (tiny text file, no Range header needed)
+              // This tells the browser/CDN to warm up the connection for the next song
+              fetch(nextSong.url, { 
+                method: 'GET', 
+                cache: 'force-cache',
+                headers: { 'Range': 'bytes=0-1023' }  // اول 1KB فقط من manifest
+              }).catch(() => {});
             }
           }
         }
@@ -255,15 +298,15 @@ export const MySongs = ({
     if (!audio) return;
 
     if (song && song.id !== activeId) {
-      if (isMobile) {
-        setMobileFullscreen(song.id);
-      }
+      if (isMobile) setMobileFullscreen(song.id);
+      
+      // 🚀 ابدأ play بشكل synchronous فوراً (لتجاوز autoplay block)
+      // حتى لو لم تكن الـ source جاهزة، المتصفح سيقبل play() لاحقاً
+      audio.play().catch(() => {}); // optimistic play
+      
+      pendingPlayRef.current = true;
       setActiveId(song.id);
       setIsDismissed(false);
-      audio.src = song.url;
-      audio.load();
-      audioManager.register('song', audio, 0.7);
-      audioManager.play('song');
       onSongPlay();
     } else {
       if (audioStatus === 'playing') {
@@ -442,28 +485,32 @@ export const MySongs = ({
 
   const renderedSongs = useMemo(() => {
     return songs.map((song, i) => (
-      <SongCard 
-        key={song.id} 
-        index={i}
-        song={song} 
-        isActive={activeId === song.id}
-        isActiveInBar={activeId === song.id && !isMobile}
-        isPlaying={audioStatus === 'playing'}
-        isWaiting={audioStatus === 'loading'}
-        currentTime={currentTime}
-        duration={activeId === song.id ? duration : durationCache[song.id]}
-        onSeek={handleSeek}
-        volume={volume}
-        onVolumeChange={setVolume}
-        onPlay={() => handlePlayToggle(song)}
-        onShare={() => handleShare(song)}
-        setLyricsOpen={setLyricsOpen}
-        isLyricsOpen={activeId === song.id && lyricsOpen}
-        lyrics={lrcCache[song.id] || []}
-        karaokeMode={karaokeMode}
-        setKaraokeMode={setKaraokeMode}
-        currentLyricLine={activeId === song.id ? currentLyricLine : null}
-      />
+      <div key={song.id} onMouseEnter={() => preloadSong(song.url)} style={{ display: 'contents' }}>
+        <SongCard 
+          index={i}
+          song={song} 
+          isActive={activeId === song.id}
+          isActiveInBar={activeId === song.id && !isMobile}
+          isPlaying={audioStatus === 'playing'}
+          isWaiting={audioStatus === 'loading'}
+          currentTime={currentTime}
+          duration={activeId === song.id ? duration : durationCache[song.id]}
+          onSeek={handleSeek}
+          volume={volume}
+          onVolumeChange={setVolume}
+          onPlay={() => handlePlayToggle(song)}
+          onPlayPause={() => handlePlayToggle()}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          onShare={() => handleShare(song)}
+          setLyricsOpen={setLyricsOpen}
+          isLyricsOpen={activeId === song.id && lyricsOpen}
+          lyrics={lrcCache[song.id] || []}
+          karaokeMode={karaokeMode}
+          setKaraokeMode={setKaraokeMode}
+          currentLyricLine={activeId === song.id ? currentLyricLine : null}
+        />
+      </div>
     ));
   }, [activeId, audioStatus, isMobile, handlePlayToggle, currentTime, duration, handleSeek, volume, songs]);
 
@@ -801,6 +848,9 @@ export const MySongs = ({
         }
         @keyframes rotate-angle {
           to { --angle: 360deg; }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
         .song-card {
           grid-column: span 1;

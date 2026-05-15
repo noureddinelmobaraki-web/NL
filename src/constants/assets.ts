@@ -72,6 +72,6 @@ export const ASSETS = {
     music: '/NL/media/music.mp3',
     lensMusic: 'https://github.com/user-attachments/assets/6a55e330-2007-4109-b030-6661cb26e320',
     meBitMusic: 'https://github.com/user-attachments/assets/e12ed81c-ed5c-4cd9-952c-001a9bfc652f',
-    opening: '/NL/media/opening.mp4',
+    opening: '', // video now loaded from CDN directly in LoadingScreen.tsx
   }
 };

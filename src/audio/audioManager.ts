@@ -26,32 +26,34 @@ class AudioManager {
     const entry = this.registry.get(source);
     if (!entry) return;
 
-    // If already active and playing, don't restart everything
     if (this.active === source && !entry.element.paused && entry.element.volume > 0) {
       if (source === 'bg') this.onStateChange?.(true);
       return;
     }
 
-    // Fade out current if different
+    // 🚀 fadeOut القديم في الخلفية — لا ننتظره (parallel)
     if (this.active && this.active !== source) {
       const current = this.registry.get(this.active);
-      if (current) await this.fadeOut(current.element, 300);
+      if (current) {
+        this.fadeOut(current.element, 300).then(() => current.element.pause());
+      }
     }
 
     if (source !== 'bg') {
       this.bgSuspended = true;
       const bg = this.registry.get('bg');
       if (bg && !bg.element.paused) {
-        await this.fadeOut(bg.element, 200);
-        bg.element.pause();
-        this.onStateChange?.(false);
+        this.fadeOut(bg.element, 300).then(() => {
+          bg.element.pause();
+          this.onStateChange?.(false);
+        });
       }
     }
 
     this.active = source;
-    // Don't reset volume to 0 if it's already playing (could be a resume)
+
     if (entry.element.paused) {
-      entry.element.volume = 0;
+      entry.element.volume = 0; // يبدأ بصمت ثم يعمل fadeIn
       try {
         await entry.element.play();
       } catch (e) {
@@ -59,9 +61,9 @@ class AudioManager {
         return;
       }
     }
-    
+
     if (source === 'bg') this.onStateChange?.(true);
-    await this.fadeIn(entry.element, entry.volume, 600);
+    this.fadeIn(entry.element, entry.volume, 600);
   }
 
   pause(source: AudioSource) {

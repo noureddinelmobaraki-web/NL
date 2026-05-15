@@ -53,6 +53,7 @@ export default defineConfig(({ mode }) => {
             if (id.includes('src/components/DrawingsPage')) return 'drawings';
             if (id.includes('src/components/Sarahni')) return 'sarahni';
             if (id.includes('src/components/LyricsEngine')) return 'lyrics';
+            if (id.includes('node_modules/hls.js')) return 'hls';
             return undefined;
           }
         }
