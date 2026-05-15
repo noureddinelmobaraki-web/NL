@@ -33,26 +33,30 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
   const initialPinchDist = useRef<number | null>(null);
   const initialZoom = useRef(1);
 
-  // Audio logic using audioManager
+  // Audio lifecycle management
   useEffect(() => {
-    if (isOpen) {
+    if (!audioRef.current) {
       const audio = new Audio(MUSIC_URL);
       audio.loop = true;
       audio.volume = 0;
+      audio.preload = 'auto';
       audioRef.current = audio;
-      
       audioManager.register('lens', audio, 0.7);
-      window.dispatchEvent(new CustomEvent('gallery:open'));
-      audioManager.play('lens');
-      
-      return () => {
-        window.dispatchEvent(new CustomEvent('gallery:close'));
-        audioManager.pause('lens');
-        audioRef.current = null;
-      };
     }
-    return () => {};
+
+    if (isOpen) {
+      audioManager.play('lens');
+    } else {
+      audioManager.pause('lens');
+    }
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      // Final cleanup on unmount (though it rarely unmounts in current App.tsx)
+      audioManager.pause('lens');
+    };
+  }, []);
 
   const resetZoom = () => {
     setZoomScale(1);

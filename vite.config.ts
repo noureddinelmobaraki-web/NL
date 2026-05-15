@@ -46,6 +46,9 @@ export default defineConfig(({ mode }) => {
         polyfill: false
       },
       rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+        },
         output: {
           manualChunks(id) {
             if (id.includes('node_modules/react')) return 'react-vendor';

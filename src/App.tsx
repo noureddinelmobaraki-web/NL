@@ -81,7 +81,6 @@ export default function App() {
   const [isLensGalleryOpen, setIsLensGalleryOpen] = useState(false);
   const [isMeBitPlaying, setIsMeBitPlaying] = useState(false);
   const meBitAudioRef = useRef<HTMLAudioElement | null>(null);
-  const lensAudioRef = useRef<HTMLAudioElement | null>(null);
   const galleryRef = useFocusTrap(isGalleryOpen);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -122,6 +121,7 @@ export default function App() {
     return () => mq.removeEventListener('change', handler);
   }, [theme]);
 
+  // Ensure mebit is registered as soon as gallery opens
   useEffect(() => {
     if (isGalleryOpen) {
       if (!meBitAudioRef.current) {
@@ -140,19 +140,6 @@ export default function App() {
       }
     }
   }, [isGalleryOpen]);
-
-  // Ensure lens is registered as soon as gallery opens
-  useEffect(() => {
-    if (isLensGalleryOpen) {
-      if (!lensAudioRef.current) {
-        const audio = new Audio(ASSETS.media.lensMusic);
-        audio.loop = true;
-        audio.preload = 'auto';
-        lensAudioRef.current = audio;
-        audioManager.register('lens', audio, 0.7);
-      }
-    }
-  }, [isLensGalleryOpen]);
 
   const toggleMeBitAudio = () => {
     if (!meBitAudioRef.current) return;
@@ -255,22 +242,11 @@ export default function App() {
   };
 
   const handleSongPlay = useCallback(() => {
-    // We just update the UI state. AudioManager handles the actual audio background suspension.
+    // Unconditionally pause gallery audio before song starts
+    audioManager.pause('lens');
+    audioManager.pause('mebit');
+    // We just update the UI state.
     setIsPlaying(false);
-  }, []);
-
-  useEffect(() => {
-    const onOpen = () => {
-      // Small delay ensures register() call in LensGallery or App.tsx effect completes
-      audioManager.play('lens');
-    };
-    const onClose = () => audioManager.pause('lens');
-    window.addEventListener('gallery:open', onOpen);
-    window.addEventListener('gallery:close', onClose);
-    return () => {
-      window.removeEventListener('gallery:open', onOpen);
-      window.removeEventListener('gallery:close', onClose);
-    };
   }, []);
 
   useEffect(() => {

@@ -26,34 +26,37 @@ class AudioManager {
     const entry = this.registry.get(source);
     if (!entry) return;
 
+    // Cancel any in-progress fade on the incoming element
+    this.clearFade(entry.element);
+
+    // If already playing this source — no-op
     if (this.active === source && !entry.element.paused && entry.element.volume > 0) {
       if (source === 'bg') this.onStateChange?.(true);
       return;
     }
 
-    // 🚀 fadeOut القديم في الخلفية — لا ننتظره (parallel)
+    // Fade out previous active source (fire-and-forget)
     if (this.active && this.active !== source) {
-      const current = this.registry.get(this.active);
-      if (current) {
-        this.fadeOut(current.element, 300).then(() => current.element.pause());
-      }
+      const prev = this.registry.get(this.active);
+      if (prev) this.fadeOut(prev.element, 250); // no await
     }
 
+    // Suspend bg in parallel (fire-and-forget)
     if (source !== 'bg') {
       this.bgSuspended = true;
       const bg = this.registry.get('bg');
       if (bg && !bg.element.paused) {
-        this.fadeOut(bg.element, 300).then(() => {
+        this.fadeOut(bg.element, 250).then(() => { // no await
           bg.element.pause();
           this.onStateChange?.(false);
         });
       }
     }
 
+    // Start new source immediately — zero delay from here
     this.active = source;
-
     if (entry.element.paused) {
-      entry.element.volume = 0; // يبدأ بصمت ثم يعمل fadeIn
+      entry.element.volume = 0;
       try {
         await entry.element.play();
       } catch (e) {
@@ -61,17 +64,22 @@ class AudioManager {
         return;
       }
     }
-
     if (source === 'bg') this.onStateChange?.(true);
-    this.fadeIn(entry.element, entry.volume, 600);
+    await this.fadeIn(entry.element, entry.volume, 400);
   }
 
-  pause(source: AudioSource) {
+  pause(source: AudioSource): void {
     const entry = this.registry.get(source);
     if (!entry) return;
-    
+
     this.fadeOut(entry.element, 300).then(() => {
       entry.element.pause();
+      entry.element.volume = 0; // reset volume so next play() starts clean
+      // Only resume bg after the source is fully paused
+      if (source !== 'bg' && !this.bgUserPaused) {
+        this.bgSuspended = false;
+        this.resumeBg();
+      }
     });
 
     if (source === 'bg') {
@@ -81,10 +89,8 @@ class AudioManager {
 
     if (source === this.active) {
       this.active = null;
-      if (source !== 'bg' && !this.bgUserPaused) {
-        this.bgSuspended = false;
-        this.resumeBg();
-      }
+      // NOTE: do NOT call resumeBg() here — it runs inside the .then() above
+      // after the fade actually completes. This was the overlap bug.
     }
   }
 
