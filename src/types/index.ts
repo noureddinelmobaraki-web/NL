@@ -13,6 +13,15 @@ export interface ActiveSong {
   onNext: () => void;
   onPrev: () => void;
   onShare: () => void;
+  onDismiss: () => void;
+  suppressMiniBar?: boolean;
+  isShuffle: boolean;
+  onShuffleToggle: () => void;
+  repeatMode: 'off' | 'all' | 'one';
+  onRepeatToggle: () => void;
+  volume: number;
+  onVolumeChange: (val: number) => void;
+  nextSongs?: { id: number; title: string; cover?: string }[];
 }
 
 export interface Song {

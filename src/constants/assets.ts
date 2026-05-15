@@ -28,11 +28,6 @@ export const ASSETS = {
       new URL('../assets/images/profile/Lens Gallery/8.webp', import.meta.url).href,
       new URL('../assets/images/profile/Lens Gallery/9.webp', import.meta.url).href,
     ],
-    contacts: {
-      gmail: new URL('../assets/images/profile/gmail_bg.webp', import.meta.url).href,
-      whatsapp: new URL('../assets/images/profile/whatsapp_bg.webp', import.meta.url).href,
-      telegram: new URL('../assets/images/profile/telegram_bg.webp', import.meta.url).href,
-    }
   },
   songs: {
     playlistCover: new URL('../assets/images/songs/playlist_cover.webp', import.meta.url).href,
@@ -74,8 +69,9 @@ export const ASSETS = {
     draw2: new URL('../assets/images/gallery/DRAW2.webp', import.meta.url).href,
   },
   media: {
-    music: new URL('../assets/media/music.mp3', import.meta.url).href,
+    music: '/nradio/media/music.mp3',
     lensMusic: 'https://github.com/user-attachments/assets/6a55e330-2007-4109-b030-6661cb26e320',
-    opening: new URL('../assets/media/opening.mp4', import.meta.url).href,
+    meBitMusic: 'https://github.com/user-attachments/assets/e12ed81c-ed5c-4cd9-952c-001a9bfc652f',
+    opening: '/nradio/media/opening.mp4',
   }
 };

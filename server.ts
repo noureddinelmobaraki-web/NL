@@ -1,18 +1,26 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import axios from "axios";
 import DOMPurify from "isomorphic-dompurify";
-import { LRUCache } from "lru-cache";
-
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
 
 // Rate limiter: Max 3 messages per IP per hour
-const rateLimiter = new LRUCache<string, number>({
-  max: 1000,
-  ttl: 1000 * 60 * 60, // 1 hour
-});
+// Simplified rate limiter replacing lru-cache
+const rateLimitMap = new Map<string, { count: number; expires: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const limit = rateLimitMap.get(ip);
+  
+  if (!limit || now > limit.expires) {
+    rateLimitMap.set(ip, { count: 1, expires: now + 3600000 }); // 1 hour
+    return true;
+  }
+  
+  if (limit.count >= 3) return false;
+  
+  limit.count += 1;
+  return true;
+}
 
 async function startServer() {
   const app = express();
@@ -34,8 +42,7 @@ async function startServer() {
     }
 
     // 2. Rate Limiting
-    const currentCount = rateLimiter.get(ipKey) || 0;
-    if (currentCount >= 3) {
+    if (!checkRateLimit(ipKey)) {
       return res.status(429).json({ error: "Rate limit exceeded. Try again in an hour." });
     }
 
@@ -46,15 +53,20 @@ async function startServer() {
     
     if (turnstile_token) {
         try {
-            const verifyResponse = await axios.post(
+            const verifyResponse = await fetch(
                 "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-                new URLSearchParams({
-                    secret: process.env.TURNSTILE_SECRET_KEY || "",
-                    response: turnstile_token,
-                    remoteip: ipKey,
-                }).toString()
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        secret: process.env.TURNSTILE_SECRET_KEY || "",
+                        response: turnstile_token,
+                        remoteip: ipKey,
+                    }),
+                }
             );
-            if (!verifyResponse.data.success) {
+            const verifyData = await verifyResponse.json() as any;
+            if (!verifyData.success) {
                 return res.status(400).json({ error: "Captcha verification failed" });
             }
         } catch (err) {
@@ -86,16 +98,20 @@ async function startServer() {
         },
       };
 
-      const response = await axios.post(emailJsUrl, payload);
+      const response = await fetch(emailJsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       if (response.status === 200) {
-        rateLimiter.set(ipKey, currentCount + 1);
         return res.json({ success: true });
       } else {
-        throw new Error(`EmailJS responded with status ${response.status}`);
+        const errText = await response.text();
+        throw new Error(`EmailJS responded with status ${response.status}: ${errText}`);
       }
     } catch (error: any) {
-      console.error("EmailJS error:", error.response?.data || error.message);
+      console.error("EmailJS error:", error.message);
       return res.status(500).json({ error: "Failed to send message" });
     }
   });

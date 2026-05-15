@@ -7,7 +7,7 @@ import { compression } from 'vite-plugin-compression2';
 
 export default defineConfig(({ mode }) => {
   return {
-    base: '/NL/',
+    base: '/nradio/',
     plugins: [
       react(), 
       tailwindcss(),
@@ -50,7 +50,6 @@ export default defineConfig(({ mode }) => {
           manualChunks(id) {
             if (id.includes('node_modules/react')) return 'react-vendor';
             if (id.includes('node_modules/framer-motion')) return 'framer';
-            if (id.includes('src/games/')) return 'games';
             if (id.includes('src/components/DrawingsPage')) return 'drawings';
             if (id.includes('src/components/Sarahni')) return 'sarahni';
             if (id.includes('src/components/LyricsEngine')) return 'lyrics';

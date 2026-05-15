@@ -1,56 +1,21 @@
-import { useState, useRef, useEffect, useMemo, useCallback, memo, Suspense } from 'react';
-import { Play, Pause, ChevronLeft, ChevronRight, Volume2, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { Play, Pause, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { useDeviceType } from '../hooks/useDeviceType';
 import { extractDominantColorCached } from '../utils/extractColors';
 import { ASSETS } from '../constants/assets';
 import { audioManager } from '../audio/audioManager';
+import { SongCard } from './SongCard';
 import { 
   ActiveSong, 
   Song, 
   LyricLine, 
-  WindowGeometry, 
   AudioStatus 
 } from '../types';
 
-import { LyricsWindowContent, LyricsWindow, parseLRC } from './LyricsEngine';
+import { LyricsWindowContent, parseLRC } from './LyricsEngine';
 
-const resolveAsset = (path: string | null) => {
-  if (!path) return null;
-  if (path.startsWith('http')) return path;
-  // Use manifest for most assets, handle LRC specially if needed
-  const base = import.meta.env.BASE_URL || './';
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-  return (base.endsWith('/') ? base : base + '/') + cleanPath;
-};
 
-const songs: Song[] = [
-  { id: 1,  title: "TRI9 TBAWE9",           url: "https://github.com/user-attachments/files/27562010/TRI9.TBAWE9.mp3",             lrc: resolveAsset("/lrc/TRI9 TBAWE9.lrc")!, backgroundImage: ASSETS.songs.backgrounds[0], sharePath: "/share/song-1.html" },
-  { id: 2,  title: "VETO",                   url: "https://github.com/user-attachments/files/27562012/VETO.mp3",                    lrc: resolveAsset("/lrc/VETO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[1], sharePath: "/share/song-2.html" },
-  { id: 3,  title: "TOTAL",                  url: "https://github.com/user-attachments/files/27562017/TOTAL.mp3",                   lrc: resolveAsset("/lrc/TOTAL.lrc")!, backgroundImage: ASSETS.songs.backgrounds[2], sharePath: "/share/song-3.html" },
-  { id: 4,  title: "7CHAYCHI DIMO9RATI",     url: "https://github.com/user-attachments/files/27562028/7CHAYCHI.DIMO9RATI.mp3",     lrc: resolveAsset("/lrc/7CHAYCHI DIMO9RATI.lrc")!, backgroundImage: ASSETS.songs.backgrounds[3], sharePath: "/share/song-4.html" },
-  { id: 5,  title: "A Lot",                  url: "https://github.com/user-attachments/files/27562033/A.Lot.mp3",                   lrc: resolveAsset("/lrc/A Lot.lrc")!, backgroundImage: ASSETS.songs.backgrounds[4], sharePath: "/share/song-5.html" },
-  { id: 6,  title: "BEAUTIFUL",              url: "https://github.com/user-attachments/files/27562034/BEAUTIFUL.mp3",               lrc: null, backgroundImage: ASSETS.songs.backgrounds[5], sharePath: "/share/song-6.html" },
-  { id: 7,  title: "Bouh",                   url: "https://github.com/user-attachments/files/27562039/Bouh.mp3",                    lrc: resolveAsset("/lrc/Bouh.lrc")!, backgroundImage: ASSETS.songs.backgrounds[6], sharePath: "/share/song-7.html" },
-  { id: 8,  title: "Brain Damage",           url: "https://github.com/user-attachments/files/27562042/Brain.Damage.mp3",            lrc: resolveAsset("/lrc/Brain Damage.lrc")!, backgroundImage: ASSETS.songs.backgrounds[7], sharePath: "/share/song-8.html" },
-  { id: 9,  title: "Deal With The Devil",    url: "https://github.com/user-attachments/files/27562043/Deal.With.The.Devil.mp3",    lrc: resolveAsset("/lrc/Deal With The Devil.lrc")!, backgroundImage: ASSETS.songs.backgrounds[8], sharePath: "/share/song-9.html" },
-  { id: 10, title: "Dokhana V2",             url: "https://github.com/user-attachments/files/27562044/Dokhana.V2.mp3",              lrc: null, backgroundImage: ASSETS.songs.backgrounds[9], sharePath: "/share/song-10.html" },
-  { id: 11, title: "GOUROU",                 url: "https://github.com/user-attachments/files/27562046/GOUROU.mp3",                  lrc: resolveAsset("/lrc/GOUROU.lrc")!, backgroundImage: ASSETS.songs.backgrounds[10], sharePath: "/share/song-11.html" },
-  { id: 12, title: "ITCHY W SCRATCHY",       url: "https://github.com/user-attachments/files/27562047/ITCHY.W.SCRATCHY.mp3",       lrc: null, backgroundImage: ASSETS.songs.backgrounds[11], sharePath: "/share/song-12.html" },
-  { id: 13, title: "KOUN NADI",              url: "https://github.com/user-attachments/files/27562048/KOUN.NADI.mp3",               lrc: resolveAsset("/lrc/KOUN NADI.lrc")!, backgroundImage: ASSETS.songs.backgrounds[12], sharePath: "/share/song-13.html" },
-  { id: 14, title: "L'AI Could Never",       url: "https://github.com/user-attachments/files/27562049/L.AI.Could.Never.mp3",       lrc: resolveAsset("/lrc/L'AI Could Never.lrc")!, backgroundImage: ASSETS.songs.backgrounds[13], sharePath: "/share/song-14.html" },
-  { id: 15, title: "L'bayda Mon Amour",      url: "https://github.com/user-attachments/files/27562051/L.bayda.Mon.Amour.mp3",      lrc: resolveAsset("/lrc/L'bayda Mon Amour.lrc")!, backgroundImage: ASSETS.songs.backgrounds[14], sharePath: "/share/song-15.html" },
-  { id: 16, title: "Let The Rhythm Hit 'em", url: "https://github.com/user-attachments/files/27562053/Let.The.Rhythm.Hit.em.mp3",  lrc: resolveAsset("/lrc/Let The Rhythm Hit 'em.lrc")!, backgroundImage: ASSETS.songs.backgrounds[15], sharePath: "/share/song-16.html" },
-  { id: 17, title: "LMORPHINIYA 31",         url: "https://github.com/user-attachments/files/27562055/LMORPHINIYA.31.mp3",          lrc: null, backgroundImage: ASSETS.songs.backgrounds[16], sharePath: "/share/song-17.html" },
-  { id: 18, title: "LMORPHINIYA 33",         url: "https://github.com/user-attachments/files/27562057/LMORPHINIYA.33.mp3",          lrc: null, backgroundImage: ASSETS.songs.backgrounds[17], sharePath: "/share/song-18.html" },
-  { id: 19, title: "LMORPHINIYA 1013",       url: "https://github.com/user-attachments/files/27562059/LMORPHINIYA.1013.mp3",       lrc: resolveAsset("/lrc/LMORPHINIYA 1013.lrc")!, backgroundImage: ASSETS.songs.backgrounds[18], sharePath: "/share/song-19.html" },
-  { id: 20, title: "Lmorphinya 19 V2",       url: "https://github.com/user-attachments/files/27562060/Lmorphinya.19.V2.mp3",       lrc: null, backgroundImage: ASSETS.songs.backgrounds[19], sharePath: "/share/song-20.html" },
-  { id: 21, title: "MAGNETO",                url: "https://github.com/user-attachments/files/27562061/MAGNETO.mp3",                 lrc: resolveAsset("/lrc/MAGNETO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[20], sharePath: "/share/song-21.html" },
-  { id: 22, title: "None Shall Pass",        url: "https://github.com/user-attachments/files/27562062/None.Shall.Pass.mp3",        lrc: resolveAsset("/lrc/None Shall Pass.lrc")!, backgroundImage: ASSETS.songs.backgrounds[21], sharePath: "/share/song-22.html" },
-  { id: 23, title: "Ohio",                   url: "https://github.com/user-attachments/files/27562063/Ohio.mp3",                   lrc: resolveAsset("/lrc/OHIO.lrc")!, backgroundImage: ASSETS.songs.backgrounds[22], sharePath: "/share/song-23.html" },
-  { id: 24, title: "Ostora",                 url: "https://github.com/user-attachments/files/27562064/Ostora.mp3",                  lrc: resolveAsset("/lrc/Ostora.lrc")!, backgroundImage: ASSETS.songs.backgrounds[23], sharePath: "/share/song-24.html" },
-  { id: 25, title: "Tromso",                 url: "https://github.com/user-attachments/files/27562065/Tromso.mp3",                  lrc: resolveAsset("/lrc/Tromso.lrc")!, backgroundImage: ASSETS.songs.backgrounds[24], sharePath: "/share/song-25.html" },
-];
 
 const PRIMARY_RGB = "99, 102, 241"; 
 
@@ -61,236 +26,57 @@ const formatTime = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-
-
-
-const Waveform = ({ isPlaying }: { isPlaying: boolean }) => (
-  <div className="waveform" style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '16px' }}>
-    {[1, 2, 3, 4, 5].map(i => (
-      <span key={i} style={{
-        width: '3px',
-        background: '#a78bfa',
-        borderRadius: '1px',
-        animation: `wave 0.8s ease-in-out infinite`,
-        animationDelay: `calc(${i} * 0.1s)`,
-        animationPlayState: isPlaying ? 'running' : 'paused',
-      } as React.CSSProperties} />
-    ))}
-  </div>
-);
-
-const SongCard = memo(({ 
-  song, 
-  index,
-  isActive, 
-  isActiveInBar,
-  isPlaying,
-  isWaiting,
-  onPlay,
-  setLyricsOpen,
-  currentTime,
-  duration,
-  onSeek,
-  volume,
-  onVolumeChange,
-  onShare
-}: { 
-  song: Song; 
-  index: number;
-  isActive: boolean; 
-  isActiveInBar: boolean;
-  isPlaying: boolean;
-  isWaiting: boolean;
-  onPlay: () => void;
-  setLyricsOpen: (open: boolean) => void;
-  currentTime?: number;
-  duration?: number;
-  onSeek?: (val: number) => void;
-  volume?: number;
-  onVolumeChange?: (val: number) => void;
-  onShare?: () => void;
-}) => {
-  const [isCopied, setIsCopied] = useState(false);
-
-  const handleShareClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onShare?.();
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-  };
-
-  return (
-    <motion.div 
-      layout
-      layoutId={`song-${song.id}`}
-      onClick={onPlay}
-      className={`
-        song-card relative overflow-hidden p-6 rounded-2xl flex flex-col gap-4 transition-all duration-700 cursor-pointer
-        ${isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)]' : 'shadow-lg hover:shadow-xl'}
-      `}
-      style={{
-        backgroundImage: `url('${song.backgroundImage}')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        gridColumn: isActive ? 'span 2' : 'span 1'
-      }}
-    >
-      {/* Bento expansion handle */}
-      {isActive && (
-        <div className="absolute top-4 left-4 z-30">
-          <Waveform isPlaying={isPlaying} />
-        </div>
-      )}
-
-      {/* Background Image with Animation */}
-      <div 
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `url('${song.backgroundImage}')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          animation: isActive ? 'slow-zoom 8s ease-in-out infinite alternate' : 'none',
-        }}
-      />
-
-      {/* Overlay */}
-      <div 
-        className="absolute inset-0 z-10 transition-all duration-600"
-        style={{
-          background: isActive ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.55)',
-          backdropFilter: isActive ? 'none' : 'blur(1px)',
-          WebkitBackdropFilter: isActive ? 'none' : 'blur(1px)',
-        }} 
-      />
-
-      {/* Content wrapper */}
-      <div className="relative z-20 flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-5 flex-1 min-w-0">
-            <span className={`font-mono text-xs font-bold ${isActive ? 'text-indigo-400' : 'text-zinc-400'}`}>
-              {(index + 1).toString().padStart(2, '0')}
-            </span>
-            <div className="flex flex-col min-w-0">
-              <h3 
-                className="font-bold text-lg tracking-tight rainbow-text"
-                style={{
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))'
-                }}
-              >
-                {song.title}
-              </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${song.lrc ? 'bg-indigo-500/40 text-indigo-200' : 'bg-zinc-800/80 text-zinc-400'}`}>
-                  {song.lrc ? "LRC" : "INST"}
-                </span>
-                <span className="text-[10px] text-zinc-300/60 font-medium uppercase tracking-widest">NRADIO</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {song.lrc && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); setLyricsOpen(true); }}
-                className="lyrics-btn"
-                title="Lyrics"
-              >
-                ◉ LYRICS ✦
-              </button>
-            )}
-            {!isActiveInBar && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleShareClick}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isCopied ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/20'}`}
-                  title="Share"
-                >
-                  {isCopied ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                  )}
-                </button>
-                <button
-                  onClick={onPlay}
-                  className={`
-                    w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg
-                    ${isActive && isPlaying 
-                      ? 'bg-white text-black scale-110' 
-                      : 'bg-indigo-600/90 text-white hover:bg-indigo-500 hover:scale-105 active:scale-95'}
-                  `}
-                  aria-label={isActive && isPlaying ? "Pause" : "Play"}
-                >
-                  {isActive && isWaiting ? (
-                    <div className="spinner !w-5 !h-5 border-white border-t-transparent" aria-hidden="true" />
-                  ) : (
-                    isActive && isPlaying ? <Pause size={20} fill="currentColor" aria-hidden="true" /> : <Play size={20} fill="currentColor" className="ml-0.5" aria-hidden="true" />
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Controls shown when active */}
-        {isActive && (
-          <div className="mt-2 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Seek Bar */}
-            <div className="space-y-1">
-              <input 
-                type="range"
-                min={0}
-                max={duration || 0}
-                value={currentTime || 0}
-                step={0.1}
-                onChange={(e) => onSeek?.(parseFloat(e.target.value))}
-                className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
-              />
-              <div className="flex justify-between text-[10px] font-mono text-white/60">
-                <span>{formatTime(currentTime || 0)}</span>
-                <span>{formatTime(duration || 0)}</span>
-              </div>
-            </div>
-
-            {/* Volume Control */}
-            <div className="flex items-center gap-3">
-              <Volume2 size={14} className="text-white/60" />
-              <input 
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume || 0.7}
-                onChange={(e) => onVolumeChange?.(parseFloat(e.target.value))}
-                className="flex-1 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-});
-
 export const MySongs = ({ 
   onSongPlay,
-  onActiveSongChange 
+  onActiveSongChange,
+  onAmbientColorChange
 }: { 
   onSongPlay: () => void;
   onActiveSongChange: (data: ActiveSong | null) => void;
+  onAmbientColorChange?: (color: string | null) => void;
 }) => {
+  const [songs, setSongs] = useState<Song[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [audioStatus, setAudioStatus] = useState<AudioStatus>('idle');
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
-  const [showWindows, setShowWindows] = useState({ lyrics: false });
-  const [focusedWindow, setFocusedWindow] = useState<'lyrics' | null>(null);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [karaokeMode, setKaraokeMode] = useState(false);
+  const [durationCache, setDurationCache] = useState<Record<number, number>>({});
   const [mobileFullscreen, setMobileFullscreen] = useState<number | null>(null);
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
   const [lrcCache, setLrcCache] = useState<Record<number, LyricLine[]>>({});
   const [ambientColor, setAmbientColor] = useState('20, 20, 30');
   const { isMobile } = useDeviceType();
+
+  useEffect(() => {
+    setLyricsOpen(false);
+    setKaraokeMode(false);
+  }, [activeId]);
+
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL || './';
+    fetch(`${base}data/songs.json`)
+      .then(r => r.json())
+      .then((data: Array<{id:number,title:string,url:string,hasLrc:boolean,lrcFile:string|null,bgIndex:number}>) => {
+        const base2 = import.meta.env.BASE_URL || './';
+        const mapped: Song[] = data.map(s => ({
+          id: s.id,
+          title: s.title,
+          url: s.url,
+          lrc: s.hasLrc && s.lrcFile 
+            ? (base2.endsWith('/') ? base2 : base2 + '/') + `lrc/${s.lrcFile}.lrc`
+            : null,
+          backgroundImage: ASSETS.songs.backgrounds[s.bgIndex],
+          sharePath: `/nradio/share/song-${s.id}.html`
+        }));
+        setSongs(mapped);
+      });
+  }, []);
 
   const handleNextRef = useRef<() => void>(() => {});
   const handlePrevRef = useRef<() => void>(() => {});
@@ -298,16 +84,27 @@ export const MySongs = ({
 
   // Geometry lifting for the window system
   const prewarmDoneForId = useRef<number | null>(null);
-  const [lyricsGeom, setLyricsGeom] = useState<WindowGeometry>(() => ({ 
-    x: typeof window !== 'undefined' ? window.innerWidth - 380 : 0, 
-    y: 150, 
-    width: 340, 
-    height: 450 
-  }));
 
   const audioTagRef = useRef<HTMLAudioElement | null>(null);
   
-  const currentSong = useMemo(() => songs.find(s => s.id === activeId) || null, [activeId]);
+  const currentSong = useMemo(() => songs.find(s => s.id === activeId) || null, [activeId, songs]);
+
+  const preloadDuration = useCallback((song: Song) => {
+    if (durationCache[song.id]) return;
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => {
+      setDurationCache(prev => ({ ...prev, [song.id]: audio.duration }));
+      audio.src = '';
+    };
+    audio.src = song.url;
+  }, [durationCache]);
+
+  useEffect(() => {
+    if (songs.length > 0) {
+      songs.slice(0, 6).forEach(preloadDuration);
+    }
+  }, [songs, preloadDuration]);
 
   // Finite State Machine logic / Event Listeners
   useEffect(() => {
@@ -365,7 +162,7 @@ export const MySongs = ({
       audio.removeEventListener('timeupdate', handlers.timeupdate);
       audio.removeEventListener('error', handlers.error);
     };
-  }, [activeId]);
+  }, [activeId, songs]);
 
   // MediaSession Enhancement
   useEffect(() => {
@@ -422,12 +219,28 @@ export const MySongs = ({
 
   // Ambient Mode Color Extraction
   useEffect(() => {
-    if (currentSong?.cover) {
-      extractDominantColorCached(currentSong.cover, (color) => setAmbientColor(color));
+    const coverUrl = currentSong?.cover || currentSong?.backgroundImage;
+    if (coverUrl) {
+      extractDominantColorCached(coverUrl, (color) => {
+        setAmbientColor(color);
+        onAmbientColorChange?.(`rgb(${color})`);
+      });
     } else {
       setAmbientColor('20, 20, 30');
+      onAmbientColorChange?.(null);
     }
-  }, [activeId, currentSong]);
+  }, [activeId, currentSong, onAmbientColorChange]);
+
+  const currentLyricLine = useMemo(() => {
+    if (!activeId || !lrcCache[activeId]) return null;
+    const lyrics = lrcCache[activeId];
+    let line = null;
+    for (const l of lyrics) {
+      if (l.time <= currentTime) line = l.text;
+      else break;
+    }
+    return line;
+  }, [activeId, lrcCache, currentTime]);
 
   useEffect(() => {
     if (mobileFullscreen !== null) {
@@ -446,26 +259,17 @@ export const MySongs = ({
         setMobileFullscreen(song.id);
       }
       setActiveId(song.id);
+      setIsDismissed(false);
       audio.src = song.url;
       audio.load();
       audioManager.register('song', audio, 0.7);
       audioManager.play('song');
       onSongPlay();
-      
-      // Proximity Spawning
-      if (window.innerWidth > 768) {
-        const basePos = { x: window.innerWidth - 400, y: 100 };
-        setLyricsGeom(prev => ({ ...prev, x: basePos.x, y: basePos.y }));
-      }
-      
-      if (!isMobile) {
-        setShowWindows({ lyrics: !!song.lrc });
-        setFocusedWindow(song.lrc ? 'lyrics' : null);
-      }
     } else {
       if (audioStatus === 'playing') {
         audioManager.pause('song');
       } else if (activeId) {
+        setIsDismissed(false);
         audioManager.play('song');
         onSongPlay();
         if (isMobile) {
@@ -478,17 +282,40 @@ export const MySongs = ({
     }
   };
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
+    if (songs.length === 0) return;
     const idx = songs.findIndex(s => s.id === activeId);
-    const nextIdx = (idx + 1) % songs.length;
+    let nextIdx: number;
+    
+    if (isShuffle) {
+      nextIdx = Math.floor(Math.random() * songs.length);
+      // Try to avoid the same song if possible
+      if (nextIdx === idx && songs.length > 1) {
+        nextIdx = (nextIdx + 1) % songs.length;
+      }
+    } else {
+      nextIdx = (idx + 1) % songs.length;
+    }
+    
     handlePlayToggle(songs[nextIdx]);
-  };
+  }, [activeId, songs, isShuffle]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
+    if (songs.length === 0) return;
     const idx = songs.findIndex(s => s.id === activeId);
-    const prevIdx = (idx - 1 + songs.length) % songs.length;
+    let prevIdx: number;
+
+    if (isShuffle) {
+      prevIdx = Math.floor(Math.random() * songs.length);
+      if (prevIdx === idx && songs.length > 1) {
+        prevIdx = (prevIdx - 1 + songs.length) % songs.length;
+      }
+    } else {
+      prevIdx = (idx - 1 + songs.length) % songs.length;
+    }
+
     handlePlayToggle(songs[prevIdx]);
-  };
+  }, [activeId, songs, isShuffle]);
 
   // Assign refs every render
   handlePlayToggleRef.current = handlePlayToggle;
@@ -542,7 +369,7 @@ export const MySongs = ({
   // Notify parent of state changes
   useEffect(() => {
     if (onActiveSongChange) {
-      if (activeId && currentSong) {
+      if (!isDismissed && activeId && currentSong) {
         onActiveSongChange({
           id: activeId,
           title: currentSong.title,
@@ -555,12 +382,63 @@ export const MySongs = ({
           onPrev: handlePrev,
           onNext: handleNext,
           onShare: () => handleShare(currentSong),
+          onDismiss: () => {
+            const audio = audioTagRef.current;
+            if (audio) {
+              audio.pause();
+              audio.src = '';
+              audio.load();
+            }
+            setActiveId(null);
+            setIsDismissed(true);
+            setMobileFullscreen(null);
+          },
+          suppressMiniBar: mobileFullscreen !== null || (!isMobile && activeId !== null && lyricsOpen),
+          isShuffle,
+          onShuffleToggle: () => setIsShuffle(prev => !prev),
+          repeatMode,
+          onRepeatToggle: () => {
+            setRepeatMode(prev => {
+              if (prev === 'off') return 'all';
+              if (prev === 'all') return 'one';
+              return 'off';
+            });
+          },
+          volume,
+          onVolumeChange: setVolume,
+          nextSongs: songs
+            .slice(songs.findIndex(s => s.id === activeId) + 1, songs.findIndex(s => s.id === activeId) + 6)
+            .map(s => ({ id: s.id, title: s.title, cover: s.cover || s.backgroundImage })),
         });
       } else {
         onActiveSongChange(null);
       }
     }
-  }, [activeId, audioStatus, currentTime, duration, onActiveSongChange, handlePrev, handleNext, handlePlayToggle, currentSong]);
+  }, [
+    activeId, 
+    audioStatus, 
+    currentTime, 
+    duration, 
+    onActiveSongChange, 
+    handlePrev, 
+    handleNext, 
+    handlePlayToggle, 
+    currentSong, 
+    isDismissed, 
+    mobileFullscreen, 
+    isMobile, 
+    lyricsOpen, 
+    isShuffle, 
+    repeatMode, 
+    volume
+  ]);
+
+  useEffect(() => {
+    const audio = audioTagRef.current;
+    if (audio) {
+      audio.loop = repeatMode === 'one';
+    }
+  }, [repeatMode]);
 
   const renderedSongs = useMemo(() => {
     return songs.map((song, i) => (
@@ -573,24 +451,21 @@ export const MySongs = ({
         isPlaying={audioStatus === 'playing'}
         isWaiting={audioStatus === 'loading'}
         currentTime={currentTime}
-        duration={duration}
+        duration={activeId === song.id ? duration : durationCache[song.id]}
         onSeek={handleSeek}
         volume={volume}
         onVolumeChange={setVolume}
         onPlay={() => handlePlayToggle(song)}
         onShare={() => handleShare(song)}
-        setLyricsOpen={(open: boolean) => {
-          setActiveId(song.id);
-          if (isMobile) {
-            setMobileFullscreen(song.id);
-          } else {
-            setShowWindows(prev => ({ ...prev, lyrics: open }));
-            setFocusedWindow('lyrics');
-          }
-        }}
+        setLyricsOpen={setLyricsOpen}
+        isLyricsOpen={activeId === song.id && lyricsOpen}
+        lyrics={lrcCache[song.id] || []}
+        karaokeMode={karaokeMode}
+        setKaraokeMode={setKaraokeMode}
+        currentLyricLine={activeId === song.id ? currentLyricLine : null}
       />
     ));
-  }, [activeId, audioStatus, isMobile, handlePlayToggle, currentTime, duration, handleSeek, volume]);
+  }, [activeId, audioStatus, isMobile, handlePlayToggle, currentTime, duration, handleSeek, volume, songs]);
 
   const handleShare = (song: Song) => {
     const baseUrl = window.location.origin + import.meta.env.BASE_URL;
@@ -618,7 +493,7 @@ export const MySongs = ({
     const songId = params.get('s');
     let timer: NodeJS.Timeout | undefined;
     
-    if (songId) {
+    if (songId && songs.length > 0) {
       const id = parseInt(songId);
       const song = songs.find(s => s.id === id);
       if (song) {
@@ -635,24 +510,29 @@ export const MySongs = ({
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [songs]);
 
   return (
     <section 
       id="my-songs-section" 
       className="w-full py-24 px-6 sm:px-12 font-sans selection:bg-indigo-500/30 relative overflow-hidden"
       style={{
-        background: `radial-gradient(ellipse at 50% 0%, rgba(${ambientColor}, 0.15) 0%, transparent 80%), #050505`,
+        background: `radial-gradient(ellipse at 50% 0%, rgba(${ambientColor}, 0.25) 0%, transparent 65%), rgba(255,255,255,0.03)`,
+        backdropFilter: 'blur(14px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(14px) saturate(160%)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
         transition: 'background 1500ms ease'
       }}
     >
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.015] pointer-events-none" />
+      <div className="absolute inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '4px 4px' }} />
       
       <audio ref={audioTagRef} preload="auto" style={{ display: 'none' }} />
       <div className="max-w-6xl mx-auto relative z-10">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-20">
           <div className="space-y-2">
-            <h1 className="text-7xl sm:text-9xl font-black italic tracking-tighter uppercase leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+            <h1 className="text-fluid-title font-black italic tracking-tighter uppercase leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
               MY SONGS
             </h1>
             <div className="flex items-center gap-3">
@@ -765,9 +645,7 @@ export const MySongs = ({
             <div style={{
               padding: '24px 20px',
               paddingBottom: 'max(env(safe-area-inset-bottom), 32px)',
-              background: 'rgba(0,0,0,0.6)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
+              background: 'rgba(0,0,0,0.85)',
               borderTop: '1px solid rgba(255,255,255,0.08)',
               flexShrink: 0
             }}>
@@ -849,23 +727,6 @@ export const MySongs = ({
           </div>
         )}
 
-        {activeId && currentSong && currentSong.lrc && showWindows.lyrics && (
-          <Suspense fallback={null}>
-            <LyricsWindow 
-              song={currentSong} 
-              currentTime={currentTime} 
-              onClose={() => setShowWindows(prev => ({ ...prev, lyrics: false }))} 
-              onSeek={handleSeek}
-              geometry={lyricsGeom}
-              setGeometry={setLyricsGeom}
-              zIndex={focusedWindow === 'lyrics' ? 10002 : 10001}
-              onFocus={() => setFocusedWindow('lyrics')}
-              isFocused={focusedWindow === 'lyrics'}
-              lyrics={lrcCache[activeId] || []}
-              songBackground={currentSong.backgroundImage}
-            />
-          </Suspense>
-        )}
       </div>
 
       <style>{`
@@ -883,9 +744,15 @@ export const MySongs = ({
         }
         .rainbow-text {
           color: #FFD700;
-          text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+          text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
           font-weight: 900 !important;
           letter-spacing: -0.01em;
+          animation: golden-glow 3s ease-in-out infinite alternate;
+          font-size: clamp(1.1rem, 3vw, 1.7rem) !important;
+        }
+        @keyframes golden-glow {
+          from { text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+          to { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.4); }
         }
         @keyframes pulse-glow {
           0%, 100% { box-shadow: 0 0 4px rgba(139,92,246,0.3); }
@@ -911,6 +778,11 @@ export const MySongs = ({
         .lyrics-btn:hover {
           background: rgba(139, 92, 246, 0.4);
           transform: scale(1.05);
+        }
+        .lyrics-btn-active {
+          background: rgba(139, 92, 246, 0.5);
+          border-color: rgba(139, 92, 246, 1);
+          color: white;
         }
         .no-scrollbar::-webkit-scrollbar {
           display: none;

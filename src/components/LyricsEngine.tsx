@@ -15,8 +15,8 @@ export function parseLRC(text: string): LyricLine[] {
 
 const aeroWindowStyle: React.CSSProperties = {
   background: 'linear-gradient(180deg, rgba(200,220,255,0.18) 0%, rgba(150,190,255,0.10) 40%, rgba(100,150,240,0.08) 100%)',
-  backdropFilter: 'blur(20px) saturate(200%) brightness(1.1)',
-  WebkitBackdropFilter: 'blur(20px) saturate(200%) brightness(1.1)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
   border: '1px solid rgba(255,255,255,0.4)',
   borderTop: '1.5px solid rgba(255,255,255,0.8)',
   borderRadius: '8px 8px 4px 4px',
@@ -25,7 +25,6 @@ const aeroWindowStyle: React.CSSProperties = {
 
 const aeroTitlebarStyle: React.CSSProperties = {
   background: 'linear-gradient(180deg, rgba(180,215,255,0.7) 0%, rgba(140,190,255,0.5) 45%, rgba(100,165,255,0.6) 50%, rgba(120,185,255,0.4) 100%)',
-  backdropFilter: 'blur(10px)',
   borderBottom: '1px solid rgba(100,160,255,0.4)',
   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)',
 };

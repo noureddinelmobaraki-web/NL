@@ -1,4 +1,4 @@
-type AudioSource = 'bg' | 'song' | 'lens' | 'video';
+type AudioSource = 'bg' | 'song' | 'lens' | 'video' | 'mebit';
 
 interface AudioEntry {
   source: AudioSource;

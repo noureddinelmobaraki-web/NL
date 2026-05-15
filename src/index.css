@@ -1,8 +1,17 @@
-/* Self-hosted Fonts */
+/* Force font-display: swap on all @fontsource imports */
 @import "@fontsource/bangers";
 @import "@fontsource/comic-neue";
 @import "@fontsource/patrick-hand";
 @import "@fontsource/share-tech-mono";
+
+@font-face {
+  font-family: 'Bangers';
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Patrick Hand';
+  font-display: swap;
+}
 
 @import "tailwindcss";
 
@@ -13,13 +22,80 @@
   --safe-right: env(safe-area-inset-right, 0px);
 }
 
+[data-theme="manga-paper"] {
+  --bg-overlay: rgba(245, 240, 230, 0.95);
+  --text-primary: #000;
+  --page-bg: #f5f0e6;
+}
+
+[data-theme="manga-paper"] .fixed.inset-0 {
+  background: rgba(245, 240, 230, 0.92) !important;
+}
+
+[data-theme="manga-paper"] h1,
+[data-theme="manga-paper"] h2,
+[data-theme="manga-paper"] .font-manga {
+  color: #000 !important;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.3) !important;
+}
+
 @theme {
-  --font-manga: "Bangers", cursive;
-  --font-sketch: "Comic Neue", cursive;
-  --font-hand: "Patrick Hand", cursive;
+  --font-manga: "Bangers", "Impact", cursive;
+  --font-sketch: "Comic Neue", "Comic Sans MS", cursive;
+  --font-hand: "Patrick Hand", "Georgia", cursive;
+}
+
+/* Responsive baseline */
+@layer base {
+  /* Smooth scroll */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Better tap highlighting on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Prevent text size inflation on mobile */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
 }
 
 @layer utilities {
+  .text-fluid-title {
+    font-size: clamp(3.5rem, 12vw, 9.5rem);
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+  }
+
+  .text-fluid-hero {
+    font-size: clamp(2rem, 6vw + 0.5rem, 5rem);
+  }
+
+  .text-fluid-section {
+    font-size: clamp(1.875rem, 5vw, 3rem);
+    line-height: 1.1;
+  }
+
+  .text-fluid-card {
+    font-size: clamp(1rem, 2.5vw, 1.5rem);
+  }
+
+  .text-fluid-body {
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    line-height: 1.5;
+  }
+
+  .tablet-px {
+    @media (min-width: 768px) and (max-width: 1023px) {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
   .slide-up {
     animation: slideUp 0.3s ease-out forwards;
   }
@@ -241,31 +317,41 @@
 
   .scroll-to-top {
     position: fixed;
-    bottom: 80px;
-    right: 16px;
-    z-index: 500;
+    bottom: 24px;
+    right: 80px;
     width: 44px;
     height: 44px;
-    background: #000;
-    border: 3px solid #fff;
-    color: #fff;
-    font-size: 20px;
-    cursor: pointer;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.8);
+    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 4px 4px 0 #fff;
-    transition: all 0.2s ease;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 8000;
     opacity: 0;
-    transform: translateY(20px);
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
   }
+
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .scroll-to-top {
+      bottom: 80px; /* Above the tablet nav */
+    }
+  }
+
   .scroll-to-top.visible {
     opacity: 1;
-    transform: translateY(0);
+    visibility: visible;
   }
+
   .scroll-to-top:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0 #fff;
+    transform: scale(1.1);
+    background: #000;
   }
 
   .manga-highlight {
@@ -294,6 +380,91 @@
     height: 4px;
     background: repeating-linear-gradient(90deg, #000 0px, #000 20px, transparent 20px, transparent 30px);
     margin: 8px 0;
+  }
+
+  .manga-paper-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 28px;
+    min-height: 52px;
+    background: repeating-linear-gradient(0deg, transparent 0px, transparent 22px, rgba(0,0,0,0.06) 22px, rgba(0,0,0,0.06) 23px), 
+                radial-gradient(circle at 1px 1px, rgba(0,0,0,0.12) 1px, transparent 0) 0 0/8px 8px, 
+                linear-gradient(135deg, #fdf8ec 0%, #f5efe0 100%);
+    color: #1a1a1a;
+    font-family: var(--font-hand);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 2px solid #1a1a1a;
+    /* Torn paper irregular edges via clip-path */
+    clip-path: polygon(
+      2% 5%, 8% 0%, 15% 4%, 24% 1%, 35% 5%, 48% 0%, 60% 6%, 72% 2%, 85% 5%, 95% 0%, 
+      100% 12%, 96% 25%, 100% 40%, 98% 60%, 100% 78%, 95% 92%, 88% 100%, 72% 96%, 
+      55% 100%, 38% 97%, 22% 100%, 8% 95%, 0% 88%, 4% 70%, 0% 50%, 3% 30%, 0% 12%
+    );
+    box-shadow: 6px 6px 0 rgba(0,0,0,0.85), 10px 10px 18px rgba(0,0,0,0.3);
+    transition: all 220ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+    user-select: none;
+    text-transform: uppercase;
+  }
+
+  .manga-paper-tab:nth-child(1) { transform: rotate(-2.5deg); }
+  .manga-paper-tab:nth-child(2) { transform: rotate(1.8deg); }
+  .manga-paper-tab:nth-child(3) { transform: rotate(-1.2deg); }
+  .manga-paper-tab:nth-child(4) { transform: rotate(2.4deg); }
+
+  .manga-paper-tab::before {
+    /* Ink scribble underline beneath the text */
+    content: "";
+    position: absolute;
+    left: 18%;
+    right: 18%;
+    bottom: 12px;
+    height: 3px;
+    background: #1a1a1a;
+    border-radius: 999px;
+    transform: skewX(-8deg) rotate(-1deg);
+    opacity: 0.6;
+  }
+
+  .manga-paper-tab::after {
+    /* Page corner curl */
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.18) 51%, rgba(0,0,0,0.05) 100%);
+    border-bottom-left-radius: 4px;
+    pointer-events: none;
+  }
+
+  .manga-paper-tab:hover {
+    transform: rotate(0deg) translate(-3px, -3px) !important;
+    box-shadow: 9px 9px 0 rgba(0,0,0,0.9), 14px 14px 24px rgba(0,0,0,0.35);
+  }
+
+  .manga-paper-tab:active {
+    transform: rotate(0deg) translate(3px, 3px) !important;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.9);
+  }
+
+  /* Dark theme variant: dark paper with white ink */
+  [data-theme="dark"] .manga-paper-tab {
+    background: repeating-linear-gradient(0deg, transparent 0px, transparent 22px, rgba(255,255,255,0.05) 22px, rgba(255,255,255,0.05) 23px), 
+                radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0) 0 0/8px 8px, 
+                linear-gradient(135deg, #1d1d1f 0%, #2a2a2e 100%);
+    color: #f4ecd9;
+    border-color: #f4ecd9;
+    box-shadow: 6px 6px 0 rgba(255,255,255,0.7), 10px 10px 18px rgba(0,0,0,0.6);
+  }
+
+  [data-theme="dark"] .manga-paper-tab::before {
+    background: #f4ecd9;
   }
 }
 
@@ -415,67 +586,7 @@
   animation: float 5s infinite ease-in-out;
 }
 
-@keyframes noise {
-  0% { transform: translate(0,0) }
-  10% { transform: translate(-5%,-5%) }
-  20% { transform: translate(-10%,5%) }
-  30% { transform: translate(5%,-10%) }
-  40% { transform: translate(-5%,15%) }
-  50% { transform: translate(-10%,5%) }
-  60% { transform: translate(15%,0) }
-  70% { transform: translate(0,10%) }
-  80% { transform: translate(-15%,0) }
-  90% { transform: translate(10%,5%) }
-  100% { transform: translate(5%,0) }
-}
 
-.noise-overlay {
-  position: fixed;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background-image: url('https://grainy-gradients.vercel.app/noise.svg');
-  opacity: 0.12;
-  z-index: 100;
-  pointer-events: none;
-  animation: noise 0.5s steps(3) infinite;
-}
-
-body.low-perf .noise-overlay {
-  display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .noise-overlay {
-    animation: none;
-    opacity: 0.05;
-  }
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-.scanline {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    rgba(18, 16, 16, 0) 50%,
-    rgba(0, 0, 0, 0.1) 50%
-  );
-  background-size: 100% 4px;
-  z-index: 101;
-  pointer-events: none;
-  opacity: 0.2;
-}
-
-body.low-perf .scanline {
-  display: none;
-}
 
 html {
   scroll-behavior: smooth;
@@ -589,7 +700,7 @@ button {
 }
 
 /* ME BIT GALLERY STYLES */
-@keyframes infinite-scroll {
+@keyframes me-bit-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
@@ -597,7 +708,7 @@ button {
 .me-bit-track {
   display: flex;
   width: max-content;
-  animation: infinite-scroll 30s linear infinite;
+  animation: me-bit-scroll 30s linear infinite;
 }
 
 .me-bit-track:hover {

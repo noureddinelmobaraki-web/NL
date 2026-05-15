@@ -4,40 +4,25 @@
  */
 
 import { 
-  Instagram, 
-  Facebook, 
-  Music2, 
-  Disc, 
-  Cloud, 
-  Video, 
-  ExternalLink,
-  Youtube,
-  Mail,
-  MessageCircle,
-  Send,
   X,
   ChevronLeft,
   ChevronRight,
   Maximize2,
   Volume2,
-  VolumeX
+  VolumeX,
+  Camera,
+  Music2,
+  Pencil,
+  Aperture
 } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
-import React from 'react';
 import { LoadingScreen } from "./components/LoadingScreen";
 import { MySongs } from './components/MySongsPage';
 import { DrawingsPage } from './components/DrawingsPage';
 import { Sarahni } from './components/Sarahni';
 import { LensGallery } from './components/LensGallery';
-import { GameShell } from './games/GameShell';
-import { GameSelector } from './games/GameSelector';
-import { TetrisGame } from './games/tetris/TetrisGame';
-import { SnakeGame } from './games/snake/SnakeGame';
-import { BreakoutGame } from './games/breakout/BreakoutGame';
-import { RacingGame } from './games/racing/RacingGame';
-import { TankGame } from './games/tank/TankGame';
-import { FroggerGame } from './games/frogger/FroggerGame';
+import { SkeletonSection } from './components/SkeletonSection';
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useParallax } from "./hooks/useParallax";
 import { useFocusTrap } from "./hooks/useFocusTrap";
@@ -45,11 +30,13 @@ import { NowPlayingBar } from "./components/NowPlayingBar";
 import { MobileNavBar } from "./components/MobileNavBar";
 import { AudioVisualizer } from "./components/AudioVisualizer";
 import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
+import { HeroSection } from './components/sections/HeroSection';
+import { ContactSection } from './components/sections/ContactSection';
+import { StreamingSection } from './components/sections/StreamingSection';
+import { HighlightsSection } from './components/sections/HighlightsSection';
+import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { 
   ActiveSong, 
-  ContactMethod, 
-  StreamingPlatform, 
-  SocialChannel 
 } from "./types";
 import { ScrollProgress } from "./components/ScrollProgress";
 import { ResponsiveImage } from "./components/ResponsiveImage";
@@ -60,102 +47,10 @@ const CONFIG_ASSETS = {
   mainBackground: ASSETS.profile.heroBg,
   nameHeaderBg: ASSETS.profile.headerBg,
   footerDecoration: ASSETS.profile.footerDeco,
-  spotifyIcon: "https://img.icons8.com/plasticine/1200/spotify--v2.jpg",
   profileImg: ASSETS.profile.main,
   vaultPlaylistCover: ASSETS.songs.playlistCover,
   youtubeHighlightsBg: ASSETS.songs.ytHighlights,
-  gmailBg: ASSETS.profile.contacts.gmail,
-  whatsappBg: ASSETS.profile.contacts.whatsapp,
-  telegramBg: ASSETS.profile.contacts.telegram
 };
-
-const STREAMING_PLATFORMS: StreamingPlatform[] = [
-  {
-    name: "Spotify",
-    url: "https://open.spotify.com/artist/5nwGOyilF1p4uv35v6vb2u",
-    icon: Music2,
-    color: "#1DB954",
-    isSpotify: true,
-  },
-  {
-    name: "Apple Music",
-    url: "https://music.apple.com/us/artist/nl/1535833912",
-    icon: Music2,
-    color: "#FA243C",
-  },
-  {
-    name: "Deezer",
-    url: "https://www.deezer.com/en/artist/362375722",
-    icon: Disc,
-    color: "#FF0000",
-  },
-  {
-    name: "Amazon Music",
-    url: "https://music.amazon.fr/artists/B0025ODH90/nl",
-    icon: Music2,
-    color: "#00A8E1",
-  },
-  {
-    name: "Anghami",
-    url: "https://play.anghami.com/artist/1430009",
-    icon: Music2,
-    color: "#ED1B24",
-  },
-  {
-    name: "SoundCloud",
-    url: "https://on.soundcloud.com/Ok8zBgOjCPqjvStEA",
-    icon: Cloud,
-    color: "#FF3300",
-  },
-];
-
-const SOCIAL_CHANNELS: SocialChannel[] = [
-  {
-    name: "Instagram",
-    url: "https://www.instagram.com/nordine_el_mobaraki/",
-    icon: Instagram,
-    color: "#E4405F",
-  },
-  {
-    name: "TikTok",
-    url: "https://www.tiktok.com/@nourdine_el_mobaraki",
-    icon: Video,
-    color: "#000000",
-  },
-  {
-    name: "Facebook",
-    url: "https://www.facebook.com/profile.php?id=61558584390374",
-    icon: Facebook,
-    color: "#1877F2",
-  },
-];
-
-const CONTACT_METHODS: ContactMethod[] = [
-  {
-    name: "Gmail",
-    value: "noureddinelmobaraki@gmail.com",
-    url: "mailto:noureddinelmobaraki@gmail.com",
-    icon: Mail,
-    bg: ASSETS.profile.contacts.gmail,
-    color: "#EA4335"
-  },
-  {
-    name: "WhatsApp",
-    value: "+212 612-806932",
-    url: "https://wa.me/212612806932",
-    icon: MessageCircle,
-    bg: ASSETS.profile.contacts.whatsapp,
-    color: "#25D366"
-  },
-  {
-    name: "Telegram",
-    value: "+212 612 806932",
-    url: "https://t.me/212612806932",
-    icon: Send,
-    bg: ASSETS.profile.contacts.telegram,
-    color: "#0088CC"
-  }
-];
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -179,19 +74,13 @@ const itemVariants: Variants = {
 
 const ME_BIT_IMAGES = ASSETS.profile.me_bits;
 
-const STYLES = {
-  SHADOW_WHITE: { textShadow: '2px 2px 0px rgba(255,255,255,0.8)' },
-  SHADOW_BLACK_LG: { textShadow: '4px 4px 0px rgba(0,0,0,0.8)' },
-  SHADOW_BLACK_SM: { textShadow: '2px 2px 0px rgba(0,0,0,0.5)' },
-  SHADOW_BLACK_SOLID: { textShadow: '2px 2px 0 #000' },
-  CIRCLE: { borderRadius: '50%' }
-};
-
 export default function App() {
-  const { isMobile } = useDeviceType();
+  const { isMobile, isTablet } = useDeviceType();
   const parallaxRef = useParallax(isMobile ? 0 : 20);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isLensGalleryOpen, setIsLensGalleryOpen] = useState(false);
+  const [isMeBitPlaying, setIsMeBitPlaying] = useState(false);
+  const meBitAudioRef = useRef<HTMLAudioElement | null>(null);
   const galleryRef = useFocusTrap(isGalleryOpen);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -200,9 +89,52 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const [activeSong, setActiveSong] = useState<ActiveSong | null>(null);
-  const [activeGame, setActiveGame] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState('home');
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [ambientColor, setAmbientColor] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'manga-paper'>(() => {
+    try {
+      return (localStorage.getItem('nl-theme') as 'dark' | 'manga-paper') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('nl-theme', theme);
+    } catch {}
+  }, [theme]);
+
+  useEffect(() => {
+    if (isGalleryOpen) {
+      if (!meBitAudioRef.current) {
+        const audio = new Audio(ASSETS.media.meBitMusic);
+        audio.loop = true;
+        audio.preload = 'auto';
+        meBitAudioRef.current = audio;
+        audioManager.register('mebit', audio, 0.6);
+      }
+      audioManager.play('mebit');
+      setIsMeBitPlaying(true);
+    } else {
+      if (meBitAudioRef.current) {
+        audioManager.pause('mebit');
+        setIsMeBitPlaying(false);
+      }
+    }
+  }, [isGalleryOpen]);
+
+  const toggleMeBitAudio = () => {
+    if (!meBitAudioRef.current) return;
+    if (isMeBitPlaying) {
+      audioManager.pause('mebit');
+      setIsMeBitPlaying(false);
+    } else {
+      audioManager.play('mebit');
+      setIsMeBitPlaying(true);
+    }
+  };
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);
@@ -234,32 +166,6 @@ export default function App() {
     return () => document.removeEventListener('keydown', handleKey);
   }, [isGalleryOpen, nextImage, prevImage]);
 
-  const renderActiveGame = () => {
-    switch (activeGame) {
-      case 'tetris':   return <TetrisGame />;
-      case 'snake':    return <SnakeGame />;
-      case 'breakout': return <BreakoutGame />;
-      case 'racing':   return <RacingGame />;
-      case 'tank':     return <TankGame />;
-      case 'frogger':  return <FroggerGame />;
-      default:         return null;
-    }
-  };
-
-  const gameShellStyle: React.CSSProperties = isMobile && activeGame !== null ? {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 9500,
-    borderRadius: 0,
-    maxWidth: '100%',
-    height: '100dvh', // Use dynamic viewport height for mobile
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    background: '#000',
-  } : {};
-
   useEffect(() => {
     // Performance class
     if (isLowEndDevice() || prefersReducedMotion()) {
@@ -268,75 +174,36 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const allowedOrigins = ['null', window.location.origin];
-      if (!allowedOrigins.includes(event.origin)) return;
-
-      // SEC-002: Strict postMessage protocol
-      if (!event.data || typeof event.data !== 'object') return;
-      if (!['GET_BEST_SCORE', 'SET_BEST_SCORE', 'READY'].includes(event.data.type)) return;
-      
-      const { type, data } = event.data;
-      
-      if (type === 'GET_BEST_SCORE') {
-        const bestScore = localStorage.getItem('lumenfall_best') || '0';
-        // When sandbox="allow-scripts" is used without allow-same-origin, 
-        // the iframe origin is "null".
-        (event.source as WindowProxy)?.postMessage({ 
-          type: 'BEST_SCORE_DATA', 
-          data: { score: parseInt(bestScore, 10) } 
-        }, { targetOrigin: 'null' });
-      } else if (type === 'SET_BEST_SCORE') {
-        const newScore = parseInt(data.score, 10);
-        if (isNaN(newScore)) return;
-        
-        const currentBest = parseInt(localStorage.getItem('lumenfall_best') || '0', 10);
-        if (newScore > currentBest) {
-          localStorage.setItem('lumenfall_best', newScore.toString());
-        }
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || audioIntent === 'user-paused') return;
-
-    const canTryPlay = audioIntent === 'user-playing' || (audioIntent === 'initial' && loaded);
-    if (!canTryPlay) return;
-
-    // Use audioManager to handle playing/fading
-    if (audioIntent === 'user-playing') {
-      audioManager.unpauseBg();
-      setIsPlaying(true);
-    } else if (audioIntent === 'initial' && loaded) {
-      // Background autoplay attempt with mute trick if needed
-      audio.muted = true;
-      audioManager.unpauseBg();
-      
-      const onInteraction = () => {
-        audio.muted = false;
-        setIsPlaying(true);
-        setAudioIntent('user-playing');
-        window.removeEventListener('click', onInteraction);
-        window.removeEventListener('scroll', onInteraction);
-      };
-      window.addEventListener('click', onInteraction, { once: true });
-      window.addEventListener('scroll', onInteraction, { once: true, passive: true });
-    }
-  }, [audioIntent, loaded]);
-
-  useEffect(() => {
     if (audioRef.current) {
       audioManager.register('bg', audioRef.current, 0.7);
       audioManager.setStateCallback((playing) => {
         setIsPlaying(playing);
       });
+
+      const audio = audioRef.current;
+      if (audioIntent !== 'user-paused') {
+        const canTryPlay = audioIntent === 'user-playing' || (audioIntent === 'initial' && loaded);
+        if (canTryPlay) {
+          if (audioIntent === 'user-playing') {
+            audioManager.unpauseBg();
+          } else if (audioIntent === 'initial' && loaded) {
+            audio.muted = true;
+            audioManager.unpauseBg();
+
+            const onInteraction = () => {
+              audio.muted = false;
+              setIsPlaying(true);
+              setAudioIntent('user-playing');
+              window.removeEventListener('click', onInteraction);
+              window.removeEventListener('scroll', onInteraction);
+            };
+            window.addEventListener('click', onInteraction, { once: true });
+            window.addEventListener('scroll', onInteraction, { once: true, passive: true });
+          }
+        }
+      }
     }
-  }, []);
+  }, [audioIntent, loaded]);
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -383,6 +250,14 @@ export default function App() {
 
   return (
     <>
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          <filter id="rough">
+            <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" />
+          </filter>
+        </defs>
+      </svg>
       <a href="#main-content" className="skip-to-content">
         Skip to main content
       </a>
@@ -398,42 +273,38 @@ export default function App() {
           }}
         />
       )}
-      <div style={{ opacity: loaded ? 1 : 0, transition: 'opacity 500ms ease-in' }}>
+      <div 
+        style={{ opacity: loaded ? 1 : 0, transition: 'opacity 500ms ease-in' }}
+        data-theme={theme}
+      >
         <div 
-          className="min-h-screen w-full relative flex flex-col items-center py-10 px-6 sm:px-10 overflow-x-hidden"
+          className="min-h-screen w-full relative flex flex-col items-center py-10 px-4 sm:px-8 md:px-10 lg:px-10 overflow-x-hidden"
         >
-      {/* Retro Overlays */}
-      <div className="noise-overlay" />
-      <div className="scanline" />
-
-      {/* Global Background Image Layer with Parallax */}
+      {/* Combined Background Layer - optimized */}
       <div 
         ref={parallaxRef}
-        className="fixed inset-[-5%] z-[-2] bg-cover bg-center bg-fixed"
+        className="fixed inset-[-5%] z-[-2] bg-cover bg-center"
         style={{ 
           backgroundImage: `url('${CONFIG_ASSETS.mainBackground}')`,
-          filter: 'blur(4px) brightness(0.7)',
+          filter: 'blur(4px) brightness(0.5)',
+          willChange: 'transform',
         }}
       />
-      
-      {/* Backdrop Tint Layer */}
-      <div className="fixed inset-0 z-[-1] bg-[#121212]/40" />
-
-      {/* Grid Pattern Layer (Editorial Aesthetic) */}
-      <div 
-        className="fixed inset-0 opacity-15 z-0 pointer-events-none"
-        style={{ 
-          backgroundImage: 'radial-gradient(circle at 2px 2px, #fff 1px, transparent 0)',
-          backgroundSize: '40px 40px'
-        }}
-      />
+      <div className="fixed inset-0 z-[-1] pointer-events-none" style={{
+        background: ambientColor 
+          ? `linear-gradient(to bottom, ${ambientColor}18 0%, rgba(18,18,18,0.50) 40%)`
+          : 'rgba(18,18,18,0.45)',
+        backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0)',
+        backgroundSize: '40px 40px',
+        transition: 'background 1.5s ease',
+      }} />
 
       {/* Background Audio */}
       <audio 
         id="bg-audio" 
         ref={audioRef}
         loop 
-        preload="auto"
+        preload="none"
       >
         <source src={ASSETS.media.music} />
         Your browser does not support the audio element.
@@ -444,7 +315,7 @@ export default function App() {
         onClick={toggleAudio}
         className="fixed z-[9000] bg-black/30 backdrop-blur-lg border border-white/10 p-2.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
         style={{
-          bottom: isMobile ? 'calc(56px + env(safe-area-inset-bottom) + 16px)' : '16px',
+          bottom: (isMobile || isTablet) ? 'calc(60px + env(safe-area-inset-bottom) + 16px)' : '16px',
           right: '16px',
         }}
         aria-label="Toggle Background Music"
@@ -478,6 +349,18 @@ export default function App() {
             />
             
             {/* Close Button */}
+            <button
+              onClick={toggleMeBitAudio}
+              className="absolute z-[110] bg-black/50 backdrop-blur-md border border-white/20 p-2.5 rounded-full text-white/80 hover:text-white hover:bg-black/70 transition-all shadow-xl"
+              style={{
+                top: isMobile ? 'calc(var(--safe-top) + 12px)' : '10rem',
+                left: isMobile ? '16px' : '6rem',
+              }}
+              aria-label="Toggle Gallery Music"
+            >
+              {isMeBitPlaying ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5 text-zinc-500" />}
+            </button>
+
             {isMobile ? (
               <button 
                 className="mobile-back-btn" 
@@ -498,29 +381,29 @@ export default function App() {
               </motion.button>
             )}
 
-            <div className={`relative w-full h-full flex flex-col z-[105] overflow-hidden ${isMobile ? 'pt-[calc(var(--safe-top)+60px)]' : 'gap-6'}`}>
+            <div className={`relative w-full h-full flex flex-col z-[105] overflow-hidden ${(isMobile || isTablet) ? 'pt-[calc(var(--safe-top)+60px)]' : 'gap-6'}`}>
               {/* Gallery Content */}
-              <div className={`flex-1 flex flex-col md:flex-row overflow-hidden ${isMobile ? '' : 'gap-6'}`}>
+              <div className={`flex-1 flex flex-col md:flex-row overflow-hidden ${(isMobile || isTablet) ? '' : 'gap-6'}`}>
                 
                 {/* Main View Area */}
-                <div className={`${isMobile ? 'order-1' : 'flex-1'} glass-morphism rounded-3xl relative flex items-center justify-center overflow-hidden shadow-inner group`}>
+                <div className={`${(isMobile || isTablet) ? 'order-1' : 'flex-1'} glass-morphism rounded-3xl relative flex items-center justify-center overflow-hidden shadow-inner group`}>
                   {selectedImageIndex !== null ? (
                     <motion.div
                       key={selectedImageIndex}
                       initial={{ opacity: 0, scale: 0.9, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                      className={`w-full h-full flex items-center justify-center cursor-zoom-in ${isMobile ? 'p-0' : 'p-4 sm:p-8'}`}
+                      className={`w-full h-full flex items-center justify-center cursor-zoom-in ${(isMobile || isTablet) ? 'p-0' : 'p-4 sm:p-8'}`}
                     >
                       <ResponsiveImage 
                         src={ME_BIT_IMAGES[selectedImageIndex] || ""}
                         alt="Selected Shot"
-                        className={`${isMobile ? 'w-full h-full object-cover' : 'max-w-full max-h-full object-contain'} shadow-[0_0_80px_rgba(255,255,255,0.08)] rounded-sm transition-transform duration-700 hover:scale-110`}
+                        className={`${(isMobile || isTablet) ? 'w-full h-full object-cover' : 'max-w-full max-h-full object-contain'} shadow-[0_0_80px_rgba(255,255,255,0.08)] rounded-sm transition-transform duration-700 hover:scale-110`}
                         loading="lazy"
                       />
                       
                       {/* Navigation Controls on Main View */}
-                      {!isMobile && (
+                      {!isMobile && !isTablet && (
                         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 pointer-events-none">
                           <button 
                             onClick={(e) => {
@@ -573,8 +456,27 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Thumbnails Interaction for Tablet */}
+                {isTablet && (
+                  <div className="order-2 w-full h-[120px] overflow-x-auto flex items-center gap-3 px-4 py-3 border-t border-white/10 bg-black/50">
+                    {ME_BIT_IMAGES.map((src, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedImageIndex(idx)}
+                        className={`
+                          relative h-full aspect-square rounded-xl border-2 overflow-hidden shrink-0 transition-all
+                          ${selectedImageIndex === idx ? 'border-white scale-95' : 'border-transparent opacity-50 hover:opacity-80'}
+                        `}
+                        aria-label={`View moment ${idx + 1}`}
+                      >
+                        <ResponsiveImage src={src} alt={`Moment ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* Thumbnails Sidebar - Desktop only */}
-                {!isMobile && (
+                {!isMobile && !isTablet && (
                   <div className="w-full md:w-96 flex flex-col gap-6 glass-morphism p-6 rounded-3xl overflow-hidden shadow-2xl">
                     <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
                       <div className="flex flex-col">
@@ -616,7 +518,7 @@ export default function App() {
               </div>
 
               {/* Enhanced Info Footer - Desktop only */}
-              {!isMobile && (
+              {!isMobile && !isTablet && (
                 <motion.div 
                   initial={{ y: 50, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
@@ -659,261 +561,58 @@ export default function App() {
         lang="en"
         dir="ltr"
         className="relative z-10 w-full max-w-5xl flex flex-col gap-14"
-        style={{ paddingBottom: isMobile ? '80px' : undefined }}
+        style={{ paddingBottom: (isMobile || isTablet) ? '80px' : undefined }}
       >
         {/* Navigation Tabs */}
         <motion.div 
           variants={itemVariants}
-          className="flex flex-wrap justify-center sm:justify-start gap-4 mb-4"
+          className="flex flex-wrap justify-center sm:justify-start gap-5 md:gap-6 mb-4"
         >
           <button 
             onClick={() => scrollToSection('me-bit-gallery')}
-            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[12px_12px_0px_#fff] -translate-y-1"
+            className="manga-paper-tab"
           >
+            <Camera className="w-5 h-5" style={{ filter: 'url(#rough)' }} />
             ME BIT
           </button>
           <button 
             onClick={() => scrollToSection('my-songs-section')}
-            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[12px_12px_0px_#fff] -translate-y-1"
+            className="manga-paper-tab"
           >
+            <Music2 className="w-5 h-5" style={{ filter: 'url(#rough)' }} />
             MY SONGS
           </button>
           <button 
             onClick={() => scrollToSection('drawings-section')}
-            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[8px_8px_0px_rgba(255,255,255,0.2)] hover:shadow-[12px_12px_0px_#fff] -translate-y-1"
+            className="manga-paper-tab"
           >
+            <Pencil className="w-5 h-5" style={{ filter: 'url(#rough)' }} />
             MY DRAWINGS
           </button>
           <button
             onClick={() => setIsLensGalleryOpen(true)}
-            className="manga-button !py-2 !px-8 text-sm sm:text-lg transition-all bg-black text-white shadow-[8px_8px_0px_rgba(255,255,255,0.2)] hover:shadow-[12px_12px_0px_#fff] -translate-y-1"
+            className="manga-paper-tab"
           >
-            📷 LENS
+            <Aperture className="w-5 h-5" style={{ filter: 'url(#rough)' }} />
+            LENS
           </button>
         </motion.div>
 
         <div className="flex flex-col gap-14">
-            {/* Top Contact Section */}
-            <motion.div 
-              variants={itemVariants}
-              className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full"
-            >
-            {CONTACT_METHODS.map((method) => (
-              <a
-                key={method.name}
-                href={method.url}
-                target="_blank"
-                rel="noreferrer"
-                className="manga-border group relative flex flex-col items-center justify-center p-6 border-[4px] border-black overflow-hidden bg-white transition-all duration-300 hover:scale-[1.05] hover:-rotate-1 active:scale-95 shadow-[8px_8px_0px_#000] manga-card-hover"
-              >
-                {/* GIF Background */}
-                <div 
-                  className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-500 group-hover:scale-110 opacity-30 blur-[2px] group-hover:blur-0"
-                  style={{ backgroundImage: `url('${method.bg}')` }}
-                />
-                {/* Content Overlay */}
-                <div className="relative z-10 flex flex-col items-center gap-2">
-                  <div 
-                    className="p-3 bg-black text-white manga-border border-white/20 shadow-[4px_4px_0px_rgba(0,0,0,0.5)] group-hover:bg-white group-hover:text-black transition-colors"
-                    style={STYLES.CIRCLE}
-                  >
-                    <method.icon className="w-8 h-8" aria-hidden="true" />
-                  </div>
-                  <span className="font-manga text-2xl font-black text-black uppercase tracking-tighter" style={STYLES.SHADOW_WHITE}>
-                    {method.name}
-                  </span>
-                  <span className="text-xs font-bold text-black/70 bg-white/80 px-2 py-0.5 manga-border border-black truncate max-w-full">
-                    {method.value}
-                  </span>
-                </div>
-              </a>
-            ))}
-          </motion.div>
-          
           {/* Editorial Header Section */}
-          <motion.header 
-            variants={itemVariants}
-            className="flex flex-col md:flex-row items-end justify-between gap-6 w-full"
-          >
-            <div 
-              lang="en"
-              className="manga-border p-8 flex-1 min-w-[60%] relative group overflow-hidden border-[4px] border-black transition-all duration-500 hover:scale-[1.01] halftone-bg"
-              id="header-card"
-            >
-              {/* Header Background Image with Zoom & Pan Hover Effect */}
-              <div 
-                className="absolute inset-0 z-[-1] bg-cover bg-center transition-all duration-700 blur-[3px] group-hover:blur-0 group-hover:scale-125 group-hover:translate-y-[-10%]"
-                style={{ backgroundImage: `url('${CONFIG_ASSETS.nameHeaderBg}')` }}
-              />
-              {/* Dark Overlay for Text Legibility */}
-              <div className="absolute inset-0 z-[-1] bg-black/40 transition-opacity group-hover:opacity-30" />
-              
-              <h1 
-                className="font-manga text-5xl md:text-7xl font-black uppercase tracking-tight text-white leading-none glitch-text"
-                style={STYLES.SHADOW_BLACK_LG}
-                data-text="Noureddin El Mobaraki"
-              >
-                Noureddin El Mobaraki
-              </h1>
-              
-              <div className="mt-6 flex items-center gap-4 text-white font-bold uppercase italic border-t-2 border-white/50 pt-4">
-                <span className="text-xl font-manga" style={STYLES.SHADOW_BLACK_SM}>Casablanca 📍</span>
-                <span className="text-sm bg-black text-white px-3 py-1 manga-border border-white/30 truncate">
-                  "NL" | "Nordine GB"
-                </span>
-              </div>
-              <p 
-                lang="en"
-                className="mt-4 font-hand text-2xl text-white leading-tight max-w-xl"
-                style={{ 
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,0.1)',
-                  filter: 'drop-shadow(2px 2px 2px #000)'
-                }}
-              >
-                <span className="text-yellow-400">“24 years old.</span> Just a simple <span className="text-zinc-400">5/10</span> kind of person. I’m into <span className="border-b-2 border-dashed border-red-500">drawing</span>, cooking for fun, and overthinking <span className="text-cyan-300">random stuff</span> that probably helps nobody. That’s pretty much it.”
-              </p>
-            </div>
+          <HeroSection />
 
-            {/* Profile Image Square Box */}
-            <div 
-              className="manga-card bg-white p-0 flex flex-col items-center justify-center w-48 aspect-square hidden md:flex rotate-2 hover:rotate-0 transition-transform overflow-hidden border-[3px] border-black"
-            >
-              <img 
-                src={CONFIG_ASSETS.profileImg} 
-                alt="Profile" 
-                className="w-full h-full object-cover" 
-                referrerPolicy="no-referrer"
-                loading="lazy"
-              />
-            </div>
+          <StreamingSection />
 
-          </motion.header>
+          <div className="manga-divider opacity-30" />
 
           {/* Highlights Section - Spotify Vault & YouTube */}
-          <motion.section 
-            variants={itemVariants}
-            className="grid grid-cols-1 md:grid-cols-2 gap-8"
-          >
-            {/* The Vault - Playlist Section */}
-            <div className="flex flex-col gap-4">
-              <h3 lang="en" className="font-manga text-xl font-bold bg-white text-black inline-block px-4 py-1 manga-border w-fit -rotate-2 shadow-[3px_3px_0px_#000]">
-                ■ THE VAULT
-              </h3>
-              <a 
-                href="https://open.spotify.com/playlist/2NdDhxkVxypu1MkuVRCgId?si=R2iXNEuyQxOHwRwPPs_t7w"
-                target="_blank"
-                rel="noreferrer"
-                id="vault-playlist"
-                className="group relative overflow-hidden border-[3px] border-black transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
-                style={{ borderRadius: '12px 5px 18px 8px / 8px 18px 5px 12px' }}
-              >
-                <ResponsiveImage 
-                  src={CONFIG_ASSETS.vaultPlaylistCover} 
-                  alt="NL fv songs of all time" 
-                  className="absolute inset-0 w-full h-full object-cover filter brightness-[0.8] group-hover:brightness-100 transition-all"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-4">
-                  <span className="font-hand text-3xl text-white">NL fv songs of all time</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Music2 className="w-5 h-5 text-[#1DB954]" />
-                    <span className="text-sm text-zinc-300 uppercase font-manga tracking-widest">Listen on Spotify</span>
-                  </div>
-                </div>
-              </a>
-            </div>
-
-            {/* YouTube Highlights Section */}
-            <div className="flex flex-col gap-4">
-              <h3 lang="en" className="font-manga text-xl font-bold bg-black text-white inline-block px-4 py-1 manga-border w-fit rotate-1 shadow-[3px_3px_0px_#fff] border-white">
-                ■ HIGHLIGHTS
-              </h3>
-              <a 
-                href="https://www.youtube.com/@nourdin_el_mobaraki"
-                target="_blank"
-                rel="noreferrer"
-                className="group relative overflow-hidden border-[3px] border-black transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
-                style={{ borderRadius: '5px 15px 8px 20px / 15px 8px 20px 5px' }}
-              >
-                <div 
-                  className="absolute inset-0 bg-cover bg-center filter grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
-                  style={{ backgroundImage: `url('${CONFIG_ASSETS.youtubeHighlightsBg}')` }}
-                />
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-                  <Youtube className="w-16 h-16 text-white drop-shadow-[0_0_15px_red] mb-2" />
-                  <span className="font-manga text-3xl text-white uppercase tracking-tighter" style={STYLES.SHADOW_BLACK_SOLID}>
-                    Watch on YouTube
-                  </span>
-                </div>
-              </a>
-            </div>
-          </motion.section>
-
-          <main className="grid grid-cols-1 md:grid-cols-2 gap-10">
-            
-            {/* Streaming Platforms Section */}
-            <motion.section variants={itemVariants} className="flex flex-col gap-6" lang="en">
-              <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit -rotate-1 shadow-[4px_4px_0px_#000]">
-                ■ STREAMING PLATFORMS
-              </h2>
-              <div className="manga-divider" />
-              
-              <div className="grid grid-cols-2 gap-4">
-                {STREAMING_PLATFORMS.map((platform, idx) => (
-                  <div
-                    key={platform.name}
-                    id={`stream-${idx}`}
-                  >
-                    <a
-                      href={platform.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={`manga-button flex items-center gap-3 group manga-card-hover ${platform.isSpotify ? 'spotify-king' : ''}`}
-                    >
-                      {platform.isSpotify ? (
-                        <img src={CONFIG_ASSETS.spotifyIcon} alt="Spotify" className="w-8 h-8 shrink-0 object-contain drop-shadow-[0_0_8px_#1DB954]" referrerPolicy="no-referrer" loading="lazy" />
-                      ) : (
-                        <platform.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                      )}
-                      <span className="text-base sm:text-lg whitespace-nowrap overflow-hidden text-ellipsis">{platform.name}</span>
-                    </a>
-                  </div>
-                ))}
-              </div>
-            </motion.section>
-
-            {/* Social Channels Section */}
-            <motion.section variants={itemVariants} className="flex flex-col gap-6" lang="en">
-              <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit rotate-1 shadow-[4px_4px_0px_#000]">
-                ■ SOCIAL CHANNELS
-              </h2>
-              <div className="manga-divider" />
-            
-            <div className="flex flex-col gap-5">
-              {SOCIAL_CHANNELS.map((channel, idx) => (
-                <a
-                  key={channel.name}
-                  id={`social-${idx}`}
-                  href={channel.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="manga-button flex justify-between items-center group overflow-hidden"
-                  style={{ 
-                    transform: `rotate(${idx % 2 === 0 ? '-0.5deg' : '0.5deg'})`,
-                    borderRadius: '8px 15px 5px 22px / 22px 5px 15px 8px'
-                  }}
-                >
-                  <div className="flex items-center gap-4">
-                    <channel.icon className="w-6 h-6" aria-hidden="true" />
-                    <span className="text-xl">{channel.name}</span>
-                  </div>
-                  <ExternalLink className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
-                </a>
-              ))}
-            </div>
-          </motion.section>
-        </main>
+          <div className="mt-2">
+            <HighlightsSection 
+              vaultPlaylistCoverUrl={CONFIG_ASSETS.vaultPlaylistCover}
+              youtubeHighlightsBgUrl={CONFIG_ASSETS.youtubeHighlightsBg}
+            />
+          </div>
 
         {/* ME bit Interactive Gallery - Moved out of grid to be more prominent */}
         <motion.section 
@@ -922,7 +621,7 @@ export default function App() {
           id="me-bit-gallery"
         >
           <div className="flex justify-between items-end">
-            <h2 className="font-manga text-3xl font-bold text-white text-left tracking-wider">
+            <h2 className="font-manga text-fluid-section font-bold text-white text-left tracking-wider">
               ME bit
             </h2>
             <span className="font-hand text-zinc-400 text-sm italic mb-1">Click to enter theater mode</span>
@@ -934,7 +633,7 @@ export default function App() {
               setIsGalleryOpen(true);
               if (selectedImageIndex === null) setSelectedImageIndex(0);
             }}
-            className="relative w-full border-[4px] border-black bg-white p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[280px] manga-panel"
+            className="relative w-full border-[4px] border-black bg-white p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[220px] sm:h-[260px] md:h-[280px] manga-panel"
           >
             <div className="me-bit-track flex gap-[10px]">
               {[...ME_BIT_IMAGES, ...ME_BIT_IMAGES].map((src, idx) => (
@@ -946,14 +645,14 @@ export default function App() {
                     setSelectedImageIndex(idx % ME_BIT_IMAGES.length);
                     setIsGalleryOpen(true);
                   }}
-                  className="inline-block h-[250px] w-auto aspect-[3/4] shrink-0 border-[2px] border-black overflow-hidden relative group/item"
+                  className="inline-block h-[200px] sm:h-[240px] md:h-[250px] w-auto aspect-[3/4] shrink-0 border-[2px] border-black overflow-hidden relative group/item"
                   aria-label={`Open photo ${idx + 1}`}
                 >
                   <ResponsiveImage 
                     src={src}
                     alt={`Me bit ${idx}`}
                     className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
-                    loading="lazy"
+                    loading={idx >= ME_BIT_IMAGES.length ? "lazy" : "eager"}
                   />
                   <div className="absolute inset-0 bg-black/20 group-hover/item:bg-transparent transition-colors" />
                 </button>
@@ -976,7 +675,7 @@ export default function App() {
           id="lens-section"
         >
           <div className="flex justify-between items-end">
-            <h2 className="font-manga text-3xl font-bold text-white tracking-wider">
+            <h2 className="font-manga text-fluid-section font-bold text-white tracking-wider">
               THROUGH THE LENS
             </h2>
           </div>
@@ -985,45 +684,37 @@ export default function App() {
           {/* Thumbnail trigger */}
           <div
             onClick={() => setIsLensGalleryOpen(true)}
-            className="relative w-full border-[4px] border-black bg-black overflow-hidden group cursor-pointer shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[200px]"
+            className="relative w-full border-[4px] border-black bg-black overflow-hidden group cursor-pointer shadow-[10px_10px_0px_rgba(0,0,0,0.8)] hover:shadow-[14px_14px_0px_rgba(0,0,0,1)] transition-all h-[160px] sm:h-[200px]"
             role="button"
             aria-label="Open photography gallery"
             tabIndex={0}
             onKeyDown={e => { if (e.key === 'Enter') setIsLensGalleryOpen(true); }}
           >
-            {/* Background: photo.gif */}
+            {/* Background image */}
             <div
-              className="absolute inset-0 bg-cover bg-center transition-all duration-700 group-hover:scale-110 opacity-60 group-hover:opacity-80"
+              className="absolute inset-0 bg-cover bg-center transition-all duration-700 group-hover:scale-110 opacity-50 group-hover:opacity-70"
               style={{ backgroundImage: `url('${ASSETS.profile.photo}')` }}
             />
-            {/* Sunlight/Glass shimmer overlay */}
-            <div style={{
-              position: 'absolute', inset: 0, zIndex: 1,
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 40%, rgba(255,230,100,0.08) 70%, rgba(255,255,255,0.12) 100%)',
-              pointerEvents: 'none',
-            }} />
-            <div style={{
-              position: 'absolute', top: '-30%', left: '-10%', zIndex: 1,
-              width: '60%', height: '160%',
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)',
-              transform: 'rotate(-15deg)',
-              pointerEvents: 'none',
-            }} />
 
-            {/* Hover CTA */}
-            <div className="absolute inset-0 flex items-end justify-center pb-6 z-20">
-              <span style={{
-                fontFamily: 'var(--font-hand)',
-                fontSize: '13px',
-                fontWeight: 400,
-                color: 'rgba(255,255,255,0.6)',
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase',
-                opacity: 0,
-                transition: 'opacity 300ms ease',
-              }} className="group-hover:!opacity-100">
-                open gallery
+            {/* Dark gradient overlay for text legibility */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-[1]" />
+
+            {/* Always-visible CTA — center of the card */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-[2]">
+              <div className="w-16 h-16 rounded-full bg-white/10 border-2 border-white/40 flex items-center justify-center group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 shadow-lg">
+                <span className="text-2xl" aria-hidden="true">📷</span>
+              </div>
+              <span className="font-manga text-white text-xl tracking-widest uppercase" style={{ textShadow: '2px 2px 0 #000' }}>
+                Open Gallery
               </span>
+              <span className="font-hand text-white/60 text-sm tracking-wider">
+                {ASSETS.profile.lens.length} photos
+              </span>
+            </div>
+
+            {/* Corner hint for desktop */}
+            <div className="absolute bottom-3 right-4 z-[2] hidden sm:flex items-center gap-1 text-white/40 text-xs font-mono">
+              <span>click to view</span>
             </div>
           </div>
         </motion.section>
@@ -1036,12 +727,15 @@ export default function App() {
             viewport={{ once: true, margin: "-100px" }}
             id="my-songs-section"
           >
-          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>...</div>}>
+          <SectionErrorBoundary sectionName="MySongs">
+          <Suspense fallback={<SkeletonSection type="songs" />}>
             <MySongs 
               onSongPlay={handleSongPlay} 
               onActiveSongChange={setActiveSong}
+              onAmbientColorChange={setAmbientColor}
             />
           </Suspense>
+          </SectionErrorBoundary>
           </motion.div>
 
           {/* Sarahni Section */}
@@ -1050,10 +744,13 @@ export default function App() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}
           >
-          <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>...</div>}>
+          <SectionErrorBoundary sectionName="Sarahni">
+          <Suspense fallback={<SkeletonSection type="contact" />}>
             <Sarahni />
           </Suspense>
+          </SectionErrorBoundary>
           </motion.div>
 
           {/* My Drawings Section */}
@@ -1063,61 +760,17 @@ export default function App() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '0 600px' }}
           >
-          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>...</div>}>
+          <SectionErrorBoundary sectionName="DrawingsPage">
+          <Suspense fallback={<SkeletonSection type="drawings" />}>
             <DrawingsPage onSongPlay={handleSongPlay} />
           </Suspense>
+          </SectionErrorBoundary>
           </motion.div>
 
-        {/* THE GAME BOX Section */}
-        <motion.section 
-          variants={itemVariants}
-          className="mt-10 flex flex-col gap-6"
-        >
-          <div className="flex flex-col gap-4 relative">
-            <h2 className="font-manga text-2xl font-bold bg-white text-black inline-block px-5 py-2 manga-border w-fit -rotate-1 shadow-[4px_4px_0px_#000]">
-              ■ THE GAME BOX
-            </h2>
-            <div className="manga-divider" />
-            
-            <div 
-              className="relative border-[5px] border-black shadow-[12px_12px_0px_#000] rounded-none overflow-hidden group min-h-[440px] flex items-center justify-center"
-              style={{
-                backgroundImage: `url('${ASSETS.songs.gameBackground}')`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            >
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
-              
-              <div className="relative z-10 w-full h-full flex items-center justify-center p-4">
-                {activeGame === null ? (
-                  <GameSelector onSelect={(id) => {
-                    if (isPlaying) {
-                      audioManager.pause('bg');
-                      setIsPlaying(false);
-                    }
-                    setActiveGame(id);
-                  }} />
-                ) : (
-                  <GameShell
-                    title={activeGame.toUpperCase()}
-                    onClose={() => {
-                      setActiveGame(null);
-                      if (audioIntent !== 'user-paused') {
-                        audioManager.unpauseBg();
-                        setIsPlaying(true);
-                      }
-                    }}
-                    style={gameShellStyle}
-                  >
-                    {renderActiveGame()}
-                  </GameShell>
-                )}
-              </div>
-            </div>
-          </div>
-        </motion.section>
+          {/* Contact Section */}
+          <ContactSection />
       </div>
 
       {/* Editorial Footer */}
@@ -1139,7 +792,7 @@ export default function App() {
               <div className="w-4 h-4 bg-black manga-border rounded-none" />
               <div className="w-4 h-4 bg-black manga-border rounded-none" />
             </div>
-            <p className="font-manga text-2xl text-black bg-white px-6 py-1 manga-border -rotate-1 shadow-[4px_4px_0px_#000] italic">
+            <p className="font-manga text-2xl text-black bg-white px-6 py-1 manga-border -rotate-1 shadow-[4px_4px_0px_#000] italic text-center md:text-left">
               NL // NOURDINE GB © 2026
             </p>
           </div>
@@ -1149,12 +802,7 @@ export default function App() {
       </div>
       <NowPlayingBar 
         activeSong={activeSong}
-        onClose={() => {
-          if (activeSong?.audioRef.current) {
-            activeSong.audioRef.current.pause();
-          }
-          setActiveSong(null);
-        }}
+        onClose={() => activeSong?.onDismiss?.()}
       />
       <LensGallery
         isOpen={isLensGalleryOpen}
@@ -1168,7 +816,34 @@ export default function App() {
       >
         ↑
       </button>
-      {isMobile && <MobileNavBar currentPage={currentPage} onNavigate={handleNavigate} />}
+      <button
+        onClick={() => setTheme(t => t === 'dark' ? 'manga-paper' : 'dark')}
+        className="fixed z-[9000] bg-black/30 border border-white/10 p-2.5 rounded-full text-white/80 hover:bg-black/50 transition-all hover:scale-105 active:scale-90 shadow-xl"
+        style={{
+          top: 'calc(env(safe-area-inset-top) + 20px)',
+          right: '20px',
+          fontSize: '16px',
+        }}
+        aria-label="Toggle theme"
+      >
+        {theme === 'dark' ? '🌑' : '📄'}
+      </button>
+      {(isMobile || isTablet) && (
+        <MobileNavBar 
+          currentPage={currentPage} 
+          onNavigate={handleNavigate} 
+          isBgPlaying={isPlaying}
+          onToggleBg={() => {
+            if (isPlaying) {
+              audioManager.pause('bg');
+              setAudioIntent('user-paused');
+            } else {
+              setAudioIntent('user-playing');
+              audioManager.unpauseBg();
+            }
+          }}
+        />
+      )}
     </>
   );
 }
