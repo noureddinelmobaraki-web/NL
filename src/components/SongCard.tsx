@@ -108,19 +108,19 @@ export const SongCard = memo(({
         }
       }}
       className={`
-        song-card relative overflow-hidden p-6 rounded-2xl flex flex-col gap-4 transition-all duration-700 cursor-pointer
-        ${isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)]' : 'shadow-lg hover:shadow-xl'}
+        song-card relative overflow-hidden rounded-2xl flex flex-col transition-all duration-700 cursor-pointer
+        ${isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-6 sm:p-8' : 'shadow-lg hover:shadow-xl p-5 sm:p-6'}
       `}
       style={{
         backgroundImage: `url('${song.backgroundImage}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        gridColumn: isActive ? 'span 2' : 'span 1'
+        gridColumn: isActive && !isMobile ? 'span 2' : 'span 1'
       }}
     >
       {/* Bento expansion handle */}
       {isActive && (
-        <div className="absolute top-4 left-4 z-30">
+        <div className="absolute top-4 left-4 z-30 scale-75 sm:scale-100">
           <Waveform isPlaying={isPlaying} />
         </div>
       )}
@@ -263,16 +263,17 @@ export const SongCard = memo(({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '12px',
-              padding: '4px 0 8px',
+              gap: isMobile ? '24px' : '12px',
+              padding: '12px 0 16px',
               borderBottom: '1px solid rgba(255,255,255,0.08)',
-              marginBottom: '4px',
+              marginBottom: '8px',
             }}>
               {/* Previous Song */}
               <button
                 onClick={(e) => { e.stopPropagation(); onPrev?.(); }}
                 style={{
-                  width: '40px', height: '40px',
+                  width: isMobile ? '52px' : '40px', 
+                  height: isMobile ? '52px' : '40px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   borderRadius: '50%',
                   background: 'rgba(255,255,255,0.07)',
@@ -285,7 +286,7 @@ export const SongCard = memo(({
                 className="hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
                 aria-label="Previous song"
               >
-                <SkipBack size={16} fill="currentColor" />
+                <SkipBack size={isMobile ? 20 : 16} fill="currentColor" />
               </button>
 
               {/* Play / Pause — main CTA */}
@@ -295,7 +296,8 @@ export const SongCard = memo(({
                   onPlayPause?.();
                 }}
                 style={{
-                  width: '52px', height: '52px',
+                  width: isMobile ? '72px' : '52px', 
+                  height: isMobile ? '72px' : '52px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   borderRadius: '50%',
                   background: isPlaying ? 'rgba(255,255,255,0.95)' : 'white',
@@ -312,16 +314,17 @@ export const SongCard = memo(({
               >
                 {isWaiting ? (
                   <div style={{
-                    width: '20px', height: '20px',
-                    border: '2px solid rgba(0,0,0,0.3)',
+                    width: isMobile ? '28px' : '20px', 
+                    height: isMobile ? '28px' : '20px',
+                    border: '3px solid rgba(0,0,0,0.3)',
                     borderTopColor: 'black',
                     borderRadius: '50%',
                     animation: 'spin 0.8s linear infinite',
                   }} />
                 ) : isPlaying ? (
-                  <Pause size={22} fill="currentColor" />
+                  <Pause size={isMobile ? 28 : 22} fill="currentColor" />
                 ) : (
-                  <Play size={22} fill="currentColor" style={{ marginLeft: '2px' }} />
+                  <Play size={isMobile ? 28 : 22} fill="currentColor" style={{ marginLeft: '2px' }} />
                 )}
               </button>
 
@@ -329,7 +332,8 @@ export const SongCard = memo(({
               <button
                 onClick={(e) => { e.stopPropagation(); onNext?.(); }}
                 style={{
-                  width: '40px', height: '40px',
+                  width: isMobile ? '52px' : '40px', 
+                  height: isMobile ? '52px' : '40px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   borderRadius: '50%',
                   background: 'rgba(255,255,255,0.07)',
@@ -342,7 +346,7 @@ export const SongCard = memo(({
                 className="hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
                 aria-label="Next song"
               >
-                <SkipForward size={16} fill="currentColor" />
+                <SkipForward size={isMobile ? 20 : 16} fill="currentColor" />
               </button>
             </div>
 
@@ -364,8 +368,8 @@ export const SongCard = memo(({
             </div>
 
             {/* Volume Control */}
-            <div className="flex items-center gap-3">
-              <Volume2 size={14} className="text-white/60" />
+            <div className="flex items-center gap-3 pt-2">
+              <Volume2 size={isMobile ? 18 : 14} className="text-white/60" />
               <input 
                 type="range"
                 min={0}
@@ -373,7 +377,7 @@ export const SongCard = memo(({
                 step={0.01}
                 value={volume || 0.7}
                 onChange={(e) => onVolumeChange?.(parseFloat(e.target.value))}
-                className="flex-1 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
+                className="flex-1 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
               />
             </div>
 

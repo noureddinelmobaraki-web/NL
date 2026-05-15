@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback, Suspense } from 'react';
-import { Play, Pause, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useDeviceType } from '../hooks/useDeviceType';
 import { useHlsAudio, preloadAllSongs, preloadSong } from '../hooks/useHlsAudio';
@@ -14,18 +13,11 @@ import {
   AudioStatus 
 } from '../types';
 
-import { LyricsWindowContent, parseLRC } from './LyricsEngine';
+import { parseLRC } from './LyricsEngine';
 
 
 
 const PRIMARY_RGB = "99, 102, 241"; 
-
-const formatTime = (seconds: number) => {
-  if (isNaN(seconds)) return "0:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
 
 export const MySongs = ({ 
   onSongPlay,
@@ -45,8 +37,6 @@ export const MySongs = ({
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [karaokeMode, setKaraokeMode] = useState(false);
   const [durationCache, setDurationCache] = useState<Record<number, number>>({});
-  const [mobileFullscreen, setMobileFullscreen] = useState<number | null>(null);
-  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
@@ -285,24 +275,13 @@ export const MySongs = ({
     return line;
   }, [activeId, lrcCache, currentTime]);
 
-  useEffect(() => {
-    if (mobileFullscreen !== null) {
-      setTimeout(() => setIsOverlayOpen(true), 10);
-    } else {
-      setIsOverlayOpen(false);
-    }
-  }, [mobileFullscreen]);
-
   const handlePlayToggle = (song?: Song) => {
     const audio = audioTagRef.current;
     if (!audio) return;
 
     if (song && song.id !== activeId) {
-      if (isMobile) setMobileFullscreen(song.id);
-      
-      // 🚀 ابدأ play بشكل synchronous فوراً (لتجاوز autoplay block)
-      // حتى لو لم تكن الـ source جاهزة، المتصفح سيقبل play() لاحقاً
-      audio.play().catch(() => {}); // optimistic play
+      // 🚀 Start play immediately to bypass autoplay blocks
+      audio.play().catch(() => {}); 
       
       pendingPlayRef.current = true;
       setActiveId(song.id);
@@ -315,11 +294,7 @@ export const MySongs = ({
         setIsDismissed(false);
         audioManager.play('song');
         onSongPlay();
-        if (isMobile) {
-          setMobileFullscreen(activeId);
-        }
       } else if (songs.length > 0) {
-        // Fallback: play first song if nothing active
         handlePlayToggle(songs[0]);
       }
     }
@@ -434,9 +409,8 @@ export const MySongs = ({
             }
             setActiveId(null);
             setIsDismissed(true);
-            setMobileFullscreen(null);
           },
-          suppressMiniBar: mobileFullscreen !== null || (!isMobile && activeId !== null && lyricsOpen),
+          suppressMiniBar: activeId !== null && lyricsOpen,
           isShuffle,
           onShuffleToggle: () => setIsShuffle(prev => !prev),
           repeatMode,
@@ -468,7 +442,6 @@ export const MySongs = ({
     handlePlayToggle, 
     currentSong, 
     isDismissed, 
-    mobileFullscreen, 
     isMobile, 
     lyricsOpen, 
     isShuffle, 
@@ -490,7 +463,7 @@ export const MySongs = ({
           index={i}
           song={song} 
           isActive={activeId === song.id}
-          isActiveInBar={activeId === song.id && !isMobile}
+          isActiveInBar={activeId === song.id}
           isPlaying={audioStatus === 'playing'}
           isWaiting={audioStatus === 'loading'}
           currentTime={currentTime}
@@ -600,179 +573,6 @@ export const MySongs = ({
             {renderedSongs}
           </AnimatePresence>
         </div>
-
-        {isMobile && mobileFullscreen !== null && currentSong && (
-          <div 
-            className={`mobile-fullscreen-player ${isOverlayOpen ? 'open' : ''}`}
-            style={{ 
-              position: 'fixed',
-              inset: 0,
-              zIndex: 9500,
-              background: 'var(--bg-page)',
-              display: 'flex',
-              flexDirection: 'column',
-              paddingTop: 'env(safe-area-inset-top)',
-              paddingBottom: 'env(safe-area-inset-bottom)',
-              transition: 'transform 350ms cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: isOverlayOpen ? 'translateY(0)' : 'translateY(100%)',
-              color: 'var(--text-primary)'
-            }}
-          >
-            {/* HEADER */}
-            <header style={{ 
-              height: '56px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between', 
-              padding: '0 16px',
-              borderBottom: '1px solid var(--border-subtle)'
-            }}>
-              <button 
-                onClick={() => setMobileFullscreen(null)}
-                style={{
-                  background: 'transparent',
-                  color: 'var(--text-primary)',
-                  fontSize: '15px',
-                  fontWeight: 600,
-                  border: 'none',
-                  minWidth: '44px',
-                  minHeight: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <div style={{
-                flex: 1,
-                textAlign: 'center',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                padding: '0 8px'
-              }}>
-                {currentSong.title}
-              </div>
-              <button 
-                onClick={() => setMobileFullscreen(null)}
-                style={{
-                  background: 'var(--bg-glass-strong)',
-                  color: 'var(--text-primary)',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 'none',
-                }}
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </header>
-
-            {/* LYRICS PANEL */}
-            <div className="flex-1 overflow-hidden">
-               <Suspense fallback={<div className="h-full flex items-center justify-center text-white/20">Loading Lyrics...</div>}>
-                 <LyricsWindowContent 
-                   currentTime={currentTime} 
-                   onSeek={handleSeek} 
-                   isMobilePlayer={true} 
-                   lyrics={(activeId ? lrcCache[activeId] : []) || []}
-                 />
-               </Suspense>
-            </div>
-
-            {/* CONTROLS BAR */}
-            <div style={{
-              padding: '24px 20px',
-              paddingBottom: 'max(env(safe-area-inset-bottom), 32px)',
-              background: 'var(--bg-overlay)',
-              borderTop: '1px solid var(--border-subtle)',
-              flexShrink: 0
-            }}>
-              {/* Row 1: Seek Bar */}
-              <input 
-                type="range"
-                min={0}
-                max={duration || 0}
-                value={currentTime}
-                step={0.1}
-                onChange={(e) => handleSeek(parseFloat(e.target.value))}
-                style={{
-                  width: '100%',
-                  accentColor: 'var(--ink-color)',
-                  height: '4px',
-                  marginBottom: '8px',
-                  cursor: 'pointer'
-                }}
-              />
-
-              {/* Row 2: Time */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '12px',
-                color: 'var(--text-muted)',
-                marginBottom: '20px',
-                fontFamily: 'monospace'
-              }}>
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-
-              {/* Row 3: Controls */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '48px'
-              }}>
-                <button 
-                  onClick={handlePrev}
-                  style={{ background: 'transparent', color: 'var(--text-primary)', border: 'none', padding: '12px' }}
-                >
-                  <ChevronLeft size={32} />
-                </button>
-
-                <button 
-                  onClick={() => handlePlayToggle()}
-                  style={{
-                    background: 'var(--text-primary)',
-                    color: 'var(--text-inverse)',
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: 'none',
-                    fontSize: '24px',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
-                  }}
-                >
-                   {audioStatus === 'loading' ? (
-                    <div className="spinner !w-8 !h-8 !border-gray-300 !border-t-black" aria-hidden="true" />
-                  ) : (
-                    audioStatus === 'playing' ? <Pause size={32} fill="currentColor" aria-hidden="true" /> : <Play size={32} fill="currentColor" className="ml-1" aria-hidden="true" />
-                  )}
-                </button>
-
-                <button 
-                  onClick={handleNext}
-                  style={{ background: 'transparent', color: 'var(--text-primary)', border: 'none', padding: '12px' }}
-                >
-                  <ChevronRight size={32} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
 
       <style>{`
