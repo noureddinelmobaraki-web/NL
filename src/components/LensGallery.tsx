@@ -35,25 +35,15 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
 
   // Audio lifecycle management
   useEffect(() => {
-    if (!audioRef.current) {
-      const audio = new Audio(MUSIC_URL);
-      audio.loop = true;
-      audio.volume = 0;
-      audio.preload = 'auto';
-      audioRef.current = audio;
-      audioManager.register('lens', audio, 0.7);
-    }
+    const audio = new Audio(MUSIC_URL);
+    audio.crossOrigin = "anonymous";
+    audio.loop = true;
+    audio.volume = 0;
+    audio.preload = 'auto';
+    audioRef.current = audio;
+    audioManager.register('lens', audio, 0.7);
 
-    if (isOpen) {
-      audioManager.play('lens');
-    } else {
-      audioManager.pause('lens');
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
     return () => {
-      // Final cleanup on unmount (though it rarely unmounts in current App.tsx)
       audioManager.pause('lens');
     };
   }, []);
@@ -217,7 +207,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'space-between',
-      background: isMobile ? '#000' : 'var(--bg-page)',
+      background: isMobile ? '#000' : 'var(--gallery-strip-bg)',
       backgroundPosition: 'center',
       backgroundSize: 'cover',
       overflow: 'hidden',
@@ -505,33 +495,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
           }}>›</button>
         )}
 
-        {/* Bottom pill navigation on mobile */}
-        {isMobile && (
-          <div style={{
-            position: 'absolute', bottom: '130px', left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex', gap: '16px', zIndex: 10,
-          }}>
-            <button onClick={() => navigate(-1)} style={{
-              background: 'rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.25)',
-              color: 'white', width: '44px', height: '44px',
-              borderRadius: '50%', fontSize: '20px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>‹</button>
-            <button onClick={() => navigate(1)} style={{
-              background: 'rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.25)',
-              color: 'white', width: '44px', height: '44px',
-              borderRadius: '50%', fontSize: '20px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>›</button>
-          </div>
-        )}
+
       </div>
 
       {/* FILMSTRIP CAROUSEL */}
@@ -541,11 +505,11 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
         gap: '8px',
         padding: isMobile ? '12px 8px' : '16px 12px',
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-        background: isMobile ? 'rgba(0,0,0,0.4)' : 'linear-gradient(180deg, transparent 0%, rgba(220,215,210,0.9) 40%, rgba(210,205,200,0.98) 100%)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderTop: isMobile ? 'none' : '1px solid rgba(0,0,0,0.08)',
-      }}>
+      background: isMobile ? 'rgba(var(--bg-page-rgb), 0.4)' : 'var(--gallery-strip-bg)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      borderTop: '1px solid var(--gallery-strip-border)',
+    }}>
         {/* Center indicator line */}
         {!isMobile && (
           <div style={{
@@ -591,8 +555,8 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
                 borderRadius: isMobile ? '6px' : '8px',
                 overflow: 'hidden',
                 border: isCenter
-                  ? (isMobile ? '2px solid #fff' : '2px solid rgba(0,0,0,0.5)')
-                  : '1px solid rgba(255,255,255,0.1)',
+                  ? '2px solid var(--text-primary)'
+                  : '1px solid var(--border-subtle)',
                 boxShadow: isCenter
                   ? '0 4px 16px rgba(0,0,0,0.25)'
                   : '0 4px 12px rgba(0,0,0,0.4)',

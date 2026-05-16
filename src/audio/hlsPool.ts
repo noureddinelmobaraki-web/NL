@@ -4,14 +4,16 @@ import Hls, { type HlsConfig } from 'hls.js';
 // Single source of truth used by every Hls instance in the pool.
 const HLS_CONFIG: Partial<HlsConfig> = {
   enableWorker:           true,
-  lowLatencyMode:         false,
-  maxBufferLength:        8,          // buffer 8s ahead max
+  lowLatencyMode:         true,       // Enable Low Latency mode
+  maxBufferLength:        10,         // buffer 10s ahead 
   maxMaxBufferLength:     30,
-  backBufferLength:       30,
+  backBufferLength:       15,         // reduce back buffer for streams
   startLevel:             -1,         // auto quality
   startFragPrefetch:      true,       // begin fetching first fragment immediately after manifest
-  abrEwmaDefaultEstimate: 1_000_000,  // assume 1 Mbps → picks quality fast on startup
+  abrEwmaDefaultEstimate: 2_000_000,  // assume 2 Mbps → picks high quality faster
   progressive:            true,
+  liveSyncDurationCount:  3,          // live stream specific
+  liveMaxLatencyDurationCount: 10,
 };
 
 // ─── Persistent Instance Pool ─────────────────────────────────────────────

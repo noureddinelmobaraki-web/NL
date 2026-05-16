@@ -35,6 +35,7 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
         loading={loading} 
         style={style} 
         referrerPolicy="no-referrer"
+        crossOrigin={src.startsWith('http') ? 'anonymous' : undefined}
       />
     );
   }
@@ -50,6 +51,7 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
       decoding="async"
       style={style} 
       referrerPolicy="no-referrer"
+      crossOrigin={src.startsWith('http') ? 'anonymous' : undefined}
     />
   );
 };

@@ -2,6 +2,17 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
+    <!-- CDN preconnect — critical for first paint -->
+    <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin>
+    <link rel="dns-prefetch" href="https://noureddinelmobaraki-web.github.io">
+
+    <!-- Preload above-the-fold images -->
+    <link rel="preload" as="image" 
+      href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp"
+      fetchpriority="high">
+    <link rel="preload" as="image" 
+      href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp"
+      fetchpriority="high">
     <script>
       // SEC-003: Harden window.fetch against unauthorized overwrites from third-party scripts
       (function() {

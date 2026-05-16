@@ -79,28 +79,50 @@ export function useHlsAudio(
       if (audio.canPlayType('application/vnd.apple.mpegurl')) {
         audio.src = url;
         audio.load();
-        audio.addEventListener('canplay', handleCanPlay, { once: true });
+        if (audio.readyState >= 2) {
+          handleCanPlay();
+        } else {
+          audio.addEventListener('canplay', handleCanPlay, { once: true });
+        }
         return () => audio.removeEventListener('canplay', handleCanPlay);
       }
 
       if (Hls.isSupported()) {
-        // [3] explicit check on hlsPool/getOrCreateHls
         const hls = getOrCreateHls(url);
-        hls.attachMedia(audio);
-        currentHlsRef.current = hls;
+        
+        let readyFired = false;
+        const fireReady = () => {
+          if (readyFired) return;
+          readyFired = true;
+          handleCanPlay();
+        };
 
-        // 🚀 trigger onReady when audio element is actually ready to play
-        audio.addEventListener('canplay', handleCanPlay, { once: true });
+        const onManifestParsed = () => fireReady();
+
+        if (hls.levels && hls.levels.length > 0) {
+          setTimeout(fireReady, 0);
+        } else {
+          hls.on(Hls.Events.MANIFEST_PARSED, onManifestParsed);
+        }
 
         const errHandler = (_: any, data: any) => {
           if (!data.fatal) return;
-          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
-          else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            console.warn("[HLS] Network error, retrying...", data);
+            hls.startLoad();
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            console.warn("[HLS] Media error, recovering...", data);
+            hls.recoverMediaError();
+          }
         };
+
         hls.on(Hls.Events.ERROR, errHandler);
+        
+        hls.attachMedia(audio);
+        currentHlsRef.current = hls;
 
         return () => {
-          audio.removeEventListener('canplay', handleCanPlay);
+          hls.off(Hls.Events.MANIFEST_PARSED, onManifestParsed);
           hls.off(Hls.Events.ERROR, errHandler);
           hls.detachMedia();
         };
@@ -110,7 +132,11 @@ export function useHlsAudio(
     // MP3 fallback
     audio.src = url;
     audio.load();
-    audio.addEventListener('canplay', handleCanPlay, { once: true });
+    if (audio.readyState >= 2) {
+      handleCanPlay();
+    } else {
+      audio.addEventListener('canplay', handleCanPlay, { once: true });
+    }
     return () => audio.removeEventListener('canplay', handleCanPlay);
   }, [url]);
 }

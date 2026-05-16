@@ -23,6 +23,10 @@ export default defineConfig(({ mode }) => {
         brotliSize: true,
       })
     ].filter(Boolean),
+    assetsExclude: [
+      '**/assets/images/profile/**',
+      '**/assets/images/songs/**',
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

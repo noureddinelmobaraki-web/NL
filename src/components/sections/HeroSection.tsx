@@ -14,8 +14,8 @@ const itemVariants: Variants = {
 };
 
 const STYLES = {
-  SHADOW_BLACK_LG: { textShadow: '4px 4px 0px rgba(0,0,0,0.8)' },
-  SHADOW_BLACK_SM: { textShadow: '2px 2px 0px rgba(0,0,0,0.5)' },
+  SHADOW_BLACK_LG: { textShadow: '4px 4px 0px var(--manga-shadow-color)' },
+  SHADOW_BLACK_SM: { textShadow: '2px 2px 0px var(--manga-shadow-color)' },
 };
 
 export const HeroSection = () => {
@@ -36,10 +36,10 @@ export const HeroSection = () => {
           style={{ backgroundImage: `url('${ASSETS.profile.headerBg}')` }}
         />
         {/* Dark Overlay for Text Legibility */}
-        <div className="absolute inset-0 z-[-1] bg-black/40 transition-opacity group-hover:opacity-30" />
+        <div className="absolute inset-0 z-[-1] bg-[var(--bg-page)]/40 transition-opacity group-hover:opacity-30" />
         
         <h1 
-          className="font-manga font-black uppercase tracking-tight text-white leading-none glitch-text"
+          className="font-manga font-black uppercase tracking-tight text-[var(--text-primary)] leading-none glitch-text"
           style={{ 
             fontSize: 'clamp(2rem, 6vw, 5rem)',
             ...STYLES.SHADOW_BLACK_LG 
@@ -49,18 +49,18 @@ export const HeroSection = () => {
           Noureddin El Mobaraki
         </h1>
         
-        <div className="mt-6 flex items-center gap-4 text-white font-bold uppercase italic border-t-2 border-white/50 pt-4">
+        <div className="mt-6 flex items-center gap-4 text-[var(--text-primary)] font-bold uppercase italic border-t-2 border-[var(--border-subtle)] pt-4">
           <span className="text-xl font-manga" style={STYLES.SHADOW_BLACK_SM}>Casablanca 📍</span>
-          <span className="text-sm bg-[var(--ink-color)] text-[var(--text-inverse)] px-3 py-1 manga-border border-white/30 truncate">
+          <span className="text-sm bg-[var(--ink-color)] text-[var(--text-inverse)] px-3 py-1 manga-border border-[var(--border-subtle)] truncate">
             "NL" | "Nordine GB"
           </span>
         </div>
         <p 
           lang="en"
-          className={`mt-4 font-hand ${isTablet ? 'text-xl' : 'text-2xl'} text-white leading-tight max-w-xl`}
+          className={`mt-4 font-hand ${isTablet ? 'text-xl' : 'text-2xl'} text-[var(--text-primary)] leading-tight max-w-xl`}
           style={{ 
-            textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,0.1)',
-            filter: 'drop-shadow(2px 2px 2px #000)'
+            textShadow: '2px 2px 4px var(--manga-shadow-color), 0 0 20px var(--lyric-active-shadow)',
+            filter: 'drop-shadow(2px 2px 2px var(--manga-shadow-color))'
           }}
         >
           <span className="text-yellow-400">“24 years old.</span> Just a simple <span className="text-zinc-400">5/10</span> kind of person. I’m into <span className="border-b-2 border-dashed border-red-500">drawing</span>, cooking for fun, and overthinking <span className="text-cyan-300">random stuff</span> that probably helps nobody. That’s pretty much it.”

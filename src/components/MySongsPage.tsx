@@ -19,12 +19,20 @@ import { parseLRC } from './LyricsEngine';
 
 const PRIMARY_RGB = "99, 102, 241"; 
 
+import { loadPrefs, savePrefs } from '../utils/userPrefs';
+import type { RepeatMode } from '../utils/userPrefs';
+import { loadSession, saveSession } from '../utils/sessionState';
+
+const initialPrefs = loadPrefs();
+
 export const MySongs = ({ 
   onSongPlay,
+  onSongStop,
   onActiveSongChange,
   onAmbientColorChange
 }: { 
   onSongPlay: () => void;
+  onSongStop?: () => void;
   onActiveSongChange: (data: ActiveSong | null) => void;
   onAmbientColorChange?: (color: string | null) => void;
 }) => {
@@ -33,14 +41,14 @@ export const MySongs = ({
   const [audioStatus, setAudioStatus] = useState<AudioStatus>('idle');
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.7);
+  const [volume, setVolume] = useState(initialPrefs.lastVolume);
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [karaokeMode, setKaraokeMode] = useState(false);
-  const [durationCache, setDurationCache] = useState<Record<number, number>>({});
+  const [durationCache, setDurationCache] = useState<Record<number, number>>(loadSession().durationCache);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
-  const [lrcCache, setLrcCache] = useState<Record<number, LyricLine[]>>({});
+  const [isShuffle, setIsShuffle] = useState(initialPrefs.isShuffle);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>(initialPrefs.repeatMode);
+  const [lrcCache, setLrcCache] = useState<Record<number, LyricLine[]>>(loadSession().lrcCache);
   const [ambientColor, setAmbientColor] = useState('20, 20, 30');
   const { isMobile } = useDeviceType();
 
@@ -67,26 +75,25 @@ export const MySongs = ({
         }));
         setSongs(mapped);
         
-        // [1] Preload first 6 songs immediately
-        mapped.slice(0, 6).forEach(s => preloadSong(s.url));
+        // Phase 1: create HLS pool instances for ALL songs immediately (manifest only, tiny)
+        mapped.forEach(s => preloadSong(s.url));
 
-        const firstFiveUrls = mapped.slice(0, 5).map(s => s.url);
-
-        // انتظر تفاعل المستخدم أو 4 ثوانٍ ثم ابدأ
-        const startPreload = () => {
-          preloadAllSongs(firstFiveUrls, 4, 2, 600);  // 5 أغاني × 4 ثواني فقط، 2 بالتوازي
-          window.removeEventListener('pointerdown', startPreload);
-          window.removeEventListener('scroll', startPreload);
+        // Phase 2: fetch first 8 seconds of ALL songs in small batches
+        const startPhase2 = () => {
+          const allUrls = mapped.map(s => s.url);
+          // Batching for all songs: 8 songs at a time, then remaining
+          preloadAllSongs(allUrls.slice(0, 8), 8, 2, 300);
+          
+          setTimeout(() => {
+            preloadAllSongs(allUrls.slice(8), 8, 1, 800);
+          }, 3000);
         };
-        window.addEventListener('pointerdown', startPreload, { once: true, passive: true });
-        window.addEventListener('scroll', startPreload, { once: true, passive: true });
-        setTimeout(startPreload, 4000);  // fallback تلقائي بعد 4 ثواني
 
-        // قائمة الباقي تُحمَّل تدريجياً بعد 15 ثانية
-        setTimeout(() => {
-          const remaining = mapped.slice(5).map(s => s.url);
-          preloadAllSongs(remaining, 4, 1, 1500);  // واحدة بواحدة كل 1.5 ثانية
-        }, 15000);
+        if ('requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(startPhase2, { timeout: 2000 });
+        } else {
+          setTimeout(startPhase2, 1000);
+        }
       });
   }, []);
 
@@ -113,15 +120,26 @@ export const MySongs = ({
 
   const preloadDuration = useCallback((song: Song) => {
     if (durationCache[song.id]) return;
+
+    // Check session cache
+    const session = loadSession();
+    if (session.durationCache[song.id]) {
+      setDurationCache(prev => ({ ...prev, [song.id]: session.durationCache[song.id] }));
+      return;
+    }
+
     // Skip HLS songs — setting audio.src to .m3u8 doesn't work in Chrome without hls.js
     // Duration will be populated naturally when the song is played
     const isHls = song.url.endsWith('.m3u8') || song.url.includes('/index.m3u8');
     if (isHls) return;
     
     const audio = new Audio();
+    audio.crossOrigin = "anonymous";
     audio.preload = 'metadata';
     audio.onloadedmetadata = () => {
-      setDurationCache(prev => ({ ...prev, [song.id]: audio.duration }));
+      const d = audio.duration;
+      setDurationCache(prev => ({ ...prev, [song.id]: d }));
+      saveSession({ durationCache: { ...session.durationCache, [song.id]: d } });
       audio.src = '';
     };
     audio.src = song.url;
@@ -228,6 +246,13 @@ export const MySongs = ({
     
     if (lrcCache[activeId]) return;
 
+    // Check session cache
+    const session = loadSession();
+    if (session.lrcCache[activeId]) {
+      setLrcCache(prev => ({ ...prev, [activeId!]: session.lrcCache[activeId!] }));
+      return;
+    }
+
     const controller = new AbortController();
     const filename = currentSong.lrc.split('/').pop() || "";
     const encodedFilename = encodeURIComponent(filename);
@@ -239,7 +264,8 @@ export const MySongs = ({
       })
       .then(async text => {
         const parsed = await parseLRC(text);
-        setLrcCache(prev => ({ ...prev, [activeId]: parsed }));
+        setLrcCache(prev => ({ ...prev, [activeId!]: parsed }));
+        saveSession({ lrcCache: { ...loadSession().lrcCache, [activeId!]: parsed } });
       })
       .catch(err => {
         if (err.name !== 'AbortError') {
@@ -275,18 +301,22 @@ export const MySongs = ({
     return line;
   }, [activeId, lrcCache, currentTime]);
 
-  const handlePlayToggle = (song?: Song) => {
+  useEffect(() => {
+    if (audioStatus === 'ended' || audioStatus === 'paused') {
+      onSongStop?.();
+    }
+  }, [audioStatus, onSongStop]);
+
+  const handlePlayToggle = useCallback((song?: Song) => {
     const audio = audioTagRef.current;
     if (!audio) return;
 
     if (song && song.id !== activeId) {
-      // 🚀 Start play immediately to bypass autoplay blocks
-      audio.play().catch(() => {}); 
-      
       pendingPlayRef.current = true;
       setActiveId(song.id);
       setIsDismissed(false);
       onSongPlay();
+      savePrefs({ lastSongId: song.id });
     } else {
       if (audioStatus === 'playing') {
         audioManager.pause('song');
@@ -298,7 +328,7 @@ export const MySongs = ({
         handlePlayToggle(songs[0]);
       }
     }
-  };
+  }, [activeId, audioStatus, songs, onSongPlay]);
 
   const handleNext = useCallback(() => {
     if (songs.length === 0) return;
@@ -374,6 +404,7 @@ export const MySongs = ({
     const audio = audioTagRef.current;
     if (audio) {
       audio.volume = volume;
+      savePrefs({ lastVolume: volume });
     }
   }, [volume]);
 
@@ -387,7 +418,7 @@ export const MySongs = ({
   // Notify parent of state changes
   useEffect(() => {
     if (onActiveSongChange) {
-      if (!isDismissed && activeId && currentSong) {
+      if (!isDismissed && activeId && currentSong && (audioStatus === 'playing' || audioStatus === 'loading' || audioStatus === 'paused')) {
         onActiveSongChange({
           id: activeId,
           title: currentSong.title,
@@ -412,17 +443,27 @@ export const MySongs = ({
           },
           suppressMiniBar: activeId !== null && lyricsOpen,
           isShuffle,
-          onShuffleToggle: () => setIsShuffle(prev => !prev),
+          onShuffleToggle: () => setIsShuffle(prev => {
+            const next = !prev;
+            savePrefs({ isShuffle: next });
+            return next;
+          }),
           repeatMode,
           onRepeatToggle: () => {
             setRepeatMode(prev => {
-              if (prev === 'off') return 'all';
-              if (prev === 'all') return 'one';
-              return 'off';
+              let next: RepeatMode;
+              if (prev === 'off') next = 'all';
+              else if (prev === 'all') next = 'one';
+              else next = 'off';
+              savePrefs({ repeatMode: next });
+              return next;
             });
           },
           volume,
-          onVolumeChange: setVolume,
+          onVolumeChange: (v) => {
+            setVolume(v);
+            savePrefs({ lastVolume: v });
+          },
           nextSongs: songs
             .slice(songs.findIndex(s => s.id === activeId) + 1, songs.findIndex(s => s.id === activeId) + 6)
             .map(s => ({ id: s.id, title: s.title, cover: s.cover || s.backgroundImage })),
@@ -462,8 +503,8 @@ export const MySongs = ({
         <SongCard 
           index={i}
           song={song} 
-          isActive={activeId === song.id}
-          isActiveInBar={activeId === song.id}
+          isActive={activeId === song.id && audioStatus !== 'idle'}
+          isActiveInBar={activeId === song.id && audioStatus !== 'idle'}
           isPlaying={audioStatus === 'playing'}
           isWaiting={audioStatus === 'loading'}
           currentTime={currentTime}
@@ -482,10 +523,11 @@ export const MySongs = ({
           karaokeMode={karaokeMode}
           setKaraokeMode={setKaraokeMode}
           currentLyricLine={activeId === song.id ? currentLyricLine : null}
+          onAmbientColorChange={(color) => onAmbientColorChange?.(`rgb(${color})`)}
         />
       </div>
     ));
-  }, [activeId, audioStatus, isMobile, handlePlayToggle, currentTime, duration, handleSeek, volume, songs]);
+  }, [activeId, audioStatus, isMobile, handlePlayToggle, currentTime, duration, handleSeek, volume, songs, lrcCache, lyricsOpen, karaokeMode, currentLyricLine, durationCache, handlePrev, handleNext]);
 
   const handleShare = (song: Song) => {
     const baseUrl = window.location.origin + import.meta.env.BASE_URL;
@@ -548,7 +590,7 @@ export const MySongs = ({
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.015] pointer-events-none" />
       <div className="absolute inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '4px 4px' }} />
       
-      <audio ref={audioTagRef} preload="auto" style={{ display: 'none' }} />
+      <audio ref={audioTagRef} preload="auto" crossOrigin="anonymous" style={{ display: 'none' }} />
       <div className="max-w-6xl mx-auto relative z-10">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-20">
           <div className="space-y-2">
@@ -589,16 +631,16 @@ export const MySongs = ({
           }
         }
         .rainbow-text {
-          color: #FFD700;
-          text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+          color: var(--song-title-color);
+          text-shadow: 0 0 12px var(--song-title-shadow);
           font-weight: 900 !important;
           letter-spacing: -0.01em;
           animation: golden-glow 3s ease-in-out infinite alternate;
           font-size: clamp(1.1rem, 3vw, 1.7rem) !important;
         }
         @keyframes golden-glow {
-          from { text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
-          to { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.4); }
+          from { text-shadow: 0 0 8px var(--song-title-shadow); }
+          to { text-shadow: 0 0 20px var(--song-title-shadow), 0 0 30px var(--song-title-shadow); }
         }
         @keyframes pulse-glow {
           0%, 100% { box-shadow: 0 0 4px rgba(139,92,246,0.3); }

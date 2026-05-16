@@ -109,14 +109,14 @@ export const Sarahni = () => {
       <section dir="rtl" style={styles.section}>
         <div className="manga-panel" style={{
           ...styles.card,
-          border: '4px solid #000',
-          boxShadow: '8px 8px 0 #000, 14px 14px 0 rgba(0,0,0,0.15)'
+          border: '4px solid var(--ink-color)',
+          boxShadow: '8px 8px 0 var(--manga-shadow-color), 14px 14px 0 rgba(var(--bg-page-rgb), 0.15)'
         }}>
           {/* MacOS traffic light buttons */}
           <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', border: '1px solid rgba(0,0,0,0.3)' }} />
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', border: '1px solid rgba(0,0,0,0.3)' }} />
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', border: '1px solid rgba(0,0,0,0.3)' }} />
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', border: '1px solid var(--border-subtle)' }} />
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', border: '1px solid var(--border-subtle)' }} />
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', border: '1px solid var(--border-subtle)' }} />
           </div>
           <p style={styles.blocked}>وصلت رسايلك، شكراً على صراحتك</p>
         </div>
@@ -128,14 +128,14 @@ export const Sarahni = () => {
     <section dir="rtl" style={styles.section}>
       <div className="manga-panel" style={{
         ...styles.card,
-        border: '4px solid #000',
-        boxShadow: '8px 8px 0 #000, 14px 14px 0 rgba(0,0,0,0.15)'
+        border: '4px solid var(--ink-color)',
+        boxShadow: '8px 8px 0 var(--manga-shadow-color), 14px 14px 0 rgba(var(--bg-page-rgb), 0.15)'
       }}>
         {/* MacOS traffic light buttons */}
         <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', border: '1px solid rgba(0,0,0,0.3)' }} />
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', border: '1px solid rgba(0,0,0,0.3)' }} />
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', border: '1px solid rgba(0,0,0,0.3)' }} />
+          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', border: '1px solid var(--border-subtle)' }} />
+          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', border: '1px solid var(--border-subtle)' }} />
+          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', border: '1px solid var(--border-subtle)' }} />
         </div>
 
         <h2 style={styles.title}>صارحني</h2>
@@ -146,7 +146,7 @@ export const Sarahni = () => {
               fontSize: '3rem',
               fontFamily: 'var(--font-manga)',
               color: '#27c93f',
-              textShadow: '3px 3px 0 #000',
+              textShadow: '3px 3px 0 var(--manga-shadow-color)',
               animation: 'scaleIn 400ms ease',
               letterSpacing: '0.05em',
             }}>✓ OK</div>
@@ -184,11 +184,11 @@ export const Sarahni = () => {
                 onChange={e => setMessage(e.target.value)}
                 maxLength={2000}
                 style={styles.textarea}
-                className="focus:!border-white/50 focus:!ring-2 focus:!ring-purple-500/30"
+                className="focus:!border-[var(--accent-indigo)] focus:!ring-2 focus:!ring-[var(--accent-indigo)]/30"
               />
               <span style={{
                 ...styles.charCount,
-                color: message.length > 1900 ? '#ff4444' : 'rgba(255,255,255,0.3)'
+                color: message.length > 1900 ? 'var(--accent-red)' : 'var(--text-muted)'
               }}>
                 {message.length} / 2000
               </span>
@@ -204,7 +204,7 @@ export const Sarahni = () => {
                 opacity: status === 'sending' ? 0.6 : 1,
                 cursor: status === 'sending' ? 'not-allowed' : 'pointer'
               }}
-              className="manga-card-hover hover:-translate-x-0.5 hover:-translate-y-0.5 hover:!shadow-[7px_7px_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:!shadow-[3px_3px_0_#000]"
+              className="manga-card-hover hover:-translate-x-0.5 hover:-translate-y-0.5 hover:!shadow-[7px_7px_0_var(--manga-shadow-color)] active:translate-x-0.5 active:translate-y-0.5 active:!shadow-[3px_3px_0_var(--manga-shadow-color)]"
             >
               {status === 'sending' ? (
                 <span style={styles.spinner} />

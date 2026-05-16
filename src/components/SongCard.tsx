@@ -1,9 +1,11 @@
-import { useState, memo } from 'react';
+import { useState, memo, useEffect } from 'react';
 import { Play, Pause, Volume2, SkipBack, SkipForward } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Song, LyricLine } from '../types';
 import { LyricsWindowContent } from './LyricsEngine';
 import { useDeviceType } from '../hooks/useDeviceType';
+import { loadSession, saveSession } from '../utils/sessionState';
+import { extractDominantColorCached } from '../utils/extractColors';
 
 /**
  * Shared utility for time formatting within song components
@@ -56,6 +58,7 @@ export interface SongCardProps {
   karaokeMode?: boolean;
   setKaraokeMode?: (val: boolean | ((prev: boolean) => boolean)) => void;
   currentLyricLine?: string | null;
+  onAmbientColorChange?: (color: string) => void;
 }
 
 /**
@@ -83,10 +86,29 @@ export const SongCard = memo(({
   onShare,
   karaokeMode = false,
   setKaraokeMode,
-  currentLyricLine
+  currentLyricLine,
+  onAmbientColorChange
 }: SongCardProps) => {
   const [isCopied, setIsCopied] = useState(false);
   const { isMobile, isTablet } = useDeviceType();
+
+  useEffect(() => {
+    const coverUrl = song.cover || song.backgroundImage;
+    if (!coverUrl) return;
+
+    // Check session cache
+    const session = loadSession();
+    if (session.dominantColors[coverUrl]) {
+      const color = session.dominantColors[coverUrl];
+      if (isActive) onAmbientColorChange?.(color);
+      return;
+    }
+
+    extractDominantColorCached(coverUrl, (color) => {
+      saveSession({ dominantColors: { ...session.dominantColors, [coverUrl]: color } });
+      if (isActive) onAmbientColorChange?.(color);
+    });
+  }, [song.cover, song.backgroundImage, isActive, onAmbientColorChange]);
 
   const handleShareClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -170,8 +192,8 @@ export const SongCard = memo(({
                   <span style={{
                     fontSize: '10px', fontWeight: 'bold', 
                     padding: '2px 6px', borderRadius: '3px',
-                    background: 'rgba(255,255,255,0.08)',
-                    color: 'rgba(255,255,255,0.5)',
+                    background: 'var(--card-control-bg)',
+                    color: 'var(--text-muted)',
                     fontFamily: 'monospace',
                   }}>
                     {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}
@@ -265,7 +287,7 @@ export const SongCard = memo(({
               justifyContent: 'center',
               gap: isMobile ? '24px' : '12px',
               padding: '12px 0 16px',
-              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              borderBottom: '1px solid var(--card-border-line)',
               marginBottom: '8px',
             }}>
               {/* Previous Song */}
@@ -276,9 +298,9 @@ export const SongCard = memo(({
                   height: isMobile ? '52px' : '40px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  color: 'rgba(255,255,255,0.7)',
+                  background: 'var(--card-control-bg)',
+                  border: '1px solid var(--card-control-border)',
+                  color: 'var(--card-control-text)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   flexShrink: 0,
@@ -336,9 +358,9 @@ export const SongCard = memo(({
                   height: isMobile ? '52px' : '40px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  color: 'rgba(255,255,255,0.7)',
+                  background: 'var(--card-control-bg)',
+                  border: '1px solid var(--card-control-border)',
+                  color: 'var(--card-control-text)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   flexShrink: 0,
@@ -359,7 +381,8 @@ export const SongCard = memo(({
                 value={currentTime || 0}
                 step={0.1}
                 onChange={(e) => onSeek?.(parseFloat(e.target.value))}
-                className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
+                className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer"
+                style={{ background: 'var(--seek-track-bg)', accentColor: 'var(--accent-indigo)' }}
               />
               <div className="flex justify-between text-[10px] font-mono text-white/60">
                 <span>{formatTime(currentTime || 0)}</span>
@@ -377,7 +400,8 @@ export const SongCard = memo(({
                 step={0.01}
                 value={volume || 0.7}
                 onChange={(e) => onVolumeChange?.(parseFloat(e.target.value))}
-                className="flex-1 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
+                className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer"
+                style={{ background: 'var(--seek-track-bg)', accentColor: 'var(--accent-indigo)' }}
               />
             </div>
 
@@ -391,16 +415,16 @@ export const SongCard = memo(({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderTop: '1px solid rgba(255,255,255,0.1)',
+                    borderTop: '1px solid var(--card-border-line)',
                     paddingTop: '12px',
                   }}>
                     <p style={{
                       fontFamily: 'var(--font-manga)',
                       fontSize: 'clamp(1.2rem, 4vw, 2rem)',
-                      color: '#e0f0ff',
+                      color: 'var(--lyric-active-color)',
                       textAlign: 'center',
                       letterSpacing: '0.05em',
-                      textShadow: '0 0 20px rgba(100,180,255,0.6)',
+                      textShadow: '0 0 20px var(--lyric-active-shadow)',
                       transition: 'all 0.3s ease',
                       lineHeight: 1.4,
                       padding: '0 16px',
@@ -411,7 +435,7 @@ export const SongCard = memo(({
                 ) : (
                   <div style={{
                     marginTop: '16px',
-                    borderTop: '1px solid rgba(255,255,255,0.1)',
+                    borderTop: '1px solid var(--card-border-line)',
                     paddingTop: '12px',
                     maxHeight: '220px',
                     overflowY: 'auto',

@@ -66,20 +66,20 @@ export const NowPlayingBar = ({
       aria-label="Music Player"
       style={{
         position: "fixed",
-        bottom: (isMobile || isTablet) ? "calc(70px + 12px)" : "24px",
+        bottom: (isMobile || isTablet) ? "calc(60px + env(safe-area-inset-bottom))" : "24px",
         left: "50%",
         transform: "translateX(-50%)",
         maxWidth: "540px",
         width: "95vw",
-        minHeight: isHovered && !isMobile && !isTablet ? "100px" : "64px",
-        background: 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.55), rgba(var(--bg-page-rgb), 0.65))',
-        backdropFilter: 'blur(28px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        minHeight: isHovered && !isMobile && !isTablet ? "120px" : (isMobile || isTablet ? "auto" : "64px"),
+        background: 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.7), rgba(var(--bg-page-rgb), 0.8))',
+        backdropFilter: 'blur(32px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(32px) saturate(180%)',
         borderRadius: "28px",
-        border: '1px solid var(--border-subtle)',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)',
+        border: '1px solid var(--border-strong)',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 1px 0 var(--border-subtle)',
         zIndex: 8000,
-        padding: "0 16px",
+        padding: (isMobile || isTablet) ? "8px 16px 12px" : "0 16px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
@@ -87,6 +87,11 @@ export const NowPlayingBar = ({
         overflow: "visible",
       }}
     >
+      {/* Mobile Handle Hint */}
+      {(isMobile || isTablet) && (
+        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-2" aria-hidden="true" />
+      )}
+
       {/* Queue Popover */}
       <AnimatePresence>
         {showQueue && activeSong?.nextSongs && activeSong.nextSongs.length > 0 && (
@@ -124,19 +129,20 @@ export const NowPlayingBar = ({
       <div style={{
         display: "flex",
         alignItems: "center",
-        gap: "12px",
+        gap: (isMobile || isTablet) ? "10px" : "12px",
         width: "100%",
-        height: "64px",
+        height: (isMobile || isTablet) ? "auto" : "64px",
+        marginBottom: (isMobile || isTablet) ? "4px" : "0",
         flexShrink: 0
       }}>
         {/* Left: Cover Art */}
-        <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
+        <div style={{ position: 'relative', width: (isMobile || isTablet) ? '40px' : '44px', height: (isMobile || isTablet) ? '40px' : '44px', flexShrink: 0 }}>
           <div 
             style={{ 
               position: 'absolute', 
               inset: '-4px', 
               borderRadius: '50%', 
-              background: `rgba(var(--bg-page-rgb), 0.3)`, 
+              background: `var(--card-control-bg)`, 
               filter: 'blur(8px)',
               opacity: activeSong?.isPlaying ? 1 : 0,
               transition: 'opacity 1s'
@@ -172,7 +178,7 @@ export const NowPlayingBar = ({
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <span style={{ 
             color: "var(--text-primary)", 
-            fontSize: "14px", 
+            fontSize: (isMobile || isTablet) ? "13px" : "14px", 
             fontWeight: "700", 
             whiteSpace: "nowrap", 
             overflow: "hidden", 
@@ -181,7 +187,7 @@ export const NowPlayingBar = ({
           }}>
             {activeSong?.title}
           </span>
-          <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 'bold', letterSpacing: '0.15em', marginTop: '1px' }}>
+          <span style={{ fontSize: '8px', color: 'var(--text-muted)', fontWeight: 'bold', letterSpacing: '0.15em', marginTop: '1px' }}>
             NOW PLAYING
           </span>
         </div>
@@ -192,7 +198,7 @@ export const NowPlayingBar = ({
             <button
                onClick={() => activeSong?.onShuffleToggle()}
                style={{ color: activeSong?.isShuffle ? 'var(--accent-indigo)' : 'var(--text-muted)', padding: '8px' }}
-               className="hover:scale-110 active:scale-95 transition-all"
+               className="hover:scale-110 active:scale-95 transition-all outline-none"
                title="Shuffle"
             >
               <Shuffle size={16} />
@@ -200,7 +206,7 @@ export const NowPlayingBar = ({
             <button
                onClick={() => activeSong?.onRepeatToggle()}
                style={{ color: activeSong?.repeatMode !== 'off' ? 'var(--accent-indigo)' : 'var(--text-muted)', padding: '8px' }}
-               className="hover:scale-110 active:scale-95 transition-all"
+               className="hover:scale-110 active:scale-95 transition-all outline-none"
                title="Repeat"
             >
               {activeSong?.repeatMode === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
@@ -210,44 +216,79 @@ export const NowPlayingBar = ({
 
         {/* Right: Primary Controls */}
         <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
-          {!isMobile && !isTablet && (
-            <button
-              onClick={() => activeSong?.onPrev()}
-              style={{ color: "var(--text-secondary)", padding: "10px" }}
-              className="hover:bg-white/5 rounded-full transition-all"
-            >
-              <SkipBack size={20} fill="currentColor" />
-            </button>
-          )}
+          {(isMobile || isTablet) ? (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); activeSong?.onPrev(); }}
+                style={{ color: "var(--text-secondary)", padding: "12px", borderRadius: "50%" }}
+                className="hover:bg-white/10 active:bg-white/20 transition-colors outline-none"
+              >
+                <SkipBack size={20} fill="currentColor" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); activeSong?.onPlayPause(); }}
+                aria-label={activeSong?.isPlaying ? "Pause" : "Play"}
+                style={{ 
+                  width: "44px", 
+                  height: "44px", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  borderRadius: "50%", 
+                  background: "var(--text-primary)", 
+                  color: "var(--text-inverse)",
+                  boxShadow: '0 4px 15px rgba(255,255,255,0.2)'
+                }}
+                className="hover:scale-105 active:scale-95 shadow-lg outline-none"
+              >
+                {activeSong?.isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} />}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); activeSong?.onNext(); }}
+                style={{ color: "var(--text-secondary)", padding: "12px", borderRadius: "50%" }}
+                className="hover:bg-white/10 active:bg-white/20 transition-colors outline-none"
+              >
+                <SkipForward size={20} fill="currentColor" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => activeSong?.onPrev()}
+                style={{ color: "var(--text-secondary)", padding: "10px" }}
+                className="hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
+              >
+                <SkipBack size={20} fill="currentColor" />
+              </button>
 
-          <button
-            onClick={(e) => { e.stopPropagation(); activeSong?.onPlayPause(); }}
-            aria-label={activeSong?.isPlaying ? "Pause" : "Play"}
-            style={{ 
-              width: "48px", 
-              height: "48px", 
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center", 
-              borderRadius: "50%", 
-              background: "var(--text-primary)", 
-              color: "var(--text-inverse)",
-              boxShadow: '0 4px 15px rgba(255,255,255,0.2)',
-              margin: '0 4px'
-            }}
-            className="hover:scale-105 active:scale-95 shadow-lg"
-          >
-            {activeSong?.isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} />}
-          </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); activeSong?.onPlayPause(); }}
+                aria-label={activeSong?.isPlaying ? "Pause" : "Play"}
+                style={{ 
+                  width: "48px", 
+                  height: "48px", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  borderRadius: "50%", 
+                  background: "var(--text-primary)", 
+                  color: "var(--text-inverse)",
+                  boxShadow: '0 4px 15px rgba(255,255,255,0.2)',
+                  margin: '0 4px'
+                }}
+                className="hover:scale-105 active:scale-95 shadow-lg outline-none"
+              >
+                {activeSong?.isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} />}
+              </button>
 
-          {!isMobile && !isTablet && (
-            <button
-              onClick={() => activeSong?.onNext()}
-              style={{ color: "var(--text-secondary)", padding: "10px" }}
-              className="hover:bg-white/5 rounded-full transition-all"
-            >
-              <SkipForward size={20} fill="currentColor" />
-            </button>
+              <button
+                onClick={() => activeSong?.onNext()}
+                style={{ color: "var(--text-secondary)", padding: "10px" }}
+                className="hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
+              >
+                <SkipForward size={20} fill="currentColor" />
+              </button>
+            </>
           )}
 
           {/* Desktop Hover Controls (Volume/Queue) */}
@@ -269,7 +310,7 @@ export const NowPlayingBar = ({
                 <button
                   onClick={() => setShowQueue(!showQueue)}
                   style={{ color: showQueue ? 'var(--text-primary)' : 'var(--text-muted)', padding: '8px' }}
-                  className="hover:text-[var(--text-primary)] transition-colors"
+                  className="hover:text-[var(--text-primary)] transition-colors outline-none"
                   title="Queue"
                 >
                   <ListMusic size={18} />
@@ -286,7 +327,7 @@ export const NowPlayingBar = ({
               transition: "all 0.3s",
               position: 'relative'
             }}
-            className="hover:bg-white/5"
+            className="hover:bg-[var(--card-control-bg)] outline-none"
             title="Share"
           >
             {showCopied ? <Check size={18} /> : <Share2 size={18} />}
@@ -298,7 +339,7 @@ export const NowPlayingBar = ({
               color: "var(--text-muted)", 
               padding: "10px", 
             }}
-            className="hover:text-[var(--text-primary)] transition-colors"
+            className="hover:text-[var(--text-primary)] transition-colors outline-none"
             aria-label="Close"
           >
             <X size={18} />
@@ -306,15 +347,15 @@ export const NowPlayingBar = ({
         </div>
       </div>
 
-      {/* Seek Section (Desktop Hover + Tablet/Mobile) */}
+      {/* Seek Section */}
       {(isHovered || isMobile || isTablet) && (
         <div style={{
-          padding: "0 12px 12px 12px",
+          padding: (isMobile || isTablet) ? "4px 8px 0" : "0 12px 12px 12px",
           display: "flex",
           flexDirection: "column",
           gap: "4px"
         }}>
-          <div style={{ position: 'relative', flex: 1, height: '24px', display: 'flex', alignItems: 'center' }}>
+          <div className="relative w-full py-3 -my-3 cursor-pointer">
             <input
               type="range"
               min={0}
@@ -328,17 +369,26 @@ export const NowPlayingBar = ({
               }}
               style={{ 
                 width: '100%', 
-                height: '4px',
-                background: `linear-gradient(to right, var(--text-primary) ${progress}%, var(--border-subtle) ${progress}%)`,
+                height: '6px',
+                background: `linear-gradient(to right, var(--text-primary) ${progress}%, rgba(255,255,255,0.1) ${progress}%)`,
                 appearance: 'none',
                 cursor: 'pointer',
-                borderRadius: '2px',
-                outline: 'none'
-              }}
-              className="seek-slider"
+                borderRadius: '3px',
+                outline: 'none',
+                '--thumb-size': '14px',
+                accentColor: 'var(--accent-indigo)'
+              } as any}
+              className="seek-bar"
             />
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            fontSize: "10px", 
+            color: "var(--text-muted)", 
+            fontVariantNumeric: "tabular-nums",
+            marginTop: (isMobile || isTablet) ? "0" : "4px"
+          }}>
             <span>{formatTime(activeSong?.currentTime || 0)}</span>
             <span>{formatTime(activeSong?.duration || 0)}</span>
           </div>
@@ -363,20 +413,23 @@ export const NowPlayingBar = ({
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        .seek-slider::-webkit-slider-thumb {
+        .seek-bar::-webkit-slider-thumb {
           -webkit-appearance: none;
-          width: 8px;
-          height: 8px;
-          background: var(--text-primary);
+          width: 14px;
+          height: 14px;
           border-radius: 50%;
-          transition: transform 0.2s;
-          box-shadow: 0 0-10px rgba(var(--bg-page-rgb), 0.5);
+          background: white;
+          cursor: pointer;
+          box-shadow: 0 0 8px rgba(0,0,0,0.5);
+          border: 2px solid var(--text-primary);
         }
-        .seek-slider:hover::-webkit-slider-thumb {
-          transform: scale(1.75);
-        }
-        .seek-slider:active::-webkit-slider-thumb {
-          transform: scale(1.5);
+        .seek-bar::-moz-range-thumb {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: white;
+          border: 2px solid var(--text-primary);
+          cursor: pointer;
         }
         .volume-slider::-webkit-slider-thumb {
            -webkit-appearance: none;

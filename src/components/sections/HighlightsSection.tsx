@@ -17,7 +17,7 @@ const itemVariants: Variants = {
 };
 
 const STYLES = {
-  SHADOW_BLACK_SOLID: { textShadow: '2px 2px 0 #000' },
+  SHADOW_BLACK_SOLID: { textShadow: '2px 2px 0 var(--manga-shadow-color)' },
 };
 
 export const HighlightsSection = ({ 
@@ -48,11 +48,11 @@ export const HighlightsSection = ({
             className="absolute inset-0 w-full h-full object-cover filter brightness-[0.8] group-hover:brightness-100 transition-all"
             loading="lazy"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-4">
-            <span className="font-hand text-3xl text-white">NL fv songs of all time</span>
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-page)]/80 to-transparent flex flex-col justify-end p-4">
+            <span className="font-hand text-3xl text-[var(--text-primary)]">NL fv songs of all time</span>
             <div className="flex items-center gap-2 mt-1">
               <Music2 className="w-5 h-5 text-[#1DB954]" />
-              <span className="text-sm text-zinc-300 uppercase font-manga tracking-widest">Listen on Spotify</span>
+              <span className="text-sm text-[var(--text-muted)] uppercase font-manga tracking-widest">Listen on Spotify</span>
             </div>
           </div>
         </a>
@@ -74,10 +74,10 @@ export const HighlightsSection = ({
             className="absolute inset-0 bg-cover bg-center filter grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
             style={{ backgroundImage: `url('${youtubeHighlightsBgUrl}')` }}
           />
-          <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
+          <div className="absolute inset-0 bg-[var(--bg-page)]/40 group-hover:bg-[var(--bg-page)]/20 transition-colors" />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-            <Youtube className="w-16 h-16 text-white drop-shadow-[0_0_15px_red] mb-2" />
-            <span className="font-manga text-3xl text-white uppercase tracking-tighter" style={STYLES.SHADOW_BLACK_SOLID}>
+            <Youtube className="w-16 h-16 text-[var(--text-primary)] drop-shadow-[0_0_15px_red] mb-2" />
+            <span className="font-manga text-3xl text-[var(--text-primary)] uppercase tracking-tighter" style={STYLES.SHADOW_BLACK_SOLID}>
               Watch on YouTube
             </span>
           </div>

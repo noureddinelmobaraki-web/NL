@@ -212,15 +212,15 @@ export const LyricsWindowContent = memo(({
       const isActive = i === currentLineIndex;
 
       if (isMobilePlayer) {
-        el.style.color = isActive ? 'var(--text-primary)' : 'var(--text-muted)';
+        el.style.color = isActive ? 'var(--lyric-active-color)' : 'var(--lyric-inactive-color)';
         el.style.fontSize = isActive ? '19px' : '17px';
         el.style.fontWeight = isActive ? 'bold' : 'normal';
-        el.style.textShadow = isActive ? '0 0 12px var(--accent-indigo)' : 'none';
+        el.style.textShadow = isActive ? '0 0 14px var(--lyric-active-shadow)' : 'none';
       } else {
         const isHovered = hoveredLine === i;
         el.style.opacity = isActive ? '1' : (isHovered ? '0.7' : '0.2');
-        el.style.color = isActive ? 'var(--text-primary)' : (isHovered ? 'var(--text-secondary)' : 'var(--text-muted)');
-        el.style.textShadow = isActive ? '0 0 12px var(--accent-indigo)' : 'none';
+        el.style.color = isActive ? 'var(--lyric-active-color)' : (isHovered ? 'var(--text-secondary)' : 'var(--lyric-inactive-color)');
+        el.style.textShadow = isActive ? '0 0 14px var(--lyric-active-shadow)' : 'none';
         el.style.transform = isActive ? 'scale(1.04)' : 'scale(1)';
         el.style.background = isHovered ? 'var(--bg-glass)' : 'transparent';
       }
@@ -275,7 +275,7 @@ export const LyricsWindowContent = memo(({
               opacity: hoveredLine === i ? 1 : 0, 
               transition: 'opacity 150ms',
               fontSize: '10px',
-              color: 'white'
+              color: 'var(--text-primary)'
             }}>▶</span>
           )}
           {line.text}

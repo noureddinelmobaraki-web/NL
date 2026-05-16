@@ -39,7 +39,7 @@ const itemVariants: Variants = {
 };
 
 const STYLES = {
-  SHADOW_WHITE: { textShadow: '2px 2px 0px rgba(255,255,255,0.8)' },
+  SHADOW_WHITE: { textShadow: '2px 2px 0px var(--manga-shadow-color)' },
   CIRCLE: { borderRadius: '50%' }
 };
 
@@ -65,7 +65,7 @@ export const ContactSection = () => {
         {/* Content Overlay */}
         <div className="relative z-10 flex flex-col items-center gap-2">
           <div 
-            className="p-3 bg-[var(--ink-color)] text-[var(--text-inverse)] manga-border border-white/20 shadow-[4px_4px_0px_rgba(0,0,0,0.5)] group-hover:bg-[var(--paper-color)] group-hover:text-[var(--ink-color)] transition-colors"
+            className="p-3 bg-[var(--ink-color)] text-[var(--text-inverse)] manga-border border-[var(--border-subtle)] shadow-[4px_4px_0px_var(--manga-shadow-color)] group-hover:bg-[var(--paper-color)] group-hover:text-[var(--ink-color)] transition-colors"
             style={STYLES.CIRCLE}
           >
             <method.icon className="w-8 h-8" aria-hidden="true" />

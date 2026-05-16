@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { prefersReducedMotion } from '../utils/perf';
 
+import { ASSETS } from '../constants/assets';
+
 type Phase = 'visible' | 'zooming' | 'hidden';
 
-const OPENING_VIDEO_URL  = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/opening_final.mp4';
+const OPENING_VIDEO_URL  = ASSETS.media.opening;
 const DISPLAY_DURATION   = 8000;   // ms before auto-finish
 const ZOOM_DURATION      = 900;    // ms for exit zoom animation
 const DISCLAIMER_DELAY   = 3800;   // ms before disclaimer appears
