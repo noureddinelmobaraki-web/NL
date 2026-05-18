@@ -3,6 +3,7 @@ import { ASSETS } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
 
 import { useDeviceType } from '../../hooks/useDeviceType';
+import siteData from '../../../metadata.json';
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -44,15 +45,17 @@ export const HeroSection = () => {
             fontSize: 'clamp(2rem, 6vw, 5rem)',
             ...STYLES.SHADOW_BLACK_LG 
           }}
-          data-text="Noureddin El Mobaraki"
+          data-text={siteData.fullName}
         >
-          Noureddin El Mobaraki
+          {siteData.fullName}
         </h1>
         
         <div className="mt-6 flex items-center gap-4 text-[var(--text-primary)] font-bold uppercase italic border-t-2 border-[var(--border-subtle)] pt-4">
-          <span className="text-xl font-manga" style={STYLES.SHADOW_BLACK_SM}>Casablanca 📍</span>
+          <span className="text-xl font-manga" style={STYLES.SHADOW_BLACK_SM}>{siteData.location} 📍</span>
           <span className="text-sm bg-[var(--ink-color)] text-[var(--text-inverse)] px-3 py-1 manga-border border-[var(--border-subtle)] truncate">
-            "NL" | "Nordine GB"
+            {siteData.aliases.map((a, i) => (
+              <span key={i}>{a}{i < siteData.aliases.length - 1 ? ' | ' : ''}</span>
+            ))}
           </span>
         </div>
         <p 
@@ -63,7 +66,7 @@ export const HeroSection = () => {
             filter: 'drop-shadow(2px 2px 2px var(--manga-shadow-color))'
           }}
         >
-          <span className="text-yellow-400">“24 years old.</span> Just a simple <span className="text-zinc-400">5/10</span> kind of person. I’m into <span className="border-b-2 border-dashed border-red-500">drawing</span>, cooking for fun, and overthinking <span className="text-cyan-300">random stuff</span> that probably helps nobody. That’s pretty much it.”
+          {siteData.bio}
         </p>
       </div>
 

@@ -4,11 +4,11 @@ import emailjs from '@emailjs/browser';
 type Mode = 'anonymous' | 'named';
 type Status = 'idle' | 'sending' | 'success' | 'error';
 
-const EMAILJS_SERVICE = 'service_715qfyk';
-const EMAILJS_TEMPLATE = 'template_rvp2u2k';
-const EMAILJS_KEY = '4jAqmjHZpNREKOgNR';
+const EMAILJS_SERVICE = import.meta.env.VITE_EMAILJS_SERVICE_ID ?? 'service_715qfyk';
+const EMAILJS_TEMPLATE = import.meta.env.VITE_EMAILJS_TEMPLATE_ID ?? 'template_rvp2u2k';
+const EMAILJS_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY ?? '4jAqmjHZpNREKOgNR';
 
-export const Sarahni = () => {
+export const ContactForm = () => {
   const [mode, setMode] = useState<Mode>('anonymous');
   const [senderName, setSenderName] = useState('');
   const [message, setMessage] = useState('');

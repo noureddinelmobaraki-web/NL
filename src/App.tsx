@@ -19,7 +19,7 @@ import type { Theme, AudioIntent } from './utils/userPrefs';
 import { LoadingScreen } from "./components/LoadingScreen";
 import { MySongs } from './components/MySongsPage';
 import { DrawingsPage } from './components/DrawingsPage';
-import { Sarahni } from './components/Sarahni';
+import { ContactForm } from './components/ContactForm';
 import { LensGallery } from './components/LensGallery';
 import { SkeletonSection } from './components/SkeletonSection';
 import { useDeviceType } from "./hooks/useDeviceType";
@@ -594,18 +594,18 @@ export default function App() {
           </SectionErrorBoundary>
           </motion.div>
 
-          {/* Sarahni Section */}
+          {/* Contact Form Section */}
           <motion.div
-            id="sarahni-section"
+            id="contact-section"
             variants={itemVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}
           >
-          <SectionErrorBoundary sectionName="Sarahni">
+          <SectionErrorBoundary sectionName="ContactForm">
           <Suspense fallback={<SkeletonSection type="contact" />}>
-            <Sarahni />
+            <ContactForm />
           </Suspense>
           </SectionErrorBoundary>
           </motion.div>
