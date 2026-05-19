@@ -1,8 +1,9 @@
 import { motion, Variants } from "framer-motion";
-import { ASSETS } from "../../constants/assets";
+import { getThemedImage } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
 
 import { useDeviceType } from '../../hooks/useDeviceType';
+import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import siteData from '../../../metadata.json';
 
 const itemVariants: Variants = {
@@ -21,6 +22,7 @@ const STYLES = {
 
 export const HeroSection = () => {
   const { isTablet } = useDeviceType();
+  const resolvedTheme = useResolvedTheme();
   return (
     <motion.header 
       variants={itemVariants}
@@ -34,7 +36,7 @@ export const HeroSection = () => {
         {/* Header Background Image with Zoom & Pan Hover Effect */}
         <div 
           className="absolute inset-0 z-[-1] bg-cover bg-center transition-all duration-700 blur-[3px] group-hover:blur-0 group-hover:scale-125 group-hover:translate-y-[-10%]"
-          style={{ backgroundImage: `url('${ASSETS.profile.headerBg}')` }}
+          style={{ backgroundImage: `url('${getThemedImage('headerBg', resolvedTheme)}')` }}
         />
         {/* Dark Overlay for Text Legibility */}
         <div className="absolute inset-0 z-[-1] bg-[var(--bg-page)]/40 transition-opacity group-hover:opacity-30" />
@@ -76,7 +78,7 @@ export const HeroSection = () => {
         style={{ background: 'var(--paper-color)' }}
       >
         <ResponsiveImage 
-          src={ASSETS.profile.main} 
+          src={getThemedImage('profile', resolvedTheme)} 
           alt="Profile" 
           className="w-full h-full object-cover" 
           loading="lazy"

@@ -1,6 +1,8 @@
 import { motion, Variants } from "framer-motion";
 import { Music2, Youtube } from "lucide-react";
 import { ResponsiveImage } from "../ResponsiveImage";
+import { useResolvedTheme } from '../../hooks/useResolvedTheme';
+import { getThemedImage } from '../../constants/assets';
 
 interface HighlightsSectionProps {
   vaultPlaylistCoverUrl: string;
@@ -21,9 +23,13 @@ const STYLES = {
 };
 
 export const HighlightsSection = ({ 
-  vaultPlaylistCoverUrl, 
-  youtubeHighlightsBgUrl 
+  vaultPlaylistCoverUrl: _v, 
+  youtubeHighlightsBgUrl: _y 
 }: HighlightsSectionProps) => {
+  const resolvedTheme = useResolvedTheme();
+  const vaultPlaylistCoverUrl = getThemedImage('playlistCover', resolvedTheme);
+  const youtubeHighlightsBgUrl = getThemedImage('ytHighlights', resolvedTheme);
+
   return (
     <motion.section 
       variants={itemVariants}

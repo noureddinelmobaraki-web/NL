@@ -24,6 +24,7 @@ import { LensGallery } from './components/LensGallery';
 import { SkeletonSection } from './components/SkeletonSection';
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useParallax } from "./hooks/useParallax";
+import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import { MeBitGallery } from './components/MeBitGallery';
 import { NowPlayingBar } from "./components/NowPlayingBar";
 import { MobileNavBar } from "./components/MobileNavBar";
@@ -39,7 +40,11 @@ import {
 } from "./types";
 import { ScrollProgress } from "./components/ScrollProgress";
 import { ResponsiveImage } from "./components/ResponsiveImage";
-import { ASSETS } from "./constants/assets";
+import { 
+  ASSETS, 
+  THEME_BG_MUSIC,
+  getThemedImage 
+} from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { getOrCreateHls } from './audio/hlsPool';
 import Hls from 'hls.js';
@@ -79,10 +84,12 @@ const initialPrefs = loadPrefs();
 
 export default function App() {
   const { isMobile, isTablet } = useDeviceType();
+  const resolvedTheme = useResolvedTheme();
   const parallaxRef = useParallax(isMobile ? 0 : 20);
   const audioRef = useRef<HTMLAudioElement>(null);
   const meBitAudioRef = useRef<HTMLAudioElement | null>(null);
   const meBitHlsAttached = useRef(false);
+  const currentBgUrlRef = useRef<string>('');
 
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isLensGalleryOpen, setIsLensGalleryOpen] = useState(false);
@@ -108,7 +115,12 @@ export default function App() {
     audioManager.register('bg', audio, 0.7);
     audioManager.setStateCallback((playing) => setIsPlaying(playing));
 
-    const url = ASSETS.media.music;
+    const initialResolved = theme === 'dark' ? 'dark'
+      : theme === 'light' ? 'manga-paper'
+      : theme === 'bit' ? 'bit'
+      : 'midnight';
+    const url = THEME_BG_MUSIC[initialResolved] ?? ASSETS.media.music;
+    currentBgUrlRef.current = url;
 
     // Safari: native HLS support
     if (audio.canPlayType('application/vnd.apple.mpegurl')) {
@@ -162,11 +174,73 @@ export default function App() {
 
   useEffect(() => {
     const resolved = theme === 'dark' ? 'dark' 
-      : theme === 'light' ? 'manga-paper' 
-      : 'midnight'; // system → always midnight
+      : theme === 'light' ? 'manga-paper'
+      : theme === 'bit' ? 'bit'
+      : 'midnight';
     document.documentElement.setAttribute('data-theme', resolved);
     savePrefs({ theme });
   }, [theme]);
+
+  // ── Per-theme background music swap ──────────────────────────────
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const resolved = theme === 'dark' ? 'dark'
+      : theme === 'light' ? 'manga-paper'
+      : theme === 'bit' ? 'bit'
+      : 'midnight';
+
+    const newUrl = THEME_BG_MUSIC[resolved] ?? ASSETS.media.music;
+
+    // Skip on initial mount — handled by the audio init useEffect([])
+    if (!currentBgUrlRef.current || currentBgUrlRef.current === newUrl) return;
+
+    const wasPlaying = !audio.paused && audioManager.isSourceActive('bg');
+    const wasNotUserPaused = audioIntent !== 'user-paused';
+
+    // 1. Fade out and pause current bg
+    audioManager.pause('bg');
+
+    // 2. Detach old HLS instance (kept alive in pool)
+    if (Hls.isSupported() && !audio.canPlayType('application/vnd.apple.mpegurl')) {
+      // detach from pool instance — do not destroy, keep buffered
+      const oldHls = getOrCreateHls(currentBgUrlRef.current);
+      oldHls.detachMedia();
+    }
+
+    // 3. Update tracking ref
+    currentBgUrlRef.current = newUrl;
+
+    // 4. Attach new HLS instance
+    if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari: set src directly
+      audio.src = newUrl;
+      audio.load();
+    } else if (Hls.isSupported()) {
+      const newHls = getOrCreateHls(newUrl); // pre-warmed if visited before
+      const errHandler = (_: any, data: any) => {
+        if (!data.fatal) return;
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) newHls.startLoad();
+        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) newHls.recoverMediaError();
+      };
+      newHls.on(Hls.Events.ERROR, errHandler);
+      newHls.attachMedia(audio);
+    }
+
+    // 5. Re-register the same audio element with audioManager (url changed)
+    audioManager.register('bg', audio, 0.7);
+
+    // 6. Resume playback if it was active and user hasn't manually paused
+    if (wasPlaying && wasNotUserPaused) {
+      // Small delay to allow HLS manifest to start loading
+      setTimeout(() => {
+        audioManager.unpauseBg();
+      }, 400);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme]);
+  // ─────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (isLensGalleryOpen) {
@@ -340,7 +414,7 @@ export default function App() {
         ref={parallaxRef}
         className="fixed inset-[-5%] z-[-2] bg-cover bg-center"
         style={{ 
-          backgroundImage: `url('${CONFIG_ASSETS.mainBackground}')`,
+          backgroundImage: `url('${getThemedImage('heroBg', resolvedTheme)}')`,
           filter: 'blur(4px) brightness(0.5)',
           willChange: 'transform',
         }}
@@ -483,6 +557,14 @@ export default function App() {
             onClick={() => handleGalleryOpen()}
             className="relative w-full border-[4px] border-[var(--ink-color)] bg-[var(--paper-color)] p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[220px] sm:h-[260px] md:h-[280px] manga-panel"
           >
+            {resolvedTheme === 'bit' && (
+              <img
+                src={getThemedImage('meBitPoster', resolvedTheme)}
+                alt="ME BIT gallery thumbnail"
+                className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none"
+                style={{ imageRendering: 'pixelated' }}
+              />
+            )}
             <div className="me-bit-track flex gap-[10px]">
               {[...ME_BIT_IMAGES, ...ME_BIT_IMAGES].map((src, idx) => (
                 <button 
@@ -548,7 +630,7 @@ export default function App() {
             {/* Background image */}
             <div
               className="absolute inset-0 bg-cover bg-center transition-all duration-700 group-hover:scale-110 opacity-50 group-hover:opacity-70"
-              style={{ backgroundImage: `url('${ASSETS.profile.photo}')` }}
+              style={{ backgroundImage: `url('${getThemedImage('photo', resolvedTheme)}')` }}
             />
 
             {/* Dark gradient overlay for text legibility */}
@@ -675,7 +757,7 @@ export default function App() {
       </button>
         <button
           onClick={() => {
-            const next = theme === 'system' ? 'dark' : theme === 'dark' ? 'light' : 'system';
+            const next = theme === 'system' ? 'dark' : theme === 'dark' ? 'light' : theme === 'light' ? 'bit' : 'system';
             setTheme(next);
           }}
           className="fixed z-[9000] border p-2.5 rounded-full transition-all hover:scale-105 active:scale-90 shadow-xl"
@@ -689,7 +771,7 @@ export default function App() {
           }}
           aria-label="Toggle theme"
         >
-          {theme === 'system' ? '🌓' : theme === 'dark' ? '🌑' : '☀️'}
+          {theme === 'system' ? '🌓' : theme === 'dark' ? '🌑' : theme === 'light' ? '☀️' : '👾'}
         </button>
       {(isMobile || isTablet) && (
         <MobileNavBar 

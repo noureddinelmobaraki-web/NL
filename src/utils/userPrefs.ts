@@ -1,7 +1,7 @@
 const PREFS_KEY = 'nl-prefs-v1';
 
 export type RepeatMode = 'off' | 'all' | 'one';
-export type Theme = 'dark' | 'light' | 'system';
+export type Theme = 'dark' | 'light' | 'system' | 'bit';
 export type AudioIntent = 'user-paused' | 'user-playing' | 'initial';
 
 interface NLPrefs {

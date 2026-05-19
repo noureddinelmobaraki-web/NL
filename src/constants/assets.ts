@@ -1,6 +1,26 @@
 
 const CDN = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn';
 
+const CDN_BIT = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn';
+// Bit-theme image overrides — same CDN, _bit suffix
+const BIT_IMAGES = {
+  profile:       `${CDN_BIT}/profile_img_bit.webp`,
+  photo:         `${CDN_BIT}/photo_bit.webp`,
+  headerBg:      `${CDN_BIT}/header_bg_bit.webp`,
+  heroBg:        `${CDN_BIT}/hero_bg_bit.webp`,
+  meBitPoster:   `${CDN_BIT}/me_bit.webp`,
+  playlistCover: `${CDN_BIT}/playlist_cover_bit.webp`,
+  ytHighlights:  `${CDN_BIT}/yt_highlights_bit.webp`,
+} as const;
+
+// Per-theme background music URLs
+export const THEME_BG_MUSIC: Record<string, string> = {
+  'midnight':    'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/music/index.m3u8',
+  'dark':        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/darkBG/index.m3u8',
+  'manga-paper': 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lightBG/index.m3u8',
+  'bit':         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bitBG/index.m3u8',
+};
+
 export const ASSETS = {
   profile: {
     main:      `${CDN}/profile_img.webp`,
@@ -83,3 +103,25 @@ export const ASSETS = {
 
 // Export CDN base for use in SW and cache configs
 export const CDN_ORIGIN = 'noureddinelmobaraki-web.github.io';
+
+/**
+ * Returns the correct image URL based on resolved data-theme.
+ * resolvedTheme = document.documentElement.dataset.theme
+ */
+export function getThemedImage(
+  key: keyof typeof BIT_IMAGES,
+  resolvedTheme: string
+): string {
+  if (resolvedTheme === 'bit') return BIT_IMAGES[key];
+  // fallback: return the standard CDN asset
+  const map: Record<keyof typeof BIT_IMAGES, string> = {
+    profile:       ASSETS.profile.main,
+    photo:         ASSETS.profile.photo,
+    headerBg:      ASSETS.profile.headerBg,
+    heroBg:        ASSETS.profile.heroBg,
+    meBitPoster:   ASSETS.profile.me_bits[0], // gallery thumbnail fallback
+    playlistCover: ASSETS.songs.playlistCover,
+    ytHighlights:  ASSETS.songs.ytHighlights,
+  };
+  return map[key];
+}
