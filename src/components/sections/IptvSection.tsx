@@ -14,7 +14,7 @@ import {
   Pause, 
   X, 
   RotateCcw,
-  Sparkles
+  SortAsc
 } from 'lucide-react';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { OsWindow } from '../OsWindow';
@@ -30,6 +30,9 @@ interface StreamItem {
   url: string;
   qualities: { quality: string; url: string }[];
   currentQualityIndex: number;
+  failCount?: number;    // how many health checks failed
+  lastSeen?: number;     // timestamp of last successful playback
+  hidden?: boolean;      // soft-hidden, not deleted
 }
 
 // Default high-quality fallback streams for clean initialization
@@ -108,6 +111,91 @@ function dynamicFuzzyMatch(name: string, query: string): boolean {
   });
 }
 
+type StreamErrorType =
+  | 'CORS_BLOCKED'
+  | 'NETWORK_OFFLINE'
+  | 'STREAM_DEAD'
+  | 'TIMEOUT'
+  | 'MEDIA_DECODE'
+  | 'UNKNOWN';
+
+function classifyStreamError(
+  error: unknown,
+  hlsErrorType?: string
+): StreamErrorType {
+  if (error instanceof TypeError) {
+    const msg = error.message.toLowerCase();
+    // "Failed to fetch" in Chrome/Firefox = CORS or Network
+    // We can't distinguish purely from the error, but:
+    // If navigator.onLine === false → NETWORK_OFFLINE
+    if (!navigator.onLine) return 'NETWORK_OFFLINE';
+    // Otherwise "Failed to fetch" almost always means CORS
+    // when the request was made to a streaming CDN
+    if (msg.includes('failed to fetch') ||
+        msg.includes('network error') ||
+        msg.includes('load failed')) {
+      return 'CORS_BLOCKED';
+    }
+  }
+  if (hlsErrorType === 'NETWORK_CORS_TIMEOUT') return 'CORS_BLOCKED';
+  if (hlsErrorType === 'PROBE_TIMEOUT_5S') return 'TIMEOUT';
+  if (hlsErrorType === 'MEDIA_FILE_INVALID') return 'MEDIA_DECODE';
+  if (hlsErrorType === 'STREAM_DEFEATED') return 'STREAM_DEAD';
+  return 'UNKNOWN';
+}
+
+function getErrorDisplay(errType: StreamErrorType, streamName: string): {
+  icon: string;
+  title: string;
+  subtitle: string;
+  canRetry: boolean;
+} {
+  switch (errType) {
+    case 'CORS_BLOCKED':
+      return {
+        icon: '🔒',
+        title: 'البث محجوب بسياسة المتصفح (CORS)',
+        subtitle: 'القناة تشتغل لكن المتصفح يمنع الوصول. جرب مشغّل خارجي.',
+        canRetry: false
+      };
+    case 'NETWORK_OFFLINE':
+      return {
+        icon: '📵',
+        title: 'لا يوجد اتصال بالإنترنت',
+        subtitle: 'تحقق من شبكتك وأعد المحاولة.',
+        canRetry: true
+      };
+    case 'TIMEOUT':
+      return {
+        icon: '⏱️',
+        title: 'انتهت مهلة الاتصال (5 ثوان)',
+        subtitle: 'البث بطيء جداً أو غير متاح الآن.',
+        canRetry: true
+      };
+    case 'MEDIA_DECODE':
+      return {
+        icon: '🎞️',
+        title: 'تنسيق غير مدعوم في هذا المتصفح',
+        subtitle: 'جرب Chrome أو Firefox للحصول على دعم أفضل.',
+        canRetry: false
+      };
+    case 'STREAM_DEAD':
+      return {
+        icon: '📡',
+        title: 'البث منقطع أو خارج الهواء',
+        subtitle: `${streamName} — انتقال تلقائي للقناة التالية...`,
+        canRetry: true
+      };
+    default:
+      return {
+        icon: '📡',
+        title: 'لا توجد إشارة',
+        subtitle: 'انقطع البث أو الرابط غير متاح.',
+        canRetry: true
+      };
+  }
+}
+
 export function IptvSection() {
   const resolvedTheme = useResolvedTheme();
 
@@ -137,11 +225,61 @@ export function IptvSection() {
   const [isTvOpen, setIsTvOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [volume, setVolume] = useState(0.8);
-  const [isMuted, setIsMuted] = useState(true);
+  const [volume, setVolume] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem('retro_tv_volume');
+      const n = v ? parseFloat(v) : 0.8;
+      return isNaN(n) ? 0.8 : Math.min(1, Math.max(0, n));
+    } catch { return 0.8; }
+  });
+  const [isMuted, setIsMuted] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('retro_tv_muted') === 'true';
+    } catch { return true; }
+  });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<StreamErrorType | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  const [listenStartTime, setListenStartTime] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const elapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function formatElapsed(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function getLogoFallbackSvg(
+    name: string,
+    category: string
+  ): string {
+    // Generate a consistent color from the stream name
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    const bg = `hsl(${hue},40%,25%)`;
+    const fg = `hsl(${hue},60%,70%)`;
+
+    const icon = category === 'radio' ? '📻' : '📺';
+    // First 2 chars of name as initials
+    const initials = name.replace(/[^\w\u0600-\u06FF]/g, '').slice(0, 2).toUpperCase();
+
+    // Return as a data URI
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'>
+      <rect width='20' height='20' fill='${bg}' rx='2'/>
+      <text x='10' y='13' text-anchor='middle' font-size='9'
+        font-family='monospace' fill='${fg}'>${initials || icon}</text>
+    </svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  }
 
   // Modal Custom Add/Edit Fields
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -157,8 +295,8 @@ export function IptvSection() {
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
   const m3uLoadedRef = useRef(false);
 
-  // AI Organize status overlay banner State
-  const [isAiOrganizing, setIsAiOrganizing] = useState(false);
+  // Sorting status overlay banner State
+  const [isSorting, setIsSorting] = useState(false);
   const [aiInfoMsg, setAiInfoMsg] = useState<string | null>(null);
 
   // Split scrollTop states per category for virtual scroll
@@ -173,6 +311,24 @@ export function IptvSection() {
   const backupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const probeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filteredStreamsRef = useRef<StreamItem[]>([]);
+  const activeItemRef = useRef<HTMLDivElement>(null);
+
+  const [showKeyHints, setShowKeyHints] = useState(false);
+
+  // Keyboard shortcut instructions outside click listener
+  useEffect(() => {
+    if (!showKeyHints) return;
+    const handleOutsideClick = () => {
+      setShowKeyHints(false);
+    };
+    const t = setTimeout(() => {
+      window.addEventListener('click', handleOutsideClick);
+    }, 50);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('click', handleOutsideClick);
+    };
+  }, [showKeyHints]);
 
   // Health checking states
   const [isHealthChecking, setIsHealthChecking] = useState(false);
@@ -203,48 +359,64 @@ export function IptvSection() {
     });
   };
 
-  // Organize IPVT / Radio playlists using server-side Gemini AI
-  const handleAiOrganize = async () => {
+  // Sort IPTV / Radio playlists alphabetically with numeric precedence on client-side
+  const handleSortAlphabetically = () => {
     if (streams.length === 0) return;
-    setIsAiOrganizing(true);
-    setAiInfoMsg('جاري ترتيب القنوات بالذكاء الاصطناعي...');
+    setIsSorting(true);
+    setAiInfoMsg(resolvedTheme === 'bit' ? '⏳ SORTING A-Z...' : 'جاري الترتيب الأبجدي والقنوات...');
     try {
-      const response = await fetch('/api/gemini/organize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ streams })
+      const sorted = [...streams].sort((a, b) => {
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
       });
-      if (!response.ok) {
-        throw new Error('فشل الاتصال بخادم الذكاء الاصطناعي.');
-      }
-      const data = await response.json();
-      if (data && Array.isArray(data.streams)) {
-        saveStreamsToStorage(data.streams);
-        setAiInfoMsg('✨ تم ترتيب وتصنيف القنوات بنجاح!');
-        setTimeout(() => setAiInfoMsg(null), 4000);
-      } else {
-        throw new Error('تنسيق الاستجابة غير صحيح من الذكاء الاصطناعي.');
-      }
+      saveStreamsToStorage(sorted);
+      setAiInfoMsg(resolvedTheme === 'bit' ? '✨ SORTED SUCCESS!' : '✨ تم الترتيب الأبجدي بنجاح!');
+      setTimeout(() => setAiInfoMsg(null), 3500);
     } catch (err: any) {
-      console.error('Gemini Organize Client error:', err);
+      console.error('Sort Error:', err);
       setAiInfoMsg(`❌ خطأ: ${err.message || 'فشل الترتيب'}`);
-      setTimeout(() => setAiInfoMsg(null), 5000);
+      setTimeout(() => setAiInfoMsg(null), 4000);
     } finally {
-      setIsAiOrganizing(false);
+      setIsSorting(false);
     }
   };
 
-  // Turn TV On if there are streams
+  // Turn TV On if there are streams (restoring last active stream if available)
   useEffect(() => {
     if (streams.length > 0 && !activeStream) {
-      const matchingCategory = streams.filter(s => s.category === activeCategory);
-      if (matchingCategory.length > 0) {
-        setActiveStream(matchingCategory[0]);
+      let restoredStream: StreamItem | undefined = undefined;
+      try {
+        const lastId = localStorage.getItem('retro_tv_last_stream_id');
+        if (lastId) {
+          restoredStream = streams.find(s => s.id === lastId);
+        }
+      } catch (e) {
+        console.error('Error reading retro_tv_last_stream_id', e);
+      }
+
+      if (restoredStream) {
+        setActiveStream(restoredStream);
+        if (restoredStream.category && restoredStream.category !== activeCategory) {
+          setActiveCategory(restoredStream.category);
+        }
       } else {
-        setActiveStream(streams[0]);
+        const matchingCategory = streams.filter(s => s.category === activeCategory);
+        if (matchingCategory.length > 0) {
+          setActiveStream(matchingCategory[0]);
+        } else {
+          setActiveStream(streams[0]);
+        }
       }
     }
   }, [streams, activeCategory, activeStream]);
+
+  // Save last active stream ID on change
+  useEffect(() => {
+    if (activeStream?.id) {
+      try {
+        localStorage.setItem('retro_tv_last_stream_id', activeStream.id);
+      } catch {}
+    }
+  }, [activeStream?.id]);
 
   // Audio suppressions for background ambient player
   useEffect(() => {
@@ -293,6 +465,7 @@ export function IptvSection() {
 
     setIsLoading(true);
     setErrorMsg(null);
+    setErrorType(null);
     setIsPlaying(false);
 
     const activeQual = item.qualities[item.currentQualityIndex];
@@ -316,7 +489,32 @@ export function IptvSection() {
       }
       setIsLoading(false);
       setErrorMsg(null);
+      setErrorType(null);
       setIsPlaying(true);
+      if (item.category === 'radio') {
+        setListenStartTime(Date.now());
+        setElapsedSeconds(0);
+      }
+      setStreams(prev => prev.map(s =>
+        s.id === activeStream?.id
+          ? { ...s, failCount: 0, lastSeen: Date.now(), hidden: false }
+          : s
+      ));
+      // Also persist to localStorage:
+      // (use a non-blocking setTimeout to avoid state batching issues)
+      setTimeout(() => {
+        try {
+          const current = JSON.parse(
+            localStorage.getItem('retro_tv_custom_playlist') ?? '[]'
+          ) as StreamItem[];
+          const updated = current.map(s =>
+            s.id === activeStream?.id
+              ? { ...s, failCount: 0, lastSeen: Date.now(), hidden: false }
+              : s
+          );
+          localStorage.setItem('retro_tv_custom_playlist', JSON.stringify(updated));
+        } catch {}
+      }, 0);
       if (videoRef.current) {
         videoRef.current.volume = volume;
         videoRef.current.muted = isMuted;
@@ -331,13 +529,21 @@ export function IptvSection() {
       }
     };
 
-    const handleFailure = (_errType: string) => {
+    const handleFailure = (errCol: string) => {
       if (probeTimeoutRef.current) {
         clearTimeout(probeTimeoutRef.current);
         probeTimeoutRef.current = null;
       }
       setIsLoading(false);
       setIsPlaying(false);
+
+      const classifiedType = classifyStreamError(null, errCol);
+      setErrorType(classifiedType);
+
+      if (classifiedType === 'CORS_BLOCKED') {
+        setErrorMsg('CORS BLOCKED'); // Trigger overlay render
+        return;
+      }
 
       const hasNextQuality = item.qualities.length > 1 && item.currentQualityIndex < item.qualities.length - 1;
       
@@ -451,6 +657,36 @@ export function IptvSection() {
       }
     };
   }, [activeStream, activeStream?.currentQualityIndex, isTvOpen, playCurrentStream]);
+
+  // Auto-scroll active item into view & reset radio elapsed timer
+  useEffect(() => {
+    activeItemRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest'
+    });
+    setListenStartTime(null);
+    setElapsedSeconds(0);
+  }, [activeStream?.id]);
+
+  // Start interval to update elapsedSeconds for radio stream
+  useEffect(() => {
+    if (isPlaying && activeCategory === 'radio' && listenStartTime !== null) {
+      elapsedIntervalRef.current = setInterval(() => {
+        setElapsedSeconds(Math.floor((Date.now() - listenStartTime!) / 1000));
+      }, 1000);
+    } else {
+      if (elapsedIntervalRef.current) {
+        clearInterval(elapsedIntervalRef.current);
+        elapsedIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (elapsedIntervalRef.current) {
+        clearInterval(elapsedIntervalRef.current);
+        elapsedIntervalRef.current = null;
+      }
+    };
+  }, [isPlaying, activeCategory, listenStartTime]);
 
   // Reset SubGroup filter if activeCategory flips
   useEffect(() => {
@@ -606,7 +842,7 @@ export function IptvSection() {
     fetchPlaylists();
   }, []);
 
-  const checkStreamHealth = async (url: string): Promise<boolean> => {
+  const checkStreamHealth = async (url: string): Promise<'ALIVE' | 'CORS' | 'DEAD'> => {
     try {
       const controller = new AbortController();
       const abortTimeout = setTimeout(() => controller.abort(), 5000);
@@ -621,9 +857,13 @@ export function IptvSection() {
       } catch (err: any) {
         clearTimeout(abortTimeout);
         if (err.name === 'AbortError') {
-          return true; // ALIVE
+          return 'ALIVE'; // ALIVE
         }
-        return false; // DEAD
+        const errType = classifyStreamError(err);
+        if (errType === 'CORS_BLOCKED') {
+          return 'CORS'; // CORS blocked is ALIVE
+        }
+        return 'DEAD'; // DEAD
       }
 
       clearTimeout(abortTimeout);
@@ -640,25 +880,29 @@ export function IptvSection() {
             cache: 'no-store'
           });
           clearTimeout(getAbortTimeout);
-          return getResponse.ok;
+          return getResponse.ok ? 'ALIVE' : 'DEAD';
         } catch (getErr: any) {
           clearTimeout(getAbortTimeout);
           if (getErr.name === 'AbortError') {
-            return true; // ALIVE
+            return 'ALIVE'; // ALIVE
           }
-          return false; // DEAD
+          const errType = classifyStreamError(getErr);
+          if (errType === 'CORS_BLOCKED') {
+            return 'CORS'; // CORS blocked is ALIVE
+          }
+          return 'DEAD'; // DEAD
         }
       }
 
-      return response.ok;
+      return response.ok ? 'ALIVE' : 'DEAD';
     } catch (e) {
-      return false; // DEAD
+      return 'DEAD'; // DEAD
     }
   };
 
   const runBackgroundHealthCheck = async (streamList: StreamItem[]) => {
     setIsHealthChecking(true);
-    const deadIds = new Set<string>();
+    const healthResults = new Map<string, 'ALIVE' | 'CORS' | 'DEAD'>();
 
     const BATCH_SIZE = 4;
     const streamsToCheck = streamList.filter(s => {
@@ -672,31 +916,53 @@ export function IptvSection() {
       const batch = streamsToCheck.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(async (stream) => {
-          const isAlive = await checkStreamHealth(stream.url);
-          return { id: stream.id, isAlive };
+          const status = await checkStreamHealth(stream.url);
+          return { id: stream.id, status };
         })
       );
 
       for (const res of results) {
         if (res.status === 'fulfilled') {
-          if (!res.value.isAlive) {
-            deadIds.add(res.value.id);
-          }
+          healthResults.set(res.value.id, res.value.status);
         }
       }
     }
 
-    if (deadIds.size > 0) {
-      setStreams((currentStreams) => {
-        const aliveStreams = currentStreams.filter(s => !deadIds.has(s.id));
-        try {
-          localStorage.setItem('retro_tv_custom_playlist', JSON.stringify(aliveStreams));
-        } catch (e) {
-          console.error("Could not write custom playlist after health check", e);
+    setStreams((currentStreams) => {
+      const updatedStreams = currentStreams.map(stream => {
+        if (stream.id.startsWith('pr_')) return stream; // never touch presets
+
+        const result = healthResults.get(stream.id);
+        if (!result) return stream;
+
+        if (result === 'ALIVE') {
+          // Reset fail count on success
+          return { ...stream, failCount: 0, lastSeen: Date.now() };
         }
-        return aliveStreams;
-      });
-    }
+        if (result === 'CORS') {
+          // CORS = alive, don't penalize
+          return stream;
+        }
+        if (result === 'DEAD') {
+          const newFailCount = (stream.failCount ?? 0) + 1;
+          const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          const isOld = !stream.lastSeen || stream.lastSeen < sevenDaysAgo;
+
+          if (newFailCount >= 3 && isOld) {
+            return null; // mark for removal
+          }
+          return { ...stream, failCount: newFailCount, hidden: newFailCount >= 2 };
+        }
+        return stream;
+      }).filter(Boolean) as StreamItem[];
+
+      try {
+        localStorage.setItem('retro_tv_custom_playlist', JSON.stringify(updatedStreams));
+      } catch (e) {
+        console.error("Could not write custom playlist after health check", e);
+      }
+      return updatedStreams;
+    });
 
     setIsHealthChecking(false);
   };
@@ -729,10 +995,16 @@ export function IptvSection() {
   // Controls Handlers
   const handleVolumeChange = (val: number) => {
     setVolume(val);
+    try {
+      localStorage.setItem('retro_tv_volume', String(val));
+    } catch {}
     if (videoRef.current) {
       videoRef.current.volume = val;
       if (val > 0) {
         setIsMuted(false);
+        try {
+          localStorage.setItem('retro_tv_muted', 'false');
+        } catch {}
         videoRef.current.muted = false;
       }
     }
@@ -742,6 +1014,9 @@ export function IptvSection() {
     setIsMuted((prev) => {
       const nextMute = !prev;
       if (videoRef.current) videoRef.current.muted = nextMute;
+      try {
+        localStorage.setItem('retro_tv_muted', String(nextMute));
+      } catch {}
       return nextMute;
     });
   };
@@ -756,6 +1031,80 @@ export function IptvSection() {
       video.play().then(() => setIsPlaying(true)).catch(() => {});
     }
   };
+
+  useEffect(() => {
+    if (!isTvOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Do not hijack keyboard when user is typing in search or modal
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' ||
+                       target.tagName === 'TEXTAREA' ||
+                       target.tagName === 'SELECT' ||
+                       target.isContentEditable;
+      if (isTyping) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+        case 'ArrowRight': {
+          e.preventDefault();
+          const list = filteredStreamsRef.current;
+          if (list.length < 2) break;
+          const idx = list.findIndex(s => s.id === activeStream?.id);
+          const nextIdx = idx === -1 ? 0 : (idx + 1) % list.length;
+          const next = list[nextIdx];
+          setActiveStream({ ...next, currentQualityIndex: 0 });
+          break;
+        }
+        case 'ArrowUp':
+        case 'ArrowLeft': {
+          e.preventDefault();
+          const list = filteredStreamsRef.current;
+          if (list.length < 2) break;
+          const idx = list.findIndex(s => s.id === activeStream?.id);
+          const prevIdx = idx === -1 ? list.length - 1 : (idx - 1 + list.length) % list.length;
+          const prev = list[prevIdx];
+          setActiveStream({ ...prev, currentQualityIndex: 0 });
+          break;
+        }
+        case ' ':
+          e.preventDefault();
+          handleTogglePlayback();
+          break;
+        case 'm':
+        case 'M':
+          e.preventDefault();
+          handleToggleMute();
+          break;
+        case 'f':
+        case 'F':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case 'Escape':
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+          } else if (isModalOpen) {
+            setIsModalOpen(false);
+          } else {
+            setIsTvOpen(false);
+          }
+          break;
+        case '1':
+          setActiveCategory('music_channels');
+          break;
+        case '2':
+          setActiveCategory('radio');
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    isTvOpen, activeStream,
+    isModalOpen, handleTogglePlayback, handleToggleMute, toggleFullscreen
+  ]);
 
   // ADD / EDIT Modal Actions
   const handleOpenAdd = () => {
@@ -977,7 +1326,7 @@ export function IptvSection() {
     const matchesSubGroup = activeSubGroup === 'All' || s.group === activeSubGroup;
     const matchesKeyword = dynamicFuzzyMatch(s.name, searchQuery);
     return matchesSubGroup && matchesKeyword;
-  });
+  }).filter(s => !s.hidden);
 
   filteredStreamsRef.current = filteredVisibleStreams;
 
@@ -1151,12 +1500,24 @@ export function IptvSection() {
                         <div className="truncate pr-2">
                           {activeCategory === 'radio' ? '📻' : '🎵'} {activeStream?.name || (activeCategory === 'radio' ? 'Radio Broadcast' : 'Music Stream')}
                         </div>
-                        <div className={`flex-shrink-0 animate-pulse px-1.5 py-0.5 rounded text-[8px] tracking-wide ${
-                          resolvedTheme === 'dark' ? 'bg-[#B8FF3F]/20 text-[#B8FF3F]' : 
-                          resolvedTheme === 'bit' ? 'bg-[#ff00ff] text-white' : 
-                          resolvedTheme === 'midnight' ? 'bg-[#3b82f6]/20 text-[#60a5fa]' : 'bg-emerald-700 text-white'
-                        }`}>
-                          {resolvedTheme === 'bit' ? 'LIVE' : 'ONLINE'}
+                        <div className="flex-shrink-0">
+                          {elapsedSeconds > 0 ? (
+                            <span className={`font-mono text-[8px] px-1.5 py-0.5 rounded ${
+                              resolvedTheme === 'dark' ? 'text-[#B8FF3F]' : 
+                              resolvedTheme === 'bit' ? 'text-[#00ffff]' : 
+                              resolvedTheme === 'midnight' ? 'text-[#60a5fa]' : 'text-emerald-900 font-bold'
+                            }`}>
+                              🎙 {formatElapsed(elapsedSeconds)}
+                            </span>
+                          ) : (
+                            <span className={`animate-pulse px-1.5 py-0.5 rounded text-[8px] tracking-wide ${
+                              resolvedTheme === 'dark' ? 'bg-[#B8FF3F]/20 text-[#B8FF3F]' : 
+                              resolvedTheme === 'bit' ? 'bg-[#ff00ff] text-white' : 
+                              resolvedTheme === 'midnight' ? 'bg-[#3b82f6]/20 text-[#60a5fa]' : 'bg-emerald-700 text-white'
+                            }`}>
+                              {resolvedTheme === 'bit' ? 'LIVE' : 'ONLINE'}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -1271,7 +1632,54 @@ export function IptvSection() {
                 )}
 
                 {/* Stream Error screen overlay */}
-                {errorMsg && (
+                {errorType ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/95 z-10 p-4 border-2 border-red-800">
+                    <div className="text-center text-white font-mono flex flex-col items-center gap-2">
+                      <span className="text-4xl">{getErrorDisplay(errorType, activeStream?.name || '').icon}</span>
+                      <div className="text-xs text-red-500 font-bold">{getErrorDisplay(errorType, activeStream?.name || '').title}</div>
+                      <p className="text-[10px] text-zinc-400 max-w-xs">{getErrorDisplay(errorType, activeStream?.name || '').subtitle}</p>
+                      
+                      <div className="flex gap-2 mt-3 flex-wrap justify-center">
+                        {getErrorDisplay(errorType, activeStream?.name || '').canRetry && (
+                          <button 
+                            onClick={() => activeStream && playCurrentStream(activeStream)}
+                            className="bg-zinc-800 text-[10px] hover:bg-zinc-700 text-white font-mono px-3 py-1 border border-zinc-600 rounded shadow cursor-pointer transition-colors"
+                          >
+                            إعادة المحاولة (Retry)
+                          </button>
+                        )}
+                        
+                        {errorType === 'CORS_BLOCKED' && activeStream && (
+                          <button 
+                            onClick={() => {
+                              try {
+                                navigator.clipboard.writeText(activeStream.url);
+                                setCopySuccess(true);
+                                setTimeout(() => setCopySuccess(false), 2000);
+                              } catch (err) {
+                                console.error('Failed to copy', err);
+                              }
+                            }}
+                            className={`text-[10px] font-mono px-3 py-1 border rounded shadow cursor-pointer transition-colors ${
+                              copySuccess 
+                                ? 'bg-emerald-800 border-emerald-600 text-white' 
+                                : 'bg-amber-600 hover:bg-amber-700 border-amber-500 text-white font-sans'
+                            }`}
+                          >
+                            {copySuccess ? '✔️ تم النسخ!' : '📋 نسخ الرابط للمشغّل الخارجي'}
+                          </button>
+                        )}
+
+                        <button 
+                          onClick={playNextStream}
+                          className="bg-zinc-800 text-[10px] hover:bg-zinc-700 text-white font-mono px-3 py-1 border border-zinc-600 rounded shadow cursor-pointer transition-colors font-sans"
+                        >
+                          القناة التالية ➡️
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : errorMsg ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/95 z-10 p-4 border-2 border-red-800">
                     <div className="text-center text-white font-mono flex flex-col items-center gap-2">
                       <span className="text-4xl">📡</span>
@@ -1285,7 +1693,7 @@ export function IptvSection() {
                       </button>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
 
               {/* Lower Deck: Hardware console sliders */}
@@ -1374,7 +1782,13 @@ export function IptvSection() {
                   resolvedTheme === 'midnight' ? 'bg-[#040a12] text-[#60a5fa] border-[#1e3a5f]' : 
                   'bg-black text-[#00FF00] border-zinc-400'
                 }`}>
-                  {activeStream ? (resolvedTheme === 'bit' ? activeStream.name.toUpperCase() : activeStream.name) : 'NO_STREAM'}
+                  {activeStream ? (
+                    activeCategory === 'radio' && elapsedSeconds > 0 ? (
+                      `${resolvedTheme === 'bit' ? activeStream.name.toUpperCase() : activeStream.name} — ${formatElapsed(elapsedSeconds)}`
+                    ) : (
+                      resolvedTheme === 'bit' ? activeStream.name.toUpperCase() : activeStream.name
+                    )
+                  ) : 'NO_STREAM'}
                 </div>
 
                 {/* Rightmost Utility buttons */}
@@ -1498,10 +1912,10 @@ export function IptvSection() {
 
                   {/* Unified Content listing Pane */}
                   <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Gemini AI Organize Info Banner */}
+                    {/* Sort Info Banner */}
                     {aiInfoMsg && (
                       <div className={`p-2 text-center text-[10px] font-mono font-medium transition-all animate-bounce ${
-                        isAiOrganizing 
+                        isSorting 
                           ? 'bg-blue-600/25 text-blue-300 border-b border-blue-500/20' 
                           : aiInfoMsg.startsWith('❌') 
                             ? 'bg-red-600/25 text-red-300 border-b border-red-500/20' 
@@ -1555,6 +1969,7 @@ export function IptvSection() {
                             {slicedItems.map(item => (
                               <div
                                 key={item.id}
+                                ref={activeStream?.id === item.id ? activeItemRef : null}
                                 onClick={() => {
                                   setActiveStream({
                                     ...item,
@@ -1574,11 +1989,13 @@ export function IptvSection() {
                               >
                                 <div className="flex items-center gap-2 min-w-0 pr-2">
                                   <img
+                                    loading="lazy"
                                     src={item.logo}
                                     alt=""
                                     className="w-5 h-5 object-contain bg-white rounded border border-zinc-300 flex-shrink-0"
                                     onError={(e) => {
-                                      e.currentTarget.src = item.category === 'radio' ? 'https://i.imgur.com/3YsZPY6.jpeg' : 'https://i.imgur.com/Ki3ySUE.png';
+                                      e.currentTarget.onerror = null; // prevent infinite loop
+                                      e.currentTarget.src = getLogoFallbackSvg(item.name, item.category);
                                     }}
                                   />
                                   <div className="min-w-0">
@@ -1699,20 +2116,20 @@ export function IptvSection() {
                       <span>{resolvedTheme === 'bit' ? 'DICE' : 'الحظ'}</span>
                     </button>
 
-                    {/* Gemini AI Organizer button */}
+                    {/* Alphabetical Sort button */}
                     <button
-                      onClick={handleAiOrganize}
-                      disabled={isAiOrganizing || streams.length === 0}
-                      title="ترتيب ذكي بالذكاء الاصطناعي (Gemini)"
+                      onClick={handleSortAlphabetically}
+                      disabled={isSorting || streams.length === 0}
+                      title="ترتيب أبجدي بالأحرف والأرقام"
                       className={`flex-1 flex items-center justify-center gap-1 text-[9px] font-mono font-bold py-1 px-1.5 border shadow-sm rounded transition-all cursor-pointer disabled:opacity-50 ${
                         resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-[#333] text-[#B8FF3F] border-[#1d1d1d]' : 
-                        resolvedTheme === 'bit' ? 'bg-[#120b25] hover:bg-[#ff00ff]/20 text-[#ffff00] border-[#ff00ff]' : 
-                        resolvedTheme === 'midnight' ? 'bg-[#1e3a5f] hover:bg-[#101f30] text-amber-400 border-[#1e3a5f]' : 
-                        'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300 font-sans'
+                        resolvedTheme === 'bit' ? 'bg-[#120b25] hover:bg-[#ff00ff]/20 text-[#00ffff] border-[#ff00ff]' : 
+                        resolvedTheme === 'midnight' ? 'bg-[#1e3a5f] hover:bg-[#101f30] text-sky-400 border-[#1e3a5f]' : 
+                        'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300 font-sans'
                       }`}
                     >
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      <span>{resolvedTheme === 'bit' ? 'AI SORT' : 'ترتيب ذكي'}</span>
+                      <SortAsc className="w-3 h-3 text-sky-500" />
+                      <span>{resolvedTheme === 'bit' ? 'SORT A-Z' : 'ترتيب أبجدي'}</span>
                     </button>
 
                     {/* New stream button */}
@@ -1735,6 +2152,37 @@ export function IptvSection() {
           })()}
           </div>
 
+          {/* Tooltip Overlay above the footer bar */}
+          {showKeyHints && !isFullscreen && (
+            <div 
+              style={{
+                direction: 'rtl',
+                border: resolvedTheme === 'dark' ? '1px solid #1f1f1f' : 
+                        resolvedTheme === 'bit' ? '1px solid #ff00ff' : 
+                        resolvedTheme === 'midnight' ? '1px solid #1e3a5f' : '1px solid #a1a1aa',
+                boxShadow: resolvedTheme === 'bit' ? '0 0 10px #ff00ff' : '0 4px 15px rgba(0,0,0,0.3)',
+              }}
+              className={`absolute bottom-6 left-2 right-2 z-40 p-2 rounded text-[10px] font-mono select-none text-center ${
+                resolvedTheme === 'dark' ? 'bg-[#0d0d0d]/95 text-zinc-300' : 
+                resolvedTheme === 'bit' ? 'bg-[#120b25]/95 text-[#00ffff]' : 
+                resolvedTheme === 'midnight' ? 'bg-[#0c1929]/95 text-[#94a3b8]' : 'bg-zinc-100/95 text-zinc-800'
+              }`}
+            >
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                <span className="font-bold underline">🎹 الاختصارات:</span>
+                <span>↑↓ قنوات التالية/السابقة</span>
+                <span>|</span>
+                <span>Space تشغيل/إيقاف</span>
+                <span>|</span>
+                <span>M كتم الصّوت</span>
+                <span>|</span>
+                <span>F شاشة كاملة</span>
+                <span>|</span>
+                <span>1/2 الأقسام</span>
+              </div>
+            </div>
+          )}
+
           {/* Footer bar indicator */}
           {!isFullscreen && (
             <div className={`h-6 px-3 flex items-center justify-between font-mono text-[10px] flex-shrink-0 border-t ${
@@ -1742,13 +2190,23 @@ export function IptvSection() {
               resolvedTheme === 'bit' ? 'bg-[#2d1b69] text-[#ff00ff] border-[#ff00ff]' : 
               resolvedTheme === 'midnight' ? 'bg-[#0c1929] text-[#94a3b8] border-[#1e3a5f]' : 'bg-zinc-300 border-zinc-400 text-zinc-800'
             }`}>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 animate-fadeIn">
                 <span className={`animate-pulse inline-block w-2 h-2 rounded-full ${
                   resolvedTheme === 'bit' ? 'bg-[#0ff] shadow-[0_0_8px_#0ff]' : 'bg-emerald-600'
                 }`} />
                 <span>
                   {resolvedTheme === 'bit' ? 'RETRO BROADCAST ENGINE ONLINE' : 'منصة البث الكلاسيكية جاهزة ومتصلة • Classic Broadcast Server is LIVE'}
                 </span>
+                <button
+                  title="اختصارات لوحة المفاتيح"
+                  className="text-[9px] font-mono opacity-50 hover:opacity-100 ml-2 bg-transparent border-0 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowKeyHints(p => !p);
+                  }}
+                >
+                  ⌨️
+                </button>
               </div>
               <div className="flex items-center gap-2">
                 <button
