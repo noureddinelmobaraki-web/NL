@@ -3,10 +3,7 @@ import path from 'path';
 
 const DOMAIN = 'https://noureddinelmobaraki-web.github.io/NL';
 const PAGES = [
-  { url: '/', priority: '1.0', changefreq: 'daily' },
-  { url: '/#me-bit-gallery', priority: '0.8', changefreq: 'weekly' },
-  { url: '/#my-songs-section', priority: '0.9', changefreq: 'weekly' },
-  { url: '/#drawings-section', priority: '0.8', changefreq: 'weekly' },
+  { url: '/', priority: '1.00', changefreq: 'daily' },
 ];
 
 function generateSitemap() {
