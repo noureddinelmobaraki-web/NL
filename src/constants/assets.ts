@@ -13,11 +13,35 @@ const BIT_IMAGES = {
   ytHighlights:  `${CDN_BIT}/yt_highlights_bit.webp`,
 } as const;
 
+const DARK_IMAGES = {
+  profile:       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imgdark.webp',
+  photo:         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photodark.webp',
+  headerBg:      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bgdark.webp',
+  heroBg:        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bgdark.webp',
+  meBitPoster:   'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imgdark.webp',
+  playlistCover: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_coverdark.webp',
+  ytHighlights:  'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightsdark.webp',
+} as const;
+
+const LIGHT_IMAGES = {
+  profile:       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imglight.webp',
+  photo:         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photolight.webp',
+  headerBg:      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bglight.webp',
+  heroBg:        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bgdarklight.webp',
+  meBitPoster:   'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imglight.webp',
+  playlistCover: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_coverlight.webp',
+  ytHighlights:  'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightslight.webp',
+} as const;
+
+export const LIGHT_PROFILE_OPENING = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imglightopenin.webp';
+export const LIGHT_PROFILE_MAIN    = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imglight.webp';
+
+
 // Per-theme background music URLs
 export const THEME_BG_MUSIC: Record<string, string> = {
   'midnight':    'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/music/index.m3u8',
   'dark':        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/darkBG/index.m3u8',
-  'manga-paper': 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lightBG/index.m3u8',
+  'light':       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lightBG/index.m3u8',
   'bit':         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bitBG/index.m3u8',
 };
 
@@ -112,14 +136,16 @@ export function getThemedImage(
   key: keyof typeof BIT_IMAGES,
   resolvedTheme: string
 ): string {
-  if (resolvedTheme === 'bit') return BIT_IMAGES[key];
-  // fallback: return the standard CDN asset
+  if (resolvedTheme === 'bit')   return BIT_IMAGES[key];
+  if (resolvedTheme === 'dark')  return DARK_IMAGES[key];
+  if (resolvedTheme === 'light') return LIGHT_IMAGES[key];
+  // midnight and system → original default assets, unchanged
   const map: Record<keyof typeof BIT_IMAGES, string> = {
     profile:       ASSETS.profile.main,
     photo:         ASSETS.profile.photo,
     headerBg:      ASSETS.profile.headerBg,
     heroBg:        ASSETS.profile.heroBg,
-    meBitPoster:   ASSETS.profile.me_bits[0], // gallery thumbnail fallback
+    meBitPoster:   ASSETS.profile.me_bits[0],
     playlistCover: ASSETS.songs.playlistCover,
     ytHighlights:  ASSETS.songs.ytHighlights,
   };

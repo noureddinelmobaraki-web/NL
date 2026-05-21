@@ -1,4 +1,4 @@
-import { useState, memo, useEffect } from 'react';
+import { memo, useEffect } from 'react';
 import { Play, Pause, Volume2, SkipBack, SkipForward } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Song, LyricLine } from '../types';
@@ -61,6 +61,9 @@ export interface SongCardProps {
   onAmbientColorChange?: (color: string) => void;
 }
 
+import { OsWindow } from './OsWindow';
+import { useResolvedTheme } from '../hooks/useResolvedTheme';
+
 /**
  * Individual Song Card component for the bento grid
  */
@@ -83,14 +86,12 @@ export const SongCard = memo(({
   onSeek,
   volume,
   onVolumeChange,
-  onShare,
   karaokeMode = false,
-  setKaraokeMode,
   currentLyricLine,
   onAmbientColorChange
 }: SongCardProps) => {
-  const [isCopied, setIsCopied] = useState(false);
   const { isMobile, isTablet } = useDeviceType();
+  const resolvedTheme = useResolvedTheme();
 
   useEffect(() => {
     const coverUrl = song.cover || song.backgroundImage;
@@ -110,14 +111,7 @@ export const SongCard = memo(({
     });
   }, [song.cover, song.backgroundImage, isActive, onAmbientColorChange]);
 
-  const handleShareClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onShare?.();
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-  };
-
-  return (
+  const renderContent = () => (
     <motion.div 
       layout
       layoutId={`song-${song.id}`}
@@ -130,62 +124,68 @@ export const SongCard = memo(({
         }
       }}
       className={`
-        song-card relative overflow-hidden rounded-2xl flex flex-col transition-all duration-700 cursor-pointer
-        ${isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-6 sm:p-8' : 'shadow-lg hover:shadow-xl p-5 sm:p-6'}
+        song-card relative overflow-hidden flex flex-col transition-all cursor-pointer
+        ${resolvedTheme === 'dark' ? 'bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 transition-all duration-500 rounded-2xl' : (resolvedTheme === 'light' ? 'bg-[#F0EBE3]' : (isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-6 sm:p-8 rounded-2xl' : 'shadow-lg hover:shadow-xl p-5 sm:p-6 rounded-2xl'))}
+        ${isActive && resolvedTheme !== 'dark' && resolvedTheme !== 'light' ? 'p-6 sm:p-8' : ''}
       `}
       style={{
-        backgroundImage: `url('${song.backgroundImage}')`,
+        backgroundImage: resolvedTheme === 'light' ? 'none' : `url('${song.backgroundImage}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        gridColumn: isActive && !isMobile ? 'span 2' : 'span 1'
+        gridColumn: isActive && !isMobile ? 'span 2' : 'span 1',
+        transitionDuration: resolvedTheme === 'dark' ? '500ms' : '700ms'
       }}
     >
       {/* Bento expansion handle */}
-      {isActive && (
+      {isActive && resolvedTheme !== 'light' && (
         <div className="absolute top-4 left-4 z-30 scale-75 sm:scale-100">
           <Waveform isPlaying={isPlaying} />
         </div>
       )}
 
       {/* Background Image with Animation */}
-      <div 
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `url('${song.backgroundImage}')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          animation: isActive ? 'slow-zoom 8s ease-in-out infinite alternate' : 'none',
-        }}
-      />
+      {resolvedTheme !== 'light' && (
+        <div 
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: `url('${song.backgroundImage}')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            animation: isActive ? 'slow-zoom 8s ease-in-out infinite alternate' : 'none',
+          }}
+        />
+      )}
 
       {/* Overlay */}
-      <div 
-        className="absolute inset-0 z-10 transition-all duration-600"
-        style={{
-          background: isActive ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.65)',
-          backdropFilter: (isActive || isTablet) ? 'none' : 'blur(1px)',
-          WebkitBackdropFilter: (isActive || isTablet) ? 'none' : 'blur(1px)',
-        }} 
-      />
+      {resolvedTheme !== 'light' && (
+        <div 
+          className="absolute inset-0 z-10 transition-all duration-600"
+          style={{
+            background: isActive ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.65)',
+            backdropFilter: (isActive || isTablet) ? 'none' : 'blur(1px)',
+            WebkitBackdropFilter: (isActive || isTablet) ? 'none' : 'blur(1px)',
+          }} 
+        />
+      )}
 
       {/* Content wrapper */}
       <div className="relative z-20 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-5 flex-1 min-w-0">
-            <span className={`font-mono text-xs font-bold ${isActive ? 'text-indigo-400' : 'text-zinc-400'}`}>
+            <span className={`font-mono text-xs font-bold ${isActive ? (resolvedTheme === 'light' ? 'text-[#0000CC]' : 'text-indigo-400') : (resolvedTheme === 'light' ? 'text-[#777]' : 'text-zinc-400')}`}>
               {(index + 1).toString().padStart(2, '0')}
             </span>
             <div className="flex flex-col min-w-0">
               <h3 
-                className="font-bold text-lg tracking-tight rainbow-text"
-                style={{
+                className={`font-bold text-lg tracking-tight ${resolvedTheme === 'light' ? 'text-[#000]' : 'rainbow-text'}`}
+                style={resolvedTheme === 'light' ? { fontFamily: 'Geneva, sans-serif' } : {
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))'
                 }}
               >
                 {song.title}
               </h3>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${song.lrc ? 'bg-indigo-500/40 text-indigo-200' : 'bg-zinc-800/80 text-zinc-400'}`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${song.lrc ? (resolvedTheme === 'light' ? 'bg-[#0000CC] text-white' : 'bg-indigo-500/40 text-indigo-200') : (resolvedTheme === 'light' ? 'bg-[#999] text-white' : 'bg-zinc-800/80 text-zinc-400')}`}>
                   {song.lrc ? "LRC" : "INST"}
                 </span>
                 {duration && !isActive && (
@@ -199,7 +199,7 @@ export const SongCard = memo(({
                     {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}
                   </span>
                 )}
-                <span className="text-[10px] text-zinc-300/60 font-medium uppercase tracking-widest">NRADIO</span>
+                <span className={`text-[10px] ${resolvedTheme === 'light' ? 'text-[#777]' : 'text-zinc-300/60'} font-medium uppercase tracking-widest`}>NRADIO</span>
               </div>
             </div>
           </div>
@@ -209,61 +209,30 @@ export const SongCard = memo(({
               <div className="flex items-center gap-2">
                 <button 
                   onClick={(e) => { e.stopPropagation(); setLyricsOpen(prev => !prev); }}
-                  className={`lyrics-btn ${isLyricsOpen ? 'lyrics-btn-active' : ''}`}
+                  className={`lyrics-btn ${isLyricsOpen ? 'lyrics-btn-active' : ''} ${resolvedTheme === 'light' ? '!font-["Geneva",sans-serif] !text-[10px] !bg-white !text-black !border !border-[#999] !shadow-none' : ''}`}
                   style={{
                     minWidth: (isMobile || isTablet) ? '80px' : 'auto',
                     minHeight: (isMobile || isTablet) ? '44px' : 'auto',
+                    ...(resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {})
                   }}
                   title="Lyrics"
                 >
                   ◉ LYRICS ✦
                 </button>
-                {isLyricsOpen && (
-                  <button
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      setKaraokeMode?.(k => !k); 
-                    }}
-                    style={{
-                      background: karaokeMode ? 'rgba(139,92,246,0.8)' : 'rgba(139,92,246,0.2)',
-                      border: '1px solid rgba(139,92,246,0.6)',
-                      color: 'white',
-                      padding: '4px 10px',
-                      borderRadius: '12px',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      fontFamily: 'var(--font-manga)',
-                      letterSpacing: '0.1em',
-                      minHeight: (isMobile || isTablet) ? '44px' : 'auto',
-                      minWidth: (isMobile || isTablet) ? '100px' : 'auto',
-                    }}
-                  >
-                    {karaokeMode ? 'NORMAL' : '🎤 KARAOKE'}
-                  </button>
-                )}
               </div>
             )}
             {!isActiveInBar && (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleShareClick}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isCopied ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/20'}`}
-                  title="Share"
-                >
-                  {isCopied ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                  )}
-                </button>
-                <button
                   onClick={onPlay}
                   className={`
-                    w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg
-                    ${isActive && isPlaying 
+                    w-11 h-11 flex items-center justify-center transition-all duration-300 shadow-lg
+                    ${resolvedTheme === 'light' ? 'bg-[#F0EBE3] border border-[#999] rounded-none' : 'rounded-full'}
+                    ${isActive && isPlaying && resolvedTheme !== 'light'
                       ? 'bg-white text-black scale-110' 
-                      : 'bg-indigo-600/90 text-white hover:bg-indigo-500 hover:scale-105 active:scale-95'}
+                      : (resolvedTheme === 'light' ? 'text-black hover:bg-[#DDD]' : 'bg-indigo-600/90 text-white hover:bg-indigo-500 hover:scale-105 active:scale-95')}
                   `}
+                  style={resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {}}
                   aria-label={isActive && isPlaying ? "Pause" : "Play"}
                 >
                   {isActive && isWaiting ? (
@@ -297,13 +266,14 @@ export const SongCard = memo(({
                   width: isMobile ? '52px' : '40px', 
                   height: isMobile ? '52px' : '40px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  borderRadius: '50%',
+                  borderRadius: resolvedTheme === 'light' ? '0' : '50%',
                   background: 'var(--card-control-bg)',
                   border: '1px solid var(--card-control-border)',
                   color: 'var(--card-control-text)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   flexShrink: 0,
+                  ...(resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {})
                 }}
                 className="hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
                 aria-label="Previous song"
@@ -321,13 +291,13 @@ export const SongCard = memo(({
                   width: isMobile ? '72px' : '52px', 
                   height: isMobile ? '72px' : '52px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  borderRadius: '50%',
-                  background: isPlaying ? 'rgba(255,255,255,0.95)' : 'white',
+                  borderRadius: resolvedTheme === 'light' ? '0' : '50%',
+                  background: isPlaying ? (resolvedTheme === 'light' ? '#DDD' : 'rgba(255,255,255,0.95)') : 'white',
                   color: 'black',
-                  border: 'none',
+                  border: resolvedTheme === 'light' ? '1px solid #999' : 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                  boxShadow: resolvedTheme === 'light' ? 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' : '0 4px 16px rgba(0,0,0,0.4)',
                   flexShrink: 0,
                 }}
                 className="hover:scale-110 active:scale-90"
@@ -357,13 +327,14 @@ export const SongCard = memo(({
                   width: isMobile ? '52px' : '40px', 
                   height: isMobile ? '52px' : '40px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  borderRadius: '50%',
+                  borderRadius: resolvedTheme === 'light' ? '0' : '50%',
                   background: 'var(--card-control-bg)',
                   border: '1px solid var(--card-control-border)',
                   color: 'var(--card-control-text)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   flexShrink: 0,
+                  ...(resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {})
                 }}
                 className="hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
                 aria-label="Next song"
@@ -384,7 +355,7 @@ export const SongCard = memo(({
                 className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer"
                 style={{ background: 'var(--seek-track-bg)', accentColor: 'var(--accent-indigo)' }}
               />
-              <div className="flex justify-between text-[10px] font-mono text-white/60">
+              <div className={`flex justify-between text-[10px] font-mono ${resolvedTheme === 'light' ? 'text-black/60' : 'text-white/60'}`}>
                 <span>{formatTime(currentTime || 0)}</span>
                 <span>{formatTime(duration || 0)}</span>
               </div>
@@ -392,7 +363,7 @@ export const SongCard = memo(({
 
             {/* Volume Control */}
             <div className="flex items-center gap-3 pt-2">
-              <Volume2 size={isMobile ? 18 : 14} className="text-white/60" />
+              <Volume2 size={isMobile ? 18 : 14} className={resolvedTheme === 'light' ? 'text-black/60' : 'text-white/60'} />
               <input 
                 type="range"
                 min={0}
@@ -419,12 +390,12 @@ export const SongCard = memo(({
                     paddingTop: '12px',
                   }}>
                     <p style={{
-                      fontFamily: 'var(--font-manga)',
+                      fontFamily: resolvedTheme === 'light' ? 'Geneva, sans-serif' : 'var(--font-manga)',
                       fontSize: 'clamp(1.2rem, 4vw, 2rem)',
                       color: 'var(--lyric-active-color)',
                       textAlign: 'center',
                       letterSpacing: '0.05em',
-                      textShadow: '0 0 20px var(--lyric-active-shadow)',
+                      textShadow: resolvedTheme === 'light' ? 'none' : '0 0 20px var(--lyric-active-shadow)',
                       transition: 'all 0.3s ease',
                       lineHeight: 1.4,
                       padding: '0 16px',
@@ -457,4 +428,14 @@ export const SongCard = memo(({
       </div>
     </motion.div>
   );
+
+  if (resolvedTheme === 'light') {
+    return (
+      <OsWindow title={`song_card.${song.id}`} className={isActive && !isMobile ? 'col-span-2' : ''}>
+        {renderContent()}
+      </OsWindow>
+    );
+  }
+
+  return renderContent();
 });

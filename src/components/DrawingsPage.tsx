@@ -6,6 +6,9 @@ import { useDeviceType } from '../hooks/useDeviceType';
 import { ASSETS } from '../constants/assets';
 import { audioManager } from '../audio/audioManager';
 
+import { useResolvedTheme } from '../hooks/useResolvedTheme';
+import { OsWindow } from './OsWindow';
+
 interface VideoData {
   id: string;
   src: string;
@@ -45,21 +48,33 @@ const CrossfadeImage = () => {
 };
 
 // ─── VideoPreview: closed-state thumbnail card ────────────────────────────────
-const VideoPreview = memo(({ index }: { index: number }) => (
-  <div className="w-full aspect-[9/16] bg-[var(--bg-glass)] cursor-pointer relative group overflow-hidden rounded-[8px]">
-    <CrossfadeImage />
-    <div style={{
-      position: 'absolute', inset: 0,
-      background: 'linear-gradient(transparent 60%, rgba(0,0,0,0.7) 100%)',
-      pointerEvents: 'none'
-    }} />
-    <div className="absolute bottom-2 left-3">
-      <span className="text-white text-[10px] font-mono font-bold tracking-widest opacity-80">
-        {(index + 1).toString().padStart(2, '0')}
-      </span>
+const VideoPreview = memo(({ index }: { index: number }) => {
+  const resolvedTheme = useResolvedTheme();
+  const renderContent = () => (
+    <div className={`w-full aspect-[9/16] bg-[var(--bg-glass)] cursor-pointer relative group overflow-hidden ${resolvedTheme === 'light' ? '' : 'rounded-[8px] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 transition-all duration-500'} ${resolvedTheme === 'dark' ? 'bg-white/[0.03]' : ''}`}>
+      <CrossfadeImage />
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(transparent 60%, rgba(0,0,0,0.7) 100%)',
+        pointerEvents: 'none'
+      }} />
+      <div className="absolute bottom-2 left-3">
+        <span className="text-white text-[10px] font-mono font-bold tracking-widest opacity-80">
+          {(index + 1).toString().padStart(2, '0')}
+        </span>
+      </div>
     </div>
-  </div>
-));
+  );
+
+  if (resolvedTheme === 'light') {
+    return (
+      <OsWindow title={`drawing_${index + 1}.preview`} className="h-full">
+        {renderContent()}
+      </OsWindow>
+    );
+  }
+  return renderContent();
+});
 
 // ─── VideoCard: the actual video player inside the carousel ──────────────────
 // isMobileView = true means fullscreen mobile/tablet mode
@@ -79,6 +94,7 @@ const VideoCard = memo(({
   const hlsRef = useRef<Hls | null>(null);
   const isActive = index === activeIndex;
   const [shouldLoad, setShouldLoad] = useState(false);
+  const resolvedTheme = useResolvedTheme();
 
   // Lazy load: only initialize HLS when card is near viewport
   useEffect(() => {
@@ -149,6 +165,19 @@ const VideoCard = memo(({
 
   // ── DESKTOP LAYOUT ────────────────────────────────────────────────────────
   // Peek-a-boo carousel: active at center scale(1), neighbors visible at scale(0.85)
+  const renderVideo = () => (
+    <video
+      ref={el => { videoRef.current = el; onRef(el, index); }}
+      poster={video.poster.startsWith('/images/posters/') ? ASSETS.profile.me_bits[0] : video.poster}
+      aria-label={`Drawing work ${index + 1} of ${total}`}
+      playsInline
+      loop
+      muted={isMuted}
+      // Desktop: object-cover is fine because container is exactly 9:16
+      className="absolute inset-0 w-full h-full object-cover"
+    />
+  );
+
   return (
     <div
       ref={containerRef}
@@ -167,25 +196,25 @@ const VideoCard = memo(({
           aspectRatio: '9 / 16',
           position: 'relative',
           overflow: 'hidden',
-          borderRadius: '16px',
+          borderRadius: resolvedTheme === 'light' ? '0px' : '16px',
           background: 'var(--bg-elevated)',
           transform: isActive ? 'scale(1)' : 'scale(0.85)',
           transition: 'transform 400ms ease',
-          boxShadow: isActive ? '0 32px 80px rgba(0,0,0,0.6)' : '0 8px 24px rgba(0,0,0,0.3)',
+          boxShadow: resolvedTheme === 'light' ? 'none' : (isActive ? '0 32px 80px rgba(0,0,0,0.6)' : '0 8px 24px rgba(0,0,0,0.3)'),
           pointerEvents: 'auto',
           flexShrink: 0,
+          border: resolvedTheme === 'light' ? 'none' : 'none',
         }}
       >
-        <video
-          ref={el => { videoRef.current = el; onRef(el, index); }}
-          poster={video.poster.startsWith('/images/posters/') ? ASSETS.profile.me_bits[0] : video.poster}
-          aria-label={`Drawing work ${index + 1} of ${total}`}
-          playsInline
-          loop
-          muted={isMuted}
-          // Desktop: object-cover is fine because container is exactly 9:16
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        {resolvedTheme === 'light' ? (
+          <OsWindow title={`player.${video.id}`} className="w-full h-full p-0">
+            <div className="relative w-full h-full overflow-hidden">
+              {renderVideo()}
+            </div>
+          </OsWindow>
+        ) : (
+          renderVideo()
+        )}
       </div>
     </div>
   );

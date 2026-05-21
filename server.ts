@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import DOMPurify from "isomorphic-dompurify";
+import { GoogleGenAI, Type } from "@google/genai";
 
 // Rate limiter: Max 3 messages per IP per hour
 // Simplified rate limiter replacing lru-cache
@@ -26,7 +27,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // API Contact Route
   app.post("/api/contact", async (req, res) => {
@@ -113,6 +115,103 @@ async function startServer() {
     } catch (error: any) {
       console.error("EmailJS error:", error.message);
       return res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Gemini AI Stream Organizer Route
+  app.post("/api/gemini/organize", async (req, res) => {
+    const { streams } = req.body;
+    if (!Array.isArray(streams)) {
+      return res.status(400).json({ error: "Invalid streams payload." });
+    }
+
+    if (streams.length === 0) {
+      return res.json({ streams: [] });
+    }
+
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("GEMINI_API_KEY is not configured on the server. Please check your settings.");
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const prompt = `You are an expert IPTV and Radio metadata organizer. Match and categorize these streams correctly based on your knowledge.
+For each stream:
+1. Classify 'category' strictly as one of:
+   - 'music_channels' (for television/video broadcasts and live news/sports channels)
+   - 'radio' (for AM/FM live radio stations)
+   - 'music_audio' (for continuous internet audio music streams or theme radio playlists)
+2. Identify a beautiful, clean country or genre 'group' label (e.g. 'Morocco', 'Egypt', 'France', 'News', 'Quran', 'Sports', 'Music', etc.). Prefer standard clean labels (Arabic or English is fine in standard form like 'القرآن الكريم', 'المغرب', 'الأخبار').
+3. Standardize and beautify the stream 'name' (e.g. clear spelling, remove clutter, use uppercase/proper translation where nice).
+
+Do NOT change the stream 'id' under any condition. Return the updated list mapping each original ID to its new category, group, and name.
+
+Streams data to classify:
+${JSON.stringify(streams.map(s => ({ id: s.id, name: s.name, category: s.category, group: s.group, url: s.url })))}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            required: ["streams"],
+            properties: {
+              streams: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  required: ["id", "category", "group", "name"],
+                  properties: {
+                    id: { type: Type.STRING },
+                    category: { type: Type.STRING },
+                    group: { type: Type.STRING },
+                    name: { type: Type.STRING }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const text = response.text;
+      if (!text) {
+        throw new Error("Empty response from Gemini model.");
+      }
+
+      const parsed = JSON.parse(text.trim());
+      if (parsed && Array.isArray(parsed.streams)) {
+        const organized = streams.map(original => {
+          const geminiUpdate = parsed.streams.find((g: any) => g.id === original.id);
+          if (geminiUpdate) {
+            return {
+              ...original,
+              name: geminiUpdate.name || original.name,
+              category: (geminiUpdate.category === 'radio' || geminiUpdate.category === 'music_channels' || geminiUpdate.category === 'music_audio') ? geminiUpdate.category : original.category,
+              group: geminiUpdate.group || original.group || 'Other'
+            };
+          }
+          return original;
+        });
+
+        return res.json({ streams: organized });
+      } else {
+        throw new Error("Gemini returned invalid response format.");
+      }
+    } catch (err: any) {
+      console.error("Gemini IPTV Organize Error:", err);
+      return res.status(500).json({ error: err.message || "Failed to organize playlists via AI." });
     }
   });
 

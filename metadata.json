@@ -6,5 +6,5 @@
   "bio": "24 years old. Just a simple 5/10 kind of person. I'm into drawing, cooking for fun, and overthinking random stuff that probably helps nobody. That's pretty much it.",
   "description": "Noureddin El Mobaraki (NL)",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

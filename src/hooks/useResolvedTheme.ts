@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 /**
  * Reads data-theme from <html> element and updates whenever it changes.
- * Returns the resolved CSS theme string: 'dark' | 'manga-paper' | 'midnight' | 'bit'
+ * Returns the resolved CSS theme string: 'dark' | 'light' | 'midnight' | 'bit'
  */
 export function useResolvedTheme(): string {
   const [resolved, setResolved] = useState<string>(

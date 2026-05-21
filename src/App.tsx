@@ -32,6 +32,7 @@ import { AudioVisualizer } from "./components/AudioVisualizer";
 import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
 import { ContactSection } from './components/sections/ContactSection';
+import { IptvSection } from './components/sections/IptvSection';
 import { StreamingSection } from './components/sections/StreamingSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
@@ -57,6 +58,8 @@ const CONFIG_ASSETS = {
   vaultPlaylistCover: ASSETS.songs.playlistCover,
   youtubeHighlightsBg: ASSETS.songs.ytHighlights,
 };
+
+import { OsClockDisplay } from "./components/OsWindow";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -106,6 +109,27 @@ export default function App() {
   );
   const [theme, setTheme] = useState<Theme>(initialPrefs.theme);
 
+  // Clock for light mode
+  const renderClock = () => {
+    if (resolvedTheme !== 'light') return null;
+    return (
+      <div
+        className="fixed top-4 right-4 z-[10000]"
+        style={{
+          fontFamily: 'Geneva, "Lucida Sans Unicode", monospace',
+          fontSize: '11px',
+          color: '#000',
+          background: 'linear-gradient(180deg, #CCCCCC 0%, #AAAAAA 100%)',
+          border: '1px solid #999',
+          padding: '2px 8px',
+          boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555',
+        }}
+      >
+        <OsClockDisplay />
+      </div>
+    );
+  };
+
   // Audio lifecycle for persistent sources
   useEffect(() => {
     const audio = audioRef.current;
@@ -116,7 +140,7 @@ export default function App() {
     audioManager.setStateCallback((playing) => setIsPlaying(playing));
 
     const initialResolved = theme === 'dark' ? 'dark'
-      : theme === 'light' ? 'manga-paper'
+      : theme === 'light' ? 'light'
       : theme === 'bit' ? 'bit'
       : 'midnight';
     const url = THEME_BG_MUSIC[initialResolved] ?? ASSETS.media.music;
@@ -174,7 +198,7 @@ export default function App() {
 
   useEffect(() => {
     const resolved = theme === 'dark' ? 'dark' 
-      : theme === 'light' ? 'manga-paper'
+      : theme === 'light' ? 'light'
       : theme === 'bit' ? 'bit'
       : 'midnight';
     document.documentElement.setAttribute('data-theme', resolved);
@@ -187,7 +211,7 @@ export default function App() {
     if (!audio) return;
 
     const resolved = theme === 'dark' ? 'dark'
-      : theme === 'light' ? 'manga-paper'
+      : theme === 'light' ? 'light'
       : theme === 'bit' ? 'bit'
       : 'midnight';
 
@@ -393,6 +417,26 @@ export default function App() {
       </a>
       <AudioVisualizer audioRef={audioRef} isPlaying={isPlaying} />
       <ScrollProgress />
+      {resolvedTheme === 'dark' && (
+        <>
+          {/* Vignette overlay */}
+          <div 
+            className="fixed inset-0 z-[9997] pointer-events-none" 
+            style={{
+              background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%)'
+            }} 
+          />
+          {/* Scanline horizontal moving line */}
+          <div 
+            className="fixed left-0 right-0 h-px z-[9996] pointer-events-none"
+            style={{
+              background: 'rgba(184,255,63,0.1)', 
+              animation: 'scan-line 7s linear infinite',
+              boxShadow: '0 0 8px rgba(184,255,63,0.3)'
+            }} 
+          />
+        </>
+      )}
       {!loaded && (
         <LoadingScreen 
           onComplete={() => setLoaded(true)} 
@@ -406,6 +450,7 @@ export default function App() {
       <div 
         style={{ opacity: loaded ? 1 : 0, transition: 'opacity 500ms ease-in' }}
       >
+        {renderClock()}
         <div 
           className="min-h-screen w-full relative flex flex-col items-center py-10 px-4 sm:px-8 md:px-10 lg:px-10 overflow-x-hidden"
         >
@@ -492,23 +537,50 @@ export default function App() {
         >
           <button 
             onClick={() => scrollToSection('me-bit-gallery')}
-            className="manga-paper-tab"
+            className={resolvedTheme === 'dark' ? 
+              'font-mono text-[0.65rem] tracking-[0.2em] uppercase text-white border border-white/10 px-4 py-2 hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
+              (resolvedTheme === 'light' ? 
+                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-1 bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
+                'manga-paper-tab'
+              )
+            }
+            style={resolvedTheme === 'light' ? {
+              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
+            } : undefined}
           >
-            <Camera className="w-5 h-5" style={{ filter: 'url(#rough)' }} />
+            <Camera className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
             ME BIT
           </button>
           <button 
             onClick={() => scrollToSection('my-songs-section')}
-            className="manga-paper-tab"
+            className={resolvedTheme === 'dark' ? 
+              'font-mono text-[0.65rem] tracking-[0.2em] uppercase text-white border border-white/10 px-4 py-2 hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
+              (resolvedTheme === 'light' ? 
+                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-1 bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
+                'manga-paper-tab'
+              )
+            }
+            style={resolvedTheme === 'light' ? {
+              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
+            } : undefined}
           >
-            <Music2 className="w-5 h-5" style={{ filter: 'url(#rough)' }} />
+            <Music2 className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
             MY SONGS
           </button>
           <button 
             onClick={() => scrollToSection('drawings-section')}
-            className="manga-paper-tab"
+            className={resolvedTheme === 'dark' ? 
+              'font-mono text-[0.65rem] tracking-[0.2em] uppercase text-white border border-white/10 px-4 py-2 hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
+              (resolvedTheme === 'light' ? 
+                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-1 bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
+                'manga-paper-tab'
+              )
+            }
+            style={resolvedTheme === 'light' ? {
+              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
+            } : undefined}
           >
-            <Pencil className="w-5 h-5" style={{ filter: 'url(#rough)' }} />
+            <Pencil className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
             MY DRAWINGS
           </button>
           <button
@@ -516,9 +588,18 @@ export default function App() {
               audioManager.play('lens');
               setIsLensGalleryOpen(true);
             }}
-            className="manga-paper-tab"
+            className={resolvedTheme === 'dark' ? 
+              'font-mono text-[0.65rem] tracking-[0.2em] uppercase text-white border border-white/10 px-4 py-2 hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
+              (resolvedTheme === 'light' ? 
+                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-1 bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
+                'manga-paper-tab'
+              )
+            }
+            style={resolvedTheme === 'light' ? {
+              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
+            } : undefined}
           >
-            <Aperture className="w-5 h-5" style={{ filter: 'url(#rough)' }} />
+            <Aperture className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
             LENS
           </button>
         </motion.div>
@@ -710,6 +791,11 @@ export default function App() {
 
           {/* Contact Section */}
           <ContactSection />
+
+          {/* IPTV Live TV Section */}
+          <motion.div variants={itemVariants} id="iptv-section">
+            <IptvSection />
+          </motion.div>
       </div>
 
       {/* Editorial Footer */}
