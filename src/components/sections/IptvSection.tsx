@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Hls from 'hls.js';
+import { STREAM_SOURCES } from '../../config/streams';
 import { 
   Tv, 
   Radio, 
@@ -17,6 +18,7 @@ import {
   SortAsc
 } from 'lucide-react';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
+import { useDeviceType } from '../../hooks/useDeviceType';
 import { OsWindow } from '../OsWindow';
 import { audioManager } from '../../audio/audioManager';
 
@@ -196,8 +198,80 @@ function getErrorDisplay(errType: StreamErrorType, streamName: string): {
   }
 }
 
+interface Channel {
+  group: string;
+  name: string;
+  logo: string;
+  country?: string;
+  url: string;
+}
+
+function parseM3U(raw: string): Channel[] {
+  const lines = raw.split('\n');
+  const channels: Channel[] = [];
+  let current: Partial<Channel> = {};
+
+  for (const line of lines) {
+    if (line.startsWith('#EXTINF')) {
+      const groupMatch  = line.match(/group-title="([^"]+)"/);
+      const nameMatch   = line.match(/,(.+)$/);
+      const logoMatch   = line.match(/tvg-logo="([^"]+)"/);
+      const countryMatch = line.match(/tvg-country="([^"]+)"/);
+      current = {
+        group:   groupMatch?.[1]  ?? 'Other',
+        name:    nameMatch?.[1]   ?? 'Unknown',
+        logo:    logoMatch?.[1]   ?? '',
+        country: countryMatch?.[1] ?? '',
+      };
+    } else if (line.startsWith('http') && current.name) {
+      channels.push({ ...current, url: line.trim() } as Channel);
+      current = {};
+    }
+  }
+  return channels;
+}
+
+function sortSubGroupChips(chips: string[], category: 'radio' | 'music_channels' | 'music_audio'): string[] {
+  if (category === 'music_channels') {
+    // TV tab: Level 1 -> Level 2 -> Level 3 -> Level 4
+    const level1 = chips.filter(g => g === '⭐ Popular' || g.toLowerCase().includes('popular'));
+    const level4 = chips.filter(g => g.includes('VOD') || g.includes('📼'));
+    
+    // Level 3 list and keywords
+    const level3List = ["📰 News", "🎬 Movies", "🧒 Kids", "🕌 Religious", "⚽ Sports", "💼 Business News", "🎨 Culture", "🎥 Documentary", "🎵 Music", "🎭 Entertainment", "🌦️ Weather", "🎓 Education"];
+    const level3Keywords = ["News", "Movies", "Kids", "Religious", "Sports", "Business News", "Culture", "Documentary", "Music", "Entertainment", "Weather", "Education", "📰", "🎬", "🧒", "🕌", "⚽", "💼", "🎨", "🎥", "🎵", "🎭", "🌦️", "🎓"];
+    
+    const isLevel3 = (g: string) => {
+      return level3List.includes(g) || level3Keywords.some(kw => g.includes(kw));
+    };
+    
+    const level3 = chips.filter(g => !level1.includes(g) && !level4.includes(g) && isLevel3(g));
+    const level2 = chips.filter(g => !level1.includes(g) && !level4.includes(g) && !level3.includes(g));
+    
+    return [...level1, ...level2, ...level3, ...level4];
+  } else if (category === 'radio') {
+    // Radio tab: show "⭐ Popular" first, then country groups
+    const popular = chips.filter(g => g === '⭐ Popular' || g.toLowerCase().includes('popular'));
+    const rest = chips.filter(g => !popular.includes(g));
+    return [...popular, ...rest];
+  } else {
+    // Music tab: show genre groups in order of appearance in file
+    return chips;
+  }
+}
+
 export function IptvSection() {
   const resolvedTheme = useResolvedTheme();
+  const { isMobile } = useDeviceType();
+
+  const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 600);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => setWindowHeight(window.innerHeight);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Storage and Stream lists
   const [streams, setStreams] = useState<StreamItem[]>(() => {
@@ -712,9 +786,9 @@ export function IptvSection() {
     m3uLoadedRef.current = true;
 
     const m3uPlaylists = [
-      { url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/channels.m3u', defaultCategory: 'music_channels' as const },
-      { url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/working_radio.m3u', defaultCategory: 'radio' as const },
-      { url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/working_music.m3u', defaultCategory: 'music_audio' as const }
+      { url: STREAM_SOURCES.CHANNELS, defaultCategory: 'music_channels' as const },
+      { url: STREAM_SOURCES.RADIO, defaultCategory: 'radio' as const },
+      { url: STREAM_SOURCES.MUSIC, defaultCategory: 'music_audio' as const }
     ];
 
     async function fetchPlaylists() {
@@ -728,97 +802,69 @@ export function IptvSection() {
           if (!res.ok) continue;
           const text = await res.text();
           
-          const lines = text.split(/\r?\n/);
-          let tempName = '';
-          let tempGroup = '';
-          let tempLogo = '';
-
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line || line.startsWith('#EXTM3U')) continue;
-
-            if (line.startsWith('#EXTINF:')) {
-              // Extract name after the last comma
-              const lastCommaIdx = line.lastIndexOf(',');
-              if (lastCommaIdx !== -1) {
-                tempName = line.substring(lastCommaIdx + 1).trim();
-              } else {
-                tempName = '';
-              }
-
-              // Extract group-title="..."
-              const groupMatch = line.match(/group-title="([^"]*)"/);
-              tempGroup = groupMatch ? groupMatch[1].trim() : '';
-
-              // Extract tvg-logo="..."
-              const logoMatch = line.match(/tvg-logo="([^"]*)"/);
-              tempLogo = logoMatch ? logoMatch[1].trim() : '';
-            } else if (line.startsWith('http://') || line.startsWith('https://')) {
-              const streamUrl = line;
-              const lowerUrl = streamUrl.toLowerCase();
-
-              // Deduplicate URL check
-              if (existingUrls.has(lowerUrl)) {
-                continue;
-              }
-
-              // Determine category based on URL
-              let category: 'radio' | 'music_channels' | 'music_audio' = playlist.defaultCategory;
-              if (
-                lowerUrl.includes('.mp4') || 
-                lowerUrl.includes('.mkv') || 
-                lowerUrl.includes('.avi') || 
-                lowerUrl.includes('.mov')
-              ) {
-                category = 'music_channels';
-              } else if (
-                lowerUrl.includes('mp3') ||
-                lowerUrl.includes('aac') ||
-                lowerUrl.includes('icecast') ||
-                lowerUrl.includes('.mp3') ||
-                lowerUrl.includes('/radio') ||
-                lowerUrl.includes('stream.zeno') ||
-                lowerUrl.includes('streamafrica') ||
-                lowerUrl.includes('radioca') ||
-                lowerUrl.includes('musicradio') ||
-                lowerUrl.includes('dlf.de') ||
-                lowerUrl.includes('radioparadise') ||
-                lowerUrl.includes('bbcmedia') ||
-                lowerUrl.includes('infomaniak.ch') ||
-                lowerUrl.includes('/music/') ||
-                lowerUrl.includes('/jazz/') ||
-                lowerUrl.includes('/classical/')
-              ) {
-                category = playlist.defaultCategory === 'music_audio' ? 'music_audio' : 'radio';
-              }
-
-              // Choose group default if missing
-              const finalGroup = tempGroup || 'Morocco';
-
-              // Logo default if missing
-              let defaultLogo = 'https://i.imgur.com/Ki3ySUE.png';
-              if (category === 'radio' || category === 'music_audio') {
-                defaultLogo = 'https://i.imgur.com/3YsZPY6.jpeg';
-              }
-              const finalLogo = tempLogo || defaultLogo;
-
-              // Generate unique id
-              const itemId = `m3u_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-              const newItem: StreamItem = {
-                id: itemId,
-                name: tempName || 'Unnamed Stream',
-                category,
-                group: finalGroup,
-                logo: finalLogo,
-                url: streamUrl,
-                qualities: [{ quality: 'Auto', url: streamUrl }],
-                currentQualityIndex: 0
-              };
-
-              newStreams.push(newItem);
-              existingUrls.add(lowerUrl);
+          const parsedChannels = parseM3U(text);
+          for (const ch of parsedChannels) {
+            const lowerUrl = ch.url.toLowerCase();
+            if (existingUrls.has(lowerUrl)) {
+              continue;
             }
+
+            // Determine category based on URL
+            let category: 'radio' | 'music_channels' | 'music_audio' = playlist.defaultCategory;
+            if (
+              lowerUrl.includes('.mp4') || 
+              lowerUrl.includes('.mkv') || 
+              lowerUrl.includes('.avi') || 
+              lowerUrl.includes('.mov')
+            ) {
+              category = 'music_channels';
+            } else if (
+              lowerUrl.includes('mp3') ||
+              lowerUrl.includes('aac') ||
+              lowerUrl.includes('icecast') ||
+              lowerUrl.includes('.mp3') ||
+              lowerUrl.includes('/radio') ||
+              lowerUrl.includes('stream.zeno') ||
+              lowerUrl.includes('streamafrica') ||
+              lowerUrl.includes('radioca') ||
+              lowerUrl.includes('musicradio') ||
+              lowerUrl.includes('dlf.de') ||
+              lowerUrl.includes('radioparadise') ||
+              lowerUrl.includes('bbcmedia') ||
+              lowerUrl.includes('infomaniak.ch') ||
+              lowerUrl.includes('/music/') ||
+              lowerUrl.includes('/jazz/') ||
+              lowerUrl.includes('/classical/')
+            ) {
+              category = playlist.defaultCategory === 'music_audio' ? 'music_audio' : 'radio';
+            }
+
+            // Choose group default if missing
+            const finalGroup = ch.group || 'Morocco';
+
+            // Logo default if missing
+            let defaultLogo = 'https://i.imgur.com/Ki3ySUE.png';
+            if (category === 'radio' || category === 'music_audio') {
+              defaultLogo = 'https://i.imgur.com/3YsZPY6.jpeg';
+            }
+            const finalLogo = ch.logo || defaultLogo;
+
+            // Generate unique id
+            const itemId = `m3u_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+            const newItem: StreamItem = {
+              id: itemId,
+              name: ch.name || 'Unnamed Stream',
+              category,
+              group: finalGroup,
+              logo: finalLogo,
+              url: ch.url,
+              qualities: [{ quality: 'Auto', url: ch.url }],
+              currentQualityIndex: 0
+            };
+
+            newStreams.push(newItem);
+            existingUrls.add(lowerUrl);
           }
         } catch (err) {
           // Silently skip playlist if any fetch or network fails
@@ -977,6 +1023,16 @@ export function IptvSection() {
 
   // Fullscreen implementation
   const toggleFullscreen = useCallback(() => {
+    if (isMobile) {
+      if (videoRef.current?.requestFullscreen) {
+        videoRef.current.requestFullscreen().catch(() => {});
+        const orientation = screen.orientation as any;
+        if (orientation && orientation.lock) {
+          orientation.lock('landscape').catch(() => {});
+        }
+        return;
+      }
+    }
     const el = playerWrapperRef.current;
     if (!el) return;
     if (!document.fullscreenElement) {
@@ -984,7 +1040,7 @@ export function IptvSection() {
     } else {
       document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
     }
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     const monitorFullscreen = () => setIsFullscreen(!!document.fullscreenElement);
@@ -1283,17 +1339,17 @@ export function IptvSection() {
         src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/TV.webp"
         alt="Retro TV"
         referrerPolicy="no-referrer"
-        className="w-full max-w-sm rounded object-cover cursor-pointer transition-all duration-300 hover:scale-[1.03] animate-pulse"
+        className={`w-full rounded object-cover cursor-pointer transition-all duration-300 hover:scale-[1.03] animate-pulse ${isMobile ? 'max-w-[280px]' : 'max-w-sm'}`}
         style={{
           filter: resolvedTheme === 'dark' ? 'brightness(0.7) grayscale(1)' : 
                   resolvedTheme === 'bit' ? 'hue-rotate(180deg) saturate(2)' : 
                   resolvedTheme === 'midnight' ? 'brightness(0.6) hue-rotate(200deg)' : 'none',
-          border: resolvedTheme === 'dark' ? '2px solid #B8FF3F' : 
-                  resolvedTheme === 'bit' ? '3px solid #ff00ff' : 
-                  resolvedTheme === 'midnight' ? '1px solid #1e3a5f' : '2px solid #71717a',
-          boxShadow: resolvedTheme === 'dark' ? '0 0 20px rgba(184,255,63,0.3)' : 
-                     resolvedTheme === 'bit' ? '0 0 0 3px #00ffff, 0 0 0 6px #ff00ff' : 
-                     resolvedTheme === 'midnight' ? '0 0 30px rgba(37,99,235,0.2)' : 'none',
+          border: resolvedTheme === 'dark' ? (isMobile ? '1px solid #B8FF3F' : '2px solid #B8FF3F') : 
+                  resolvedTheme === 'bit' ? (isMobile ? '2px outline #ff00ff' : '3px solid #ff00ff') : 
+                  resolvedTheme === 'midnight' ? '1px solid #1e3a5f' : (isMobile ? '1px solid #71717a' : '2px solid #71717a'),
+          boxShadow: resolvedTheme === 'dark' ? (isMobile ? '0 0 10px rgba(184,255,63,0.3)' : '0 0 20px rgba(184,255,63,0.3)') : 
+                     resolvedTheme === 'bit' ? (isMobile ? '0 0 3px #ff00ff' : '0 0 0 3px #00ffff, 0 0 0 6px #ff00ff') : 
+                     resolvedTheme === 'midnight' ? (isMobile ? '0 0 15px rgba(37,99,235,0.2)' : '0 0 30px rgba(37,99,235,0.2)') : 'none',
         }}
       />
       <div className={`text-base font-bold select-none ${
@@ -1308,7 +1364,7 @@ export function IptvSection() {
         resolvedTheme === 'bit' ? 'text-[#00ffff]' : 
         resolvedTheme === 'midnight' ? 'text-[#94a3b8]' : 'text-zinc-500'
       }`}>
-        دوز على الصورة وخلي التلفاز يولي
+            التلفاز ظهر
       </div>
     </div>
   );
@@ -1320,7 +1376,8 @@ export function IptvSection() {
 
   // Extra categories scanner for dynamically building subgroups for layout chips
   const currentCategoryStreams = getCategorizedStreams(activeCategory);
-  const subGroupChips = Array.from(new Set(currentCategoryStreams.map(s => s.group))).filter(Boolean);
+  const rawSubGroupChips = Array.from(new Set(currentCategoryStreams.map(s => s.group))).filter(Boolean);
+  const subGroupChips = sortSubGroupChips(rawSubGroupChips, activeCategory);
 
   const filteredVisibleStreams = currentCategoryStreams.filter(s => {
     const matchesSubGroup = activeSubGroup === 'All' || s.group === activeSubGroup;
@@ -1329,6 +1386,386 @@ export function IptvSection() {
   }).filter(s => !s.hidden);
 
   filteredStreamsRef.current = filteredVisibleStreams;
+
+  // Render components shared between mobile stack and desktop sidebar
+  const renderTabSwitcher = () => {
+    const isTvActive = activeCategory === 'music_channels';
+    const isRadioActive = activeCategory === 'radio';
+    const isMusicAudioActive = activeCategory === 'music_audio';
+
+    let tvTabClass = '';
+    let radioTabClass = '';
+    let musicAudioTabClass = '';
+
+    if (resolvedTheme === 'dark') {
+      tvTabClass = isTvActive ? 'bg-[#B8FF3F] text-black font-bold' : 'bg-[#111] text-[#B8FF3F]';
+      radioTabClass = isRadioActive ? 'bg-[#B8FF3F] text-black font-bold' : 'bg-[#111] text-[#B8FF3F]';
+      musicAudioTabClass = isMusicAudioActive ? 'bg-[#B8FF3F] text-black font-bold' : 'bg-[#111] text-[#B8FF3F]';
+    } else if (resolvedTheme === 'bit') {
+      tvTabClass = isTvActive ? 'bg-[#ff00ff] text-white font-bold' : 'bg-[#2d1b69] text-[#00ffff]';
+      radioTabClass = isRadioActive ? 'bg-[#ff00ff] text-white font-bold' : 'bg-[#2d1b69] text-[#00ffff]';
+      musicAudioTabClass = isMusicAudioActive ? 'bg-[#ff00ff] text-white font-bold' : 'bg-[#2d1b69] text-[#00ffff]';
+    } else if (resolvedTheme === 'midnight') {
+      tvTabClass = isTvActive ? 'bg-[#2563eb] text-white font-bold' : 'bg-[#0c1929] text-[#94a3b8]';
+      radioTabClass = isRadioActive ? 'bg-[#2563eb] text-white font-bold' : 'bg-[#0c1929] text-[#94a3b8]';
+      musicAudioTabClass = isMusicAudioActive ? 'bg-[#2563eb] text-white font-bold' : 'bg-[#0c1929] text-[#94a3b8]';
+    } else {
+      // light
+      tvTabClass = isTvActive ? 'bg-zinc-800 text-white font-bold' : 'bg-zinc-300 text-zinc-700';
+      radioTabClass = isRadioActive ? 'bg-zinc-800 text-white font-bold' : 'bg-zinc-300 text-zinc-700';
+      musicAudioTabClass = isMusicAudioActive ? 'bg-zinc-800 text-white font-bold' : 'bg-zinc-300 text-zinc-700';
+    }
+
+    return (
+      <div className={`grid grid-cols-3 ${isMobile ? 'h-12' : 'h-9'} flex-shrink-0 border-b w-full ${
+        resolvedTheme === 'dark' ? 'border-[#1f1f1f]' : 
+        resolvedTheme === 'bit' ? 'border-[#ff00ff]' : 
+        resolvedTheme === 'midnight' ? 'border-[#1e3a5f]' : 'border-zinc-400'
+      }`}>
+        <button
+          onClick={() => setActiveCategory('music_channels')}
+          className={`flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
+            isMobile ? 'text-xs h-12' : 'text-[9px] h-9'
+          } ${tvTabClass}`}
+        >
+          <Tv className={isMobile ? 'w-4 h-4' : 'w-3 h-3'} />
+          <span>{resolvedTheme === 'bit' ? 'TV' : '📺 تلفزة'}</span>
+        </button>
+        <button
+          onClick={() => setActiveCategory('radio')}
+          className={`flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
+            isMobile ? 'text-xs h-12' : 'text-[9px] h-9'
+          } ${radioTabClass}`}
+        >
+          <Radio className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
+          <span>{resolvedTheme === 'bit' ? 'RADIO' : '📻 راديو'}</span>
+        </button>
+        <button
+          onClick={() => setActiveCategory('music_audio')}
+          className={`flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
+            isMobile ? 'text-xs h-12' : 'text-[9px] h-9'
+          } ${musicAudioTabClass}`}
+        >
+          <span className={isMobile ? 'text-sm' : 'text-xs'}>🎵</span>
+          <span>{resolvedTheme === 'bit' ? 'MUSIC' : 'موسيقى'}</span>
+        </button>
+      </div>
+    );
+  };
+
+  const renderSearchBar = () => {
+    return (
+      <div className={`border-b p-2 flex flex-col gap-1.5 flex-shrink-0 w-full ${
+        resolvedTheme === 'dark' ? 'bg-[#151515] border-[#1f1f1f]' : 
+        resolvedTheme === 'bit' ? 'bg-[#2d1b69] border-[#ff00ff]' : 
+        resolvedTheme === 'midnight' ? 'bg-[#101f30] border-[#1e3a5f]' : 'bg-zinc-300 border-zinc-400'
+      }`}>
+        <div className={`flex items-center p-1 rounded border-2 ${
+          isMobile ? 'h-11 px-3' : 'h-8'
+        } ${
+          resolvedTheme === 'dark' ? 'bg-[#050505] border-[#333]' : 
+          resolvedTheme === 'bit' ? 'bg-[#120b25] border-[#00ffff]' : 
+          resolvedTheme === 'midnight' ? 'bg-[#040a12] border-[#1e3a5f]' : 'bg-white border-zinc-500'
+        }`}>
+          <Search className={`mr-1 ${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} ${
+            resolvedTheme === 'dark' ? 'text-[#B8FF3F]' : 
+            resolvedTheme === 'bit' ? 'text-[#00ffff]' : 
+            resolvedTheme === 'midnight' ? 'text-[#60a5fa]' : 'text-zinc-500'
+          }`} />
+          <input
+            type="text"
+            dir="auto"
+            placeholder="بحث ذكي بالأقسام والروابط..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={`bg-transparent border-none outline-none text-xs w-full font-sans ${
+              resolvedTheme === 'dark' ? 'text-[#B8FF3F] placeholder-[#B8FF3F]/30' : 
+              resolvedTheme === 'bit' ? 'text-[#00ffff] placeholder-[#00ffff]/40 font-mono' : 
+              resolvedTheme === 'midnight' ? 'text-[#60a5fa] placeholder-[#1e3a5f]' : 'text-zinc-900'
+            }`}
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className={isMobile ? 'p-1 min-w-[32px] min-h-[32px] flex items-center justify-center' : ''}>
+              <X className={isMobile ? 'w-4 h-4' : 'w-3 h-3'} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSubGroups = () => {
+    if (subGroupChips.length === 0) return null;
+    return (
+      <div className={`p-1.5 flex flex-wrap gap-1 max-h-24 overflow-y-auto flex-shrink-0 w-full ${
+        isMobile ? 'border-b py-2' : 'border-t'
+      } ${
+        resolvedTheme === 'dark' ? 'bg-[#151515] border-[#1f1f1f]' : 
+        resolvedTheme === 'bit' ? 'bg-[#2d1b69] border-[#ff00ff]' : 
+        resolvedTheme === 'midnight' ? 'bg-[#101f30] border-[#1e3a5f]' : 'bg-zinc-300 border-zinc-400'
+      }`}>
+        <button
+          onClick={() => setActiveSubGroup('All')}
+          style={{ minHeight: isMobile ? '36px' : 'auto', minWidth: isMobile ? '44px' : 'auto' }}
+          className={`text-[9px] px-1.5 py-0.5 rounded border transition-all ${
+            isMobile ? 'text-xs px-2.5 py-1' : ''
+          } ${
+            activeSubGroup === 'All' 
+              ? (resolvedTheme === 'dark' ? 'bg-[#B8FF3F] text-black border-[#B8FF3F] font-bold' : 
+                 resolvedTheme === 'bit' ? 'bg-[#00ffff] text-black border-[#00ffff] font-bold' : 
+                 resolvedTheme === 'midnight' ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-zinc-950 text-white border-zinc-950')
+              : (resolvedTheme === 'dark' ? 'bg-[#050505] text-[#B8FF3F]/70 border-[#333] hover:text-[#B8FF3F]' : 
+                 resolvedTheme === 'bit' ? 'bg-[#120b25] text-[#00ffff]/70 border-[#00ffff]/30 hover:text-[#00ffff]' : 
+                 resolvedTheme === 'midnight' ? 'bg-[#040a12] text-[#94a3b8] border-[#1e3a5f] hover:text-white' : 'bg-zinc-100 text-zinc-800 border-zinc-300 hover:bg-zinc-200')
+          }`}
+        >
+          {resolvedTheme === 'bit' ? 'ALL' : 'الكل'}
+        </button>
+        {subGroupChips.map(g => (
+          <button
+            key={g}
+            onClick={() => setActiveSubGroup(g)}
+            style={{ minHeight: isMobile ? '36px' : 'auto', minWidth: isMobile ? '44px' : 'auto' }}
+            className={`text-[9px] px-1.5 py-0.5 rounded border transition-all ${
+              isMobile ? 'text-xs px-2.5 py-1' : ''
+            } ${
+              activeSubGroup === g
+                ? (resolvedTheme === 'dark' ? 'bg-[#B8FF3F] text-black border-[#B8FF3F] font-bold' : 
+                   resolvedTheme === 'bit' ? 'bg-[#00ffff] text-black border-[#00ffff] font-bold' : 
+                   resolvedTheme === 'midnight' ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-zinc-950 text-white border-zinc-950')
+                : (resolvedTheme === 'dark' ? 'bg-[#050505] text-[#B8FF3F]/70 border-[#333] hover:text-[#B8FF3F]' : 
+                   resolvedTheme === 'bit' ? 'bg-[#120b25] text-[#00ffff]/70 border-[#00ffff]/30 hover:text-[#00ffff]' : 
+                   resolvedTheme === 'midnight' ? 'bg-[#040a12] text-[#94a3b8] border-[#1e3a5f] hover:text-white' : 'bg-zinc-100 text-zinc-800 border-zinc-300 hover:bg-zinc-200')
+            }`}
+          >
+            {g}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  const renderStreamList = () => {
+    const listHeight = isMobile ? Math.max(200, windowHeight - 320) : 340;
+    const itemHeight = isMobile ? 54 : 44;
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden w-full">
+        {/* Sort Info Banner */}
+        {aiInfoMsg && (
+          <div className={`p-2 text-center text-[10px] font-mono font-medium transition-all animate-bounce ${
+            isSorting 
+              ? 'bg-blue-600/25 text-blue-300 border-b border-blue-500/20' 
+              : aiInfoMsg.startsWith('❌') 
+                ? 'bg-red-600/25 text-red-300 border-b border-red-500/20' 
+                : 'bg-green-600/25 text-green-300 border-b border-green-500/20'
+          }`}>
+            {aiInfoMsg}
+          </div>
+        )}
+
+        <div 
+          onScroll={(e) => {
+            if (activeCategory === 'music_channels') {
+              setScrollTopMusic(e.currentTarget.scrollTop);
+            } else if (activeCategory === 'radio') {
+              setScrollTopRadio(e.currentTarget.scrollTop);
+            } else if (activeCategory === 'music_audio') {
+              setScrollTopMusicAudio(e.currentTarget.scrollTop);
+            }
+          }}
+          className={`flex-1 overflow-y-auto divide-y ${skin.listBg} ${
+            resolvedTheme === 'dark' ? 'divide-[#1f1f1f]' : 
+            resolvedTheme === 'bit' ? 'divide-[#ff00ff]/20' : 
+            resolvedTheme === 'midnight' ? 'divide-[#1e3a5f]/40' : 'divide-zinc-200'
+          }`}
+          style={{ height: `${listHeight}px` }}
+        >
+          {filteredVisibleStreams.length === 0 ? (
+            <div className={`p-4 text-center text-[10px] font-sans ${
+              isMobile ? 'text-xs' : ''
+            } ${
+              resolvedTheme === 'dark' ? 'text-zinc-500' : 
+              resolvedTheme === 'bit' ? 'text-[#00ffff]' : 
+              resolvedTheme === 'midnight' ? 'text-[#94a3b8]' : 'text-zinc-500'
+            }`}>
+              {resolvedTheme === 'bit' ? 'NO CHANNELS FOUND' : 'لا توجد قنوات مطابقة.'}
+            </div>
+          ) : (() => {
+            const total = filteredVisibleStreams.length;
+            const currentScrollTop = activeCategory === 'music_channels' 
+              ? scrollTopMusic 
+              : activeCategory === 'radio' 
+                ? scrollTopRadio 
+                : scrollTopMusicAudio;
+            const visibleStart = Math.floor(currentScrollTop / itemHeight);
+            const visibleEnd = Math.min(total, visibleStart + Math.ceil(listHeight / itemHeight) + 3);
+            const slicedItems = filteredVisibleStreams.slice(visibleStart, visibleEnd);
+            const topSpacerHeight = visibleStart * itemHeight;
+            const bottomSpacerHeight = Math.max(0, (total - visibleEnd) * itemHeight);
+
+            return (
+              <>
+                <div style={{ height: `${topSpacerHeight}px` }} />
+                {slicedItems.map(item => (
+                  <div
+                    key={item.id}
+                    ref={activeStream?.id === item.id ? activeItemRef : null}
+                    onClick={() => {
+                      setActiveStream({
+                        ...item,
+                        currentQualityIndex: 0
+                      });
+                    }}
+                    className={`p-2 transition-colors cursor-pointer flex items-center justify-between group opacity-0 animate-fadeIn ${
+                      activeStream?.id === item.id 
+                        ? (resolvedTheme === 'dark' ? 'bg-[#B8FF3F] text-black font-bold' : 
+                           resolvedTheme === 'bit' ? 'bg-[#ff00ff] text-white font-black' : 
+                           resolvedTheme === 'midnight' ? 'bg-[#2563eb] text-white' : 'bg-blue-800 text-white')
+                        : (resolvedTheme === 'dark' ? 'hover:bg-[#151515] text-zinc-300' : 
+                           resolvedTheme === 'bit' ? 'hover:bg-[#ff00ff]/10 text-[#00ffff]' : 
+                           resolvedTheme === 'midnight' ? 'hover:bg-[#101f30] text-[#94a3b8]' : 'hover:bg-zinc-200 text-zinc-950')
+                    }`}
+                    style={{ height: `${itemHeight}px` }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <img
+                        loading="lazy"
+                        src={item.logo}
+                        alt=""
+                        className={`${isMobile ? 'w-6 h-6' : 'w-5 h-5'} object-contain bg-white rounded border border-zinc-300 flex-shrink-0`}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null; // prevent infinite loop
+                          e.currentTarget.src = getLogoFallbackSvg(item.name, item.category);
+                        }}
+                      />
+                      <div className="min-w-0">
+                        <div className={`font-bold truncate ${isMobile ? 'text-xs' : 'text-[11px]'} ${resolvedTheme === 'bit' ? 'uppercase' : ''}`}>{item.name}</div>
+                        <div className={`text-[9px] truncate opacity-70`}>{item.group}</div>
+                      </div>
+                    </div>
+                    
+                    <div className={`flex items-center gap-1 transition-opacity ${
+                      isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}>
+                      <button
+                        onClick={(e) => handleOpenEdit(item, e)}
+                        className={`p-1.5 rounded-sm ${
+                          isMobile ? 'min-w-[44px] min-h-[44px] flex items-center justify-center' : ''
+                        } ${resolvedTheme === 'dark' ? 'hover:bg-[#222]' : resolvedTheme === 'bit' ? 'hover:bg-[#ff00ff]/20' : resolvedTheme === 'midnight' ? 'hover:bg-[#101f30]' : 'hover:bg-zinc-400'}`}
+                        title="تعديل"
+                      >
+                        <Edit3 className={`${isMobile ? 'w-4 h-4' : 'w-3 h-3'} ${resolvedTheme === 'dark' ? 'text-[#B8FF3F]' : resolvedTheme === 'bit' ? 'text-[#00ffff]' : 'text-emerald-800'}`} />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteStream(item.id, e)}
+                        className={`p-1.5 rounded-sm ${
+                          isMobile ? 'min-w-[44px] min-h-[44px] flex items-center justify-center' : ''
+                        } ${resolvedTheme === 'dark' ? 'hover:bg-[#222]' : resolvedTheme === 'bit' ? 'hover:bg-[#ff00ff]/20' : resolvedTheme === 'midnight' ? 'hover:bg-[#101f30]' : 'hover:bg-zinc-400'}`}
+                        title="حذف"
+                      >
+                        <Trash2 className={`${isMobile ? 'w-4 h-4' : 'w-3 h-3'} text-red-600`} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ height: `${bottomSpacerHeight}px` }} />
+              </>
+            );
+          })()}
+        </div>
+      </div>
+    );
+  };
+
+  const renderBottomStatsAndActions = () => {
+    return (
+      <div className={`border-t p-2 flex flex-col gap-2 flex-shrink-0 w-full ${
+        resolvedTheme === 'dark' ? 'bg-[#151515] border-[#1f1f1f]' : 
+        resolvedTheme === 'bit' ? 'bg-[#2d1b69] border-[#ff00ff]' : 
+        resolvedTheme === 'midnight' ? 'bg-[#101f30] border-[#1e3a5f]' : 'bg-zinc-300 border-zinc-400'
+      }`}>
+        <div className="flex items-center justify-between min-w-0">
+          <span className={`font-mono font-bold whitespace-nowrap ${isMobile ? 'text-[10px]' : 'text-[9px]'} ${
+            resolvedTheme === 'dark' ? 'text-[#B8FF3F]/70' : 
+            resolvedTheme === 'bit' ? 'text-[#ff00ff]' : 
+            resolvedTheme === 'midnight' ? 'text-[#94a3b8]' : 'text-zinc-600'
+          }`}>
+            {resolvedTheme === 'bit' ? `STREAMS_TOTAL: ${streams.length}` : `إجمالي البثوث: ${streams.length}`}
+          </span>
+          {isLoadingPlaylists && (
+            <span className={`animate-pulse font-mono whitespace-nowrap ${isMobile ? 'text-[10px]' : 'text-[9px]'} ${
+              resolvedTheme === 'dark' ? 'text-zinc-500' : 
+              resolvedTheme === 'bit' ? 'text-[#00ffff]' : 
+              resolvedTheme === 'midnight' ? 'text-[#3b82f6]' : 'text-zinc-500'
+            }`}>
+              {resolvedTheme === 'bit' ? '⏳ LOADING M3U...' : '⏳ جاري تحميل القوائم...'}
+            </span>
+          )}
+          {isHealthChecking && (
+            <span className={`animate-pulse font-mono opacity-60 ${isMobile ? 'text-[10px]' : 'text-[9px]'}`}>
+              🔍 fحص الجودة...
+            </span>
+          )}
+        </div>
+        
+        <div className="flex gap-1.5 w-full">
+          {/* Lucky Dip Button */}
+          <button
+            onClick={playRandomStream}
+            style={{ minHeight: isMobile ? '44px' : 'auto' }}
+            title="بث عشوائي (نرد الحظ)"
+            className={`flex-1 flex items-center justify-center gap-1 text-[9px] font-mono font-bold py-1 px-1.5 border shadow-sm rounded transition-all cursor-pointer ${
+              isMobile ? 'text-xs' : ''
+            } ${
+              resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-[#333] text-[#B8FF3F] border-[#1d1d1d]' : 
+              resolvedTheme === 'bit' ? 'bg-[#120b25] hover:bg-[#ff00ff]/20 text-[#ff00ff] border-[#ff00ff]' : 
+              resolvedTheme === 'midnight' ? 'bg-[#1e3a5f] hover:bg-[#2563eb] text-white border-[#2563eb]' : 
+              'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300 font-sans'
+            }`}
+          >
+            <span>🎲</span>
+            <span>{resolvedTheme === 'bit' ? 'DICE' : 'الحظ'}</span>
+          </button>
+
+          {/* Alphabetical Sort button */}
+          <button
+            onClick={handleSortAlphabetically}
+            style={{ minHeight: isMobile ? '44px' : 'auto' }}
+            disabled={isSorting || streams.length === 0}
+            title="ترتيب أبجدي بالأحرف والأرقام"
+            className={`flex-1 flex items-center justify-center gap-1.5 text-[9px] font-mono font-bold py-1 px-1.5 border shadow-sm rounded transition-all cursor-pointer disabled:opacity-50 ${
+              isMobile ? 'text-xs' : ''
+            } ${
+              resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-[#333] text-[#B8FF3F] border-[#1d1d1d]' : 
+              resolvedTheme === 'bit' ? 'bg-[#120b25] hover:bg-[#ff00ff]/20 text-[#00ffff] border-[#ff00ff]' : 
+              resolvedTheme === 'midnight' ? 'bg-[#1e3a5f] hover:bg-[#101f30] text-sky-400 border-[#1e3a5f]' : 
+              'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300 font-sans'
+            }`}
+          >
+            <SortAsc className="w-3.5 h-3.5 text-sky-500" />
+            <span>{resolvedTheme === 'bit' ? 'SORT A-Z' : 'ترتيب أبجدي'}</span>
+          </button>
+
+          {/* New stream button */}
+          <button
+            onClick={handleOpenAdd}
+            style={{ minHeight: isMobile ? '44px' : 'auto' }}
+            className={`flex-1 flex items-center justify-center gap-1 text-[9px] font-mono font-bold py-1 px-1.5 border shadow-sm rounded transition-all cursor-pointer ${
+              isMobile ? 'text-xs' : ''
+            } ${
+              resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-[#333] text-[#B8FF3F] border-[#1d1d1d]' : 
+              resolvedTheme === 'bit' ? 'bg-[#120b25] hover:bg-[#ff00ff]/20 text-[#00ffff] border-[#ff00ff]' : 
+              resolvedTheme === 'midnight' ? 'bg-[#1e3a5f] hover:bg-[#2563eb] text-white border-[#2563eb]' : 
+              'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-950 font-sans'
+            }`}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{resolvedTheme === 'bit' ? 'ADD' : 'إضافة'}</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-8 select-none" id="retro-tv-section">
@@ -1390,12 +1827,15 @@ export function IptvSection() {
           ref={playerWrapperRef}
           className={`${resolvedTheme === 'dark' ? 'font-mono' : ''} flex flex-col w-full relative select-none rounded overflow-hidden`}
           style={{
-            height: isFullscreen ? '100vh' : '520px',
+            height: isMobile ? 'auto' : (isFullscreen ? '100dvh' : '520px'),
+            minHeight: isMobile ? '100dvh' : undefined,
             backgroundColor: skin.outerBg,
-            border: resolvedTheme === 'light' ? '2px solid rgba(0,0,0,0)' : skin.borderStyle,
+            border: resolvedTheme === 'light' ? '2px solid rgba(0,0,0,0)' : 
+                    resolvedTheme === 'bit' && isMobile ? 'none' : skin.borderStyle,
+            outline: resolvedTheme === 'bit' && isMobile ? '2px solid #ff00ff' : 'none',
             borderColor: resolvedTheme === 'light' ? '#FFF #999 #999 #FFF' : undefined,
-            boxShadow: resolvedTheme === 'light' ? '4px 4px 0 #444, 8px 8px 0 rgba(0,0,0,0.15)' :
-                       resolvedTheme === 'bit' ? '0 0 0 2px #ff00ff, 0 0 0 4px #00ffff, 0 0 0 6px #ff00ff' : 
+            boxShadow: resolvedTheme === 'light' ? (isMobile ? '2px 2px 0 #444, 3px 3px 0 rgba(0,0,0,0.15)' : '4px 4px 0 #444, 8px 8px 0 rgba(0,0,0,0.15)') :
+                       resolvedTheme === 'bit' ? (isMobile ? '0 0 3px #ff00ff' : '0 0 0 2px #ff00ff, 0 0 0 4px #00ffff, 0 0 0 6px #ff00ff') : 
                        resolvedTheme === 'dark' ? '0 10px 30px rgba(0,0,0,1)' : '0 10px 30px rgba(12,25,41,0.5)',
             imageRendering: resolvedTheme === 'bit' ? 'pixelated' : 'auto',
             position: isFullscreen ? 'fixed' : 'relative',
@@ -1404,30 +1844,32 @@ export function IptvSection() {
           }}
         >
           {/* Classic Window Top Menu Header */}
-          <div className={`bg-gradient-to-r ${skin.headerGradient} border-b ${resolvedTheme === 'midnight' ? 'border-[#1e3a5f]' : resolvedTheme === 'bit' ? 'border-[#ff00ff]' : resolvedTheme === 'dark' ? 'border-[#1f1f1f]' : 'border-zinc-600'} h-8 flex items-center justify-between px-3 text-white flex-shrink-0`}>
+          <div className={`bg-gradient-to-r ${skin.headerGradient} border-b ${resolvedTheme === 'midnight' ? 'border-[#1e3a5f]' : resolvedTheme === 'bit' ? 'border-[#ff00ff]' : resolvedTheme === 'dark' ? 'border-[#1f1f1f]' : 'border-zinc-600'} ${isMobile ? 'h-9 sticky top-0 z-40' : 'h-8'} flex items-center justify-between px-3 text-white flex-shrink-0`}>
             <div className="flex items-center gap-1.5">
               <div className={`w-2.5 h-2.5 rounded-full ${resolvedTheme === 'dark' ? 'bg-[#FF453A]' : 'bg-red-500'} ${resolvedTheme === 'bit' ? 'border border-[#ff00ff]' : 'border border-red-600 shadow-inner'}`} />
               <div className={`w-2.5 h-2.5 rounded-full ${resolvedTheme === 'dark' ? 'bg-[#FFD60A]' : 'bg-yellow-400'} ${resolvedTheme === 'bit' ? 'border border-[#ff00ff]' : 'border border-yellow-500 shadow-inner'}`} />
               <div className={`w-2.5 h-2.5 rounded-full ${resolvedTheme === 'dark' ? 'bg-[#B8FF3F]' : 'bg-green-500'} ${resolvedTheme === 'bit' ? 'border border-[#00ffff]' : 'border border-green-600 shadow-inner'}`} />
             </div>
-
+ 
             <div className={`flex items-center gap-2 font-mono text-xs font-bold leading-none ${
               resolvedTheme === 'dark' ? 'text-[#B8FF3F]' : 
               resolvedTheme === 'bit' ? 'text-[#00ffff] uppercase' : 
               resolvedTheme === 'midnight' ? 'text-white' : 'text-zinc-100'
-            }`}>
-              {activeCategory === 'radio' && <Radio className="w-3.5 h-3.5" />}
-              {activeCategory === 'music_channels' && <Tv className="w-3.5 h-3.5" />}
-              <span>
+            } ${isMobile ? 'max-w-[60%] text-[10px]' : ''}`}>
+              {activeCategory === 'radio' && <Radio className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />}
+              {activeCategory === 'music_channels' && <Tv className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />}
+              <span className={isMobile ? 'truncate' : ''}>
                 {activeStream ? (resolvedTheme === 'bit' ? activeStream.name.toUpperCase() : activeStream.name) : (resolvedTheme === 'bit' ? 'QAI_TV: NO CHANNELS' : 'قائمة فارغة - أضف بثك الآن')}
               </span>
             </div>
-
+ 
             <div className="flex items-center gap-1">
               <button 
                 onClick={handleResetToPresets}
                 title="إعادة ضبط المصنع"
-                className={`font-mono text-[10px] px-1.5 py-0.5 border shadow-[inset_1px_1px_0_rgba(255,255,255,0.2)] rounded ${
+                className={`font-mono border shadow-[inset_1px_1px_0_rgba(255,255,255,0.2)] rounded flex items-center justify-center ${
+                  isMobile ? 'text-xs px-2.5 py-1 min-w-[36px] min-h-[36px]' : 'text-[10px] px-1.5 py-0.5'
+                } ${
                   resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-[#333] text-[#B8FF3F] border-[#1d1d1d]' : 
                   resolvedTheme === 'bit' ? 'bg-[#2d1b69] hover:bg-[#120b25] text-[#ffff00] border-[#ff00ff]' : 
                   resolvedTheme === 'midnight' ? 'bg-[#101f30] hover:bg-[#162237] text-[#60a5fa] border-[#1e3a5f]' : 
@@ -1438,8 +1880,10 @@ export function IptvSection() {
               </button>
               <button 
                 onClick={() => setIsTvOpen(false)}
-                className={`font-mono text-xs font-bold px-2 py-0.5 border shadow-[inset_1px_1px_0_rgba(255,255,255,0.2)] rounded cursor-pointer ${
-                  resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-red-700 text-[#B8FF3F] border-[#1d1d1d]' : 
+                className={`font-mono border shadow-[inset_1px_1px_0_rgba(255,255,255,0.2)] rounded cursor-pointer flex items-center justify-center ${
+                  isMobile ? 'text-xs px-3 py-1 min-w-[36px] min-h-[36px]' : 'text-xs px-2 py-0.5'
+                } ${
+                  resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-red-700 text-[#B8FF3F] text-[#B8FF3F] border-[#1d1d1d]' : 
                   resolvedTheme === 'bit' ? 'bg-[#2d1b69] hover:bg-red-700 text-[#ff00ff] border-[#ff00ff]' : 
                   resolvedTheme === 'midnight' ? 'bg-[#101f30] hover:bg-red-700 text-white border-[#1e3a5f]' : 
                   'bg-zinc-600 hover:bg-red-700 text-white border-zinc-800'
@@ -1449,10 +1893,18 @@ export function IptvSection() {
               </button>
             </div>
           </div>
-
-          <div className="flex flex-1 overflow-hidden">
+ 
+          <div 
+            style={{
+              height: isMobile ? 'auto' : (isFullscreen ? '100dvh' : '520px'),
+              minHeight: isMobile ? '100dvh' : undefined,
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+            }}
+            className="flex-1 overflow-hidden"
+          >
             {/* LEFT PLAYER VIEWPORT SCREEN PANEL */}
-            <div className="flex-1 flex flex-col bg-black relative min-w-0">
+            <div className={`flex flex-col bg-black relative min-w-0 ${isMobile ? 'w-full h-auto' : 'flex-1'}`}>
               <div 
                 className="flex-1 relative flex items-center justify-center overflow-hidden bg-zinc-950"
               >
@@ -1698,7 +2150,9 @@ export function IptvSection() {
 
               {/* Lower Deck: Hardware console sliders */}
               <div 
-                className={`py-1.5 px-3 flex items-center gap-3 flex-wrap flex-shrink-0 z-30 font-mono text-xs border-t ${
+                className={`py-1.5 px-3 flex items-center gap-3 flex-shrink-0 z-30 font-mono text-xs border-t ${
+                  isMobile ? 'flex-nowrap overflow-x-auto select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]' : 'flex-wrap'
+                } ${
                   resolvedTheme === 'dark' ? 'bg-[#0d0d0d] text-zinc-400 border-[#1f1f1f]' : 
                   resolvedTheme === 'bit' ? 'bg-[#2d1b69] text-[#ff00ff] border-[#ff00ff] uppercase' : 
                   resolvedTheme === 'midnight' ? 'bg-[#0c1929] text-[#94a3b8] border-[#1e3a5f]' : 'bg-[#C0C0C0] text-zinc-950 border-zinc-400'
@@ -1808,348 +2262,32 @@ export function IptvSection() {
               </div>
             </div>
 
-            {/* THREE-TAB SIDEBAR LAYOUT */}
-            {isSidebarOpen && !isFullscreen && (() => {
-              const isTvActive = activeCategory === 'music_channels';
-              const isRadioActive = activeCategory === 'radio';
-              const isMusicAudioActive = activeCategory === 'music_audio';
+            {/* THREE-TAB SIDEBAR LAYOUT & MOBILE COMPLEMENT STACK */}
+            {isMobile && (
+              <>
+                {renderTabSwitcher()}
+                {renderSearchBar()}
+                {renderSubGroups()}
+                {renderStreamList()}
+                {renderBottomStatsAndActions()}
+              </>
+            )}
 
-              let tvTabClass = '';
-              let radioTabClass = '';
-              let musicAudioTabClass = '';
-
-              if (resolvedTheme === 'dark') {
-                tvTabClass = isTvActive ? 'bg-[#B8FF3F] text-black font-bold' : 'bg-[#111] text-zinc-400';
-                radioTabClass = isRadioActive ? 'bg-[#B8FF3F] text-black font-bold' : 'bg-[#111] text-zinc-400';
-                musicAudioTabClass = isMusicAudioActive ? 'bg-[#B8FF3F] text-black font-bold' : 'bg-[#111] text-zinc-400';
-              } else if (resolvedTheme === 'bit') {
-                tvTabClass = isTvActive ? 'bg-[#ff00ff] text-white font-bold' : 'bg-[#2d1b69] text-[#00ffff]';
-                radioTabClass = isRadioActive ? 'bg-[#ff00ff] text-white font-bold' : 'bg-[#2d1b69] text-[#00ffff]';
-                musicAudioTabClass = isMusicAudioActive ? 'bg-[#ff00ff] text-white font-bold' : 'bg-[#2d1b69] text-[#00ffff]';
-              } else if (resolvedTheme === 'midnight') {
-                tvTabClass = isTvActive ? 'bg-[#2563eb] text-white font-bold' : 'bg-[#0c1929] text-[#94a3b8]';
-                radioTabClass = isRadioActive ? 'bg-[#2563eb] text-white font-bold' : 'bg-[#0c1929] text-[#94a3b8]';
-                musicAudioTabClass = isMusicAudioActive ? 'bg-[#2563eb] text-white font-bold' : 'bg-[#0c1929] text-[#94a3b8]';
-              } else {
-                // light
-                tvTabClass = isTvActive ? 'bg-zinc-800 text-white font-bold' : 'bg-zinc-300 text-zinc-700';
-                radioTabClass = isRadioActive ? 'bg-zinc-800 text-white font-bold' : 'bg-zinc-300 text-zinc-700';
-                musicAudioTabClass = isMusicAudioActive ? 'bg-zinc-800 text-white font-bold' : 'bg-zinc-300 text-zinc-700';
-              }
-
-              return (
-                <div 
-                  className={`w-60 flex-shrink-0 flex flex-col h-full overflow-hidden border-l ${skin.sidebarBg} ${
-                    resolvedTheme === 'dark' ? 'border-[#1f1f1f]' : 
-                    resolvedTheme === 'bit' ? 'border-[#ff00ff]' : 
-                    resolvedTheme === 'midnight' ? 'border-[#1e3a5f]' : 'border-zinc-400'
-                  }`}
-                >
-                  {/* Three-Tab Top Bar */}
-                  <div className={`grid grid-cols-3 h-9 flex-shrink-0 border-b ${
-                    resolvedTheme === 'dark' ? 'border-[#1f1f1f]' : 
-                    resolvedTheme === 'bit' ? 'border-[#ff00ff]' : 
-                    resolvedTheme === 'midnight' ? 'border-[#1e3a5f]' : 'border-zinc-400'
-                  }`}>
-                    <button
-                      onClick={() => setActiveCategory('music_channels')}
-                      className={`flex items-center justify-center gap-1 text-[9px] font-bold cursor-pointer transition-all ${tvTabClass}`}
-                    >
-                      <Tv className="w-3 h-3" />
-                      <span>{resolvedTheme === 'bit' ? 'TV' : '📺 تلفزة'}</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveCategory('radio')}
-                      className={`flex items-center justify-center gap-1 text-[9px] font-bold cursor-pointer transition-all ${radioTabClass}`}
-                    >
-                      <Radio className="w-3.5 h-3.5" />
-                      <span>{resolvedTheme === 'bit' ? 'RADIO' : '📻 راديو'}</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveCategory('music_audio')}
-                      className={`flex items-center justify-center gap-1 text-[9px] font-bold cursor-pointer transition-all ${musicAudioTabClass}`}
-                    >
-                      <span className="text-xs">🎵</span>
-                      <span>{resolvedTheme === 'bit' ? 'MUSIC' : 'موسيقى'}</span>
-                    </button>
-                  </div>
-
-                  {/* Search Header box */}
-                  <div className={`border-b p-1.5 flex flex-col gap-1.5 flex-shrink-0 ${
-                    resolvedTheme === 'dark' ? 'bg-[#151515] border-[#1f1f1f]' : 
-                    resolvedTheme === 'bit' ? 'bg-[#2d1b69] border-[#ff00ff]' : 
-                    resolvedTheme === 'midnight' ? 'bg-[#101f30] border-[#1e3a5f]' : 'bg-zinc-300 border-zinc-400'
-                  }`}>
-                    <div className={`flex items-center p-1 rounded border-2 ${
-                      resolvedTheme === 'dark' ? 'bg-[#050505] border-[#333]' : 
-                      resolvedTheme === 'bit' ? 'bg-[#120b25] border-[#00ffff]' : 
-                      resolvedTheme === 'midnight' ? 'bg-[#040a12] border-[#1e3a5f]' : 'bg-white border-zinc-500'
-                    }`}>
-                      <Search className={`w-3.5 h-3.5 mr-1 ${
-                        resolvedTheme === 'dark' ? 'text-[#B8FF3F]' : 
-                        resolvedTheme === 'bit' ? 'text-[#00ffff]' : 
-                        resolvedTheme === 'midnight' ? 'text-[#60a5fa]' : 'text-zinc-500'
-                      }`} />
-                      <input
-                        type="text"
-                        dir="auto"
-                        placeholder="بحث ذكي بالأقسام والروابط..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={`bg-transparent border-none outline-none text-xs w-full font-sans ${
-                          resolvedTheme === 'dark' ? 'text-[#B8FF3F] placeholder-[#B8FF3F]/30' : 
-                          resolvedTheme === 'bit' ? 'text-[#00ffff] placeholder-[#00ffff]/40 font-mono' : 
-                          resolvedTheme === 'midnight' ? 'text-[#60a5fa] placeholder-[#1e3a5f]' : 'text-zinc-900'
-                        }`}
-                      />
-                      {searchQuery && (
-                        <button onClick={() => setSearchQuery('')}>
-                          <X className="w-3 h-3 text-zinc-400 hover:text-black" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Unified Content listing Pane */}
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Sort Info Banner */}
-                    {aiInfoMsg && (
-                      <div className={`p-2 text-center text-[10px] font-mono font-medium transition-all animate-bounce ${
-                        isSorting 
-                          ? 'bg-blue-600/25 text-blue-300 border-b border-blue-500/20' 
-                          : aiInfoMsg.startsWith('❌') 
-                            ? 'bg-red-600/25 text-red-300 border-b border-red-500/20' 
-                            : 'bg-green-600/25 text-green-300 border-b border-green-500/20'
-                      }`}>
-                        {aiInfoMsg}
-                      </div>
-                    )}
-
-                    <div 
-                      onScroll={(e) => {
-                        if (activeCategory === 'music_channels') {
-                          setScrollTopMusic(e.currentTarget.scrollTop);
-                        } else if (activeCategory === 'radio') {
-                          setScrollTopRadio(e.currentTarget.scrollTop);
-                        } else if (activeCategory === 'music_audio') {
-                          setScrollTopMusicAudio(e.currentTarget.scrollTop);
-                        }
-                      }}
-                      className={`flex-1 overflow-y-auto divide-y ${skin.listBg} ${
-                        resolvedTheme === 'dark' ? 'divide-[#1f1f1f]' : 
-                        resolvedTheme === 'bit' ? 'divide-[#ff00ff]/20' : 
-                        resolvedTheme === 'midnight' ? 'divide-[#1e3a5f]/40' : 'divide-zinc-200'
-                      }`}
-                      style={{ height: '340px' }}
-                    >
-                      {filteredVisibleStreams.length === 0 ? (
-                        <div className={`p-4 text-center text-[10px] font-sans ${
-                          resolvedTheme === 'dark' ? 'text-zinc-500' : 
-                          resolvedTheme === 'bit' ? 'text-[#00ffff]' : 
-                          resolvedTheme === 'midnight' ? 'text-[#94a3b8]' : 'text-zinc-500'
-                        }`}>
-                          {resolvedTheme === 'bit' ? 'NO CHANNELS FOUND' : 'لا توجد قنوات مطابقة.'}
-                        </div>
-                      ) : (() => {
-                        const total = filteredVisibleStreams.length;
-                        const currentScrollTop = activeCategory === 'music_channels' 
-                          ? scrollTopMusic 
-                          : activeCategory === 'radio' 
-                            ? scrollTopRadio 
-                            : scrollTopMusicAudio;
-                        const visibleStart = Math.floor(currentScrollTop / 44);
-                        const visibleEnd = Math.min(total, visibleStart + Math.ceil(340 / 44) + 3);
-                        const slicedItems = filteredVisibleStreams.slice(visibleStart, visibleEnd);
-                        const topSpacerHeight = visibleStart * 44;
-                        const bottomSpacerHeight = Math.max(0, (total - visibleEnd) * 44);
-
-                        return (
-                          <>
-                            <div style={{ height: `${topSpacerHeight}px` }} />
-                            {slicedItems.map(item => (
-                              <div
-                                key={item.id}
-                                ref={activeStream?.id === item.id ? activeItemRef : null}
-                                onClick={() => {
-                                  setActiveStream({
-                                    ...item,
-                                    currentQualityIndex: 0
-                                  });
-                                }}
-                                className={`p-2 transition-colors cursor-pointer flex items-center justify-between group opacity-0 animate-fadeIn ${
-                                  activeStream?.id === item.id 
-                                    ? (resolvedTheme === 'dark' ? 'bg-[#B8FF3F] text-black font-bold' : 
-                                       resolvedTheme === 'bit' ? 'bg-[#ff00ff] text-white font-black' : 
-                                       resolvedTheme === 'midnight' ? 'bg-[#2563eb] text-white' : 'bg-blue-800 text-white')
-                                    : (resolvedTheme === 'dark' ? 'hover:bg-[#151515] text-zinc-300' : 
-                                       resolvedTheme === 'bit' ? 'hover:bg-[#ff00ff]/10 text-[#00ffff]' : 
-                                       resolvedTheme === 'midnight' ? 'hover:bg-[#101f30] text-[#94a3b8]' : 'hover:bg-zinc-200 text-zinc-950')
-                                }`}
-                                style={{ height: '44px' }}
-                              >
-                                <div className="flex items-center gap-2 min-w-0 pr-2">
-                                  <img
-                                    loading="lazy"
-                                    src={item.logo}
-                                    alt=""
-                                    className="w-5 h-5 object-contain bg-white rounded border border-zinc-300 flex-shrink-0"
-                                    onError={(e) => {
-                                      e.currentTarget.onerror = null; // prevent infinite loop
-                                      e.currentTarget.src = getLogoFallbackSvg(item.name, item.category);
-                                    }}
-                                  />
-                                  <div className="min-w-0">
-                                    <div className={`text-[11px] font-bold truncate ${resolvedTheme === 'bit' ? 'uppercase' : ''}`}>{item.name}</div>
-                                    <div className={`text-[8px] truncate opacity-70`}>{item.group}</div>
-                                  </div>
-                                </div>
-                                
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button
-                                    onClick={(e) => handleOpenEdit(item, e)}
-                                    className={`p-1 rounded-sm ${resolvedTheme === 'dark' ? 'hover:bg-[#222]' : resolvedTheme === 'bit' ? 'hover:bg-[#ff00ff]/20' : resolvedTheme === 'midnight' ? 'hover:bg-[#101f30]' : 'hover:bg-zinc-400'}`}
-                                    title="تعديل"
-                                  >
-                                    <Edit3 className={`w-3 h-3 ${resolvedTheme === 'dark' ? 'text-[#B8FF3F]' : resolvedTheme === 'bit' ? 'text-[#00ffff]' : 'text-emerald-800'}`} />
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleDeleteStream(item.id, e)}
-                                    className={`p-1 rounded-sm ${resolvedTheme === 'dark' ? 'hover:bg-[#222]' : resolvedTheme === 'bit' ? 'hover:bg-[#ff00ff]/20' : resolvedTheme === 'midnight' ? 'hover:bg-[#101f30]' : 'hover:bg-zinc-400'}`}
-                                    title="حذف"
-                                  >
-                                    <Trash2 className="w-3 h-3 text-red-600" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                            <div style={{ height: `${bottomSpacerHeight}px` }} />
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-
-                {/* Subgroups filters pill row */}
-                {subGroupChips.length > 0 && (
-                  <div className={`p-1 flex flex-wrap gap-1 max-h-16 overflow-y-auto flex-shrink-0 border-t ${
-                    resolvedTheme === 'dark' ? 'bg-[#151515] border-[#1f1f1f]' : 
-                    resolvedTheme === 'bit' ? 'bg-[#2d1b69] border-[#ff00ff]' : 
-                    resolvedTheme === 'midnight' ? 'bg-[#101f30] border-[#1e3a5f]' : 'bg-zinc-300 border-zinc-400'
-                  }`}>
-                    <button
-                      onClick={() => setActiveSubGroup('All')}
-                      className={`text-[9px] px-1.5 py-0.5 rounded border transition-all ${
-                        activeSubGroup === 'All' 
-                          ? (resolvedTheme === 'dark' ? 'bg-[#B8FF3F] text-black border-[#B8FF3F] font-bold' : 
-                             resolvedTheme === 'bit' ? 'bg-[#00ffff] text-black border-[#00ffff] font-bold' : 
-                             resolvedTheme === 'midnight' ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-zinc-950 text-white border-zinc-950')
-                          : (resolvedTheme === 'dark' ? 'bg-[#050505] text-[#B8FF3F]/70 border-[#333] hover:text-[#B8FF3F]' : 
-                             resolvedTheme === 'bit' ? 'bg-[#120b25] text-[#00ffff]/70 border-[#00ffff]/30 hover:text-[#00ffff]' : 
-                             resolvedTheme === 'midnight' ? 'bg-[#040a12] text-[#94a3b8] border-[#1e3a5f] hover:text-white' : 'bg-zinc-100 text-zinc-800 border-zinc-300 hover:bg-zinc-200')
-                      }`}
-                    >
-                      {resolvedTheme === 'bit' ? 'ALL' : 'الكل'}
-                    </button>
-                    {subGroupChips.map(g => (
-                      <button
-                        key={g}
-                        onClick={() => setActiveSubGroup(g)}
-                        className={`text-[9px] px-1.5 py-0.5 rounded border transition-all ${
-                          activeSubGroup === g
-                            ? (resolvedTheme === 'dark' ? 'bg-[#B8FF3F] text-black border-[#B8FF3F] font-bold' : 
-                               resolvedTheme === 'bit' ? 'bg-[#00ffff] text-black border-[#00ffff] font-bold' : 
-                               resolvedTheme === 'midnight' ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-zinc-950 text-white border-zinc-950')
-                            : (resolvedTheme === 'dark' ? 'bg-[#050505] text-[#B8FF3F]/70 border-[#333] hover:text-[#B8FF3F]' : 
-                               resolvedTheme === 'bit' ? 'bg-[#120b25] text-[#00ffff]/70 border-[#00ffff]/30 hover:text-[#00ffff]' : 
-                               resolvedTheme === 'midnight' ? 'bg-[#040a12] text-[#94a3b8] border-[#1e3a5f] hover:text-white' : 'bg-zinc-100 text-zinc-800 border-zinc-300 hover:bg-zinc-200')
-                        }`}
-                      >
-                        {g}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Bottom Add button & AI Organizer */}
-                <div className={`border-t p-2 flex flex-col gap-2 flex-shrink-0 ${
-                  resolvedTheme === 'dark' ? 'bg-[#151515] border-[#1f1f1f]' : 
-                  resolvedTheme === 'bit' ? 'bg-[#2d1b69] border-[#ff00ff]' : 
-                  resolvedTheme === 'midnight' ? 'bg-[#101f30] border-[#1e3a5f]' : 'bg-zinc-300 border-zinc-400'
-                }`}>
-                  <div className="flex items-center justify-between min-w-0">
-                    <span className={`text-[9px] font-mono font-bold whitespace-nowrap ${
-                      resolvedTheme === 'dark' ? 'text-[#B8FF3F]/70' : 
-                      resolvedTheme === 'bit' ? 'text-[#ff00ff]' : 
-                      resolvedTheme === 'midnight' ? 'text-[#94a3b8]' : 'text-zinc-600'
-                    }`}>
-                      {resolvedTheme === 'bit' ? `STREAMS_TOTAL: ${streams.length}` : `إجمالي البثوث: ${streams.length}`}
-                    </span>
-                    {isLoadingPlaylists && (
-                      <span className={`text-[9px] animate-pulse font-mono whitespace-nowrap ${
-                        resolvedTheme === 'dark' ? 'text-zinc-500' : 
-                        resolvedTheme === 'bit' ? 'text-[#00ffff]' : 
-                        resolvedTheme === 'midnight' ? 'text-[#3b82f6]' : 'text-zinc-500'
-                      }`}>
-                        {resolvedTheme === 'bit' ? '⏳ LOADING M3U...' : '⏳ جاري تحميل القوائم...'}
-                      </span>
-                    )}
-                    {isHealthChecking && (
-                      <span className="text-[9px] animate-pulse font-mono opacity-60">
-                        🔍 فحص الجودة...
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-1.5">
-                    {/* Lucky Dip Button */}
-                    <button
-                      onClick={playRandomStream}
-                      title="بث عشوائي (نرد الحظ)"
-                      className={`flex-1 flex items-center justify-center gap-1 text-[9px] font-mono font-bold py-1 px-1.5 border shadow-sm rounded transition-all cursor-pointer ${
-                        resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-[#333] text-[#B8FF3F] border-[#1d1d1d]' : 
-                        resolvedTheme === 'bit' ? 'bg-[#120b25] hover:bg-[#ff00ff]/20 text-[#ff00ff] border-[#ff00ff]' : 
-                        resolvedTheme === 'midnight' ? 'bg-[#1e3a5f] hover:bg-[#2563eb] text-white border-[#2563eb]' : 
-                        'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300 font-sans'
-                      }`}
-                    >
-                      <span>🎲</span>
-                      <span>{resolvedTheme === 'bit' ? 'DICE' : 'الحظ'}</span>
-                    </button>
-
-                    {/* Alphabetical Sort button */}
-                    <button
-                      onClick={handleSortAlphabetically}
-                      disabled={isSorting || streams.length === 0}
-                      title="ترتيب أبجدي بالأحرف والأرقام"
-                      className={`flex-1 flex items-center justify-center gap-1 text-[9px] font-mono font-bold py-1 px-1.5 border shadow-sm rounded transition-all cursor-pointer disabled:opacity-50 ${
-                        resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-[#333] text-[#B8FF3F] border-[#1d1d1d]' : 
-                        resolvedTheme === 'bit' ? 'bg-[#120b25] hover:bg-[#ff00ff]/20 text-[#00ffff] border-[#ff00ff]' : 
-                        resolvedTheme === 'midnight' ? 'bg-[#1e3a5f] hover:bg-[#101f30] text-sky-400 border-[#1e3a5f]' : 
-                        'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300 font-sans'
-                      }`}
-                    >
-                      <SortAsc className="w-3 h-3 text-sky-500" />
-                      <span>{resolvedTheme === 'bit' ? 'SORT A-Z' : 'ترتيب أبجدي'}</span>
-                    </button>
-
-                    {/* New stream button */}
-                    <button
-                      onClick={handleOpenAdd}
-                      className={`flex-1 flex items-center justify-center gap-1 text-[9px] font-mono font-bold py-1 px-1.5 border shadow-sm rounded transition-all cursor-pointer ${
-                        resolvedTheme === 'dark' ? 'bg-[#222] hover:bg-[#333] text-[#B8FF3F] border-[#1d1d1d]' : 
-                        resolvedTheme === 'bit' ? 'bg-[#120b25] hover:bg-[#ff00ff]/20 text-[#00ffff] border-[#ff00ff]' : 
-                        resolvedTheme === 'midnight' ? 'bg-[#1e3a5f] hover:bg-[#2563eb] text-white border-[#2563eb]' : 
-                        'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-950 font-sans'
-                      }`}
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>{resolvedTheme === 'bit' ? 'ADD' : 'إضافة'}</span>
-                    </button>
-                  </div>
-                </div>
+            {!isMobile && isSidebarOpen && !isFullscreen && (
+              <div 
+                className={`w-60 flex-shrink-0 flex flex-col h-full overflow-hidden border-l ${skin.sidebarBg} ${
+                  resolvedTheme === 'dark' ? 'border-[#1f1f1f]' : 
+                  resolvedTheme === 'bit' ? 'border-[#ff00ff]' : 
+                  resolvedTheme === 'midnight' ? 'border-[#1e3a5f]' : 'border-zinc-400'
+                }`}
+              >
+                {renderTabSwitcher()}
+                {renderSearchBar()}
+                {renderStreamList()}
+                {renderSubGroups()}
+                {renderBottomStatsAndActions()}
               </div>
-            );
-          })()}
+            )}
           </div>
 
           {/* Tooltip Overlay above the footer bar */}

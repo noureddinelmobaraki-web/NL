@@ -10,7 +10,8 @@ import {
   Aperture,
   Volume2,
   VolumeX,
-  Maximize2
+  Maximize2,
+  Monitor
 } from "lucide-react";
 import { motion, Variants } from "framer-motion";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
@@ -34,6 +35,7 @@ import { HeroSection } from './components/sections/HeroSection';
 import { ContactSection } from './components/sections/ContactSection';
 import { IptvSection } from './components/sections/IptvSection';
 import { StreamingSection } from './components/sections/StreamingSection';
+import { Win12Section } from './components/sections/Win12Section';
 import { HighlightsSection } from './components/sections/HighlightsSection';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { 
@@ -533,14 +535,14 @@ export default function App() {
         {/* Navigation Tabs */}
         <motion.div 
           variants={itemVariants}
-          className="flex flex-wrap justify-center sm:justify-start gap-5 md:gap-6 mb-4"
+          className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-start sm:gap-5 md:gap-6 mb-4"
         >
           <button 
             onClick={() => scrollToSection('me-bit-gallery')}
             className={resolvedTheme === 'dark' ? 
-              'font-mono text-[0.65rem] tracking-[0.2em] uppercase text-white border border-white/10 px-4 py-2 hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
+              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
               (resolvedTheme === 'light' ? 
-                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-1 bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
+                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
                 'manga-paper-tab'
               )
             }
@@ -554,9 +556,9 @@ export default function App() {
           <button 
             onClick={() => scrollToSection('my-songs-section')}
             className={resolvedTheme === 'dark' ? 
-              'font-mono text-[0.65rem] tracking-[0.2em] uppercase text-white border border-white/10 px-4 py-2 hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
+              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
               (resolvedTheme === 'light' ? 
-                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-1 bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
+                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
                 'manga-paper-tab'
               )
             }
@@ -570,9 +572,9 @@ export default function App() {
           <button 
             onClick={() => scrollToSection('drawings-section')}
             className={resolvedTheme === 'dark' ? 
-              'font-mono text-[0.65rem] tracking-[0.2em] uppercase text-white border border-white/10 px-4 py-2 hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
+              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
               (resolvedTheme === 'light' ? 
-                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-1 bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
+                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
                 'manga-paper-tab'
               )
             }
@@ -589,9 +591,9 @@ export default function App() {
               setIsLensGalleryOpen(true);
             }}
             className={resolvedTheme === 'dark' ? 
-              'font-mono text-[0.65rem] tracking-[0.2em] uppercase text-white border border-white/10 px-4 py-2 hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
+              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
               (resolvedTheme === 'light' ? 
-                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-1 bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
+                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
                 'manga-paper-tab'
               )
             }
@@ -601,6 +603,22 @@ export default function App() {
           >
             <Aperture className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
             LENS
+          </button>
+          <button
+            onClick={() => scrollToSection('win12-launcher-section')}
+            className={`${resolvedTheme === 'dark' ? 
+              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
+              (resolvedTheme === 'light' ? 
+                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
+                'manga-paper-tab'
+              )
+            } col-span-2 sm:col-span-auto`}
+            style={resolvedTheme === 'light' ? {
+              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
+            } : undefined}
+          >
+            <Monitor className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
+            WIN12 OS
           </button>
         </motion.div>
 
@@ -795,6 +813,11 @@ export default function App() {
           {/* IPTV Live TV Section */}
           <motion.div variants={itemVariants} id="iptv-section">
             <IptvSection />
+          </motion.div>
+
+          {/* Windows 12 Simulator Section */}
+          <motion.div variants={itemVariants} id="win12-launcher-section">
+            <Win12Section />
           </motion.div>
       </div>
 

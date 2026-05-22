@@ -29,5 +29,7 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "forceConsistentCasingInFileNames": true
-  }
+  },
+  "include": ["src", "server.ts", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "public"]
 }

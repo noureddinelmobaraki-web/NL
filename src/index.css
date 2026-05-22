@@ -15,6 +15,13 @@
 
 @import "tailwindcss";
 
+:root {
+  --vh-mobile: 100dvh;
+  --mobile-content-pad-bottom: calc(72px + env(safe-area-inset-bottom) + 16px);
+  --touch-min: 44px;
+  --mobile-gutter: clamp(12px, 4vw, 20px);
+}
+
 [data-theme="dark"] {
   /* === EDITORIAL VOID === */
   --bg-primary:        #000000;
@@ -631,6 +638,7 @@ body::before {
   /* Smooth scroll */
   html {
     scroll-behavior: smooth;
+    overscroll-behavior: contain;
   }
   
   /* Better tap highlighting on mobile */
@@ -1198,6 +1206,11 @@ body::before {
 
 html {
   scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+#retro-tv-section {
+  overscroll-behavior: none;
 }
 
 *, *::before, *::after {
@@ -1212,6 +1225,7 @@ body {
   background: var(--bg-page);
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh;
   background-image: radial-gradient(circle at 2px 2px, var(--halftone-color) 1px, transparent 0);
   background-size: 40px 40px;
   overflow-x: hidden;
@@ -1221,12 +1235,38 @@ body {
   text-rendering: optimizeLegibility;
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   overscroll-behavior-y: contain;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+@media (min-width: 1024px) {
+  body {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+@supports not (height: 100dvh) {
+  .needs-dvh {
+    height: 100vh;
+  }
+}
+
+@media (max-width: 767px) {
+  .mobile-stack { flex-direction: column !important; }
+  .mobile-w-full { width: 100% !important; max-width: 100% !important; }
+  .mobile-h-auto { height: auto !important; }
+
+  *, *::before, *::after {
+    transition: none !important;
+  }
+  :where(button, a, [role="button"], input, .manga-card, .manga-button, h1, h2, h3, .nav-item) {
+    transition: background-color 0.25s, color 0.25s, border-color 0.25s !important;
+  }
 }
 
 /* Allow text selection only in lyrics and song titles */
@@ -1413,4 +1453,24 @@ button {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
+}
+
+@media (max-width: 767px) {
+  .manga-paper-tab {
+    padding: 8px 14px !important;
+    min-height: 44px !important;
+    font-size: 0.9rem !important;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.85) !important;
+    clip-path: none !important;
+    border-radius: 4px !important;
+  }
+  .manga-paper-tab:nth-child(1),
+  .manga-paper-tab:nth-child(2),
+  .manga-paper-tab:nth-child(3),
+  .manga-paper-tab:nth-child(4),
+  .manga-paper-tab:nth-child(5) {
+    transform: rotate(0deg) !important;
+  }
+  .manga-paper-tab::before { display: none !important; }
+  .manga-paper-tab::after  { display: none !important; }
 }
