@@ -225,7 +225,10 @@ ${JSON.stringify(streams.map(s => ({ id: s.id, name: s.name, category: s.categor
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
+    app.use('/NL', express.static(distPath));
+    app.use('/nradio', express.static(distPath));
     app.get('*all', (_req, res) => {
+      // If the request is for a subpath like /NL/something, send the root index.html
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

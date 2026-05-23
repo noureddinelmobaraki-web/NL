@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import emailjs from '@emailjs/browser';
+import { Mail, MessageCircle, Send } from 'lucide-react';
 
 type Mode = 'anonymous' | 'named';
 type Status = 'idle' | 'sending' | 'success' | 'error';
@@ -7,6 +8,30 @@ type Status = 'idle' | 'sending' | 'success' | 'error';
 const EMAILJS_SERVICE = import.meta.env.VITE_EMAILJS_SERVICE_ID ?? 'service_715qfyk';
 const EMAILJS_TEMPLATE = import.meta.env.VITE_EMAILJS_TEMPLATE_ID ?? 'template_rvp2u2k';
 const EMAILJS_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY ?? '4jAqmjHZpNREKOgNR';
+
+const CONTACT_METHODS = [
+  {
+    name: 'Gmail',
+    value: 'noureddinelmobaraki@gmail.com',
+    url: 'mailto:noureddinelmobaraki@gmail.com',
+    icon: Mail,
+    bg: 'linear-gradient(135deg, #EA4335 0%, #B31412 100%)',
+  },
+  {
+    name: 'WhatsApp',
+    value: '+212 612-806932',
+    url: 'https://wa.me/212612806932',
+    icon: MessageCircle,
+    bg: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+  },
+  {
+    name: 'Telegram',
+    value: '+212 612 806932',
+    url: 'https://t.me/212612806932',
+    icon: Send,
+    bg: 'linear-gradient(135deg, #0088CC 0%, #005580 100%)',
+  },
+];
 
 export const ContactForm = () => {
   const [mode, setMode] = useState<Mode>('anonymous');
@@ -140,6 +165,34 @@ export const ContactForm = () => {
 
         <h2 style={styles.title}>صارحني</h2>
 
+        {/* بطاقات التواصل المباشر */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          {CONTACT_METHODS.map((method) => (
+            <a
+              key={method.name}
+              href={method.url}
+              target="_blank"
+              rel="noreferrer"
+              className="manga-border group relative flex flex-col items-center justify-center p-4 border-[4px] border-[var(--ink-color)] overflow-hidden bg-[var(--paper-color)] transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-[6px_6px_0px_var(--manga-shadow-color)]"
+            >
+              <div className="absolute inset-0 z-0 opacity-20 transition-opacity group-hover:opacity-30"
+                   style={{ background: method.bg }} />
+              <div className="relative z-10 flex flex-col items-center gap-2">
+                <div className="p-2 bg-[var(--ink-color)] text-[var(--text-inverse)] rounded-full">
+                  <method.icon className="w-6 h-6" />
+                </div>
+                <span className="font-manga text-lg font-black text-[var(--ink-color)] uppercase">
+                  {method.name}
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)] truncate max-w-full text-center">
+                  {method.value}
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+        <div className="manga-divider mb-6 opacity-30" />
+
         {status === 'success' ? (
           <div style={styles.successBox}>
             <div style={{
@@ -226,7 +279,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     width: '100%',
-    maxWidth: '500px',
+    maxWidth: '600px',
     background: 'var(--bg-glass)',
     border: '3px solid var(--ink-color)',
     borderRadius: '16px',

@@ -14,6 +14,8 @@ import {
 } from '../types';
 
 import { parseLRC } from './LyricsEngine';
+import { BlackHoleTransition } from './MusicMood/BlackHoleTransition';
+import { MusicMoodScreen }     from './MusicMood/MusicMoodScreen';
 
 
 
@@ -51,6 +53,9 @@ export const MySongs = ({
   const [lrcCache, setLrcCache] = useState<Record<number, LyricLine[]>>(loadSession().lrcCache);
   const [ambientColor, setAmbientColor] = useState('20, 20, 30');
   const { isMobile } = useDeviceType();
+  const [isMoodTransitioning, setIsMoodTransitioning] = useState(false);
+  const [isMoodActive, setIsMoodActive] = useState(false);
+  const moodAudioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     setLyricsOpen(false);
@@ -577,7 +582,7 @@ export const MySongs = ({
   return (
     <section 
       id="my-songs-section" 
-      className="w-full py-24 px-6 sm:px-12 font-sans selection:bg-indigo-500/30 relative overflow-hidden"
+      className="w-full py-24 px-6 sm:px-12 font-sans selection:bg-indigo-500/30 relative"
       style={{
         background: `radial-gradient(ellipse at 50% 0%, rgba(${ambientColor}, 0.25) 0%, transparent 65%), var(--bg-glass)`,
         backdropFilter: 'blur(14px) saturate(160%)',
@@ -587,6 +592,37 @@ export const MySongs = ({
         transition: 'background 1500ms ease'
       }}
     >
+      {/* ══ Music Mood Transition Overlay ══ */}
+      {isMoodTransitioning && (
+        <BlackHoleTransition
+          onNearComplete={() => {
+            // ابدأ الشاشة البيضاء قبل انتهاء الثقب بثانية
+            setIsMoodActive(true);
+          }}
+          onComplete={() => {
+            // أزل الثقب الأسود بعد أن الشاشة البيضاء بدأت بالظهور
+            setIsMoodTransitioning(false);
+          }}
+        />
+      )}
+
+      {/* ══ Music Mood White Screen ══ */}
+      {isMoodActive && (
+        <MusicMoodScreen
+          songs={songs}
+          existingAudioCtx={moodAudioCtxRef.current}
+          onExit={() => {
+            setIsMoodActive(false);
+            onSongStop?.();
+            // أعد تشغيل الموسيقى الخلفية
+            if (typeof audioManager.unpauseBg === 'function') {
+              audioManager.unpauseBg();
+            } else if (typeof (audioManager as any).resume === 'function') {
+              (audioManager as any).resume('bg');
+            }
+          }}
+        />
+      )}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.015] pointer-events-none" />
       <div className="absolute inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '4px 4px' }} />
       
@@ -597,9 +633,70 @@ export const MySongs = ({
             <h1 className="text-fluid-title font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)] drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
               MY SONGS
             </h1>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="h-1 w-12 bg-[var(--accent-indigo)]" />
-              <p className="text-[var(--text-muted)] font-medium tracking-[0.2em] text-xs uppercase">Curated Soundscape</p>
+              <p className="text-[var(--text-muted)] font-medium tracking-[0.2em] text-xs uppercase text-nowrap">Curated Soundscape</p>
+              
+              {songs.length > 0 && (
+                <button
+                  onClick={() => {
+                    // إنشاء AudioContext أثناء الـ user gesture — هذا مهم جداً
+                    if (!moodAudioCtxRef.current || moodAudioCtxRef.current.state === 'closed') {
+                      moodAudioCtxRef.current = new AudioContext();
+                    }
+                    if (moodAudioCtxRef.current.state === 'suspended') {
+                      moodAudioCtxRef.current.resume();
+                    }
+                    // أوقف أي أغنية حالية
+                    if (audioStatus === 'playing') {
+                      audioTagRef.current?.pause();
+                      onSongStop?.();
+                    }
+                    // أوقف الموسيقى الخلفية
+                    if (typeof audioManager.pause === 'function') {
+                      audioManager.pause('bg');
+                    }
+                    // ابدأ الانتقال
+                    setIsMoodTransitioning(true);
+                  }}
+                  className="music-mood-trigger"
+                  aria-label="تفعيل وضع Music Mood"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '24px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-muted)',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={e => {
+                    const btn = e.currentTarget as HTMLButtonElement;
+                    btn.style.borderColor = 'var(--accent, #B8FF3F)';
+                    btn.style.color = 'var(--accent, #B8FF3F)';
+                  }}
+                  onMouseLeave={e => {
+                    const btn = e.currentTarget as HTMLButtonElement;
+                    btn.style.borderColor = 'rgba(255,255,255,0.15)';
+                    btn.style.color = 'var(--text-muted)';
+                  }}
+                >
+                  {/* أيقونة ثقب أسود مبسّطة */}
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2"/>
+                    <circle cx="7" cy="7" r="2.5" fill="currentColor" opacity="0.8"/>
+                    <ellipse cx="7" cy="7" rx="6" ry="2" stroke="currentColor" strokeWidth="0.8" opacity="0.4"/>
+                  </svg>
+                  MUSIC MOOD
+                </button>
+              )}
             </div>
           </div>
           <div className="text-right flex flex-col items-end">

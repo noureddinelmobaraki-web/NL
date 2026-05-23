@@ -1474,3 +1474,190 @@ button {
   .manga-paper-tab::before { display: none !important; }
   .manga-paper-tab::after  { display: none !important; }
 }
+
+/* ════════════════════════════════
+   MUSIC MOOD — Animations
+════════════════════════════════ */
+
+@keyframes moodLineFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes moodDiceSpin {
+  0%   { transform: scale(1)    rotate(0deg); }
+  30%  { transform: scale(1.3)  rotate(180deg); }
+  100% { transform: scale(1)    rotate(360deg); }
+}
+
+@keyframes moodLoadingBar {
+  0%   { width: 0%;   margin-left: 0%; }
+  50%  { width: 60%;  margin-left: 20%; }
+  100% { width: 0%;   margin-left: 100%; }
+}
+
+@keyframes moodPulse {
+  from { transform: scale(0.8); opacity: 0.3; }
+  to   { transform: scale(1.4); opacity: 0.9; }
+}
+
+/* زر Music Mood في قسم الأغاني */
+.music-mood-trigger {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.music-mood-trigger::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(0,0,0,0.15) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.music-mood-trigger:hover::before {
+  opacity: 1;
+}
+.music-mood-trigger:active {
+  transform: scale(0.96);
+}
+
+@media (max-width: 767px) {
+  .scroll-to-top {
+    bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    right: 16px !important;
+  }
+}
+
+/* ═══════════════════════════════
+   BIT THEME — MOBILE FIXES
+═══════════════════════════════ */
+@media (max-width: 767px) {
+  [data-theme="bit"] .manga-border,
+  [data-theme="bit"] .manga-panel,
+  [data-theme="bit"] .manga-card {
+    border-width: 2px !important;
+    box-shadow:
+      2px 0 0 0 var(--ink-color),
+     -2px 0 0 0 var(--ink-color),
+      0  2px 0 0 var(--ink-color),
+      0 -2px 0 0 var(--ink-color),
+      4px 4px 0 0 rgba(255, 0, 204, 0.6) !important;
+  }
+  [data-theme="bit"] button,
+  [data-theme="bit"] a[role="button"] {
+    border-width: 2px !important;
+    box-shadow: 2px 2px 0 var(--ink-color) !important;
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+    font-size: 0.65rem !important;
+  }
+  [data-theme="bit"] input,
+  [data-theme="bit"] textarea {
+    font-size: 0.65rem !important;
+    padding: 10px !important;
+    border-width: 2px !important;
+  }
+  [data-theme="bit"] h1 {
+    animation: none !important;
+  }
+  [data-theme="bit"] h1::before,
+  [data-theme="bit"] h1::after {
+    display: none !important;
+  }
+  [data-theme="bit"] body::after {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 3px
+    );
+  }
+  [data-theme="bit"] body::before {
+    background-size: 16px 16px;
+  }
+}
+
+/* ═══════════════════════════════
+   LIGHT THEME — MOBILE FIXES
+═══════════════════════════════ */
+@media (max-width: 767px) {
+  [data-theme="light"] .os-window {
+    box-shadow: 2px 2px 0px #999, 3px 3px 0px #777 !important;
+  }
+  [data-theme="light"] .os-window > div:first-child > span {
+    font-size: 10px !important;
+    max-width: 60% !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-theme="light"] .os-window > div:first-child > div > div {
+    width: 7px !important;
+    height: 7px !important;
+  }
+  [data-theme="light"] .os-window::after {
+    display: none !important;
+  }
+  [data-theme="light"] .fixed.top-4.right-4 {
+    top: calc(env(safe-area-inset-top) + 72px) !important;
+    font-size: 9px !important;
+    padding: 1px 6px !important;
+  }
+  @media (hover: none) {
+    [data-theme="light"],
+    [data-theme="light"] * {
+      cursor: auto !important;
+    }
+  }
+  [data-theme="light"] ::-webkit-scrollbar {
+    width: 8px !important;
+  }
+}
+
+/* ═══════════════════════════════
+   MIDNIGHT THEME — MOBILE FIXES
+═══════════════════════════════ */
+@media (max-width: 767px) {
+  [data-theme="midnight"] [style*="backdrop-filter"] {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+  [data-theme="midnight"] {
+    --manga-shadow: 4px 4px 0 var(--manga-shadow-color);
+  }
+}
+
+/* ═══════════════════════════════
+   DARK THEME — MOBILE FIXES
+═══════════════════════════════ */
+@media (max-width: 767px) {
+  [data-theme="dark"] h1 {
+    animation: none !important;
+  }
+  [data-theme="dark"] body::before {
+    --grain-opacity: 0.12;
+  }
+  [data-theme="dark"] body::after {
+    animation: none !important;
+  }
+}
+
+/* ═══════════════════════════════
+   GLOBAL MOBILE — MIN TOUCH TARGETS
+═══════════════════════════════ */
+@media (max-width: 767px) {
+  button:not([data-no-min]),
+  a[role="button"]:not([data-no-min]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+

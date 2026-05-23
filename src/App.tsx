@@ -14,7 +14,7 @@ import {
   Monitor
 } from "lucide-react";
 import { motion, Variants } from "framer-motion";
-import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { loadPrefs, savePrefs } from './utils/userPrefs';
 import type { Theme, AudioIntent } from './utils/userPrefs';
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -26,14 +26,15 @@ import { SkeletonSection } from './components/SkeletonSection';
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useParallax } from "./hooks/useParallax";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
+import { useGalleryState } from "./hooks/useGalleryState";
+import { useAudioController } from "./hooks/useAudioController";
+import { NavButton } from "./components/NavButton";
 import { MeBitGallery } from './components/MeBitGallery';
 import { NowPlayingBar } from "./components/NowPlayingBar";
 import { MobileNavBar } from "./components/MobileNavBar";
 import { AudioVisualizer } from "./components/AudioVisualizer";
 import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
-import { ContactSection } from './components/sections/ContactSection';
-import { IptvSection } from './components/sections/IptvSection';
 import { StreamingSection } from './components/sections/StreamingSection';
 import { Win12Section } from './components/sections/Win12Section';
 import { HighlightsSection } from './components/sections/HighlightsSection';
@@ -45,12 +46,9 @@ import { ScrollProgress } from "./components/ScrollProgress";
 import { ResponsiveImage } from "./components/ResponsiveImage";
 import { 
   ASSETS, 
-  THEME_BG_MUSIC,
   getThemedImage 
 } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
-import { getOrCreateHls } from './audio/hlsPool';
-import Hls from 'hls.js';
 
 const CONFIG_ASSETS = {
   mainBackground: ASSETS.profile.heroBg,
@@ -62,6 +60,10 @@ const CONFIG_ASSETS = {
 };
 
 import { OsClockDisplay } from "./components/OsWindow";
+
+const IptvSection = React.lazy(() =>
+  import('./components/sections/IptvSection')
+);
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -87,21 +89,22 @@ const ME_BIT_IMAGES = ASSETS.profile.me_bits;
 
 const initialPrefs = loadPrefs();
 
+const THEME_LABELS: Record<string, string> = {
+  system:   'ثيم: تلقائي',
+  dark:     'ثيم: مظلم',
+  light:    'ثيم: كلاسيكي',
+  bit:      'ثيم: بيكسل',
+};
+const THEME_NEXT: Record<string, string> = {
+  system: 'dark', dark: 'light', light: 'bit', bit: 'system',
+};
+
 export default function App() {
   const { isMobile, isTablet } = useDeviceType();
   const resolvedTheme = useResolvedTheme();
   const parallaxRef = useParallax(isMobile ? 0 : 20);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const meBitAudioRef = useRef<HTMLAudioElement | null>(null);
-  const meBitHlsAttached = useRef(false);
-  const currentBgUrlRef = useRef<string>('');
 
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-  const [isLensGalleryOpen, setIsLensGalleryOpen] = useState(false);
-  const [isMeBitPlaying, setIsMeBitPlaying] = useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [activeSong, setActiveSong] = useState<ActiveSong | null>(null);
   const [currentPage, setCurrentPage] = useState('home');
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -110,6 +113,39 @@ export default function App() {
     initialPrefs.audioIntent === 'user-playing' ? 'initial' : initialPrefs.audioIntent
   );
   const [theme, setTheme] = useState<Theme>(initialPrefs.theme);
+
+  const {
+    isGalleryOpen,
+    setIsGalleryOpen,
+    isLensGalleryOpen,
+    selectedImageIndex,
+    setSelectedImageIndex,
+    nextImage,
+    prevImage,
+    openLens,
+    closeLens,
+  } = useGalleryState();
+
+  const {
+    audioRef,
+    isPlaying,
+    isMeBitPlaying,
+    toggleAudio,
+    handleSongPlay,
+    handleSongStop,
+    handleGalleryOpen,
+    handleGalleryClose,
+    toggleMeBitAudio,
+  } = useAudioController({
+    isLensGalleryOpen,
+    isGalleryOpen,
+    theme,
+    audioIntent,
+    setAudioIntent,
+    loaded,
+    setIsGalleryOpen,
+    setSelectedImageIndex,
+  });
 
   // Clock for light mode
   const renderClock = () => {
@@ -132,72 +168,6 @@ export default function App() {
     );
   };
 
-  // Audio lifecycle for persistent sources
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    // Register immediately with AudioManager
-    audioManager.register('bg', audio, 0.7);
-    audioManager.setStateCallback((playing) => setIsPlaying(playing));
-
-    const initialResolved = theme === 'dark' ? 'dark'
-      : theme === 'light' ? 'light'
-      : theme === 'bit' ? 'bit'
-      : 'midnight';
-    const url = THEME_BG_MUSIC[initialResolved] ?? ASSETS.media.music;
-    currentBgUrlRef.current = url;
-
-    // Safari: native HLS support
-    if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-      audio.src = url;
-      audio.load();
-    } else if (Hls.isSupported()) {
-      // Chrome/Android/Firefox: use hls.js
-      const hls = getOrCreateHls(url);
-      hls.attachMedia(audio);
-      const errHandler = (_: any, data: any) => {
-        if (!data.fatal) return;
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
-        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-      };
-      hls.on(Hls.Events.ERROR, errHandler);
-      
-      // We don't cleanup hls here because it's shared in pool
-    }
-
-    // Lens
-    const lensAudio = new Audio(ASSETS.media.lensMusic);
-    lensAudio.crossOrigin = "anonymous";
-    lensAudio.loop = true;
-    lensAudio.preload = 'auto';
-    audioManager.register('lens', lensAudio, 0.7);
-
-    // ME bit (Pre-initialize for instant playback)
-    const meBitAudio = new Audio();
-    meBitAudio.crossOrigin = "anonymous";
-    meBitAudio.loop = true;
-    meBitAudio.preload = 'auto';
-    meBitAudio.volume = 0;
-    meBitAudioRef.current = meBitAudio;
-    audioManager.register('mebit', meBitAudio, 0.6);
-
-    const meBitUrl = ASSETS.media.meBitMusic;
-    if (meBitAudio.canPlayType('application/vnd.apple.mpegurl')) {
-      meBitAudio.src = meBitUrl;
-      meBitAudio.load();
-    } else if (Hls.isSupported()) {
-      const hls = getOrCreateHls(meBitUrl);
-      hls.attachMedia(meBitAudio);
-      meBitHlsAttached.current = true;
-    }
-
-    return () => {
-      audioManager.pause('lens');
-      audioManager.pause('mebit');
-    };
-  }, []); // runs once on mount
-
   useEffect(() => {
     const resolved = theme === 'dark' ? 'dark' 
       : theme === 'light' ? 'light'
@@ -207,112 +177,11 @@ export default function App() {
     savePrefs({ theme });
   }, [theme]);
 
-  // ── Per-theme background music swap ──────────────────────────────
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const resolved = theme === 'dark' ? 'dark'
-      : theme === 'light' ? 'light'
-      : theme === 'bit' ? 'bit'
-      : 'midnight';
-
-    const newUrl = THEME_BG_MUSIC[resolved] ?? ASSETS.media.music;
-
-    // Skip on initial mount — handled by the audio init useEffect([])
-    if (!currentBgUrlRef.current || currentBgUrlRef.current === newUrl) return;
-
-    const wasPlaying = !audio.paused && audioManager.isSourceActive('bg');
-    const wasNotUserPaused = audioIntent !== 'user-paused';
-
-    // 1. Fade out and pause current bg
-    audioManager.pause('bg');
-
-    // 2. Detach old HLS instance (kept alive in pool)
-    if (Hls.isSupported() && !audio.canPlayType('application/vnd.apple.mpegurl')) {
-      // detach from pool instance — do not destroy, keep buffered
-      const oldHls = getOrCreateHls(currentBgUrlRef.current);
-      oldHls.detachMedia();
-    }
-
-    // 3. Update tracking ref
-    currentBgUrlRef.current = newUrl;
-
-    // 4. Attach new HLS instance
-    if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari: set src directly
-      audio.src = newUrl;
-      audio.load();
-    } else if (Hls.isSupported()) {
-      const newHls = getOrCreateHls(newUrl); // pre-warmed if visited before
-      const errHandler = (_: any, data: any) => {
-        if (!data.fatal) return;
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) newHls.startLoad();
-        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) newHls.recoverMediaError();
-      };
-      newHls.on(Hls.Events.ERROR, errHandler);
-      newHls.attachMedia(audio);
-    }
-
-    // 5. Re-register the same audio element with audioManager (url changed)
-    audioManager.register('bg', audio, 0.7);
-
-    // 6. Resume playback if it was active and user hasn't manually paused
-    if (wasPlaying && wasNotUserPaused) {
-      // Small delay to allow HLS manifest to start loading
-      setTimeout(() => {
-        audioManager.unpauseBg();
-      }, 400);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme]);
-  // ─────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (isLensGalleryOpen) {
-      audioManager.suppressBg('lens_open');
-    } else {
-      audioManager.releaseBg('lens_open');
-    }
-  }, [isLensGalleryOpen]);
-
-  useEffect(() => {
-    if (isGalleryOpen) {
-      audioManager.suppressBg('mebit_open');
-    } else {
-      audioManager.releaseBg('mebit_open');
-    }
-  }, [isGalleryOpen]);
-
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  const handleGalleryOpen = useCallback((index = 0) => {
-    audioManager.play('mebit');
-    setIsGalleryOpen(true);
-    setSelectedImageIndex(index);
-    setIsMeBitPlaying(true);
-  }, []);
-
-  const handleGalleryClose = useCallback(() => {
-    audioManager.pause('mebit');
-    setIsGalleryOpen(false);
-    setIsMeBitPlaying(false);
-  }, []);
-
-  const toggleMeBitAudio = () => {
-    if (!meBitAudioRef.current) return;
-    if (isMeBitPlaying) {
-      audioManager.pause('mebit');
-      setIsMeBitPlaying(false);
-    } else {
-      audioManager.play('mebit');
-      setIsMeBitPlaying(true);
-    }
-  };
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);
@@ -322,16 +191,12 @@ export default function App() {
       scrollToSection('my-songs-section');
     } else if (page === 'drawings') {
       scrollToSection('drawings-section');
+    } else if (page === 'mebit') {
+      scrollToSection('me-bit-gallery');
+    } else if (page === 'lens') {
+      scrollToSection('lens-section');
     }
   };
-
-  const nextImage = useCallback(() => {
-    setSelectedImageIndex(prev => (prev !== null ? (prev < ME_BIT_IMAGES.length - 1 ? prev + 1 : 0) : 0));
-  }, []);
-
-  const prevImage = useCallback(() => {
-    setSelectedImageIndex(prev => (prev !== null ? (prev > 0 ? prev - 1 : ME_BIT_IMAGES.length - 1) : ME_BIT_IMAGES.length - 1));
-  }, []);
 
   useEffect(() => {
     // Performance class
@@ -340,68 +205,19 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    if (audioRef.current && loaded) {
-      const audio = audioRef.current;
-      if (audioIntent === 'user-playing') {
-        audioManager.unpauseBg();
-      } else if (audioIntent === 'initial') {
-        const onInteraction = () => {
-          audio.muted = false;
-          setAudioIntent('user-playing');
-          audioManager.unpauseBg();
-          window.removeEventListener('click', onInteraction);
-          window.removeEventListener('scroll', onInteraction);
-        };
-        window.addEventListener('click', onInteraction, { once: true });
-        window.addEventListener('scroll', onInteraction, { once: true, passive: true });
-      }
-    }
-  }, [audioIntent, loaded]);
-
   const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+    const attempt = (tries = 0) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (tries < 5) {
+        // الـ section لم يُرسم بعد، انتظر قليلاً وحاول مجدداً
+        setTimeout(() => attempt(tries + 1), 150);
+      }
+    };
+    attempt();
   };
 
-  const toggleAudio = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioManager.pause('bg');
-      setIsPlaying(false);
-      setAudioIntent('user-paused');
-      savePrefs({ audioIntent: 'user-paused' });
-    } else {
-      audioManager.unpauseBg();
-      setIsPlaying(true);
-      setAudioIntent('user-playing');
-      savePrefs({ audioIntent: 'user-playing' });
-    }
-  };
-
-  const handleSongPlay = useCallback(() => {
-    // Unconditionally pause gallery audio before song starts
-    audioManager.pause('lens');
-    audioManager.pause('mebit');
-    // We just update the UI state.
-    setIsPlaying(false);
-  }, []);
-
-  const handleSongStop = useCallback(() => {
-    if (isLensGalleryOpen) {
-      audioManager.play('lens');
-    }
-    if (isGalleryOpen) {
-      audioManager.play('mebit');
-    }
-  }, [isLensGalleryOpen, isGalleryOpen]);
-
-  const handleLensClose = useCallback(() => {
-    audioManager.pause('lens');
-    setIsLensGalleryOpen(false);
-  }, []);
 
 
   return (
@@ -502,7 +318,8 @@ export default function App() {
         onClick={toggleAudio}
         className="fixed z-[9000] backdrop-blur-lg border p-2.5 rounded-full transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
         style={{
-          bottom: (isMobile || isTablet) ? 'calc(60px + env(safe-area-inset-bottom) + 16px)' : '16px',
+          top: (isMobile || isTablet) ? 'calc(env(safe-area-inset-top) + 72px)' : 'auto',
+          bottom: (isMobile || isTablet) ? 'auto' : '16px',
           right: '16px',
           background: 'var(--bg-glass-strong)',
           borderColor: 'var(--border-subtle)',
@@ -537,89 +354,11 @@ export default function App() {
           variants={itemVariants}
           className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-start sm:gap-5 md:gap-6 mb-4"
         >
-          <button 
-            onClick={() => scrollToSection('me-bit-gallery')}
-            className={resolvedTheme === 'dark' ? 
-              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
-              (resolvedTheme === 'light' ? 
-                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
-                'manga-paper-tab'
-              )
-            }
-            style={resolvedTheme === 'light' ? {
-              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
-            } : undefined}
-          >
-            <Camera className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
-            ME BIT
-          </button>
-          <button 
-            onClick={() => scrollToSection('my-songs-section')}
-            className={resolvedTheme === 'dark' ? 
-              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
-              (resolvedTheme === 'light' ? 
-                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
-                'manga-paper-tab'
-              )
-            }
-            style={resolvedTheme === 'light' ? {
-              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
-            } : undefined}
-          >
-            <Music2 className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
-            MY SONGS
-          </button>
-          <button 
-            onClick={() => scrollToSection('drawings-section')}
-            className={resolvedTheme === 'dark' ? 
-              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
-              (resolvedTheme === 'light' ? 
-                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
-                'manga-paper-tab'
-              )
-            }
-            style={resolvedTheme === 'light' ? {
-              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
-            } : undefined}
-          >
-            <Pencil className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
-            MY DRAWINGS
-          </button>
-          <button
-            onClick={() => {
-              audioManager.play('lens');
-              setIsLensGalleryOpen(true);
-            }}
-            className={resolvedTheme === 'dark' ? 
-              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
-              (resolvedTheme === 'light' ? 
-                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
-                'manga-paper-tab'
-              )
-            }
-            style={resolvedTheme === 'light' ? {
-              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
-            } : undefined}
-          >
-            <Aperture className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
-            LENS
-          </button>
-          <button
-            onClick={() => scrollToSection('win12-launcher-section')}
-            className={`${resolvedTheme === 'dark' ? 
-              'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2' : 
-              (resolvedTheme === 'light' ? 
-                'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2' : 
-                'manga-paper-tab'
-              )
-            } col-span-2 sm:col-span-auto`}
-            style={resolvedTheme === 'light' ? {
-              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000'
-            } : undefined}
-          >
-            <Monitor className="w-5 h-5" style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : { filter: 'url(#rough)' }} />
-            WIN12 OS
-          </button>
+          <NavButton icon={Camera} label="ME BIT" onClick={() => scrollToSection('me-bit-gallery')} theme={resolvedTheme} />
+          <NavButton icon={Music2} label="MY SONGS" onClick={() => scrollToSection('my-songs-section')} theme={resolvedTheme} />
+          <NavButton icon={Pencil} label="MY DRAWINGS" onClick={() => scrollToSection('drawings-section')} theme={resolvedTheme} />
+          <NavButton icon={Aperture} label="LENS" onClick={() => { audioManager.play('lens'); openLens(); }} theme={resolvedTheme} />
+          <NavButton icon={Monitor} label="WIN12 OS" onClick={() => scrollToSection('win12-launcher-section')} theme={resolvedTheme} fullWidthOnMobile />
         </motion.div>
 
         <div className="flex flex-col gap-14">
@@ -654,7 +393,7 @@ export default function App() {
           
           <div 
             onClick={() => handleGalleryOpen()}
-            className="relative w-full border-[4px] border-[var(--ink-color)] bg-[var(--paper-color)] p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[220px] sm:h-[260px] md:h-[280px] manga-panel"
+            className="relative w-full border-[4px] border-[var(--ink-color)] bg-[var(--paper-color)] p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[6px_6px_0px_var(--manga-shadow-color)] sm:shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[8px_8px_0px_var(--manga-shadow-color)] sm:hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[220px] sm:h-[260px] md:h-[280px] manga-panel"
           >
             {resolvedTheme === 'bit' && (
               <img
@@ -694,6 +433,11 @@ export default function App() {
                 <span className="font-manga text-xl font-bold">OPEN GALLERY</span>
               </div>
             </div>
+
+            {/* Mobile specific hint */}
+            <div className="absolute bottom-2 right-2 md:hidden bg-black/60 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded font-mono uppercase tracking-wider z-20 pointer-events-none">
+              tap to open
+            </div>
           </div>
         </motion.section>
 
@@ -713,7 +457,7 @@ export default function App() {
           <div
             onClick={() => {
               audioManager.play('lens');
-              setIsLensGalleryOpen(true);
+              openLens();
             }}
             className="relative w-full border-[4px] border-[var(--ink-color)] bg-black overflow-hidden group cursor-pointer shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[160px] sm:h-[200px]"
             role="button"
@@ -722,7 +466,7 @@ export default function App() {
             onKeyDown={e => { 
               if (e.key === 'Enter') {
                 audioManager.play('lens');
-                setIsLensGalleryOpen(true);
+                openLens();
               }
             }}
           >
@@ -737,9 +481,10 @@ export default function App() {
 
             {/* Always-visible CTA — center of the card */}
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-[2]">
-              <div className="w-16 h-16 rounded-full bg-white/10 border-2 border-white/40 flex items-center justify-center group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 shadow-lg">
+              <div className="w-16 h-16 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-white/10 border-2 border-white/40 flex items-center justify-center group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 shadow-lg">
                 <span className="text-2xl" aria-hidden="true">📷</span>
               </div>
+              <span className="md:hidden text-white/50 text-xs font-mono mb-1">اضغط للعرض</span>
               <span className="font-manga text-white text-xl tracking-widest uppercase" style={{ textShadow: '2px 2px 0 #000' }}>
                 Open Gallery
               </span>
@@ -807,12 +552,13 @@ export default function App() {
           </SectionErrorBoundary>
           </motion.div>
 
-          {/* Contact Section */}
-          <ContactSection />
-
           {/* IPTV Live TV Section */}
           <motion.div variants={itemVariants} id="iptv-section">
-            <IptvSection />
+            <SectionErrorBoundary sectionName="IptvSection">
+              <Suspense fallback={<SkeletonSection type="iptv" />}>
+                <IptvSection />
+              </Suspense>
+            </SectionErrorBoundary>
           </motion.div>
 
           {/* Windows 12 Simulator Section */}
@@ -824,13 +570,13 @@ export default function App() {
       {/* Editorial Footer */}
         <motion.footer 
           variants={itemVariants}
-          className="mt-10 flex flex-col items-center gap-8 border-t-4 border-[var(--ink-color)] pt-10 pb-20 retro-shadow-white"
+          className="mt-10 flex flex-col items-center gap-8 border-t-4 border-[var(--ink-color)] pt-10 pb-[calc(80px+env(safe-area-inset-bottom))] sm:pb-20 retro-shadow-white"
         >
           {/* Footer Decoration Image with Float Animation */}
           <ResponsiveImage 
             src={CONFIG_ASSETS.footerDecoration}
             alt="Footer Decoration"
-            className="w-full max-w-[600px] border-[3px] border-[var(--ink-color)] shadow-[10px_10px_0px_var(--manga-shadow-color)] rounded-xl hover:scale-[1.02] transition-transform animate-float"
+            className="w-full max-w-[90%] sm:max-w-[600px] border-[3px] border-[var(--ink-color)] shadow-[10px_10px_0px_var(--manga-shadow-color)] rounded-xl hover:scale-[1.02] transition-transform animate-float"
             loading="lazy"
           />
 
@@ -840,8 +586,8 @@ export default function App() {
               <div className="w-4 h-4 bg-[var(--ink-color)] manga-border rounded-none" />
               <div className="w-4 h-4 bg-[var(--ink-color)] manga-border rounded-none" />
             </div>
-            <p className="font-manga text-2xl text-[var(--text-primary)] bg-[var(--paper-color)] px-6 py-1 manga-border -rotate-1 shadow-[4px_4px_0px_var(--manga-shadow-color)] italic text-center md:text-left">
-              NL // NOURDINE GB © 2026
+            <p className="font-manga text-base sm:text-2xl text-[var(--text-primary)] bg-[var(--paper-color)] px-3 sm:px-6 py-1 manga-border -rotate-1 shadow-[4px_4px_0px_var(--manga-shadow-color)] italic text-center md:text-left max-w-full break-words">
+              NL // NOUREDDIN GB © 2026
             </p>
           </div>
         </motion.footer>
@@ -854,7 +600,10 @@ export default function App() {
       />
       <LensGallery
         isOpen={isLensGalleryOpen}
-        onClose={handleLensClose}
+        onClose={() => {
+          audioManager.pause('lens');
+          closeLens();
+        }}
       />
       <button
         className={`scroll-to-top ${showScrollTop ? 'visible' : ''}`}
@@ -865,21 +614,21 @@ export default function App() {
         ↑
       </button>
         <button
-          onClick={() => {
-            const next = theme === 'system' ? 'dark' : theme === 'dark' ? 'light' : theme === 'light' ? 'bit' : 'system';
-            setTheme(next);
-          }}
+          onClick={() => setTheme(THEME_NEXT[theme] as Theme)}
+          aria-label={THEME_LABELS[theme] ?? 'تغيير الثيم'}
+          title={`${THEME_LABELS[theme]} — اضغط للتبديل`}
           className="fixed z-[9000] border p-2.5 rounded-full transition-all hover:scale-105 active:scale-90 shadow-xl"
           style={{
-            top: 'calc(env(safe-area-inset-top) + 20px)',
+            top:   'calc(env(safe-area-inset-top) + 20px)',
             right: '20px',
-            fontSize: '16px',
-            background: 'var(--bg-glass-strong)',
-            borderColor: 'var(--border-subtle)',
-            color: 'var(--text-secondary)'
+            background:   'var(--bg-glass-strong)',
+            borderColor:  'var(--border-subtle)',
+            color:        'var(--text-secondary)',
           }}
-          aria-label="Toggle theme"
         >
+          <span className="hidden sm:inline text-[9px] font-mono mr-1 opacity-60">
+            {theme === 'system' ? 'AUTO' : theme.toUpperCase()}
+          </span>
           {theme === 'system' ? '🌓' : theme === 'dark' ? '🌑' : theme === 'light' ? '☀️' : '👾'}
         </button>
       {(isMobile || isTablet) && (

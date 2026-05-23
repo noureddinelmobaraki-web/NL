@@ -5,9 +5,11 @@ import {
 } from 'lucide-react';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { audioManager } from '../../audio/audioManager';
+import { useDeviceType } from '../../hooks/useDeviceType';
 
 export function Win12Section() {
   const resolvedTheme = useResolvedTheme();
+  const { isMobile } = useDeviceType();
   const [isOpen, setIsOpen] = useState(false);
 
   // Manage body scroll lock and audio suppression on open/close
@@ -76,6 +78,37 @@ export function Win12Section() {
     title: 'win12_system.sh',
     buttonClass: 'bg-[#B8FF3F] hover:bg-[#a3e635] text-black',
   };
+
+  if (isMobile) {
+    return (
+      <div className="w-full max-w-5xl mx-auto px-4 py-8" id="win12-launcher-section">
+        <div
+          className={`rounded-xl overflow-hidden border p-8 text-center flex flex-col items-center gap-4 ${themeCardStyles.containerBg}`}
+          style={{
+            background: themeCardStyles.containerBg,
+            border: themeCardStyles.border,
+            boxShadow: themeCardStyles.boxShadow,
+          }}
+        >
+          <span className="text-5xl" aria-hidden="true">🖥️</span>
+          <p
+            className="font-mono text-sm"
+            style={{ color: resolvedTheme === 'dark' ? '#B8FF3F' : 'var(--text-primary)' }}
+          >
+            NL OS — Desktop Experience
+          </p>
+          <p className="text-[var(--text-muted)] text-xs leading-relaxed max-w-xs">
+            هذه التجربة مصممة للحاسوب.
+            يمكنك تفعيل وضع سطح المكتب من متصفحك للوصول إليها.
+          </p>
+          <div className="text-[var(--text-muted)] text-[10px] opacity-60 font-mono space-y-1">
+            <p>Chrome: القائمة ← "Desktop site"</p>
+            <p>Safari: AA ← "Request Desktop Website"</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-8 select-none" id="win12-launcher-section">

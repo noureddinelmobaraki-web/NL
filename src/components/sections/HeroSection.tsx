@@ -50,7 +50,7 @@ export const HeroSection = () => {
     return (
       <div 
         lang="en"
-        className={`${resolvedTheme === 'light' ? '' : (resolvedTheme === 'dark' ? 'halftone-bg' : 'manga-border border-[4px] halftone-bg border-[var(--ink-color)]')} p-8 flex-1 min-w-[60%] relative group overflow-hidden transition-all duration-500 hover:scale-[1.01]`}
+        className={`${resolvedTheme === 'light' ? '' : (resolvedTheme === 'dark' ? 'halftone-bg' : 'manga-border border-[4px] halftone-bg border-[var(--ink-color)]')} p-4 sm:p-6 md:p-8 flex-1 min-w-[60%] relative group overflow-hidden transition-all duration-500 hover:scale-[1.01]`}
         id="header-card"
         style={resolvedTheme === 'dark' ? {
           backgroundColor: 'rgba(0,0,0,0.92)',
@@ -73,7 +73,7 @@ export const HeroSection = () => {
              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           >
             <h1 
-              className="font-['Playfair_Display',serif] italic font-black leading-[0.9] tracking-tight text-white text-6xl md:text-8xl lg:text-[8rem]"
+              className="font-['Playfair_Display',serif] italic font-black leading-[0.9] tracking-tight text-white text-[clamp(2.5rem,11vw,3.75rem)] md:text-8xl lg:text-[8rem]"
               data-text={siteData.fullName}
               style={{ textShadow: '0 0 30px rgba(184,255,63,0.4), 0 0 60px rgba(184,255,63,0.2), 4px 4px 0px rgba(0,0,0,0.8)' }}
             >

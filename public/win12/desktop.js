@@ -3165,6 +3165,12 @@ function geticon(name) {
 
 // 应用与窗口
 function openapp(name) {
+    // Guard للـ apps المخصصة — إذا لم تكن مهيأة بعد، أعد المحاولة
+    if ((name === 'nlmusic' || name === 'nlphotos') && !apps.nlmusic) {
+        console.warn('NL Portfolio not initialized yet, retrying in 300ms...');
+        setTimeout(() => openapp(name), 300);
+        return;
+    }
     if (taskmgrTasks.findIndex(elt => elt.link == name) > -1 && apps.taskmgr.tasks.findIndex(elt => elt.link == name) == -1) {
         apps.taskmgr.tasks.splice(apps.taskmgr.tasks.length, 0, taskmgrTasks.find(elt => elt.link == name));
     }
@@ -3870,7 +3876,7 @@ function setIcon() {
         <img src="icon/feedback.svg">
         <p>Feedback Center</p>
     </div>
-    <div class="b" ondblclick="openapp('nlmusic');" ontouchstart="openapp('nlmusic');" oncontextmenu="return showcm(event,'desktop.icon',['nlmusic',-1]);" appname="nlmusic">
+    <div class="b" ondblclick="window.__nlPortfolioReady ? openapp('nlmusic') : setTimeout(()=>openapp('nlmusic'),400);" ontouchstart="window.__nlPortfolioReady ? openapp('nlmusic') : setTimeout(()=>openapp('nlmusic'),400);" oncontextmenu="return showcm(event,'desktop.icon',['nlmusic',-1]);" appname="nlmusic">
         <img src="icon/folder/music.svg">
         <p>NL Music Player</p>
     </div>
@@ -3882,11 +3888,11 @@ function setIcon() {
         <img src="icon/folder/music.svg">
         <p>NL Music Folder</p>
     </div>
-    <div class="b" ondblclick="openapp('explorer'); setTimeout(() => apps.explorer.goto('C:/用户/Administrator/图片/ME BIT'), 300);" ontouchstart="openapp('explorer'); setTimeout(() => apps.explorer.goto('C:/用户/Administrator/图片/ME BIT'), 300);" oncontextmenu="return showcm(event,'desktop.icon',['explorer',-1]);" appname="explorer">
+    <div class="b" ondblclick="window.__nlPortfolioReady ? openapp('nlphotos') : setTimeout(()=>openapp('nlphotos'),400); if(window.__nlPortfolioReady) apps.nlphotos.openFolder('ME BIT');" ontouchstart="window.__nlPortfolioReady ? openapp('nlphotos') : setTimeout(()=>openapp('nlphotos'),400); if(window.__nlPortfolioReady) apps.nlphotos.openFolder('ME BIT');" oncontextmenu="return showcm(event,'desktop.icon',['explorer',-1]);" appname="explorer">
         <img src="icon/folder/pics.svg">
         <p>ME BIT Folder</p>
     </div>
-    <div class="b" ondblclick="openapp('explorer'); setTimeout(() => apps.explorer.goto('C:/用户/Administrator/图片/THROUGH THE LENS'), 300);" ontouchstart="openapp('explorer'); setTimeout(() => apps.explorer.goto('C:/用户/Administrator/图片/THROUGH THE LENS'), 300);" oncontextmenu="return showcm(event,'desktop.icon',['explorer',-1]);" appname="explorer">
+    <div class="b" ondblclick="window.__nlPortfolioReady ? openapp('nlphotos') : setTimeout(()=>openapp('nlphotos'),400); if(window.__nlPortfolioReady) apps.nlphotos.openFolder('THROUGH THE LENS');" ontouchstart="window.__nlPortfolioReady ? openapp('nlphotos') : setTimeout(()=>openapp('nlphotos'),400); if(window.__nlPortfolioReady) apps.nlphotos.openFolder('THROUGH THE LENS');" oncontextmenu="return showcm(event,'desktop.icon',['explorer',-1]);" appname="explorer">
         <img src="icon/folder/pics.svg">
         <p>LENS Folder</p>
     </div>
@@ -4312,6 +4318,8 @@ function nupd() {
                 }
             }
         };
+        window.__nlPortfolioReady = true;
+        console.log('[NL] Portfolio apps registered: nlmusic, nlphotos');
     })();
     // ─── END OF PORTFOLIO DESIGN ───
     //getdata
