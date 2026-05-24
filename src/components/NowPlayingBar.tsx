@@ -66,7 +66,7 @@ export const NowPlayingBar = ({
       aria-label="Music Player"
       style={{
         position: "fixed",
-        bottom: (isMobile || isTablet) ? "calc(60px + env(safe-area-inset-bottom))" : "24px",
+        bottom: (isMobile || isTablet) ? "calc(68px + env(safe-area-inset-bottom))" : "24px",
         left: "50%",
         transform: "translateX(-50%)",
         maxWidth: "540px",

@@ -11,6 +11,25 @@ export function Win12Section() {
   const resolvedTheme = useResolvedTheme();
   const { isMobile } = useDeviceType();
   const [isOpen, setIsOpen] = useState(false);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [iframeError, setIframeError] = useState(false);
+
+  // Timeout fallback: if the iframe doesn't load within 12 seconds, switch to error/new tab fallback
+  useEffect(() => {
+    if (!isOpen || iframeLoaded || iframeError) return;
+    const timeout = setTimeout(() => {
+      if (!iframeLoaded) setIframeError(true);
+    }, 12000);
+    return () => clearTimeout(timeout);
+  }, [isOpen, iframeLoaded, iframeError]);
+
+  // Reset loading flags when iframe panel is closed
+  useEffect(() => {
+    if (!isOpen) {
+      setIframeLoaded(false);
+      setIframeError(false);
+    }
+  }, [isOpen]);
 
   // Manage body scroll lock and audio suppression on open/close
   useEffect(() => {
@@ -193,12 +212,76 @@ export function Win12Section() {
             ✕ EXIT
           </button>
 
-          {/* Fully Interactive Embedded OS System Iframe */}
-          <iframe
-            src={`${import.meta.env.BASE_URL}win12/desktop.html`}
-            className="w-full h-full border-none outline-none overflow-hidden"
-            title="Windows 12 Web OS Simulator Subsystem"
-          />
+          {/* Fully Interactive Embedded OS System Iframe with loading & safety wrappers */}
+          <>
+            {/* Loading overlay */}
+            {!iframeLoaded && !iframeError && (
+              <div 
+                style={{
+                  position: 'absolute', inset: 0, zIndex: 10,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  background: '#000', gap: '16px',
+                }}
+              >
+                <div 
+                  className="animate-pulse"
+                  style={{
+                    width: 12, height: 12, borderRadius: '50%',
+                    background: '#B8FF3F',
+                  }} 
+                />
+                <p style={{ color: '#888', fontSize: '11px', fontFamily: 'monospace', letterSpacing: '0.2em' }}>
+                  BOOTING NL OS...
+                </p>
+              </div>
+            )}
+
+            {/* Error fallback */}
+            {iframeError && (
+              <div 
+                style={{
+                  position: 'absolute', inset: 0, zIndex: 10,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  background: '#050505', gap: '16px',
+                  padding: '24px',
+                  textAlign: 'center',
+                }}
+              >
+                <p style={{ color: '#ff4d4d', fontFamily: 'monospace', fontSize: '14px', fontWeight: 'bold' }}>
+                  NL OS failed to load inside iframe
+                </p>
+                <p style={{ color: '#888', fontSize: '11px', maxWidth: '280px', marginBottom: '8px' }}>
+                  GitHub Pages or browser security restrictions might prevent embedding. Try running in an independent tab!
+                </p>
+                <a
+                  href={`${import.meta.env.BASE_URL}win12/desktop.html`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 bg-[#B8FF3F] hover:bg-[#a3e635] text-black text-xs font-bold font-mono tracking-wider transition-all duration-200 active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+                >
+                  🖥️ OPEN IN NEW TAB
+                </a>
+              </div>
+            )}
+
+            <iframe
+              src={`${import.meta.env.BASE_URL}win12/desktop.html`}
+              className="w-full h-full border-none outline-none overflow-hidden"
+              title="NL OS — Windows 12 Simulator"
+              allow="autoplay; fullscreen; microphone"
+              allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-pointer-lock"
+              loading="eager"
+              onLoad={() => setIframeLoaded(true)}
+              onError={() => {
+                setIframeLoaded(true);
+                setIframeError(true);
+              }}
+              style={{ opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.5s ease' }}
+            />
+          </>
         </div>
       )}
     </div>

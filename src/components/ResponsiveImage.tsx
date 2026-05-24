@@ -8,6 +8,7 @@ interface ResponsiveImageProps {
   className?: string;
   loading?: 'lazy' | 'eager';
   fetchpriority?: 'high' | 'low' | 'auto';
+  decoding?: 'async' | 'sync' | 'auto';
   style?: React.CSSProperties;
 }
 
@@ -21,6 +22,7 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   className,
   loading = 'lazy',
   fetchpriority = 'auto',
+  decoding = 'async',
   style
 }) => {
   // Extract the base path and filename without extension
@@ -33,6 +35,7 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
         alt={alt} 
         className={className} 
         loading={loading} 
+        decoding={decoding}
         style={style} 
         referrerPolicy="no-referrer"
         crossOrigin={src.startsWith('http') ? 'anonymous' : undefined}
@@ -48,7 +51,7 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
       loading={loading} 
       // @ts-ignore - fetchpriority is relatively new in TS
       fetchpriority={fetchpriority}
-      decoding="async"
+      decoding={decoding}
       style={style} 
       referrerPolicy="no-referrer"
       crossOrigin={src.startsWith('http') ? 'anonymous' : undefined}

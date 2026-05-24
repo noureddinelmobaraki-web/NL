@@ -381,7 +381,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
         justifyContent: 'center',
         opacity: isEntering ? 0 : 1,
         transition: 'opacity 0.8s ease',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
         // منع أي تفاعل خارجي مع الصفحة تحتها
         pointerEvents: 'all',
       }}
@@ -418,14 +418,14 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
             top: 'calc(env(safe-area-inset-top) + 10vh)',
             left: '50%',
             transform: 'translateX(-50%)',
-            fontSize: 'clamp(9px, 1.5vw, 12px)',
-            letterSpacing: '0.4em',
+            fontSize: 'clamp(10px, 1.5vw, 12px)',
+            letterSpacing: '0.45em',
             textTransform: 'uppercase',
-            color: 'rgba(0,0,0,0.2)',
-            fontWeight: 300,
+            color: 'rgba(0,0,0,0.22)',
+            fontWeight: 400,
             whiteSpace: 'nowrap',
             userSelect: 'none',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif',
+            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
           }}
         >
           {activeSong.title}
@@ -446,17 +446,19 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
         <p
           key={currentLine}
           style={{
-            fontSize: 'clamp(20px, 4vw, 44px)',
-            fontWeight: 200,
-            color: 'rgba(0,0,0,0.80)',
-            lineHeight: 1.5,
-            letterSpacing: '-0.02em',
+            fontSize: 'clamp(22px, 4.5vw, 48px)',
+            fontWeight: 300,
+            color: 'rgba(0,0,0,0.82)',
+            lineHeight: 1.45,
+            letterSpacing: '-0.025em',
+            textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+            fontOpticalSizing: 'auto',
             margin: 0,
             marginBottom: '20px',
             // fade-in عند تغيير السطر
             animation: 'moodLineFadeIn 0.4s ease forwards',
             maxWidth: '650px',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif',
+            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
           }}
         >
           {currentLine || (audioStatus === 'loading' ? '...' : '')}
@@ -466,14 +468,14 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
         {nextLine && (
           <p
             style={{
-              fontSize: 'clamp(13px, 2.2vw, 22px)',
-              fontWeight: 200,
-              color: 'rgba(0,0,0,0.25)',
+              fontSize: 'clamp(14px, 2.4vw, 24px)',
+              fontWeight: 300,
+              color: 'rgba(0,0,0,0.28)',
               lineHeight: 1.5,
               margin: 0,
               letterSpacing: '-0.01em',
               maxWidth: '650px',
-              fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif',
+              fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
             }}
           >
             {nextLine}

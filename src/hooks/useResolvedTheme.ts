@@ -18,7 +18,29 @@ export function useResolvedTheme(): string {
       attributes: true,
       attributeFilter: ['data-theme'],
     });
-    return () => observer.disconnect();
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleMediaChange = () => {
+      // Small timeout to allow attribute update in App.tsx to settle
+      setTimeout(() => {
+        setResolved(document.documentElement.dataset.theme ?? 'midnight');
+      }, 50);
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleMediaChange);
+    } else {
+      mediaQuery.addListener(handleMediaChange);
+    }
+
+    return () => {
+      observer.disconnect();
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleMediaChange);
+      } else {
+        mediaQuery.removeListener(handleMediaChange);
+      }
+    };
   }, []);
 
   return resolved;

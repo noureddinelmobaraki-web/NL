@@ -3876,11 +3876,11 @@ function setIcon() {
         <img src="icon/feedback.svg">
         <p>Feedback Center</p>
     </div>
-    <div class="b" ondblclick="window.__nlPortfolioReady ? openapp('nlmusic') : setTimeout(()=>openapp('nlmusic'),400);" ontouchstart="window.__nlPortfolioReady ? openapp('nlmusic') : setTimeout(()=>openapp('nlmusic'),400);" oncontextmenu="return showcm(event,'desktop.icon',['nlmusic',-1]);" appname="nlmusic">
+    <div class="b" ondblclick="waitNLReady(() => openapp('nlmusic'));" ontouchstart="waitNLReady(() => openapp('nlmusic'));" oncontextmenu="return showcm(event,'desktop.icon',['nlmusic',-1]);" appname="nlmusic">
         <img src="icon/folder/music.svg">
         <p>NL Music Player</p>
     </div>
-    <div class="b" ondblclick="openapp('nlphotos');" ontouchstart="openapp('nlphotos');" oncontextmenu="return showcm(event,'desktop.icon',['nlphotos',-1]);" appname="nlphotos">
+    <div class="b" ondblclick="waitNLReady(() => openapp('nlphotos'));" ontouchstart="waitNLReady(() => openapp('nlphotos'));" oncontextmenu="return showcm(event,'desktop.icon',['nlphotos',-1]);" appname="nlphotos">
         <img src="icon/folder/pics.svg">
         <p>NL Album Viewer</p>
     </div>
@@ -3888,11 +3888,11 @@ function setIcon() {
         <img src="icon/folder/music.svg">
         <p>NL Music Folder</p>
     </div>
-    <div class="b" ondblclick="window.__nlPortfolioReady ? openapp('nlphotos') : setTimeout(()=>openapp('nlphotos'),400); if(window.__nlPortfolioReady) apps.nlphotos.openFolder('ME BIT');" ontouchstart="window.__nlPortfolioReady ? openapp('nlphotos') : setTimeout(()=>openapp('nlphotos'),400); if(window.__nlPortfolioReady) apps.nlphotos.openFolder('ME BIT');" oncontextmenu="return showcm(event,'desktop.icon',['explorer',-1]);" appname="explorer">
+    <div class="b" ondblclick="waitNLReady(() => { openapp('nlphotos'); setTimeout(() => { if (window.apps && apps.nlphotos) apps.nlphotos.openFolder('ME BIT'); }, 150); });" ontouchstart="waitNLReady(() => { openapp('nlphotos'); setTimeout(() => { if (window.apps && apps.nlphotos) apps.nlphotos.openFolder('ME BIT'); }, 150); });" oncontextmenu="return showcm(event,'desktop.icon',['explorer',-1]);" appname="explorer">
         <img src="icon/folder/pics.svg">
         <p>ME BIT Folder</p>
     </div>
-    <div class="b" ondblclick="window.__nlPortfolioReady ? openapp('nlphotos') : setTimeout(()=>openapp('nlphotos'),400); if(window.__nlPortfolioReady) apps.nlphotos.openFolder('THROUGH THE LENS');" ontouchstart="window.__nlPortfolioReady ? openapp('nlphotos') : setTimeout(()=>openapp('nlphotos'),400); if(window.__nlPortfolioReady) apps.nlphotos.openFolder('THROUGH THE LENS');" oncontextmenu="return showcm(event,'desktop.icon',['explorer',-1]);" appname="explorer">
+    <div class="b" ondblclick="waitNLReady(() => { openapp('nlphotos'); setTimeout(() => { if (window.apps && apps.nlphotos) apps.nlphotos.openFolder('THROUGH THE LENS'); }, 150); });" ontouchstart="waitNLReady(() => { openapp('nlphotos'); setTimeout(() => { if (window.apps && apps.nlphotos) apps.nlphotos.openFolder('THROUGH THE LENS'); }, 150); });" oncontextmenu="return showcm(event,'desktop.icon',['explorer',-1]);" appname="explorer">
         <img src="icon/folder/pics.svg">
         <p>LENS Folder</p>
     </div>
@@ -3937,6 +3937,16 @@ function nupd() {
         $('#loadback').css('display', 'none');
     }, 1000);
     apps.webapps.init();
+
+    // Polling waiter for custom NL application readiness
+    window.waitNLReady = function(cb, tries = 0) {
+        if (window.__nlPortfolioReady) return cb();
+        if (tries < 40) {
+            setTimeout(() => window.waitNLReady(cb, tries + 1), 200);
+        } else {
+            cb();
+        }
+    };
 
     // ─── START OF PORTFOLIO DYNAMIC VFS AND CODE INJECTIONS ───
     (function injectNLPortfolio() {

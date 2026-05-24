@@ -97,12 +97,24 @@ export function useStreamPlayer(options?: {
       return;
     }
 
-    const streamUrl = activeQual.url.trim();
+    // لف الـ stream URL بـ CORS proxy إذا كان external stream
+    // (M3U files على github.io لا تحتاج proxy — فقط stream URLs)
+    const rawUrl = activeQual.url.trim();
     const isHlsFormat = 
-      streamUrl.toLowerCase().includes('.m3u8') ||
-      streamUrl.toLowerCase().includes('manifest') ||
-      streamUrl.toLowerCase().includes('/chunklist') ||
-      streamUrl.toLowerCase().includes('smil:');
+      rawUrl.toLowerCase().includes('.m3u8') ||
+      rawUrl.toLowerCase().includes('manifest') ||
+      rawUrl.toLowerCase().includes('/chunklist') ||
+      rawUrl.toLowerCase().includes('smil:');
+
+    const needsProxy = (
+      rawUrl.startsWith('http') &&
+      !isHlsFormat && // لا تستخدم بروكسي لملفات HLS لتجنب كسر الخوادم الفرعية والقطع
+      !rawUrl.includes('github.io') &&
+      !rawUrl.includes('localhost')
+    );
+    const streamUrl = needsProxy
+      ? `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`
+      : rawUrl;
 
     const handleSuccess = () => {
       if (probeTimeoutRef.current) {
@@ -177,7 +189,7 @@ export function useStreamPlayer(options?: {
         hlsRef.current = null;
       }
       handleFailure('PROBE_TIMEOUT_5S');
-    }, 5000);
+    }, 15000); // زيادة مهلة الاتصال لـ 15 ثانية لتناسب البث المباشر للقنوات
 
     if (isHlsFormat) {
       if (video.canPlayType('application/vnd.apple.mpegurl')) {

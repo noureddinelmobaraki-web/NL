@@ -55,12 +55,18 @@ export default defineConfig(({ mode }) => {
         },
         output: {
           manualChunks(id) {
-            if (id.includes('node_modules/react')) return 'react-vendor';
+            if (id.includes('node_modules/react-dom')) return 'react-dom';
+            if (id.includes('node_modules/react'))     return 'react-core';
             if (id.includes('node_modules/framer-motion')) return 'framer';
-            if (id.includes('src/components/DrawingsPage')) return 'drawings';
-            if (id.includes('src/components/Sarahni')) return 'sarahni';
-            if (id.includes('src/components/LyricsEngine')) return 'lyrics';
-            if (id.includes('node_modules/hls.js')) return 'hls';
+            if (id.includes('node_modules/hls.js'))    return 'hls';
+            if (id.includes('node_modules/three'))     return 'three';
+            if (id.includes('src/components/DrawingsPage'))        return 'drawings';
+            if (id.includes('src/components/LyricsEngine'))        return 'lyrics';
+            if (id.includes('src/components/MusicMood'))           return 'music-mood';
+            if (id.includes('src/components/sections/IptvSection') ||
+                id.includes('src/components/sections/iptv/'))      return 'iptv';
+            if (id.includes('src/components/sections/Win12Section')) return 'win12';
+            if (id.includes('src/components/songs/'))              return 'songs-ui';
             return undefined;
           }
         }

@@ -55,7 +55,7 @@ function getErrorDisplay(errType: StreamErrorType, streamName: string): {
     case 'TIMEOUT':
       return {
         icon: '⏱️',
-        title: 'انتهت مهلة الاتصال (5 ثوان)',
+        title: 'انتهت مهلة الاتصال (15 ثانية)',
         subtitle: 'البث بطيء جداً أو غير متاح الآن.',
         canRetry: true
       };

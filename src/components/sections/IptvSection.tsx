@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tv, Plus, RotateCcw, SortAsc } from 'lucide-react';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { OsWindow } from '../OsWindow';
@@ -18,7 +18,15 @@ export function IptvSection() {
   const [isTvOpen, setIsTvOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<'radio' | 'music_channels' | 'music_audio'>('music_channels');
   const [activeSubGroup, setActiveSubGroup] = useState('All');
-  const [filteredStreams, setFilteredStreams] = useState<StreamItem[]>([]);
+  const [filteredStreams, setFilteredStreams] = useState<StreamItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('retro_tv_custom_playlist_v3');
+      const list = saved ? JSON.parse(saved) : DEFAULT_PRESET_STREAMS;
+      return list.filter((s: StreamItem) => s.category === 'music_channels' && !s.hidden);
+    } catch {
+      return DEFAULT_PRESET_STREAMS.filter(s => s.category === 'music_channels');
+    }
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -33,14 +41,14 @@ export function IptvSection() {
 
   const [streams, setStreams] = useState<StreamItem[]>(() => {
     try {
-      const saved = localStorage.getItem('retro_tv_custom_playlist');
+      const saved = localStorage.getItem('retro_tv_custom_playlist_v3');
       return saved ? JSON.parse(saved) : DEFAULT_PRESET_STREAMS;
     } catch { return DEFAULT_PRESET_STREAMS; }
   });
 
   const saveStreams = (list: StreamItem[]) => {
     setStreams(list);
-    try { localStorage.setItem('retro_tv_custom_playlist', JSON.stringify(list)); } catch {}
+    try { localStorage.setItem('retro_tv_custom_playlist_v3', JSON.stringify(list)); } catch {}
   };
 
   const player = useStreamPlayer({
@@ -55,7 +63,20 @@ export function IptvSection() {
   });
 
   useEffect(() => {
-    if (localStorage.getItem('retro_tv_custom_playlist')) return;
+    // تحقق من تاريخ آخر تحديث — أعد الجلب كل 24 ساعة
+    const lastFetch = localStorage.getItem('retro_tv_last_fetch_v3');
+    const isStale = !lastFetch || (Date.now() - parseInt(lastFetch)) > 86400000;
+
+    if (!isStale && localStorage.getItem('retro_tv_custom_playlist_v3')) {
+      try {
+        const saved = JSON.parse(localStorage.getItem('retro_tv_custom_playlist_v3')!);
+        if (saved && saved.length > 0) return;
+      } catch {}
+    }
+    // احذف القديم وأعد الجلب
+    localStorage.removeItem('retro_tv_custom_playlist_v3');
+    setStreams(DEFAULT_PRESET_STREAMS);
+
     const sources = [
       { url: STREAM_SOURCES.CHANNELS, cat: 'music_channels' as const },
       { url: STREAM_SOURCES.RADIO, cat: 'radio' as const },
@@ -78,7 +99,8 @@ export function IptvSection() {
         }));
         setStreams(prev => {
           const combined = [...prev, ...parsed];
-          localStorage.setItem('retro_tv_custom_playlist', JSON.stringify(combined));
+          localStorage.setItem('retro_tv_custom_playlist_v3', JSON.stringify(combined));
+          localStorage.setItem('retro_tv_last_fetch_v3', Date.now().toString());
           return combined;
         });
       } catch {}
@@ -95,13 +117,27 @@ export function IptvSection() {
     return () => audioManager.releaseBg('iptv_broadcast');
   }, [isTvOpen, player.isPlaying, player.isMuted, player.isBuffering]);
 
-  // Set initial live station on open
+  // Clean stop of the stream when the TV container is closed
   useEffect(() => {
-    if (streams.length > 0 && !player.currentStream) {
-      const active = streams.find(s => s.category === activeCategory) || streams[0];
-      player.startStream(active);
+    if (!isTvOpen) {
+      player.stopStream();
     }
-  }, [streams, activeCategory, player]);
+  }, [isTvOpen, player]);
+
+  // Set initial live station on open and change category
+  const lastCategoryRef = useRef(activeCategory);
+  useEffect(() => {
+    if (!isTvOpen) return;
+    const catChanged = activeCategory !== lastCategoryRef.current;
+    lastCategoryRef.current = activeCategory;
+
+    if (streams.length > 0) {
+      if (!player.currentStream || catChanged) {
+        const active = streams.find(s => s.category === activeCategory) || streams[0];
+        player.startStream(active);
+      }
+    }
+  }, [isTvOpen, streams, activeCategory, player]);
 
   const currentCategoryStreams = streams.filter(s => s.category === activeCategory && !s.hidden);
   const subGroups = sortSubGroupChips(Array.from(new Set(currentCategoryStreams.map(s => s.group))).filter(Boolean), activeCategory);
@@ -211,17 +247,36 @@ export function IptvSection() {
           {isSidebarOpen && !isFullscreen && (
             <div className={`w-full md:w-64 flex flex-col border-t md:border-t-0 md:border-l h-auto md:h-full overflow-hidden ${skin.sidebarBg}`}>
               {/* Category tabs */}
-              <div style={{ height: isMobile ? 48 : 36 }} className="grid grid-cols-3 flex-shrink-0 border-b divide-x divide-zinc-400">
-                {(['music_channels', 'radio', 'music_audio'] as const).map(cat => (
-                  <button 
-                    key={cat} 
-                    onClick={() => { setActiveCategory(cat); setActiveSubGroup('All'); }} 
-                    style={isMobile ? { minHeight: 44 } : {}}
-                    className={`font-bold cursor-pointer transition-all flex items-center justify-center ${isMobile ? 'text-xs' : 'text-[10px]'} ${activeCategory === cat ? skin.activePill : 'bg-transparent text-zinc-500'}`}
-                  >
-                    {cat === 'music_channels' ? '📺 TV' : cat === 'radio' ? '📻 Live' : '🎵 Audio'}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between border-b border-zinc-400 flex-shrink-0">
+                <div style={{ height: isMobile ? 48 : 36 }} className="grid grid-cols-3 flex-grow divide-x divide-zinc-400">
+                  {(['music_channels', 'radio', 'music_audio'] as const).map(cat => (
+                    <button 
+                      key={cat} 
+                      onClick={() => { setActiveCategory(cat); setActiveSubGroup('All'); }} 
+                      style={isMobile ? { minHeight: 44 } : {}}
+                      className={`font-bold cursor-pointer transition-all flex items-center justify-center ${isMobile ? 'text-xs' : 'text-[10px]'} ${activeCategory === cat ? skin.activePill : 'bg-transparent text-zinc-500'}`}
+                    >
+                      {cat === 'music_channels' ? '📺 TV' : cat === 'radio' ? '📻 Live' : '🎵 Audio'}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('retro_tv_custom_playlist_v3');
+                    localStorage.removeItem('retro_tv_last_fetch_v3');
+                    window.location.reload();
+                  }}
+                  title="إعادة تحميل القنوات"
+                  style={{
+                    fontSize: '10px',
+                    padding: '4px 8px',
+                    opacity: 0.7,
+                    cursor: 'pointer',
+                  }}
+                  className="hover:opacity-100 flex items-center gap-0.5 px-2 py-1 select-none text-zinc-400 hover:text-white transition-opacity font-bold shrink-0"
+                >
+                  ↻ تحديث
+                </button>
               </div>
 
               {/* Search Bar */}

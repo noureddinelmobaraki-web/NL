@@ -4,15 +4,6 @@
 @import "@fontsource/patrick-hand";
 @import "@fontsource/share-tech-mono";
 
-@font-face {
-  font-family: 'Bangers';
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Patrick Hand';
-  font-display: swap;
-}
-
 @import "tailwindcss";
 
 :root {
@@ -1654,10 +1645,64 @@ button {
    GLOBAL MOBILE — MIN TOUCH TARGETS
 ═══════════════════════════════ */
 @media (max-width: 767px) {
+  /* Global tap targets */
   button:not([data-no-min]),
   a[role="button"]:not([data-no-min]) {
     min-height: 44px;
     min-width: 44px;
   }
+
+  /* 100dvh بدل 100vh */
+  .min-h-screen { min-height: 100dvh !important; }
+  .h-screen     { height: 100dvh !important; }
+
+  /* BIT theme — تقليل shadows */
+  [data-theme="bit"] .manga-border,
+  [data-theme="bit"] .manga-panel {
+    box-shadow:
+      2px 0 0 0 var(--ink-color),
+     -2px 0 0 0 var(--ink-color),
+      0  2px 0 0 var(--ink-color),
+      0 -2px 0 0 var(--ink-color),
+      4px 4px 0 0 rgba(255, 0, 204, 0.5) !important;
+  }
+  [data-theme="bit"] h1 { animation: none !important; }
+
+  /* LIGHT theme */
+  @media (hover: none) {
+    [data-theme="light"], [data-theme="light"] * { cursor: auto !important; }
+  }
+
+  /* MIDNIGHT theme — تقليل blur للأداء */
+  [data-theme="midnight"] [style*="backdrop-filter"] {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  /* DARK theme — تقليل animation */
+  [data-theme="dark"] body::after { animation: none !important; }
+  [data-theme="dark"] body::before { --grain-opacity: 0.10; }
+
+  /* Manga paper tabs */
+  .manga-paper-tab {
+    clip-path: none !important;
+    border-radius: 4px !important;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.85) !important;
+    transform: rotate(0deg) !important;
+    min-height: 44px !important;
+  }
+  .manga-paper-tab::before,
+  .manga-paper-tab::after { display: none !important; }
+
+  /* NowPlayingBar فوق MobileNavBar */
+  .now-playing-bar { bottom: 60px !important; }
+
+  /* Scroll to top فوق MobileNavBar */
+  .scroll-to-top {
+    bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Footer */
+  .footer-img { max-width: 90% !important; }
 }
 
