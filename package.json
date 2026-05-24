@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "prebuild": "node scripts/generate-share.cjs",
+    "prebuild": "node scripts/generate-share.cjs && node scripts/verify-lrc.mjs",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "postbuild": "node scripts/generate-sitemap.mjs",
     "start": "node dist/server.cjs",
