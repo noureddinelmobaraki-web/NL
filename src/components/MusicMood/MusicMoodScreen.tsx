@@ -397,6 +397,53 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
         }}
       />
 
+      {/* ══ زر إغلاق (X) دقيق وأنيق للشاشات والهواتف ══ */}
+      <button
+        onClick={onExit}
+        aria-label="إغلاق"
+        title="إغلاق"
+        style={{
+          position: 'absolute',
+          top: 'calc(env(safe-area-inset-top) + 24px)',
+          right: 'calc(env(safe-area-inset-right) + 24px)',
+          width: '44px',
+          height: '44px',
+          borderRadius: '50%',
+          border: '1.5px solid rgba(0,0,0,0.08)',
+          background: 'rgba(255,255,255,0.7)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2147483647,
+          transition: 'all 0.2s ease',
+          color: 'rgba(0,0,0,0.4)',
+          padding: 0,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+        }}
+        onMouseEnter={e => {
+          const b = e.currentTarget as HTMLButtonElement;
+          b.style.borderColor = 'rgba(0,0,0,0.25)';
+          b.style.color = 'rgba(0,0,0,0.8)';
+          b.style.background = '#FFFFFF';
+          b.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={e => {
+          const b = e.currentTarget as HTMLButtonElement;
+          b.style.borderColor = 'rgba(0,0,0,0.08)';
+          b.style.color = 'rgba(0,0,0,0.4)';
+          b.style.background = 'rgba(255,255,255,0.7)';
+          b.style.transform = 'scale(1)';
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
       {/* ══ Particles Canvas — مثل antigravity.google ══ */}
       <canvas
         ref={particlesCanvasRef}

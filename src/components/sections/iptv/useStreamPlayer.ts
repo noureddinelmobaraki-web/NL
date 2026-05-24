@@ -108,7 +108,6 @@ export function useStreamPlayer(options?: {
 
     const needsProxy = (
       rawUrl.startsWith('http') &&
-      !isHlsFormat && // لا تستخدم بروكسي لملفات HLS لتجنب كسر الخوادم الفرعية والقطع
       !rawUrl.includes('github.io') &&
       !rawUrl.includes('localhost')
     );
@@ -216,6 +215,41 @@ export function useStreamPlayer(options?: {
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           handleSuccess();
+        });
+
+        // Intercept and rewrite submedia playlist levels to use CORS proxy
+        hls.on(Hls.Events.MANIFEST_LOADED, (_, data) => {
+          if (data.levels) {
+            data.levels.forEach(lvl => {
+              const level = lvl as any;
+              if (level.url) {
+                if (Array.isArray(level.url)) {
+                  level.url = level.url.map((u: string) => {
+                    if (u && u.startsWith('http') && !u.includes('corsproxy.io') && !u.includes('github.io') && !u.includes('localhost')) {
+                      return `https://corsproxy.io/?${encodeURIComponent(u)}`;
+                    }
+                    return u;
+                  });
+                } else if (typeof level.url === 'string') {
+                  const u: string = level.url;
+                  if (u && u.startsWith('http') && !u.includes('corsproxy.io') && !u.includes('github.io') && !u.includes('localhost')) {
+                    level.url = `https://corsproxy.io/?${encodeURIComponent(u)}`;
+                  }
+                }
+              }
+            });
+          }
+        });
+
+        // Intercept and rewrite chunk/TS segment URLs to use CORS proxy
+        hls.on(Hls.Events.LEVEL_LOADED, (_, data) => {
+          if (data.details && data.details.fragments) {
+            data.details.fragments.forEach(frag => {
+              if (frag.url && frag.url.startsWith('http') && !frag.url.includes('corsproxy.io') && !frag.url.includes('github.io') && !frag.url.includes('localhost')) {
+                frag.url = `https://corsproxy.io/?${encodeURIComponent(frag.url)}`;
+              }
+            });
+          }
         });
 
         hls.on(Hls.Events.ERROR, (_, data) => {

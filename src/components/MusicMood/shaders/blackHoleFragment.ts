@@ -305,7 +305,7 @@ vec4 compute(inout vec3 position, inout vec3 velocity, inout Ray ray){
         // In case the ray falls in the event horizon
         if(dist <= EVENT_HORIZON_RADIUS){
             // return true;
-            return vec4(0.0, 0.0, 0.0, 1.0);
+            return vec4(1.0, 1.0, 1.0, 1.0);
         }
         // update the position and velocity
         position += rk_delta;

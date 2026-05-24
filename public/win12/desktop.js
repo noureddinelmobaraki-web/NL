@@ -4411,22 +4411,24 @@ if (!location.href.match(/((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|
     $('#loginback').css('opacity', '1');
     $('#loginback').css('display', 'flex');
     shownotice('about');
-    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none', scope: './' }).then(reg => {
+    if (!(new URL(location.href)).searchParams.get('embedded')) {
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none', scope: './' }).then(reg => {
 
-        reg.update();
+            reg.update();
 
-        reg.addEventListener('updatefound', () => {
-            // 正在安装的新的 SW
-            const newWorker = reg.installing;
-            console.log('dsk-发现更新');
-            // newWorker.state;
-            // // "installing" - 安装事件被触发，但还没完成
-            // // "installed"  - 安装完成
-            // // "activating" - 激活事件被触发，但还没完成
-            // // "activated"  - 激活成功
-            // // "redundant"  - 废弃，可能是因为安装失败，或者是被一个新版本覆盖
+            reg.addEventListener('updatefound', () => {
+                // 正在安装的新的 SW
+                const newWorker = reg.installing;
+                console.log('dsk-发现更新');
+                // newWorker.state;
+                // // "installing" - 安装事件被触发，但还没完成
+                // // "installed"  - 安装完成
+                // // "activating" - 激活事件被触发，但还没完成
+                // // "activated"  - 激活成功
+                // // "redundant"  - 废弃，可能是因为安装失败，或者是被一个新版本覆盖
+            });
         });
-    });
+    }
     // navigator.serviceWorker.controller.postMessage({
     //     head: 'is_update'
     // });
@@ -4454,7 +4456,9 @@ if (!location.href.match(/((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|
     }
 }
 function sendToSw(msg) {
-    navigator.serviceWorker.controller.postMessage(msg);
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage(msg);
+    }
 }
 
 /**

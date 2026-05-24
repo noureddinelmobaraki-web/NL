@@ -49,6 +49,16 @@ export function Win12Section() {
     };
   }, [isOpen]);
 
+  // Escape key handler to exit the simulator
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen]);
+
   // Theme settings mapping matching the aesthetics
   const themeCardStyles = {
     light: {
@@ -267,14 +277,25 @@ export function Win12Section() {
             )}
 
             <iframe
-              src={`${import.meta.env.BASE_URL}win12/desktop.html`}
+              src={`${import.meta.env.BASE_URL}win12/desktop.html?embedded=true`}
               className="w-full h-full border-none outline-none overflow-hidden"
               title="NL OS — Windows 12 Simulator"
               allow="autoplay; fullscreen; microphone"
               allowFullScreen
               sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-pointer-lock"
               loading="eager"
-              onLoad={() => setIframeLoaded(true)}
+              onLoad={(e) => {
+                setIframeLoaded(true);
+                try {
+                  const iframeWindow = (e.target as HTMLIFrameElement).contentWindow;
+                  if (iframeWindow) {
+                    const iframeSrc = iframeWindow.location.href;
+                    if (iframeSrc.includes('shutdown') || iframeSrc.includes('reload')) {
+                      setTimeout(() => setIsOpen(false), 2000);
+                    }
+                  }
+                } catch (_) {}
+              }}
               onError={() => {
                 setIframeLoaded(true);
                 setIframeError(true);
