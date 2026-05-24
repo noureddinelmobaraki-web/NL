@@ -37,12 +37,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
   const particlesCanvasRef = useRef<HTMLCanvasElement>(null);
   const particlesAnimRef = useRef<number>(0);
 
-  // ── قفل الـ overflow لمنع الـ scroll أثناء استعراض الشاشة
-  useEffect(() => {
-    const originalBody = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = originalBody; };
-  }, []);
+  // ── قفل الـ overflow مُدار مركزيًا في MySongsPage لمنع التداخل والتعليق في السكرول عند الخروج ──
 
   // ── اختيار أغنية عشوائية
   const pickRandomSong = useCallback(() => {

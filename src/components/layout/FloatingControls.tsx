@@ -6,13 +6,13 @@ import { ActiveSong } from "../../types";
 import type { Theme } from "../../utils/userPrefs";
 
 const THEME_LABELS: Record<string, string> = {
-  system:   'ثيم: تلقائي',
   dark:     'ثيم: مظلم',
   light:    'ثيم: كلاسيكي',
   bit:      'ثيم: بيكسل',
+  midnight: 'ثيم: منتصف الليل',
 };
 const THEME_NEXT: Record<string, string> = {
-  system: 'dark', dark: 'light', light: 'bit', bit: 'system',
+  dark: 'light', light: 'bit', bit: 'midnight', midnight: 'dark',
 };
 
 export interface FloatingControlsProps {
@@ -87,9 +87,9 @@ export const FloatingControls = ({
       </button>
 
       <button
-        onClick={() => onThemeChange(THEME_NEXT[theme] as Theme)}
-        aria-label={THEME_LABELS[theme] ?? 'تغيير الثيم'}
-        title={`${THEME_LABELS[theme]} — اضغط للتبديل`}
+        onClick={() => onThemeChange((THEME_NEXT[theme] ?? 'dark') as Theme)}
+        aria-label={(THEME_LABELS[theme] ?? THEME_LABELS.midnight) ?? 'تغيير الثيم'}
+        title={`${(THEME_LABELS[theme] ?? THEME_LABELS.midnight)} — اضغط للتبديل`}
         className="fixed z-[9000] border p-2.5 rounded-full transition-all hover:scale-105 active:scale-90 shadow-xl"
         style={{
           top:   'calc(env(safe-area-inset-top) + 20px)',
@@ -100,9 +100,9 @@ export const FloatingControls = ({
         }}
       >
         <span className="hidden sm:inline text-[9px] font-mono mr-1 opacity-60">
-          {theme === 'system' ? 'AUTO' : theme.toUpperCase()}
+          {theme.toUpperCase()}
         </span>
-        {theme === 'system' ? '🌓' : theme === 'dark' ? '🌑' : theme === 'light' ? '☀️' : '👾'}
+        {theme === 'midnight' ? '🌓' : theme === 'dark' ? '🌑' : theme === 'light' ? '☀️' : '👾'}
       </button>
     </>
   );

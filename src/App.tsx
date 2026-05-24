@@ -150,33 +150,14 @@ export default function App() {
         resolved = 'light';
       } else if (theme === 'bit') {
         resolved = 'bit';
-      } else if (theme === 'system') {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        resolved = isDark ? 'dark' : 'light';
+      } else if (theme === 'midnight') {
+        resolved = 'midnight';
       }
       document.documentElement.setAttribute('data-theme', resolved);
     };
 
     applyTheme();
     savePrefs({ theme });
-
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const listener = () => applyTheme();
-      if (mediaQuery.addEventListener) {
-        mediaQuery.addEventListener('change', listener);
-      } else {
-        mediaQuery.addListener(listener);
-      }
-      return () => {
-        if (mediaQuery.removeEventListener) {
-          mediaQuery.removeEventListener('change', listener);
-        } else {
-          mediaQuery.removeListener(listener);
-        }
-      };
-    }
-    return () => {};
   }, [theme]);
 
   const handleNavigate = (page: string) => {

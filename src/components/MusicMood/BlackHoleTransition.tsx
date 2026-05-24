@@ -28,14 +28,11 @@ export const BlackHoleTransition = ({
   const startTimeRef      = useRef<number>(0);
   const nearFiredRef      = useRef(false);
 
-  // Freeze scroll and pointer events during transition
+  // Freeze pointer events during transition
   useEffect(() => {
-    const origOverflow = document.body.style.overflow;
     const origPointer  = document.body.style.pointerEvents;
-    document.body.style.overflow      = 'hidden';
     document.body.style.pointerEvents = 'none';
     return () => {
-      document.body.style.overflow      = origOverflow;
       document.body.style.pointerEvents = origPointer;
     };
   }, []);

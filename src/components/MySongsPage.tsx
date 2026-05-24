@@ -44,6 +44,18 @@ export const MySongs = ({
   const [isMoodActive, setIsMoodActive] = useState(false);
   const moodAudioCtxRef = useRef<AudioContext | null>(null);
 
+  // Lock body scroll when either mood transition or active mood is running
+  useEffect(() => {
+    if (isMoodTransitioning || isMoodActive) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMoodTransitioning, isMoodActive]);
+
   const currentSong = useMemo(() => songs.find((s) => s.id === activeId) || null, [activeId, songs]);
 
   useEffect(() => {
