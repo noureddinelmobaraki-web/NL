@@ -1,0 +1,73 @@
+/* Mac OS 9 / Win98 chrome — light theme components */
+[data-theme="light"] .os-window::after {
+  content: '';
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(135deg, transparent 45%, #999 45%, #999 55%, transparent 55%, transparent 70%, #555 70%, #555 80%, transparent 80%);
+  background-size: 4px 4px;
+  border-left: 1px solid #999;
+  border-top: 1px solid #999;
+  background-color: #F0EBE3;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.os-terminal-blink::after {
+  content: "▊";
+  animation: os-blink 1s step-end infinite;
+  margin-left: 2px;
+  color: #0000CC;
+}
+
+.retro-shadow-sm {
+  box-shadow: 3px 3px 0px var(--ink-color), 6px 6px 0px var(--halftone-color);
+}
+.retro-shadow-md {
+  box-shadow: 5px 5px 0px var(--ink-color), 9px 9px 0px var(--halftone-color), 14px 14px 0px rgba(0, 0, 0, 0.08);
+}
+.retro-shadow-lg {
+  box-shadow: 8px 8px 0px var(--ink-color), 14px 14px 0px var(--halftone-color), 20px 20px 0px rgba(0, 0, 0, 0.1);
+}
+.retro-shadow-white {
+  box-shadow: 5px 5px 0px var(--ink-color), 9px 9px 0px var(--halftone-color);
+}
+
+/* ═══════════════════════════════
+   LIGHT THEME — MOBILE FIXES
+═══════════════════════════════ */
+@media (max-width: 767px) {
+  [data-theme="light"] .os-window {
+    box-shadow: 2px 2px 0px #999, 3px 3px 0px #777 !important;
+  }
+  [data-theme="light"] .os-window > div:first-child > span {
+    font-size: 10px !important;
+    max-width: 60% !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-theme="light"] .os-window > div:first-child > div > div {
+    width: 7px !important;
+    height: 7px !important;
+  }
+  [data-theme="light"] .os-window::after {
+    display: none !important;
+  }
+  [data-theme="light"] .fixed.top-4.right-4 {
+    top: calc(env(safe-area-inset-top) + 72px) !important;
+    font-size: 9px !important;
+    padding: 1px 6px !important;
+  }
+  @media (hover: none) {
+    [data-theme="light"],
+    [data-theme="light"] * {
+      cursor: auto !important;
+    }
+  }
+  [data-theme="light"] ::-webkit-scrollbar {
+    width: 8px !important;
+  }
+}

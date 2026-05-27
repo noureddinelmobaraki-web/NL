@@ -1,0 +1,115 @@
+/* All global @keyframes animations */
+@keyframes sw-noise {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-1%, -1%); }
+  50% { transform: translate(1%, 1%); }
+  75% { transform: translate(-1%, 1%); }
+  100% { transform: translate(1%, -1%); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-200%); }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-spotify {
+  0%, 100% { 
+    transform: scale(1) rotate(-1deg);
+    filter: drop-shadow(0 0 10px rgba(29, 185, 84, 0.4));
+  }
+  50% { 
+    transform: scale(1.1) rotate(1deg);
+    filter: drop-shadow(0 0 25px rgba(29, 185, 84, 0.8));
+  }
+}
+
+@keyframes flicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+    opacity: 0.99;
+    filter: drop-shadow(0 0 8px rgba(29, 185, 84, 0.6));
+  }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+    opacity: 0.4;
+    filter: drop-shadow(0 0 2px rgba(29, 185, 84, 0.1));
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes me-bit-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes os-blink {
+  50% { opacity: 0; }
+}
+
+@keyframes tv-static {
+  0%   { background-position: 0 0; }
+  25%  { background-position: -15px 8px; }
+  50%  { background-position: 8px -15px; }
+  75%  { background-position: -8px 15px; }
+  100% { background-position: 15px -8px; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes moodLineFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes moodDiceSpin {
+  0%   { transform: scale(1)    rotate(0deg); }
+  30%  { transform: scale(1.3)  rotate(180deg); }
+  100% { transform: scale(1)    rotate(360deg); }
+}
+
+@keyframes moodLoadingBar {
+  0%   { width: 0%;   margin-left: 0%; }
+  50%  { width: 60%;  margin-left: 20%; }
+  100% { width: 0%;   margin-left: 100%; }
+}
+
+@keyframes moodPulse {
+  from { transform: scale(0.8); opacity: 0.3; }
+  to   { transform: scale(1.4); opacity: 0.9; }
+}

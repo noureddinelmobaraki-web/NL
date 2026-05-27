@@ -1,63 +1,13 @@
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Play
 } from 'lucide-react';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
-import { audioManager } from '../../audio/audioManager';
 import { useDeviceType } from '../../hooks/useDeviceType';
 
 export function Win12Section() {
   const resolvedTheme = useResolvedTheme();
   const { isMobile } = useDeviceType();
-  const [isOpen, setIsOpen] = useState(false);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [iframeError, setIframeError] = useState(false);
-
-  // Timeout fallback: if the iframe doesn't load within 12 seconds, switch to error/new tab fallback
-  useEffect(() => {
-    if (!isOpen || iframeLoaded || iframeError) return;
-    const timeout = setTimeout(() => {
-      if (!iframeLoaded) setIframeError(true);
-    }, 12000);
-    return () => clearTimeout(timeout);
-  }, [isOpen, iframeLoaded, iframeError]);
-
-  // Reset loading flags when iframe panel is closed
-  useEffect(() => {
-    if (!isOpen) {
-      setIframeLoaded(false);
-      setIframeError(false);
-    }
-  }, [isOpen]);
-
-  // Manage body scroll lock and audio suppression on open/close
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      audioManager.suppressBg('win12_runtime');
-      audioManager.pause('lens');
-      audioManager.pause('mebit');
-      audioManager.pause('song');
-    } else {
-      document.body.style.overflow = '';
-      audioManager.releaseBg('win12_runtime');
-    }
-    return () => {
-      document.body.style.overflow = '';
-      audioManager.releaseBg('win12_runtime');
-    };
-  }, [isOpen]);
-
-  // Escape key handler to exit the simulator
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [isOpen]);
 
   // Theme settings mapping matching the aesthetics
   const themeCardStyles = {
@@ -108,203 +58,89 @@ export function Win12Section() {
     buttonClass: 'bg-[#B8FF3F] hover:bg-[#a3e635] text-black',
   };
 
-  if (isMobile) {
-    return (
-      <div className="w-full max-w-5xl mx-auto px-4 py-8" id="win12-launcher-section">
-        <div
-          className={`rounded-xl overflow-hidden border p-8 text-center flex flex-col items-center gap-4 ${themeCardStyles.containerBg}`}
-          style={{
-            background: themeCardStyles.containerBg,
-            border: themeCardStyles.border,
-            boxShadow: themeCardStyles.boxShadow,
-          }}
-        >
-          <span className="text-5xl" aria-hidden="true">🖥️</span>
-          <p
-            className="font-mono text-sm"
-            style={{ color: resolvedTheme === 'dark' ? '#B8FF3F' : 'var(--text-primary)' }}
-          >
-            NL OS — Desktop Experience
-          </p>
-          <p className="text-[var(--text-muted)] text-xs leading-relaxed max-w-xs">
-            هذه التجربة مصممة للحاسوب.
-            يمكنك تفعيل وضع سطح المكتب من متصفحك للوصول إليها.
-          </p>
-          <div className="text-[var(--text-muted)] text-[10px] opacity-60 font-mono space-y-1">
-            <p>Chrome: القائمة ← "Desktop site"</p>
-            <p>Safari: AA ← "Request Desktop Website"</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleLaunch = () => {
+    if (isMobile) {
+      const confirmOpen = window.confirm("هذه التجربة مصممة ومحسنة لأجهزة الكمبيوتر. هل ترغب في فتحها على أي حال؟");
+      if (!confirmOpen) return;
+    }
+    window.open(`${import.meta.env.BASE_URL}win12/desktop.html`, '_blank');
+  };
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-8 select-none" id="win12-launcher-section">
-      {!isOpen ? (
-        // CLOSED STATE: Zero DOM presence for the iframe, render the clickable poster card
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="w-full"
+      <div className="text-center mb-6">
+        <p className="text-sm font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-5 py-2.5 inline-block rounded-xl shadow-sm tracking-wide">
+          هاته الخصية موجهة للحواسيب فقط
+        </p>
+      </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4 }}
+        className="w-full"
+      >
+        <div
+          className={`rounded-xl overflow-hidden w-full border transition-all duration-300`}
+          style={{
+            backgroundColor: themeCardStyles.containerBg,
+            borderColor: resolvedTheme === 'light' ? '#71717a' : undefined,
+            border: themeCardStyles.border,
+            boxShadow: themeCardStyles.boxShadow,
+            imageRendering: resolvedTheme === 'bit' ? 'pixelated' : 'auto'
+          }}
         >
-          <div
-            className={`rounded-xl overflow-hidden w-full border transition-all duration-300`}
-            style={{
-              backgroundColor: themeCardStyles.containerBg,
-              borderColor: resolvedTheme === 'light' ? '#71717a' : undefined,
-              border: themeCardStyles.border,
-              boxShadow: themeCardStyles.boxShadow,
-              imageRendering: resolvedTheme === 'bit' ? 'pixelated' : 'auto'
-            }}
-          >
-            {/* Theme-Aware OS Container Header */}
-            <div className={`px-4 py-2.5 text-[10px] font-bold tracking-wider flex items-center justify-between border-b ${
-              resolvedTheme === 'dark' ? 'bg-[#151515] text-[#B8FF3F] border-[#1c1c1c] font-mono' :
-              resolvedTheme === 'bit' ? 'bg-[#2d1b69] text-[#ff00ff] border-[#ff00ff] font-mono' :
-              resolvedTheme === 'light' ? 'bg-[#CCCCCC] text-black border-zinc-400 font-sans shadow-[inset_1px_1px_0_#FFF,inset_-1px_-1px_0_#999]' :
-              'bg-[#091523] text-[#38bdf8] border-[#11243d] font-sans'
-            }`}>
-              <span className="flex items-center gap-1.5 uppercase">
-                <span className="inline-block w-2 h-2 rounded-full animate-pulse bg-green-500" />
-                {themeCardStyles.title}
-              </span>
-              <div className="flex gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-              </div>
+          {/* Theme-Aware OS Container Header */}
+          <div className={`px-4 py-2.5 text-[10px] font-bold tracking-wider flex items-center justify-between border-b ${
+            resolvedTheme === 'dark' ? 'bg-[#151515] text-[#B8FF3F] border-[#1c1c1c] font-mono' :
+            resolvedTheme === 'bit' ? 'bg-[#2d1b69] text-[#ff00ff] border-[#ff00ff] font-mono' :
+            resolvedTheme === 'light' ? 'bg-[#CCCCCC] text-black border-zinc-400 font-sans shadow-[inset_1px_1px_0_#FFF,inset_-1px_-1px_0_#999]' :
+            'bg-[#091523] text-[#38bdf8] border-[#11243d] font-sans'
+          }`}>
+            <span className="flex items-center gap-1.5 uppercase">
+              <span className="inline-block w-2 h-2 rounded-full animate-pulse bg-green-500" />
+              {themeCardStyles.title}
+            </span>
+            <div className="flex gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
             </div>
+          </div>
 
-            {/* Poster Card */}
-            <div 
-              onClick={() => setIsOpen(true)}
-              className="relative w-full h-[320px] overflow-hidden cursor-pointer group"
-            >
-              <img 
-                src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/win12.webp"
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                alt="NL OS Background Preview"
-                referrerPolicy="no-referrer"
-              />
-              {/* Dark overlay gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/30" />
-              
-              {/* Centered Typography & Launch Control */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center gap-5">
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="text-white text-3xl md:text-4xl font-black tracking-wide drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
-                    NL OS
-                  </h3>
-                  <p className="text-zinc-200 text-sm md:text-base font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" style={{ direction: 'rtl' }}>
-                     OoO   
-                  </p>
-                </div>
+          {/* Poster Card */}
+          <div 
+            onClick={handleLaunch}
+            className="relative w-full h-[320px] overflow-hidden cursor-pointer group"
+          >
+            <img 
+              src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/win12.webp"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+              alt="NL OS Background Preview"
+              referrerPolicy="no-referrer"
+            />
+            {/* Dark overlay gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/30" />
+            
+            {/* Centered Typography & Launch Control */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center gap-5">
+              <div className="flex flex-col gap-1.5">
+                <h3 className="text-white text-3xl md:text-4xl font-black tracking-wide drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+                  NL OS
+                </h3>
+                <p className="text-zinc-200 text-sm md:text-base font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" style={{ direction: 'rtl' }}>
+                   OoO   
+                </p>
+              </div>
 
-                <div
-                  className={`py-2 px-6 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transform transition-all group-hover:scale-105 active:scale-95 duration-200 rounded shadow-md ${themeCardStyles.buttonClass}`}
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  LAUNCH
-                </div>
+              <div
+                className={`py-2 px-6 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transform transition-all group-hover:scale-105 active:scale-95 duration-200 rounded shadow-md ${themeCardStyles.buttonClass}`}
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                LAUNCH
               </div>
             </div>
           </div>
-        </motion.div>
-      ) : (
-        // OPEN STATE: Fullscreen fixed overlay subsystem frame with unmounted closed state
-        <div className="fixed inset-0 w-screen h-screen z-[9999] bg-black flex flex-col select-none overflow-hidden">
-          {/* Transparent Semi-Transparent Exit Button at top-right corner */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="absolute top-3 right-4 z-[10000] bg-black/60 hover:bg-black/95 text-white rounded-full px-5 py-2 text-xs font-mono font-bold tracking-wider border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xl hover:scale-105 active:scale-95"
-          >
-            ✕ EXIT
-          </button>
-
-          {/* Fully Interactive Embedded OS System Iframe with loading & safety wrappers */}
-          <>
-            {/* Loading overlay */}
-            {!iframeLoaded && !iframeError && (
-              <div 
-                style={{
-                  position: 'absolute', inset: 0, zIndex: 10,
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center',
-                  background: '#000', gap: '16px',
-                }}
-              >
-                <div 
-                  className="animate-pulse"
-                  style={{
-                    width: 12, height: 12, borderRadius: '50%',
-                    background: '#B8FF3F',
-                  }} 
-                />
-                <p style={{ color: '#888', fontSize: '11px', fontFamily: 'monospace', letterSpacing: '0.2em' }}>
-                  BOOTING NL OS...
-                </p>
-              </div>
-            )}
-
-            {/* Error fallback */}
-            {iframeError && (
-              <div 
-                style={{
-                  position: 'absolute', inset: 0, zIndex: 10,
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center',
-                  background: '#050505', gap: '16px',
-                  padding: '24px',
-                  textAlign: 'center',
-                }}
-              >
-                <p style={{ color: '#ff4d4d', fontFamily: 'monospace', fontSize: '14px', fontWeight: 'bold' }}>
-                  NL OS failed to load inside iframe
-                </p>
-                <p style={{ color: '#888', fontSize: '11px', maxWidth: '280px', marginBottom: '8px' }}>
-                  GitHub Pages or browser security restrictions might prevent embedding. Try running in an independent tab!
-                </p>
-                <a
-                  href={`${import.meta.env.BASE_URL}win12/desktop.html`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2 bg-[#B8FF3F] hover:bg-[#a3e635] text-black text-xs font-bold font-mono tracking-wider transition-all duration-200 active:scale-95 shadow-md flex items-center justify-center gap-1.5"
-                >
-                  🖥️ OPEN IN NEW TAB
-                </a>
-              </div>
-            )}
-
-            <iframe
-              src={`${import.meta.env.BASE_URL}win12/desktop.html?embedded=true`}
-              className="w-full h-full border-none outline-none overflow-hidden"
-              title="NL OS — Windows 12 Simulator"
-              allow="autoplay; fullscreen; microphone"
-              allowFullScreen
-              sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-pointer-lock"
-              loading="eager"
-              onLoad={(e) => {
-                setIframeLoaded(true);
-                try {
-                  const iframeWindow = (e.target as HTMLIFrameElement).contentWindow;
-                  if (iframeWindow) {
-                    const iframeSrc = iframeWindow.location.href;
-                    if (iframeSrc.includes('shutdown') || iframeSrc.includes('reload')) {
-                      setTimeout(() => setIsOpen(false), 2000);
-                    }
-                  }
-                } catch (_) {}
-              }}
-              onError={() => {
-                setIframeLoaded(true);
-                setIframeError(true);
-              }}
-              style={{ opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.5s ease' }}
-            />
-          </>
         </div>
-      )}
+      </motion.div>
     </div>
   );
 }

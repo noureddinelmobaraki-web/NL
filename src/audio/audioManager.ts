@@ -15,6 +15,23 @@ class AudioManager {
   private bgUserPaused = false;
   private fadeIntervals = new Map<HTMLAudioElement, ReturnType<typeof setInterval>>();
   private onStateChange: ((isPlaying: boolean) => void) | null = null;
+  private manifestParsedCallbacks = new Set<() => void>();
+  private isManifestParsed = false;
+
+  triggerManifestParsed() {
+    this.isManifestParsed = true;
+    this.manifestParsedCallbacks.forEach(cb => cb());
+  }
+
+  onManifestParsed(cb: () => void): () => void {
+    if (this.isManifestParsed) {
+      cb();
+    }
+    this.manifestParsedCallbacks.add(cb);
+    return () => {
+      this.manifestParsedCallbacks.delete(cb);
+    };
+  }
 
   setStateCallback(cb: (isPlaying: boolean) => void) {
     this.onStateChange = cb;

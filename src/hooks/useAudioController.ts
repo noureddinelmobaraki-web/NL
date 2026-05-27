@@ -55,10 +55,16 @@ export function useAudioController({
     if (audio.canPlayType('application/vnd.apple.mpegurl')) {
       audio.src = url;
       audio.load();
+      audio.addEventListener('loadedmetadata', () => {
+        audioManager.triggerManifestParsed();
+      }, { once: true });
     } else if (Hls.isSupported()) {
       // Chrome/Android/Firefox: use hls.js
       const hls = getOrCreateHls(url);
       hls.attachMedia(audio);
+      hls.once(Hls.Events.MANIFEST_PARSED, () => {
+        audioManager.triggerManifestParsed();
+      });
       const errHandler = (_: any, data: any) => {
         if (!data.fatal) return;
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();

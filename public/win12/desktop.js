@@ -202,7 +202,76 @@ let cms = {
     ],
     'explorer.file': [
         arg => {
-            return ['<i class="bi bi-folder2-open"></i> Open (currently not available in Mao)', ``];
+            let fileCmd = '';
+            try {
+                // Attempt to find the clicked element directly in the explorer's DOM tree
+                let elem = Array.from(document.querySelectorAll('#win-explorer .file, #win-explorer a')).find(el => {
+                    let attr = el.getAttribute('oncontextmenu') || '';
+                    return attr.includes("'" + arg + "'") || attr.includes('"' + arg + '"');
+                });
+                if (elem) {
+                    fileCmd = elem.getAttribute('ondblclick') || '';
+                }
+            } catch (e) {
+                console.error('[ContextMenu] DOM command resolution error:', e);
+            }
+
+            // High robust fallback parsing for all image link types inside custom portfolio folders
+            if (!fileCmd) {
+                let lowerArg = arg.toLowerCase();
+                let isImg = lowerArg.endsWith('.webp') || lowerArg.endsWith('.png') || lowerArg.endsWith('.jpg') || lowerArg.endsWith('.jpeg') || lowerArg.endsWith('.gif');
+                
+                if (isImg) {
+                    if (lowerArg.includes('me bit') || lowerArg.includes('me_bit')) {
+                        let match = lowerArg.match(/me_bit_(\d+)/);
+                        let idx = match ? Math.max(0, parseInt(match[1], 10) - 1) : 0;
+                        fileCmd = `openapp('xpmebit'); apps.xpmebit.index = ${idx}; apps.xpmebit.showImage(); focwin('xpmebit');`;
+                    } else if (lowerArg.includes('through the lens') || lowerArg.includes('lens')) {
+                        let parts = arg.split('/');
+                        let nameOnly = parts[parts.length - 1];
+                        let match = nameOnly.match(/(\d+)/);
+                        let idx = match ? Math.max(0, parseInt(match[1], 10) - 1) : 0;
+                        fileCmd = `openapp('xplens'); apps.xplens.index = ${idx}; apps.xplens.showImage(); focwin('xplens');`;
+                    } else {
+                        fileCmd = `openapp('xpmebit'); apps.xpmebit.index = 0; apps.xpmebit.showImage(); focwin('xpmebit');`;
+                    }
+                }
+            }
+
+            // Backup VFS tree traversal if no command can be resolved
+            if (!fileCmd) {
+                let parts = arg.split('/');
+                let fileName = parts[parts.length - 1];
+                let folderParts = parts.slice(0, parts.length - 1);
+                let current = apps.explorer.path;
+                try {
+                    for (let name of folderParts) {
+                        if (current && current.folder && current.folder[name]) {
+                            current = current.folder[name];
+                        } else if (current && current.folder && name === '用户' && current.folder['Users']) {
+                            current = current.folder['Users'];
+                        } else if (current && current.folder && name === 'Users' && current.folder['用户']) {
+                            current = current.folder['用户'];
+                        } else {
+                            current = null;
+                            break;
+                        }
+                    }
+                    if (current && current.file) {
+                        let f = current.file.find(x => x.name === fileName);
+                        if (f && f.command) {
+                            fileCmd = f.command;
+                        }
+                    }
+                } catch (e) {
+                    console.error('[ContextMenu] VFS command resolution error:', e);
+                }
+            }
+
+            if (fileCmd) {
+                return ['<i class="bi bi-folder2-open"></i> Open', fileCmd];
+            }
+            return ['<i class="bi bi-folder2-open"></i> Open', `setTimeout(() => { openapp('nlphotos'); }, 100);`];
         },
         arg => {
             if ($('#win-explorer>.path>.tit>.path>div.text').length > 1)
@@ -760,51 +829,140 @@ let apps = {
             $('#win-setting>.menu>list>a.' + name).addClass('check');
         },
         theme_get: () => {
-            $('#set-theme').html(`<loading><svg width="30px" height="30px" viewBox="0 0 16 16">
-            <circle cx="8px" cy="8px" r="7px" style="stroke:#7f7f7f50;fill:none;stroke-width:3px;"></circle>
-            <circle cx="8px" cy="8px" r="7px" style="stroke:#2983cc;stroke-width:3px;"></circle></svg></loading>`)
-            // 实时获取主题
-            $.get('https://api.github.com/repos/tjy-gitnub/win12-theme/contents').then(cs => {
-                cs.forEach(c => {
-                    if (c.type == 'dir') {
-                        $.get(c.url).then(cnt => {
-                            $('#set-theme').html('');
-                            cnt.forEach(cn => {
-                                if (cn.name == 'theme.json') {
-                                    $.getJSON('https://tjy-gitnub.github.io/win12-theme/' + cn.path).then(inf => {
-                                        infjs = inf;
-                                        if ($('#set-theme>loading').length)
-                                            $('#set-theme').html('');
-                                        $('#set-theme').append(`<a class="a act" onclick="apps.setting.theme_set('${c.name}')" style="background-image:url('https://tjy-gitnub.github.io/win12-theme/${c.name}/view.jpg')">${c.name}</a>`);
-                                    })
-                                }
-                            })
-                        })
-                    }
-                });
+            const customThemes = [
+                {
+                    name: 'Luna Blue (XP Touch)',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp',
+                    color1: '#1d59f3',
+                    color2: '#245edb',
+                    href: '#3b91d8'
+                },
+                {
+                    name: 'Midnight Studio',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp',
+                    color1: '#ad6eca',
+                    color2: '#3b91d8',
+                    href: '#2983cc'
+                },
+                {
+                    name: 'Hero Spotlight',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp',
+                    color1: '#ef233c',
+                    color2: '#d90429',
+                    href: '#ef233c'
+                },
+                {
+                    name: 'Retro Arcade',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/game%20Background.webp',
+                    color1: '#ff00ff',
+                    color2: '#00ffff',
+                    href: '#00ffff'
+                },
+                {
+                    name: 'TRI9 TBA...',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/01.%20TRI9%20TBA...%20-%20Background.webp',
+                    color1: '#4a00e0',
+                    color2: '#8e2de2',
+                    href: '#8e2de2'
+                },
+                {
+                    name: 'VETO Space',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/02.%20VETO%20-%20Background.webp',
+                    color1: '#000000',
+                    color2: '#434343',
+                    href: '#428eff'
+                },
+                {
+                    name: 'TOTAL Dream',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/03.%20TOTAL%20-%20Background.webp',
+                    color1: '#c21500',
+                    color2: '#ffc500',
+                    href: '#ffc500'
+                },
+                {
+                    name: '7CHAYCH... Life',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/04.%207CHAYCH...%2520-%2520Background.webp',
+                    color1: '#11998e',
+                    color2: '#38ef7d',
+                    href: '#38ef7d'
+                }
+            ];
+
+            $('#set-theme').html('');
+            customThemes.forEach((t, i) => {
+                $('#set-theme').append(`<a class="a act" onclick="apps.setting.theme_set_custom(${i})" style="background-image:url('${t.bg}'); background-size: cover; background-position: center; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-weight: 500; font-size:11px; height: 60px; line-height: 60px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">${t.name}</a>`);
             });
         },
+        theme_set_custom: (idx) => {
+            const customThemes = [
+                {
+                    name: 'Luna Blue (XP Touch)',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp',
+                    color1: '#1d59f3',
+                    color2: '#245edb',
+                    href: '#3b91d8'
+                },
+                {
+                    name: 'Midnight Studio',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp',
+                    color1: '#ad6eca',
+                    color2: '#3b91d8',
+                    href: '#2983cc'
+                },
+                {
+                    name: 'Hero Spotlight',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp',
+                    color1: '#ef233c',
+                    color2: '#d90429',
+                    href: '#ef233c'
+                },
+                {
+                    name: 'Retro Arcade',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/game%20Background.webp',
+                    color1: '#ff00ff',
+                    color2: '#00ffff',
+                    href: '#00ffff'
+                },
+                {
+                    name: 'TRI9 TBA...',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/01.%20TRI9%20TBA...%20-%20Background.webp',
+                    color1: '#4a00e0',
+                    color2: '#8e2de2',
+                    href: '#8e2de2'
+                },
+                {
+                    name: 'VETO Space',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/02.%20VETO%20-%20Background.webp',
+                    color1: '#000000',
+                    color2: '#434343',
+                    href: '#428eff'
+                },
+                {
+                    name: 'TOTAL Dream',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/03.%20TOTAL%20-%20Background.webp',
+                    color1: '#c21500',
+                    color2: '#ffc500',
+                    href: '#ffc500'
+                },
+                {
+                    name: '7CHAYCH... Life',
+                    bg: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/04.%207CHAYCH...%2520-%2520Background.webp',
+                    color1: '#11998e',
+                    color2: '#38ef7d',
+                    href: '#38ef7d'
+                }
+            ];
+            const t = customThemes[idx];
+            if (t) {
+                $(':root').css('--bgul', `url('${t.bg}')`);
+                $(':root').css('--theme-1', t.color1);
+                $(':root').css('--theme-2', t.color2);
+                $(':root').css('--href', t.href);
+            }
+        },
         theme_set: (infp) => {
-            $.get('https://api.github.com/repos/tjy-gitnub/win12-theme/contents/' + infp).then(cnt => {
-                console.log('https://api.github.com/repos/tjy-gitnub/win12-theme/contents/' + infp);
-                cnt.forEach(cn => {
-                    if (cn.name == 'theme.json') {
-                        $.getJSON('https://tjy-gitnub.github.io/win12-theme/' + cn.path).then(inf => {
-                            infjs = inf;
-                            cnt.forEach(fbg => {
-                                console.log(fbg, infjs);
-                                if (fbg.name == infjs.bg) {
-                                    $(':root').css('--bgul', `url('https://tjy-gitnub.github.io/win12-theme/${fbg.path}')`);
-                                    $(':root').css('--theme-1', infjs.color1);
-                                    $(':root').css('--theme-2', infjs.color2);
-                                    $(':root').css('--href', infjs.href);
-                                    // $('#set-theme').append(`<a class="a act" onclick="apps.setting.theme_set(\`(${inf})\`)" style="background-image:url('https://tjy-gitnub.github.io/win12-theme/${fbg.path}')">${c.name}</a>`);
-                                }
-                            })
-                        })
-                    }
-                })
-            })
+            // Deprecated fallback - now uses theme_set_custom
+            apps.setting.theme_set_custom(0);
         },
         checkUpdate: () => {
             $('#win-setting>.page>.cnt.update>.lo>.update-main .notice')[0].innerText = 'Checking for updates...';
@@ -3166,8 +3324,8 @@ function geticon(name) {
 // 应用与窗口
 function openapp(name) {
     // Guard للـ apps المخصصة — إذا لم تكن مهيأة بعد، أعد المحاولة
-    if ((name === 'nlmusic' || name === 'nlphotos') && !apps.nlmusic) {
-        console.warn('NL Portfolio not initialized yet, retrying in 300ms...');
+    if ((name === 'nlmusic' || name === 'nlphotos' || name === 'xpmusic' || name === 'xpmebit' || name === 'xplens') && !apps.xpmusic) {
+        console.warn('XP Legacy Engine not initialized yet, retrying in 300ms...');
         setTimeout(() => openapp(name), 300);
         return;
     }
@@ -3183,6 +3341,7 @@ function openapp(name) {
     }
     $('.window.' + name).addClass('load');
     showwin(name);
+    setTimeout(() => forceShowWindow(name), 600);
     $('#taskbar').attr('count', Number($('#taskbar').attr('count')) + 1);
     if (name in icon)
         $('#taskbar').append(`<a class="${name}" onclick="taskbarclick(\'${name}\')" win12_title="${$(`.window.${name}>.titbar>p`).text()}" onmouseenter="showdescp(event)" onmouseleave="hidedescp(event)" oncontextmenu="return showcm(event, 'taskbar', '${name}')"><img src="icon/${icon[name]}"></a>`);
@@ -3198,18 +3357,50 @@ function openapp(name) {
     let tmp = name.replace(/\-(\w)/g, function (all, letter) {
         return letter.toUpperCase();
     });
+    if (!apps[tmp]) {
+        console.warn('[openapp] Application object not defined for key ' + tmp + '; creating generic fallback.');
+        apps[tmp] = { init: () => {}, load: () => {} };
+    }
     if (apps[tmp].load && !apps[tmp].loaded) {
         apps[tmp].loaded = true;
-        apps[tmp].load();
-        apps[tmp].init();
-        $('.window.' + name).removeClass('load');
+        try {
+            apps[tmp].load();
+            apps[tmp].init();
+        } catch(e) {
+            console.error('[openapp] Error in load/init for ' + name + ':', e);
+        } finally {
+            // دائماً أزل كلاس load حتى لو حدث خطأ
+            $('.window.' + name).removeClass('load');
+        }
         return;
     }
-    apps[tmp].init();
-    setTimeout(() => {
-        $('.window.' + name).removeClass('load');
-    }, 500);
+    try {
+        apps[tmp].init();
+    } catch(e) {
+        console.error('[openapp] Error in init for ' + name + ':', e);
+    } finally {
+        setTimeout(() => {
+            $('.window.' + name).removeClass('load');
+        }, 500);
+    }
 }
+
+// دالة طوارئ: تعيد إصلاح أي نافذة مخفية عالقة في التاسكبار
+function forceShowWindow(name) {
+    const win = document.querySelector('.window.' + name);
+    if (!win) return;
+    // أزل كل الكلاسات المتعارضة
+    win.classList.remove('load', 'min');
+    win.classList.add('show-begin', 'show', 'foc', 'notrans');
+    win.style.cssText = 'top: 10%; left: 15%; opacity: 1;';
+    // أزل الـ loadback إذا كان يغطي المحتوى
+    const loadback = win.querySelector('.loadback');
+    if (loadback) loadback.style.display = 'none';
+    // أجعل المحتوى مرئياً
+    const content = win.querySelector('.content');
+    if (content) content.style.opacity = '1';
+}
+
 // 窗口操作
 function showwin(name) {
     $('.window.' + name).addClass('show-begin');
@@ -3855,6 +4046,12 @@ page.addEventListener('mousemove', (e) => {
 })
 
 function setIcon() {
+    try {
+        const savedDesktop = localStorage.getItem('desktop');
+        if (savedDesktop && !savedDesktop.includes('xpmusic')) {
+            localStorage.removeItem('desktop');
+        }
+    } catch(e){}
     if (Array.isArray(JSON.parse(localStorage.getItem('desktop')))) {
         $('#desktop')[0].innerHTML = `<div ondblclick="openapp('explorer');" ontouchstart="openapp('explorer');" oncontextmenu="return showcm(event,'desktop.icon',['explorer',-1]);" appname="explorer">
         <img src="apps/icons/explorer/thispc.svg">
@@ -3896,6 +4093,19 @@ function setIcon() {
         <img src="icon/folder/pics.svg">
         <p>LENS Folder</p>
     </div>
+    <!-- Premium XP Shortcuts -->
+    <div class="b" ondblclick="waitNLReady(() => openapp('xpmusic'));" ontouchstart="waitNLReady(() => openapp('xpmusic'));" oncontextmenu="return showcm(event,'desktop.icon',['xpmusic',-1]);" appname="xpmusic">
+        <img src="icon/xpmusic.svg">
+        <p>Windows Media Player XP</p>
+    </div>
+    <div class="b" ondblclick="waitNLReady(() => openapp('xpmebit'));" ontouchstart="waitNLReady(() => openapp('xpmebit'));" oncontextmenu="return showcm(event,'desktop.icon',['xpmebit',-1]);" appname="xpmebit">
+        <img src="icon/xpmebit.svg">
+        <p>ME BIT (XP Viewer)</p>
+    </div>
+    <div class="b" ondblclick="waitNLReady(() => openapp('xplens'));" ontouchstart="waitNLReady(() => openapp('xplens'));" oncontextmenu="return showcm(event,'desktop.icon',['xplens',-1]);" appname="xplens">
+        <img src="icon/xplens.svg">
+        <p>LENS (XP Viewer)</p>
+    </div>
     <span class="choose">
     </span>
     <p style="background-color: rgba(11,45,14,0);z-index:1;position: absolute;top:0px;left:0px;height:100%;width:100%" oncontextmenu="return showcm(event,'desktop');"></p>`;
@@ -3930,15 +4140,7 @@ function setIcon() {
 
 // 启动
 function nupd() {
-    setTimeout(() => {
-        $('#loadback').addClass('hide');
-    }, 500);
-    setTimeout(() => {
-        $('#loadback').css('display', 'none');
-    }, 1000);
-    apps.webapps.init();
-
-    // Polling waiter for custom NL application readiness
+    // 1. Define waitNLReady first at the very beginning of boot
     window.waitNLReady = function(cb, tries = 0) {
         if (window.__nlPortfolioReady) return cb();
         if (tries < 40) {
@@ -3948,8 +4150,28 @@ function nupd() {
         }
     };
 
+    try {
+        setTimeout(() => {
+            $('#loadback').addClass('hide');
+        }, 500);
+        setTimeout(() => {
+            $('#loadback').css('display', 'none');
+        }, 1000);
+    } catch(e) {
+        console.error('[Boot] loadback animation failure:', e);
+    }
+
+    try {
+        apps.webapps.init();
+    } catch(e) {
+        console.error('[Boot] webapps initialization failed safely:', e);
+    }
+
+    try { window.parent.postMessage('nl_win12_booted', '*'); } catch(e) {}
+
     // ─── START OF PORTFOLIO DYNAMIC VFS AND CODE INJECTIONS ───
     (function injectNLPortfolio() {
+        try {
         // 1. Data Definitions for songs and pictures
         const nlSongs = [
             { name: "TRI9 TBAWE9", url: "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/TRI9.TBAWE9/index.m3u8" },
@@ -3982,72 +4204,110 @@ function nupd() {
         const meBitImages = Array.from({ length: 9 }, (_, i) => `https://noureddinelmobaraki-web.github.io/nl-audio-cdn/me_bit_${i + 1}.webp`);
         const lensImages = Array.from({ length: 9 }, (_, i) => `https://noureddinelmobaraki-web.github.io/nl-audio-cdn/${i + 1}.webp`);
 
-        // Get VFS standard Administrator folders
-        const adminFolder = apps.explorer.path.folder['C:'].folder['用户'].folder['Administrator'].folder;
+        // Safe VFS navigation with nested try-catch and fallbacks to prevent runtime crashes when custom configurations alter explorer paths
+        let adminFolder = null;
+        try {
+            adminFolder = apps.explorer.path.folder['C:'].folder['用户'].folder['Administrator'].folder;
+        } catch (e) {
+            console.warn("Standard '用户' path failed, trying fallback 'Users' path...", e);
+            try {
+                adminFolder = apps.explorer.path.folder['C:'].folder['Users'].folder['Administrator'].folder;
+            } catch (e2) {
+                console.error("VFS Administrator folder resolution failed completely:", e2);
+            }
+        }
 
-        // 2. Populate Virtual VFS nodes for explorer compatibility
-        adminFolder['Music'] = {
-            folder: {},
-            file: nlSongs.map((song, idx) => ({
-                name: `${song.name}.m3u8`,
-                ico: 'icon/files/music.png',
-                command: `openapp('nlmusic'); apps.nlmusic.playSong(${idx});focwin('nlmusic');`
-            }))
-        };
+        if (adminFolder) {
+            try {
+                // 2. Populate Virtual VFS nodes for explorer compatibility
+                adminFolder['Music'] = {
+                    folder: {},
+                    file: nlSongs.map((song, idx) => ({
+                        name: `${song.name}.m3u8`,
+                        ico: 'icon/files/music.png',
+                        command: `openapp('xpmusic'); apps.xpmusic.playSong(${idx});focwin('xpmusic');`
+                    }))
+                };
 
-        adminFolder['图片'].folder['ME BIT'] = {
-            folder: {},
-            file: meBitImages.map((url, idx) => ({
-                name: `me_bit_${idx + 1}.webp`,
-                ico: 'icon/files/picture.png',
-                command: `openapp('nlphotos'); apps.nlphotos.openImage('ME BIT', ${idx});focwin('nlphotos');`
-            }))
-        };
+                if (adminFolder['图片'] && adminFolder['图片'].folder) {
+                    adminFolder['图片'].folder['ME BIT'] = {
+                        folder: {},
+                        file: meBitImages.map((url, idx) => ({
+                            name: `me_bit_${idx + 1}.webp`,
+                            ico: 'icon/files/picture.png',
+                            command: `openapp('xpmebit'); apps.xpmebit.index = ${idx}; apps.xpmebit.showImage();focwin('xpmebit');`
+                        }))
+                    };
 
-        adminFolder['图片'].folder['THROUGH THE LENS'] = {
-            folder: {},
-            file: lensImages.map((url, idx) => ({
-                name: `${idx + 1}.webp`,
-                ico: 'icon/files/picture.png',
-                command: `openapp('nlphotos'); apps.nlphotos.openImage('THROUGH THE LENS', ${idx});focwin('nlphotos');`
-            }))
-        };
+                    adminFolder['图片'].folder['THROUGH THE LENS'] = {
+                        folder: {},
+                        file: lensImages.map((url, idx) => ({
+                            name: `${idx + 1}.webp`,
+                            ico: 'icon/files/picture.png',
+                            command: `openapp('xplens'); apps.xplens.index = ${idx}; apps.xplens.showImage();focwin('xplens');`
+                        }))
+                    };
+                }
+            } catch (vfsErr) {
+                console.error("Error populating standard C: adminFolder VFS nodes:", vfsErr);
+            }
+        }
 
-        // Populate Local Disk D: folders compatibility
-        const dFolder = apps.explorer.path.folder['D:'].folder;
-        dFolder['NL Music'] = {
-            folder: {},
-            file: nlSongs.map((song, idx) => ({
-                name: `${song.name}.m3u8`,
-                ico: 'icon/files/music.png',
-                command: `openapp('nlmusic'); apps.nlmusic.playSong(${idx});focwin('nlmusic');`
-            }))
-        };
+        try {
+            // Populate Local Disk D: folders compatibility
+            const dFolder = apps.explorer.path.folder['D:'].folder;
+            if (dFolder) {
+                dFolder['NL Music'] = {
+                    folder: {},
+                    file: nlSongs.map((song, idx) => ({
+                        name: `${song.name}.m3u8`,
+                        ico: 'icon/files/music.png',
+                        command: `openapp('xpmusic'); apps.xpmusic.playSong(${idx});focwin('xpmusic');`
+                    }))
+                };
 
-        dFolder['ME BIT'] = {
-            folder: {},
-            file: meBitImages.map((url, idx) => ({
-                name: `me_bit_${idx + 1}.webp`,
-                ico: 'icon/files/picture.png',
-                command: `openapp('nlphotos'); apps.nlphotos.openImage('ME BIT', ${idx});focwin('nlphotos');`
-            }))
-        };
+                dFolder['ME BIT'] = {
+                    folder: {},
+                    file: meBitImages.map((url, idx) => ({
+                        name: `me_bit_${idx + 1}.webp`,
+                        ico: 'icon/files/picture.png',
+                        command: `openapp('xpmebit'); apps.xpmebit.index = ${idx}; apps.xpmebit.showImage();focwin('xpmebit');`
+                    }))
+                };
 
-        dFolder['LENS'] = {
-            folder: {},
-            file: lensImages.map((url, idx) => ({
-                name: `${idx + 1}.webp`,
-                ico: 'icon/files/picture.png',
-                command: `openapp('nlphotos'); apps.nlphotos.openImage('THROUGH THE LENS', ${idx});focwin('nlphotos');`
-            }))
-        };
+                dFolder['LENS'] = {
+                    folder: {},
+                    file: lensImages.map((url, idx) => ({
+                        name: `${idx + 1}.webp`,
+                        ico: 'icon/files/picture.png',
+                        command: `openapp('xplens'); apps.xplens.index = ${idx}; apps.xplens.showImage();focwin('xplens');`
+                    }))
+                };
+            }
+        } catch (dErr) {
+            console.error("Error populating Local Disk D: paths in VFS:", dErr);
+        }
 
-        // Create English compatibility paths for shortcuts and clicks
-        apps.explorer.path.folder['C:'].folder['Users'] = apps.explorer.path.folder['C:'].folder['用户'];
-        adminFolder['Picture'] = adminFolder['图片'];
-        adminFolder['Pictures'] = adminFolder['图片'];
-        adminFolder['Document'] = adminFolder['文档'];
-        adminFolder['Documents'] = adminFolder['文档'];
+        try {
+            // Create English compatibility paths for shortcuts and clicks
+            if (apps.explorer.path.folder['C:'] && apps.explorer.path.folder['C:'].folder) {
+                if (apps.explorer.path.folder['C:'].folder['用户']) {
+                    apps.explorer.path.folder['C:'].folder['Users'] = apps.explorer.path.folder['C:'].folder['用户'];
+                }
+            }
+            if (adminFolder) {
+                if (adminFolder['图片']) {
+                    adminFolder['Picture'] = adminFolder['图片'];
+                    adminFolder['Pictures'] = adminFolder['图片'];
+                }
+                if (adminFolder['文档']) {
+                    adminFolder['Document'] = adminFolder['文档'];
+                    adminFolder['Documents'] = adminFolder['文档'];
+                }
+            }
+        } catch (compatErr) {
+            console.error("Error creating English folder path aliases:", compatErr);
+        }
 
         // 3. Register custom interactive application controllers
         apps.nlmusic = {
@@ -4132,6 +4392,10 @@ function nupd() {
                     const titleNode = document.getElementById('nl-music-playing-title');
                     if (titleNode) titleNode.innerText = song.name;
 
+                    if (window.apps && apps.nlphotos && typeof apps.nlphotos.syncAudioWidget === 'function') {
+                        apps.nlphotos.syncAudioWidget();
+                    }
+
                     const src = song.url;
                     if (typeof Hls !== 'undefined' && Hls.isSupported()) {
                         if (apps.nlmusic.hls) {
@@ -4188,6 +4452,9 @@ function nupd() {
                     if (btn) btn.innerHTML = '<i class="bi bi-play-fill"></i>';
                     if (disc) disc.classList.remove('playing');
                 }
+                if (window.apps && apps.nlphotos && typeof apps.nlphotos.syncAudioWidget === 'function') {
+                    apps.nlphotos.syncAudioWidget();
+                }
             },
             nextSong: () => {
                 let nextIdx = (apps.nlmusic.currentSongIndex + 1) % apps.nlmusic.songs.length;
@@ -4225,9 +4492,14 @@ function nupd() {
             },
             currentFolder: 'ME BIT',
             currentIndex: 0,
+            zoom: 1.0,
+            rotation: 0,
+            isSlideshowPlaying: false,
+            slideshowTimer: null,
             init: () => {
                 try {
                     apps.nlphotos.initGallery();
+                    apps.nlphotos.syncAudioWidget();
                 } catch(e) {
                     console.error("nlphotos init error:", e);
                 }
@@ -4235,6 +4507,7 @@ function nupd() {
             load: () => {
                 try {
                     apps.nlphotos.initGallery();
+                    apps.nlphotos.syncAudioWidget();
                 } catch(e) {
                     console.error("nlphotos load error:", e);
                 }
@@ -4250,6 +4523,7 @@ function nupd() {
                 try {
                     apps.nlphotos.currentFolder = folderName;
                     apps.nlphotos.currentIndex = index;
+                    apps.nlphotos.zoomReset();
 
                     $('.nl-folder-btn').removeClass('active');
                     $(`#nl-folder-btn-${folderName.replace(/\s+/g, '-')}`).addClass('active');
@@ -4307,29 +4581,511 @@ function nupd() {
                     const imgUrl = list[apps.nlphotos.currentIndex];
 
                     const mainImg = document.getElementById('nl-photo-main-img');
-                    if (mainImg) {
+                    if (mainImg && imgUrl) {
+                        mainImg.style.transition = 'opacity 0.15s';
                         mainImg.style.opacity = '0';
+                        mainImg.onerror = () => {
+                            mainImg.alt = '⚠️ صورة غير متاحة';
+                            mainImg.style.opacity = '0.3';
+                        };
+                        mainImg.onload = () => {
+                            mainImg.style.opacity = '1';
+                        };
                         setTimeout(() => {
                             mainImg.src = imgUrl;
-                            mainImg.style.opacity = '1';
-                        }, 150);
+                        }, 100);
                     }
 
-                    $('.nl-thumb-item').removeClass('active');
-                    const th = $('.nl-thumb-item')[apps.nlphotos.currentIndex];
-                    if (th) $(th).addClass('active');
+                    // Thumbnails
+                    const thumbs = document.querySelectorAll('.nl-thumb-item');
+                    thumbs.forEach((t, i) => {
+                        t.classList.toggle('active', i === apps.nlphotos.currentIndex);
+                        // Scroll active thumb into view
+                        if (i === apps.nlphotos.currentIndex) {
+                            t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                        }
+                    });
 
                     const label = document.getElementById('nl-photo-path-label');
                     if (label) {
-                        label.innerHTML = `<i class="bi bi-folder-fill" style="margin-right: 5px;"></i> Pictures &gt; ${apps.nlphotos.currentFolder} &gt; ${apps.nlphotos.currentIndex + 1} / ${list.length}`;
+                        label.innerHTML = `<i class="bi bi-folder-fill" style="margin-right:5px;"></i> Pictures › ${apps.nlphotos.currentFolder} › ${apps.nlphotos.currentIndex + 1} / ${list.length}`;
                     }
                 } catch(e) {
-                    console.error("showImage error:", e);
+                    console.error('nlphotos showImage error:', e);
+                }
+            },
+            zoomIn: () => {
+                try {
+                    apps.nlphotos.zoom = Math.min(apps.nlphotos.zoom + 0.25, 4.0);
+                    apps.nlphotos.applyTransform();
+                } catch(e) { console.error(e); }
+            },
+            zoomOut: () => {
+                try {
+                    apps.nlphotos.zoom = Math.max(apps.nlphotos.zoom - 0.25, 0.25);
+                    apps.nlphotos.applyTransform();
+                } catch(e) { console.error(e); }
+            },
+            zoomReset: () => {
+                try {
+                    apps.nlphotos.zoom = 1.0;
+                    apps.nlphotos.rotation = 0;
+                    apps.nlphotos.applyTransform();
+                } catch(e) { console.error(e); }
+            },
+            rotateLeft: () => {
+                try {
+                    apps.nlphotos.rotation = (apps.nlphotos.rotation - 90) % 360;
+                    apps.nlphotos.applyTransform();
+                } catch(e) { console.error(e); }
+            },
+            rotateRight: () => {
+                try {
+                    apps.nlphotos.rotation = (apps.nlphotos.rotation + 90) % 360;
+                    apps.nlphotos.applyTransform();
+                } catch(e) { console.error(e); }
+            },
+            applyTransform: () => {
+                try {
+                    const img = document.getElementById('nl-photo-main-img');
+                    if (img) {
+                        img.style.transform = `scale(${apps.nlphotos.zoom}) rotate(${apps.nlphotos.rotation}deg)`;
+                    }
+                } catch(e) { console.error(e); }
+            },
+            toggleSlideshow: () => {
+                try {
+                    const btn = document.getElementById('nl-photo-slideshow-btn');
+                    if (apps.nlphotos.isSlideshowPlaying) {
+                        apps.nlphotos.isSlideshowPlaying = false;
+                        if (apps.nlphotos.slideshowTimer) {
+                            clearInterval(apps.nlphotos.slideshowTimer);
+                            apps.nlphotos.slideshowTimer = null;
+                        }
+                        if (btn) {
+                            btn.innerHTML = `<i class="bi bi-play-circle-fill"></i> <span class="btn-text">العرض التلقائي</span>`;
+                            btn.style.background = '';
+                            btn.style.color = '';
+                        }
+                    } else {
+                        apps.nlphotos.isSlideshowPlaying = true;
+                        apps.nlphotos.slideshowTimer = setInterval(() => {
+                            apps.nlphotos.nextImage();
+                        }, 3000);
+                        if (btn) {
+                            btn.innerHTML = `<i class="bi bi-pause-circle-fill" style="color:#ff4a7d;"></i> <span class="btn-text">إيقاف التلقائي</span>`;
+                            btn.style.background = 'rgba(255, 74, 125, 0.15)';
+                            btn.style.color = '#ff4a7d';
+                        }
+                    }
+                } catch(e) { console.error(e); }
+            },
+            syncAudioWidget: () => {
+                try {
+                    const trackLabel = document.getElementById('nl-photo-music-track-name');
+                    if (trackLabel) {
+                        if (apps.nlmusic && apps.nlmusic.songs && apps.nlmusic.songs[apps.nlmusic.currentSongIndex]) {
+                            const songName = apps.nlmusic.songs[apps.nlmusic.currentSongIndex].name;
+                            const isPlaying = apps.nlmusic.isPlaying;
+                            trackLabel.innerHTML = `<i class="bi bi-music-note-beamed" style="animation: ${isPlaying ? 'pulse 1.5s infinite' : 'none'}; margin-right: 5px;"></i> ${songName}`;
+                        } else {
+                            trackLabel.innerHTML = `<i class="bi bi-music-note"></i> لا توجد أغنية`;
+                        }
+                    }
+                    const playBtn = document.getElementById('nl-photo-music-play-btn');
+                    if (playBtn) {
+                        const isPlaying = apps.nlmusic && apps.nlmusic.isPlaying;
+                        playBtn.innerHTML = isPlaying ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill"></i>';
+                    }
+                } catch(e) {
+                    console.error("syncAudioWidget failed:", e);
                 }
             }
         };
-        window.__nlPortfolioReady = true;
-        console.log('[NL] Portfolio apps registered: nlmusic, nlphotos');
+
+        // --- Brand New Windows XP Styled Applications ---
+        apps.xpmusic = {
+            songs: nlSongs,
+            currentSongIndex: 0,
+            isPlaying: false,
+            hls: null,
+            audio: null,
+            canvas: null,
+            ctx: null,
+            animationId: null,
+            init: () => {
+                apps.xpmusic.initAudio();
+                apps.xpmusic.initCanvas();
+            },
+            load: () => {
+                apps.xpmusic.initAudio();
+                apps.xpmusic.initCanvas();
+            },
+            initCanvas: () => {
+                if (apps.xpmusic.canvas) return;
+                apps.xpmusic.canvas = document.getElementById('wmp-visuals-canvas');
+                if (!apps.xpmusic.canvas) return;
+                apps.xpmusic.ctx = apps.xpmusic.canvas.getContext('2d');
+                apps.xpmusic.resizeCanvas();
+                window.addEventListener('resize', apps.xpmusic.resizeCanvas);
+                apps.xpmusic.startVisualization();
+            },
+            resizeCanvas: () => {
+                if (!apps.xpmusic.canvas) return;
+                const rect = apps.xpmusic.canvas.parentElement.getBoundingClientRect();
+                apps.xpmusic.canvas.width = rect.width;
+                apps.xpmusic.canvas.height = rect.height;
+            },
+            startVisualization: () => {
+                if (apps.xpmusic.animationId) cancelAnimationFrame(apps.xpmusic.animationId);
+                
+                let phase = 0;
+                const draw = () => {
+                    apps.xpmusic.animationId = requestAnimationFrame(draw);
+                    if (!apps.xpmusic.canvas || !apps.xpmusic.ctx) return;
+                    
+                    const ctx = apps.xpmusic.ctx;
+                    const w = apps.xpmusic.canvas.width;
+                    const h = apps.xpmusic.canvas.height;
+                    
+                    // Clear background with soft fade
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+                    ctx.fillRect(0, 0, w, h);
+                    
+                    // Render trigonometric waves mimicking Windows Media Player visualizations
+                    const waveCount = 3;
+                    const colors = [
+                        'rgba(0, 84, 227, 0.6)',   // Classic Luna Blue
+                        'rgba(59, 241, 255, 0.4)', // Cyan Neon Glow
+                        'rgba(24, 180, 24, 0.3)'   // Visual Green
+                    ];
+                    
+                    const isPlaying = apps.xpmusic.isPlaying;
+                    phase += isPlaying ? 0.05 : 0.005;
+                    const amplitudeMultiplier = isPlaying ? 40 : 10;
+                    
+                    for (let wd = 0; wd < waveCount; wd++) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = colors[wd];
+                        ctx.lineWidth = 2 + (waveCount - wd);
+                        ctx.shadowBlur = isPlaying ? 10 : 2;
+                        ctx.shadowColor = colors[wd];
+                        
+                        const factor = 1 + wd * 0.5;
+                        for (let x = 0; x < w; x++) {
+                            const normalizedX = x / w;
+                            const envelope = Math.sin(normalizedX * Math.PI);
+                            const y = h / 2 + Math.sin(normalizedX * Math.PI * 4 * factor + phase * factor) * amplitudeMultiplier * envelope * Math.cos(normalizedX * Math.PI * 2 - phase);
+                            
+                            if (x === 0) {
+                                ctx.moveTo(x, y);
+                            } else {
+                                ctx.lineTo(x, y);
+                            }
+                        }
+                        ctx.stroke();
+                    }
+                    ctx.shadowBlur = 0; 
+                };
+                draw();
+            },
+            initAudio: () => {
+                if (apps.xpmusic.audio) return;
+                apps.xpmusic.audio = document.getElementById('xp-audio-element');
+                if (!apps.xpmusic.audio) return;
+
+                const playlistEl = document.getElementById('wmp-playlist-items');
+                if (playlistEl) {
+                    playlistEl.innerHTML = apps.xpmusic.songs.map((song, i) => `
+                        <div class="wmp-song-item" id="wmp-song-${i}" onclick="apps.xpmusic.playSong(${i})">
+                            <span class="num">${i + 1}</span>
+                            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${song.name}</span>
+                            <span style="opacity: 0.6;">NL</span>
+                        </div>
+                    `).join('');
+                }
+
+                apps.xpmusic.audio.addEventListener('timeupdate', apps.xpmusic.onTimeUpdate);
+                apps.xpmusic.audio.addEventListener('ended', apps.xpmusic.nextSong);
+
+                const seekEl = document.getElementById('wmp-seek-bar');
+                if (seekEl) {
+                    seekEl.addEventListener('input', (e) => {
+                        if (apps.xpmusic.audio && apps.xpmusic.audio.duration) {
+                            apps.xpmusic.audio.currentTime = (e.target.value / 100) * apps.xpmusic.audio.duration;
+                        }
+                    });
+                }
+
+                const volEl = document.getElementById('wmp-vol-bar');
+                if (volEl) {
+                    volEl.addEventListener('input', (e) => {
+                        if (apps.xpmusic.audio) {
+                            apps.xpmusic.audio.volume = e.target.value / 100;
+                        }
+                    });
+                }
+            },
+            playSong: (index) => {
+                apps.xpmusic.initAudio();
+                if (!apps.xpmusic.audio) return;
+                if (index < 0 || index >= apps.xpmusic.songs.length) return;
+                
+                // Pause other output to prevent duplicate audio streams
+                if (window.apps && apps.nlmusic && apps.nlmusic.audio && !apps.nlmusic.audio.paused) {
+                    apps.nlmusic.audio.pause();
+                    apps.nlmusic.setPlayingState(false);
+                }
+
+                apps.xpmusic.currentSongIndex = index;
+                const song = apps.xpmusic.songs[index];
+
+                $('.wmp-song-item').removeClass('playing');
+                $(`#wmp-song-${index}`).addClass('playing');
+
+                const itemNode = $(`#wmp-song-${index}`)[0];
+                if (itemNode) {
+                    itemNode.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+
+                const titleNode = document.getElementById('wmp-playing-title');
+                if (titleNode) titleNode.innerText = song.name;
+
+                const src = song.url;
+                if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                    if (apps.xpmusic.hls) {
+                        apps.xpmusic.hls.destroy();
+                    }
+                    const hls = new Hls();
+                    apps.xpmusic.hls = hls;
+                    hls.loadSource(src);
+                    hls.attachMedia(apps.xpmusic.audio);
+                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                        apps.xpmusic.audio.play().catch(err => console.log("WMP play failed", err));
+                        apps.xpmusic.setPlayingState(true);
+                    });
+                } else {
+                    apps.xpmusic.audio.src = src;
+                    apps.xpmusic.audio.play().catch(err => console.log("WMP play failed", err));
+                    apps.xpmusic.setPlayingState(true);
+                }
+            },
+            togglePlay: () => {
+                apps.xpmusic.initAudio();
+                if (!apps.xpmusic.audio) return;
+                if (apps.xpmusic.isPlaying) {
+                    apps.xpmusic.audio.pause();
+                    apps.xpmusic.setPlayingState(false);
+                } else {
+                    if (window.apps && apps.nlmusic && apps.nlmusic.audio && !apps.nlmusic.audio.paused) {
+                        apps.nlmusic.audio.pause();
+                        apps.nlmusic.setPlayingState(false);
+                    }
+                    if (apps.xpmusic.audio.src) {
+                        apps.xpmusic.audio.play().catch(err => console.log("WMP play failed", err));
+                        apps.xpmusic.setPlayingState(true);
+                    } else {
+                        apps.xpmusic.playSong(0);
+                    }
+                }
+            },
+            stopSong: () => {
+                if (apps.xpmusic.audio) {
+                    apps.xpmusic.audio.pause();
+                    apps.xpmusic.audio.currentTime = 0;
+                    apps.xpmusic.setPlayingState(false);
+                }
+            },
+            setPlayingState: (playing) => {
+                apps.xpmusic.isPlaying = playing;
+                const btn = document.getElementById('wmp-play-btn');
+                if (btn) {
+                    btn.innerHTML = playing ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill"></i>';
+                }
+            },
+            nextSong: () => {
+                let nextIdx = (apps.xpmusic.currentSongIndex + 1) % apps.xpmusic.songs.length;
+                apps.xpmusic.playSong(nextIdx);
+            },
+            prevSong: () => {
+                let prevIdx = (apps.xpmusic.currentSongIndex - 1 + apps.xpmusic.songs.length) % apps.xpmusic.songs.length;
+                apps.xpmusic.playSong(prevIdx);
+            },
+            onTimeUpdate: () => {
+                const cur = apps.xpmusic.audio.currentTime;
+                const dur = apps.xpmusic.audio.duration || 0;
+                const progress = dur > 0 ? (cur / dur) * 100 : 0;
+
+                const seekEl = document.getElementById('wmp-seek-bar');
+                if (seekEl) seekEl.value = progress;
+
+                const tcurr = document.getElementById('wmp-time-curr');
+                if (tcurr) tcurr.innerText = apps.xpmusic.formatTime(cur);
+
+                const ttotal = document.getElementById('wmp-time-total');
+                if (ttotal) ttotal.innerText = dur > 0 ? apps.xpmusic.formatTime(dur) : '00:00';
+            },
+            formatTime: (sec) => {
+                const m = Math.floor(sec / 60);
+                const s = Math.floor(sec % 60);
+                return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }
+        };
+
+        apps.xpmebit = {
+            images: meBitImages,
+            index: 0,
+            zoom: 1.0,
+            rotation: 0,
+            init: () => {
+                apps.xpmebit.showImage();
+            },
+            load: () => {
+                apps.xpmebit.showImage();
+            },
+            nextImage: () => {
+                apps.xpmebit.index = (apps.xpmebit.index + 1) % apps.xpmebit.images.length;
+                apps.xpmebit.zoomReset();
+                apps.xpmebit.showImage();
+            },
+            prevImage: () => {
+                apps.xpmebit.index = (apps.xpmebit.index - 1 + apps.xpmebit.images.length) % apps.xpmebit.images.length;
+                apps.xpmebit.zoomReset();
+                apps.xpmebit.showImage();
+            },
+            zoomIn: () => {
+                apps.xpmebit.zoom = Math.min(apps.xpmebit.zoom + 0.25, 3.0);
+                apps.xpmebit.applyTransform();
+            },
+            zoomOut: () => {
+                apps.xpmebit.zoom = Math.max(apps.xpmebit.zoom - 0.25, 0.4);
+                apps.xpmebit.applyTransform();
+            },
+            zoomReset: () => {
+                apps.xpmebit.zoom = 1.0;
+                apps.xpmebit.rotation = 0;
+                apps.xpmebit.applyTransform();
+            },
+            rotateLeft: () => {
+                apps.xpmebit.rotation = (apps.xpmebit.rotation - 90) % 360;
+                apps.xpmebit.applyTransform();
+            },
+            rotateRight: () => {
+                apps.xpmebit.rotation = (apps.xpmebit.rotation + 90) % 360;
+                apps.xpmebit.applyTransform();
+            },
+            applyTransform: () => {
+                const img = document.getElementById('xpmebit-main-img');
+                if (img) {
+                    img.style.transform = `scale(${apps.xpmebit.zoom}) rotate(${apps.xpmebit.rotation}deg)`;
+                }
+            },
+            showImage: () => {
+                const imgUrl = apps.xpmebit.images[apps.xpmebit.index];
+                const img = document.getElementById('xpmebit-main-img');
+                if (img && imgUrl) {
+                    img.style.opacity = '0';
+                    img.onerror = () => {
+                        img.src = 'icon/xpmebit.svg';
+                        img.style.opacity = '0.3';
+                        img.style.width = '80px';
+                    };
+                    img.onload = () => {
+                        img.style.opacity = '1';
+                        img.style.width = '';
+                    };
+                    img.src = imgUrl;
+                }
+                const counter = document.getElementById('xpmebit-counter');
+                if (counter) {
+                    counter.innerText = `${apps.xpmebit.index + 1} / ${apps.xpmebit.images.length}`;
+                }
+            }
+        };
+
+        apps.xplens = {
+            images: lensImages,
+            index: 0,
+            zoom: 1.0,
+            rotation: 0,
+            init: () => {
+                apps.xplens.showImage();
+            },
+            load: () => {
+                apps.xplens.showImage();
+            },
+            nextImage: () => {
+                apps.xplens.index = (apps.xplens.index + 1) % apps.xplens.images.length;
+                apps.xplens.zoomReset();
+                apps.xplens.showImage();
+            },
+            prevImage: () => {
+                apps.xplens.index = (apps.xplens.index - 1 + apps.xplens.images.length) % apps.xplens.images.length;
+                apps.xplens.zoomReset();
+                apps.xplens.showImage();
+            },
+            zoomIn: () => {
+                apps.xplens.zoom = Math.min(apps.xplens.zoom + 0.25, 3.0);
+                apps.xplens.applyTransform();
+            },
+            zoomOut: () => {
+                apps.xplens.zoom = Math.max(apps.xplens.zoom - 0.25, 0.4);
+                apps.xplens.applyTransform();
+            },
+            zoomReset: () => {
+                apps.xplens.zoom = 1.0;
+                apps.xplens.rotation = 0;
+                apps.xplens.applyTransform();
+            },
+            rotateLeft: () => {
+                apps.xplens.rotation = (apps.xplens.rotation - 90) % 360;
+                apps.xplens.applyTransform();
+            },
+            rotateRight: () => {
+                apps.xplens.rotation = (apps.xplens.rotation + 90) % 360;
+                apps.xplens.applyTransform();
+            },
+            applyTransform: () => {
+                const img = document.getElementById('xplens-main-img');
+                if (img) {
+                    img.style.transform = `scale(${apps.xplens.zoom}) rotate(${apps.xplens.rotation}deg)`;
+                }
+            },
+            showImage: () => {
+                const imgUrl = apps.xplens.images[apps.xplens.index];
+                const img = document.getElementById('xplens-main-img');
+                if (img && imgUrl) {
+                    img.style.opacity = '0';
+                    img.onerror = () => {
+                        img.src = 'icon/xpmebit.svg';
+                        img.style.opacity = '0.3';
+                        img.style.width = '80px';
+                    };
+                    img.onload = () => {
+                        img.style.opacity = '1';
+                        img.style.width = '';
+                    };
+                    img.src = imgUrl;
+                }
+                const counter = document.getElementById('xplens-counter');
+                if (counter) {
+                    counter.innerText = `${apps.xplens.index + 1} / ${apps.xplens.images.length}`;
+                }
+            }
+        };
+
+        } catch (masterErr) {
+            console.error('[NL] Fatal error inside injectNLPortfolio engine block:', masterErr);
+        } finally {
+            // Ensure compatibility flags and baseline placeholder objects are always initialized to prevent openapp retries from looping infinitely and locking the UI
+            window.__nlPortfolioReady = true;
+            if (!apps.xpmusic) apps.xpmusic = { init: () => {}, load: () => {} };
+            if (!apps.xpmebit) apps.xpmebit = { init: () => {}, load: () => {} };
+            if (!apps.xplens) apps.xplens = { init: () => {}, load: () => {} };
+            if (!apps.nlmusic) apps.nlmusic = { init: () => {}, load: () => {} };
+            if (!apps.nlphotos) apps.nlphotos = { init: () => {}, load: () => {} };
+            console.log('[NL] Portfolio apps registration completed (safeguarded via fallback mode).');
+        }
     })();
     // ─── END OF PORTFOLIO DESIGN ───
     //getdata
@@ -4486,3 +5242,49 @@ function calcTimeString(second) {
     }
     return timeStr === "" ? " 0 秒" : timeStr;
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// NL · postMessage bridge — allows the parent React app (or any opener)
+// to ask the Win12 sandbox to open a remote media resource in its own
+// imgviewer / mediaplayer.
+//
+//   parent.postMessage({
+//     source: 'NL_WIN12_BRIDGE',
+//     action: 'openImage' | 'openAudio' | 'openVideo',
+//     url:    'https://...',
+//     name:   'optional title'
+//   }, '*');
+// ──────────────────────────────────────────────────────────────────────
+(function () {
+    if (window.__NL_WIN12_BRIDGE_READY__) return;
+    window.__NL_WIN12_BRIDGE_READY__ = true;
+
+    function handle(msg) {
+        if (!msg || msg.source !== 'NL_WIN12_BRIDGE') return;
+        var url  = String(msg.url || '').trim();
+        var name = msg.name || '';
+        if (!url) return;
+        try {
+            switch (msg.action) {
+                case 'openImage':
+                    if (apps && apps.imgviewer)   apps.imgviewer.open(url, name);
+                    break;
+                case 'openAudio':
+                    if (apps && apps.mediaplayer) apps.mediaplayer.open(url, name, 'audio');
+                    break;
+                case 'openVideo':
+                    if (apps && apps.mediaplayer) apps.mediaplayer.open(url, name, 'video');
+                    break;
+                default: /* ignore */
+            }
+        } catch (e) { console.warn('[NL Bridge]', e); }
+    }
+
+    window.addEventListener('message', function (ev) { handle(ev.data); }, false);
+
+    // Signal readiness to opener so React can postMessage immediately.
+    try {
+        if (window.opener)            window.opener.postMessage({ source: 'NL_WIN12_BRIDGE', ready: true }, '*');
+        if (window.parent !== window) window.parent.postMessage({ source: 'NL_WIN12_BRIDGE', ready: true }, '*');
+    } catch (_) { /* cross-origin parent */ }
+})();

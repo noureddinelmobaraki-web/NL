@@ -5,3 +5,8 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Custom exclusions
+win12-main/
+package-lock.json
+public/win12/img/*.png

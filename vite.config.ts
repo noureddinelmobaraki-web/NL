@@ -26,6 +26,9 @@ export default defineConfig(({ mode }) => {
     assetsExclude: [
       '**/assets/images/profile/**',
       '**/assets/images/songs/**',
+      '**/win12-main/**',
+      '**/package-lock.json',
+      '**/public/win12/img/*.png'
     ],
     resolve: {
       alias: {
@@ -63,8 +66,6 @@ export default defineConfig(({ mode }) => {
             if (id.includes('src/components/DrawingsPage'))        return 'drawings';
             if (id.includes('src/components/LyricsEngine'))        return 'lyrics';
             if (id.includes('src/components/MusicMood'))           return 'music-mood';
-            if (id.includes('src/components/sections/IptvSection') ||
-                id.includes('src/components/sections/iptv/'))      return 'iptv';
             if (id.includes('src/components/sections/Win12Section')) return 'win12';
             if (id.includes('src/components/songs/'))              return 'songs-ui';
             return undefined;

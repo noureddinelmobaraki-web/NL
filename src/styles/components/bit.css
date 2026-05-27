@@ -1,0 +1,269 @@
+/* 8-bit theme effects with steps animation logic */
+[data-theme="bit"] img,
+[data-theme="bit"] video,
+[data-theme="bit"] canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: contrast(1.1) saturate(0.85);
+}
+
+/* ── Remove all border radius globally ── */
+[data-theme="bit"] *,
+[data-theme="bit"] *::before,
+[data-theme="bit"] *::after {
+  border-radius: 0 !important;
+}
+
+/* ── Manga/panel borders → chunky pixel box shadow ── */
+[data-theme="bit"] .manga-border,
+[data-theme="bit"] .manga-panel,
+[data-theme="bit"] .manga-card,
+[data-theme="bit"] [class*="border"],
+[data-theme="bit"] [class*="rounded"] {
+  border: 3px solid var(--ink-color) !important;
+  box-shadow:
+    4px 0   0 0 var(--ink-color),
+   -4px 0   0 0 var(--ink-color),
+    0   4px 0 0 var(--ink-color),
+    0  -4px 0 0 var(--ink-color),
+    8px 8px 0 0 rgba(255, 0, 204, 0.6),
+    inset 0 0 0 1px rgba(0,255,136,0.15) !important;
+}
+
+/* ── Step-based animation timing ── */
+[data-theme="bit"] *,
+[data-theme="bit"] *::before,
+[data-theme="bit"] *::after {
+  animation-timing-function: steps(6, end) !important;
+  transition-timing-function: steps(6, end) !important;
+}
+
+/* ── CRT glow on text ── */
+[data-theme="bit"] h1,
+[data-theme="bit"] h2,
+[data-theme="bit"] h3 {
+  text-shadow:
+    0 0 6px  currentColor,
+    0 0 12px currentColor,
+    0 0 24px rgba(0, 255, 136, 0.4);
+}
+
+/* ── Glitch animation on hero title ── */
+[data-theme="bit"] h1 {
+  animation: bit-glitch 4s steps(1) infinite;
+  position: relative;
+}
+
+[data-theme="bit"] h1::before,
+[data-theme="bit"] h1::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+[data-theme="bit"] h1::before {
+  color: #ff00cc;
+  clip-path: polygon(0 20%, 100% 20%, 100% 45%, 0 45%);
+  animation: bit-glitch-before 4s steps(1) infinite;
+  left: 2px;
+}
+
+[data-theme="bit"] h1::after {
+  color: #00ccff;
+  clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+  animation: bit-glitch-after 4s steps(1) infinite;
+  left: -2px;
+}
+
+@keyframes bit-glitch {
+  0%, 88%, 100% { transform: translate(0); }
+  89%  { transform: translate(-2px, 1px); }
+  90%  { transform: translate(2px, -1px); }
+  91%  { transform: translate(0); }
+  94%  { transform: translate(1px, 2px); }
+  95%  { transform: translate(-1px, 0); }
+}
+
+@keyframes bit-glitch-before {
+  0%, 88%, 100% { opacity: 0; transform: translate(0); }
+  89%  { opacity: 0.8; transform: translate(-4px, 0); }
+  90%  { opacity: 0;   transform: translate(0); }
+  93%  { opacity: 0.6; transform: translate(3px, 1px); }
+  94%  { opacity: 0; }
+}
+
+@keyframes bit-glitch-after {
+  0%, 88%, 100% { opacity: 0; transform: translate(0); }
+  89%  { opacity: 0;   }
+  90%  { opacity: 0.7; transform: translate(4px, -1px); }
+  92%  { opacity: 0;   transform: translate(0); }
+  94%  { opacity: 0.5; transform: translate(-3px, 0); }
+  95%  { opacity: 0; }
+}
+
+/* ── Pixel grid background ── */
+[data-theme="bit"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,255,136,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,0.04) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+/* ── Scanlines overlay ── */
+[data-theme="bit"] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-bg-effects);
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  animation: bit-scanlines 12s linear infinite;
+}
+
+@keyframes bit-scanlines {
+  from { background-position: 0 0; }
+  to   { background-position: 0 100vh; }
+}
+
+/* ── Buttons: pixel style with color cycling ── */
+[data-theme="bit"] button,
+[data-theme="bit"] a[role="button"],
+[data-theme="bit"] [class*="btn"] {
+  border: 3px solid var(--ink-color) !important;
+  box-shadow: 4px 4px 0 var(--ink-color) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: box-shadow 0s, transform 0s !important;
+}
+
+[data-theme="bit"] button:hover,
+[data-theme="bit"] a[role="button"]:hover {
+  box-shadow: 2px 2px 0 var(--ink-color) !important;
+  transform: translate(2px, 2px) !important;
+}
+
+[data-theme="bit"] button:active {
+  box-shadow: 0 0 0 var(--ink-color) !important;
+  transform: translate(4px, 4px) !important;
+}
+
+/* ── Alternating accent colors on section headers ── */
+[data-theme="bit"] section:nth-child(odd)  h2,
+[data-theme="bit"] section:nth-child(odd)  h3  { color: #00ff88; }
+[data-theme="bit"] section:nth-child(even) h2,
+[data-theme="bit"] section:nth-child(even) h3  { color: #ff00cc; }
+
+/* ── Dashed dividers → pixel dots ── */
+[data-theme="bit"] hr,
+[data-theme="bit"] [class*="divider"] {
+  border: none !important;
+  border-top: 4px dashed var(--ink-color) !important;
+  opacity: 0.6;
+}
+
+/* ── Input fields ── */
+[data-theme="bit"] input,
+[data-theme="bit"] textarea {
+  border: 3px solid var(--ink-color) !important;
+  background: #080816 !important;
+  color: #00ff88 !important;
+  caret-color: #ffff00;
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 0.7rem !important;
+}
+
+[data-theme="bit"] input:focus,
+[data-theme="bit"] textarea:focus {
+  outline: none !important;
+  border-color: #ffff00 !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 0, 0.3) !important;
+}
+
+/* ── Scrollbar ── */
+[data-theme="bit"] ::-webkit-scrollbar { width: 8px; }
+[data-theme="bit"] ::-webkit-scrollbar-track { background: #080816; }
+[data-theme="bit"] ::-webkit-scrollbar-thumb {
+  background: #00ff88;
+  border: 2px solid #080816;
+}
+
+/* ── Now playing bar ── */
+[data-theme="bit"] [class*="now-playing"],
+[data-theme="bit"] [class*="NowPlaying"],
+[data-theme="bit"] [class*="player"] {
+  border-top: 4px solid #ff00cc !important;
+  background: #080816 !important;
+}
+
+/* ── Song progress bar ── */
+[data-theme="bit"] [class*="progress"],
+[data-theme="bit"] [role="progressbar"] {
+  border-radius: 0 !important;
+  height: 8px !important;
+}
+
+/* ── Pixel cursor ── */
+[data-theme="bit"],
+[data-theme="bit"] * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Crect x='0' y='0' width='4' height='4' fill='%2300ff88'/%3E%3Crect x='4' y='4' width='4' height='4' fill='%2300ff88'/%3E%3Crect x='8' y='8' width='4' height='4' fill='%2300ff88'/%3E%3Crect x='4' y='8' width='4' height='4' fill='%23ff00cc'/%3E%3C/svg%3E") 0 0, crosshair !important;
+}
+
+/* ─── BIT THEME — MOBILE FIXES ─── */
+@media (max-width: 767px) {
+  [data-theme="bit"] .manga-border,
+  [data-theme="bit"] .manga-panel,
+  [data-theme="bit"] .manga-card {
+    border-width: 2px !important;
+    box-shadow:
+      2px 0 0 0 var(--ink-color),
+     -2px 0 0 0 var(--ink-color),
+      0  2px 0 0 var(--ink-color),
+      0 -2px 0 0 var(--ink-color),
+      4px 4px 0 0 rgba(255, 0, 204, 0.6) !important;
+  }
+  [data-theme="bit"] button,
+  [data-theme="bit"] a[role="button"] {
+    border-width: 2px !important;
+    box-shadow: 2px 2px 0 var(--ink-color) !important;
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+    font-size: 0.65rem !important;
+  }
+  [data-theme="bit"] input,
+  [data-theme="bit"] textarea {
+    font-size: 0.65rem !important;
+    padding: 10px !important;
+    border-width: 2px !important;
+  }
+  [data-theme="bit"] h1 {
+    animation: none !important;
+  }
+  [data-theme="bit"] h1::before,
+  [data-theme="bit"] h1::after {
+    display: none !important;
+  }
+  [data-theme="bit"] body::after {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 3px
+    );
+  }
+  [data-theme="bit"] body::before {
+    background-size: 16px 16px;
+  }
+}

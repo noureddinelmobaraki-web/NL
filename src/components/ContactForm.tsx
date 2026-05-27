@@ -26,8 +26,8 @@ const CONTACT_METHODS = [
   },
   {
     name: 'Telegram',
-    value: '+212 612 806932',
-    url: 'https://t.me/212612806932',
+    value: '@noureddin_el_mobaraki',
+    url: 'https://t.me/noureddin_el_mobaraki',
     icon: Send,
     bg: 'linear-gradient(135deg, #0088CC 0%, #005580 100%)',
   },

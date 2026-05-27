@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <!-- Background Gradient for sky -->
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4aa3df" />
+      <stop offset="50%" stop-color="#80c3ef" />
+      <stop offset="100%" stop-color="#bce3fa" />
+    </linearGradient>
+    <!-- Hills Gradient -->
+    <linearGradient id="hillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#40b000" />
+      <stop offset="100%" stop-color="#186b00" />
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f5f2e3" />
+      <stop offset="100%" stop-color="#d6ceaa" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Classic Yellow/Tan Photo Frame -->
+  <rect x="3" y="6" width="42" height="36" rx="2" fill="url(#borderGrad)" stroke="#aa9f75" stroke-width="1.5" />
+  <rect x="6" y="9" width="36" height="26" fill="#000000" />
+  
+  <!-- Bliss Wallpaper inside frame -->
+  <rect x="7" y="10" width="34" height="24" fill="url(#skyGrad)" />
+  <!-- Green Hills -->
+  <path d="M 7 28 Q 16 22 25 26 Q 34 29 41 24 L 41 34 L 7 34 Z" fill="url(#hillGrad)" />
+  <path d="M 15 28 Q 28 25 41 32" fill="none" stroke="#60d000" stroke-width="1" stroke-opacity="0.4" />
+  <!-- A bright shining digital yellow heart / bit representing ME BIT in XP style -->
+  <rect x="22" y="15" width="4" height="4" fill="#ff00ff" />
+  <rect x="18" y="17" width="12" height="4" fill="#ff00ff" />
+  <rect x="20" y="21" width="8" height="4" fill="#ff00ff" />
+  
+  <!-- Magnifying glass or fax style lens viewer at bottom right -->
+  <circle cx="33" cy="29" r="6" fill="#ffffff" fill-opacity="0.9" stroke="#1d4d8c" stroke-width="1.5" />
+  <circle cx="33" cy="29" r="4" fill="none" stroke="#4aa2df" stroke-width="1" />
+  <line x1="37" y1="33" x2="43" y2="39" stroke="#1d4d8c" stroke-width="2.5" stroke-linecap="round" />
+</svg>

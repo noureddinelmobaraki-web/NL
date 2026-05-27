@@ -1,8 +1,7 @@
+import { useEffect } from 'react';
 import { motion, Variants } from "framer-motion";
 import { Music2, Youtube } from "lucide-react";
-import { ResponsiveImage } from "../ResponsiveImage";
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
-import { getThemedImage } from '../../constants/assets';
 
 interface HighlightsSectionProps {
   vaultPlaylistCoverUrl: string;
@@ -18,8 +17,14 @@ const itemVariants: Variants = {
   }
 };
 
-const STYLES = {
+const STYLES_REFACTORED = {
   SHADOW_BLACK_SOLID: { textShadow: '2px 2px 0 var(--manga-shadow-color)' },
+  VAULT_BG_STYLE: { 
+    backgroundImage: 'var(--vault-playlist-bg)',
+  },
+  YT_BG_STYLE: {
+    backgroundImage: 'var(--yt-highlights-bg)',
+  }
 };
 
 export const HighlightsSection = ({ 
@@ -27,8 +32,24 @@ export const HighlightsSection = ({
   youtubeHighlightsBgUrl: _y 
 }: HighlightsSectionProps) => {
   const resolvedTheme = useResolvedTheme();
-  const vaultPlaylistCoverUrl = getThemedImage('playlistCover', resolvedTheme);
-  const youtubeHighlightsBgUrl = getThemedImage('ytHighlights', resolvedTheme);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+      const REQUIRED_HIGHLIGHTS_VARS = [
+        '--yt-highlights-bg',
+        '--vault-playlist-bg',
+        '--highlights-vault-radius',
+        '--highlights-yt-radius'
+      ];
+      const style = getComputedStyle(document.documentElement);
+      REQUIRED_HIGHLIGHTS_VARS.forEach((v) => {
+        const value = style.getPropertyValue(v).trim();
+        if (!value) {
+          console.warn(`[Theme Check] Warning: Required CSS variable "${v}" is not resolved in active theme.`);
+        }
+      });
+    }
+  }, [resolvedTheme]);
 
   return (
     <motion.section 
@@ -45,15 +66,14 @@ export const HighlightsSection = ({
           target="_blank"
           rel="noreferrer"
           id="vault-playlist"
-          className="group relative overflow-hidden border-[3px] border-[var(--ink-color)] transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
-          style={{ borderRadius: '12px 5px 18px 8px / 8px 18px 5px 12px' }}
+          className="group relative overflow-hidden border-[3px] border-[var(--ink-color)] transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px] highlights-vault-link"
         >
-          <ResponsiveImage 
-            src={vaultPlaylistCoverUrl} 
-            alt="NL fv songs of all time" 
-            className="absolute inset-0 w-full h-full object-cover filter brightness-[0.8] group-hover:brightness-100 transition-all"
-            loading="lazy"
+          {/* Dynamic Background visual covering cover */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center filter brightness-[0.8] group-hover:brightness-100 transition-all"
+            style={STYLES_REFACTORED.VAULT_BG_STYLE}
           />
+
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-page)]/80 to-transparent flex flex-col justify-end p-4">
             <span className="font-hand text-3xl text-[var(--text-primary)]">NL fv songs of all time</span>
             <div className="flex items-center gap-2 mt-1">
@@ -73,17 +93,16 @@ export const HighlightsSection = ({
           href="https://www.youtube.com/@nourdin_el_mobaraki"
           target="_blank"
           rel="noreferrer"
-          className="group relative overflow-hidden border-[3px] border-[var(--ink-color)] transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px]"
-          style={{ borderRadius: '5px 15px 8px 20px / 15px 8px 20px 5px' }}
+          className="group relative overflow-hidden border-[3px] border-[var(--ink-color)] transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px] highlights-yt-link"
         >
           <div 
             className="absolute inset-0 bg-cover bg-center filter grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
-            style={{ backgroundImage: `url('${youtubeHighlightsBgUrl}')` }}
+            style={STYLES_REFACTORED.YT_BG_STYLE}
           />
           <div className="absolute inset-0 bg-[var(--bg-page)]/40 group-hover:bg-[var(--bg-page)]/20 transition-colors" />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
             <Youtube className="w-16 h-16 text-[var(--text-primary)] drop-shadow-[0_0_15px_red] mb-2" />
-            <span className="font-manga text-3xl text-[var(--text-primary)] uppercase tracking-tighter" style={STYLES.SHADOW_BLACK_SOLID}>
+            <span className="font-manga text-3xl text-[var(--text-primary)] uppercase tracking-tighter" style={STYLES_REFACTORED.SHADOW_BLACK_SOLID}>
               Watch on YouTube
             </span>
           </div>

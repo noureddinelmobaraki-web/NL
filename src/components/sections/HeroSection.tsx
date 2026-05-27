@@ -3,10 +3,8 @@ import { motion, Variants } from "framer-motion";
 import { getThemedImage, LIGHT_PROFILE_OPENING, LIGHT_PROFILE_MAIN } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
 
-import { useDeviceType } from '../../hooks/useDeviceType';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import siteData from '../../../metadata.json';
-import { OsWindow } from '../OsWindow';
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -17,23 +15,109 @@ const itemVariants: Variants = {
   }
 };
 
-const STYLES = {
-  SHADOW_BLACK_LG: { textShadow: '4px 4px 0px var(--manga-shadow-color)' },
-  SHADOW_BLACK_SM: { textShadow: '2px 2px 0px var(--manga-shadow-color)' },
+const STYLES_REFACTORED = {
+  CONTAINER_STYLE: {
+    border: 'var(--window-border)',
+    boxShadow: 'var(--window-shadow)',
+    backgroundColor: 'var(--window-bg)',
+  },
+  TITLE_BAR_DOTS_LEFT: { display: 'flex', gap: '4px', alignItems: 'center' },
+  TITLE_BAR_DOT_RED: { width: 8, height: 8, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' },
+  TITLE_BAR_DOT_YELLOW: { width: 8, height: 8, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' },
+  TITLE_BAR_DOT_GREEN: { width: 8, height: 8, borderRadius: '50%', background: '#27C93F', border: '0.5px solid #1AAB29' },
+  TITLE_BAR_CONTROLS: { fontFamily: 'Geneva, monospace', fontSize: '10px', fontWeight: 'bold' as const, color: '#555', marginLeft: '2px', cursor: 'pointer', display: 'flex', gap: '3px' },
+  TITLE_BAR_TEXT: {
+    fontFamily: 'Geneva, "Lucida Sans Unicode", sans-serif',
+    fontSize: '11px',
+    fontWeight: 'bold' as const,
+    color: '#000',
+    flex: 1,
+    textAlign: 'center' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+    whiteSpace: 'nowrap' as const
+  },
+  TITLE_BAR_MAIN: {
+    display: 'var(--window-chrome-display)',
+    background: 'linear-gradient(180deg, #CCCCCC 0%, #AAAAAA 100%)',
+    borderBottom: '1px solid #999',
+    padding: '3px 6.5px',
+    alignItems: 'center',
+    gap: '6px',
+    userSelect: 'none' as const,
+    height: '24px',
+    flexShrink: 0,
+  },
+  MENU_BAR_STYLE: {
+    display: 'var(--window-chrome-display)',
+    height: '18px',
+    backgroundColor: '#E0E0E0',
+    borderBottom: '1px solid #999',
+    alignItems: 'center',
+    gap: '12px',
+    paddingLeft: '8px',
+    userSelect: 'none' as const,
+    fontFamily: 'Geneva, "Lucida Sans Unicode", sans-serif',
+    fontSize: '11px',
+    fontWeight: 'bold' as const,
+    color: '#000',
+  },
+  HEADER_CARD_STYLE: {
+    backgroundColor: 'var(--hero-card-bg)',
+    border: 'var(--hero-card-border)',
+    boxShadow: 'var(--hero-card-shadow)',
+  },
+  HERO_TITLE_STYLE: { 
+    textShadow: 'var(--hero-title-shadow)',
+    fontStyle: 'var(--hero-title-style)',
+    fontSize: 'var(--hero-title-size)',
+    textTransform: 'var(--hero-title-transform)' as any,
+    lineHeight: 'var(--hero-title-lines)',
+  },
+  HERO_BIO_STYLE: {
+    fontSize: 'var(--hero-bio-size)',
+    fontFamily: 'var(--hero-bio-font)',
+    textShadow: 'var(--hero-bio-shadow)',
+    filter: 'var(--hero-bio-filter)',
+    fontStyle: 'var(--hero-bio-style)',
+  },
+  STATUS_BAR_STYLE: {
+    display: 'var(--window-chrome-display)',
+    height: '16px',
+    background: 'linear-gradient(180deg, #BBBBBB 0%, #999999 100%)',
+    borderTop: '1px solid #888',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: '6px',
+    paddingRight: '22px',
+    userSelect: 'none' as const,
+    fontSize: '9px',
+    fontFamily: 'Geneva, "Lucida Sans Unicode", sans-serif',
+    color: '#000',
+    flexShrink: 0,
+    position: 'relative' as const
+  },
+  RESIZE_GRIP_STYLE: {
+    position: 'absolute' as const,
+    right: '2px',
+    bottom: '1px',
+    width: '12px',
+    height: '12px',
+    background: 'linear-gradient(135deg, transparent 45%, #777 45%, #777 55%, transparent 55%, transparent 70%, #777 70%, #777 80%, transparent 80%, transparent 95%, #777 95%, #777 100%)',
+    pointerEvents: 'none' as const,
+  }
 };
 
 export const HeroSection = () => {
-  const { isTablet } = useDeviceType();
   const resolvedTheme = useResolvedTheme();
 
-  // Light theme profile: show opening image for 1500ms, then switch to main
+  // Light theme profile switching logic
   const [lightProfileSrc, setLightProfileSrc] = useState<string>(LIGHT_PROFILE_OPENING);
   const lightProfileInitializedRef = useRef(false);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    if (resolvedTheme === 'light') {
-      // Reset to opening image every time we enter light theme
+    if (resolvedTheme.startsWith('light')) {
       setLightProfileSrc(LIGHT_PROFILE_OPENING);
       lightProfileInitializedRef.current = false;
       timer = setTimeout(() => {
@@ -46,153 +130,185 @@ export const HeroSection = () => {
     };
   }, [resolvedTheme]);
 
-  const renderHeroContent = () => {
-    return (
-      <div 
-        lang="en"
-        className={`${resolvedTheme === 'light' ? '' : (resolvedTheme === 'dark' ? 'halftone-bg' : 'manga-border border-[4px] halftone-bg border-[var(--ink-color)]')} p-4 sm:p-6 md:p-8 flex-1 min-w-[60%] relative group overflow-hidden transition-all duration-500 hover:scale-[1.01]`}
-        id="header-card"
-        style={resolvedTheme === 'dark' ? {
-          backgroundColor: 'rgba(0,0,0,0.92)',
-          border: '1px solid rgba(184,255,63,0.2)',
-          boxShadow: '0 0 40px rgba(184,255,63,0.05), inset 0 0 30px rgba(0,0,0,0.5)',
-        } : {}}
-      >
-        {/* Header Background Image with Zoom & Pan Hover Effect */}
-        <div 
-          className={`absolute inset-0 z-[-1] bg-cover bg-center transition-all duration-700 blur-[3px] group-hover:blur-0 group-hover:scale-125 group-hover:translate-y-[-10%] ${resolvedTheme === 'dark' ? 'grayscale contrast-110 mix-blend-luminosity opacity-40' : ''} ${resolvedTheme === 'light' ? 'opacity-30 mix-blend-multiply grayscale' : ''}`}
-          style={{ backgroundImage: `url('${getThemedImage('headerBg', resolvedTheme)}')` }}
-        />
-        {/* Dark Overlay for Text Legibility */}
-        <div className={`absolute inset-0 z-[-1] transition-opacity group-hover:opacity-30 ${resolvedTheme === 'dark' ? 'bg-black/60' : (resolvedTheme === 'light' ? 'bg-transparent' : 'bg-[var(--bg-page)]/40')}`} />
-        
-        {resolvedTheme === 'dark' ? (
-          <motion.div
-             initial={{ opacity: 0, y: 60, skewY: 3 }}
-             animate={{ opacity: 1, y: 0, skewY: 0 }}
-             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-          >
-            <h1 
-              className="font-['Playfair_Display',serif] italic font-black leading-[0.9] tracking-tight text-white text-[clamp(2.5rem,11vw,3.75rem)] md:text-8xl lg:text-[8rem]"
-              data-text={siteData.fullName}
-              style={{ textShadow: '0 0 30px rgba(184,255,63,0.4), 0 0 60px rgba(184,255,63,0.2), 4px 4px 0px rgba(0,0,0,0.8)' }}
-            >
-              {siteData.fullName}
-            </h1>
-          </motion.div>
-        ) : resolvedTheme === 'light' ? (
-          <h1 className="font-['Geneva','Lucida_Sans_Unicode',sans-serif] font-bold text-black text-3xl md:text-5xl lg:text-6xl leading-snug tracking-tight">
-            {siteData.fullName}
-          </h1>
-        ) : (
-          <h1 
-            className="font-manga font-black uppercase tracking-tight text-[var(--text-primary)] leading-none glitch-text"
-            style={{ 
-              fontSize: 'clamp(2rem, 6vw, 5rem)',
-              ...STYLES.SHADOW_BLACK_LG 
-            }}
-            data-text={siteData.fullName}
-          >
-            {siteData.fullName}
-          </h1>
-        )}
-        
-        <div className={`mt-6 flex items-center gap-4 text-[var(--text-primary)] font-bold uppercase ${resolvedTheme === 'light' ? 'border-t border-[#999]' : 'italic border-t-2 border-[var(--border-subtle)]'} pt-4`}>
-          <span className={`text-xl ${resolvedTheme === 'dark' ? 'font-mono' : (resolvedTheme === 'light' ? 'font-["Geneva",sans-serif] text-base font-bold' : 'font-manga')}`} style={resolvedTheme === 'dark' || resolvedTheme === 'light' ? {} : STYLES.SHADOW_BLACK_SM}>
-            {resolvedTheme === 'light' ? `🖥️ ${siteData.location}` : `${siteData.location} 📍`}
-          </span>
-          <span className={`px-3 py-1 truncate ${resolvedTheme === 'dark' ? 'bg-transparent border border-[#B8FF3F] text-[#B8FF3F] text-[0.6rem] tracking-[0.2em] uppercase font-mono' : (resolvedTheme === 'light' ? 'bg-white border border-[#999] text-[#0000CC] text-[0.65rem] font-["Geneva",sans-serif] underline px-2 py-0.5' : 'text-sm bg-[var(--ink-color)] text-[var(--text-inverse)] manga-border border-[var(--border-subtle)]')}`}>
-            {siteData.aliases.map((a, i) => (
-              <span key={i}>{a}{i < siteData.aliases.length - 1 ? ' | ' : ''}</span>
-            ))}
-          </span>
-        </div>
-        <p 
-          lang="en"
-          className={`mt-4 ${resolvedTheme === 'light' ? 'font-["Geneva",sans-serif] text-sm md:text-base italic opacity-80 os-terminal-blink' : 'font-hand text-2xl'} text-[var(--text-primary)] leading-tight max-w-xl`}
-          style={resolvedTheme === 'light' ? {} : { 
-            textShadow: '2px 2px 4px var(--manga-shadow-color), 0 0 20px var(--lyric-active-shadow)',
-            filter: 'drop-shadow(2px 2px 2px var(--manga-shadow-color))'
-          }}
-        >
-          {siteData.bio}
-        </p>
-      </div>
-    );
+  // Dev runtime CSS variable integration check
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+      const REQUIRED_HERO_VARS = [
+        '--window-chrome-display',
+        '--window-border',
+        '--window-shadow',
+        '--window-bg',
+        '--hero-header-align',
+        '--hero-card-bg',
+        '--hero-card-border',
+        '--hero-card-shadow',
+        '--hero-bg-image-url',
+        '--hero-bg-filter',
+        '--hero-bg-opacity',
+        '--hero-bg-blend',
+        '--hero-overlay-bg',
+        '--hero-title-font',
+        '--hero-title-weight',
+        '--hero-title-color',
+        '--hero-title-size',
+        '--hero-title-shadow',
+        '--hero-title-style',
+        '--hero-title-lines',
+        '--hero-title-transform',
+        '--hero-divider-top',
+        '--hero-divider-style',
+        '--hero-loc-font',
+        '--hero-loc-size',
+        '--hero-loc-weight',
+        '--hero-loc-shadow',
+        '--hero-loc-prefix',
+        '--hero-loc-suffix',
+        '--hero-alias-bg',
+        '--hero-alias-border',
+        '--hero-alias-color',
+        '--hero-alias-size',
+        '--hero-alias-tracking',
+        '--hero-alias-transform',
+        '--hero-alias-font',
+        '--hero-alias-deco',
+        '--hero-alias-padding',
+        '--hero-bio-font',
+        '--hero-bio-size',
+        '--hero-bio-shadow',
+        '--hero-bio-filter',
+        '--hero-bio-style',
+        '--hero-profile-width',
+        '--hero-profile-border',
+        '--hero-profile-shadow',
+        '--hero-profile-transform',
+        '--hero-profile-hover-transform',
+        '--hero-profile-display'
+      ];
+      const style = getComputedStyle(document.documentElement);
+      REQUIRED_HERO_VARS.forEach((v) => {
+        const value = style.getPropertyValue(v).trim();
+        if (!value) {
+          console.warn(`[Theme Check] Warning: Required CSS variable "${v}" is not resolved in active theme.`);
+        }
+      });
+    }
+  }, [resolvedTheme]);
+
+  const profileImages: Record<string, string> = {
+    light: lightProfileSrc,
+    dark: getThemedImage('profile', 'dark'),
+    midnight: getThemedImage('profile', 'midnight'),
+    bit: getThemedImage('profile', 'bit'),
   };
+  const activeProfileImg = profileImages[resolvedTheme] || profileImages['dark'];
 
   return (
     <motion.header 
       variants={itemVariants}
-      className={`flex flex-col md:flex-row ${resolvedTheme === 'light' ? 'items-start' : 'items-end'} justify-between gap-6 w-full`}
+      className="flex flex-col md:flex-row justify-between gap-6 w-full items-[var(--hero-header-align)]"
     >
-      {resolvedTheme === 'light' ? (
-        <OsWindow title="noureddin_el_mobaraki.profile" className="flex-1 w-full" contentPadding={0}>
-          {/* Menu Bar */}
-          <div 
-            style={{
-              height: '18px',
-              backgroundColor: '#E0E0E0',
-              borderBottom: '1px solid #999',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              paddingLeft: '8px',
-              userSelect: 'none',
-              fontFamily: 'Geneva, "Lucida Sans Unicode", sans-serif',
-              fontSize: '11px',
-              fontWeight: 'bold',
-              color: '#000',
-            }}
-          >
-            {['File', 'Edit', 'View'].map((item) => (
-              <span 
-                key={item} 
-                className="px-1.5 h-full flex items-center transition-colors hover:bg-[#000080] hover:text-white cursor-pointer"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-          {renderHeroContent()}
-        </OsWindow>
-      ) : (
-        renderHeroContent()
-      )}
-
-      {resolvedTheme === 'light' && (
-        <div
-          style={{
-            width: '200px',
-            minWidth: '180px',
-            aspectRatio: '1 / 1',
-            border: '1px solid #999',
-            boxShadow: '2px 2px 0px #999, 4px 4px 0px #777',
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}
-        >
-          <img
-            src={lightProfileSrc}
-            alt="Profile"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        </div>
-      )}
-
-      {/* Profile Image Square Box */}
+      {/* Outer wrapper playing container chrome */}
       <div 
-        className={`${resolvedTheme === 'light' ? 'hidden' : 'manga-card hidden md:flex rotate-2 hover:rotate-0 border-[3px] border-[var(--ink-color)]'} p-0 flex flex-col items-center justify-center ${isTablet ? 'w-40 h-40' : 'w-48'} aspect-square transition-transform overflow-hidden`}
-        style={{ background: 'var(--paper-color)' }}
+        className="flex-1 w-full flex flex-col overflow-hidden"
+        style={STYLES_REFACTORED.CONTAINER_STYLE}
       >
+        {/* Title Bar */}
+        <div style={STYLES_REFACTORED.TITLE_BAR_MAIN}>
+          <div style={STYLES_REFACTORED.TITLE_BAR_DOTS_LEFT}>
+            <div style={STYLES_REFACTORED.TITLE_BAR_DOT_RED} />
+            <div style={STYLES_REFACTORED.TITLE_BAR_DOT_YELLOW} />
+            <div style={STYLES_REFACTORED.TITLE_BAR_DOT_GREEN} />
+            <span style={STYLES_REFACTORED.TITLE_BAR_CONTROLS}>
+              <span title="Minimize" className="hover:text-black">─</span>
+              <span title="Maximize" className="hover:text-black">□</span>
+            </span>
+          </div>
+          <span style={STYLES_REFACTORED.TITLE_BAR_TEXT}>
+            noureddin_el_mobaraki.profile
+          </span>
+        </div>
+
+        {/* Menu Bar */}
+        <div style={STYLES_REFACTORED.MENU_BAR_STYLE}>
+          {['File', 'Edit', 'View'].map((item) => (
+            <span 
+              key={item} 
+              className="px-1.5 h-full flex items-center transition-colors hover:bg-[#000080] hover:text-white cursor-pointer"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+
+        {/* Content Area / Hero ContentCard */}
+        <div 
+          lang="en"
+          className="p-4 sm:p-6 md:p-8 flex-1 relative group overflow-hidden transition-all duration-500 hover:scale-[1.01] halftone-bg-refactored"
+          id="header-card"
+          style={STYLES_REFACTORED.HEADER_CARD_STYLE}
+        >
+          {/* Header Background Image with Zoom & Pan Hover Effect */}
+          <div 
+            className="absolute inset-0 z-[-1] bg-cover bg-center transition-all duration-700 blur-[3px] group-hover:blur-0 group-hover:scale-125 group-hover:translate-y-[-10%] hero-bg-image-refactored"
+            style={{ backgroundImage: 'var(--hero-bg-image-url)' }}
+          />
+
+          {/* Dark Overlay for Text Legibility */}
+          <div className="absolute inset-0 z-[-1] transition-opacity group-hover:opacity-30 hero-overlay-element" />
+          
+          {/* Stable Native Hero Title animation envelope */}
+          <motion.div
+             initial={{ opacity: 0, y: 15 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          >
+            <h1 
+              className="hero-title-refactored font-[var(--hero-title-font)] font-[var(--hero-title-weight)] tracking-tight text-[var(--hero-title-color)] select-none"
+              style={STYLES_REFACTORED.HERO_TITLE_STYLE}
+              data-text={siteData.fullName}
+            >
+              {siteData.fullName}
+            </h1>
+          </motion.div>
+          
+          {/* Divider and Location Block */}
+          <div className="mt-6 flex items-center gap-4 text-[var(--text-primary)] font-bold uppercase divider-top-refactored pt-4">
+            <span className="hero-location-text text-[var(--hero-loc-size)] font-[var(--hero-loc-font)] font-bold tracking-tight" style={{ textShadow: 'var(--hero-loc-shadow)' }}>
+              {siteData.location}
+            </span>
+            <span className="px-3 py-1 truncate hero-alias-refactored">
+              {siteData.aliases.map((a, i) => (
+                <span key={i}>{a}{i < siteData.aliases.length - 1 ? ' | ' : ''}</span>
+              ))}
+            </span>
+          </div>
+
+          {/* BIO Paragraph */}
+          <p 
+            lang="en"
+            className="mt-4 hero-bio-refactored text-[var(--text-primary)] leading-tight max-w-xl"
+            style={STYLES_REFACTORED.HERO_BIO_STYLE}
+          >
+            {siteData.bio}
+          </p>
+        </div>
+
+        {/* Status Bar */}
+        <div style={STYLES_REFACTORED.STATUS_BAR_STYLE}>
+          <span>Ready</span>
+          <div style={STYLES_REFACTORED.RESIZE_GRIP_STYLE} />
+        </div>
+      </div>
+
+      {/* Unified Profile Card Element */}
+      <div className="hero-profile-container">
         <ResponsiveImage 
-          src={resolvedTheme === 'light' ? lightProfileSrc : getThemedImage('profile', resolvedTheme)} 
+          src={activeProfileImg} 
           alt="Profile" 
           className="w-full h-full object-cover" 
           loading="lazy"
         />
       </div>
-
     </motion.header>
   );
 };

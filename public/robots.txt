@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
-Allow: /sitemap.xml
 
 Sitemap: https://noureddinelmobaraki-web.github.io/NL/sitemap.xml

@@ -1,22 +1,8 @@
 interface SkeletonSectionProps {
-  type: 'songs' | 'drawings' | 'contact' | 'iptv';
+  type: 'songs' | 'drawings' | 'contact';
 }
 
 export const SkeletonSection = ({ type }: SkeletonSectionProps) => {
-  if (type === 'iptv') {
-    return (
-      <div className="w-full animate-pulse space-y-4">
-        <div className="h-10 bg-[var(--bg-card)] rounded w-1/3" style={{ background: 'rgba(255,255,255,0.06)' }} />
-        <div className="h-72 bg-[var(--bg-card)] rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }} />
-        <div className="flex gap-3">
-          <div className="h-8 bg-[var(--bg-card)] rounded w-24" style={{ background: 'rgba(255,255,255,0.04)' }} />
-          <div className="h-8 bg-[var(--bg-card)] rounded w-24" style={{ background: 'rgba(255,255,255,0.04)' }} />
-          <div className="h-8 bg-[var(--bg-card)] rounded w-24" style={{ background: 'rgba(255,255,255,0.04)' }} />
-        </div>
-      </div>
-    );
-  }
-
   const rows = type === 'songs' ? 3 : type === 'drawings' ? 2 : 1;
   
   return (

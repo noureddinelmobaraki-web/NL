@@ -1,0 +1,19 @@
+/* Font-face imports + .font-* utilities */
+@import "@fontsource/bangers";
+@import "@fontsource/comic-neue";
+@import "@fontsource/patrick-hand";
+@import "@fontsource/share-tech-mono";
+
+@theme {
+  --font-manga: "Bangers", "Impact", cursive;
+  --font-sketch: "Comic Neue", "Comic Sans MS", cursive;
+  --font-hand: "Patrick Hand", "Georgia", cursive;
+}
+
+[data-theme="light"] .font-manga {
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.15) !important;
+}
+
+.sketch-text {
+  font-family: var(--font-sketch);
+}

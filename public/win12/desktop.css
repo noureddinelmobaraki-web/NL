@@ -2548,3 +2548,413 @@ list>span.focs.cl {
 .save-item:hover {
     background-color: #aaa;
 }
+
+/* ==========================================
+   CLASSIC WINDOWS XP LUNA INTERFACE THEME
+   ========================================== */
+
+/* Overriding CSS variables for XP */
+:root {
+    --bgul: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp') !important;
+    --theme-1: #0053e1 !important;
+    --theme-2: #245ede !important;
+}
+
+/* Taskbar / Dock Box */
+#dock-box {
+    width: 100% !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 40px !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: linear-gradient(to bottom, #1e52d3 0%, #266cf0 10%, #1e56da 35%, #1546bd 70%, #0c2b8c 100%) !important;
+    border-top: 1.5px solid #285edb !important;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.4) !important;
+    z-index: 9999 !important;
+    gap: 0 !important;
+}
+
+#dock-box .dock {
+    height: 100% !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+}
+
+#dock-box .dock.dock-start {
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Green Start Button */
+#start-btn {
+    box-sizing: border-box !important;
+    background: linear-gradient(to bottom, #39a01e 0%, #40b925 15%, #309418 40%, #206d0a 85%, #114d02 100%) !important;
+    border-radius: 0 15px 15px 0 !important;
+    border-right: 2.5px solid #144005 !important;
+    border-top: 2px solid #6dec3e !important;
+    border-bottom: 2px solid #0d3301 !important;
+    box-shadow: inset 1px 1px 1.5px #a1ee80 !important;
+    width: 130px !important;
+    height: 100% !important;
+    color: #ffffff !important;
+    font-family: 'Tahoma', 'Trebuchet MS', sans-serif !important;
+    font-weight: 900 !important;
+    font-style: italic !important;
+    font-size: 19px !important;
+    text-shadow: 1.5px 1.5px 2px #0e3001 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 15px !important;
+    transition: filter 50ms !important;
+    cursor: pointer !important;
+}
+
+#start-btn:hover {
+    filter: brightness(1.15) contrast(1.1) !important;
+}
+
+#start-btn::before {
+    content: "start" !important;
+    display: inline-block !important;
+    margin-right: 6px !important;
+}
+
+#start-btn svg, #start-btn img, #start-btn icon {
+    display: none !important; /* Hide standard Win12 start menu icons */
+}
+
+/* Classic XP Windows Style */
+.window {
+    border-radius: 8px 8px 3px 3px !important;
+    border: 3.5px solid #0058e6 !important;
+    box-shadow: 4px 4px 15px rgba(0,0,0,0.5) !important;
+    background-color: #ECE9D8 !important; /* Classic XP beige/grey window background */
+}
+
+.window.foc {
+    border-color: #0058e6 !important;
+}
+
+.window:not(.foc) {
+    border-color: #7b8e9b !important;
+}
+
+/* Titlebar */
+.window>.titbar {
+    height: 29px !important;
+    min-height: 29px !important;
+    background: linear-gradient(to bottom, #0058e6 0%, #3a91f4 15%, #0541cd 60%, #0036b5 85%, #002d96 100%) !important;
+    padding: 2px 8px 0 8px !important;
+    border-bottom: 1px solid #002d96 !important;
+    opacity: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.window:not(.foc)>.titbar {
+    background: linear-gradient(to bottom, #7a91a1 0%, #a4b7c5 15%, #7e95a5 60%, #687f8f 85%, #586e7a 100%) !important;
+    border-bottom: 1px solid #586e7a !important;
+}
+
+.window>.titbar>p {
+    color: #ffffff !important;
+    font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 13.5px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7) !important;
+    margin: 0 !important;
+    line-height: 29px !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Window buttons */
+.window>.titbar div {
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    margin-top: 2px !important;
+}
+
+.wbtg {
+    height: 21px !important;
+    width: 21px !important;
+    border-radius: 3px !important;
+    border: 1px solid #ffffff !important;
+    box-shadow: inset 1.5px 1.5px 1px rgba(255,255,255,0.4), 1px 1px 1.5px rgba(0,0,0,0.3) !important;
+    color: #ffffff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-family: 'Tahoma', monospace !important;
+    font-weight: bold !important;
+    font-size: 12px !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    transition: none !important;
+    background: linear-gradient(to bottom, #4f96e8 0%, #2062cc 100%) !important;
+}
+
+.wbtg:hover {
+    filter: brightness(1.2) !important;
+}
+
+.wbtg.red {
+    background: linear-gradient(to bottom, #f27260 0%, #e34026 15%, #b1250f 70%, #981c0b 100%) !important;
+    border: 1px solid #7a1507 !important;
+    box-shadow: inset 1px 1px 1px rgba(255,255,255,0.3) !important;
+    border-radius: 3.5px !important;
+    color: #ffffff !important;
+}
+
+.wbtg.red:hover {
+    background: linear-gradient(to bottom, #ff9485 0%, #f15239 15%, #d6331a 70%, #b31602 100%) !important;
+}
+
+/* Double classic content border */
+.window>.content {
+    border: 1.5px solid #d8d2bd !important;
+    background-color: #ECE9D8 !important;
+}
+
+/* XP Start Menu */
+#start-menu {
+    border-radius: 5px 5px 0 0 !important;
+    border: 3px solid #0058e6 !important;
+    border-bottom: none !important;
+    background: #1e52d3 !important; /* Visual header and status panel */
+    padding: 0 !important;
+    width: 440px !important;
+    left: 0 !important;
+    height: 520px !important;
+    bottom: 40px !important;
+    box-shadow: 3px -3px 20px rgba(0,0,0,0.5) !important;
+    overflow: hidden !important;
+    display: none;
+    flex-direction: column !important;
+}
+
+#start-menu.show {
+    display: flex !important;
+    bottom: 40px !important;
+}
+
+/* User Account Strip on top */
+#s-m-user {
+    display: flex !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    height: 55px !important;
+    background: linear-gradient(to right, #1e52d3 0%, #245ede 20%, #3a8df1 60%, #245ede 100%) !important;
+    border-bottom: 1px solid #285edb !important;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.4) !important;
+    gap: 12px !important;
+}
+
+#s-m-user svg, #s-m-user img {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 3px !important;
+    border: 2px solid #ffffff !important;
+    background-image: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp') !important;
+    background-size: cover !important;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.5) !important;
+}
+
+#start-menu #s-m-l p[style*="font-size: 30px"] {
+    display: none !important; /* Hide large admin title */
+}
+
+/* Insert custom XP user name in the top bar */
+#s-m-user::after {
+    content: "NL Guest Account" !important;
+    color: #ffffff !important;
+    font-family: 'Tahoma', sans-serif !important;
+    font-weight: bold !important;
+    font-size: 14px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
+}
+
+/* Main Start menu layout */
+#s-m-l {
+    flex: 1 !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    padding: 10px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-right: 1px solid #b4c1d3 !important;
+}
+
+#s-m-l .input, #s-m-l input-before {
+    display: none !important; /* Hide Search Input for true XP retro look */
+}
+
+#s-m-l list {
+    height: 100% !important;
+    overflow-y: auto !important;
+    margin-top: 5px !important;
+    padding-bottom: 20px !important;
+}
+
+#s-m-l list .text {
+    font-family: 'Tahoma', sans-serif !important;
+    font-size: 11px !important;
+    color: #7a7a7a !important;
+    text-transform: uppercase !important;
+    font-weight: bold !important;
+    border-bottom: 1px solid #ece9d8 !important;
+    padding-bottom: 3px !important;
+    margin-bottom: 5px !important;
+}
+
+#s-m-l list a {
+    display: flex !important;
+    align-items: center !important;
+    padding: 5px 8px !important;
+    gap: 8px !important;
+    border-radius: 3px !important;
+    transition: none !important;
+}
+
+#s-m-l list a:hover {
+    background: #316ac5 !important;
+    color: #ffffff !important;
+}
+
+#s-m-l list a:hover p {
+    color: #ffffff !important;
+}
+
+#s-m-l list a img {
+    width: 28px !important;
+    height: 28px !important;
+}
+
+#s-m-l list a p {
+    font-family: 'Tahoma', sans-serif !important;
+    font-size: 11px !important;
+    color: #000000 !important;
+    font-weight: bold !important;
+}
+
+/* Hide right sidebar s-m-r or hide elements to match XP simplicity */
+#s-m-r {
+    display: none !important;
+}
+
+/* System Tray items */
+.dock.theme, .dock.control, .dock.date {
+    background: #092e8c !important;
+    border-left: 1px solid #0d38a6 !important;
+    border-top: 1px solid #0d38a6 !important;
+    border-right: 1px solid #001f66 !important;
+    border-bottom: 1px solid #001f66 !important;
+    border-radius: 0 !important;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.6) !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 10px !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-family: 'Tahoma', sans-serif !important;
+    text-shadow: none !important;
+    gap: 6px !important;
+    margin: 0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+.dock.theme {
+    margin-left: auto !important; /* Float entire system tray group to the right */
+}
+
+/* Desktop Task indicator buttons */
+#taskbar {
+    flex-grow: 1 !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    max-width: none !important;
+    width: auto !important;
+    margin: 0 15px !important;
+    overflow: visible !important;
+}
+
+#taskbar > a {
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 8px !important;
+    width: 140px !important;
+    height: 28px !important;
+    border-radius: 3px !important;
+    background: linear-gradient(to bottom, #5b92f7 0%, #3875d7 30%, #2059c2 70%, #154fb5 100%) !important;
+    border-top: 1px solid #7ea7fb !important;
+    border-left: 1px solid #7ea7fb !important;
+    border-right: 1.5px solid #134094 !important;
+    border-bottom: 2px solid #0d3077 !important;
+    box-shadow: inset 1px 1px 1px #a4cffb !important;
+    color: #ffffff !important;
+    font-family: 'Tahoma', sans-serif !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.5) !important;
+    text-decoration: none !important;
+    gap: 6px !important;
+    margin: 5px 3px 0 3px !important;
+    cursor: pointer !important;
+}
+
+#taskbar > a.foc {
+    background: linear-gradient(to bottom, #133989 0%, #18439e 20%, #1c4ea7 50%, #1c499e 80%, #183e87 100%) !important;
+    border-top: 1px solid #0f2b67 !important;
+    border-left: 1px solid #0f2b67 !important;
+    border-right: 1.5px solid #285edb !important;
+    border-bottom: 2px solid #3875d7 !important;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.8), inset -1px -1px 0px rgba(255,255,255,0.1) !important;
+}
+
+#taskbar > a::after {
+    content: attr(win12_title) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    color: #ffffff !important;
+    display: block !important;
+    flex: 1 !important;
+    text-align: left !important;
+}
+
+#taskbar > a img {
+    width: 16px !important;
+    height: 16px !important;
+}
+
+/* Specific to the clock tray */
+.dock.date {
+    width: auto !important;
+    min-width: 80px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.dock.date > .time {
+    font-size: 11px !important;
+    font-weight: bold !important;
+    color: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.dock.date > .date {
+    display: none !important; /* Hide tiny text date for clean XP tray style */
+}

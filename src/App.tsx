@@ -52,8 +52,6 @@ const CONFIG_ASSETS = {
   youtubeHighlightsBg: ASSETS.songs.ytHighlights,
 };
 
-const IptvSection = React.lazy(() => import('./components/sections/IptvSection'));
-
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
@@ -125,7 +123,7 @@ export default function App() {
     if (resolvedTheme !== 'light') return null;
     return (
       <div
-        className="fixed top-4 right-4 z-[10000]"
+        className="fixed top-4 right-4 z-[var(--z-toast)]"
         style={{
           fontFamily: 'Geneva, "Lucida Sans Unicode", monospace',
           fontSize: '11px',
@@ -222,13 +220,13 @@ export default function App() {
       {resolvedTheme === 'dark' && (
         <>
           <div 
-            className="fixed inset-0 z-[9997] pointer-events-none" 
+            className="fixed inset-0 z-[var(--z-bg-effects)] pointer-events-none" 
             style={{
               background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%)'
             }} 
           />
           <div 
-            className="fixed left-0 right-0 h-px z-[9996] pointer-events-none"
+            className="fixed left-0 right-0 h-px z-[var(--z-bg-effects)] pointer-events-none"
             style={{
               background: 'rgba(184,255,63,0.1)', 
               animation: 'scan-line 7s linear infinite',
@@ -368,14 +366,6 @@ export default function App() {
                 <SectionErrorBoundary sectionName="DrawingsPage">
                   <Suspense fallback={<SkeletonSection type="drawings" />}>
                     <DrawingsPage onSongPlay={handleSongPlay} />
-                  </Suspense>
-                </SectionErrorBoundary>
-              </motion.div>
-
-              <motion.div variants={itemVariants} id="iptv-section">
-                <SectionErrorBoundary sectionName="IptvSection">
-                  <Suspense fallback={<SkeletonSection type="iptv" />}>
-                    <IptvSection />
                   </Suspense>
                 </SectionErrorBoundary>
               </motion.div>

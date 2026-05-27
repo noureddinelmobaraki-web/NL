@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion, Variants } from "framer-motion";
 import { 
   Instagram, 
@@ -9,7 +10,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { StreamingPlatform, SocialChannel } from "../../types";
-
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 
 const STREAMING_PLATFORMS: StreamingPlatform[] = [
@@ -82,133 +82,134 @@ const itemVariants: Variants = {
   }
 };
 
-const SPOTIFY_ICON = "https://img.icons8.com/plasticine/1200/spotify--v2.jpg";
+const SpotifyLogo = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    className={className}
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      fill="#1DB954"
+      d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.196.287-.573.373-.86.177-2.292-1.558-5.268-1.887-8.877-1.06-.328.075-.654-.128-.73-.457-.075-.328.128-.654.457-.73 3.941-.902 7.242-.52 9.833 1.238.287.196.373.573.177.86zm1.257-2.692c-.247.362-.724.47-1.086.223-2.44-1.657-6.187-2.096-9.113-1.208-.409.124-.845-.109-.969-.518-.124-.408.109-.844.518-.968 3.348-1.017 7.485-.516 10.287 1.386.362.246.47.724.223 1.085zm.096-2.774c-2.88-1.915-7.858-2.097-10.722-1.228-.492.149-1.02-.128-1.17-.62-.149-.492.128-1.02.62-1.17 3.305-1.005 8.793-.8 12.14 1.42.445.295.568.89.273 1.335-.295.445-.89.568-1.335.273z"
+    />
+  </svg>
+);
+
+const STYLES_REFACTORED = {
+  TITLEBAR_DOTS: { display: 'flex', gap: '3px', alignItems: 'center' },
+  DOT_RED: { width: 8, height: 8, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' },
+  DOT_YELLOW: { width: 8, height: 8, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' },
+  DOT_GREEN: { width: 8, height: 8, borderRadius: '50%', background: '#27C93F', border: '0.5px solid #1AAB29' },
+  DOT_MINI_RED: { width: 6, height: 6, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' },
+  DOT_MINI_YELLOW: { width: 6, height: 6, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' },
+  SPACER_12: { width: 12 },
+};
 
 export const StreamingSection = () => {
   const resolvedTheme = useResolvedTheme();
+
+  // Runtime CSS variable assertion
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+      const REQUIRED_STREAMING_VARS = [
+        '--streaming-titlebar-display',
+        '--streaming-h2-display',
+        '--streaming-divider-display',
+        '--social-titlebar-display',
+        '--social-h2-display',
+        '--stream-card-border',
+        '--stream-card-shadow',
+        '--stream-card-bg',
+        '--stream-card-flex-dir',
+        '--stream-mini-titlebar-display',
+        '--stream-content-dark-display',
+        '--stream-content-light-display',
+        '--stream-content-default-display',
+        '--social-content-dark-display',
+        '--social-content-light-display',
+        '--social-content-default-display',
+        '--social-card-rotate',
+        '--social-card-radius',
+        '--social-card-shadow'
+      ];
+      const style = getComputedStyle(document.documentElement);
+      REQUIRED_STREAMING_VARS.forEach((v) => {
+        const value = style.getPropertyValue(v).trim();
+        if (!value) {
+          console.warn(`[Theme Check] Warning: Required CSS variable "${v}" is not resolved in active theme.`);
+        }
+      });
+    }
+  }, [resolvedTheme]);
+
   return (
     <main className="grid grid-cols-1 md:grid-cols-2 gap-10">
       {/* Streaming Platforms Section */}
       <motion.section variants={itemVariants} className="flex flex-col gap-6" lang="en">
-        {resolvedTheme === 'light' ? (
-          <div
-            style={{
-              background: 'linear-gradient(180deg, #CCCCCC 0%, #AAAAAA 100%)',
-              border: '1px solid #999',
-              padding: '4px 8px',
-              fontFamily: 'Geneva, "Lucida Sans Unicode", sans-serif',
-              fontSize: '11px',
-              fontWeight: 'bold',
-              boxShadow: '3px 3px 0px #666, 5px 5px 0px #444',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              width: '100%',
-              userSelect: 'none',
-              height: '24px',
-            }}
-          >
-            <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' }} />
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' }} />
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#27C93F', border: '0.5px solid #1AAB29' }} />
+        <div className="streaming-header-container">
+          {/* Titlebar Style for light theme */}
+          <div className="streaming-titlebar-refactored">
+            <div style={STYLES_REFACTORED.TITLEBAR_DOTS}>
+              <div style={STYLES_REFACTORED.DOT_RED} />
+              <div style={STYLES_REFACTORED.DOT_YELLOW} />
+              <div style={STYLES_REFACTORED.DOT_GREEN} />
             </div>
-            <span style={{ color: '#000', flex: 1, textAlign: 'center' }}>
-              STREAMING_PLATFORMS.exe
-            </span>
+            <span className="text-black flex-1 text-center">STREAMING_PLATFORMS.exe</span>
           </div>
-        ) : (
-          <h2 className={`inline-block px-5 py-2 w-fit shadow-[4px_4px_0px_var(--manga-shadow-color)] border-[var(--ink-color)] ${resolvedTheme === 'dark' ? 'bg-transparent border border-[#B8FF3F] text-[#B8FF3F] text-[0.8rem] tracking-[0.2em] uppercase font-mono' : 'font-manga text-2xl font-bold bg-[var(--paper-color)] text-[var(--ink-color)] manga-border -rotate-1'}`}>
+
+          {/* Header 2 Style for standard themes */}
+          <h2 className="streaming-h2-refactored px-5 py-2 select-none">
             ■ STREAMING PLATFORMS
           </h2>
-        )}
-        {resolvedTheme !== 'light' && <div className="manga-divider" />}
-        
+        </div>
+
+        {/* Divider */}
+        <div className="manga-divider streaming-divider-refactored" />
+
+        {/* Streaming Cards Grid Container */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {STREAMING_PLATFORMS.map((platform, idx) => (
             <div
               key={platform.name}
               id={`stream-${idx}`}
-              style={resolvedTheme === 'light' ? {
-                border: '1px solid #999',
-                boxShadow: 'inset 1px 1px 0 #fff, inset -1px -1px 0 #555, 2px 2px 0px #999',
-                background: '#F0EBE3',
-                display: 'flex',
-                flexDirection: 'column',
-              } : {}}
+              className="stream-card-container"
             >
-              {resolvedTheme === 'light' && (
-                <div
-                  style={{
-                    background: 'linear-gradient(180deg, #CCCCCC 0%, #AAAAAA 100%)',
-                    borderBottom: '1px solid #999',
-                    padding: '2px 4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    userSelect: 'none',
-                    height: '16px',
-                  }}
-                >
-                  <div style={{ display: 'flex', gap: '3px' }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' }} />
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' }} />
-                  </div>
-                  <span
-                    style={{
-                      fontFamily: 'Geneva, sans-serif',
-                      fontSize: '8px',
-                      fontWeight: 'bold',
-                      color: '#000',
-                      textAlign: 'center',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {platform.name}
-                  </span>
-                  <div style={{ width: 12 }} />
+              {/* Mini Window Header (visible in light theme only) */}
+              <div className="stream-mini-titlebar">
+                <div style={STYLES_REFACTORED.TITLEBAR_DOTS}>
+                  <div style={STYLES_REFACTORED.DOT_MINI_RED} />
+                  <div style={STYLES_REFACTORED.DOT_MINI_YELLOW} />
                 </div>
-              )}
+                <span className="stream-mini-titlebar-text">{platform.name}</span>
+                <div style={STYLES_REFACTORED.SPACER_12} />
+              </div>
+
+              {/* Underlying Unified Anchor element styled via CSS custom properties */}
               <a
                 href={platform.url}
                 target="_blank"
                 rel="noreferrer"
-                className={resolvedTheme === 'dark' ? 
-                  'bg-transparent border border-white/20 text-white text-[0.65rem] tracking-[0.15em] uppercase hover:bg-white hover:text-black transition-all duration-300 font-mono flex items-center justify-center p-4 h-full text-center' : 
-                  (resolvedTheme === 'light' ? 
-                    'bg-[#F0EBE3] text-black text-[0.7rem] font-bold p-3 flex items-center justify-between hover:bg-[#DDD] transition-all flex-1' : 
-                    `manga-button flex items-center gap-3 group manga-card-hover ${platform.isSpotify ? 'spotify-king' : ''}`
-                  )
-                }
-                style={resolvedTheme === 'light' ? {
-                  fontFamily: 'Geneva, sans-serif'
-                } : {}}
+                className={`stream-link-refactored manga-button group manga-card-hover ${platform.isSpotify ? 'spotify-king' : ''}`}
               >
-                {resolvedTheme === 'dark' ? (
-                  <span>{platform.name}</span>
-                ) : resolvedTheme === 'light' ? (
-                  <>
-                    <span className="text-[#000080]" style={{ fontFamily: 'Geneva, sans-serif' }}>Open Link</span>
-                    <ExternalLink className="w-3 h-3 text-[#0000CC]" />
-                  </>
-                ) : (
-                  <>
-                    {platform.isSpotify ? (
-                      <img 
-                        src={SPOTIFY_ICON} 
-                        alt="Spotify" 
-                        className="w-8 h-8 shrink-0 object-contain drop-shadow-[0_0_8px_#1DB954]" 
-                        referrerPolicy="no-referrer" 
-                        loading="lazy" 
-                      />
-                    ) : (
-                      <platform.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                    )}
-                    <span className="text-base sm:text-lg whitespace-nowrap overflow-hidden text-ellipsis">{platform.name}</span>
-                  </>
-                )}
+                {/* Dark Theme Content */}
+                <span className="stream-link-content-dark">{platform.name}</span>
+
+                {/* Light Theme Content */}
+                <span className="stream-link-content-light">
+                  <span className="text-[#000080]" style={{ fontFamily: 'Geneva, sans-serif' }}>Open Link</span>
+                  <ExternalLink className="w-3 h-3 text-[#0000CC]" />
+                </span>
+
+                {/* Midnight / Bit Theme Content */}
+                <span className="stream-link-content-default">
+                  {platform.isSpotify ? (
+                    <SpotifyLogo className="w-8 h-8 shrink-0 drop-shadow-[0_0_8px_#1DB954]" />
+                  ) : (
+                    <platform.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
+                  )}
+                  <span className="text-base sm:text-lg whitespace-nowrap overflow-hidden text-ellipsis">{platform.name}</span>
+                </span>
               </a>
             </div>
           ))}
@@ -217,74 +218,60 @@ export const StreamingSection = () => {
 
       {/* Social Channels Section */}
       <motion.section variants={itemVariants} className="flex flex-col gap-6" lang="en">
-        {resolvedTheme === 'light' ? (
-          <div
-            style={{
-              background: 'linear-gradient(180deg, #CCCCCC 0%, #AAAAAA 100%)',
-              border: '1px solid #999',
-              padding: '3px 12px',
-              fontFamily: 'Geneva, sans-serif',
-              fontSize: '11px',
-              fontWeight: 'bold',
-              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000',
-              display: 'inline-block',
-              width: 'fit-content'
-            }}
-          >
+        <div className="social-header-container">
+          {/* Titlebar Style for light theme */}
+          <div className="social-titlebar-refactored">
             SOCIAL_CHANNELS
           </div>
-        ) : (
-          <h2 className={`inline-block px-5 py-2 w-fit shadow-[4px_4px_0px_var(--manga-shadow-color)] border-[var(--ink-color)] ${resolvedTheme === 'dark' ? 'bg-transparent border border-[#B8FF3F] text-[#B8FF3F] text-[0.8rem] tracking-[0.2em] uppercase font-mono' : 'font-manga text-2xl font-bold bg-[var(--paper-color)] text-[var(--ink-color)] manga-border rotate-1'}`}>
+
+          {/* Header 2 Style for standard themes */}
+          <h2 className="social-h2-refactored px-5 py-2 select-none">
             ■ SOCIAL CHANNELS
           </h2>
-        )}
-        {resolvedTheme !== 'light' && <div className="manga-divider" />}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {SOCIAL_CHANNELS.map((channel, idx) => (
-          <a
-            key={channel.name}
-            id={`social-${idx}`}
-            href={channel.url}
-            target="_blank"
-            rel="noreferrer"
-            className={resolvedTheme === 'dark' ? 
-              'bg-transparent border border-white/20 text-white text-[0.65rem] tracking-[0.15em] uppercase hover:bg-white hover:text-black transition-all duration-300 font-mono flex items-center justify-center p-4' : 
-              (resolvedTheme === 'light' ? 
-                'bg-[#F0EBE3] border border-[#999] text-black text-[0.75rem] font-bold p-4 flex items-center justify-between hover:bg-[#DDD] transition-all' : 
-                'manga-button flex justify-between items-center group overflow-hidden'
-              )
-            }
-            style={resolvedTheme === 'dark' ? {} : (resolvedTheme === 'light' ? {
-              boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000',
-              fontFamily: 'Geneva, sans-serif'
-            } : { 
-              transform: `rotate(${idx % 2 === 0 ? '-0.5deg' : '0.5deg'})`,
-              borderRadius: '8px 15px 5px 22px / 22px 5px 15px 8px'
-            })}
-          >
-            {resolvedTheme === 'dark' ? (
-              <span>{channel.name}</span>
-            ) : resolvedTheme === 'light' ? (
-              <>
-                <div className="flex items-center gap-3">
+        </div>
+
+        {/* Divider */}
+        <div className="manga-divider streaming-divider-refactored" />
+
+        {/* Social Cards Grid Container */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {SOCIAL_CHANNELS.map((channel, idx) => (
+            <a
+              key={channel.name}
+              id={`social-${idx}`}
+              href={channel.url}
+              target="_blank"
+              rel="noreferrer"
+              className="social-link-refactored manga-button group overflow-hidden"
+              style={{
+                transform: `rotate(calc(${idx % 2 === 0 ? '-1' : '1'} * var(--social-card-rotate)))`,
+                borderRadius: 'var(--social-card-radius)',
+                boxShadow: 'var(--social-card-shadow)',
+              }}
+            >
+              {/* Dark Theme Content */}
+              <span className="social-link-content-dark">{channel.name}</span>
+
+              {/* Light Theme Content */}
+              <span className="social-link-content-light">
+                <span className="flex items-center gap-3">
                   <channel.icon className="w-4 h-4 text-[#0000CC]" aria-hidden="true" />
                   <span>{channel.name}</span>
-                </div>
+                </span>
                 <ExternalLink className="w-3 h-3 text-[#0000CC]" />
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-4">
+              </span>
+
+              {/* Midnight / Bit Theme Content */}
+              <span className="social-link-content-default">
+                <span className="flex items-center gap-4">
                   <channel.icon className="w-6 h-6" aria-hidden="true" />
                   <span className="text-xl">{channel.name}</span>
-                </div>
+                </span>
                 <ExternalLink className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
-              </>
-            )}
-          </a>
-        ))}
-      </div>
+              </span>
+            </a>
+          ))}
+        </div>
       </motion.section>
     </main>
   );
