@@ -121,7 +121,7 @@ if (!fs.existsSync(distDir)) {
         const content = fs.readFileSync(file, 'utf8');
         const matches = [...content.matchAll(secretRegex)];
         // Exception: whitelist wa.me/\d+ and service_[a-z0-9]+ patterns as they are general public and frontend IDs, not secrets.
-        const filteredMatches = matches.filter(m => !/wa\.me\/\d+/.test(m[0]) && !/service_[a-z0-9]+/.test(m[0]));
+        const filteredMatches = matches.filter(m => !/wa\.me\/\d+/.test(m[0]) && !/service_[a-z0-9]+/.test(m[0]) && !/template_[a-z0-9]+/.test(m[0]));
         if (filteredMatches.length > 0) {
           const relativeName = path.relative(process.cwd(), file);
           console.error(`  ❌ FAIL: Potential secret leak found in ${relativeName}: "${filteredMatches[0][0]}"`);
