@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const DOMAIN = 'https://noureddinelmobaraki-web.github.io/NL';
-const TODAY = '2026-05-21'; // Keep consistent with user sitemap timestamp
+const TODAY = new Date().toISOString().split('T')[0];
 
 const SONGS_DATA = [
   { id: 1, name: "TRI9 TBAWE9", file: "01.%20TRI9%20TBA...%20-%20Background.webp" },
@@ -36,16 +36,15 @@ function generateSitemap() {
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset
   xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
-  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 
-  <!-- ═══════════════════════════════════════════════════════════
-       SITEMAP — NL | Noureddin El Mobaraki
+  <!-- ===========================================================
+       SITEMAP - NL | Noureddin El Mobaraki
        https://noureddinelmobaraki-web.github.io/NL/
-       Generated: ${TODAY}
-       ═══════════════════════════════════════════════════════════ -->
+       Generated: \${TODAY}
+       =========================================================== -->
 
-  <!-- ─── MAIN PAGE ─────────────────────────────────────── -->
+  <!-- === MAIN PAGE ======================================= -->
   <url>
     <loc>${DOMAIN}/</loc>
     <lastmod>${TODAY}</lastmod>
@@ -83,7 +82,7 @@ function generateSitemap() {
     </image:image>
   </url>
 
-  <!-- ─── SONG SHARE PAGES ────────────────────────────────── -->
+  <!-- === SONG SHARE PAGES ================================== -->
 `;
 
   SONGS_DATA.forEach(song => {
