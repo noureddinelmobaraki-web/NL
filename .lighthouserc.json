@@ -2,7 +2,7 @@
   "ci": {
     "collect": {
       "numberOfRuns": 3,
-      "startServerCommand": "vite preview --port 4300 --host 127.0.0.1",
+      "startServerCommand": "npx vite preview --port 4300 --host 127.0.0.1",
       "startServerReadyPattern": "ready in|http://localhost|http://127.0.0.1",
       "url": [
         "http://127.0.0.1:4300/NL/"
