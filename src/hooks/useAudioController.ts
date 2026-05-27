@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { audioManager } from '../audio/audioManager';
-import { getOrCreateHls } from '../audio/hlsPool';
-import Hls from 'hls.js';
+import { getOrCreateHls, getHlsClass } from '../audio/hlsPool';
 import { THEME_BG_MUSIC, ASSETS } from '../constants/assets';
 import { savePrefs } from '../utils/userPrefs';
 import type { Theme, AudioIntent } from '../utils/userPrefs';
@@ -51,53 +50,63 @@ export function useAudioController({
     const url = THEME_BG_MUSIC[initialResolved] ?? ASSETS.media.music;
     currentBgUrlRef.current = url;
 
-    // Safari: native HLS support
-    if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-      audio.src = url;
-      audio.load();
-      audio.addEventListener('loadedmetadata', () => {
-        audioManager.triggerManifestParsed();
-      }, { once: true });
-    } else if (Hls.isSupported()) {
-      // Chrome/Android/Firefox: use hls.js
-      const hls = getOrCreateHls(url);
-      hls.attachMedia(audio);
-      hls.once(Hls.Events.MANIFEST_PARSED, () => {
-        audioManager.triggerManifestParsed();
-      });
-      const errHandler = (_: any, data: any) => {
-        if (!data.fatal) return;
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
-        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-      };
-      hls.on(Hls.Events.ERROR, errHandler);
-    }
+    const setupHls = async () => {
+      // Safari: native HLS support
+      if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+        audio.src = url;
+        audio.load();
+        audio.addEventListener('loadedmetadata', () => {
+          audioManager.triggerManifestParsed();
+        }, { once: true });
+      } else {
+        const HlsClass = await getHlsClass();
+        if (HlsClass.isSupported()) {
+          // Chrome/Android/Firefox: use hls.js
+          const hls = await getOrCreateHls(url);
+          hls.attachMedia(audio);
+          hls.once(HlsClass.Events.MANIFEST_PARSED, () => {
+            audioManager.triggerManifestParsed();
+          });
+          const errHandler = (_: any, data: any) => {
+            if (!data.fatal) return;
+            if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+            else if (data.type === HlsClass.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+          };
+          hls.on(HlsClass.Events.ERROR, errHandler);
+        }
+      }
 
-    // Lens
-    const lensAudio = new Audio(ASSETS.media.lensMusic);
-    lensAudio.crossOrigin = "anonymous";
-    lensAudio.loop = true;
-    lensAudio.preload = 'auto';
-    audioManager.register('lens', lensAudio, 0.7);
+      // Lens
+      const lensAudio = new Audio(ASSETS.media.lensMusic);
+      lensAudio.crossOrigin = "anonymous";
+      lensAudio.loop = true;
+      lensAudio.preload = 'none';
+      audioManager.register('lens', lensAudio, 0.7);
 
-    // ME bit (Pre-initialize for instant playback)
-    const meBitAudio = new Audio();
-    meBitAudio.crossOrigin = "anonymous";
-    meBitAudio.loop = true;
-    meBitAudio.preload = 'auto';
-    meBitAudio.volume = 0;
-    meBitAudioRef.current = meBitAudio;
-    audioManager.register('mebit', meBitAudio, 0.6);
+      // ME bit (Pre-initialize for instant playback)
+      const meBitAudio = new Audio();
+      meBitAudio.crossOrigin = "anonymous";
+      meBitAudio.loop = true;
+      meBitAudio.preload = 'none';
+      meBitAudio.volume = 0;
+      meBitAudioRef.current = meBitAudio;
+      audioManager.register('mebit', meBitAudio, 0.6);
 
-    const meBitUrl = ASSETS.media.meBitMusic;
-    if (meBitAudio.canPlayType('application/vnd.apple.mpegurl')) {
-      meBitAudio.src = meBitUrl;
-      meBitAudio.load();
-    } else if (Hls.isSupported()) {
-      const hls = getOrCreateHls(meBitUrl);
-      hls.attachMedia(meBitAudio);
-      meBitHlsAttached.current = true;
-    }
+      const meBitUrl = ASSETS.media.meBitMusic;
+      if (meBitAudio.canPlayType('application/vnd.apple.mpegurl')) {
+        meBitAudio.src = meBitUrl;
+        meBitAudio.load();
+      } else {
+        const HlsClass = await getHlsClass();
+        if (HlsClass.isSupported()) {
+          const hls = await getOrCreateHls(meBitUrl);
+          hls.attachMedia(meBitAudio);
+          meBitHlsAttached.current = true;
+        }
+      }
+    };
+
+    setupHls();
 
     return () => {
       audioManager.pause('lens');
@@ -126,42 +135,52 @@ export function useAudioController({
     // 1. Fade out and pause current bg
     audioManager.pause('bg');
 
-    // 2. Detach old HLS instance (kept alive in pool)
-    if (Hls.isSupported() && !audio.canPlayType('application/vnd.apple.mpegurl')) {
-      // detach from pool instance — do not destroy, keep buffered
-      const oldHls = getOrCreateHls(currentBgUrlRef.current);
-      oldHls.detachMedia();
-    }
+    const swapHls = async () => {
+      // 2. Detach old HLS instance (kept alive in pool)
+      if (!audio.canPlayType('application/vnd.apple.mpegurl')) {
+        const HlsClass = await getHlsClass();
+        if (HlsClass.isSupported()) {
+          // detach from pool instance — do not destroy, keep buffered
+          const oldHls = await getOrCreateHls(currentBgUrlRef.current);
+          oldHls.detachMedia();
+        }
+      }
 
-    // 3. Update tracking ref
-    currentBgUrlRef.current = newUrl;
+      // 3. Update tracking ref
+      currentBgUrlRef.current = newUrl;
 
-    // 4. Attach new HLS instance
-    if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari: set src directly
-      audio.src = newUrl;
-      audio.load();
-    } else if (Hls.isSupported()) {
-      const newHls = getOrCreateHls(newUrl); // pre-warmed if visited before
-      const errHandler = (_: any, data: any) => {
-        if (!data.fatal) return;
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) newHls.startLoad();
-        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) newHls.recoverMediaError();
-      };
-      newHls.on(Hls.Events.ERROR, errHandler);
-      newHls.attachMedia(audio);
-    }
+      // 4. Attach new HLS instance
+      if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari: set src directly
+        audio.src = newUrl;
+        audio.load();
+      } else {
+        const HlsClass = await getHlsClass();
+        if (HlsClass.isSupported()) {
+          const newHls = await getOrCreateHls(newUrl); // pre-warmed if visited before
+          const errHandler = (_: any, data: any) => {
+            if (!data.fatal) return;
+            if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) newHls.startLoad();
+            else if (data.type === HlsClass.ErrorTypes.MEDIA_ERROR) newHls.recoverMediaError();
+          };
+          newHls.on(HlsClass.Events.ERROR, errHandler);
+          newHls.attachMedia(audio);
+        }
+      }
 
-    // 5. Re-register the same audio element with audioManager (url changed)
-    audioManager.register('bg', audio, 0.7);
+      // 5. Re-register the same audio element with audioManager (url changed)
+      audioManager.register('bg', audio, 0.7);
 
-    // 6. Resume playback if it was active and user hasn't manually paused
-    if (wasPlaying && wasNotUserPaused) {
-      // Small delay to allow HLS manifest to start loading
-      setTimeout(() => {
-        audioManager.unpauseBg();
-      }, 400);
-    }
+      // 6. Resume playback if it was active and user hasn't manually paused
+      if (wasPlaying && wasNotUserPaused) {
+        // Small delay to allow HLS manifest to start loading
+        setTimeout(() => {
+          audioManager.unpauseBg();
+        }, 400);
+      }
+    };
+
+    swapHls();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme]);
   // ─────────────────────────────────────────────────────────────────

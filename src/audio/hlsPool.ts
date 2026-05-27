@@ -1,4 +1,5 @@
-import Hls, { type HlsConfig } from 'hls.js';
+import type Hls from 'hls.js';
+import type { HlsConfig } from 'hls.js';
 
 // ─── Shared HLS Config ────────────────────────────────────────────────────
 // Single source of truth used by every Hls instance in the pool.
@@ -18,29 +19,27 @@ const HLS_CONFIG: Partial<HlsConfig> = {
 
 // ─── Persistent Instance Pool ─────────────────────────────────────────────
 // Stores Hls instances indexed by m3u8 URL.
-//
-// Lifecycle:
-//   getOrCreateHls(url)  → creates instance if absent, calls loadSource(url),
-//                          stores in pool, returns it. Idempotent.
-//   useHlsAudio          → calls attachMedia(audio) on the returned instance.
-//   on song change       → calls detachMedia() — instance stays in pool with
-//                          its manifest + buffered fragments intact.
-//   on next attach       → same instance, already warm, attachMedia is instant.
-//
-// Instances are NEVER destroyed (no hls.destroy()).
-// detachMedia() is the only teardown — it keeps internal HLS state alive.
 const pool = new Map<string, Hls>();
+
+let HlsModule: typeof import('hls.js') | null = null;
+
+export async function getHlsClass() {
+  if (!HlsModule) {
+    HlsModule = await import('hls.js');
+  }
+  return HlsModule.default;
+}
 
 /**
  * Returns the existing Hls instance for this URL, or creates a new one.
- * The new instance immediately starts fetching the manifest and, with
- * startFragPrefetch:true, the first fragment — without needing an audio element.
+ * The new instance immediately starts fetching the manifest and, without needing an audio element.
  */
-export function getOrCreateHls(url: string): Hls {
+export async function getOrCreateHls(url: string): Promise<Hls> {
   const existing = pool.get(url);
   if (existing) return existing;
 
-  const hls = new Hls(HLS_CONFIG);
+  const HlsConstructor = await getHlsClass();
+  const hls = new HlsConstructor(HLS_CONFIG);
   hls.loadSource(url);
   pool.set(url, hls);
   return hls;

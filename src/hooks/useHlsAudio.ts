@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import Hls from 'hls.js';
-import { getOrCreateHls } from '../audio/hlsPool';
+import type Hls from 'hls.js';
+import { getOrCreateHls, getHlsClass } from '../audio/hlsPool';
 
 // preload يبقى كما هو (لكن مع force-cache)
 const preloadedUrls = new Set<string>();
@@ -44,8 +44,8 @@ export async function preloadAllSongs(urls: string[], targetSeconds = 4, batchSi
  * Pre-warms a single song manifest + segments on hover.
  */
 export function preloadSong(url: string) {
-  if (!url || !url.includes('.m3u8') || !Hls.isSupported()) return;
-  getOrCreateHls(url);
+  if (!url || !url.includes('.m3u8')) return;
+  getOrCreateHls(url).catch(() => {});
 }
 
 export function useHlsAudio(
@@ -74,7 +74,23 @@ export function useHlsAudio(
       onReadyRef.current?.();
     };
 
-    if (isHls) {
+    let active = true;
+    let cleanupFn: (() => void) | null = null;
+
+    const init = async () => {
+      if (!isHls) {
+        // MP3 fallback
+        audio.src = url;
+        audio.load();
+        if (audio.readyState >= 2) {
+          handleCanPlay();
+        } else {
+          audio.addEventListener('canplay', handleCanPlay, { once: true });
+        }
+        cleanupFn = () => audio.removeEventListener('canplay', handleCanPlay);
+        return;
+      }
+
       // Safari/iOS — native HLS
       if (audio.canPlayType('application/vnd.apple.mpegurl')) {
         audio.src = url;
@@ -84,11 +100,16 @@ export function useHlsAudio(
         } else {
           audio.addEventListener('canplay', handleCanPlay, { once: true });
         }
-        return () => audio.removeEventListener('canplay', handleCanPlay);
+        cleanupFn = () => audio.removeEventListener('canplay', handleCanPlay);
+        return;
       }
 
-      if (Hls.isSupported()) {
-        const hls = getOrCreateHls(url);
+      const HlsClass = await getHlsClass();
+      if (!active) return;
+
+      if (HlsClass.isSupported()) {
+        const hls = await getOrCreateHls(url);
+        if (!active) return;
         
         let readyFired = false;
         const fireReady = () => {
@@ -102,41 +123,40 @@ export function useHlsAudio(
         if (hls.levels && hls.levels.length > 0) {
           setTimeout(fireReady, 0);
         } else {
-          hls.on(Hls.Events.MANIFEST_PARSED, onManifestParsed);
+          hls.on(HlsClass.Events.MANIFEST_PARSED, onManifestParsed);
         }
 
         const errHandler = (_: any, data: any) => {
           if (!data.fatal) return;
-          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) {
             console.warn("[HLS] Network error, retrying...", data);
             hls.startLoad();
-          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          } else if (data.type === HlsClass.ErrorTypes.MEDIA_ERROR) {
             console.warn("[HLS] Media error, recovering...", data);
             hls.recoverMediaError();
           }
         };
 
-        hls.on(Hls.Events.ERROR, errHandler);
+        hls.on(HlsClass.Events.ERROR, errHandler);
         
         hls.attachMedia(audio);
         currentHlsRef.current = hls;
 
-        return () => {
-          hls.off(Hls.Events.MANIFEST_PARSED, onManifestParsed);
-          hls.off(Hls.Events.ERROR, errHandler);
+        cleanupFn = () => {
+          hls.off(HlsClass.Events.MANIFEST_PARSED, onManifestParsed);
+          hls.off(HlsClass.Events.ERROR, errHandler);
           hls.detachMedia();
         };
       }
-    }
+    };
 
-    // MP3 fallback
-    audio.src = url;
-    audio.load();
-    if (audio.readyState >= 2) {
-      handleCanPlay();
-    } else {
-      audio.addEventListener('canplay', handleCanPlay, { once: true });
-    }
-    return () => audio.removeEventListener('canplay', handleCanPlay);
+    init();
+
+    return () => {
+      active = false;
+      if (cleanupFn) {
+        cleanupFn();
+      }
+    };
   }, [url]);
 }

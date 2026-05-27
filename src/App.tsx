@@ -28,7 +28,9 @@ import { useAudioController } from "./hooks/useAudioController";
 import { NavButton } from "./components/NavButton";
 import { MeBitGallery } from './components/MeBitGallery';
 import { MobileNavBar } from "./components/MobileNavBar";
-import { AudioVisualizer } from "./components/AudioVisualizer";
+const AudioVisualizer = React.lazy(() => 
+  import('./components/AudioVisualizer').then(m => ({ default: m.AudioVisualizer }))
+);
 import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
 import { StreamingSection } from './components/sections/StreamingSection';
@@ -41,7 +43,9 @@ import { ASSETS, getThemedImage } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
 import { FloatingControls } from "./components/layout/FloatingControls";
-import { GallerySection } from "./components/layout/GallerySection";
+const GallerySection = React.lazy(() => 
+  import('./components/layout/GallerySection').then(m => ({ default: m.GallerySection }))
+);
 
 const CONFIG_ASSETS = {
   mainBackground: ASSETS.profile.heroBg,
@@ -205,7 +209,9 @@ export default function App() {
         Skip to main content
       </a>
       
-      <AudioVisualizer audioRef={audioRef} isPlaying={isPlaying} />
+      <Suspense fallback={null}>
+        <AudioVisualizer audioRef={audioRef} isPlaying={isPlaying} />
+      </Suspense>
 
       <FloatingControls
         isPlaying={isPlaying}
@@ -317,13 +323,15 @@ export default function App() {
                 />
               </div>
 
-              <GallerySection 
-                resolvedTheme={resolvedTheme}
-                isLensGalleryOpen={isLensGalleryOpen}
-                onGalleryOpen={handleGalleryOpen}
-                onLensOpen={openLens}
-                onLensClose={closeLens}
-              />
+              <Suspense fallback={<SkeletonSection type="drawings" />}>
+                <GallerySection 
+                  resolvedTheme={resolvedTheme}
+                  isLensGalleryOpen={isLensGalleryOpen}
+                  onGalleryOpen={handleGalleryOpen}
+                  onLensOpen={openLens}
+                  onLensClose={closeLens}
+                />
+              </Suspense>
 
               <motion.div 
                 variants={itemVariants} 
