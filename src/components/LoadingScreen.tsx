@@ -39,17 +39,37 @@ export const LoadingScreen = ({
   // 2. Detect prefers-reduced-motion AND save-data
   const prefersReduced = prefersReducedMotion();
   const [saveData, setSaveData] = useState(false);
+  const [slowConnection, setSlowConnection] = useState(false);
+  const [forceStatic, setForceStatic] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('nl_force_static') === 'true';
+    }
+    return false;
+  });
+
+  const triggerVideoFailed = () => {
+    setVideoFailed(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nl_force_static', 'true');
+    }
+    setForceStatic(true);
+  };
 
   useEffect(() => {
     if (typeof navigator !== 'undefined') {
       const conn = (navigator as any).connection;
-      if (conn && conn.saveData === true) {
-        setSaveData(true);
+      if (conn) {
+        if (conn.saveData === true) {
+          setSaveData(true);
+        }
+        if (conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g') {
+          setSlowConnection(true);
+        }
       }
     }
   }, []);
 
-  const useStatic = prefersReduced || saveData;
+  const useStatic = prefersReduced || saveData || slowConnection || forceStatic;
 
   // Determine standard Display Duration based on connection and history status
   let displayDuration = 8000;
@@ -134,13 +154,17 @@ export const LoadingScreen = ({
     const video = videoRef.current;
     if (!video) return;
     video.load();
-    const tryPlay = () => video.play().catch(() => setVideoFailed(true));
+    const tryPlay = () => video.play().catch(triggerVideoFailed);
     if (video.readyState >= 2) {
       tryPlay();
     } else {
       video.addEventListener('canplay', tryPlay, { once: true });
     }
-    const stall = setTimeout(() => { if (!doneRef.current) setVideoFailed(true); }, 3000);
+    const stall = setTimeout(() => {
+      if (!doneRef.current) {
+        triggerVideoFailed();
+      }
+    }, 3000);
     video.addEventListener('playing', () => clearTimeout(stall), { once: true });
     return () => clearTimeout(stall);
   }, [useStatic]);
@@ -196,8 +220,8 @@ export const LoadingScreen = ({
           <video
             ref={videoRef}
             src={OPENING_VIDEO_URL}
-            autoPlay muted loop playsInline preload="auto"
-            onError={() => setVideoFailed(true)}
+            autoPlay muted loop playsInline preload="none"
+            onError={triggerVideoFailed}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
           />
         ) : (

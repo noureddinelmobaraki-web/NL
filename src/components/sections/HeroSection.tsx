@@ -306,7 +306,8 @@ export const HeroSection = () => {
           src={activeProfileImg} 
           alt="Profile" 
           className="w-full h-full object-cover" 
-          loading="lazy"
+          loading="eager"
+          fetchpriority="high"
         />
       </div>
     </motion.header>

@@ -83,11 +83,15 @@ export const MySongs = ({
             (entries) => {
               if (entries[0].isIntersecting) {
                 observer.disconnect();
-                mapped.forEach((s) => preloadSong(s.url));
+                setTimeout(() => {
+                  mapped.forEach((s) => preloadSong(s.url));
+                }, 5000);
                 const startPhase2 = () => {
                   const allUrls = mapped.map((s) => s.url);
-                  preloadAllSongs(allUrls.slice(0, 8), 8, 2, 300);
-                  setTimeout(() => preloadAllSongs(allUrls.slice(8), 8, 1, 800), 3000);
+                  setTimeout(() => {
+                    preloadAllSongs(allUrls.slice(0, 8), 8, 2, 300);
+                    setTimeout(() => preloadAllSongs(allUrls.slice(8), 8, 1, 800), 3000);
+                  }, 5000);
                 };
                 if ('requestIdleCallback' in window) {
                    (window as any).requestIdleCallback(startPhase2, { timeout: 2000 });
@@ -100,7 +104,9 @@ export const MySongs = ({
           );
           observer.observe(sectionEl);
         } else {
-          mapped.forEach((s) => preloadSong(s.url));
+          setTimeout(() => {
+            mapped.forEach((s) => preloadSong(s.url));
+          }, 5000);
         }
       });
   }, []);
@@ -294,7 +300,7 @@ export const MySongs = ({
           }}
         />
       )}
-      <audio ref={audioTagRef} preload="auto" crossOrigin="anonymous" style={{ display: 'none' }} />
+      <audio ref={audioTagRef} preload="none" crossOrigin="anonymous" style={{ display: 'none' }} />
       <div className="max-w-6xl mx-auto relative z-10">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-20">
           <div className="space-y-2">

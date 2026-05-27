@@ -62,6 +62,7 @@ export const MobileNavBar = ({
             type="button"
             onClick={() => isMusic ? onToggleBg() : onNavigate(tab.id)}
             aria-current={isActive ? 'page' : undefined}
+            aria-label={tab.label}
             style={{
               position: 'relative',
               display: 'flex',

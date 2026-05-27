@@ -35,6 +35,8 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
         alt={alt} 
         className={className} 
         loading={loading} 
+        // @ts-ignore - fetchpriority is relatively new in TS
+        fetchpriority={fetchpriority}
         decoding={decoding}
         style={style} 
         referrerPolicy="no-referrer"
