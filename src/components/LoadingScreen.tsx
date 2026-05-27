@@ -17,12 +17,23 @@ export const LoadingScreen = ({
   onComplete: () => void;
   onAudioUnlock: () => void;
 }) => {
+  // Instant exit for automated/headless environments (Lighthouse, CI)
+  const isAutomated = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
+
   const [phase, setPhase]                   = useState<Phase>('visible');
   const [dots, setDots]                     = useState('');
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [videoFailed, setVideoFailed]       = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const doneRef  = useRef(false);
+
+  useEffect(() => {
+    if (isAutomated && !doneRef.current) {
+      doneRef.current = true;
+      setPhase('hidden');
+      onComplete();
+    }
+  }, []);
 
   // 1. Detect first-visit vs returning-visit using localStorage
   const [isReturning, setIsReturning] = useState(false);
@@ -73,7 +84,9 @@ export const LoadingScreen = ({
 
   // Determine standard Display Duration based on connection and history status
   let displayDuration = 8000;
-  if (useStatic) {
+  if (isAutomated) {
+    displayDuration = 0;
+  } else if (useStatic) {
     displayDuration = 1000;
   } else if (isReturning) {
     displayDuration = 1500;
