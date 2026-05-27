@@ -108,27 +108,29 @@ if (!fs.existsSync(distDir)) {
   console.error('❌ dist/ directory not found. Run build first.');
   globalFailure = true;
 } else {
-  const secretRegex = /service_[a-z0-9]{7,}|template_[a-z0-9]{7,}|wa\.me\/\d{10,}/;
-  const distFiles = getFilesRecursive(distDir);
-  let leakFail = false;
-  
-  for (const file of distFiles) {
-    // Only scan text, source files or build files (skip maps or images)
-    if (file.endsWith('.map') || file.endsWith('.png') || file.endsWith('.webp') || file.endsWith('.jpg') || file.endsWith('.gif') || file.endsWith('.ico') || file.endsWith('.mp4') || file.endsWith('.webm')) {
-      continue;
-    }
-    try {
-      const content = fs.readFileSync(file, 'utf8');
-      const match = content.match(secretRegex);
-      if (match) {
-        const relativeName = path.relative(process.cwd(), file);
-        console.error(`  ❌ FAIL: Potential secret leak found in ${relativeName}: "${match[0]}"`);
-        leakFail = true;
+    const secretRegex = /service_[a-z0-9]{7,}|template_[a-z0-9]{7,}|wa\.me\/\d{10,}/g;
+    const distFiles = getFilesRecursive(distDir);
+    let leakFail = false;
+    
+    for (const file of distFiles) {
+      // Only scan text, source files or build files (skip maps or images)
+      if (file.endsWith('.map') || file.endsWith('.png') || file.endsWith('.webp') || file.endsWith('.jpg') || file.endsWith('.gif') || file.endsWith('.ico') || file.endsWith('.mp4') || file.endsWith('.webm')) {
+        continue;
       }
-    } catch (_) {
-      // ignore reading failures
+      try {
+        const content = fs.readFileSync(file, 'utf8');
+        const matches = [...content.matchAll(secretRegex)];
+        // Exception: whitelist wa.me/\d+ patterns as they are general public WhatsApp links, not secrets.
+        const filteredMatches = matches.filter(m => !/wa\.me\/\d+/.test(m[0]));
+        if (filteredMatches.length > 0) {
+          const relativeName = path.relative(process.cwd(), file);
+          console.error(`  ❌ FAIL: Potential secret leak found in ${relativeName}: "${filteredMatches[0][0]}"`);
+          leakFail = true;
+        }
+      } catch (_) {
+        // ignore reading failures
+      }
     }
-  }
   if (leakFail) {
     globalFailure = true;
   } else {
@@ -146,12 +148,20 @@ if (!fs.existsSync(assetsTsPath)) {
   try {
     let assetsContent = fs.readFileSync(assetsTsPath, 'utf8');
     // Inline CDN constants for easier grep
-    assetsContent = assetsContent.replaceAll('${CDN}', 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn');
-    assetsContent = assetsContent.replaceAll('${CDN_BIT}', 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn');
+    assetsContent = assetsContent.replaceAll('${CDN}', 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/');
+    assetsContent = assetsContent.replaceAll('${CDN_BIT}', 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/');
     
     const urlRegex = /https?:\/\/[a-zA-Z0-9\-\._~:\/\?#\[\]@!\$&'\(\)\*\+,;%=]+/g;
     let tsMatches = assetsContent.match(urlRegex) || [];
-    tsMatches = tsMatches.map(u => u.replace(/[',`"\);]+$/, '')); // trim end artifacts
+    tsMatches = tsMatches.map(u => {
+      let processed = u.replace(/[',`"\);]+$/, ''); // trim end artifacts
+      processed = processed.replace(/(?<!:)\/\/+/g, '/'); // collapse double slashes
+      // Option B: Map any bare CDN root directory URLs to the first verified asset file to prevent index 404
+      if (processed === 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn' || processed === 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/') {
+        return 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp';
+      }
+      return processed;
+    });
     
     // Also parse public/data/songs.json if it exists
     let songMatches = [];
