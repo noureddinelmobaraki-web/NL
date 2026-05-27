@@ -117,7 +117,7 @@ export const NowPlayingBar = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {activeSong.nextSongs.map(song => (
                 <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <img src={song.cover} alt="" style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
+                  <img src={song.cover || (song as any).backgroundImage || ''} alt="" style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
                   <span style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</span>
                 </div>
               ))}
@@ -148,9 +148,9 @@ export const NowPlayingBar = ({
               transition: 'opacity 1s'
             }} 
           />
-          {activeSong?.cover ? (
+          {activeSong?.cover || (activeSong as any)?.backgroundImage ? (
             <img 
-              src={activeSong.cover} 
+              src={activeSong.cover || (activeSong as any)?.backgroundImage} 
               alt="" 
               style={{ 
                 width: '100%', 

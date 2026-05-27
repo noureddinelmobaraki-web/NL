@@ -30,45 +30,40 @@ const DEFAULTS: NLPrefs = {
   lastVisit: 0,
 };
 
-function loadPrefsRaw(): NLPrefs {
-  try {
-    const raw = localStorage.getItem(PREFS_KEY);
-    if (!raw) return { ...DEFAULTS };
-    const parsed = JSON.parse(raw);
-    if (parsed && (parsed.theme === 'system' || !['dark', 'light', 'bit', 'midnight'].includes(parsed.theme))) {
-      parsed.theme = 'midnight';
-    }
-    return { ...DEFAULTS, ...parsed };
-  } catch {
-    return { ...DEFAULTS };
-  }
-}
-
 export function loadPrefs(): NLPrefs {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
-    if (!raw) return { ...DEFAULTS, visitCount: 1, lastVisit: Date.now() };
+    if (!raw) return { ...DEFAULTS };
     const saved = JSON.parse(raw) as Partial<NLPrefs>;
     if (saved && (saved.theme === ('system' as any) || !['dark', 'light', 'bit', 'midnight'].includes(saved.theme as any))) {
       saved.theme = 'midnight';
     }
-    const prefs = { 
+    return { 
       ...DEFAULTS, 
-      ...saved,
-      visitCount: (saved.visitCount || 0) + 1,
-      lastVisit: Date.now()
+      ...saved
     };
-    // Persist the updated visit count immediately
-    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
-    return prefs;
   } catch {
     return { ...DEFAULTS };
   }
 }
 
+export function trackVisit(): void {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    const saved = raw ? (JSON.parse(raw) as Partial<NLPrefs>) : null;
+    const prefs = { 
+      ...DEFAULTS, 
+      ...saved,
+      visitCount: ((saved && saved.visitCount) || 0) + 1,
+      lastVisit: Date.now()
+    };
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {}
+}
+
 export function savePrefs(patch: Partial<NLPrefs>): void {
   try {
-    const current = loadPrefsRaw();
+    const current = loadPrefs();
     localStorage.setItem(PREFS_KEY, JSON.stringify({ ...current, ...patch }));
   } catch {} 
 }

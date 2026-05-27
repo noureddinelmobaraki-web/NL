@@ -1,8 +1,8 @@
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useState as useLyricsState, useEffect as useLyricsEffect } from 'react';
 import { Play, Pause, Volume2, SkipBack, SkipForward } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Song, LyricLine } from '../types';
-import { LyricsWindowContent } from './LyricsEngine';
+import { LyricsWindowContent, parseLRC } from './LyricsEngine';
 import { useDeviceType } from '../hooks/useDeviceType';
 import { loadSession, saveSession } from '../utils/sessionState';
 import { extractDominantColorCached } from '../utils/extractColors';
@@ -92,6 +92,61 @@ export const SongCard = memo(({
 }: SongCardProps) => {
   const { isMobile, isTablet } = useDeviceType();
   const resolvedTheme = useResolvedTheme();
+
+  // ─── Local lyrics state (fetches LRC file independently, same as MusicMood) ───
+  const [localLyrics, setLocalLyrics] = useLyricsState<LyricLine[]>(() => {
+    if (lyrics && lyrics.length > 0) return lyrics;
+    const session = loadSession();
+    if (session.lrcCache && session.lrcCache[song.id]) {
+      return session.lrcCache[song.id];
+    }
+    return [];
+  });
+
+  useLyricsEffect(() => {
+    // If parent already passed lyrics, use them
+    if (lyrics && lyrics.length > 0) {
+      setLocalLyrics(lyrics);
+      return;
+    }
+
+    // Check session cache first
+    const session = loadSession();
+    if (session.lrcCache && session.lrcCache[song.id] && session.lrcCache[song.id].length > 0) {
+      setLocalLyrics(session.lrcCache[song.id]);
+      return;
+    }
+
+    // Only fetch when lyrics panel is open and song has an lrc file
+    if (!isLyricsOpen || !song.lrc) {
+      setLocalLyrics([]);
+      return;
+    }
+
+    // Fetch the .lrc file directly
+    const filename = song.lrc.split('/').pop() || '';
+    const encoded = encodeURIComponent(filename);
+    const controller = new AbortController();
+
+    fetch(`${import.meta.env.BASE_URL}lrc/${encoded}`, { signal: controller.signal })
+      .then(res => {
+        if (!res.ok) throw new Error('LRC not found');
+        return res.text();
+      })
+      .then(text => {
+        const parsed = parseLRC(text);
+        setLocalLyrics(parsed);
+        saveSession({
+          lrcCache: { ...loadSession().lrcCache, [song.id]: parsed }
+        });
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') console.warn('SongCard LRC fetch:', err);
+      });
+
+    return () => controller.abort();
+  }, [isLyricsOpen, song.lrc, song.id, lyrics]);
+  // ────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const coverUrl = song.cover || song.backgroundImage;
@@ -413,12 +468,25 @@ export const SongCard = memo(({
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
                   }} className="no-scrollbar">
-                    <LyricsWindowContent
-                      currentTime={currentTime || 0}
-                      onSeek={onSeek || (() => {})}
-                      lyrics={lyrics}
-                      isMobilePlayer={true}
-                    />
+                    {!localLyrics || localLyrics.length === 0 ? (
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '24px',
+                        color: 'var(--text-muted)',
+                        fontSize: '13px',
+                        fontFamily: 'monospace',
+                        opacity: 0.6,
+                      }}>
+                        ♪ جاري تحميل الكلمات...
+                      </div>
+                    ) : (
+                      <LyricsWindowContent
+                        currentTime={currentTime || 0}
+                        onSeek={onSeek || (() => {})}
+                        lyrics={localLyrics}
+                        isMobilePlayer={true}
+                      />
+                    )}
                   </div>
                 )}
               </>

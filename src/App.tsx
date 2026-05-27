@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { motion, Variants } from "framer-motion";
 import React, { useState, useEffect, Suspense } from "react";
-import { loadPrefs, savePrefs } from './utils/userPrefs';
+import { loadPrefs, savePrefs, trackVisit } from './utils/userPrefs';
 import type { Theme, AudioIntent } from './utils/userPrefs';
 import { LoadingScreen } from "./components/LoadingScreen";
 import { SkeletonSection } from './components/SkeletonSection';
@@ -178,6 +178,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    trackVisit();
     if (isLowEndDevice() || prefersReducedMotion()) {
       document.body.classList.add('low-perf');
     }

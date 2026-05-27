@@ -186,9 +186,12 @@ export const MySongs = ({
   }, [activeId, currentSong, onAmbientColorChange]);
 
   const currentLyricLine = useMemo(() => {
-    if (!activeId || !lrcCache[activeId]) return null;
+    if (!activeId) return null;
+    const sessionLrc = loadSession().lrcCache;
+    const lines = sessionLrc[activeId] || lrcCache[activeId];
+    if (!lines) return null;
     let line = null;
-    for (const l of lrcCache[activeId]) {
+    for (const l of lines) {
       if (l.time <= currentTime) line = l.text;
       else break;
     }

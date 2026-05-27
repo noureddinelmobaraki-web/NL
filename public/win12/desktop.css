@@ -1572,41 +1572,39 @@ input-before {
 }
 
 #desktop>div {
-    width: 85px;
-    height: 84px;
-    text-overflow: ellipsis;
-    border-radius: 5px;
-    text-align: center;
-    margin: 8px 10px 2px 10px;
-    padding: 0 3px 3px 3px;
-    z-index: 3;
+  width: 75px;
+  text-align: center;
+  padding: 5px;
+  color: #ffffff;
+  text-shadow: 1px 1px 2px #000000, -1px -1px 1px #000000;
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 11px;
+  cursor: default;
+  z-index: 3;
 }
 
-#desktop>div:hover {
-    backdrop-filter: blur(15px) saturate(0.9) brightness(1.4);
+#desktop>div img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.5));
+  display: block;
+  margin: 0 auto 4px auto;
 }
 
-#desktop>div:active {
-    backdrop-filter: blur(5px) brightness(1.5);
-}
-
-#desktop>div>img {
-    width: 65px;
-    height: 65px;
-}
-
-#desktop>div.b>img {
-    width: 40px;
-    height: 40px;
-    margin: 5px;
+#desktop>div.selected,
+#desktop>div:focus {
+  background: rgba(0, 90, 200, 0.5);
+  border: 1px dotted #fff;
+  outline: none;
 }
 
 #desktop>div>p {
     line-height: 15px;
-    font-size: 13px;
+    font-size: 11px;
     color: #fff;
-    text-shadow: 2px 2px 4px var(--sd), 0 0 3px #000;
-    margin-top: -6px;
+    text-shadow: 1px 1px 2px #000000, -1px -1px 1px #000000;
+    margin-top: 2px;
 }
 
 #desktop>.choose {
@@ -1790,19 +1788,24 @@ input-before {
     opacity: 0.5;
 }
 
-.button {
-    background-color: #9f9f9f40;
-    border-radius: 10px;
-    padding: 5px 10px;
-    cursor: pointer;
+.button, a.button {
+  background: linear-gradient(to bottom, #f5f4ee 0%, #e3e0d5 50%, #d5d0c4 100%) !important;
+  border: 1px solid #7f9db9 !important;
+  border-radius: 3px !important;
+  color: #000000 !important;
+  font-family: Tahoma, Arial, sans-serif !important;
+  font-size: 11px !important;
+  padding: 3px 12px !important;
+  box-shadow: 1px 1px 1px rgba(255,255,255,0.8) inset, -1px -1px 1px rgba(0,0,0,0.1) inset !important;
+  cursor: pointer;
+  min-width: 75px;
 }
-
-.button:hover {
-    filter: brightness(1.2);
+.button:hover, a.button:hover {
+  background: linear-gradient(to bottom, #fdfcf7 0%, #ece9d8 50%, #ddd8c8 100%) !important;
 }
-
-.button:active {
-    filter: brightness(1.2) opacity(0.8);
+.button:active, a.button:active {
+  background: linear-gradient(to bottom, #d0ccc0 0%, #c7c3b4 100%) !important;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2) !important;
 }
 
 input.foc {
@@ -2565,12 +2568,12 @@ list>span.focs.cl {
     width: 100% !important;
     left: 0 !important;
     bottom: 0 !important;
-    height: 40px !important;
+    height: 38px !important;
     padding: 0 !important;
     border-radius: 0 !important;
-    background: linear-gradient(to bottom, #1e52d3 0%, #266cf0 10%, #1e56da 35%, #1546bd 70%, #0c2b8c 100%) !important;
-    border-top: 1.5px solid #285edb !important;
-    box-shadow: 0 -2px 5px rgba(0,0,0,0.4) !important;
+    background: linear-gradient(to bottom, #1f5dc4 0%, #3a7be0 30%, #245ed6 70%, #1445a3 100%) !important;
+    border-top: 2px solid #0033aa !important;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.3) !important;
     z-index: 9999 !important;
     gap: 0 !important;
 }
@@ -2594,31 +2597,26 @@ list>span.focs.cl {
 
 /* Green Start Button */
 #start-btn {
-    box-sizing: border-box !important;
-    background: linear-gradient(to bottom, #39a01e 0%, #40b925 15%, #309418 40%, #206d0a 85%, #114d02 100%) !important;
-    border-radius: 0 15px 15px 0 !important;
-    border-right: 2.5px solid #144005 !important;
-    border-top: 2px solid #6dec3e !important;
-    border-bottom: 2px solid #0d3301 !important;
-    box-shadow: inset 1px 1px 1.5px #a1ee80 !important;
-    width: 130px !important;
-    height: 100% !important;
-    color: #ffffff !important;
-    font-family: 'Tahoma', 'Trebuchet MS', sans-serif !important;
-    font-weight: 900 !important;
-    font-style: italic !important;
-    font-size: 19px !important;
-    text-shadow: 1.5px 1.5px 2px #0e3001 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 0 15px !important;
-    transition: filter 50ms !important;
-    cursor: pointer !important;
+  background: linear-gradient(to bottom, #5bdb5b 0%, #3cb33c 40%, #1f8b1f 85%, #0a6b0a 100%) !important;
+  border: 1px solid #006400 !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  font-family: "Franklin Gothic Medium", Tahoma, sans-serif !important;
+  font-weight: bold !important;
+  font-size: 13px !important;
+  padding: 2px 14px !important;
+  min-width: 60px !important;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.5) !important;
+  height: 32px !important;
+  letter-spacing: 0.5px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
 }
 
 #start-btn:hover {
-    filter: brightness(1.15) contrast(1.1) !important;
+    filter: brightness(1.15) !important;
 }
 
 #start-btn::before {
@@ -2649,14 +2647,18 @@ list>span.focs.cl {
 
 /* Titlebar */
 .window>.titbar {
-    height: 29px !important;
-    min-height: 29px !important;
-    background: linear-gradient(to bottom, #0058e6 0%, #3a91f4 15%, #0541cd 60%, #0036b5 85%, #002d96 100%) !important;
-    padding: 2px 8px 0 8px !important;
-    border-bottom: 1px solid #002d96 !important;
-    opacity: 1 !important;
-    display: flex !important;
-    align-items: center !important;
+  background: linear-gradient(to bottom, #538df1 0%, #1f5fdb 12%, #0046d5 30%, #003cc2 70%, #0046d5 90%, #689bf4 100%) !important;
+  color: #ffffff !important;
+  font-family: Tahoma, Arial, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
+  text-shadow: 1px 1px 2px #000 !important;
+  height: 30px !important;
+  border-bottom: 1px solid #0022aa !important;
+  padding: 0 6px !important;
+  border-radius: 8px 8px 0 0;
+  display: flex !important;
+  align-items: center !important;
 }
 
 .window:not(.foc)>.titbar {
@@ -2684,38 +2686,24 @@ list>span.focs.cl {
 }
 
 .wbtg {
-    height: 21px !important;
-    width: 21px !important;
-    border-radius: 3px !important;
-    border: 1px solid #ffffff !important;
-    box-shadow: inset 1.5px 1.5px 1px rgba(255,255,255,0.4), 1px 1px 1.5px rgba(0,0,0,0.3) !important;
-    color: #ffffff !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-family: 'Tahoma', monospace !important;
-    font-weight: bold !important;
-    font-size: 12px !important;
-    padding: 0 !important;
-    cursor: pointer !important;
-    transition: none !important;
-    background: linear-gradient(to bottom, #4f96e8 0%, #2062cc 100%) !important;
+  width: 21px !important;
+  height: 21px !important;
+  border-radius: 3px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 10px !important;
+  color: #ffffff !important;
+  background: linear-gradient(to bottom, #7da2f8 0%, #3a75e2 40%, #1d52ce 85%, #103cb5 100%) !important;
+  border: 1px solid #16368d !important;
+  box-shadow: inset 1px 1px 1px rgba(255,255,255,0.4), 1px 1px 1px rgba(0,0,0,0.2) !important;
 }
-
-.wbtg:hover {
-    filter: brightness(1.2) !important;
-}
-
 .wbtg.red {
-    background: linear-gradient(to bottom, #f27260 0%, #e34026 15%, #b1250f 70%, #981c0b 100%) !important;
-    border: 1px solid #7a1507 !important;
-    box-shadow: inset 1px 1px 1px rgba(255,255,255,0.3) !important;
-    border-radius: 3.5px !important;
-    color: #ffffff !important;
+  background: linear-gradient(to bottom, #f3977c 0%, #e0431e 30%, #cd1f03 70%, #901000 100%) !important;
+  border-color: #6c0e00 !important;
 }
-
-.wbtg.red:hover {
-    background: linear-gradient(to bottom, #ff9485 0%, #f15239 15%, #d6331a 70%, #b31602 100%) !important;
+.wbtg:hover {
+  filter: brightness(1.15) !important;
 }
 
 /* Double classic content border */
@@ -2957,4 +2945,29 @@ list>span.focs.cl {
 
 .dock.date > .date {
     display: none !important; /* Hide tiny text date for clean XP tray style */
+}
+
+/* Checkbox Style XP */
+.checkbox {
+  width: 13px !important;
+  height: 13px !important;
+  border: 2px inset #7f9db9 !important;
+  background: #ffffff !important;
+  border-radius: 0 !important;
+  display: inline-block;
+  cursor: pointer;
+  position: relative;
+}
+.checkbox.checked {
+  background: #ffffff !important;
+  border-color: #7f9db9 !important;
+}
+.checkbox.checked::after {
+  content: "✔";
+  font-size: 10px;
+  color: #000080;
+  position: absolute;
+  top: -2px;
+  left: 0px;
+  font-weight: bold;
 }

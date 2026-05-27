@@ -41,8 +41,8 @@ export const LyricsDisplay = ({
         if (!res.ok) throw new Error('Network response was not ok');
         return res.text();
       })
-      .then(async (text) => {
-        const parsed = await parseLRC(text);
+      .then((text) => {
+        const parsed = parseLRC(text);
         setLyrics(parsed);
         saveSession({ lrcCache: { ...loadSession().lrcCache, [song.id]: parsed } });
       })
