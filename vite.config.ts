@@ -8,6 +8,7 @@ import { compression } from 'vite-plugin-compression2';
 export default defineConfig(({ mode }) => {
   return {
     base: '/NL/',
+    assetsInclude: ['**/*.xml'],
     plugins: [
       react(), 
       tailwindcss(),
@@ -16,6 +17,16 @@ export default defineConfig(({ mode }) => {
         exclude: [/\.(br)$/, /\.(gz)$/],
         deleteOriginalAssets: false
       }),
+      {
+        name: 'exclude-xml-from-transform',
+        transformIndexHtml: {
+          enforce: 'pre' as const,
+          transform(html: string, ctx: any) {
+            if (ctx.filename?.endsWith('.xml')) return html;
+            return html;
+          }
+        }
+      },
       mode === 'analyze' && visualizer({
         open: false,
         filename: 'stats.html',
