@@ -6,5 +6,6 @@
 @import "./styles/components/retro.css" layer(components);
 @import "./styles/components/glitch.css" layer(components);
 @import "./styles/components/bit.css" layer(components);
+@import "./styles/components/floating-buttons.css" layer(components);
 @import "./styles/animations.css" layer(utilities);
 @import "./styles/utilities.css" layer(utilities);

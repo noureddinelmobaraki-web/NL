@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- XP-style Drawing Brush & Palette Icon (xpdrawings) -->
+  <defs>
+    <linearGradient id="palette-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFDD77"/>
+      <stop offset="100%" stop-color="#DDA520"/>
+    </linearGradient>
+    <linearGradient id="handle-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#AA6622"/>
+      <stop offset="100%" stop-color="#663300"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- The Palette (Yellow/Gold wood) -->
+  <path d="M12,12 C4,18 2,34 14,40 C22,44 38,42 42,32 C46,22 36,12 28,10 C24,9 20,13 18,12 C16,11 16,8 12,12 Z" fill="url(#palette-grad)" stroke="#FFFFFF" stroke-width="2" />
+  
+  <!-- Thumb Hole -->
+  <circle cx="34" cy="24" r="3" fill="#222" opacity="0.4" />
+  
+  <!-- Paint Blops (XP Classic Colors) -->
+  <circle cx="12" cy="22" r="3" fill="#FF2400" /> <!-- Red -->
+  <circle cx="18" cy="30" r="3" fill="#3A9D23" /> <!-- green -->
+  <circle cx="28" cy="34" r="3" fill="#0054E3" /> <!-- blue -->
+  <circle cx="36" cy="18" r="3" fill="#FFB800" /> <!-- gold -->
+
+  <!-- The Paintbrush -->
+  <g transform="rotate(-30 24 24)">
+    <!-- Brush Handle -->
+    <rect x="22" y="2" width="4" height="24" rx="2" fill="url(#handle-grad)" />
+    <!-- Metal Ferrule -->
+    <rect x="21" y="24" width="6" height="6" fill="#D0D0D0" stroke="#888888" stroke-width="0.5" />
+    <!-- Bristles -->
+    <path d="M21,30 C21,36 27,36 27,30 Z" fill="#444444" />
+    <!-- Tip paint blop -->
+    <path d="M23,33 C23,36 25,36 25,33 Z" fill="#0054E3" />
+  </g>
+</svg>

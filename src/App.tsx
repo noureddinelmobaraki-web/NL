@@ -28,6 +28,7 @@ import { useAudioController } from "./hooks/useAudioController";
 import { NavButton } from "./components/NavButton";
 import { MeBitGallery } from './components/MeBitGallery';
 import { MobileNavBar } from "./components/MobileNavBar";
+import { ButtonProvider } from "./components/layout/ButtonOrchestrator";
 const AudioVisualizer = React.lazy(() => 
   import('./components/AudioVisualizer').then(m => ({ default: m.AudioVisualizer }))
 );
@@ -100,7 +101,11 @@ export default function App() {
     prevImage,
     openLens,
     closeLens,
+    getActiveContext,
   } = useGalleryState();
+
+  const activeModalContext = getActiveContext() || "page";
+  const isAnyModalOpen = getActiveContext() !== null;
 
   const {
     audioRef,
@@ -197,7 +202,7 @@ export default function App() {
   };
 
   return (
-    <>
+    <ButtonProvider>
       <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
           <filter id="rough">
@@ -222,6 +227,8 @@ export default function App() {
         activeSong={activeSong}
         onToggleAudio={toggleAudio}
         onThemeChange={setTheme}
+        isAnyModalOpen={isAnyModalOpen}
+        activeModalContext={activeModalContext}
       />
 
       {resolvedTheme === 'dark' && (
@@ -430,6 +437,6 @@ export default function App() {
           }}
         />
       )}
-    </>
+    </ButtonProvider>
   );
 }

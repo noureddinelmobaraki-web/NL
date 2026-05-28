@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 import { ResponsiveImage } from './ResponsiveImage';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useButtonContext } from './layout/ButtonOrchestrator';
 
 interface MeBitGalleryProps {
   isOpen: boolean;
@@ -34,6 +35,60 @@ export const MeBitGallery = ({
   const galleryRef = useFocusTrap(isOpen);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  
+  const { setContext, registerButton, unregisterButton } = useButtonContext();
+
+  useEffect(() => {
+    setContext(isOpen ? 'mebit' : 'page');
+    return () => setContext('page');
+  }, [isOpen, setContext]);
+
+  // Register MeBit custom buttons in the portaled orchestrator
+  useEffect(() => {
+    if (!isOpen) return;
+
+    registerButton({
+      id: 'mebitAudio',
+      priority: 2,
+      allowedContexts: ['mebit'],
+      slot: 'topRight',
+      render: () => (
+        <button
+          onClick={onToggleAudio}
+          className="fab-button"
+          aria-label="Toggle Gallery Music"
+        >
+          {isMeBitPlaying ? (
+            <Volume2 className="w-5 h-5" />
+          ) : (
+            <VolumeX className="w-5 h-5 text-zinc-500" />
+          )}
+        </button>
+      )
+    });
+
+    registerButton({
+      id: 'mebitClose',
+      priority: 1,
+      allowedContexts: ['mebit'],
+      slot: 'topRight',
+      render: () => (
+        <button
+          onClick={onClose}
+          className="fab-button transition-colors hover:bg-red-600/20 border-red-500/30"
+          style={{ color: 'var(--accent-red, #ef4444)' }}
+          aria-label="Close gallery"
+        >
+          <X className="w-5 h-5" aria-hidden="true" />
+        </button>
+      )
+    });
+
+    return () => {
+      unregisterButton('mebitAudio');
+      unregisterButton('mebitClose');
+    };
+  }, [isOpen, isMeBitPlaying, onClose, onToggleAudio, registerButton, unregisterButton]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -61,42 +116,6 @@ export const MeBitGallery = ({
             className="absolute inset-0 bg-black/95 backdrop-blur-3xl cursor-crosshair"
             onClick={onClose}
           />
-
-          {/* Audio toggle button */}
-          <button
-            onClick={onToggleAudio}
-            className="absolute z-[110] bg-black/50 backdrop-blur-md border border-white/20 p-2.5 rounded-full text-white/80 hover:text-white hover:bg-black/70 transition-all shadow-xl"
-            style={{
-              top: isMobile ? 'calc(var(--safe-top) + 12px)' : '10rem',
-              left: isMobile ? '16px' : '6rem',
-            }}
-            aria-label="Toggle Gallery Music"
-          >
-            {isMeBitPlaying
-              ? <Volume2 className="w-5 h-5" />
-              : <VolumeX className="w-5 h-5 text-zinc-500" />}
-          </button>
-
-          {/* Close button */}
-          {isMobile ? (
-            <button
-              className="mobile-back-btn"
-              onClick={onClose}
-              aria-label="Back to main page"
-            >
-              <ChevronLeft className="w-5 h-5" aria-hidden="true" /> Back
-            </button>
-          ) : (
-            <motion.button
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              onClick={onClose}
-              className="absolute top-6 right-6 sm:top-10 sm:right-10 z-[110] text-white hover:bg-red-600 transition-all bg-black/50 p-3 rounded-full border border-white/20 shadow-xl"
-              aria-label="Close gallery"
-            >
-              <X className="w-8 h-8" aria-hidden="true" />
-            </motion.button>
-          )}
 
           {/* Gallery body */}
           <div className={`relative w-full h-full flex flex-col z-[105] overflow-hidden

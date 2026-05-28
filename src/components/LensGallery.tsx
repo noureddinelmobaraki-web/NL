@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ASSETS } from '../constants/assets';
 import { audioManager } from '../audio/audioManager';
 import { useDeviceType } from '../hooks/useDeviceType';
+import { useButtonContext } from './layout/ButtonOrchestrator';
 
 const PHOTOS = ASSETS.profile.lens;
 
@@ -14,6 +15,12 @@ interface LensGalleryProps {
 
 export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
   const { isMobile } = useDeviceType();
+  const { setContext, registerButton, unregisterButton } = useButtonContext();
+
+  useEffect(() => {
+    setContext(isOpen ? 'lens' : 'page');
+    return () => setContext('page');
+  }, [isOpen, setContext]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [nextIndex, setNextIndex] = useState<number | null>(null);
   const [wipeProgress, setWipeProgress] = useState(0);
@@ -72,6 +79,49 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
       setIsMuted(m => !m);
     }
   };
+
+  // Register Lens Custom Buttons under ButtonOrchestrator when gallery is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    registerButton({
+      id: 'lensAudio',
+      priority: 2,
+      allowedContexts: ['lens'],
+      slot: 'topRight',
+      render: () => (
+        <button
+          onClick={toggleMute}
+          className="fab-button"
+          aria-label="Mute Lens Music"
+        >
+          {isMuted ? '🔇' : '🎵'}
+        </button>
+      )
+    });
+
+    registerButton({
+      id: 'lensClose',
+      priority: 1,
+      allowedContexts: ['lens'],
+      slot: 'topRight',
+      render: () => (
+        <button
+          onClick={onClose}
+          className="fab-button transition-colors hover:bg-red-600/20 border-red-500/30"
+          style={{ color: 'var(--accent-red, #ef4444)' }}
+          aria-label="Close Lens Gallery"
+        >
+          ✕
+        </button>
+      )
+    });
+
+    return () => {
+      unregisterButton('lensAudio');
+      unregisterButton('lensClose');
+    };
+  }, [isOpen, isMuted, onClose, toggleMute, registerButton, unregisterButton]);
 
   const navigate = (direction: 1 | -1) => {
     if (isTransitioning) return;
@@ -248,40 +298,8 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
           THROUGH THE LENS
         </div>
 
-        {/* Controls row */}
-        <div style={{ display: 'flex', gap: isMobile ? '8px' : '12px', alignItems: 'center' }}>
-          <button onClick={toggleMute} style={{
-            background: isMobile ? 'rgba(255,255,255,0.15)' : 'rgba(var(--bg-page-rgb), 0.08)',
-            border: isMobile ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border-subtle)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            color: isMobile ? '#fff' : 'var(--text-primary)',
-            width: isMobile ? '44px' : '36px', 
-            height: isMobile ? '44px' : '36px',
-            borderRadius: '50%', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '15px', transition: 'all 200ms ease',
-          }}>
-            {isMuted ? '🔇' : '🎵'}
-          </button>
-
-          <button onClick={onClose} style={{
-            background: isMobile ? 'rgba(255,255,255,0.15)' : 'rgba(220,60,60,0.12)',
-            border: isMobile ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(200,50,50,0.25)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            color: isMobile ? '#fff' : 'var(--accent-red)',
-            width: isMobile ? '44px' : '36px', 
-            height: isMobile ? '44px' : '36px',
-            borderRadius: '50%', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: isMobile ? '20px' : '18px', 
-            fontWeight: 'bold',
-            transition: 'all 200ms ease',
-          }}>
-            ✕
-          </button>
-        </div>
+        {/* Controls row (managed by central ButtonOrchestrator portal) */}
+        <div style={{ width: isMobile ? '80px' : '100px' }} />
       </div>
 
       {/* Zoom Slider Mobile */}

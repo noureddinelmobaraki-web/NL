@@ -140,7 +140,12 @@ export const GallerySection = ({
           {/* Always-visible CTA — center of the card */}
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-[2]">
             <div className="w-16 h-16 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-white/10 border-2 border-white/40 flex items-center justify-center group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 shadow-lg">
-              <span className="text-2xl" aria-hidden="true">📷</span>
+              <img 
+                src={`${import.meta.env.BASE_URL}lens.svg`} 
+                className="w-8 h-8 sm:w-8 sm:h-8 md:w-10 md:h-10 object-contain" 
+                style={{ filter: 'invert(1)' }} 
+                alt="Lens icon" 
+              />
             </div>
             <span className="md:hidden text-white/50 text-xs font-mono mb-1">اضغط للعرض</span>
             <span className="font-manga text-white text-xl tracking-widest uppercase" style={{ textShadow: '2px 2px 0 #000' }}>

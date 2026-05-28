@@ -8,6 +8,9 @@
 	<meta name="format-detection" content="telephone=no" />
 	<link rel="stylesheet" href="./desktop.css">
 	<link rel="stylesheet" href="bootstrap-icons.css">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" 
+	      onerror="this.onerror=null;this.href='bootstrap-icons.css'">
+	<!-- Fallback مزدوج: CDN ثم محلّي -->
 	<!-- Apps style -->
 	<link rel="stylesheet" href="apps/style/setting.css">
 	<link rel="stylesheet" href="apps/style/explorer.css">
@@ -88,46 +91,7 @@
 			}, 100);
 		</script>
 	</div>
-	<div id="loginback">
-		<div class="user"></div>
-		<div class="name">Administrator</div>
-		<div id="login" onclick="
-			this.id = 'login-after';
-			this.innerText = 'Logging in...';
-			document.querySelector('#loginback').removeChild(document.querySelector('#loginback .power'));
-			var qwq = window.setInterval(() => {
-				if (this.innerText.match(/\.\.\./)) {
-					this.innerText = 'Logging in.';
-				}
-				else {
-					this.innerText += '.';
-				}
-			}, 500);
-			window.setTimeout(() => {
-				this.style.transition = 'color 500ms';
-			}, 100);
-			window.setTimeout(() => {
-				$('#loginback').addClass('close');
-				window.setTimeout(() => {
-					$('#loginback').css('opacity', '0');
-				}, 500);
-				window.setTimeout(() => {
-					$('#loginback').css('display', 'none');
-					window.clearInterval(qwq);
-				}, 2000);
-				if(use_music){
-					document.querySelector('audio#startup-music').play();
-				}
-			}, 1000);
-			this.onclick = null;
-		">
-			Log in
-		</div>
-		<a class="power" onclick="$(this).addClass('show')">
-			<i class="bi bi-power" onclick="setTimeout(() => {window.location='shutdown.html';}, 200);" win12_title="Shut down"></i>
-			<i class="bi bi-arrow-counterclockwise" onclick="setTimeout(() => {window.location='reload.html';}, 200);" win12_title="Restart"></i>
-		</a>
-	</div>
+	<!-- Login screen removed for NL OS - direct boot -->
 	<!-- <img src="https://bing.com/th?id=OHR.Trossachs_ZH-CN9299955040_UHD.jpg&qlt=100" alt=""> -->
 	<script src="./jq.min.js"></script>
 	<div id="start-menu">
@@ -227,21 +191,6 @@
 					onclick="openapp('nlphotos');hide_startmenu();">
 					<img src="icon/folder/pics.svg">
 					<p>NL Album Viewer</p>
-				</a>
-				<a oncontextmenu="return showcm(event, 'smlapp', ['bilibili', '哔哩哔哩'])"
-					onclick="openapp('bilibili');hide_startmenu();">
-					<img src="icon/bilibili.png">
-					<p>Bilibili</p>
-				</a>
-				<a oncontextmenu="return showcm(event, 'smlapp', ['vscode', 'Visual Studio Code'])"
-					onclick="openapp('vscode');hide_startmenu();">
-					<img src="icon/vscode.png">
-					<p>Visual Studio Code</p>
-				</a>
-				<a oncontextmenu="return showcm(event, 'smlapp', ['wsa', '适用于 Android™️ 的 Windows 子系统'])"
-					onclick="openapp('wsa');hide_startmenu();">
-					<img src="icon/wsa.png">
-					<p>Windows Subsystem for Android™️</p>
 				</a>
 				<a oncontextmenu="return showcm(event, 'smlapp', ['windows12', 'Windows 12'])"
 					onclick="openapp('windows12');hide_startmenu();">
@@ -910,6 +859,22 @@
 		<div class="b" ondblclick="openapp('xplens'); apps.xplens.index = 0; apps.xplens.showImage();" ontouchstart="openapp('xplens'); apps.xplens.index = 0; apps.xplens.showImage();" oncontextmenu="return showcm(event,'desktop.icon',['xplens',-1]);" appname="xplens">
 			<img src="icon/folder/pics.svg">
 			<p>LENS (XP Viewer)</p>
+		</div>
+		<div class="b" ondblclick="waitNLReady(() => openapp('nlvideos'));" ontouchstart="waitNLReady(() => openapp('nlvideos'));" oncontextmenu="return showcm(event,'desktop.icon',['nlvideos',-1]);" appname="nlvideos">
+			<img src="icon/xpvideos.svg">
+			<p>NL Videos</p>
+		</div>
+		<div class="b" ondblclick="waitNLReady(() => openapp('nldrawings'));" ontouchstart="waitNLReady(() => openapp('nldrawings'));" oncontextmenu="return showcm(event,'desktop.icon',['nldrawings',-1]);" appname="nldrawings">
+			<img src="icon/xpdrawings.svg">
+			<p>NL Drawings</p>
+		</div>
+		<div class="b" ondblclick="waitNLReady(() => openapp('nlstreams'));" ontouchstart="waitNLReady(() => openapp('nlstreams'));" oncontextmenu="return showcm(event,'desktop.icon',['nlstreams',-1]);" appname="nlstreams">
+			<img src="icon/xpstreams.svg">
+			<p>Streams Platforms</p>
+		</div>
+		<div class="b" ondblclick="waitNLReady(() => openapp('nlsocial'));" ontouchstart="waitNLReady(() => openapp('nlsocial'));" oncontextmenu="return showcm(event,'desktop.icon',['nlsocial',-1]);" appname="nlsocial">
+			<img src="icon/xpsocial.svg">
+			<p>Social Media</p>
 		</div>
 		<span class="choose">
 		</span>
@@ -4147,6 +4112,156 @@
 					</div>
 					<div class="fax-img-counter" id="xplens-counter">1 / 9</div>
 				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- NL Photos / Drawings / Videos / Streams / Social Apps -->
+	<div class="window nlvideos flex-column" data-min-width="720" style="width: 720px; height: 500px;">
+		<div class="resize-bar"></div>
+		<div class="titbar">
+			<img src="icon/xpvideos.svg" class="icon">
+			<p>Windows Media Player — NL Videos</p>
+			<div>
+				<a class="a wbtg red" onclick="hidewin('nlvideos')"><i class="bi bi-x-lg"></i></a>
+				<a class="a wbtg max" onclick="maxwin('nlvideos')"><i class="bi bi-app"></i></a>
+				<a class="a wbtg" onclick="minwin('nlvideos')"><i class="bi bi-dash-lg"></i></a>
+			</div>
+		</div>
+		<div class="loadback" style="background: #ece9d8;">
+			<img src="icon/xpvideos.svg" class="icon" style="animation: pulse 1.5s infinite;">
+		</div>
+		<div class="content" id="win-nlvideos" style="background: #ece9d8; display: flex; flex-direction: row; height: 100%;">
+			<!-- Left side: Player -->
+			<div style="flex: 2; display: flex; flex-direction: column; background: #000; border-right: 2px solid #333; height: 100%;">
+				<div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative; background: #000;">
+					<video id="nlvideos-player" style="width: 100%; height: 100%; object-fit: contain; background: #000;" controls></video>
+				</div>
+				<div class="video-status" style="background: #ece9d8; color: #000; padding: 10px; font-family: sans-serif; height: 40px; border-top: 1px solid #7f7f7f; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; font-size: 12px;">
+					<span id="nlvideos-status-title" style="font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px;">Select a Video</span>
+					<span style="color: #555;">NL Media Server</span>
+				</div>
+			</div>
+			<!-- Right side: Playlist -->
+			<div style="flex: 1; background: #f1ebd9; display: flex; flex-direction: column; font-family: sans-serif; border-left: 1px solid #7f7f7f; box-sizing: border-box; height: 100%;">
+				<div style="background: #0054E3; color: white; padding: 10px; font-weight: bold; font-size: 13px;">Playlist</div>
+				<div id="nlvideos-list" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 5px; gap: 4px;">
+					<!-- Loaded dynamically in desktop.js -->
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="window nldrawings flex-column" data-min-width="600" style="width: 600px; height: 500px;">
+		<div class="resize-bar"></div>
+		<div class="titbar">
+			<img src="icon/xpdrawings.svg" class="icon">
+			<p>Windows Picture and Fax Viewer — NL Drawings</p>
+			<div>
+				<a class="a wbtg red" onclick="hidewin('nldrawings')"><i class="bi bi-x-lg"></i></a>
+				<a class="a wbtg max" onclick="maxwin('nldrawings')"><i class="bi bi-app"></i></a>
+				<a class="a wbtg" onclick="minwin('nldrawings')"><i class="bi bi-dash-lg"></i></a>
+			</div>
+		</div>
+		<div class="loadback" style="background: #ece9d8;">
+			<img src="icon/xpdrawings.svg" class="icon" style="animation: pulse 1.5s infinite;">
+		</div>
+		<div class="content" id="win-nldrawings" style="background: #ece9d8; display: flex; flex-direction: column; height: 100%;">
+			<div class="fax-workspace" style="flex: 1; display: flex; flex-direction: column; background: #7f7f7f; position: relative;">
+				<div class="fax-viewport-frame" style="flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+					<img id="nldrawings-img" src="../../src/assets/images/gallery/DRAW.webp" style="max-width: 90%; max-height: 90%; object-fit: contain; transition: transform 0.2s;" referrerPolicy="no-referrer">
+				</div>
+				<div class="fax-toolbar-deck" style="background: #ece9d8; padding: 8px; border-top: 1px solid #bdbdbe; display: flex; align-items: center; justify-content: space-between;">
+					<div class="fax-toolbar" style="display: flex; align-items: center; gap: 8px;">
+						<button class="fax-tb-btn" onclick="apps.nldrawings.prev()" style="padding: 4px 8px; border-radius: 3px; border: 1px solid #7f7f7f; background: #fff;" win12_title="Previous"><i class="bi bi-arrow-left"></i></button>
+						<button class="fax-tb-btn" onclick="apps.nldrawings.next()" style="padding: 4px 8px; border-radius: 3px; border: 1px solid #7f7f7f; background: #fff;" win12_title="Next"><i class="bi bi-arrow-right"></i></button>
+						<div style="width: 1px; height: 18px; background-color: #bdbdbe;"></div>
+						<button class="fax-tb-btn" onclick="apps.nldrawings.zoomIn()" style="padding: 4px 8px; border-radius: 3px; border: 1px solid #7f7f7f; background: #fff;" win12_title="Zoom In"><i class="bi bi-zoom-in"></i></button>
+						<button class="fax-tb-btn" onclick="apps.nldrawings.zoomOut()" style="padding: 4px 8px; border-radius: 3px; border: 1px solid #7f7f7f; background: #fff;" win12_title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
+					</div>
+					<div id="nldrawings-counter" style="font-family: sans-serif; font-size: 12px; font-weight: bold;">1 / 2</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="window nlstreams flex-column" data-min-width="480" style="width: 480px; height: 360px;">
+		<div class="resize-bar"></div>
+		<div class="titbar">
+			<img src="icon/xpstreams.svg" class="icon">
+			<p>NL Broadcast Streams</p>
+			<div>
+				<a class="a wbtg red" onclick="hidewin('nlstreams')"><i class="bi bi-x-lg"></i></a>
+				<a class="a wbtg max" onclick="maxwin('nlstreams')"><i class="bi bi-app"></i></a>
+				<a class="a wbtg" onclick="minwin('nlstreams')"><i class="bi bi-dash-lg"></i></a>
+			</div>
+		</div>
+		<div class="loadback" style="background: #ece9d8;">
+			<img src="icon/xpstreams.svg" class="icon" style="animation: pulse 1.5s infinite;">
+		</div>
+		<div class="content" id="win-nlstreams" style="background: #ece9d8; padding: 20px; font-family: sans-serif; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 15px;">
+			<div style="background: #fff; border: 1px solid #7f7f7f; padding: 12px; border-radius: 4px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+				<h3 style="margin-top: 0; color: #0054E3; font-size: 15px; margin-bottom: 5px;">M3U Core Stream Links</h3>
+				<p style="margin: 0; font-size: 12px; color: #555;">Copy link or click to open the broadcast feed in your preferred audio player.</p>
+			</div>
+			<div style="display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto;">
+				<div style="display: flex; align-items: center; justify-content: space-between; background: #f1ebd9; padding: 10px; border: 1px solid #bdbdbe; border-radius: 4px;">
+					<div>
+						<span style="font-weight: bold; font-size: 13px;">Radio Stream (M3U)</span><br>
+						<span style="font-size: 11px; color: #666; word-break: break-all;">working_radio.m3u</span>
+					</div>
+					<button onclick="window.open('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/working_radio.m3u','_blank')" style="background: #3A9D23; color: white; border: none; padding: 6px 12px; border-radius: 3px; font-weight: bold; font-size: 11px; cursor: pointer;">Open</button>
+				</div>
+				<div style="display: flex; align-items: center; justify-content: space-between; background: #f1ebd9; padding: 10px; border: 1px solid #bdbdbe; border-radius: 4px;">
+					<div>
+						<span style="font-weight: bold; font-size: 13px;">Music Stream (M3U)</span><br>
+						<span style="font-size: 11px; color: #666; word-break: break-all;">working_music.m3u</span>
+					</div>
+					<button onclick="window.open('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/working_music.m3u','_blank')" style="background: #3A9D23; color: white; border: none; padding: 6px 12px; border-radius: 3px; font-weight: bold; font-size: 11px; cursor: pointer;">Open</button>
+				</div>
+				<div style="display: flex; align-items: center; justify-content: space-between; background: #f1ebd9; padding: 10px; border: 1px solid #bdbdbe; border-radius: 4px;">
+					<div>
+						<span style="font-weight: bold; font-size: 13px;">Channels (M3U)</span><br>
+						<span style="font-size: 11px; color: #666; word-break: break-all;">channels.m3u</span>
+					</div>
+					<button onclick="window.open('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/channels.m3u','_blank')" style="background: #3A9D23; color: white; border: none; padding: 6px 12px; border-radius: 3px; font-weight: bold; font-size: 11px; cursor: pointer;">Open</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="window nlsocial flex-column" data-min-width="480" style="width: 480px; height: 320px;">
+		<div class="resize-bar"></div>
+		<div class="titbar">
+			<img src="icon/xpsocial.svg" class="icon">
+			<p>NL Social Networks</p>
+			<div>
+				<a class="a wbtg red" onclick="hidewin('nlsocial')"><i class="bi bi-x-lg"></i></a>
+				<a class="a wbtg max" onclick="maxwin('nlsocial')"><i class="bi bi-app"></i></a>
+				<a class="a wbtg" onclick="minwin('nlsocial')"><i class="bi bi-dash-lg"></i></a>
+			</div>
+		</div>
+		<div class="loadback" style="background: #ece9d8;">
+			<img src="icon/xpsocial.svg" class="icon" style="animation: pulse 1.5s infinite;">
+		</div>
+		<div class="content" id="win-nlsocial" style="background: #ece9d8; padding: 25px; font-family: sans-serif; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
+			<div style="text-align: center;">
+				<h3 style="margin-top: 0; color: #0054E3; font-size: 18px; margin-bottom: 5px;">Follow NL Artist Archive</h3>
+				<p style="margin: 0; font-size: 12px; color: #666;">Connect on modern streaming networks and platforms</p>
+			</div>
+			<div style="display: flex; flex-direction: row; gap: 12px; justify-content: center; margin-top: 15px;">
+				<a onclick="window.open('https://www.youtube.com/@nourdin_el_mobaraki','_blank')" style="flex: 1; max-width: 120px; text-decoration: none; text-align: center; background: white; padding: 15px; border-radius: 6px; border: 1px solid #bdbdbe; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+					<i class="bi bi-youtube" style="font-size: 32px; color: #FF0000;"></i>
+					<span style="font-weight: bold; font-size: 12px; color: #333;">YouTube</span>
+				</a>
+				<a onclick="window.open('https://music.apple.com/us/artist/nl/1535833912','_blank')" style="flex: 1; max-width: 120px; text-decoration: none; text-align: center; background: white; padding: 15px; border-radius: 6px; border: 1px solid #bdbdbe; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+					<i class="bi bi-apple" style="font-size: 32px; color: #000000;"></i>
+					<span style="font-weight: bold; font-size: 12px; color: #333;">Apple Music</span>
+				</a>
+				<a onclick="window.open('https://www.deezer.com/en/artist/362375722','_blank')" style="flex: 1; max-width: 120px; text-decoration: none; text-align: center; background: white; padding: 15px; border-radius: 6px; border: 1px solid #bdbdbe; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+					<i class="bi bi-music-note-beamed" style="font-size: 32px; color: #00C7F2;"></i>
+					<span style="font-weight: bold; font-size: 12px; color: #333;">Deezer</span>
+				</a>
 			</div>
 		</div>
 	</div>

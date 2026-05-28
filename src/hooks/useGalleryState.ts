@@ -33,6 +33,12 @@ export function useGalleryState() {
     setIsLensGalleryOpen(false);
   }, []);
 
+  const getActiveContext = useCallback(() => {
+    if (isLensGalleryOpen) return 'lens';
+    if (isGalleryOpen) return 'mebit';
+    return null;
+  }, [isLensGalleryOpen, isGalleryOpen]);
+
   return {
     isGalleryOpen,
     setIsGalleryOpen,
@@ -46,5 +52,6 @@ export function useGalleryState() {
     prevImage,
     openLens,
     closeLens,
+    getActiveContext,
   };
 }

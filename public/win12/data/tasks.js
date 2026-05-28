@@ -15,11 +15,6 @@ let taskmgrTasks = [
         link: 'camera'
     },
     {
-        name: '哔哩哔哩客户端',
-        icon: 'icon/bilibili.png',
-        link: 'bilibili'
-    },
-    {
         name: 'Microsoft Edge',
         icon: 'icon/edge.svg',
         link: 'edge'
@@ -66,11 +61,6 @@ let taskmgrTasks = [
         name: 'Microsoft Word Preview',
         icon: 'icon/word.svg',
         link: 'word'
-    },
-    {
-        name: 'Visual Studio Code',
-        icon: 'icon/vscode.png',
-        link: 'vscode'
     },
     {
         name: 'System'

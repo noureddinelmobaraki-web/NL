@@ -12,6 +12,7 @@ import { BlackHoleTransition } from './MusicMood/BlackHoleTransition';
 import { MusicMoodScreen } from './MusicMood/MusicMoodScreen';
 import { useSongPlayer } from './songs/SongPlayer';
 import { SongList } from './songs/SongList';
+import { useButtonContext } from './layout/ButtonOrchestrator';
 
 const PRIMARY_RGB = '99, 102, 241';
 const initialPrefs = loadPrefs();
@@ -43,6 +44,16 @@ export const MySongs = ({
   const [isMoodTransitioning, setIsMoodTransitioning] = useState(false);
   const [isMoodActive, setIsMoodActive] = useState(false);
   const moodAudioCtxRef = useRef<AudioContext | null>(null);
+
+  const { setContext } = useButtonContext();
+
+  useEffect(() => {
+    if (isMoodActive) {
+      setContext('songs-modal');
+    } else {
+      setContext('page');
+    }
+  }, [isMoodActive, setContext]);
 
   // Lock body scroll when either mood transition or active mood is running
   useEffect(() => {
@@ -331,13 +342,14 @@ export const MySongs = ({
                     audioManager.pause?.('bg');
                     setIsMoodTransitioning(true);
                   }}
-                  className="music-mood-trigger px-4 py-2 border rounded-full text-xs font-mono uppercase text-zinc-400 border-zinc-800 hover:border-violet-500 hover:text-violet-400 transition-all flex items-center gap-2 cursor-pointer"
+                  className="music-mood-trigger px-4 py-2 border rounded-full text-xs font-mono uppercase text-zinc-400 border-zinc-800 hover:border-violet-500 hover:text-violet-400 transition-all flex items-center gap-2 cursor-pointer group"
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
-                    <circle cx="7" cy="7" r="2.5" fill="currentColor" opacity="0.8" />
-                    <ellipse cx="7" cy="7" rx="6" ry="2" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
-                  </svg>
+                  <img 
+                    src={`${import.meta.env.BASE_URL}music mood.svg`} 
+                    className="w-4 h-4 object-contain transition-all group-hover:scale-110" 
+                    style={{ filter: 'invert(1)' }} 
+                    alt="" 
+                  />
                   MUSIC MOOD
                 </button>
               )}

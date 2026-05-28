@@ -3,6 +3,7 @@ import { Volume2, VolumeX } from "lucide-react";
 import { ScrollProgress } from "../ScrollProgress";
 import { NowPlayingBar } from "../NowPlayingBar";
 import { ActiveSong } from "../../types";
+import { useButtonContext } from "./ButtonOrchestrator";
 import type { Theme } from "../../utils/userPrefs";
 
 const THEME_LABELS: Record<string, string> = {
@@ -23,18 +24,19 @@ export interface FloatingControlsProps {
   activeSong: ActiveSong | null;
   onToggleAudio: () => void;
   onThemeChange: (newTheme: Theme) => void;
+  isAnyModalOpen?: boolean;
+  activeModalContext?: 'page' | 'lens' | 'mebit' | 'songs-modal' | 'win12' | null;
 }
 
 export const FloatingControls = ({
   isPlaying,
-  isMobile,
-  isTablet,
   theme,
   activeSong,
   onToggleAudio,
   onThemeChange,
 }: FloatingControlsProps) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const { registerButton, unregisterButton } = useButtonContext();
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 400);
@@ -42,68 +44,92 @@ export const FloatingControls = ({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Theme Switcher Button registration
+  useEffect(() => {
+    registerButton({
+      id: 'theme',
+      priority: 1,
+      allowedContexts: ['page'],
+      slot: 'topRight',
+      render: () => (
+        <button
+          onClick={() => onThemeChange((THEME_NEXT[theme] ?? 'dark') as Theme)}
+          aria-label={(THEME_LABELS[theme] ?? THEME_LABELS.midnight) ?? 'تغيير الثيم'}
+          title={`${(THEME_LABELS[theme] ?? THEME_LABELS.midnight)} — اضغط للتبديل`}
+          className="fab-button flex items-center justify-center"
+        >
+          <img 
+            src={`${import.meta.env.BASE_URL}${theme === 'dark' ? 'dark-mode.svg' : theme === 'light' ? 'light-mode.svg' : theme === 'bit' ? 'bit_mode.svg' : 'midnight_mode.svg'}`} 
+            alt={theme}
+            className="w-4 h-4 object-contain"
+            style={{ 
+              filter: theme === 'light' ? 'none' : 'invert(1) brightness(2)'
+            }}
+          />
+        </button>
+      )
+    });
+    return () => unregisterButton('theme');
+  }, [theme, onThemeChange, registerButton, unregisterButton]);
+
+  // Background Audio Controller Button registration
+  useEffect(() => {
+    registerButton({
+      id: 'bgMusic',
+      priority: 1,
+      allowedContexts: ['page'],
+      slot: 'topRight2',
+      render: () => (
+        <button
+          onClick={onToggleAudio}
+          className="fab-button border-dashed group relative"
+          aria-label="Toggle Background Music"
+        >
+          {isPlaying ? (
+            <Volume2 className="w-4 h-4 group-hover:animate-pulse" aria-hidden="true" />
+          ) : (
+            <VolumeX className="w-4 h-4 text-zinc-500" aria-hidden="true" />
+          )}
+          
+          {/* Tooltip */}
+          <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-black/90 text-white px-2 py-0.5 rounded text-[10px] font-mono tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/5 uppercase">
+            {isPlaying ? 'Sound On' : 'Sound Off'}
+          </div>
+        </button>
+      )
+    });
+    return () => unregisterButton('bgMusic');
+  }, [isPlaying, onToggleAudio, registerButton, unregisterButton]);
+
+  // Scroll to Top Button registration
+  useEffect(() => {
+    registerButton({
+      id: 'scrollTop',
+      priority: 1,
+      allowedContexts: ['page'],
+      slot: 'bottomRight',
+      render: () => (
+        <button
+          className={`fab-button ${showScrollTop ? '' : 'fab-hidden'}`}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="Scroll to top"
+          style={{ fontFamily: 'var(--font-manga)' }}
+        >
+          ↑
+        </button>
+      )
+    });
+    return () => unregisterButton('scrollTop');
+  }, [showScrollTop, registerButton, unregisterButton]);
+
   return (
     <>
       <ScrollProgress />
-
-      {/* Floating Audio Control Button - Small & Elegant */}
-      <button
-        onClick={onToggleAudio}
-        className="fixed z-[9000] backdrop-blur-lg border p-2.5 rounded-full transition-all hover:scale-105 active:scale-90 shadow-xl group border-dashed"
-        style={{
-          top: (isMobile || isTablet) ? 'calc(env(safe-area-inset-top) + 72px)' : 'auto',
-          bottom: (isMobile || isTablet) ? 'auto' : '16px',
-          right: '16px',
-          background: 'var(--bg-glass-strong)',
-          borderColor: 'var(--border-subtle)',
-          color: 'var(--text-secondary)'
-        }}
-        aria-label="Toggle Background Music"
-      >
-        {isPlaying ? (
-          <Volume2 className="w-4 h-4 group-hover:animate-pulse" aria-hidden="true" />
-        ) : (
-          <VolumeX className="w-4 h-4 text-zinc-500" aria-hidden="true" />
-        )}
-        
-        {/* Tooltip */}
-        <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-black/90 text-white px-2 py-0.5 rounded text-[10px] font-mono tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/5 uppercase">
-          {isPlaying ? 'Sound On' : 'Sound Off'}
-        </div>
-      </button>
 
       <NowPlayingBar 
         activeSong={activeSong}
         onClose={() => activeSong?.onDismiss?.()}
       />
-
-      <button
-        className={`scroll-to-top ${showScrollTop ? 'visible' : ''}`}
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        aria-label="Scroll to top"
-        style={{ fontFamily: 'var(--font-manga)' }}
-      >
-        ↑
-      </button>
-
-      <button
-        onClick={() => onThemeChange((THEME_NEXT[theme] ?? 'dark') as Theme)}
-        aria-label={(THEME_LABELS[theme] ?? THEME_LABELS.midnight) ?? 'تغيير الثيم'}
-        title={`${(THEME_LABELS[theme] ?? THEME_LABELS.midnight)} — اضغط للتبديل`}
-        className="fixed z-[9000] border p-2.5 rounded-full transition-all hover:scale-105 active:scale-90 shadow-xl"
-        style={{
-          top:   'calc(env(safe-area-inset-top) + 20px)',
-          right: '20px',
-          background:   'var(--bg-glass-strong)',
-          borderColor:  'var(--border-subtle)',
-          color:        'var(--text-secondary)',
-        }}
-      >
-        <span className="hidden sm:inline text-[9px] font-mono mr-1 opacity-60">
-          {theme.toUpperCase()}
-        </span>
-        {theme === 'midnight' ? '🌓' : theme === 'dark' ? '🌑' : theme === 'light' ? '☀️' : '👾'}
-      </button>
     </>
   );
 };

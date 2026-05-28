@@ -96,8 +96,15 @@ export function Win12Section() {
             resolvedTheme === 'light' ? 'bg-[#CCCCCC] text-black border-zinc-400 font-sans shadow-[inset_1px_1px_0_#FFF,inset_-1px_-1px_0_#999]' :
             'bg-[#091523] text-[#38bdf8] border-[#11243d] font-sans'
           }`}>
-            <span className="flex items-center gap-1.5 uppercase">
-              <span className="inline-block w-2 h-2 rounded-full animate-pulse bg-green-500" />
+            <span className="flex items-center gap-2 uppercase">
+              <img 
+                src={`${import.meta.env.BASE_URL}NL OS.svg`} 
+                className="w-4 h-4 object-contain" 
+                style={{ 
+                  filter: resolvedTheme === 'light' ? 'none' : 'invert(1) brightness(2)'
+                }} 
+                alt="" 
+              />
               {themeCardStyles.title}
             </span>
             <div className="flex gap-1.5">
@@ -122,7 +129,15 @@ export function Win12Section() {
             
             {/* Centered Typography & Launch Control */}
             <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center gap-5">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2.5 items-center justify-center">
+                <img 
+                  src={`${import.meta.env.BASE_URL}NL OS.svg`} 
+                  className="w-16 h-16 object-contain mb-1 drop-shadow-lg" 
+                  style={{
+                    filter: resolvedTheme === 'light' ? 'none' : 'invert(1) brightness(1.5)'
+                  }}
+                  alt="" 
+                />
                 <h3 className="text-white text-3xl md:text-4xl font-black tracking-wide drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
                   NL OS
                 </h3>

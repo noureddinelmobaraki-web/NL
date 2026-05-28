@@ -205,6 +205,13 @@ export const StreamingSection = () => {
                 <span className="stream-link-content-default">
                   {platform.isSpotify ? (
                     <SpotifyLogo className="w-8 h-8 shrink-0 drop-shadow-[0_0_8px_#1DB954]" />
+                  ) : platform.name === "Apple Music" ? (
+                    <img 
+                      src={`${import.meta.env.BASE_URL}apple-music.svg`} 
+                      className="w-6 h-6 shrink-0 object-contain" 
+                      style={{ filter: 'invert(1)' }} 
+                      alt="" 
+                    />
                   ) : (
                     <platform.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
                   )}

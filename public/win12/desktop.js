@@ -1,3 +1,20 @@
+// Force-clear stale savedDesktop on every load (مؤقت لإصلاح أيقونات قديمة)
+try { 
+  const v = localStorage.getItem('nl_desktop_version');
+  if (v !== 'v2-icons-fix') {
+    localStorage.removeItem('savedDesktop');
+    localStorage.setItem('nl_desktop_version', 'v2-icons-fix');
+  }
+} catch(e){}
+
+// Auto-play startup music immediately (no login)
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof use_music !== 'undefined' && use_music) {
+    const a = document.querySelector('audio#startup-music');
+    if (a) a.play().catch(()=>{});
+  }
+});
+
 // 后端服务器
 // loadlang();
 const server = 'http://win12server.freehk.svipss.top/';
@@ -2213,7 +2230,7 @@ let apps = {
                             file: [
                                 { name: 'explorer.exe', ico: 'icon/explorer.svg', command: "apps.explorer.newtab()" },
                                 { name: 'notepad.exe', ico: 'icon/notepad.svg', command: "openapp('notepad')" },
-                                { name: 'py.exe', ico: 'icon/python.png', command: "openapp('python')" },
+                                { name: 'py.exe', ico: 'icon/python.svg', command: "openapp('python')" },
                             ]
                         },
                         '用户': {
@@ -3309,13 +3326,14 @@ function pinapp(id, name, command) {
     $('#s-m-r>.pinned>.apps').append(`<a class='a sm-app enable ${id}' onclick='${command}';hide_startmenu();' oncontextmenu='return showcm(event,\"smapp\",[\"${id}\",\"${name}\"])'><img src='icon/${geticon(id)}'><p>${name}</p></a>`)
 }
 let icon = {
-    bilibili: 'bilibili.png',
-    vscode: 'vscode.png',
-    winver: 'about.svg',
-    taskmgr: 'taskmgr.png',
-    nlmusic: 'folder/music.svg',
-    nlphotos: 'folder/pics.svg'
-}
+  bilibili: 'bilibili.png', vscode: 'vscode.png',
+  winver: 'about.svg', taskmgr: 'taskmgr.png',
+  nlmusic: 'folder/music.svg', nlphotos: 'folder/pics.svg',
+  xpmusic: 'xpmusic.svg', xpmebit: 'xpmebit.svg', xplens: 'xplens.svg',
+  python: 'python.svg', mc: 'mc.png', office: 'office.png',
+  nlvideos: 'xpvideos.svg', nldrawings: 'xpdrawings.svg',
+  nlstreams: 'xpstreams.svg', nlsocial: 'xpsocial.svg'
+};
 function geticon(name) {
     if (icon[name]) return icon[name];
     else return name + '.svg';
@@ -5084,6 +5102,117 @@ function nupd() {
             if (!apps.xplens) apps.xplens = { init: () => {}, load: () => {} };
             if (!apps.nlmusic) apps.nlmusic = { init: () => {}, load: () => {} };
             if (!apps.nlphotos) apps.nlphotos = { init: () => {}, load: () => {} };
+            
+            // ─── NEW NL APPS REGISTER ───
+            apps.nlvideos = {
+                videos: [],
+                currentVideoIndex: null,
+                init: function() {
+                    fetch('../data/videos.json')
+                        .then(res => res.json())
+                        .then(json => {
+                            apps.nlvideos.videos = json;
+                            apps.nlvideos.renderPlaylist();
+                            if (json.length > 0 && apps.nlvideos.currentVideoIndex === null) {
+                                apps.nlvideos.loadVideo(0);
+                            }
+                        })
+                        .catch(err => console.error("Could not load NL Videos:", err));
+                },
+                load: function() {
+                    apps.nlvideos.init();
+                },
+                renderPlaylist: function() {
+                    const container = document.getElementById('nlvideos-list');
+                    if (!container) return;
+                    container.innerHTML = apps.nlvideos.videos.map((vid, idx) => `
+                        <div class="video-item" style="display: flex; align-items: center; gap: 8px; padding: 6px; cursor: pointer; border-bottom: 1px solid #d4d0c8; font-family: sans-serif; font-size: 11px;" onclick="apps.nlvideos.loadVideo(${idx})">
+                            <div style="width: 14px; height: 14px; background: #0054E3; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 8px;">${idx + 1}</div>
+                            <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; color: #333;">Video #${vid.id.replace('v', '')}</div>
+                            <div style="color: #666; font-size: 10px;">${vid.duration}s</div>
+                        </div>
+                    `).join('');
+                },
+                loadVideo: function(idx) {
+                    apps.nlvideos.currentVideoIndex = idx;
+                    const vid = apps.nlvideos.videos[idx];
+                    const player = document.getElementById('nlvideos-player');
+                    const statusTitle = document.getElementById('nlvideos-status-title');
+                    if (!player || !vid) return;
+                    
+                    player.src = vid.src;
+                    if (statusTitle) {
+                        statusTitle.innerText = "Playing: Video #" + vid.id.replace('v', '');
+                    }
+                    player.play().catch(e => console.log("Video auto play prevented", e));
+                }
+            };
+
+            apps.nldrawings = {
+                drawings: [
+                    "../../src/assets/images/gallery/DRAW.webp",
+                    "../../src/assets/images/gallery/DRAW2.webp"
+                ],
+                currentIndex: 0,
+                zoomLevel: 100,
+                init: function() {
+                    apps.nldrawings.currentIndex = 0;
+                    apps.nldrawings.zoomLevel = 100;
+                    apps.nldrawings.show();
+                },
+                load: function() {
+                    apps.nldrawings.init();
+                },
+                prev: function() {
+                    apps.nldrawings.currentIndex = (apps.nldrawings.currentIndex - 1 + apps.nldrawings.drawings.length) % apps.nldrawings.drawings.length;
+                    apps.nldrawings.zoomLevel = 100;
+                    apps.nldrawings.show();
+                },
+                next: function() {
+                    apps.nldrawings.currentIndex = (apps.nldrawings.currentIndex + 1) % apps.nldrawings.drawings.length;
+                    apps.nldrawings.zoomLevel = 100;
+                    apps.nldrawings.show();
+                },
+                show: function() {
+                    const img = document.getElementById('nldrawings-img');
+                    const counter = document.getElementById('nldrawings-counter');
+                    if (img) {
+                        img.src = apps.nldrawings.drawings[apps.nldrawings.currentIndex];
+                        img.style.transform = `scale(${apps.nldrawings.zoomLevel / 100})`;
+                    }
+                    if (counter) {
+                        counter.innerText = `${apps.nldrawings.currentIndex + 1} / ${apps.nldrawings.drawings.length}`;
+                    }
+                },
+                zoomIn: function() {
+                    apps.nldrawings.zoomLevel = Math.min(apps.nldrawings.zoomLevel + 25, 250);
+                    const img = document.getElementById('nldrawings-img');
+                    if (img) img.style.transform = `scale(${apps.nldrawings.zoomLevel / 100})`;
+                },
+                zoomOut: function() {
+                    apps.nldrawings.zoomLevel = Math.max(apps.nldrawings.zoomLevel - 25, 50);
+                    const img = document.getElementById('nldrawings-img');
+                    if (img) img.style.transform = `scale(${apps.nldrawings.zoomLevel / 100})`;
+                }
+            };
+
+            apps.nlstreams = {
+                init: function() {},
+                load: function() {}
+            };
+
+            apps.nlsocial = {
+                init: function() {},
+                load: function() {}
+            };
+
+            window.waitNLReady = function(cb) {
+                if (typeof cb === 'function') {
+                    cb();
+                }
+            };
+            // ─── END OF NEW NL APPS REGISTER ───
+
             console.log('[NL] Portfolio apps registration completed (safeguarded via fallback mode).');
         }
     })();
