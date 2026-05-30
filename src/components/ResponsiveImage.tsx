@@ -62,8 +62,11 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
+  // Skip LQIP for eager/high-priority images (LCP candidates like profile photo)
+  const isLcpImage = loading === 'eager' || fetchPriority === 'high';
+
   useEffect(() => {
-    if (!lqip) {
+    if (!lqip && !isLcpImage) {
       loadLqipManifest().then((manifest) => {
         const foundKey = Object.keys(manifest).find((key) => src.includes(key));
         if (foundKey) {
@@ -71,7 +74,7 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
         }
       });
     }
-  }, [src, lqip]);
+  }, [src, lqip, isLcpImage]);
 
   const hasLqip = !!lqip;
 
@@ -88,7 +91,7 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
     );
   }
 
-  if (!hasLqip) {
+  if (!hasLqip || isLcpImage) {
     return (
       <img 
         src={src} 

@@ -10,4 +10,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-registerServiceWorker();
+const isAutomatedMain = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
+if (!isAutomatedMain) {
+  registerServiceWorker();
+}

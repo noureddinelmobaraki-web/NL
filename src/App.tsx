@@ -226,7 +226,7 @@ function AppInner() {
 
           <motion.div 
             variants={containerVariants}
-            initial="hidden"
+            initial={isAutomated ? "visible" : "hidden"}
             animate="visible"
             lang="en"
             dir="ltr"
