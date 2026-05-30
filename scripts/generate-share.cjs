@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const domain = "https://noureddinelmobaraki.github.io/nradio"; // Updated domain based on user context
+const domain = "https://noureddinelmobaraki-web.github.io/NL";
 
 const songs = [
   { id: 1,  title: "TRI9 TBAWE9",           image: "01. TRI9 TBA... - Background.webp" },
@@ -45,20 +45,20 @@ songs.forEach(song => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${song.title} | NRADIO</title>
+    <title>${song.title} | NL — Noureddin El Mobaraki</title>
     
     <!-- Open Graph / Meta Tags -->
     <meta property="og:type" content="music.song">
     <meta property="og:url" content="${domain}/?s=${song.id}">
-    <meta property="og:title" content="${song.title} | Listen on NRADIO">
-    <meta property="og:description" content="Click to listen to ${song.title} by NL on NRADIO.">
+    <meta property="og:title" content="${song.title} | NL — Noureddin El Mobaraki">
+    <meta property="og:description" content="Listen to ${song.title} by NL (Noureddin El Mobaraki) — Independent Rap from Casablanca.">
     <meta property="og:image" content="${imageUrl}">
-    <meta property="og:site_name" content="NRADIO">
+    <meta property="og:site_name" content="NL — Noureddin El Mobaraki">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="${song.title} | Listen on NRADIO">
-    <meta name="twitter:description" content="Click to listen to ${song.title} by NL on NRADIO.">
+    <meta name="twitter:title" content="${song.title} | NL — Noureddin El Mobaraki">
+    <meta name="twitter:description" content="Listen to ${song.title} by NL (Noureddin El Mobaraki) — Independent Rap from Casablanca.">
     <meta name="twitter:image" content="${imageUrl}">
 
     <script>
@@ -75,7 +75,7 @@ songs.forEach(song => {
 <body>
     <div style="display: flex; flex-direction: column; align-items: center;">
         <div class="loader"></div>
-        <p>Opening <b>${song.title}</b> in NRADIO...</p>
+        <p>Opening <b>${song.title}</b> in NL...</p>
         <p style="font-size: 12px; opacity: 0.5;">If not redirected, <a href="../../?s=${song.id}">click here</a>.</p>
     </div>
 </body>

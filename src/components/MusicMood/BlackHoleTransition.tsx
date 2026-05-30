@@ -1,12 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import * as THREE from 'three';
 import { canvasFragmentShader } from './shaders/blackHoleFragment';
 
 interface BlackHoleTransitionProps {
   onComplete: () => void;
   onNearComplete?: () => void;
 }
+
+// Respect user's motion preferences
+const userPrefersReducedMotion = 
+  typeof window !== 'undefined' && 
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const TOTAL_DURATION = 5500; // 5.5 Seconds
 
@@ -27,6 +31,7 @@ export const BlackHoleTransition = ({
   const animFrameRef      = useRef<number>(0);
   const startTimeRef      = useRef<number>(0);
   const nearFiredRef      = useRef(false);
+  const [threeModule, setThreeModule] = useState<typeof import('three') | null>(null);
 
   // Freeze pointer events during transition
   useEffect(() => {
@@ -39,6 +44,19 @@ export const BlackHoleTransition = ({
 
   // Three.js setup
   useEffect(() => {
+    if (userPrefersReducedMotion) {
+      // Skip animation, go directly to completion
+      onNearComplete?.();
+      setTimeout(onComplete, 100);
+      return;
+    }
+
+    if (!threeModule) {
+      import('three').then((mod) => setThreeModule(mod));
+      return;
+    }
+    const THREE = threeModule;
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -57,7 +75,7 @@ export const BlackHoleTransition = ({
     camera.position.z = 8;
 
     // Shader Material matching the uniform structure of the original simulation plus custom additions
-    const uniforms: Record<string, THREE.IUniform> = {
+    const uniforms: Record<string, { value: any }> = {
       uAccretionDisk:   { value: 1 },
       uMaxIterations:   { value: 100 },
       uStepSize:        { value: 2.5 / 100 },
@@ -140,7 +158,7 @@ export const BlackHoleTransition = ({
       material.dispose();
       renderer.dispose();
     };
-  }, [onComplete, onNearComplete]);
+  }, [onComplete, onNearComplete, threeModule]);
 
   return createPortal(
     <div

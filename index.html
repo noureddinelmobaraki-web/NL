@@ -1,26 +1,138 @@
 <!doctype html>
-<html lang="ar" dir="ltr">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.emailjs.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  img-src 'self' data: blob: https: 
+    https://noureddinelmobaraki-web.github.io 
+    https://raw.githubusercontent.com
+    https://i.ytimg.com;
+  media-src 'self' blob: https://noureddinelmobaraki-web.github.io 
+    https://github.com 
+    https://objects.githubusercontent.com 
+    https://user-images.githubusercontent.com;
+  font-src 'self' data: https://fonts.gstatic.com;
+  connect-src 'self' https://api.emailjs.com https://noureddinelmobaraki-web.github.io;
+  worker-src 'self';
+  manifest-src 'self';
+  frame-ancestors 'none';
+  base-uri 'self';
+  form-action 'self' https://api.emailjs.com;
+">
     <!-- CDN preconnect — critical for first paint -->
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin>
     <link rel="dns-prefetch" href="https://noureddinelmobaraki-web.github.io">
 
 
     <script>
-      // SEC-003: Harden window.fetch against unauthorized overwrites from third-party scripts
+      // Benign HMR & WebSocket development error suppression
       (function() {
         try {
-          const originalFetch = window.fetch;
-          if (originalFetch && !Object.getOwnPropertyDescriptor(window, 'fetch')?.get) {
-            Object.defineProperty(window, 'fetch', {
-              get: function() { return originalFetch; },
-              set: function() { /* Block modification silently */ },
-              configurable: false,
-              enumerable: false
+          // 1. Intercept standard global errors and prevent bubbling for HMR/WebSocket issues
+          window.addEventListener('error', function(event) {
+            try {
+              const msg = (event.message || '').toLowerCase();
+              const isHmrOrWs = msg.includes('websocket') || 
+                                msg.includes('hmr') || 
+                                msg.includes('vite') ||
+                                (event.filename && (event.filename.includes('vite') || event.filename.includes('hmr')));
+              if (isHmrOrWs) {
+                event.stopImmediatePropagation();
+                event.preventDefault();
+                return true;
+              }
+            } catch (_) {}
+          }, true);
+
+          // 2. Intercept unhandled promise rejections
+          window.addEventListener('unhandledrejection', function(event) {
+            try {
+              const reason = event.reason;
+              let reasonStr = '';
+              if (reason) {
+                if (typeof reason === 'string') {
+                  reasonStr = reason;
+                } else if (reason.message) {
+                  reasonStr = reason.message;
+                } else if (reason.stack) {
+                  reasonStr = reason.stack;
+                }
+              }
+              const reasonLower = reasonStr.toLowerCase();
+              if (
+                reasonLower.includes('websocket') || 
+                reasonLower.includes('hmr') || 
+                reasonLower.includes('vite') ||
+                reasonLower.includes('failed to connect') ||
+                reasonLower.includes('closed without opened')
+              ) {
+                event.stopImmediatePropagation();
+                event.preventDefault();
+                return true;
+              }
+            } catch (_) {}
+          }, true);
+
+          // 3. Gracefully wrap WebSocket to prevent uncaught error events on connection failures
+          if ('WebSocket' in window) {
+            const NativeWebSocket = window.WebSocket;
+            window.WebSocket = function(url, protocols) {
+              const ws = protocols ? new NativeWebSocket(url, protocols) : new NativeWebSocket(url);
+              ws.addEventListener('error', function(e) {
+                if (e.preventDefault) e.preventDefault();
+                if (e.stopPropagation) e.stopPropagation();
+              }, { capture: true });
+              return ws;
+            };
+            window.WebSocket.prototype = NativeWebSocket.prototype;
+            // Restore constructor reference
+            Object.defineProperty(window.WebSocket, 'prototype', {
+              value: NativeWebSocket.prototype,
+              writable: false
             });
           }
-        } catch (e) {}
+        } catch (_) {}
+      })();
+
+      // Safe guard fetch property mutation for embedded/iframe environments
+      (function() {
+        try {
+          let originalFetch = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return originalFetch;
+            },
+            set: function(val) {
+              originalFetch = val;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          // non-blocking fallback
+        }
+      })();
+
+      // FOUC Fix: Synchronously apply saved theme before paint
+      (function() {
+        try {
+          const raw = localStorage.getItem('nl-prefs-v1');
+          if (raw) {
+            const saved = JSON.parse(raw);
+            if (saved && saved.theme && ['dark', 'light', 'bit', 'midnight'].includes(saved.theme)) {
+              document.documentElement.setAttribute('data-theme', saved.theme);
+            } else {
+              document.documentElement.setAttribute('data-theme', 'midnight');
+            }
+          } else {
+            document.documentElement.setAttribute('data-theme', 'midnight');
+          }
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'midnight');
+        }
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -31,9 +143,14 @@
 
     <!-- SEO -->
     <title>Noureddin El Mobaraki (NL) | Official Website & Music Archive</title>
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta http-equiv="content-language" content="ar, en">
+    <link rel="alternate" hreflang="ar" href="https://noureddinelmobaraki-web.github.io/NL/">
+    <link rel="alternate" hreflang="en" href="https://noureddinelmobaraki-web.github.io/NL/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="https://noureddinelmobaraki-web.github.io/NL/">
     <meta name="description" content="الموقع الرسمي للفنان والمنتج الموسيقي Noureddin El Mobaraki المعروف فنياً بـ NL و Nordine GB. استمع لأحدث أعمال الراب والهيب هوب وتصفح الأرشيف الموسيقي الكامل من الدار البيضاء.">
     <meta name="author" content="Noureddin El Mobaraki">
-    <meta name="keywords" content="Noureddin El Mobaraki, NL, Nordine GB, نور الدين المباركي, NL Rap, AI music, AI songs , Nordine GB music, Casablanca Rap Producer">
+    <meta name="keywords" content="Noureddin El Mobaraki, NL, Nordine GB, نور الدين المباركي, NL Rap, Hip-Hop Maroc, Rap Casablanca, Nordine GB music, Casablanca Rap Producer, Morocco Rap">
     <link rel="canonical" href="https://noureddinelmobaraki-web.github.io/NL/" />
 
     <!-- Open Graph (WhatsApp, Facebook) -->
@@ -68,32 +185,51 @@
         "addressCountry": "MA"
       },
       "sameAs": [
-        "https://www.youtube.com/@nourdin_el_mobaraki",
+        "https://open.spotify.com/artist/5nwGOyilF1p4uv35v6vb2u",
         "https://music.apple.com/us/artist/nl/1535833912",
-        "https://www.deezer.com/en/artist/362375722"
-      ]
+        "https://www.deezer.com/en/artist/362375722",
+        "https://music.amazon.fr/artists/B0025ODH90/nl",
+        "https://play.anghami.com/artist/1430009",
+        "https://on.soundcloud.com/Ok8zBgOjCPqjvStEA",
+        "https://www.youtube.com/@nourdin_el_mobaraki",
+        "https://www.instagram.com/nourdin_el_mobaraki",
+        "https://www.tiktok.com/@nourdine_el_mobaraki",
+        "https://www.facebook.com/profile.php?id=61558584390374"
+      ],
+      "image": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp",
+      "jobTitle": "Rap Artist & Music Producer",
+      "nationality": "Moroccan",
+      "knowsLanguage": ["ar", "fr", "en"]
     }
     </script>
     <link rel="icon" type="image/webp" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp" />
+    <link rel="manifest" href="/NL/manifest.webmanifest">
     
     <!-- Performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Non-blocking Google Fonts: load as print, swap to all when ready -->
-    <link 
-      rel="preload"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Outfit:wght@100;200;300;400;500;600&display=swap"
-      as="style"
-      onload="this.rel='stylesheet'"
-    >
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Outfit:wght@100;200;300;400;500;600&display=swap">
-    </noscript>
     <link rel="dns-prefetch" href="https://api.emailjs.com">
     <link rel="dns-prefetch" href="https://github.com">
     <link rel="dns-prefetch" href="https://objects.githubusercontent.com">
     <link rel="preconnect" href="https://objects.githubusercontent.com" crossorigin>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+    <!-- LCP Image Preload — Hero Profile -->
+    <link 
+      rel="preload" 
+      as="image" 
+      href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp"
+      fetchpriority="high"
+      imagesrcset="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp"
+      type="image/webp"
+      crossorigin
+    >
+    <link 
+      rel="preload" 
+      as="image" 
+      href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp"
+      fetchpriority="high"
+      type="image/webp"
+      crossorigin
+    >
+
   </head>
   <body>
     <div id="root"></div>

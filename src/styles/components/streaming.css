@@ -1,0 +1,48 @@
+.stream-titlebar-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.stream-titlebar-dot {
+  border-radius: 50%;
+}
+
+.stream-titlebar-dot.red {
+  width: 8px;
+  height: 8px;
+  background: #FF5F56;
+  border: 0.5px solid #E0443E;
+}
+
+.stream-titlebar-dot.yellow {
+  width: 8px;
+  height: 8px;
+  background: #FFBD2E;
+  border: 0.5px solid #DEA123;
+}
+
+.stream-titlebar-dot.green {
+  width: 8px;
+  height: 8px;
+  background: #27C93F;
+  border: 0.5px solid #1AAB29;
+}
+
+.stream-titlebar-dot.mini.red {
+  width: 6px;
+  height: 6px;
+  background: #FF5F56;
+  border: 0.5px solid #E0443E;
+}
+
+.stream-titlebar-dot.mini.yellow {
+  width: 6px;
+  height: 6px;
+  background: #FFBD2E;
+  border: 0.5px solid #DEA123;
+}
+
+.stream-spacer-12 {
+  width: 12px;
+}

@@ -1,0 +1,131 @@
+.hero-window {
+  border: var(--window-border);
+  box-shadow: var(--window-shadow);
+  background-color: var(--window-bg);
+}
+
+.hero-titlebar-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.hero-titlebar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.hero-titlebar-dot.red {
+  background: #FF5F56;
+  border: 0.5px solid #E0443E;
+}
+
+.hero-titlebar-dot.yellow {
+  background: #FFBD2E;
+  border: 0.5px solid #DEA123;
+}
+
+.hero-titlebar-dot.green {
+  background: #27C93F;
+  border: 0.5px solid #1AAB29;
+}
+
+.hero-titlebar-controls {
+  font-family: Geneva, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  color: #555;
+  margin-left: 2px;
+  cursor: pointer;
+  display: flex;
+  gap: 3px;
+}
+
+.hero-titlebar-text {
+  font-family: Geneva, "Lucida Sans Unicode", sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  color: #000;
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-titlebar-main {
+  display: var(--window-chrome-display);
+  background: linear-gradient(180deg, #CCCCCC 0%, #AAAAAA 100%);
+  border-bottom: 1px solid #999;
+  padding: 3px 6.5px;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.hero-menubar {
+  display: var(--window-chrome-display);
+  height: 18px;
+  background-color: #E0E0E0;
+  border-bottom: 1px solid #999;
+  align-items: center;
+  gap: 12px;
+  padding-left: 8px;
+  user-select: none;
+  font-family: Geneva, "Lucida Sans Unicode", sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  color: #000;
+}
+
+.hero-header-card {
+  background-color: var(--hero-card-bg);
+  border: var(--hero-card-border);
+  box-shadow: var(--hero-card-shadow);
+}
+
+.hero-title {
+  text-shadow: var(--hero-title-shadow);
+  font-style: var(--hero-title-style);
+  font-size: var(--hero-title-size);
+  text-transform: var(--hero-title-transform);
+  line-height: var(--hero-title-lines);
+}
+
+.hero-bio {
+  font-size: var(--hero-bio-size);
+  font-family: var(--hero-bio-font);
+  text-shadow: var(--hero-bio-shadow);
+  filter: var(--hero-bio-filter);
+  font-style: var(--hero-bio-style);
+}
+
+.hero-statusbar {
+  display: var(--window-chrome-display);
+  height: 16px;
+  background: linear-gradient(180deg, #BBBBBB 0%, #999999 100%);
+  border-top: 1px solid #888;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 6px;
+  padding-right: 22px;
+  user-select: none;
+  font-size: 9px;
+  font-family: Geneva, "Lucida Sans Unicode", sans-serif;
+  color: #000;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.hero-resize-grip {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, transparent 45%, #777 45%, #777 55%, transparent 55%, transparent 70%, #777 70%, #777 80%, transparent 80%, transparent 95%, #777 95%, #777 100%);
+  pointer-events: none;
+}

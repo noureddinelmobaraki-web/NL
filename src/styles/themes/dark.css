@@ -1,0 +1,153 @@
+[data-theme="dark"] {
+  /* === EDITORIAL VOID === */
+  --bg-primary:        #000000;
+  --bg-secondary:      #0a0a0a;
+  --bg-card:           rgba(255, 255, 255, 0.015);
+  --bg-card-hover:     rgba(255, 255, 255, 0.05);
+  --border-primary:    rgba(255, 255, 255, 0.04);
+  --border-accent:     #B8FF3F;
+  --bg-page:           #000000;
+  --bg-glass:          rgba(0, 0, 0, 0.88);
+  --bg-glass-strong:   rgba(0, 0, 0, 0.97);
+  --paper-color:       #0a0a0a;
+  --ink-color:         #B8FF3F;
+  
+  --text-primary:      #FFFFFF;
+  --text-secondary:    #888888;
+  --text-muted:        #444444;
+  --text-accent:       #B8FF3F;
+  --text-inverse:      #000000;
+  
+  --accent:            #B8FF3F;
+  --accent-hover:      #CCFF5A;
+  --accent-glow:       rgba(184, 255, 63, 0.15);
+  
+  --name-font:         Georgia, "Times New Roman", serif;
+  --name-font-size:    clamp(3.5rem, 10vw, 8rem);
+  --name-font-style:   italic;
+  --name-font-weight:  900;
+  --name-letter-spacing: -0.02em;
+  --name-line-height:  0.9;
+  
+  --nav-font:          'Share Tech Mono', monospace;
+  --nav-size:          0.7rem;
+  --nav-letter-spacing: 0.15em;
+  
+  --tag-bg:            transparent;
+  --tag-border:        var(--accent);
+  --tag-text:          var(--accent);
+  
+  --btn-bg:            transparent;
+  --btn-border:        var(--text-primary);
+  --btn-text:          var(--text-primary);
+  --btn-hover-bg:      var(--text-primary);
+  --btn-hover-text:    #000000;
+  
+  --hero-bg:           #000000;
+  --hero-image-filter: grayscale(100%) contrast(1.1);
+  
+  --grain-opacity:     0.18;
+  --grain-url:         url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='6' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+ 
+  --transition-speed:  0.4s;
+  --transition-ease:   cubic-bezier(0.16, 1, 0.3, 1);
+  --manga-shadow-color:  rgba(184, 255, 63, 0.08);
+  --border-subtle:       rgba(255, 255, 255, 0.04);
+  --lyric-active-color:  #B8FF3F;
+  --lyric-active-shadow: rgba(184, 255, 63, 0.6);
+  --accent-indigo:       #B8FF3F;
+  --accent-red:          #ff2d78;
+ 
+  /* === THEMED SECTION REFACTOR — DARK === */
+  --window-chrome-display: none;
+  --window-border: none;
+  --window-shadow: none;
+  --window-bg: transparent;
+ 
+  --hero-header-align: flex-end;
+  --hero-card-bg: rgba(0,0,0,0.92);
+  --hero-card-border: 1px solid rgba(184,255,63,0.2);
+  --hero-card-shadow: 0 0 40px rgba(184,255,63,0.05), inset 0 0 30px rgba(0,0,0,0.5);
+  --hero-bg-image-url: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bgdark.webp');
+  --hero-bg-filter: blur(3px) grayscale(1) contrast(1.1);
+  --hero-bg-opacity: 0.4;
+  --hero-bg-blend: luminosity;
+  --hero-overlay-bg: rgba(0,0,0,0.6);
+ 
+  --hero-title-font: Georgia, "Times New Roman", serif;
+  --hero-title-weight: 900;
+  --hero-title-color: #ffffff;
+  --hero-title-size: clamp(2.5rem, 11vw, 3.75rem);
+  --hero-title-shadow: 0 0 30px rgba(184,255,63,0.4), 0 0 60px rgba(184,255,63,0.2), 4px 4px 0px rgba(0,0,0,0.8);
+  --hero-title-style: italic;
+  --hero-title-lines: 0.9;
+  --hero-title-transform: none;
+ 
+  --hero-divider-top: 2px solid var(--border-subtle);
+  --hero-divider-style: italic;
+ 
+  --hero-loc-font: var(--font-mono, monospace);
+  --hero-loc-size: 1.25rem;
+  --hero-loc-weight: bold;
+  --hero-loc-shadow: none;
+  --hero-loc-prefix: "";
+  --hero-loc-suffix: " 📍";
+ 
+  --hero-alias-bg: transparent;
+  --hero-alias-border: 1px solid #B8FF3F;
+  --hero-alias-color: #B8FF3F;
+  --hero-alias-size: 0.6rem;
+  --hero-alias-tracking: 0.2em;
+  --hero-alias-transform: uppercase;
+  --hero-alias-font: var(--font-mono, monospace);
+  --hero-alias-deco: none;
+  --hero-alias-padding: 0.25rem 0.75rem;
+ 
+  --hero-bio-font: var(--font-hand);
+  --hero-bio-size: 1.5rem;
+  --hero-bio-shadow: 2px 2px 4px var(--manga-shadow-color), 0 0 20px var(--lyric-active-shadow);
+  --hero-bio-filter: drop-shadow(2px 2px 2px var(--manga-shadow-color));
+  --hero-bio-style: normal;
+ 
+  --hero-profile-width: 12rem;
+  --hero-profile-border: 3px solid var(--ink-color);
+  --hero-profile-shadow: none;
+  --hero-profile-transform: rotate(2deg);
+  --hero-profile-hover-transform: rotate(0deg);
+  --hero-profile-display: none;
+ 
+  --streaming-titlebar-display: none;
+  --streaming-h2-display: inline-block;
+  --streaming-divider-display: block;
+  --social-titlebar-display: none;
+  --social-h2-display: inline-block;
+ 
+  --stream-card-border: none;
+  --stream-card-shadow: none;
+  --stream-card-bg: transparent;
+  --stream-card-flex-dir: row;
+  --stream-mini-titlebar-display: none;
+ 
+  --stream-content-dark-display: flex;
+  --stream-content-light-display: none;
+  --stream-content-default-display: none;
+ 
+  --social-content-dark-display: flex;
+  --social-content-light-display: none;
+  --social-content-default-display: none;
+  --social-card-rotate: 0deg;
+  --social-card-radius: 0px;
+  --social-card-shadow: none;
+ 
+  color-scheme: dark;
+ 
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+ 
+  --yt-highlights-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightsdark.webp');
+  --vault-playlist-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_coverdark.webp');
+  --highlights-vault-radius: 0px;
+  --highlights-yt-radius: 0px;
+}

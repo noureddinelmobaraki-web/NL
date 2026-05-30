@@ -35,6 +35,7 @@ export const MobileNavBar = ({
 
   return (
     <nav
+      lang="ar"
       aria-label="Mobile Navigation"
       style={{
         position: 'fixed',

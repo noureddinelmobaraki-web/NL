@@ -7,9 +7,10 @@ interface OsWindowProps {
   className?: string;
   style?: React.CSSProperties;
   contentPadding?: string | number;
+  overflow?: 'visible' | 'hidden';
 }
 
-export function OsWindow({ title, children, className = '', style, contentPadding }: OsWindowProps) {
+export function OsWindow({ title, children, className = '', style, contentPadding, overflow = 'hidden' }: OsWindowProps) {
   const resolvedTheme = useResolvedTheme();
 
   return (
@@ -72,7 +73,7 @@ export function OsWindow({ title, children, className = '', style, contentPaddin
         </span>
       </div>
       {/* Content */}
-      <div className="flex-1 overflow-hidden" style={{ padding: contentPadding !== undefined ? contentPadding : '12px' }}>
+      <div className={`flex-1 ${overflow === 'visible' ? 'overflow-visible' : 'overflow-hidden'}`} style={{ padding: contentPadding !== undefined ? contentPadding : '12px' }}>
         {children}
       </div>
 

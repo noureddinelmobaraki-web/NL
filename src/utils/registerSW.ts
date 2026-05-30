@@ -51,7 +51,7 @@ function showUpdateToast() {
     maxWidth: '380px',
     backdropFilter: 'blur(8px)',
     color: '#ffffff',
-    fontFamily: '"Inter", sans-serif',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
@@ -97,7 +97,7 @@ function showUpdateToast() {
     cursor: 'pointer',
     padding: '6px 12px',
     borderRadius: '4px',
-    fontFamily: '"Inter", sans-serif',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     transition: 'all 0.2s',
   });
   dismissBtn.onmouseover = () => { dismissBtn.style.color = '#ffffff'; };
@@ -117,7 +117,7 @@ function showUpdateToast() {
     cursor: 'pointer',
     padding: '6px 14px',
     borderRadius: '4px',
-    fontFamily: '"Inter", sans-serif',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     boxShadow: '0 2px 4px rgba(184, 255, 63, 0.2)',
     transition: 'all 0.2s',
   });
@@ -138,7 +138,23 @@ function showUpdateToast() {
 }
 
 export function registerServiceWorker() {
-  if (!('serviceWorker' in navigator) || !import.meta.env.PROD) return;
+  if (!('serviceWorker' in navigator)) return;
+
+  if (!import.meta.env.PROD) {
+    // In dev mode, aggressively unregister any service workers to clear cache bugs
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister().then((success) => {
+          if (success) {
+            console.log('[SW Tool] Successfully unregistered stale service worker.');
+          }
+        });
+      }
+    }).catch((err) => {
+      console.warn('[SW Tool] Failed to unregister service workers:', err);
+    });
+    return;
+  }
   
   window.addEventListener('load', async () => {
     try {

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import { ScrollProgress } from "../ScrollProgress";
-import { NowPlayingBar } from "../NowPlayingBar";
+import { NowPlayingBar } from "../NowPlaying/NowPlayingBar";
 import { ActiveSong } from "../../types";
 import { useButtonContext } from "./ButtonOrchestrator";
 import type { Theme } from "../../utils/userPrefs";
+import { getLocalAssetUrl } from "../../constants/assets";
 
 const THEME_LABELS: Record<string, string> = {
   dark:     'ثيم: مظلم',
@@ -25,7 +26,7 @@ export interface FloatingControlsProps {
   onToggleAudio: () => void;
   onThemeChange: (newTheme: Theme) => void;
   isAnyModalOpen?: boolean;
-  activeModalContext?: 'page' | 'lens' | 'mebit' | 'songs-modal' | 'win12' | null;
+  activeModalContext?: 'page' | 'lens' | 'mebit' | 'songs-modal' | null;
 }
 
 export const FloatingControls = ({
@@ -59,8 +60,8 @@ export const FloatingControls = ({
           className="fab-button flex items-center justify-center"
         >
           <img 
-            src={`${import.meta.env.BASE_URL}${theme === 'dark' ? 'dark-mode.svg' : theme === 'light' ? 'light-mode.svg' : theme === 'bit' ? 'bit_mode.svg' : 'midnight_mode.svg'}`} 
-            alt={theme}
+            src={getLocalAssetUrl(theme === 'dark' ? 'dark-mode.svg' : theme === 'light' ? 'light-mode.svg' : theme === 'bit' ? 'bit_mode.svg' : 'midnight_mode.svg')} 
+            alt={`${THEME_LABELS[theme] ?? theme} icon`}
             className="w-4 h-4 object-contain"
             style={{ 
               filter: theme === 'light' ? 'none' : 'invert(1) brightness(2)'

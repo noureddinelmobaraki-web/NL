@@ -1,0 +1,14 @@
+:root {
+  --vh-mobile: 100dvh;
+  --mobile-content-pad-bottom: calc(72px + env(safe-area-inset-bottom) + 16px);
+  --touch-min: 44px;
+  --mobile-gutter: clamp(12px, 4vw, 20px);
+
+  --z-bg-effects: 1;
+  --z-content: 10;
+  --z-floating-controls: 9000;
+  --z-now-playing: 9500;
+  --z-modal: 9800;
+  --z-loading-screen: 9999;
+  --z-toast: 10000;
+}

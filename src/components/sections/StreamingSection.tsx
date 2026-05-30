@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, memo } from 'react';
 import { motion, Variants } from "framer-motion";
 import { 
   Instagram, 
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { StreamingPlatform, SocialChannel } from "../../types";
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
+import { getLocalAssetUrl } from '../../constants/assets';
 
 const STREAMING_PLATFORMS: StreamingPlatform[] = [
   {
@@ -96,17 +97,7 @@ const SpotifyLogo = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const STYLES_REFACTORED = {
-  TITLEBAR_DOTS: { display: 'flex', gap: '3px', alignItems: 'center' },
-  DOT_RED: { width: 8, height: 8, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' },
-  DOT_YELLOW: { width: 8, height: 8, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' },
-  DOT_GREEN: { width: 8, height: 8, borderRadius: '50%', background: '#27C93F', border: '0.5px solid #1AAB29' },
-  DOT_MINI_RED: { width: 6, height: 6, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' },
-  DOT_MINI_YELLOW: { width: 6, height: 6, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' },
-  SPACER_12: { width: 12 },
-};
-
-export const StreamingSection = () => {
+export const StreamingSection = memo(() => {
   const resolvedTheme = useResolvedTheme();
 
   // Runtime CSS variable assertion
@@ -150,10 +141,10 @@ export const StreamingSection = () => {
         <div className="streaming-header-container">
           {/* Titlebar Style for light theme */}
           <div className="streaming-titlebar-refactored">
-            <div style={STYLES_REFACTORED.TITLEBAR_DOTS}>
-              <div style={STYLES_REFACTORED.DOT_RED} />
-              <div style={STYLES_REFACTORED.DOT_YELLOW} />
-              <div style={STYLES_REFACTORED.DOT_GREEN} />
+            <div className="stream-titlebar-dots">
+              <div className="stream-titlebar-dot red" />
+              <div className="stream-titlebar-dot yellow" />
+              <div className="stream-titlebar-dot green" />
             </div>
             <span className="text-black flex-1 text-center">STREAMING_PLATFORMS.exe</span>
           </div>
@@ -177,12 +168,12 @@ export const StreamingSection = () => {
             >
               {/* Mini Window Header (visible in light theme only) */}
               <div className="stream-mini-titlebar">
-                <div style={STYLES_REFACTORED.TITLEBAR_DOTS}>
-                  <div style={STYLES_REFACTORED.DOT_MINI_RED} />
-                  <div style={STYLES_REFACTORED.DOT_MINI_YELLOW} />
+                <div className="stream-titlebar-dots">
+                  <div className="stream-titlebar-dot mini red" />
+                  <div className="stream-titlebar-dot mini yellow" />
                 </div>
                 <span className="stream-mini-titlebar-text">{platform.name}</span>
-                <div style={STYLES_REFACTORED.SPACER_12} />
+                <div className="stream-spacer-12" />
               </div>
 
               {/* Underlying Unified Anchor element styled via CSS custom properties */}
@@ -207,7 +198,7 @@ export const StreamingSection = () => {
                     <SpotifyLogo className="w-8 h-8 shrink-0 drop-shadow-[0_0_8px_#1DB954]" />
                   ) : platform.name === "Apple Music" ? (
                     <img 
-                      src={`${import.meta.env.BASE_URL}apple-music.svg`} 
+                      src={getLocalAssetUrl('apple-music.svg')} 
                       className="w-6 h-6 shrink-0 object-contain" 
                       style={{ filter: 'invert(1)' }} 
                       alt="" 
@@ -282,4 +273,4 @@ export const StreamingSection = () => {
       </motion.section>
     </main>
   );
-};
+});

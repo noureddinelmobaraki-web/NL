@@ -10,6 +10,24 @@ html {
 
 *, *::before, *::after {
   box-sizing: border-box;
+}
+
+/* Theme color transitions — applied only to elements that change with theme */
+body,
+[class*="bg-"],
+[class*="text-"],
+[class*="border-"],
+.manga-panel,
+.manga-border,
+.hero-window,
+.hero-header-card,
+.section-card,
+section,
+article,
+aside,
+nav,
+header,
+footer {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -39,8 +57,7 @@ body {
 }
 
 @media (min-width: 1024px) {
-  body {
-    -webkit-touch-callout: none;
+  button, [role="button"], nav, .fab-button, .manga-border, .hero-titlebar-main, .hero-menubar, .hero-statusbar {
     -webkit-user-select: none;
     user-select: none;
   }

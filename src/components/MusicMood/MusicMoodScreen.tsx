@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import type { Song, LyricLine } from '../../types';
-import { parseLRC } from '../LyricsEngine';
+import type { Song } from '../../types';
 import { useHlsAudio } from '../../hooks/useHlsAudio';
+import { useMoodAudioGraph } from './hooks/useMoodAudioGraph';
+import { useMoodLyrics } from './hooks/useMoodLyrics';
+import { useMoodGestures } from './hooks/useMoodGestures';
+import { MoodParticles } from './MoodParticles';
+import { MoodControls } from './MoodControls';
 
 interface MusicMoodScreenProps {
   songs: Song[];            // كل الأغاني الـ 25
@@ -17,10 +21,6 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
   const [activeSong, setActiveSong]   = useState<Song | null>(null);
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const [currentTime, setCurrentTime] = useState(0);
-  const [lyrics, setLyrics]           = useState<LyricLine[]>([]);
-  const [currentLine, setCurrentLine] = useState<string>('');
-  const [nextLine, setNextLine]       = useState<string>('');
-  const [glowIntensity, setGlowIntensity] = useState(0);
   const [isEntering, setIsEntering]   = useState(true); // fade-in animation
   const [diceSpinning, setDiceSpinning] = useState(false);
   const [needsUserTap, setNeedsUserTap] = useState(false);
@@ -30,14 +30,19 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     a.crossOrigin = 'anonymous';
     return a;
   })());
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const animFrameRef = useRef<number>(0);
-  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const particlesCanvasRef = useRef<HTMLCanvasElement>(null);
-  const particlesAnimRef = useRef<number>(0);
 
-  // ── قفل الـ overflow مُدار مركزيًا في MySongsPage لمنع التداخل والتعليق في السكرول عند الخروج ──
+  // ── جلب وتتبع الصوت (Web Audio Setup) عبر الهوك المخصص
+  const { glowIntensity, audioCtxRef } = useMoodAudioGraph({
+    audioRef,
+    existingAudioCtx,
+    activeSong,
+  });
+
+  // ── تتبع الكلمات ومزامنتها عبر الهوك المخصص
+  const { currentLine, nextLine } = useMoodLyrics({
+    activeSong,
+    currentTime,
+  });
 
   // ── اختيار أغنية عشوائية
   const pickRandomSong = useCallback(() => {
@@ -51,9 +56,29 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     const picked = pool[Math.floor(Math.random() * pool.length)];
     setActiveSong(picked);
     setCurrentTime(0);
-    setLyrics([]);
-    setCurrentLine('');
   }, [songs, activeSong]);
+
+  // ── play/pause
+  const handlePlayPause = useCallback(() => {
+    setNeedsUserTap(false);
+    // استئناف AudioContext إذا كان suspended (Chrome policy)
+    if (audioCtxRef.current?.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    if (audioRef.current.paused) {
+      audioRef.current.play().catch(err => {
+        console.warn('Play blocked:', err);
+      });
+    } else {
+      audioRef.current.pause();
+    }
+  }, [audioCtxRef]);
+
+  // ── إدارة الإيماءات والمفاتيح عبر الهوك المخصص
+  useMoodGestures({
+    onExit,
+    handlePlayPause,
+  });
 
   // ── تشغيل أول أغنية عشوائية فور الدخول
   useEffect(() => {
@@ -63,7 +88,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     // تشغيل الأغنية بعد ظهور الشاشة
     const t2 = setTimeout(() => pickRandomSong(), 400);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── ربط HLS
@@ -107,239 +132,6 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     };
   }, [pickRandomSong]);
 
-  // ── جلب وتحليل الـ LRC
-  useEffect(() => {
-    if (!activeSong?.lrc) { setLyrics([]); return; }
-    const ctrl = new AbortController();
-    const filename = activeSong.lrc.split('/').pop() || '';
-    const encoded  = encodeURIComponent(filename);
-    fetch(`${import.meta.env.BASE_URL}lrc/${encoded}`, { signal: ctrl.signal })
-      .then(r => r.text())
-      .then(text => parseLRC(text))
-      .then(parsed => setLyrics(parsed))
-      .catch(() => {});
-    return () => ctrl.abort();
-  }, [activeSong]);
-
-  // ── تحديد الكلمات الحالية بناءً على الوقت
-  useEffect(() => {
-    if (!lyrics.length) return;
-    let current = '', next = '';
-    for (let i = 0; i < lyrics.length; i++) {
-      if (lyrics[i].time <= currentTime) {
-        current = lyrics[i].text;
-        next    = lyrics[i + 1]?.text ?? '';
-      }
-    }
-    setCurrentLine(current);
-    setNextLine(next);
-  }, [currentTime, lyrics]);
-
-  // ── Web Audio Setup — يُنشأ مرة واحدة فقط
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    // إنشاء AudioContext مرة واحدة فقط طوال عمر المكوّن
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = existingAudioCtx ?? new AudioContext();
-    }
-    const ctx = audioCtxRef.current;
-
-    // استئناف إن كان suspended
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-
-    // إنشاء analyser مرة واحدة
-    if (!analyserRef.current) {
-      analyserRef.current = ctx.createAnalyser();
-      analyserRef.current.fftSize = 64;
-    }
-
-    // إنشاء MediaElementSource مرة واحدة فقط — هذا هو سبب المشكلة
-    if (!sourceNodeRef.current) {
-      try {
-        sourceNodeRef.current = ctx.createMediaElementSource(audio);
-      } catch (err) {
-        // إذا رُمي InvalidStateError، الـ source موجود بالفعل في graph آخر
-        console.warn('MediaElementSource already created:', err);
-        return;
-      }
-    }
-
-    // ربط الـ graph: source → analyser → destination (السماعات)
-    sourceNodeRef.current.connect(analyserRef.current);
-    analyserRef.current.connect(ctx.destination);
-
-    return () => {
-      // لا تُفصل عند تغيير الأغنية — فقط عند unmount المكوّن كاملاً
-    };
-  }, [existingAudioCtx]);
-
-  // ── استئناف AudioContext عند تغيير الأغنية (يحل مشكلة suspended)
-  useEffect(() => {
-    if (!activeSong) return;
-    if (audioCtxRef.current?.state === 'suspended') {
-      audioCtxRef.current.resume().catch(() => {});
-    }
-  }, [activeSong]);
-
-  // ── حلقة قياس الـ bass لتحريك الـ glow
-  useEffect(() => {
-    const tick = () => {
-      if (analyserRef.current) {
-        const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(data);
-        // نأخذ متوسط الـ bass (أول 8 قيم)
-        const bass = data.slice(0, 8).reduce((a, b) => a + b, 0) / 8;
-        setGlowIntensity(bass / 255); // 0 → 1
-      }
-      animFrameRef.current = requestAnimationFrame(tick);
-    };
-    animFrameRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, []);
-
-  // ── play/pause
-  const handlePlayPause = () => {
-    setNeedsUserTap(false);
-    // استئناف AudioContext إذا كان suspended (Chrome policy)
-    if (audioCtxRef.current?.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
-    if (audioRef.current.paused) {
-      audioRef.current.play().catch(err => {
-        console.warn('Play blocked:', err);
-      });
-    } else {
-      audioRef.current.pause();
-    }
-  };
-
-  // ── ESC للخروج
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onExit();
-      if (e.key === ' ') { e.preventDefault(); handlePlayPause(); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onExit]);
-
-  // ── إضافة gesture للخروج على الموبايل (swipe up)
-  useEffect(() => {
-    let startY = 0;
-    const onTouchStart = (e: TouchEvent) => { startY = e.touches[0].clientY; };
-    const onTouchEnd = (e: TouchEvent) => {
-      const diff = startY - e.changedTouches[0].clientY;
-      if (diff > 80) onExit(); // swipe up = خروج
-    };
-    window.addEventListener('touchstart', onTouchStart);
-    window.addEventListener('touchend',   onTouchEnd);
-    return () => {
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchend',   onTouchEnd);
-    };
-  }, [onExit]);
-
-  // ── جزيئات عائمة مثل antigravity.google
-  useEffect(() => {
-    const canvas = particlesCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const resize = () => {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    // ── إنشاء الجزيئات
-    const PARTICLE_COUNT = window.innerWidth < 768 ? 40 : 80;
-    interface Particle {
-      x: number; y: number;
-      vx: number; vy: number;
-      size: number; opacity: number;
-      rotation: number; rotSpeed: number;
-      shape: 'dot' | 'dash';
-      color: string;
-    }
-
-    const COLORS = [
-      'rgba(120, 120, 120,',  // رمادي
-      'rgba(180, 180, 200,',  // رمادي مزرق
-      'rgba(100, 100, 180,',  // بنفسجي خفيف
-      'rgba(160, 160, 200,',  // بنفسجي فاتح
-      'rgba(100, 160, 100,',  // أخضر خفيف
-      'rgba(200, 120, 120,',  // وردي خفيف
-    ];
-
-    const particles: Particle[] = Array.from({ length: PARTICLE_COUNT }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4 - 0.1, // ميل خفيف للأعلى
-      size: Math.random() * 3 + 1.5,
-      opacity: Math.random() * 0.35 + 0.1,
-      rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.02,
-      shape: Math.random() > 0.3 ? 'dash' : 'dot',
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    }));
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      particles.forEach(p => {
-        // حرك الجزيئة
-        p.x += p.vx;
-        p.y += p.vy;
-        p.rotation += p.rotSpeed;
-
-        // إعادة الجزيئة للشاشة إذا خرجت
-        if (p.x < -20)  p.x = canvas.width  + 20;
-        if (p.x > canvas.width  + 20) p.x = -20;
-        if (p.y < -20)  p.y = canvas.height + 20;
-        if (p.y > canvas.height + 20) p.y = -20;
-
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rotation);
-        ctx.globalAlpha = p.opacity;
-
-        if (p.shape === 'dash') {
-          // خط قصير مائل
-          ctx.strokeStyle = `${p.color}1)`;
-          ctx.lineWidth = p.size * 0.6;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(-p.size * 2, 0);
-          ctx.lineTo(p.size * 2, 0);
-          ctx.stroke();
-        } else {
-          // نقطة دائرية
-          ctx.fillStyle = `${p.color}1)`;
-          ctx.beginPath();
-          ctx.arc(0, 0, p.size * 0.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      });
-
-      particlesAnimRef.current = requestAnimationFrame(draw);
-    };
-
-    draw();
-
-    return () => {
-      window.removeEventListener('resize', resize);
-      cancelAnimationFrame(particlesAnimRef.current);
-    };
-  }, []);
-
   // ── تنظيف كامل عند الخروج من MusicMood
   useEffect(() => {
     return () => {
@@ -351,10 +143,8 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
       }
       // أغلق AudioContext
       audioCtxRef.current?.close().catch(() => {});
-      // أوقف animation
-      cancelAnimationFrame(animFrameRef.current);
     };
-  }, []);
+  }, [audioCtxRef]);
 
   // ── وهج بسيط جداً — دائرة رمادية خفيفة في المركز تتنفس مع الموسيقى
   const glowRadius = 30 + glowIntensity * 40;      // أصغر وأكثر تركيزاً
@@ -376,7 +166,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
         justifyContent: 'center',
         opacity: isEntering ? 0 : 1,
         transition: 'opacity 0.8s ease',
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         // منع أي تفاعل خارجي مع الصفحة تحتها
         pointerEvents: 'all',
       }}
@@ -440,17 +230,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
       </button>
 
       {/* ══ Particles Canvas — مثل antigravity.google ══ */}
-      <canvas
-        ref={particlesCanvasRef}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
+      <MoodParticles />
 
       {/* ══ اسم الأغنية ══ */}
       {activeSong && (
@@ -467,7 +247,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
             fontWeight: 400,
             whiteSpace: 'nowrap',
             userSelect: 'none',
-            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           }}
         >
           {activeSong.title}
@@ -500,7 +280,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
             // fade-in عند تغيير السطر
             animation: 'moodLineFadeIn 0.4s ease forwards',
             maxWidth: '650px',
-            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           }}
         >
           {currentLine || (audioStatus === 'loading' ? '...' : '')}
@@ -517,7 +297,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
               margin: 0,
               letterSpacing: '-0.01em',
               maxWidth: '650px',
-              fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
             }}
           >
             {nextLine}
@@ -540,132 +320,12 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
       </div>
 
       {/* ══ أزرار التحكم ══ */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '32px',
-        }}
-      >
-        {/* زر Play/Pause */}
-        <button
-          onClick={handlePlayPause}
-          aria-label={audioStatus === 'playing' ? 'إيقاف مؤقت' : 'تشغيل'}
-          style={{
-            width: '52px',
-            height: '52px',
-            borderRadius: '50%',
-            border: '1.5px solid rgba(0,0,0,0.15)',
-            background: 'transparent',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease',
-            color: 'rgba(0,0,0,0.5)',
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.5)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.9)';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.15)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.5)';
-          }}
-        >
-          {audioStatus === 'playing' ? (
-            // ■■ Pause
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <rect x="3" y="2" width="4" height="12" rx="1"/>
-              <rect x="9" y="2" width="4" height="12" rx="1"/>
-            </svg>
-          ) : (
-            // ▶ Play
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <polygon points="3,2 14,8 3,14"/>
-            </svg>
-          )}
-        </button>
-
-        {/* نرد العشوائية — SVG ثلاثي الأبعاد */}
-        <button
-          onClick={pickRandomSong}
-          aria-label="أغنية عشوائية"
-          title="أغنية عشوائية"
-          style={{
-            width: '52px',
-            height: '52px',
-            borderRadius: '50%',
-            border: '1.5px solid rgba(0,0,0,0.12)',
-            background: 'transparent',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-            animation: diceSpinning ? 'moodDiceSpin 0.55s cubic-bezier(0.34,1.56,0.64,1)' : 'none',
-            padding: 0,
-          }}
-          onMouseEnter={e => {
-            const b = e.currentTarget as HTMLButtonElement;
-            b.style.borderColor = 'rgba(0,0,0,0.4)';
-            b.style.transform = 'scale(1.1) rotate(-8deg)';
-          }}
-          onMouseLeave={e => {
-            const b = e.currentTarget as HTMLButtonElement;
-            b.style.borderColor = 'rgba(0,0,0,0.12)';
-            b.style.transform = 'scale(1) rotate(0deg)';
-          }}
-        >
-          {/* SVG نرد ثلاثي الأبعاد — يظهر وجه 3 */}
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 100 100"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* الوجه الأمامي (فاتح) */}
-            <path
-              d="M10 35 L50 15 L90 35 L90 75 L50 95 L10 75 Z"
-              fill="rgba(0,0,0,0.07)"
-              stroke="rgba(0,0,0,0.25)"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-            {/* الوجه الأيمن (أغمق — ظل) */}
-            <path
-              d="M50 15 L90 35 L90 75 L50 55 Z"
-              fill="rgba(0,0,0,0.18)"
-              stroke="rgba(0,0,0,0.25)"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-            {/* الوجه العلوي (أفتح — ضوء) */}
-            <path
-              d="M10 35 L50 15 L90 35 L50 55 Z"
-              fill="rgba(0,0,0,0.04)"
-              stroke="rgba(0,0,0,0.25)"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-
-            {/* نقاط الوجه الأمامي — يُظهر رقم 3 */}
-            {/* نقطة يسار أعلى */}
-            <circle cx="28" cy="48" r="5" fill="rgba(0,0,0,0.6)" />
-            {/* نقطة وسط */}
-            <circle cx="50" cy="65" r="5" fill="rgba(0,0,0,0.6)" />
-            {/* نقطة يمين أسفل */}
-            <circle cx="72" cy="78" r="5" fill="rgba(0,0,0,0.6)" />
-
-            {/* نقاط الوجه العلوي — رقم 2 */}
-            <circle cx="36" cy="28" r="3.5" fill="rgba(0,0,0,0.35)" />
-            <circle cx="64" cy="40" r="3.5" fill="rgba(0,0,0,0.35)" />
-          </svg>
-        </button>
-      </div>
+      <MoodControls
+        audioStatus={audioStatus}
+        handlePlayPause={handlePlayPause}
+        pickRandomSong={pickRandomSong}
+        diceSpinning={diceSpinning}
+      />
 
       {/* ══ زر الخروج — أسفل الشاشة، شفاف جداً ══ */}
       <button

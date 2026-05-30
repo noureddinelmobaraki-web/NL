@@ -1,0 +1,230 @@
+.tablet-px {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+.slide-down {
+  animation: slideDown 0.3s ease-in forwards;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 10s linear infinite;
+  padding-left: 100%;
+}
+
+.seek-bar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.1s;
+}
+
+.seek-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(255,255,255,0.5);
+  transition: transform 150ms;
+}
+
+.seek-bar:hover::-webkit-slider-thumb {
+  transform: scale(1.3);
+}
+
+.fade-enter {
+  opacity: 0;
+}
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 250ms ease-in;
+}
+.fade-exit {
+  opacity: 1;
+}
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 250ms ease-out;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.glass-morphism {
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+}
+
+.cursor-hover {
+  width: 48px !important;
+  height: 48px !important;
+  border-color: var(--text-primary) !important;
+  margin-top: -8px;
+  margin-left: -8px;
+}
+
+.skip-to-content {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  background: var(--paper-color);
+  color: var(--ink-color);
+  padding: 12px 24px;
+  z-index: 999999;
+  font-weight: bold;
+  font-family: var(--font-manga);
+  text-transform: uppercase;
+  border-bottom: 4px solid var(--ink-color);
+  border-right: 4px solid var(--ink-color);
+  transition: top 0.2s ease-in-out;
+}
+
+.skip-to-content:focus {
+  top: 0;
+}
+
+/* Mobile responsive rules */
+@media (max-width: 767px) {
+  .mobile-stack { flex-direction: column !important; }
+  .mobile-w-full { width: 100% !important; max-width: 100% !important; }
+  .mobile-h-auto { height: auto !important; }
+
+  *, *::before, *::after {
+    transition: none !important;
+  }
+  :where(button, a, [role="button"], input, .manga-card, .manga-button, h1, h2, h3, .nav-item) {
+    transition: background-color 0.25s, color 0.25s, border-color 0.25s !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Full screen modals/panels on mobile */
+  .mobile-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: var(--z-floating-controls) !important;
+    border-radius: 0 !important;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mobile back button — always visible */
+  .mobile-back-btn {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    position: fixed;
+    top: calc(var(--safe-top) + 12px);
+    left: 16px;
+    z-index: 9100;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: none;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 20px;
+    min-height: 44px;
+    cursor: pointer;
+  }
+
+  /* Desktop back buttons hidden on mobile — use mobile-back-btn instead */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Bigger tap targets */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-back-btn {
+    display: none !important;
+  }
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Global mobile min touch targets */
+@media (max-width: 767px) {
+  /* Global tap targets */
+  button:not([data-no-min]),
+  a[role="button"]:not([data-no-min]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 100dvh بدل 100vh */
+  .min-h-screen { min-height: 100dvh !important; }
+  .h-screen     { height: 100dvh !important; }
+
+  /* LIGHT theme */
+  @media (hover: none) {
+    [data-theme="light"], [data-theme="light"] * { cursor: auto !important; }
+  }
+
+  /* Manga paper tabs */
+  .manga-paper-tab {
+    clip-path: none !important;
+    border-radius: 4px !important;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.85) !important;
+    transform: rotate(0deg) !important;
+    min-height: 44px !important;
+  }
+  .manga-paper-tab::before,
+  .manga-paper-tab::after { display: none !important; }
+
+  /* NowPlayingBar فوق MobileNavBar */
+  .now-playing-bar { bottom: 60px !important; }
+}

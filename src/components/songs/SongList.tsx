@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Song, LyricLine } from '../../types';
-import { SongCard } from '../SongCard';
+import { SongCard } from './SongCard';
 import { preloadSong } from '../../hooks/useHlsAudio';
 
 export interface SongListProps {

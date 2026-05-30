@@ -24,10 +24,26 @@ export function useParallax(intensity = 20) {
       }
     };
 
+    let scrollTimeout: any = null;
+    const handleScroll = () => {
+      document.body.classList.add('scrolling');
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+      scrollTimeout = setTimeout(() => {
+        document.body.classList.remove('scrolling');
+      }, 200);
+    };
+
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
       if (requestRef.current !== null) {
         cancelAnimationFrame(requestRef.current);
       }

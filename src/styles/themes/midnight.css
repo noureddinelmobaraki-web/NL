@@ -1,0 +1,144 @@
+[data-theme="midnight"] {
+  /* Surfaces — warm deep indigo */
+  --bg-page: #080a14;
+  --bg-page-rgb: 8, 10, 20;
+  --bg-elevated: #161929;
+  --bg-overlay: rgba(16, 18, 32, 0.88);
+  --bg-glass: rgba(100, 110, 180, 0.04);
+  --bg-glass-strong: rgba(120, 130, 200, 0.12);
+
+  /* Text */
+  --text-primary: #e8eaf6;
+  --text-primary-rgb: 232, 234, 246;
+  --text-secondary: rgba(200, 210, 240, 0.75);
+  --text-muted: rgba(160, 170, 210, 0.45);
+  --text-inverse: #0d0f1a;
+
+  /* Borders — indigo-tinted */
+  --border-subtle: rgba(120, 130, 220, 0.14);
+  --border-strong: rgba(140, 160, 240, 0.28);
+  --ink-color: #c8d0f0;
+  --paper-color: #161929;
+
+  /* Shadows */
+  --manga-shadow-color: rgba(100, 120, 220, 0.5);
+  --manga-shadow: 8px 8px 0 var(--manga-shadow-color);
+
+  /* Accents — more saturated/warm */
+  --accent-indigo: #818cf8;
+  --accent-purple: #c084fc;
+  --accent-gold: #fbbf24;
+  --accent-red: #f87171;
+
+  --halftone-color: rgba(120, 130, 200, 0.08);
+  --hero-overlay: rgba(13, 15, 26, 0.55);
+  --noise-opacity: 0.04;
+  --backdrop-blur: 28px;
+
+  /* LYRIC COLORS — golden-orange for half-moon */
+  --lyric-active-color: #FF8C42;
+  --lyric-active-shadow: rgba(255, 140, 66, 0.65);
+  --lyric-inactive-color: rgba(200, 210, 240, 0.45);
+  --card-control-bg: rgba(120, 130, 200, 0.08);
+  --card-control-border: rgba(140, 160, 240, 0.15);
+  --card-control-text: rgba(200, 210, 240, 0.7);
+  --card-border-line: rgba(120, 130, 200, 0.12);
+  --seek-track-bg: rgba(120, 130, 200, 0.2);
+
+  /* GALLERY VARS */
+  --gallery-strip-bg: linear-gradient(180deg, transparent 0%, rgba(13,15,26,0.92) 40%, rgba(13,15,26,0.98) 100%);
+  --gallery-strip-border: rgba(120,130,200,0.14);
+
+  /* SONG TITLES */
+  --song-title-color: #fbbf24;
+  --song-title-shadow: rgba(251, 191, 36, 0.6);
+
+  /* === THEMED SECTION REFACTOR — MIDNIGHT === */
+  --window-chrome-display: none;
+  --window-border: none;
+  --window-shadow: none;
+  --window-bg: transparent;
+
+  --hero-header-align: flex-end;
+  --hero-card-bg: transparent;
+  --hero-card-border: 4px solid var(--ink-color);
+  --hero-card-shadow: none;
+  --hero-bg-image-url: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp');
+  --hero-bg-filter: blur(3px);
+  --hero-bg-opacity: 1;
+  --hero-bg-blend: normal;
+  --hero-overlay-bg: rgba(8,10,20,0.4);
+
+  --hero-title-font: var(--font-manga);
+  --hero-title-weight: 900;
+  --hero-title-color: var(--text-primary);
+  --hero-title-size: clamp(2rem, 6vw, 5rem);
+  --hero-title-shadow: 2px 2px 0px var(--manga-shadow-color);
+  --hero-title-style: normal;
+  --hero-title-lines: 1;
+  --hero-title-transform: uppercase;
+
+  --hero-divider-top: 2px solid var(--border-subtle);
+  --hero-divider-style: italic;
+
+  --hero-loc-font: var(--font-manga);
+  --hero-loc-size: 1.25rem;
+  --hero-loc-weight: bold;
+  --hero-loc-shadow: 2px 2px 0px var(--manga-shadow-color);
+  --hero-loc-prefix: "";
+  --hero-loc-suffix: " 📍";
+
+  --hero-alias-bg: var(--ink-color);
+  --hero-alias-border: 1px solid var(--border-subtle);
+  --hero-alias-color: var(--text-inverse);
+  --hero-alias-size: 0.875rem;
+  --hero-alias-tracking: normal;
+  --hero-alias-transform: none;
+  --hero-alias-font: var(--font-manga);
+  --hero-alias-deco: none;
+  --hero-alias-padding: 0.25rem 0.75rem;
+
+  --hero-bio-font: var(--font-hand);
+  --hero-bio-size: 1.5rem;
+  --hero-bio-shadow: 2px 2px 4px var(--manga-shadow-color), 0 0 20px var(--lyric-active-shadow);
+  --hero-bio-filter: drop-shadow(2px 2px 2px var(--manga-shadow-color));
+  --hero-bio-style: normal;
+
+  --hero-profile-width: 12rem;
+  --hero-profile-border: 3px solid var(--ink-color);
+  --hero-profile-shadow: none;
+  --hero-profile-transform: rotate(2deg);
+  --hero-profile-hover-transform: rotate(0deg);
+  --hero-profile-display: none;
+
+  --streaming-titlebar-display: none;
+  --streaming-h2-display: inline-block;
+  --streaming-divider-display: block;
+  --social-titlebar-display: none;
+  --social-h2-display: inline-block;
+
+  --stream-card-border: none;
+  --stream-card-shadow: none;
+  --stream-card-bg: transparent;
+  --stream-card-flex-dir: row;
+  --stream-mini-titlebar-display: none;
+
+  --stream-content-dark-display: none;
+  --stream-content-light-display: none;
+  --stream-content-default-display: flex;
+
+  --social-content-dark-display: none;
+  --social-content-light-display: none;
+  --social-content-default-display: flex;
+  --social-card-rotate: 0.5deg;
+  --social-card-radius: 8px 15px 5px 22px / 22px 5px 15px 8px;
+  --social-card-shadow: none;
+
+  color-scheme: dark;
+
+  --yt-highlights-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlights.webp');
+  --vault-playlist-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_cover.webp');
+  --highlights-shadow-color: rgba(100, 120, 220, 0.5);
+  --highlights-vault-radius: 12px 5px 18px 8px / 8px 18px 5px 12px;
+  --highlights-yt-radius: 5px 15px 8px 20px / 15px 8px 20px 5px;
+}

@@ -1,6 +1,11 @@
 
 const CDN = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn';
 
+export const getLocalAssetUrl = (filename: string): string => {
+  const base = import.meta.env.BASE_URL || "/";
+  return base.endsWith('/') ? `${base}${filename}` : `${base}/${filename}`;
+};
+
 const CDN_BIT = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn';
 // Bit-theme image overrides — same CDN, _bit suffix
 const BIT_IMAGES = {
@@ -52,6 +57,12 @@ export const ASSETS = {
     headerBg:  `${CDN}/header_bg.webp`,
     heroBg:    `${CDN}/hero_bg.webp`,
     footerDeco:`${CDN}/footer_deco.gif`,
+    heroBgBlurred: {
+      dark: getLocalAssetUrl('images/optimized/hero_bg.dark.blurred.webp'),
+      light: getLocalAssetUrl('images/optimized/hero_bg.light.blurred.webp'),
+      midnight: getLocalAssetUrl('images/optimized/hero_bg.midnight.blurred.webp'),
+      bit: getLocalAssetUrl('images/optimized/hero_bg.bit.blurred.webp'),
+    },
     me_bits: [
       `${CDN}/me_bit_1.webp`,
       `${CDN}/me_bit_2.webp`,
@@ -133,12 +144,18 @@ export const CDN_ORIGIN = 'noureddinelmobaraki-web.github.io';
  * resolvedTheme = document.documentElement.dataset.theme
  */
 export function getThemedImage(
-  key: keyof typeof BIT_IMAGES,
+  key: keyof typeof BIT_IMAGES | 'heroBgBlurred',
   resolvedTheme: string
 ): string {
-  if (resolvedTheme === 'bit')   return BIT_IMAGES[key];
-  if (resolvedTheme === 'dark')  return DARK_IMAGES[key];
-  if (resolvedTheme === 'light') return LIGHT_IMAGES[key];
+  if (key === 'heroBgBlurred') {
+    if (resolvedTheme === 'bit')   return ASSETS.profile.heroBgBlurred.bit;
+    if (resolvedTheme === 'dark')  return ASSETS.profile.heroBgBlurred.dark;
+    if (resolvedTheme === 'light') return ASSETS.profile.heroBgBlurred.light;
+    return ASSETS.profile.heroBgBlurred.midnight;
+  }
+  if (resolvedTheme === 'bit')   return BIT_IMAGES[key as keyof typeof BIT_IMAGES];
+  if (resolvedTheme === 'dark')  return DARK_IMAGES[key as keyof typeof BIT_IMAGES];
+  if (resolvedTheme === 'light') return LIGHT_IMAGES[key as keyof typeof BIT_IMAGES];
   // midnight and system → original default assets, unchanged
   const map: Record<keyof typeof BIT_IMAGES, string> = {
     profile:       ASSETS.profile.main,
@@ -149,5 +166,7 @@ export function getThemedImage(
     playlistCover: ASSETS.songs.playlistCover,
     ytHighlights:  ASSETS.songs.ytHighlights,
   };
-  return map[key];
+  return map[key as keyof typeof BIT_IMAGES];
 }
+
+

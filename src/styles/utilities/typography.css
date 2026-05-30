@@ -1,0 +1,23 @@
+.text-fluid-title {
+  font-size: clamp(3.5rem, 12vw, 9.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+
+.text-fluid-hero {
+  font-size: clamp(2rem, 6vw + 0.5rem, 5rem);
+}
+
+.text-fluid-section {
+  font-size: clamp(1.875rem, 5vw, 3rem);
+  line-height: 1.1;
+}
+
+.text-fluid-card {
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.text-fluid-body {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.5;
+}

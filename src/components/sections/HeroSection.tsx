@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { motion, Variants } from "framer-motion";
 import { getThemedImage, LIGHT_PROFILE_OPENING, LIGHT_PROFILE_MAIN } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
@@ -15,100 +15,7 @@ const itemVariants: Variants = {
   }
 };
 
-const STYLES_REFACTORED = {
-  CONTAINER_STYLE: {
-    border: 'var(--window-border)',
-    boxShadow: 'var(--window-shadow)',
-    backgroundColor: 'var(--window-bg)',
-  },
-  TITLE_BAR_DOTS_LEFT: { display: 'flex', gap: '4px', alignItems: 'center' },
-  TITLE_BAR_DOT_RED: { width: 8, height: 8, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' },
-  TITLE_BAR_DOT_YELLOW: { width: 8, height: 8, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' },
-  TITLE_BAR_DOT_GREEN: { width: 8, height: 8, borderRadius: '50%', background: '#27C93F', border: '0.5px solid #1AAB29' },
-  TITLE_BAR_CONTROLS: { fontFamily: 'Geneva, monospace', fontSize: '10px', fontWeight: 'bold' as const, color: '#555', marginLeft: '2px', cursor: 'pointer', display: 'flex', gap: '3px' },
-  TITLE_BAR_TEXT: {
-    fontFamily: 'Geneva, "Lucida Sans Unicode", sans-serif',
-    fontSize: '11px',
-    fontWeight: 'bold' as const,
-    color: '#000',
-    flex: 1,
-    textAlign: 'center' as const,
-    overflow: 'hidden' as const,
-    textOverflow: 'ellipsis' as const,
-    whiteSpace: 'nowrap' as const
-  },
-  TITLE_BAR_MAIN: {
-    display: 'var(--window-chrome-display)',
-    background: 'linear-gradient(180deg, #CCCCCC 0%, #AAAAAA 100%)',
-    borderBottom: '1px solid #999',
-    padding: '3px 6.5px',
-    alignItems: 'center',
-    gap: '6px',
-    userSelect: 'none' as const,
-    height: '24px',
-    flexShrink: 0,
-  },
-  MENU_BAR_STYLE: {
-    display: 'var(--window-chrome-display)',
-    height: '18px',
-    backgroundColor: '#E0E0E0',
-    borderBottom: '1px solid #999',
-    alignItems: 'center',
-    gap: '12px',
-    paddingLeft: '8px',
-    userSelect: 'none' as const,
-    fontFamily: 'Geneva, "Lucida Sans Unicode", sans-serif',
-    fontSize: '11px',
-    fontWeight: 'bold' as const,
-    color: '#000',
-  },
-  HEADER_CARD_STYLE: {
-    backgroundColor: 'var(--hero-card-bg)',
-    border: 'var(--hero-card-border)',
-    boxShadow: 'var(--hero-card-shadow)',
-  },
-  HERO_TITLE_STYLE: { 
-    textShadow: 'var(--hero-title-shadow)',
-    fontStyle: 'var(--hero-title-style)',
-    fontSize: 'var(--hero-title-size)',
-    textTransform: 'var(--hero-title-transform)' as any,
-    lineHeight: 'var(--hero-title-lines)',
-  },
-  HERO_BIO_STYLE: {
-    fontSize: 'var(--hero-bio-size)',
-    fontFamily: 'var(--hero-bio-font)',
-    textShadow: 'var(--hero-bio-shadow)',
-    filter: 'var(--hero-bio-filter)',
-    fontStyle: 'var(--hero-bio-style)',
-  },
-  STATUS_BAR_STYLE: {
-    display: 'var(--window-chrome-display)',
-    height: '16px',
-    background: 'linear-gradient(180deg, #BBBBBB 0%, #999999 100%)',
-    borderTop: '1px solid #888',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingLeft: '6px',
-    paddingRight: '22px',
-    userSelect: 'none' as const,
-    fontSize: '9px',
-    fontFamily: 'Geneva, "Lucida Sans Unicode", sans-serif',
-    color: '#000',
-    flexShrink: 0,
-    position: 'relative' as const
-  },
-  RESIZE_GRIP_STYLE: {
-    position: 'absolute' as const,
-    right: '2px',
-    bottom: '1px',
-    width: '12px',
-    height: '12px',
-    background: 'linear-gradient(135deg, transparent 45%, #777 45%, #777 55%, transparent 55%, transparent 70%, #777 70%, #777 80%, transparent 80%, transparent 95%, #777 95%, #777 100%)',
-    pointerEvents: 'none' as const,
-  }
-};
-
-export const HeroSection = () => {
+export const HeroSection = memo(() => {
   const resolvedTheme = useResolvedTheme();
 
   // Light theme profile switching logic
@@ -209,27 +116,26 @@ export const HeroSection = () => {
     >
       {/* Outer wrapper playing container chrome */}
       <div 
-        className="flex-1 w-full flex flex-col overflow-hidden"
-        style={STYLES_REFACTORED.CONTAINER_STYLE}
+        className="hero-window flex-1 w-full flex flex-col overflow-hidden"
       >
         {/* Title Bar */}
-        <div style={STYLES_REFACTORED.TITLE_BAR_MAIN}>
-          <div style={STYLES_REFACTORED.TITLE_BAR_DOTS_LEFT}>
-            <div style={STYLES_REFACTORED.TITLE_BAR_DOT_RED} />
-            <div style={STYLES_REFACTORED.TITLE_BAR_DOT_YELLOW} />
-            <div style={STYLES_REFACTORED.TITLE_BAR_DOT_GREEN} />
-            <span style={STYLES_REFACTORED.TITLE_BAR_CONTROLS}>
+        <div className="hero-titlebar-main">
+          <div className="hero-titlebar-dots">
+            <div className="hero-titlebar-dot red" />
+            <div className="hero-titlebar-dot yellow" />
+            <div className="hero-titlebar-dot green" />
+            <span className="hero-titlebar-controls">
               <span title="Minimize" className="hover:text-black">─</span>
               <span title="Maximize" className="hover:text-black">□</span>
             </span>
           </div>
-          <span style={STYLES_REFACTORED.TITLE_BAR_TEXT}>
+          <span className="hero-titlebar-text">
             noureddin_el_mobaraki.profile
           </span>
         </div>
 
         {/* Menu Bar */}
-        <div style={STYLES_REFACTORED.MENU_BAR_STYLE}>
+        <div className="hero-menubar">
           {['File', 'Edit', 'View'].map((item) => (
             <span 
               key={item} 
@@ -243,9 +149,8 @@ export const HeroSection = () => {
         {/* Content Area / Hero ContentCard */}
         <div 
           lang="en"
-          className="p-4 sm:p-6 md:p-8 flex-1 relative group overflow-hidden transition-all duration-500 hover:scale-[1.01] halftone-bg-refactored"
+          className="hero-header-card p-4 sm:p-6 md:p-8 flex-1 relative group overflow-hidden transition-all duration-500 hover:scale-[1.01] halftone-bg-refactored"
           id="header-card"
-          style={STYLES_REFACTORED.HEADER_CARD_STYLE}
         >
           {/* Header Background Image with Zoom & Pan Hover Effect */}
           <div 
@@ -263,8 +168,7 @@ export const HeroSection = () => {
              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           >
             <h1 
-              className="hero-title-refactored font-[var(--hero-title-font)] font-[var(--hero-title-weight)] tracking-tight text-[var(--hero-title-color)] select-none"
-              style={STYLES_REFACTORED.HERO_TITLE_STYLE}
+              className="hero-title hero-title-refactored font-[var(--hero-title-font)] font-[var(--hero-title-weight)] tracking-tight text-[var(--hero-title-color)] select-none"
               data-text={siteData.fullName}
             >
               {siteData.fullName}
@@ -286,17 +190,16 @@ export const HeroSection = () => {
           {/* BIO Paragraph */}
           <p 
             lang="en"
-            className="mt-4 hero-bio-refactored text-[var(--text-primary)] leading-tight max-w-xl"
-            style={STYLES_REFACTORED.HERO_BIO_STYLE}
+            className="hero-bio mt-4 hero-bio-refactored text-[var(--text-primary)] leading-tight max-w-xl"
           >
             {siteData.bio}
           </p>
         </div>
 
         {/* Status Bar */}
-        <div style={STYLES_REFACTORED.STATUS_BAR_STYLE}>
+        <div className="hero-statusbar">
           <span>Ready</span>
-          <div style={STYLES_REFACTORED.RESIZE_GRIP_STYLE} />
+          <div className="hero-resize-grip" />
         </div>
       </div>
 
@@ -307,9 +210,9 @@ export const HeroSection = () => {
           alt="Profile" 
           className="w-full h-full object-cover" 
           loading="eager"
-          fetchpriority="high"
+          fetchPriority="high"
         />
       </div>
     </motion.header>
   );
-};
+});

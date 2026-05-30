@@ -1,8 +1,8 @@
-const CACHE_SHELL = 'nl-shell-v2';
-const CACHE_IMAGES = 'nl-images-v2';
-const CACHE_HLS = 'nl-hls-v2';
-const CACHE_AUDIO = 'nl-audio-v2';
-const CACHE_FONTS = 'nl-fonts-v2';
+const CACHE_SHELL = 'nl-shell-v4';
+const CACHE_IMAGES = 'nl-images-v4';
+const CACHE_HLS = 'nl-hls-v4';
+const CACHE_AUDIO = 'nl-audio-v4';
+const CACHE_FONTS = 'nl-fonts-v4';
 
 const PRECACHE_URLS = [
   '/NL/',

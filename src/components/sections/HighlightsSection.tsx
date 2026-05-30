@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, memo } from 'react';
 import { motion, Variants } from "framer-motion";
 import { Music2, Youtube } from "lucide-react";
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
@@ -27,7 +27,7 @@ const STYLES_REFACTORED = {
   }
 };
 
-export const HighlightsSection = ({ 
+export const HighlightsSection = memo(({ 
   vaultPlaylistCoverUrl: _v, 
   youtubeHighlightsBgUrl: _y 
 }: HighlightsSectionProps) => {
@@ -110,4 +110,4 @@ export const HighlightsSection = ({
       </div>
     </motion.section>
   );
-};
+});
