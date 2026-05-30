@@ -10,11 +10,16 @@ export const CONFIG_ASSETS = {
   youtubeHighlightsBg: ASSETS.songs.ytHighlights,
 };
 
+const isAutomatedEnv = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
+
 export const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.3 }
+    transition: { 
+      staggerChildren: isAutomatedEnv ? 0 : 0.15, 
+      delayChildren: isAutomatedEnv ? 0 : 0.3 
+    }
   }
 };
 

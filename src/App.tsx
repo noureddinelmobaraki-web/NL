@@ -78,6 +78,7 @@ function AppInner() {
 
   const activeModalContext = getActiveContext() || "page";
   const isAnyModalOpen = getActiveContext() !== null;
+  const isAutomated = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
 
   const {
     audioRef,
@@ -203,7 +204,7 @@ function AppInner() {
       <div style={{ 
         opacity: loaded ? 1 : 0, 
         visibility: loaded ? 'visible' : 'hidden',
-        transition: 'opacity 500ms ease-in' 
+        transition: isAutomated ? 'none' : 'opacity 500ms ease-in' 
       }}>
         {renderClock()}
         <div className="min-h-screen w-full relative flex flex-col items-center py-10 px-4 sm:px-8 md:px-10 lg:px-10 overflow-x-hidden">

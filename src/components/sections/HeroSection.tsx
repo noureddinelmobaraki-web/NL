@@ -17,6 +17,7 @@ const itemVariants: Variants = {
 
 export const HeroSection = memo(() => {
   const resolvedTheme = useResolvedTheme();
+  const isAutomated = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
 
   // Light theme profile switching logic
   const [lightProfileSrc, setLightProfileSrc] = useState<string>(LIGHT_PROFILE_OPENING);
@@ -163,9 +164,9 @@ export const HeroSection = memo(() => {
           
           {/* Stable Native Hero Title animation envelope */}
           <motion.div
-             initial={{ opacity: 0, y: 15 }}
+             initial={isAutomated ? { opacity: 1, y: 0 } : { opacity: 0, y: 15 }}
              animate={{ opacity: 1, y: 0 }}
-             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+             transition={{ duration: isAutomated ? 0 : 0.6, ease: [0.16, 1, 0.3, 1], delay: isAutomated ? 0 : 0.1 }}
           >
             <h1 
               className="hero-title hero-title-refactored font-[var(--hero-title-font)] font-[var(--hero-title-weight)] tracking-tight text-[var(--hero-title-color)] select-none"
