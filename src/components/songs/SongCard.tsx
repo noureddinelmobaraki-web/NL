@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState, useEffect as useLyricsEffect } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Song, LyricLine } from '../../types';
 import { parseLRC } from '../LyricsEngine';
@@ -92,7 +92,7 @@ export const SongCard = memo(({
     return index;
   }, [localLyrics, currentTime]);
 
-  useLyricsEffect(() => {
+  useEffect(() => {
     if (resolvedTheme === 'light' && isLyricsOpen && currentLineIndex !== -1) {
       const activeEl = document.getElementById(`light-lyric-line-${currentLineIndex}`);
       if (activeEl) {
@@ -101,7 +101,7 @@ export const SongCard = memo(({
     }
   }, [currentLineIndex, isLyricsOpen, resolvedTheme]);
 
-  useLyricsEffect(() => {
+  useEffect(() => {
     // If parent already passed lyrics, use them
     if (lyrics && lyrics.length > 0) {
       setLocalLyrics(lyrics);
@@ -168,6 +168,15 @@ export const SongCard = memo(({
       layout
       layoutId={`song-${song.id}`}
       onClick={onPlay}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onPlay();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`Play song ${song.title}`}
       onPointerEnter={() => {
         if (song.url.includes('.m3u8')) {
           import('../../hooks/useHlsAudio').then(({ preloadAllSongs }) => {

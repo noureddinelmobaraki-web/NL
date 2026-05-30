@@ -40,6 +40,7 @@ export const SongCardHeader = ({
         </span>
         <div className="flex flex-col min-w-0">
           <h3 
+            lang="ar"
             className={`font-bold text-lg tracking-tight ${resolvedTheme === 'light' ? 'text-[#000]' : 'rainbow-text'}`}
             style={resolvedTheme === 'light' ? { fontFamily: 'Geneva, sans-serif' } : {
               filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))'

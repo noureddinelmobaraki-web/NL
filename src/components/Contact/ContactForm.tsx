@@ -24,7 +24,7 @@ export const ContactForm = () => {
   useEffect(() => {
     try {
       if (typeof window === 'undefined' || !window.localStorage) return;
-      const saved = localStorage.getItem('sarahni_send_log');
+      const saved = localStorage.getItem('nl-send-log-v1');
       if (saved) {
         const parsed: string[] = JSON.parse(saved);
         const now = new Date().getTime();
@@ -42,7 +42,7 @@ export const ContactForm = () => {
         }
 
         // Update storage with cleaned entries
-        localStorage.setItem('sarahni_send_log', JSON.stringify(validEntries));
+        localStorage.setItem('nl-send-log-v1', JSON.stringify(validEntries));
       }
     } catch (e) {
       console.warn('Failed to parse or access send log', e);
@@ -89,7 +89,7 @@ export const ContactForm = () => {
 
       setSendLog(updatedLog);
       try {
-        localStorage.setItem('sarahni_send_log', JSON.stringify(updatedLog));
+        localStorage.setItem('nl-send-log-v1', JSON.stringify(updatedLog));
       } catch (e) {
         console.warn('Failed to save send log', e);
       }
