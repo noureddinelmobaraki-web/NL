@@ -26,10 +26,11 @@
     "@fontsource/patrick-hand": "^5.2.8",
     "@fontsource/share-tech-mono": "^5.2.7",
     "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "esbuild": "0.28.0",
     "express": "^5.2.1",
-    "@vitejs/plugin-react": "^5.0.4",
+    "express-rate-limit": "8.5.2",
     "framer-motion": "^12.0.0",
     "hls.js": "1.6.16",
     "lucide-react": "^0.546.0",
@@ -48,11 +49,12 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "0.184.1",
+    "jsdom": "29.1.1",
     "p-limit": "^7.3.0",
     "rollup-plugin-visualizer": "^7.0.1",
     "sharp": "^0.34.5",
     "tsx": "^4.21.0",
-    "vitest": "^4.1.6"
+    "vitest": "4.1.7"
   },
   "engines": {
     "node": ">=20"

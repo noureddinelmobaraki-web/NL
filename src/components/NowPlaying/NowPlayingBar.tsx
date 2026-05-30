@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
-import { AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ActiveSong } from "../../types";
 import { useDeviceType } from "../../hooks/useDeviceType";
 import { formatTime } from "../songs/formatTime";
+import type { BarGeometry } from "../../hooks/useBarOrchestrator";
 import { NowPlayingBarDesktop } from "./NowPlayingBarDesktop";
 import { NowPlayingBarMobile } from "./NowPlayingBarMobile";
 import { QueuePopover } from "./QueuePopover";
@@ -10,11 +11,15 @@ import { ShareToast } from "./ShareToast";
 
 export interface NowPlayingBarProps {
   activeSong: ActiveSong | null;
+  isBarVisible: boolean;
+  geometry: BarGeometry;
   onClose: () => void;
 }
 
 export const NowPlayingBar = ({
   activeSong,
+  isBarVisible,
+  geometry,
   onClose,
 }: NowPlayingBarProps) => {
   const { isMobile, isTablet } = useDeviceType();
@@ -31,46 +36,60 @@ export const NowPlayingBar = ({
     }
   }, [activeSong]);
 
-  const isVisible = !!activeSong;
   const progress = (activeSong?.duration || 0) > 0 
     ? ((activeSong?.currentTime || 0) / (activeSong?.duration || 0)) * 100 
     : 0;
 
-  if (!isVisible || activeSong?.suppressMiniBar) return null;
-
   return (
-    <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setShowQueue(false);
-      }}
-      role="region"
-      aria-label="Music Player"
-      style={{
-        position: "fixed",
-        bottom: (isMobile || isTablet) ? "calc(68px + env(safe-area-inset-bottom))" : "24px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        maxWidth: "540px",
-        width: "95vw",
-        minHeight: isHovered && !isMobile && !isTablet ? "120px" : (isMobile || isTablet ? "auto" : "64px"),
-        background: 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.7), rgba(var(--bg-page-rgb), 0.8))',
-        backdropFilter: 'blur(32px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-        borderRadius: "28px",
-        border: '1px solid var(--border-strong)',
-        boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 1px 0 var(--border-subtle)',
-        zIndex: 8000,
-        padding: (isMobile || isTablet) ? "8px 16px 12px" : "0 16px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        transition: "all 400ms cubic-bezier(0.23, 1, 0.32, 1)",
-        overflow: "visible",
-      }}
-    >
-      {/* Queue Popover */}
+    <AnimatePresence>
+      {isBarVisible && activeSong && (
+        <motion.div
+          key="now-playing-bar"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => {
+            setIsHovered(false);
+            setShowQueue(false);
+          }}
+          role="region"
+          aria-label="Music Player"
+          initial={{ opacity: 0, y: 24, scale: geometry.scale * 0.95 }}
+          animate={{ 
+            opacity: geometry.opacity, 
+            y: 0, 
+            scale: geometry.scale,
+            transition: { duration: 0.4, ease: [0.23, 1, 0.32, 1] }
+          }}
+          exit={{ 
+            opacity: 0, 
+            y: 16, 
+            scale: geometry.scale * 0.95,
+            transition: { duration: 0.25, ease: [0.4, 0, 1, 1] }
+          }}
+          style={{
+            position: "fixed",
+            bottom: geometry.bottom,
+            left: geometry.left,
+            right: geometry.right,
+            transform: geometry.transform,
+            transformOrigin: "bottom center",
+            maxWidth: geometry.maxWidth,
+            width: geometry.width,
+            minHeight: isHovered && !isMobile && !isTablet ? "120px" : (isMobile || isTablet ? "auto" : "64px"),
+            background: 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.7), rgba(var(--bg-page-rgb), 0.8))',
+            backdropFilter: 'blur(32px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+            borderRadius: geometry.borderRadius,
+            border: '1px solid var(--border-strong)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 1px 0 var(--border-subtle)',
+            zIndex: 8000,
+            padding: (isMobile || isTablet) ? "8px 16px 12px" : "0 16px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            overflow: "visible",
+          }}
+        >
+          {/* Queue Popover */}
       <AnimatePresence>
         {showQueue && activeSong?.nextSongs && activeSong.nextSongs.length > 0 && (
           <QueuePopover 
@@ -158,6 +177,8 @@ export const NowPlayingBar = ({
            border-radius: 50%;
         }
       `}</style>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

@@ -4,9 +4,9 @@
  */
 
 import { motion } from "framer-motion";
-import React, { useState, useEffect, Suspense } from "react";
-import { loadPrefs, savePrefs, trackVisit } from './utils/userPrefs';
-import type { Theme, AudioIntent } from './utils/userPrefs';
+import React, { useEffect, Suspense } from "react";
+import { savePrefs, trackVisit } from './utils/userPrefs';
+import type { Theme } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { LoadingScreen } from "./components/Loading/LoadingScreen";
 import { SkeletonSection } from './components/SkeletonSection';
@@ -40,7 +40,6 @@ import { HeroSection } from './components/sections/HeroSection';
 import { StreamingSection } from './components/sections/StreamingSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
-import { ActiveSong } from "./types";
 import { getThemedImage } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
@@ -49,21 +48,21 @@ const GallerySection = React.lazy(() =>
   import('./components/layout/GallerySection').then(m => ({ default: m.GallerySection }))
 );
 
-const initialPrefs = loadPrefs();
+import { AppProvider, useAppContext } from './context/AppContext';
 
-export default function App() {
+function AppInner() {
   const { isMobile, isTablet } = useDeviceType();
   const resolvedTheme = useResolvedTheme();
   const parallaxRef = useParallax(isMobile ? 0 : 20);
 
-  const [loaded, setLoaded] = useState(false);
-  const [activeSong, setActiveSong] = useState<ActiveSong | null>(null);
-  const [currentPage, setCurrentPage] = useState('home');
-  const [ambientColor, setAmbientColor] = useState<string | null>(null);
-  const [audioIntent, setAudioIntent] = useState<AudioIntent>(
-    initialPrefs.audioIntent === 'user-playing' ? 'initial' : initialPrefs.audioIntent
-  );
-  const [theme, setTheme] = useState<Theme>(initialPrefs.theme);
+  const {
+    loaded, setLoaded,
+    activeSong, setActiveSong,
+    currentPage, setCurrentPage,
+    ambientColor, setAmbientColor,
+    audioIntent, setAudioIntent,
+    theme, setTheme
+  } = useAppContext();
 
   const {
     isGalleryOpen,
@@ -96,7 +95,7 @@ export default function App() {
     isGalleryOpen,
     theme,
     audioIntent,
-    setAudioIntent,
+    setAudioIntent: setAudioIntent as any,
     loaded,
     setIsGalleryOpen,
     setSelectedImageIndex,
@@ -198,6 +197,7 @@ export default function App() {
         isTablet={isTablet}
         theme={theme}
         activeSong={activeSong}
+        activeCardId={activeSong?.id ?? null}
         onToggleAudio={toggleAudio}
         onThemeChange={setTheme}
         isAnyModalOpen={isAnyModalOpen}
@@ -348,4 +348,12 @@ export default function App() {
     </ButtonProvider>
   );
 
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <AppInner />
+    </AppProvider>
+  );
 }

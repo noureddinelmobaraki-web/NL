@@ -6,6 +6,7 @@ import { ActiveSong } from "../../types";
 import { useButtonContext } from "./ButtonOrchestrator";
 import type { Theme } from "../../utils/userPrefs";
 import { getLocalAssetUrl } from "../../constants/assets";
+import { useBarOrchestrator } from '../../hooks/useBarOrchestrator';
 
 const THEME_LABELS: Record<string, string> = {
   dark:     'ثيم: مظلم',
@@ -23,6 +24,7 @@ export interface FloatingControlsProps {
   isTablet: boolean;
   theme: Theme;
   activeSong: ActiveSong | null;
+  activeCardId: number | null;
   onToggleAudio: () => void;
   onThemeChange: (newTheme: Theme) => void;
   isAnyModalOpen?: boolean;
@@ -31,10 +33,14 @@ export interface FloatingControlsProps {
 
 export const FloatingControls = ({
   isPlaying,
+  isMobile,
+  isTablet,
   theme,
   activeSong,
+  activeCardId,
   onToggleAudio,
   onThemeChange,
+  activeModalContext,
 }: FloatingControlsProps) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const { registerButton, unregisterButton } = useButtonContext();
@@ -123,12 +129,22 @@ export const FloatingControls = ({
     return () => unregisterButton('scrollTop');
   }, [showScrollTop, registerButton, unregisterButton]);
 
+  const { isBarVisible, geometry } = useBarOrchestrator({
+    activeCardId,
+    activeModalContext: activeModalContext ?? 'page',
+    isMobile,
+    isTablet,
+    suppressMiniBar: activeSong?.suppressMiniBar ?? false,
+  });
+
   return (
     <>
       <ScrollProgress />
 
       <NowPlayingBar 
         activeSong={activeSong}
+        isBarVisible={isBarVisible}
+        geometry={geometry}
         onClose={() => activeSong?.onDismiss?.()}
       />
     </>

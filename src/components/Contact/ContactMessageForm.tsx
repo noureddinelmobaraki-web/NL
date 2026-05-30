@@ -55,6 +55,8 @@ export const ContactMessageForm = ({
           style={mode === 'anonymous' ? currentStyles.toggleActive : currentStyles.toggleInactive}
           onClick={() => setMode('anonymous')}
           disabled={isBlocked}
+          aria-pressed={mode === 'anonymous'}
+          aria-label="إرسال كمجهول"
         >
           مجهول
         </button>
@@ -62,25 +64,33 @@ export const ContactMessageForm = ({
           style={mode === 'named' ? currentStyles.toggleActive : currentStyles.toggleInactive}
           onClick={() => setMode('named')}
           disabled={isBlocked}
+          aria-pressed={mode === 'named'}
+          aria-label="إرسال باسمي"
         >
           باسمي
         </button>
       </div>
 
       {mode === 'named' && (
-        <input
-          type="text"
-          placeholder="اكتب اسمك..."
-          value={senderName}
-          onChange={e => setSenderName(e.target.value)}
-          maxLength={50}
-          style={currentStyles.input}
-          disabled={isBlocked}
-        />
+        <>
+          <label htmlFor="sender-name" className="sr-only">اسمك</label>
+          <input
+            id="sender-name"
+            type="text"
+            placeholder="اكتب اسمك..."
+            value={senderName}
+            onChange={e => setSenderName(e.target.value)}
+            maxLength={50}
+            style={currentStyles.input}
+            disabled={isBlocked}
+          />
+        </>
       )}
 
       <div style={{ position: 'relative' }}>
+        <label htmlFor="message-body" className="sr-only">رسالتك</label>
         <textarea
+          id="message-body"
           placeholder="قوليا"
           value={message}
           onChange={e => setMessage(e.target.value)}
@@ -102,6 +112,8 @@ export const ContactMessageForm = ({
       <button
         onClick={onSend}
         disabled={status === 'sending' || isBlocked}
+        aria-label={status === 'sending' ? 'جاري الإرسال...' : 'إرسال الرسالة'}
+        aria-busy={status === 'sending'}
         style={{
           ...currentStyles.sendBtn,
           opacity: (status === 'sending' || isBlocked) ? 0.6 : 1,

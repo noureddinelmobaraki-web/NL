@@ -165,6 +165,7 @@ export const SongCard = memo(({
 
   const renderContent = () => (
     <motion.div 
+      id={`song-card-${song.id}`}
       layout
       layoutId={`song-${song.id}`}
       onClick={onPlay}

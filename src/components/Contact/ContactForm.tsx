@@ -71,6 +71,22 @@ export const ContactForm = () => {
     setErrorMsg('');
 
     try {
+      // Server-side rate limit check
+      const rateLimitRes = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          sender_name: mode === 'anonymous' ? 'مجهول' : (senderName.trim() || 'مجهول'), 
+          message: message.trim() 
+        })
+      });
+
+      if (rateLimitRes.status === 429) {
+        setErrorMsg('وصلت الحد اليومي، حاول غداً');
+        setStatus('idle');
+        return;
+      }
+
       await emailjs.send(
         EMAILJS_SERVICE,
         EMAILJS_TEMPLATE,

@@ -28,11 +28,18 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
   const [isMuted, setIsMuted] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setContext(isOpen ? 'lens' : 'page');
     return () => setContext('page');
   }, [isOpen, setContext]);
+
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      containerRef.current.focus();
+    }
+  }, [isOpen]);
 
   // Audio lifecycle management
   useEffect(() => {
@@ -153,7 +160,13 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
   if (!isOpen && !isTransitioning) return null;
 
   return (
-    <div style={{
+    <div 
+      ref={containerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="معرض الصور"
+      tabIndex={-1}
+      style={{
       position: 'fixed',
       inset: 0,
       zIndex: 9999,
