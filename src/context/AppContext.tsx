@@ -7,7 +7,7 @@ interface AppContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   audioIntent: AudioIntent;
-  setAudioIntent: (intent: AudioIntent) => void;
+  setAudioIntent: React.Dispatch<React.SetStateAction<AudioIntent>>;
   ambientColor: string | null;
   setAmbientColor: (color: string | null) => void;
   activeSong: ActiveSong | null;

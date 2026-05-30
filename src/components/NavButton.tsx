@@ -31,7 +31,7 @@ export const NavButton = ({
       onClick={onClick}
       className={`${THEME_STYLES[theme] ?? THEME_STYLES.dark} ${fullWidthOnMobile ? 'col-span-2 sm:col-span-auto' : ''}`}
       style={THEME_STYLES_INLINE[theme]}
-      aria-label={label}
+      type="button"
     >
       <Icon
         className="w-5 h-5"

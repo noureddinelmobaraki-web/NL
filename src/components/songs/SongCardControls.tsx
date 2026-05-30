@@ -13,7 +13,6 @@ interface SongCardControlsProps {
   onPrev: () => void;
   onNext: () => void;
   onPlayPause: () => void;
-  onShare?: () => void;
   isPlaying: boolean;
   isWaiting: boolean;
   song: Song;
@@ -138,6 +137,8 @@ export const SongCardControls = ({
           value={currentTime || 0}
           step={0.1}
           onChange={(e) => onSeek?.(parseFloat(e.target.value))}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
           className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer w-full"
           style={{ background: 'var(--seek-track-bg)', accentColor: 'var(--accent-indigo)' }}
         />
@@ -157,6 +158,8 @@ export const SongCardControls = ({
           step={0.01}
           value={volume || 0.7}
           onChange={(e) => onVolumeChange?.(parseFloat(e.target.value))}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
           className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer"
           style={{ background: 'var(--seek-track-bg)', accentColor: 'var(--accent-indigo)' }}
         />

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import Hls from 'hls.js';
-import { ASSETS } from '../../constants/assets';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { OsWindow } from '../OsWindow';
 import { VideoData } from './types';
@@ -20,18 +19,25 @@ export const VideoCard = memo(({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const isActive = index === activeIndex;
-  const [shouldLoad, setShouldLoad] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(() => Math.abs(index - activeIndex) <= 5);
   const resolvedTheme = useResolvedTheme();
 
-  // Lazy load: only initialize HLS when card is near viewport
   useEffect(() => {
+    if (Math.abs(index - activeIndex) <= 5) {
+      setShouldLoad(true);
+    }
+  }, [activeIndex, index]);
+
+  // Lazy load fallback: initialize HLS when card is near viewport
+  useEffect(() => {
+    if (shouldLoad) return;
     const observer = new IntersectionObserver(
       entries => { if (entries[0].isIntersecting) { setShouldLoad(true); observer.disconnect(); } },
-      { rootMargin: '400px' }
+      { rootMargin: '800px' }
     );
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [shouldLoad]);
 
   useEffect(() => {
     if (!shouldLoad || !videoRef.current) return;
@@ -68,21 +74,21 @@ export const VideoCard = memo(({
           willChange: 'transform',
         }}
       >
-        <video
-          ref={el => { videoRef.current = el; onRef(el, index); }}
-          poster={video.poster.startsWith('/images/posters/') ? ASSETS.profile.me_bits[0] : video.poster}
-          aria-label={`Drawing work ${index + 1} of ${total}`}
-          playsInline
-          loop
-          muted={isMuted}
-          autoPlay={isActive}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            background: resolvedTheme === 'light' ? 'white' : 'black',
-          }}
-        />
+      <video
+        ref={el => { videoRef.current = el; onRef(el, index); }}
+        aria-label={`Drawing work ${index + 1} of ${total}`}
+        playsInline
+        loop
+        muted={isMuted}
+        autoPlay={isActive}
+        preload={Math.abs(index - activeIndex) <= 5 ? "auto" : "none"}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+          background: resolvedTheme === 'light' ? 'white' : 'black',
+        }}
+      />
       </div>
     );
   }
@@ -91,12 +97,12 @@ export const VideoCard = memo(({
   const renderVideo = () => (
     <video
       ref={el => { videoRef.current = el; onRef(el, index); }}
-      poster={video.poster.startsWith('/images/posters/') ? ASSETS.profile.me_bits[0] : video.poster}
       aria-label={`Drawing work ${index + 1} of ${total}`}
       playsInline
       loop
       muted={isMuted}
       autoPlay={isActive}
+      preload={Math.abs(index - activeIndex) <= 5 ? "auto" : "none"}
       className="absolute inset-0 w-full h-full object-contain"
       style={{ background: resolvedTheme === 'light' ? 'white' : 'black' }}
     />

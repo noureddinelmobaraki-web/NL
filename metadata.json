@@ -1,10 +1,12 @@
 {
   "name": "NL",
+  "description": "Noureddin El Mobaraki (NL) | Official Website & Music Archive",
   "fullName": "Noureddin El Mobaraki",
-  "aliases": ["NL", "Nordine GB"],
-  "location": "Casablanca",
-  "bio": "24 years old. Just a simple 5/10 kind of person. I'm into drawing, cooking for fun, and overthinking random stuff that probably helps nobody. That's pretty much it.",
-  "description": "Noureddin El Mobaraki (NL)",
+  "location": "Casablanca, Morocco",
+  "aliases": ["NL", "NL MUSIC"],
+  "bio": "AKA Nordine GB, I release under NL.(24)y, I'm a simple person. I love living and kinda don't want to belong to society anymore. Even with these dark things in mind. That's it.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

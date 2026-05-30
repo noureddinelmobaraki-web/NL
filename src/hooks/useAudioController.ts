@@ -46,6 +46,7 @@ export function useAudioController({
     const initialResolved = theme === 'dark' ? 'dark'
       : theme === 'light' ? 'light'
       : theme === 'bit' ? 'bit'
+      : theme === 'lite' ? 'lite'
       : 'midnight';
     const url = THEME_BG_MUSIC[initialResolved] ?? ASSETS.media.music;
     currentBgUrlRef.current = url;
@@ -122,6 +123,7 @@ export function useAudioController({
     const resolved = theme === 'dark' ? 'dark'
       : theme === 'light' ? 'light'
       : theme === 'bit' ? 'bit'
+      : theme === 'lite' ? 'lite'
       : 'midnight';
 
     const newUrl = THEME_BG_MUSIC[resolved] ?? ASSETS.media.music;

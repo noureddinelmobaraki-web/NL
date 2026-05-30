@@ -3,8 +3,6 @@ import {
   Pause, 
   SkipForward, 
   SkipBack, 
-  Share2, 
-  Check, 
   Shuffle, 
   Repeat, 
   Repeat1, 
@@ -26,7 +24,6 @@ export interface NowPlayingBarDesktopProps {
   volume: number;
   isHovered: boolean;
   showQueue: boolean;
-  showCopied: boolean;
   formatTime: (sec: number) => string;
   onPrev: () => void;
   onNext: () => void;
@@ -34,7 +31,6 @@ export interface NowPlayingBarDesktopProps {
   onVolumeChange: (v: number) => void;
   onShuffleToggle: () => void;
   onRepeatToggle: () => void;
-  onShare: (e: React.MouseEvent) => void;
   onToggleQueue: () => void;
   onClose: () => void;
 }
@@ -50,7 +46,6 @@ export const NowPlayingBarDesktop = ({
   volume,
   isHovered,
   showQueue,
-  showCopied,
   formatTime,
   onPrev,
   onNext,
@@ -58,7 +53,6 @@ export const NowPlayingBarDesktop = ({
   onVolumeChange,
   onShuffleToggle,
   onRepeatToggle,
-  onShare,
   onToggleQueue,
   onClose,
 }: NowPlayingBarDesktopProps) => {
@@ -88,7 +82,9 @@ export const NowPlayingBarDesktop = ({
           {activeSong.cover || (activeSong as any).backgroundImage ? (
             <img 
               src={activeSong.cover || (activeSong as any).backgroundImage} 
-              alt="" 
+              alt={`${activeSong?.title ?? 'Song'} cover art`} 
+              width={44}
+              height={44}
               style={{ 
                 width: '100%', 
                 height: '100%', 
@@ -138,7 +134,7 @@ export const NowPlayingBarDesktop = ({
             title="Shuffle"
             aria-label={isShuffle ? 'إيقاف العشوائي' : 'تشغيل العشوائي'}
           >
-            <Shuffle size={16} />
+            <Shuffle size={16} aria-hidden="true" />
           </button>
           <button
             onClick={onRepeatToggle}
@@ -147,7 +143,7 @@ export const NowPlayingBarDesktop = ({
             title="Repeat"
             aria-label={repeatMode === 'off' ? 'تكرار إيقاف' : repeatMode === 'all' ? 'تكرار الكل' : 'تكرار الأغنية'}
           >
-            {repeatMode === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
+            {repeatMode === 'one' ? <Repeat1 size={16} aria-hidden="true" /> : <Repeat size={16} aria-hidden="true" />}
           </button>
         </div>
 
@@ -156,9 +152,10 @@ export const NowPlayingBarDesktop = ({
           <button
             onClick={onPrev}
             style={{ color: "var(--text-secondary)", padding: "10px" }}
+            aria-label="الأغنية السابقة"
             className="hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
           >
-            <SkipBack size={20} fill="currentColor" />
+            <SkipBack size={20} fill="currentColor" aria-hidden="true" />
           </button>
 
           <button
@@ -178,15 +175,16 @@ export const NowPlayingBarDesktop = ({
             }}
             className="hover:scale-105 active:scale-95 shadow-lg outline-none"
           >
-            {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} />}
+            {isPlaying ? <Pause size={20} fill="currentColor" aria-hidden="true" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} aria-hidden="true" />}
           </button>
 
           <button
             onClick={onNext}
             style={{ color: "var(--text-secondary)", padding: "10px" }}
+            aria-label="الأغنية التالية"
             className="hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
           >
-            <SkipForward size={20} fill="currentColor" />
+            <SkipForward size={20} fill="currentColor" aria-hidden="true" />
           </button>
 
           {/* Desktop Hover Controls (Volume/Queue) */}
@@ -212,26 +210,10 @@ export const NowPlayingBarDesktop = ({
                 title="Queue"
                 aria-label={showQueue ? 'إخفاء القائمة' : 'عرض القائمة'}
               >
-                <ListMusic size={18} />
+                <ListMusic size={18} aria-hidden="true" />
               </button>
             </div>
           )}
-
-          <button
-            onClick={onShare}
-            style={{ 
-              color: showCopied ? "var(--accent-green)" : "var(--text-muted)", 
-              padding: "10px", 
-              borderRadius: "50%", 
-              transition: "all 0.3s",
-              position: 'relative'
-            }}
-            className="hover:bg-[var(--card-control-bg)] outline-none"
-            title="Share"
-            aria-label="مشاركة الأغنية"
-          >
-            {showCopied ? <Check size={18} /> : <Share2 size={18} />}
-          </button>
 
           <button
             onClick={onClose}
@@ -242,7 +224,7 @@ export const NowPlayingBarDesktop = ({
             className="hover:text-[var(--text-primary)] transition-colors outline-none"
             aria-label="Close"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
       </div>

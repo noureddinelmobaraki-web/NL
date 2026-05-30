@@ -43,11 +43,19 @@ export function AppBackgroundFx({
         </>
       )}
 
+      {resolvedTheme === 'lite' && (
+        <div
+          className="fixed inset-0 z-[-1] pointer-events-none"
+          style={{ backgroundColor: '#000000' }}
+        />
+      )}
+
       <div 
         ref={parallaxRef}
         className="fixed inset-[-5%] z-[-2] bg-cover bg-center parallax-bg"
         style={{ 
-          backgroundImage: `url('${heroBgUrl}')`,
+          backgroundImage: resolvedTheme === 'lite' ? 'none' : `url('${heroBgUrl}')`,
+          backgroundColor: resolvedTheme === 'lite' ? '#000000' : undefined,
         }}
       />
       <div className="fixed inset-0 z-[-1] pointer-events-none" style={{

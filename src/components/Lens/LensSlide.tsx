@@ -51,7 +51,7 @@ export const LensSlide = ({
     >
       <img
         src={photoUrl}
-        alt=""
+        alt="Gallery slide"
         style={{
           position: 'relative', 
           zIndex: 2,

@@ -34,7 +34,7 @@ export const HighlightsSection = memo(({
   const resolvedTheme = useResolvedTheme();
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
       const REQUIRED_HIGHLIGHTS_VARS = [
         '--yt-highlights-bg',
         '--vault-playlist-bg',

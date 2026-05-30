@@ -44,7 +44,64 @@ export const SongCardLyricsPanel = ({
   onSeek,
   isMobile = false,
 }: SongCardLyricsPanelProps) => {
-  if (!isLyricsOpen || !song.lrc) return null;
+  if (!isLyricsOpen) return null;
+
+  // Song has no lyrics file — show a "not available" placeholder
+  if (!song.lrc) {
+    return (
+      <div
+        style={{
+          marginTop: '16px',
+          padding: '20px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          minHeight: '80px',
+          borderRadius: '8px',
+          background: 'rgba(255, 255, 255, 0.03)',
+          border: '1px dashed rgba(255, 255, 255, 0.08)',
+        }}
+      >
+        <span
+          style={{
+            fontSize: '1.5rem',
+            opacity: 0.4,
+            lineHeight: 1,
+          }}
+          aria-hidden="true"
+        >
+          ♪
+        </span>
+        <p
+          style={{
+            color: 'var(--text-muted)',
+            fontSize: '0.78rem',
+            fontFamily: 'var(--nav-font, monospace)',
+            letterSpacing: '0.08em',
+            textAlign: 'center',
+            margin: 0,
+          }}
+        >
+          الكلمات غير متوفرة حالياً
+        </p>
+        <p
+          style={{
+            color: 'var(--text-muted)',
+            fontSize: '0.68rem',
+            opacity: 0.5,
+            textAlign: 'center',
+            margin: 0,
+            fontFamily: 'monospace',
+            letterSpacing: '0.05em',
+          }}
+        >
+          LYRICS NOT AVAILABLE
+        </p>
+      </div>
+    );
+  }
 
   // ── Render inline (within active controls) for Dark/Manga themes ──
   if (layoutType === 'inline') {

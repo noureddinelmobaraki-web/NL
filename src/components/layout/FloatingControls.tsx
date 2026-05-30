@@ -13,9 +13,10 @@ const THEME_LABELS: Record<string, string> = {
   light:    'ثيم: كلاسيكي',
   bit:      'ثيم: بيكسل',
   midnight: 'ثيم: منتصف الليل',
+  lite:     'ثيم: لايت',
 };
 const THEME_NEXT: Record<string, string> = {
-  dark: 'light', light: 'bit', bit: 'midnight', midnight: 'dark',
+  dark: 'light', light: 'bit', bit: 'midnight', midnight: 'lite', lite: 'dark',
 };
 
 export interface FloatingControlsProps {
@@ -66,7 +67,13 @@ export const FloatingControls = ({
           className="fab-button flex items-center justify-center"
         >
           <img 
-            src={getLocalAssetUrl(theme === 'dark' ? 'dark-mode.svg' : theme === 'light' ? 'light-mode.svg' : theme === 'bit' ? 'bit_mode.svg' : 'midnight_mode.svg')} 
+            src={getLocalAssetUrl(
+              theme === 'dark' ? 'dark-mode.svg' :
+              theme === 'light' ? 'light-mode.svg' :
+              theme === 'bit' ? 'bit_mode.svg' :
+              theme === 'lite' ? 'lite_mode.svg' :
+              'midnight_mode.svg'
+            )} 
             alt={`${THEME_LABELS[theme] ?? theme} icon`}
             className="w-4 h-4 object-contain"
             style={{ 

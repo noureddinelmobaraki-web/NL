@@ -39,7 +39,7 @@ export const HeroSection = memo(() => {
 
   // Dev runtime CSS variable integration check
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
       const REQUIRED_HERO_VARS = [
         '--window-chrome-display',
         '--window-border',
@@ -124,7 +124,7 @@ export const HeroSection = memo(() => {
             <div className="hero-titlebar-dot red" />
             <div className="hero-titlebar-dot yellow" />
             <div className="hero-titlebar-dot green" />
-            <span className="hero-titlebar-controls">
+            <span className="hero-titlebar-controls" aria-hidden="true">
               <span title="Minimize" className="hover:text-black">─</span>
               <span title="Maximize" className="hover:text-black">□</span>
             </span>
@@ -181,7 +181,7 @@ export const HeroSection = memo(() => {
               {siteData.location}
             </span>
             <span className="px-3 py-1 truncate hero-alias-refactored">
-              {siteData.aliases.map((a, i) => (
+              {siteData.aliases.map((a: string, i: number) => (
                 <span key={i}>{a}{i < siteData.aliases.length - 1 ? ' | ' : ''}</span>
               ))}
             </span>
@@ -207,7 +207,9 @@ export const HeroSection = memo(() => {
       <div className="hero-profile-container">
         <ResponsiveImage 
           src={activeProfileImg} 
-          alt="Profile" 
+          alt={`${siteData.fullName} — ${siteData.location} based rap artist (${siteData.aliases.join(' / ')})`} 
+          width={400}
+          height={400}
           className="w-full h-full object-cover" 
           loading="eager"
           fetchPriority="high"

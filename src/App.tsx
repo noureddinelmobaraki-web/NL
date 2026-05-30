@@ -6,8 +6,8 @@
 import { motion } from "framer-motion";
 import React, { useEffect, Suspense } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
-import type { Theme } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
+import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { LoadingScreen } from "./components/Loading/LoadingScreen";
 import { SkeletonSection } from './components/SkeletonSection';
 
@@ -39,7 +39,6 @@ import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
 import { StreamingSection } from './components/sections/StreamingSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
-import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { getThemedImage } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
@@ -95,7 +94,7 @@ function AppInner() {
     isGalleryOpen,
     theme,
     audioIntent,
-    setAudioIntent: setAudioIntent as any,
+    setAudioIntent,
     loaded,
     setIsGalleryOpen,
     setSelectedImageIndex,
@@ -122,21 +121,7 @@ function AppInner() {
   };
 
   useEffect(() => {
-    const applyThemeLocal = () => {
-      let resolved = 'midnight';
-      if (theme === 'dark') {
-        resolved = 'dark';
-      } else if (theme === 'light') {
-        resolved = 'light';
-      } else if (theme === 'bit') {
-        resolved = 'bit';
-      } else if (theme === 'midnight') {
-        resolved = 'midnight';
-      }
-      applyThemeUtil(resolved as Theme);
-    };
-
-    applyThemeLocal();
+    applyThemeUtil(theme);
     savePrefs({ theme });
   }, [theme]);
 
@@ -183,7 +168,7 @@ function AppInner() {
         heroBgUrl={getThemedImage('heroBg', resolvedTheme)}
       />
 
-      <a href="#main-content" className="skip-to-content" tabIndex={0}>
+      <a href="#main-content" className="skip-to-content">
         <span lang="ar">تخطي إلى المحتوى</span> / <span lang="en">Skip to main content</span>
       </a>
       
@@ -222,7 +207,7 @@ function AppInner() {
       }}>
         {renderClock()}
         <div className="min-h-screen w-full relative flex flex-col items-center py-10 px-4 sm:px-8 md:px-10 lg:px-10 overflow-x-hidden">
-          <audio id="bg-audio" ref={audioRef} loop preload="auto" crossOrigin="anonymous" />
+          <audio id="bg-audio" ref={audioRef} loop preload="auto" crossOrigin="anonymous" aria-hidden="true" />
 
           <MeBitGallery
             isOpen={isGalleryOpen}
@@ -244,7 +229,7 @@ function AppInner() {
             animate="visible"
             lang="en"
             dir="ltr"
-            className="relative z-10 w-full max-w-5xl flex flex-col gap-14"
+            className="relative z-10 w-full max-w-7xl flex flex-col gap-14"
             style={{ paddingBottom: (isMobile || isTablet) ? '80px' : undefined }}
           >
             <AppNavGrid
@@ -352,8 +337,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppInner />
-    </AppProvider>
+    <SectionErrorBoundary sectionName="App">
+      <AppProvider>
+        <AppInner />
+      </AppProvider>
+    </SectionErrorBoundary>
   );
 }

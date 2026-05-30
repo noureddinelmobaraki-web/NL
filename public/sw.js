@@ -1,8 +1,8 @@
-const CACHE_SHELL = 'nl-shell-v4';
-const CACHE_IMAGES = 'nl-images-v4';
-const CACHE_HLS = 'nl-hls-v4';
-const CACHE_AUDIO = 'nl-audio-v4';
-const CACHE_FONTS = 'nl-fonts-v4';
+const CACHE_SHELL = 'nl-shell-v5';
+const CACHE_IMAGES = 'nl-images-v5';
+const CACHE_HLS = 'nl-hls-v5';
+const CACHE_AUDIO = 'nl-audio-v5';
+const CACHE_FONTS = 'nl-fonts-v5';
 
 const PRECACHE_URLS = [
   '/NL/',
@@ -123,6 +123,20 @@ async function cleanupLruHls() {
 }
 
 self.addEventListener('fetch', (event) => {
+  const request = event.request;
+
+  // Navigation requests: serve cached shell as fallback
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(async () => {
+        const cache = await caches.open(CACHE_SHELL);
+        const cached = await cache.match('/NL/');
+        return cached || new Response('Offline', { status: 503 });
+      })
+    );
+    return;
+  }
+
   const url = new URL(event.request.url);
   const sameOrigin = url.origin === self.location.origin;
 
@@ -196,25 +210,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. HLS Manifests (.m3u8)
+  // 2. HLS Manifests (.m3u8) — network-first, cache fallback
   if (url.hostname === HLS_ORIGIN && url.pathname.endsWith('.m3u8')) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE_HLS);
-        const cached = await cache.match(event.request);
-        if (cached) {
-          const cachedAt = cached.headers.get('x-cached-at');
-          if (cachedAt && Date.now() - parseInt(cachedAt, 10) < 60 * 60 * 1000) {
-            return cached;
+        try {
+          const response = await fetch(event.request);
+          if (response.ok) {
+            const cloned = response.clone();
+            const headers = new Headers(cloned.headers);
+            headers.append('x-cached-at', Date.now().toString());
+            const body = await cloned.blob();
+            await cache.put(event.request, new Response(body, { headers }));
           }
+          return response;
+        } catch {
+          // Offline fallback
+          const cached = await cache.match(event.request);
+          if (cached) return cached;
+          throw new Error('m3u8 unavailable offline');
         }
-        const response = await fetch(event.request);
-        const cloned = response.clone();
-        const headers = new Headers(cloned.headers);
-        headers.append('x-cached-at', Date.now().toString());
-        const body = await cloned.blob();
-        await cache.put(event.request, new Response(body, { headers }));
-        return response;
       })()
     );
     return;

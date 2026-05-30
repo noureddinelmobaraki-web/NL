@@ -268,7 +268,9 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
             }}>
               <img
                 src={PHOTOS[activeIndex]}
-                alt=""
+                alt={`Photo ${activeIndex + 1}`}
+                width={1200}
+                height={800}
                 style={{ 
                   width: '100%', 
                   height: '100%', 
@@ -294,7 +296,9 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
             }}>
               <img
                 src={PHOTOS[nextIndex]}
-                alt=""
+                alt={`Photo ${nextIndex + 1}`}
+                width={1200}
+                height={800}
                 style={{ 
                   width: '100%', 
                   height: '100%', 
@@ -471,7 +475,9 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
             >
               <img
                 src={PHOTOS[photoIndex]}
-                alt=""
+                alt={`Gallery photo ${photoIndex + 1}`}
+                width={thumbWidth}
+                height={thumbHeight}
                 style={{
                   width: '100%', height: '100%',
                   objectFit: 'cover',

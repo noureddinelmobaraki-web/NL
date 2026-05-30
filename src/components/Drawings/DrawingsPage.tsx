@@ -8,6 +8,8 @@ import { DrawingsFullscreen } from './DrawingsFullscreen';
 
 export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
   const [videos, setVideos] = useState<VideoData[]>([]);
+  const [error, setError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
@@ -22,10 +24,14 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
   const isMobileView = isMobile || isTablet;
 
   useEffect(() => {
+    setError(false);
     const base = import.meta.env.BASE_URL || './';
     const fetchUrl = (base.endsWith('/') ? base : base + '/') + 'data/videos.json';
     fetch(fetchUrl)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('Fetch failed');
+        return r.json();
+      })
       .then(data => {
         const resolved = data.map((v: any) => ({
           ...v,
@@ -36,8 +42,11 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
         setVideos(resolved);
         videoRefs.current = new Array(resolved.length).fill(null);
       })
-      .catch(console.error);
-  }, []);
+      .catch(err => {
+        console.error('[DrawingsPage] fetch error:', err);
+        setError(true);
+      });
+  }, [retryCount]);
 
   const playVideo = useCallback((index: number) => {
     const v = videoRefs.current[index];
@@ -78,6 +87,28 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
     setIsOpen(true);
   }, []);
 
+  if (error) {
+    return (
+      <section id="drawings-section" className="w-full py-20 px-6 sm:px-12 font-sans">
+        <div className="max-w-6xl mx-auto flex flex-col items-center justify-center text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">تعذّر تحميل الرسومات</h2>
+          <p className="text-[var(--text-muted)]">يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى</p>
+          <button
+            onClick={() => setRetryCount(c => c + 1)}
+            className="px-8 py-3 bg-[var(--accent-red)] text-white rounded-full font-bold transition-all shadow-lg shadow-red-500/20"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   if (videos.length === 0) return null;
 
   return (
@@ -107,15 +138,18 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
                   className="bg-[var(--bg-elevated)] rounded-[8px] overflow-hidden cursor-pointer"
                   onClick={() => openGallery(i)}
                 >
-                  <VideoPreview index={i} />
+                  <VideoPreview video={video} index={i} />
                 </div>
               ))}
             </div>
             <button
               onClick={() => openGallery(0)}
-              className="manga-button !py-4 !px-8 text-xl bg-[var(--paper-color)] text-[var(--text-primary)] shadow-[8px_8px_0px_var(--manga-shadow-color)] hover:shadow-[12px_12px_0px_var(--manga-shadow-color)] transition-all"
+              className="manga-button !py-4 !px-8 text-xl bg-[var(--paper-color)] text-[var(--text-primary)] shadow-[8px_8px_0px_var(--manga-shadow-color)] hover:shadow-[12px_12px_0px_var(--manga-shadow-color)] transition-all w-full sm:w-auto"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
             >
-              VIEW ALL {videos.length} →
+              <span style={{ fontSize: '1.2rem' }}>▶</span>
+              <span>VIEW ALL {videos.length} STORIES</span>
+              <span style={{ opacity: 0.5, fontSize: '0.85rem' }}>→</span>
             </button>
           </div>
         )}

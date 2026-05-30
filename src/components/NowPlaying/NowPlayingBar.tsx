@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ActiveSong } from "../../types";
 import { useDeviceType } from "../../hooks/useDeviceType";
@@ -7,7 +7,6 @@ import type { BarGeometry } from "../../hooks/useBarOrchestrator";
 import { NowPlayingBarDesktop } from "./NowPlayingBarDesktop";
 import { NowPlayingBarMobile } from "./NowPlayingBarMobile";
 import { QueuePopover } from "./QueuePopover";
-import { ShareToast } from "./ShareToast";
 
 export interface NowPlayingBarProps {
   activeSong: ActiveSong | null;
@@ -24,17 +23,7 @@ export const NowPlayingBar = ({
 }: NowPlayingBarProps) => {
   const { isMobile, isTablet } = useDeviceType();
   const [isHovered, setIsHovered] = useState(false);
-  const [showCopied, setShowCopied] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
-
-  const handleShare = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (activeSong) {
-      activeSong.onShare();
-      setShowCopied(true);
-      setTimeout(() => setShowCopied(false), 2000);
-    }
-  }, [activeSong]);
 
   const progress = (activeSong?.duration || 0) > 0 
     ? ((activeSong?.currentTime || 0) / (activeSong?.duration || 0)) * 100 
@@ -100,9 +89,6 @@ export const NowPlayingBar = ({
         )}
       </AnimatePresence>
 
-      {/* Share Toast */}
-      <ShareToast visible={showCopied} />
-
       {/* Responsive View Switcher */}
       {isMobile || isTablet ? (
         <NowPlayingBarMobile 
@@ -111,12 +97,10 @@ export const NowPlayingBar = ({
           currentTime={activeSong.currentTime}
           duration={activeSong.duration}
           progress={progress}
-          showCopied={showCopied}
           formatTime={formatTime}
           onPrev={() => activeSong.onPrev()}
           onNext={() => activeSong.onNext()}
           onPlayPause={() => activeSong.onPlayPause()}
-          onShare={handleShare}
           onClose={onClose}
         />
       ) : (
@@ -131,7 +115,6 @@ export const NowPlayingBar = ({
           volume={activeSong.volume}
           isHovered={isHovered}
           showQueue={showQueue}
-          showCopied={showCopied}
           formatTime={formatTime}
           onPrev={() => activeSong.onPrev()}
           onNext={() => activeSong.onNext()}
@@ -139,7 +122,6 @@ export const NowPlayingBar = ({
           onVolumeChange={(v) => activeSong.onVolumeChange(v)}
           onShuffleToggle={() => activeSong.onShuffleToggle()}
           onRepeatToggle={() => activeSong.onRepeatToggle()}
-          onShare={handleShare}
           onToggleQueue={() => setShowQueue(prev => !prev)}
           onClose={onClose}
         />

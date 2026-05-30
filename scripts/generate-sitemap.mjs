@@ -41,7 +41,7 @@ function generateSitemap() {
   <!-- ===========================================================
        SITEMAP - NL | Noureddin El Mobaraki
        https://noureddinelmobaraki-web.github.io/NL/
-       Generated: \${TODAY}
+       Generated: ${TODAY}
        =========================================================== -->
 
   <!-- === MAIN PAGE ======================================= -->
@@ -82,24 +82,8 @@ function generateSitemap() {
     </image:image>
   </url>
 
-  <!-- === SONG SHARE PAGES ================================== -->
+  <!-- === SOCIAL MEDIA ================================== -->
 `;
-
-  SONGS_DATA.forEach(song => {
-    xml += `
-  <url>
-    <loc>${DOMAIN}/share/song-${song.id}.html</loc>
-    <lastmod>${TODAY}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/${song.file}</image:loc>
-      <image:title>${song.name} — NL</image:title>
-      <image:caption>Listen to ${song.name} by NL on NRADIO</image:caption>
-    </image:image>
-  </url>
-`;
-  });
 
   xml += `\n</urlset>\n`;
 

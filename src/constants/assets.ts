@@ -48,6 +48,7 @@ export const THEME_BG_MUSIC: Record<string, string> = {
   'dark':        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/darkBG/index.m3u8',
   'light':       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lightBG/index.m3u8',
   'bit':         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bitBG/index.m3u8',
+  'lite':        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Lumiere_HLS/Lumiere.m3u8',
 };
 
 export const ASSETS = {
@@ -151,11 +152,13 @@ export function getThemedImage(
     if (resolvedTheme === 'bit')   return ASSETS.profile.heroBgBlurred.bit;
     if (resolvedTheme === 'dark')  return ASSETS.profile.heroBgBlurred.dark;
     if (resolvedTheme === 'light') return ASSETS.profile.heroBgBlurred.light;
+    if (resolvedTheme === 'lite')  return ASSETS.profile.heroBgBlurred.dark;
     return ASSETS.profile.heroBgBlurred.midnight;
   }
   if (resolvedTheme === 'bit')   return BIT_IMAGES[key as keyof typeof BIT_IMAGES];
   if (resolvedTheme === 'dark')  return DARK_IMAGES[key as keyof typeof BIT_IMAGES];
   if (resolvedTheme === 'light') return LIGHT_IMAGES[key as keyof typeof BIT_IMAGES];
+  if (resolvedTheme === 'lite')  return DARK_IMAGES[key as keyof typeof BIT_IMAGES];
   // midnight and system → original default assets, unchanged
   const map: Record<keyof typeof BIT_IMAGES, string> = {
     profile:       ASSETS.profile.main,

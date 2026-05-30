@@ -4,6 +4,7 @@
 @import "./styles/themes/light.css" layer(theme);
 @import "./styles/themes/midnight.css" layer(theme);
 @import "./styles/themes/bit.css" layer(theme);
+@import "./styles/themes/lite.css" layer(theme);
 @import "./styles/base.css" layer(base);
 @import "./styles/theme-transition.css" layer(base);
 @import "./styles/typography.css" layer(base);

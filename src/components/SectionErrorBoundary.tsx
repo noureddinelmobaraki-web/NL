@@ -16,6 +16,43 @@ export class SectionErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      if (this.props.sectionName === 'App') {
+        return (
+          <div style={{ 
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '20px',
+            padding: '20px',
+            textAlign: 'center',
+            background: '#080a14',
+            color: '#fff',
+            fontFamily: 'sans-serif'
+          }}>
+            <h2 style={{ fontSize: '24px', margin: 0 }}>عذراً، حدث خطأ ما</h2>
+            <p style={{ opacity: 0.7, maxWidth: '400px' }}>
+              واجه التطبيق مشكلة غير متوقعة. يرجى محاولة إعادة تحميل الصفحة.
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '10px 24px',
+                background: '#fff',
+                color: '#080a14',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              إعادة التحميل
+            </button>
+          </div>
+        );
+      }
+
       return (
         <div style={{ 
           padding: '20px', 

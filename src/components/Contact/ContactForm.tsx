@@ -52,6 +52,14 @@ export const ContactForm = () => {
   const handleSend = async () => {
     if (isBlocked) return;
 
+    // Honeypot check
+    if ((window as any).__nl_bot_detected) {
+      // Pretend success without sending
+      setStatus('success');
+      setMessage('');
+      return;
+    }
+
     if (!EMAILJS_SERVICE || !EMAILJS_TEMPLATE || !EMAILJS_KEY) {
       setErrorMsg('خطأ في إعداد النموذج، تواصل معي مباشرة');
       return;
@@ -71,20 +79,26 @@ export const ContactForm = () => {
     setErrorMsg('');
 
     try {
-      // Server-side rate limit check
-      const rateLimitRes = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          sender_name: mode === 'anonymous' ? 'مجهول' : (senderName.trim() || 'مجهول'), 
-          message: message.trim() 
-        })
-      });
+      try {
+        // Server-side rate limit check
+        const rateLimitRes = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            sender_name: mode === 'anonymous' ? 'مجهول' : (senderName.trim() || 'مجهول'), 
+            message: message.trim() 
+          })
+        });
 
-      if (rateLimitRes.status === 429) {
-        setErrorMsg('وصلت الحد اليومي، حاول غداً');
-        setStatus('idle');
-        return;
+        if (rateLimitRes.status === 429) {
+          setErrorMsg('وصلت الحد اليومي، حاول غداً');
+          setStatus('idle');
+          return;
+        }
+        // Any other status (200, 5xx) → fall through and proceed with emailjs
+      } catch {
+        // Server not available (production/GitHub Pages) → proceed with client-side emailjs only
+        // The localStorage 3/day guard still applies as a first-pass protection
       }
 
       await emailjs.send(
@@ -137,7 +151,7 @@ export const ContactForm = () => {
           boxShadow: '8px 8px 0 var(--manga-shadow-color), 14px 14px 0 rgba(var(--bg-page-rgb), 0.15)'
         }}>
           {/* MacOS traffic light buttons */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }} aria-hidden="true">
             <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', border: '1px solid var(--border-subtle)' }} />
             <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', border: '1px solid var(--border-subtle)' }} />
             <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', border: '1px solid var(--border-subtle)' }} />
@@ -150,13 +164,18 @@ export const ContactForm = () => {
 
   return (
     <section dir="rtl" style={styles.section}>
-      <div className="manga-panel" style={{
-        ...styles.card,
-        border: '4px solid var(--ink-color)',
-        boxShadow: '8px 8px 0 var(--manga-shadow-color), 14px 14px 0 rgba(var(--bg-page-rgb), 0.15)'
-      }}>
+      <form 
+        className="manga-panel"
+        onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+        noValidate
+        style={{
+          ...styles.card,
+          border: '4px solid var(--ink-color)',
+          boxShadow: '8px 8px 0 var(--manga-shadow-color), 14px 14px 0 rgba(var(--bg-page-rgb), 0.15)'
+        }}
+      >
         {/* MacOS traffic light buttons */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }} aria-hidden="true">
           <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', border: '1px solid var(--border-subtle)' }} />
           <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', border: '1px solid var(--border-subtle)' }} />
           <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', border: '1px solid var(--border-subtle)' }} />
@@ -180,10 +199,9 @@ export const ContactForm = () => {
           errorMsg={errorMsg}
           isBlocked={isBlocked}
           remainingToday={3 - sendLog.length}
-          onSend={handleSend}
           styles={styles}
         />
-      </div>
+      </form>
     </section>
   );
 };

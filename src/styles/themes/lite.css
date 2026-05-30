@@ -1,0 +1,197 @@
+[data-theme="lite"] {
+  /* === LITE — PURE BLACK & WHITE === */
+  --bg-primary:        #000000;
+  --bg-secondary:      #0a0a0a;
+  --bg-card:           rgba(255, 255, 255, 0.04);
+  --bg-card-hover:     rgba(255, 255, 255, 0.08);
+  --bg-page:           #000000;
+  --bg-page-rgb:       0, 0, 0;
+  --bg-elevated:       #111111;
+  --bg-overlay:        rgba(0, 0, 0, 0.90);
+  --bg-glass:          rgba(0, 0, 0, 0.92);
+  --bg-glass-strong:   rgba(0, 0, 0, 0.98);
+  --paper-color:       #0d0d0d;
+  --ink-color:         #ffffff;
+
+  --text-primary:      #ffffff;
+  --text-primary-rgb:  255, 255, 255;
+  --text-secondary:    #aaaaaa;
+  --text-muted:        #555555;
+  --text-accent:       #ffffff;
+  --text-inverse:      #000000;
+
+  --border-primary:    rgba(255, 255, 255, 0.08);
+  --border-subtle:     rgba(255, 255, 255, 0.08);
+  --border-strong:     rgba(255, 255, 255, 0.20);
+  --border-accent:     #ffffff;
+
+  --accent:            #ffffff;
+  --accent-hover:      #cccccc;
+  --accent-glow:       rgba(255, 255, 255, 0.08);
+  --accent-indigo:     #ffffff;
+  --accent-red:        #cccccc;
+  --accent-purple:     #aaaaaa;
+  --accent-gold:       #ffffff;
+
+  --manga-shadow-color: rgba(255, 255, 255, 0.04);
+  --manga-shadow:       4px 4px 0 var(--manga-shadow-color);
+  --halftone-color:     transparent;
+
+  --hero-overlay:      rgba(0, 0, 0, 0.90);
+  --hero-bg:           #000000;
+  --hero-image-filter: grayscale(100%) contrast(1.2) brightness(0.4);
+
+  --grain-opacity:     0;
+  --noise-opacity:     0;
+  --backdrop-blur:     0px;
+
+  --transition-speed:  0.2s;
+  --transition-ease:   ease;
+
+  --lyric-active-color:  #ffffff;
+  --lyric-active-shadow: rgba(255, 255, 255, 0.35);
+
+  --name-font:           'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --name-font-size:      clamp(3.5rem, 10vw, 8rem);
+  --name-font-style:     normal;
+  --name-font-weight:    900;
+  --name-letter-spacing: -0.03em;
+  --name-line-height:    0.9;
+
+  --nav-font:            'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --nav-size:            0.7rem;
+  --nav-letter-spacing:  0.15em;
+
+  --tag-bg:              transparent;
+  --tag-border:          rgba(255, 255, 255, 0.25);
+  --tag-text:            #ffffff;
+
+  --btn-bg:              transparent;
+  --btn-border:          rgba(255, 255, 255, 0.30);
+  --btn-text:            #ffffff;
+  --btn-hover-bg:        #ffffff;
+  --btn-hover-text:      #000000;
+
+  /* Hero section — no background image */
+  --window-chrome-display: none;
+  --window-border:         1px solid rgba(255, 255, 255, 0.08);
+  --window-shadow:         none;
+  --window-bg:             #0a0a0a;
+
+  --hero-header-align:   flex-end;
+  --hero-card-bg:        rgba(0, 0, 0, 0.75);
+  --hero-card-border:    1px solid rgba(255, 255, 255, 0.10);
+  --hero-card-shadow:    none;
+  --hero-bg-image-url:   none;
+  --hero-bg-filter:      none;
+  --hero-bg-opacity:     0;
+  --hero-bg-blend:       normal;
+  --hero-overlay-bg:     rgba(0, 0, 0, 0.95);
+
+  --hero-title-font:      'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --hero-title-weight:    900;
+  --hero-title-color:     #ffffff;
+  --hero-title-size:      clamp(2.5rem, 10vw, 7rem);
+  --hero-title-shadow:    none;
+  --hero-title-style:     normal;
+  --hero-title-lines:     2;
+  --hero-title-transform: uppercase;
+
+  --hero-divider-top:    1px solid rgba(255, 255, 255, 0.08);
+  --hero-divider-style:  normal;
+
+  --hero-loc-font:       'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --hero-loc-size:       1rem;
+  --hero-loc-weight:     400;
+  --hero-loc-shadow:     none;
+  --hero-loc-prefix:     "";
+  --hero-loc-suffix:     "";
+
+  --hero-alias-bg:        transparent;
+  --hero-alias-border:    1px solid rgba(255, 255, 255, 0.20);
+  --hero-alias-color:     rgba(255, 255, 255, 0.60);
+  --hero-alias-size:      0.65rem;
+  --hero-alias-tracking:  0.12em;
+  --hero-alias-transform: uppercase;
+  --hero-alias-font:      'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --hero-alias-deco:      none;
+  --hero-alias-padding:   0.25rem 0.75rem;
+
+  --hero-bio-font:    'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --hero-bio-size:    clamp(0.875rem, 2vw, 1rem);
+  --hero-bio-shadow:  none;
+  --hero-bio-filter:  none;
+  --hero-bio-style:   normal;
+
+  --hero-profile-width:            12rem;
+  --hero-profile-border:           1px solid rgba(255, 255, 255, 0.15);
+  --hero-profile-shadow:           none;
+  --hero-profile-transform:        none;
+  --hero-profile-hover-transform:  none;
+  --hero-profile-display:          none;
+
+  --streaming-titlebar-display: none;
+  --streaming-h2-display:       inline-block;
+  --streaming-divider-display:  block;
+  --social-titlebar-display:    none;
+  --social-h2-display:          inline-block;
+
+  --stream-card-border:           1px solid rgba(255, 255, 255, 0.08);
+  --stream-card-shadow:           none;
+  --stream-card-bg:               rgba(255, 255, 255, 0.03);
+  --stream-card-flex-dir:         row;
+  --stream-mini-titlebar-display: none;
+
+  --stream-content-dark-display:    flex;
+  --stream-content-light-display:   none;
+  --stream-content-default-display: none;
+
+  --social-content-dark-display:    flex;
+  --social-content-light-display:   none;
+  --social-content-default-display: none;
+  --social-card-rotate:             0deg;
+  --social-card-radius:             0px;
+  --social-card-shadow:             none;
+
+  color-scheme: dark;
+
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+
+  --yt-highlights-bg:        none;
+  --vault-playlist-bg:       none;
+  --highlights-vault-radius: 0px;
+  --highlights-yt-radius:    0px;
+}
+
+/* Kill all animations and transitions in lite mode */
+[data-theme="lite"] *,
+[data-theme="lite"] *::before,
+[data-theme="lite"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.15s !important;
+}
+
+/* Grayscale globally except Me-Bit and Lens galleries */
+[data-theme="lite"] img:not(#me-bit-gallery img):not(#lens-section img):not([aria-label="معرض الصور"] img),
+[data-theme="lite"] video:not([aria-label="معرض الصور"] video) {
+  filter: grayscale(100%) !important;
+}
+
+/* Hide specific image elements across the site to keep it pitch black */
+[data-theme="lite"] .hero-profile-container {
+  display: none !important;
+}
+
+[data-theme="lite"] #lens-section > div > div.absolute.inset-0.bg-cover {
+  background-image: none !important;
+}
+
+/* Override HLS blurred background to pure black */
+[data-theme="lite"] .parallax-bg {
+  background-image: none !important;
+  background-color: #000000 !important;
+}

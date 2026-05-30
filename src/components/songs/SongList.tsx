@@ -19,7 +19,6 @@ export interface SongListProps {
   onPlayPause?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
-  onShare?: (song: Song) => void;
   lyricsOpen?: boolean;
   setLyricsOpen?: (val: boolean | ((prev: boolean) => boolean)) => void;
   lrcCache?: Record<number, LyricLine[]>;
@@ -44,7 +43,6 @@ export const SongList = ({
   onPlayPause,
   onPrev,
   onNext,
-  onShare,
   lyricsOpen = false,
   setLyricsOpen = () => {},
   lrcCache = {},
@@ -113,7 +111,6 @@ export const SongList = ({
                   onPlayPause={onPlayPause}
                   onPrev={onPrev}
                   onNext={onNext}
-                  onShare={() => onShare?.(song)}
                   setLyricsOpen={setLyricsOpen}
                   isLyricsOpen={isActive && lyricsOpen}
                   lyrics={lrcCache[song.id] || []}

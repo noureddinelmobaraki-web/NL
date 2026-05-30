@@ -12,7 +12,6 @@ export interface ActiveSong {
   onPlayPause: () => void;
   onNext: () => void;
   onPrev: () => void;
-  onShare: () => void;
   onDismiss: () => void;
   suppressMiniBar?: boolean;
   isShuffle: boolean;
@@ -31,7 +30,6 @@ export interface Song {
   lrc: string | null;
   cover?: string;
   backgroundImage?: string;
-  sharePath?: string;
 }
 
 export interface LyricLine {

@@ -1,19 +1,16 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
-  script-src 'self' 'sha256-qU7trIVaqQtmN5a/p4/7qic3vgHxM22+bdcPfkqwU8Q=' https://cdn.emailjs.com;
+  script-src 'self' 'sha256-dysvhqSBO8fEfgHCjBuRM/uGhTKTkef1LsabiDTaZAQ=' https://cdn.emailjs.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   img-src 'self' data: blob: https: 
     https://noureddinelmobaraki-web.github.io 
     https://raw.githubusercontent.com
     https://i.ytimg.com;
-  media-src 'self' blob: https://noureddinelmobaraki-web.github.io 
-    https://github.com 
-    https://objects.githubusercontent.com 
-    https://user-images.githubusercontent.com;
+  media-src 'self' blob: https://noureddinelmobaraki-web.github.io;
   font-src 'self' data: https://fonts.gstatic.com;
   connect-src 'self' https://api.emailjs.com https://noureddinelmobaraki-web.github.io;
   worker-src 'self';
@@ -21,82 +18,15 @@
   frame-ancestors 'none';
   base-uri 'self';
   form-action 'self' https://api.emailjs.com;
+  upgrade-insecure-requests;
 ">
     <!-- CDN preconnect — critical for first paint -->
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin>
     <link rel="dns-prefetch" href="https://noureddinelmobaraki-web.github.io">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), interest-cohort=()">
 
 
     <script>
-      // Benign HMR & WebSocket development error suppression
-      (function() {
-        try {
-          // 1. Intercept standard global errors and prevent bubbling for HMR/WebSocket issues
-          window.addEventListener('error', function(event) {
-            try {
-              const msg = (event.message || '').toLowerCase();
-              const isHmrOrWs = msg.includes('websocket') || 
-                                msg.includes('hmr') || 
-                                msg.includes('vite') ||
-                                (event.filename && (event.filename.includes('vite') || event.filename.includes('hmr')));
-              if (isHmrOrWs) {
-                event.stopImmediatePropagation();
-                event.preventDefault();
-                return true;
-              }
-            } catch (_) {}
-          }, true);
-
-          // 2. Intercept unhandled promise rejections
-          window.addEventListener('unhandledrejection', function(event) {
-            try {
-              const reason = event.reason;
-              let reasonStr = '';
-              if (reason) {
-                if (typeof reason === 'string') {
-                  reasonStr = reason;
-                } else if (reason.message) {
-                  reasonStr = reason.message;
-                } else if (reason.stack) {
-                  reasonStr = reason.stack;
-                }
-              }
-              const reasonLower = reasonStr.toLowerCase();
-              if (
-                reasonLower.includes('websocket') || 
-                reasonLower.includes('hmr') || 
-                reasonLower.includes('vite') ||
-                reasonLower.includes('failed to connect') ||
-                reasonLower.includes('closed without opened')
-              ) {
-                event.stopImmediatePropagation();
-                event.preventDefault();
-                return true;
-              }
-            } catch (_) {}
-          }, true);
-
-          // 3. Gracefully wrap WebSocket to prevent uncaught error events on connection failures
-          if ('WebSocket' in window) {
-            const NativeWebSocket = window.WebSocket;
-            window.WebSocket = function(url, protocols) {
-              const ws = protocols ? new NativeWebSocket(url, protocols) : new NativeWebSocket(url);
-              ws.addEventListener('error', function(e) {
-                if (e.preventDefault) e.preventDefault();
-                if (e.stopPropagation) e.stopPropagation();
-              }, { capture: true });
-              return ws;
-            };
-            window.WebSocket.prototype = NativeWebSocket.prototype;
-            // Restore constructor reference
-            Object.defineProperty(window.WebSocket, 'prototype', {
-              value: NativeWebSocket.prototype,
-              writable: false
-            });
-          }
-        } catch (_) {}
-      })();
-
       // Safe guard fetch property mutation for embedded/iframe environments
       (function() {
         try {
@@ -139,7 +69,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#080a14">
 
     <!-- SEO -->
     <title>Noureddin El Mobaraki (NL) | Official Website & Music Archive</title>
@@ -158,10 +88,14 @@
     <meta property="og:url" content="https://noureddinelmobaraki-web.github.io/NL/">
     <meta property="og:title" content="Noureddin El Mobaraki (NL) | Official Website & Music Archive">
     <meta property="og:description" content="الموقع الرسمي للفنان والمنتج الموسيقي Noureddin El Mobaraki المعروف فنياً بـ NL و Nordine GB. استمع لأحدث أعمال الراب والهيب هوب من الدار البيضاء.">
-    <meta property="og:image" content="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp">
+    <meta property="og:image" content="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/og-image.jpg">
+    <meta property="og:image:type" content="image/jpeg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Noureddin El Mobaraki (NL) — Official Artist Profile">
     <meta property="og:locale" content="ar_MA">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta property="og:locale:alternate" content="fr_FR">
     
     <!-- Twitter/X Card -->
     <meta name="twitter:card" content="summary_large_image">
@@ -205,19 +139,24 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "MusicAlbum",
-      "name": "NL Archives",
-      "byArtist": {
-        "@type": "Person",
-        "name": "Noureddin El Mobaraki"
+      "@type": "MusicGroup",
+      "name": "NL",
+      "alternateName": ["Noureddin El Mobaraki", "Nordine GB"],
+      "genre": ["Rap", "Hip-Hop", "Moroccan Hip-Hop", "Darija Rap"],
+      "foundingLocation": {
+        "@type": "Place",
+        "name": "Casablanca, Morocco"
       },
-      "url": "https://noureddinelmobaraki-web.github.io/NL/"
+      "url": "https://noureddinelmobaraki-web.github.io/NL/",
+      "sameAs": [
+        "https://open.spotify.com/artist/5nwGOyilF1p4uv35v6vb2u",
+        "https://music.apple.com/us/artist/nl/1535833912",
+        "https://www.youtube.com/@nourdin_el_mobaraki"
+      ]
     }
     </script>
-    <meta property="og:audio" content="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/25%20-%20Sarahni%20%28%20feat%20Nordine%20GB%20%29.mp3">
-    <meta property="og:audio:type" content="audio/mpeg">
     <link rel="icon" type="image/webp" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp" />
-    <link rel="manifest" href="/NL/manifest.webmanifest">
+    <link rel="manifest" href="/manifest.webmanifest">
     
     <!-- Performance -->
     <link rel="dns-prefetch" href="https://api.emailjs.com">

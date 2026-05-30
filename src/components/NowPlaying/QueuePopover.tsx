@@ -53,7 +53,7 @@ export const QueuePopover = ({ nextSongs, isMobile, onClose }: QueuePopoverProps
           <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <img 
               src={song.cover || (song as any).backgroundImage || ''} 
-              alt="" 
+              alt={`${song.title} cover art`} 
               style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} 
             />
             <span style={{ 

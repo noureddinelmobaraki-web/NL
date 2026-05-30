@@ -29,8 +29,8 @@ async function startServer() {
 
   const PORT = 3000;
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(express.json({ limit: "10kb" }));
+  app.use(express.urlencoded({ limit: "10kb", extended: false }));
 
   // API Contact Route - Just for rate limiting verification per prompt
   app.post("/api/contact", contactRateLimiter, async (_req, res) => {
@@ -48,9 +48,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.use('/NL', express.static(distPath));
     app.get('*all', (_req, res) => {
-      // If the request is for a subpath like /NL/something, send the root index.html
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

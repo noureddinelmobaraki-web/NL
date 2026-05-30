@@ -14,6 +14,7 @@ interface SongCardHeaderProps {
   isLyricsOpen: boolean;
   duration?: number;
   onPlay: () => void;
+  onPlayPause?: () => void;
   onToggleLyrics: () => void;
 }
 
@@ -30,6 +31,7 @@ export const SongCardHeader = ({
   isLyricsOpen,
   duration,
   onPlay,
+  onPlayPause,
   onToggleLyrics,
 }: SongCardHeaderProps) => {
   return (
@@ -69,26 +71,33 @@ export const SongCardHeader = ({
       </div>
       
       <div className="flex items-center gap-3">
-        {song.lrc && (
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={(e) => { e.stopPropagation(); onToggleLyrics(); }}
-              className={`lyrics-btn ${isLyricsOpen ? 'lyrics-btn-active' : ''} ${resolvedTheme === 'light' ? '!font-["Geneva",sans-serif] !text-[10px] !bg-white !text-black !border !border-[#999] !shadow-none' : ''}`}
-              style={{
-                minWidth: (isMobile || isTablet) ? '80px' : 'auto',
-                minHeight: (isMobile || isTablet) ? '44px' : 'auto',
-                ...(resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {})
-              }}
-              title="Lyrics"
-            >
-              ◉ LYRICS ✦
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={(e) => { e.stopPropagation(); onToggleLyrics(); }}
+            className={`lyrics-btn ${isLyricsOpen ? 'lyrics-btn-active' : ''} ${resolvedTheme === 'light' ? '!font-["Geneva",sans-serif] !text-[10px] !bg-white !text-black !border !border-[#999] !shadow-none' : ''}`}
+            style={{
+              minWidth: (isMobile || isTablet) ? '80px' : 'auto',
+              minHeight: (isMobile || isTablet) ? '44px' : 'auto',
+              ...(resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {}),
+              ...(!song.lrc ? { opacity: 0.4 } : {})
+            }}
+            title={song.lrc ? "Lyrics" : "الكلمات غير متوفرة"}
+            aria-label={song.lrc ? "Lyrics" : "الكلمات غير متوفرة"}
+          >
+            ◉ LYRICS ✦
+          </button>
+        </div>
         {!isActiveInBar && (
           <div className="flex items-center gap-2">
             <button
-              onClick={onPlay}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isActive && onPlayPause) {
+                  onPlayPause();
+                } else {
+                  onPlay();
+                }
+              }}
               className={`
                 w-11 h-11 flex items-center justify-center transition-all duration-300 shadow-lg
                 ${resolvedTheme === 'light' ? 'bg-[#F0EBE3] border border-[#999] rounded-none' : 'rounded-full'}

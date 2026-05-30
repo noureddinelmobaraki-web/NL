@@ -1,5 +1,4 @@
 import { useEffect, useCallback, useMemo } from 'react';
-import { useDeviceType } from '../../../hooks/useDeviceType';
 import { useSongPlayer } from '../../songs/SongPlayer';
 import { savePrefs } from '../../../utils/userPrefs';
 import type { RepeatMode } from '../../../utils/userPrefs';
@@ -45,24 +44,6 @@ export function useMySongsPlayback({
   onSongStop,
   onActiveSongChange,
 }: UseMySongsPlaybackProps) {
-  const { isMobile } = useDeviceType();
-
-  const handleNext = useCallback(() => {
-    if (!songs.length) return;
-    const idx = songs.findIndex((s) => s.id === activeId);
-    let nIdx = isShuffle ? Math.floor(Math.random() * songs.length) : (idx + 1) % songs.length;
-    if (isShuffle && nIdx === idx && songs.length > 1) nIdx = (nIdx + 1) % songs.length;
-    handlePlayToggle(songs[nIdx]);
-  }, [activeId, songs, isShuffle]);
-
-  const handlePrev = useCallback(() => {
-    if (!songs.length) return;
-    const idx = songs.findIndex((s) => s.id === activeId);
-    let pIdx = isShuffle ? Math.floor(Math.random() * songs.length) : (idx - 1 + songs.length) % songs.length;
-    if (isShuffle && pIdx === idx && songs.length > 1) pIdx = (pIdx - 1 + songs.length) % songs.length;
-    handlePlayToggle(songs[pIdx]);
-  }, [activeId, songs, isShuffle]);
-
   const {
     audioTagRef,
     isPlaying,
@@ -74,12 +55,12 @@ export function useMySongsPlayback({
     handleSeek,
   } = useSongPlayer({
     currentSong,
-    onSongEnd: handleNext,
+    onSongEnd: () => handleNext(),
     onTimeUpdate: () => {},
     onPlay: onSongPlay,
     onPause: () => onSongStop?.(),
-    onNext: handleNext,
-    onPrev: handlePrev,
+    onNext: () => handleNext(),
+    onPrev: () => handlePrev(),
   });
 
   const handlePlayToggle = useCallback(
@@ -96,6 +77,22 @@ export function useMySongsPlayback({
     },
     [activeId, handlePlayPause, onSongPlay, setActiveId, setIsDismissed, pendingPlayRef]
   );
+
+  const handleNext = useCallback(() => {
+    if (!songs.length) return;
+    const idx = songs.findIndex((s) => s.id === activeId);
+    let nIdx = isShuffle ? Math.floor(Math.random() * songs.length) : (idx + 1) % songs.length;
+    if (isShuffle && nIdx === idx && songs.length > 1) nIdx = (nIdx + 1) % songs.length;
+    handlePlayToggle(songs[nIdx]);
+  }, [activeId, songs, isShuffle, handlePlayToggle]);
+
+  const handlePrev = useCallback(() => {
+    if (!songs.length) return;
+    const idx = songs.findIndex((s) => s.id === activeId);
+    let pIdx = isShuffle ? Math.floor(Math.random() * songs.length) : (idx - 1 + songs.length) % songs.length;
+    if (isShuffle && pIdx === idx && songs.length > 1) pIdx = (pIdx - 1 + songs.length) % songs.length;
+    handlePlayToggle(songs[pIdx]);
+  }, [activeId, songs, isShuffle, handlePlayToggle]);
 
   // Sync volume with physical player
   useEffect(() => {
@@ -124,17 +121,6 @@ export function useMySongsPlayback({
     return line;
   }, [activeId, lrcCache, currentTime]);
 
-  // Handle sharing URL formatting
-  const handleShare = useCallback((song: Song) => {
-    const baseUrl = window.location.origin + import.meta.env.BASE_URL;
-    const shareUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}share/song-${song.id}.html`;
-    if (navigator.share && isMobile) {
-      navigator.share({ title: song.title, text: `Listen to ${song.title}`, url: shareUrl }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-    }
-  }, [isMobile]);
-
   // Sync activeSong state with parent
   useEffect(() => {
     if (!isDismissed && activeId && currentSong) {
@@ -149,7 +135,6 @@ export function useMySongsPlayback({
         onPlayPause: () => handlePlayToggle(),
         onPrev: handlePrev,
         onNext: handleNext,
-        onShare: () => handleShare(currentSong),
         onDismiss: () => {
           if (audioTagRef.current) {
             audioTagRef.current.pause();
@@ -200,7 +185,6 @@ export function useMySongsPlayback({
     onActiveSongChange,
     handlePrev,
     handleNext,
-    handleShare,
     handlePlayToggle,
     setActiveId,
     setIsDismissed,
@@ -236,6 +220,5 @@ export function useMySongsPlayback({
     handleNext,
     handleSeek,
     handlePlayPause,
-    handleShare,
   };
 }

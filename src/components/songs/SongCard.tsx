@@ -31,7 +31,6 @@ export interface SongCardProps {
   onSeek?: (val: number) => void;
   volume?: number;
   onVolumeChange?: (val: number) => void;
-  onShare?: () => void;
   karaokeMode?: boolean;
   setKaraokeMode?: (val: boolean | ((prev: boolean) => boolean)) => void;
   currentLyricLine?: string | null;
@@ -60,7 +59,6 @@ export const SongCard = memo(({
   onSeek,
   volume,
   onVolumeChange,
-  onShare,
   karaokeMode = false,
   setKaraokeMode,
   currentLyricLine,
@@ -172,7 +170,11 @@ export const SongCard = memo(({
       onKeyDown={(e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onPlay();
+          if (isActive && onPlayPause) {
+            onPlayPause();
+          } else {
+            onPlay();
+          }
         }
       }}
       tabIndex={0}
@@ -246,6 +248,7 @@ export const SongCard = memo(({
           isLyricsOpen={isLyricsOpen}
           duration={duration}
           onPlay={onPlay}
+          onPlayPause={onPlayPause}
           onToggleLyrics={() => setLyricsOpen(prev => !prev)}
         />
 
@@ -263,7 +266,6 @@ export const SongCard = memo(({
               onPrev={onPrev || (() => {})}
               onNext={onNext || (() => {})}
               onPlayPause={onPlayPause || (() => {})}
-              onShare={onShare}
               isPlaying={isPlaying}
               isWaiting={isWaiting}
               song={song}

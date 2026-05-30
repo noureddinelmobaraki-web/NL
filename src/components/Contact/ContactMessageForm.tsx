@@ -11,7 +11,6 @@ export interface ContactMessageFormProps {
   errorMsg: string;
   isBlocked: boolean;
   remainingToday: number;
-  onSend: () => void;
   styles: typeof styles;
 }
 
@@ -26,7 +25,6 @@ export const ContactMessageForm = ({
   errorMsg,
   isBlocked,
   remainingToday,
-  onSend,
   styles: passedStyles,
 }: ContactMessageFormProps) => {
   const currentStyles = passedStyles || styles;
@@ -109,8 +107,31 @@ export const ContactMessageForm = ({
 
       {errorMsg && <p style={currentStyles.error}>{errorMsg}</p>}
 
+      {/* Honeypot — invisible to humans, bots will fill it */}
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          width: '1px',
+          height: '1px',
+          opacity: 0,
+          pointerEvents: 'none'
+        }}
+        onChange={(e) => {
+          // If changed = bot, set flag
+          if (e.target.value) {
+            (window as any).__nl_bot_detected = true;
+          }
+        }}
+      />
+
       <button
-        onClick={onSend}
+        type="submit"
         disabled={status === 'sending' || isBlocked}
         aria-label={status === 'sending' ? 'جاري الإرسال...' : 'إرسال الرسالة'}
         aria-busy={status === 'sending'}

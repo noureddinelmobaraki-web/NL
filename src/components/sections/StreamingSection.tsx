@@ -102,7 +102,7 @@ export const StreamingSection = memo(() => {
 
   // Runtime CSS variable assertion
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
       const REQUIRED_STREAMING_VARS = [
         '--streaming-titlebar-display',
         '--streaming-h2-display',
@@ -201,7 +201,7 @@ export const StreamingSection = memo(() => {
                       src={getLocalAssetUrl('apple-music.svg')} 
                       className="w-6 h-6 shrink-0 object-contain" 
                       style={{ filter: 'invert(1)' }} 
-                      alt="" 
+                      alt={`${platform.name} logo`} 
                     />
                   ) : (
                     <platform.icon className="w-6 h-6 shrink-0" aria-hidden="true" />

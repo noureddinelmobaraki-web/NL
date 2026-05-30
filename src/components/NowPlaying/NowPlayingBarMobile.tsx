@@ -3,8 +3,6 @@ import {
   Pause, 
   SkipForward, 
   SkipBack, 
-  Share2, 
-  Check, 
   X
 } from "lucide-react";
 import { ActiveSong } from "../../types";
@@ -15,12 +13,10 @@ export interface NowPlayingBarMobileProps {
   currentTime: number;
   duration: number;
   progress: number;
-  showCopied: boolean;
   formatTime: (sec: number) => string;
   onPrev: () => void;
   onNext: () => void;
   onPlayPause: () => void;
-  onShare: (e: React.MouseEvent) => void;
   onClose: () => void;
 }
 
@@ -30,12 +26,10 @@ export const NowPlayingBarMobile = ({
   currentTime,
   duration,
   progress,
-  showCopied,
   formatTime,
   onPrev,
   onNext,
   onPlayPause,
-  onShare,
   onClose,
 }: NowPlayingBarMobileProps) => {
   return (
@@ -67,7 +61,9 @@ export const NowPlayingBarMobile = ({
           {activeSong.cover || (activeSong as any).backgroundImage ? (
             <img 
               src={activeSong.cover || (activeSong as any).backgroundImage} 
-              alt="" 
+              alt={`${activeSong?.title ?? 'Song'} cover art`} 
+              width={40}
+              height={40}
               style={{ 
                 width: '100%', 
                 height: '100%', 
@@ -113,9 +109,10 @@ export const NowPlayingBarMobile = ({
           <button
             onClick={onPrev}
             style={{ color: "var(--text-secondary)", padding: "12px", borderRadius: "50%" }}
+            aria-label="الأغنية السابقة"
             className="hover:bg-white/10 active:bg-white/20 transition-colors outline-none"
           >
-            <SkipBack size={20} fill="currentColor" />
+            <SkipBack size={20} fill="currentColor" aria-hidden="true" />
           </button>
           
           <button
@@ -134,31 +131,16 @@ export const NowPlayingBarMobile = ({
             }}
             className="hover:scale-105 active:scale-95 shadow-lg outline-none"
           >
-            {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} />}
+            {isPlaying ? <Pause size={20} fill="currentColor" aria-hidden="true" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} aria-hidden="true" />}
           </button>
           
           <button
             onClick={onNext}
             style={{ color: "var(--text-secondary)", padding: "12px", borderRadius: "50%" }}
+            aria-label="الأغنية التالية"
             className="hover:bg-white/10 active:bg-white/20 transition-colors outline-none"
           >
-            <SkipForward size={20} fill="currentColor" />
-          </button>
-
-          <button
-            onClick={onShare}
-            style={{ 
-              color: showCopied ? "var(--accent-green)" : "var(--text-muted)", 
-              padding: "10px", 
-              borderRadius: "50%", 
-              transition: "all 0.3s",
-              position: 'relative'
-            }}
-            className="hover:bg-[var(--card-control-bg)] outline-none"
-            title="Share"
-            aria-label="مشاركة الأغنية"
-          >
-            {showCopied ? <Check size={18} /> : <Share2 size={18} />}
+            <SkipForward size={20} fill="currentColor" aria-hidden="true" />
           </button>
 
           <button
@@ -170,7 +152,7 @@ export const NowPlayingBarMobile = ({
             className="hover:text-[var(--text-primary)] transition-colors outline-none"
             aria-label="Close"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
       </div>

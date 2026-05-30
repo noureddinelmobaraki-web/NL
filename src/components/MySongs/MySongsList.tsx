@@ -15,11 +15,11 @@ export interface MySongsListProps {
   durationCache: Record<number, number>;
   lrcCache?: Record<number, LyricLine[]>;
   onPlay: (song: Song) => void;
+  onPlayPause?: () => void;
   onSeek: (v: number) => void;
   onVolumeChange: (v: number) => void;
   onToggleLyrics: () => void;
   setKaraokeMode: (v: boolean | ((p: boolean) => boolean)) => void;
-  onShare: (song: Song) => void;
   onAmbientColorChange: (c: string) => void;
 }
 
@@ -37,11 +37,11 @@ export const MySongsList = ({
   durationCache,
   lrcCache = {},
   onPlay,
+  onPlayPause,
   onSeek,
   onVolumeChange,
   onToggleLyrics,
   setKaraokeMode,
-  onShare,
   onAmbientColorChange,
 }: MySongsListProps) => {
   const currentSong = songs.find((s) => s.id === activeId) || null;
@@ -51,6 +51,7 @@ export const MySongsList = ({
       songs={songs}
       currentSong={currentSong}
       onSelect={onPlay}
+      onPlayPause={onPlayPause}
       isPlaying={isPlaying}
       isWaiting={isWaiting}
       currentTime={currentTime}
@@ -59,7 +60,6 @@ export const MySongsList = ({
       onSeek={onSeek}
       volume={volume}
       onVolumeChange={onVolumeChange}
-      onShare={onShare}
       lyricsOpen={lyricsOpen}
       setLyricsOpen={onToggleLyrics}
       lrcCache={lrcCache}

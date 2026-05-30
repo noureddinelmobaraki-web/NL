@@ -15,6 +15,8 @@ export interface UseMySongsStateProps {
 
 export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps = {}) {
   const [songs, setSongs] = useState<Song[]>([]);
+  const [error, setError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [volume, setVolume] = useState(initialPrefs.lastVolume);
   const [lyricsOpen, setLyricsOpen] = useState(false);
@@ -36,9 +38,13 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
 
   // Fetch songs
   useEffect(() => {
+    setError(false);
     const base = import.meta.env.BASE_URL || './';
     fetch(`${base}data/songs.json`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('Fetch failed');
+        return r.json();
+      })
       .then((data: any[]) => {
         const mapped: Song[] = data.map((s) => ({
           id: s.id,
@@ -46,7 +52,6 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
           url: s.url,
           lrc: s.hasLrc && s.lrcFile ? `${base}lrc/${s.lrcFile}.lrc` : null,
           backgroundImage: ASSETS.songs.backgrounds[s.bgIndex],
-          sharePath: `/NL/share/song-${s.id}.html`,
         }));
         setSongs(mapped);
 
@@ -81,8 +86,12 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
             mapped.forEach((s) => preloadSong(s.url));
           }, 5000);
         }
+      })
+      .catch((err) => {
+        console.error('[useMySongsState] fetch error:', err);
+        setError(true);
       });
-  }, []);
+  }, [retryCount]);
 
   // Sync ambient color
   useEffect(() => {
@@ -119,5 +128,7 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
     setAmbientColor,
     durationCache,
     lrcCache,
+    error,
+    retry: () => setRetryCount((c) => c + 1),
   } as const;
 }

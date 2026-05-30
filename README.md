@@ -6,7 +6,7 @@
 
 This repository houses the complete visual portfolio, music distribution archive, and interactive media player core for Moroccan rap artist and independent music producer **Noureddin El Mobaraki**, known professionaly as **NL** (and **Nordine GB**). 
 
-The application is engineered as a high-performance, single-page web environment (SPA) featuring immersive retro cassette radio simulators, an automated share-page generator, smart metadata arrangement via Gemini AI integration, and robust search crawler indexing.
+The application is engineered as a high-performance, single-page web environment (SPA) featuring immersive retro cassette radio simulators, an automated share-page generator, and robust search crawler indexing.
 
 ---
 
@@ -34,7 +34,6 @@ The architecture is built on a modular client-server framework. It enables an as
 │                        EXPRESS BACKEND ENGINE                          │
 ├────────────────────────────────────────────────────────────────────────┤
 │ • Node.js / Express Core (v5.x / tsx runtime engine)                    │
-│ • Secure Gemini Pro Integration (@google/genai SDK v2.5.0)             │
 │ • Adaptive payload deserializers for large playlist mapping (50MB)     │
 └────────────────────────────────────────────────────────────────────────┘
 ```

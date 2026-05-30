@@ -73,6 +73,8 @@ export const MySongs = ({
   return (
     <section
       id="my-songs-section"
+      aria-label="My Songs — أغانيّ"
+      role="region"
       className="w-full py-24 px-6 sm:px-12 font-sans selection:bg-indigo-500/30 relative"
       style={{
         background: `radial-gradient(ellipse at 50% 0%, rgba(${state.ambientColor}, 0.25) 0%, transparent 65%), var(--bg-glass)`,
@@ -107,7 +109,25 @@ export const MySongs = ({
       )}
       <audio ref={playback.audioTagRef} preload="none" crossOrigin="anonymous" style={{ display: 'none' }} />
       <div className="max-w-6xl mx-auto relative z-10">
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-20">
+        {state.error ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-2">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-[var(--text-primary)]">تعذّر تحميل الأغاني</h2>
+            <p className="text-[var(--text-muted)] max-w-md">يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى</p>
+            <button
+              onClick={state.retry}
+              className="px-8 py-3 bg-[var(--accent-indigo)] text-white rounded-full font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-500/20"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        ) : (
+          <>
+            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-20">
           <div className="space-y-2">
             <h1 className="text-fluid-title font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)]">
               MY SONGS
@@ -137,9 +157,11 @@ export const MySongs = ({
                 >
                   <img
                     src={getLocalAssetUrl('music mood.svg')}
+                    width={16}
+                    height={16}
                     className="w-4 h-4 object-contain transition-all group-hover:scale-110"
                     style={{ filter: 'invert(1)' }}
-                    alt=""
+                    alt="Music Mood mode"
                   />
                   MUSIC MOOD
                 </button>
@@ -170,15 +192,17 @@ export const MySongs = ({
           volume={state.volume}
           onVolumeChange={state.setVolume}
           onPlay={playback.handlePlayToggle}
+          onPlayPause={playback.handlePlayPause}
           lyricsOpen={state.lyricsOpen}
           onToggleLyrics={() => state.setLyricsOpen((p) => !p)}
           lrcCache={state.lrcCache}
           karaokeMode={state.karaokeMode}
           setKaraokeMode={state.setKaraokeMode}
           currentLyricLine={playback.currentLyricLine}
-          onShare={playback.handleShare}
           onAmbientColorChange={(color) => onAmbientColorChange?.(`rgb(${color})`)}
         />
+        </>
+        )}
       </div>
 
       <style>{`
