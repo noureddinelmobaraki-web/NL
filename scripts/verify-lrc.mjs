@@ -25,9 +25,9 @@ for (const song of songs) {
       continue;
     }
 
-    const expectedFilename = `${song.lrcFile}.lrc`;
+    const expectedFilename = song.lrcFile;
     if (!files.includes(expectedFilename)) {
-      console.error(`Error: Missing LRC file for Song ID ${song.id} (${song.title}). Expected "${expectedFilename}" but it was not found.`);
+      console.error(`Error: Missing lyrics file for Song ID ${song.id} (${song.title}). Expected "${expectedFilename}" but it was not found.`);
       hasError = true;
     } else {
       console.log(`OK: Song ID ${song.id} has matching LRC file "${expectedFilename}"`);

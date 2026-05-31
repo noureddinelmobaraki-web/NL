@@ -32,9 +32,17 @@ export interface Song {
   backgroundImage?: string;
 }
 
+export interface LyricWord {
+  text: string;
+  time: number;
+  endTime?: number;
+}
+
 export interface LyricLine {
   time: number;
   text: string;
+  words?: LyricWord[];
+  endTime?: number;
 }
 
 export interface WindowGeometry {

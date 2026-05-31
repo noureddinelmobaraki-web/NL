@@ -105,8 +105,8 @@ export const ASSETS = {
       `${CDN}/11.%20GOUROU%20-%20Background.webp`,
       `${CDN}/12.%20ITCHY%20W%20SCRATCHY%20-%20Background.webp`,
       `${CDN}/13.%20KOUN%20NADI%20-%20Background.webp`,
-      `${CDN}/14.%20L'AI%20Could...%20-%20Background.webp`,
-      `${CDN}/15.%20L'bayda%20M...%20-%20Background.webp`,
+      `${CDN}/13.%20KOUN%20NADI%20-%20Background.webp`,
+      `${CDN}/12.%20ITCHY%20W%20SCRATCHY%20-%20Background.webp`,
       `${CDN}/16.%20Let%20The%20R...%20-%20Background.webp`,
       `${CDN}/17.%20LMORPHINIYA%2031%20-%20Background.webp`,
       `${CDN}/18.%20LMORPHINIYA%2033%20-%20Background.webp`,
@@ -117,8 +117,31 @@ export const ASSETS = {
       `${CDN}/23.%20Ohio%20-%20Background.webp`,
       `${CDN}/24.%20Ostora%20-%20Background.webp`,
       `${CDN}/25.%20Tromso%20-%20Background.webp`,
+      `${CDN}/2%20Salopards.webp`,
+      `${CDN}/AL%20RIHLA.webp`,
+      `${CDN}/Ay9ona%202.webp`,
+      `${CDN}/Bad%20Guy.webp`,
+      `${CDN}/CAPTCHA.webp`,
+      `${CDN}/Couteau%20Suisse.webp`,
+      `${CDN}/euphoria.webp`,
+      `${CDN}/Groundhog%20Day%20112.webp`,
+      `${CDN}/Lmorphiniya%2025.webp`,
+      `${CDN}/Luis%20Clos.webp`,
+      `${CDN}/LYAM.webp`,
+      `${CDN}/Mural.webp`,
+      `${CDN}/Nirvana.webp`,
+      `${CDN}/None%20Shall%20Pass.webp`,
+      `${CDN}/Couteau%20Suisse.webp`,
+      `${CDN}/LYAM.webp`,
+      `${CDN}/OUROBOROS.webp`,
+      `${CDN}/Sparadra.webp`,
+      `${CDN}/Supernova.webp`,
+      `${CDN}/The%20Way%20I%20Am.webp`,
+      `${CDN}/VVS.webp`,
+      `${CDN}/ink.webp`,
+      `${CDN}/عبلة.webp`,
     ],
-    sharePaths: Array.from({ length: 25 }, (_, i) => `/NL/share/song-${i + 1}.html`)
+    sharePaths: Array.from({ length: 48 }, (_, i) => `/NL/share/song-${i + 1}.html`)
   },
   gallery: {
     // These are small (20-36KB) — keep them bundled locally, no CDN needed
@@ -136,6 +159,8 @@ export const ASSETS = {
     opening:   `${CDN}/opening_final.mp4`,     // video
   }
 };
+
+export const SONG_BG_FALLBACK = `${CDN}/01.%20TRI9%20TBA...%20-%20Background.webp`;
 
 // Export CDN base for use in SW and cache configs
 export const CDN_ORIGIN = 'noureddinelmobaraki-web.github.io';

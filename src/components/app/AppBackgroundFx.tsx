@@ -59,12 +59,12 @@ export function AppBackgroundFx({
         }}
       />
       <div className="fixed inset-0 z-[-1] pointer-events-none" style={{
-        background: ambientColor 
-          ? `linear-gradient(to bottom, ${ambientColor}18 0%, var(--hero-overlay) 40%)`
-          : 'var(--hero-overlay)',
-        backgroundImage: 'radial-gradient(circle at 2px 2px, var(--halftone-color) 1px, transparent 0)',
-        backgroundSize: '40px 40px',
-        transition: 'background 1.5s ease',
+        backgroundImage: ambientColor 
+          ? `radial-gradient(circle at 2px 2px, var(--halftone-color) 1px, transparent 0), linear-gradient(to bottom, ${ambientColor}18 0%, var(--hero-overlay) 40%)`
+          : 'radial-gradient(circle at 2px 2px, var(--halftone-color) 1px, transparent 0)',
+        backgroundColor: ambientColor ? undefined : 'var(--hero-overlay)',
+        backgroundSize: ambientColor ? '40px 40px, auto' : '40px 40px',
+        transition: 'background-color 1.5s ease, background-image 1.5s ease',
         willChange: 'auto',
       }} />
     </>

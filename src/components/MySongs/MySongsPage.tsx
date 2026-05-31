@@ -193,8 +193,10 @@ export const MySongs = ({
           onVolumeChange={state.setVolume}
           onPlay={playback.handlePlayToggle}
           onPlayPause={playback.handlePlayPause}
+          onPrev={playback.handlePrev}
+          onNext={playback.handleNext}
           lyricsOpen={state.lyricsOpen}
-          onToggleLyrics={() => state.setLyricsOpen((p) => !p)}
+          setLyricsOpen={state.setLyricsOpen}
           lrcCache={state.lrcCache}
           karaokeMode={state.karaokeMode}
           setKaraokeMode={state.setKaraokeMode}

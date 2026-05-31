@@ -2,10 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { Song, LyricLine } from '../../../types';
 import { loadPrefs } from '../../../utils/userPrefs';
 import type { RepeatMode } from '../../../utils/userPrefs';
-import { loadSession } from '../../../utils/sessionState';
-import { ASSETS } from '../../../constants/assets';
+import { loadSession, saveSession } from '../../../utils/sessionState';
+import { ASSETS, SONG_BG_FALLBACK } from '../../../constants/assets';
 import { preloadAllSongs, preloadSong } from '../../../hooks/useHlsAudio';
 import { extractDominantColorCached } from '../../../utils/extractColors';
+import { parseLRC } from '../../../components/LyricsEngine';
 
 const initialPrefs = loadPrefs();
 
@@ -25,7 +26,7 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
   const [isDismissed, setIsDismissed] = useState(false);
   const [isShuffle, setIsShuffle] = useState(initialPrefs.isShuffle);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>(initialPrefs.repeatMode);
-  const [lrcCache] = useState<Record<number, LyricLine[]>>(loadSession().lrcCache);
+  const getLrcCache = (): Record<number, LyricLine[]> => loadSession().lrcCache;
   const [ambientColor, setAmbientColor] = useState('20, 20, 30');
 
   const currentSong = useMemo(() => songs.find((s) => s.id === activeId) || null, [activeId, songs]);
@@ -35,6 +36,66 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
     setLyricsOpen(false);
     setKaraokeMode(false);
   }, [activeId]);
+
+  // ─── Eagerly preload LRC for current + next + prev songs ───────────────
+  useEffect(() => {
+    if (!songs.length || activeId == null) return;
+
+    const idx = songs.findIndex((s) => s.id === activeId);
+    if (idx === -1) return;
+
+    // Build priority list: [current, next, previous]
+    const targets = [
+      songs[idx],
+      songs[(idx + 1) % songs.length],
+      songs[(idx - 1 + songs.length) % songs.length],
+    ].filter((s) => Boolean(s.lrc));
+
+    const base = import.meta.env.BASE_URL || './';
+    const ctrl = new AbortController();
+
+    targets.forEach((s, i) => {
+      // Skip if already in session cache
+      if (loadSession().lrcCache[s.id]?.length) return;
+
+      const filename = s.lrc!.split('/').pop()!;
+      const delay = i * 60; // 0 ms, 60 ms, 120 ms stagger
+
+      setTimeout(() => {
+        if (ctrl.signal.aborted) return;
+        fetch(`${base}lrc/${encodeURIComponent(filename)}`, {
+          signal: ctrl.signal,
+        })
+          .then((r) => {
+            if (!r.ok) throw new Error(`LRC ${r.status}`);
+            return r.text();
+          })
+          .then((txt) => {
+            const parsed = parseLRC(txt);
+            if (!parsed.length) return;
+
+            // Persist to session so any consumer can read it
+            const cur = loadSession();
+            saveSession({ lrcCache: { ...cur.lrcCache, [s.id]: parsed } });
+
+            // Notify any mounted SongCard without prop-drilling
+            window.dispatchEvent(
+              new CustomEvent('lrc-ready', {
+                detail: { songId: s.id, lyrics: parsed },
+              })
+            );
+          })
+          .catch((err) => {
+            if (err.name !== 'AbortError') {
+              console.warn('[LRC preload]', s.id, err.message);
+            }
+          });
+      }, delay);
+    });
+
+    return () => ctrl.abort();
+  }, [activeId, songs]);
+  // ────────────────────────────────────────────────────────────────────────
 
   // Fetch songs
   useEffect(() => {
@@ -50,8 +111,8 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
           id: s.id,
           title: s.title,
           url: s.url,
-          lrc: s.hasLrc && s.lrcFile ? `${base}lrc/${s.lrcFile}.lrc` : null,
-          backgroundImage: ASSETS.songs.backgrounds[s.bgIndex],
+          lrc: s.hasLrc && s.lrcFile ? `${base}lrc/${s.lrcFile}` : null,
+          backgroundImage: ASSETS.songs.backgrounds[s.bgIndex] || SONG_BG_FALLBACK,
         }));
         setSongs(mapped);
 
@@ -127,7 +188,7 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
     ambientColor,
     setAmbientColor,
     durationCache,
-    lrcCache,
+    lrcCache: getLrcCache(),
     error,
     retry: () => setRetryCount((c) => c + 1),
   } as const;

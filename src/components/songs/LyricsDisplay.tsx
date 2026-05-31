@@ -55,10 +55,10 @@ export const LyricsDisplay = ({
     return () => controller.abort();
   }, [song]);
 
-  const currentLyricLine = useMemo(() => {
+  const activeLine = useMemo(() => {
     let line = null;
     for (const l of lyrics) {
-      if (l.time <= currentTime) line = l.text;
+      if (l.time <= currentTime) line = l;
       else break;
     }
     return line;
@@ -83,16 +83,45 @@ export const LyricsDisplay = ({
           style={{
             fontFamily: theme === 'light' ? 'Geneva, sans-serif' : 'var(--font-manga)',
             fontSize: 'clamp(1.2rem, 4vw, 2rem)',
-            color: 'var(--lyric-active-color)',
             textAlign: 'center',
             letterSpacing: '0.05em',
-            textShadow: theme === 'light' ? 'none' : '0 0 20px var(--lyric-active-shadow)',
-            transition: 'all 0.3s ease',
             lineHeight: 1.4,
             padding: '0 16px',
           }}
         >
-          {currentLyricLine || '♪'}
+          {activeLine ? (
+            activeLine.words && activeLine.words.length > 0 ? (
+              activeLine.words.map((word, wordIndex) => {
+                const isPlayed = word.time <= currentTime;
+                return (
+                  <span
+                    key={wordIndex}
+                    style={{
+                      color: isPlayed ? 'var(--lyric-active-color)' : 'var(--lyric-inactive-color)',
+                      opacity: isPlayed ? 1 : 0.45,
+                      textShadow: isPlayed && theme !== 'light' ? '0 0 20px var(--lyric-active-shadow)' : 'none',
+                      transition: 'all 0.15s ease-out',
+                      display: 'inline-block',
+                      whiteSpace: 'pre',
+                    }}
+                  >
+                    {word.text}
+                  </span>
+                );
+              })
+            ) : (
+              <span
+                style={{
+                  color: 'var(--lyric-active-color)',
+                  textShadow: theme === 'light' ? 'none' : '0 0 20px var(--lyric-active-shadow)',
+                }}
+              >
+                {activeLine.text}
+              </span>
+            )
+          ) : (
+            <span style={{ color: 'var(--lyric-inactive-color)' }}>♪</span>
+          )}
         </p>
       </div>
     );

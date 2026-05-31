@@ -79,9 +79,8 @@ export const LoadingVideo = ({
     return (
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(135deg,#0a0a0f 0%,#141428 50%,#0a0a0f 100%)',
-        backgroundImage: 'radial-gradient(circle at 2px 2px,rgba(255,255,255,0.04) 1px,transparent 0)',
-        backgroundSize: '20px 20px',
+        backgroundImage: 'radial-gradient(circle at 2px 2px,rgba(255,255,255,0.04) 1px,transparent 0), linear-gradient(135deg,#0a0a0f 0%,#141428 50%,#0a0a0f 100%)',
+        backgroundSize: '20px 20px, auto',
       }} />
     );
   }

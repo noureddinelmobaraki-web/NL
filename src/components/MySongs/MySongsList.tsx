@@ -16,9 +16,11 @@ export interface MySongsListProps {
   lrcCache?: Record<number, LyricLine[]>;
   onPlay: (song: Song) => void;
   onPlayPause?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
   onSeek: (v: number) => void;
   onVolumeChange: (v: number) => void;
-  onToggleLyrics: () => void;
+  setLyricsOpen: (val: boolean | ((prev: boolean) => boolean)) => void;
   setKaraokeMode: (v: boolean | ((p: boolean) => boolean)) => void;
   onAmbientColorChange: (c: string) => void;
 }
@@ -38,9 +40,11 @@ export const MySongsList = ({
   lrcCache = {},
   onPlay,
   onPlayPause,
+  onPrev,
+  onNext,
   onSeek,
   onVolumeChange,
-  onToggleLyrics,
+  setLyricsOpen,
   setKaraokeMode,
   onAmbientColorChange,
 }: MySongsListProps) => {
@@ -52,6 +56,8 @@ export const MySongsList = ({
       currentSong={currentSong}
       onSelect={onPlay}
       onPlayPause={onPlayPause}
+      onPrev={onPrev}
+      onNext={onNext}
       isPlaying={isPlaying}
       isWaiting={isWaiting}
       currentTime={currentTime}
@@ -61,7 +67,7 @@ export const MySongsList = ({
       volume={volume}
       onVolumeChange={onVolumeChange}
       lyricsOpen={lyricsOpen}
-      setLyricsOpen={onToggleLyrics}
+      setLyricsOpen={setLyricsOpen}
       lrcCache={lrcCache}
       karaokeMode={karaokeMode}
       setKaraokeMode={setKaraokeMode}

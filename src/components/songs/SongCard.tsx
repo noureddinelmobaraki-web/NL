@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Song, LyricLine } from '../../types';
+import { SONG_BG_FALLBACK } from '../../constants/assets';
 import { parseLRC } from '../LyricsEngine';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { loadSession, saveSession } from '../../utils/sessionState';
@@ -99,49 +100,80 @@ export const SongCard = memo(({
     }
   }, [currentLineIndex, isLyricsOpen, resolvedTheme]);
 
+  // ─── Effect A: read from session / parent lyrics (instant, no network) ──
   useEffect(() => {
-    // If parent already passed lyrics, use them
+    // 1. Parent passed lyrics directly
     if (lyrics && lyrics.length > 0) {
       setLocalLyrics(lyrics);
       return;
     }
-
-    // Check session cache first
+    // 2. Already in session cache (filled by preloader in useMySongsState)
     const session = loadSession();
-    if (session.lrcCache && session.lrcCache[song.id] && session.lrcCache[song.id].length > 0) {
+    if (session.lrcCache?.[song.id]?.length) {
+      setLocalLyrics(session.lrcCache[song.id]);
+    }
+    // Note: if neither, we wait for the lrc-ready event (Effect B)
+    // DO NOT call setLocalLyrics([]) here — never clear existing lyrics
+  }, [song.id, lyrics]);
+
+  // ─── Effect B: listen for lrc-ready event from the preloader ────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { songId, lyrics: fetched } = (e as CustomEvent<{
+        songId: number;
+        lyrics: LyricLine[];
+      }>).detail;
+      if (songId === song.id && fetched?.length) {
+        setLocalLyrics(fetched);
+      }
+    };
+    window.addEventListener('lrc-ready', handler);
+    return () => window.removeEventListener('lrc-ready', handler);
+  }, [song.id]);
+
+  // ─── Effect C: self-fetch ONLY as a last-resort fallback ────────────────
+  // Fires when: song has an lrc file, lyrics panel is open, and local state
+  // is still empty (preloader hasn't run yet — e.g., very first load)
+  useEffect(() => {
+    if (!isLyricsOpen || !song.lrc || localLyrics.length > 0) return;
+    if (lyrics && lyrics.length > 0) return; // covered by Effect A
+
+    const session = loadSession();
+    if (session.lrcCache?.[song.id]?.length) {
       setLocalLyrics(session.lrcCache[song.id]);
       return;
     }
 
-    // Only fetch when lyrics panel is open and song has an lrc file
-    if (!isLyricsOpen || !song.lrc) {
-      setLocalLyrics([]);
-      return;
-    }
-
-    // Fetch the .lrc file directly
     const filename = song.lrc.split('/').pop() || '';
     const encoded = encodeURIComponent(filename);
     const controller = new AbortController();
 
-    fetch(`${import.meta.env.BASE_URL}lrc/${encoded}`, { signal: controller.signal })
-      .then(res => {
-        if (!res.ok) throw new Error('LRC not found');
+    fetch(`${import.meta.env.BASE_URL}lrc/${encoded}`, {
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`LRC ${res.status}`);
         return res.text();
       })
-      .then(text => {
+      .then((text) => {
         const parsed = parseLRC(text);
+        if (!parsed.length) return;
         setLocalLyrics(parsed);
-        saveSession({
-          lrcCache: { ...loadSession().lrcCache, [song.id]: parsed }
-        });
+        const cur = loadSession();
+        saveSession({ lrcCache: { ...cur.lrcCache, [song.id]: parsed } });
       })
-      .catch(err => {
-        if (err.name !== 'AbortError') console.warn('SongCard LRC fetch:', err);
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.warn('[SongCard] fallback LRC fetch:', err.message);
+        }
       });
 
     return () => controller.abort();
-  }, [isLyricsOpen, song.lrc, song.id, lyrics]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLyricsOpen, song.id]);
+  // Note: localLyrics intentionally excluded from deps — we only want this
+  // to fire when the panel first opens, not on every lyrics update.
+  // ────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const coverUrl = song.cover || song.backgroundImage;
@@ -193,7 +225,7 @@ export const SongCard = memo(({
         ${isActive && resolvedTheme !== 'dark' && resolvedTheme !== 'light' ? 'p-6 sm:p-8' : ''}
       `}
       style={{
-        backgroundImage: resolvedTheme === 'light' ? 'none' : `url('${song.backgroundImage}')`,
+        backgroundImage: resolvedTheme === 'light' ? 'none' : `url('${song.backgroundImage}'), url('${SONG_BG_FALLBACK}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         gridColumn: isActive && !isMobile ? 'span 2' : 'span 1',
@@ -212,7 +244,7 @@ export const SongCard = memo(({
         <div 
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: `url('${song.backgroundImage}')`,
+            backgroundImage: `url('${song.backgroundImage}'), url('${SONG_BG_FALLBACK}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             animation: isActive ? 'slow-zoom 8s ease-in-out infinite alternate' : 'none',
