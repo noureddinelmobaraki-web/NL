@@ -37,8 +37,7 @@
     "terser": "5.47.1",
     "three": "0.184.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3",
-    "vite-plugin-compression2": "^2.5.3"
+    "vite": "^6.2.3"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

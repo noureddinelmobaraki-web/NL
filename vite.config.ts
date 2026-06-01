@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
 import { visualizer } from 'rollup-plugin-visualizer';
-import { compression } from 'vite-plugin-compression2';
 
 export default defineConfig(({ mode }) => {
   return {
@@ -12,11 +11,6 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(), 
       tailwindcss(),
-      compression({
-        algorithms: ['brotliCompress'],
-        exclude: [/\.(br)$/, /\.(gz)$/],
-        deleteOriginalAssets: false
-      }),
       mode === 'analyze' && visualizer({
         open: false,
         filename: 'stats.html',

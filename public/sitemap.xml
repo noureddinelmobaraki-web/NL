@@ -4,349 +4,334 @@
   xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 
   <!-- ===========================================================
-       SITEMAP  -  NL | Noureddin El Mobaraki
+       SITEMAP - NL | Noureddin El Mobaraki
        https://noureddinelmobaraki-web.github.io/NL/
-       Generated: 2026-05-27
+       Generated: 2026-06-01
+       Total songs: 48 | Total videos: 43
        =========================================================== -->
 
-  <!-- === MAIN PAGE ======================================= -->
+  <!-- === MAIN PAGE ============================================ -->
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/</loc>
-    <lastmod>2026-05-27</lastmod>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
       <image:loc>https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp</image:loc>
-      <image:title>NL  -  Noureddin El Mobaraki | Official Artist Website</image:title>
-      <image:caption>Artist profile of NL (Noureddin El Mobaraki), independent rap artist from Casablanca, Morocco</image:caption>
+      <image:title>NL — Noureddin El Mobaraki | Official Artist Website</image:title>
+      <image:caption>Artist profile of NL, independent rap artist from Casablanca, Morocco</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp</image:loc>
-      <image:title>NL  -  Noureddin El Mobaraki Portrait</image:title>
-      <image:caption>Official portrait of NL, Casablanca-based rapper and music producer</image:caption>
+      <image:title>NL — Noureddin El Mobaraki Portrait</image:title>
     </image:image>
     <image:image>
       <image:loc>https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp</image:loc>
-      <image:title>NL  -  Hero Background</image:title>
-      <image:caption>Visual identity background for NL official website</image:caption>
+      <image:title>NL — Hero Background</image:title>
     </image:image>
     <image:image>
       <image:loc>https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_cover.webp</image:loc>
-      <image:title>NL  -  Spotify Playlist Cover</image:title>
-      <image:caption>Official Spotify playlist artwork for NL | Noureddin El Mobaraki</image:caption>
+      <image:title>NL — Spotify Playlist Cover</image:title>
     </image:image>
     <image:image>
       <image:loc>https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlights.webp</image:loc>
-      <image:title>NL  -  YouTube Highlights</image:title>
-      <image:caption>YouTube highlights visual for NL music video catalog</image:caption>
+      <image:title>NL — YouTube Highlights</image:title>
     </image:image>
     <image:image>
       <image:loc>https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photo.webp</image:loc>
-      <image:title>NL  -  Through The Lens Photography</image:title>
-      <image:caption>Photography portfolio by Noureddin El Mobaraki</image:caption>
+      <image:title>NL — Through The Lens Photography</image:title>
     </image:image>
   </url>
 
-  <!-- === SONG SHARE PAGES ================================== -->
-
+  <!-- === SONG ANCHORS (deep-links into SPA) =================== -->
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-1.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=1</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/01.%20TRI9%20TBA...%20-%20Background.webp</image:loc>
-      <image:title>TRI9 TBAWE9  -  NL</image:title>
-      <image:caption>Listen to TRI9 TBAWE9 by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-2.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=2</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/02.%20VETO%20-%20Background.webp</image:loc>
-      <image:title>VETO  -  NL</image:title>
-      <image:caption>Listen to VETO by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-3.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=3</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/03.%20TOTAL%20-%20Background.webp</image:loc>
-      <image:title>TOTAL  -  NL</image:title>
-      <image:caption>Listen to TOTAL by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-4.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=4</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/04.%207CHAYCHI%20DIMO9RATI%20-%20Background.webp</image:loc>
-      <image:title>7CHAYCHI DIMO9RATI  -  NL</image:title>
-      <image:caption>Listen to 7CHAYCHI DIMO9RATI by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-5.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=5</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/05.%20A%20Lot%20-%20Background.webp</image:loc>
-      <image:title>A Lot  -  NL</image:title>
-      <image:caption>Listen to A Lot by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-6.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=6</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/06.%20BEAUTIFUL%20-%20Background.webp</image:loc>
-      <image:title>BEAUTIFUL  -  NL</image:title>
-      <image:caption>Listen to BEAUTIFUL by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-7.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=7</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/07.%20Bouh%20-%20Background.webp</image:loc>
-      <image:title>Bouh  -  NL</image:title>
-      <image:caption>Listen to Bouh by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-8.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=8</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/08.%20Brain%20Damage%20-%20Background.webp</image:loc>
-      <image:title>Brain Damage  -  NL</image:title>
-      <image:caption>Listen to Brain Damage by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-9.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=9</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/09.%20Deal%20With%20The%20Devil%20-%20Background.webp</image:loc>
-      <image:title>Deal With The Devil  -  NL</image:title>
-      <image:caption>Listen to Deal With The Devil by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-10.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=10</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/10.%20Dokhana%20V2%20-%20Background.webp</image:loc>
-      <image:title>Dokhana V2  -  NL</image:title>
-      <image:caption>Listen to Dokhana V2 by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-11.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=11</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/11.%20GOUROU%20-%20Background.webp</image:loc>
-      <image:title>GOUROU  -  NL</image:title>
-      <image:caption>Listen to GOUROU by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-12.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=12</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/12.%20ITCHY%20W%20SCRATCHY%20-%20Background.webp</image:loc>
-      <image:title>ITCHY W SCRATCHY  -  NL</image:title>
-      <image:caption>Listen to ITCHY W SCRATCHY by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-13.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=13</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/13.%20KOUN%20NADI%20-%20Background.webp</image:loc>
-      <image:title>KOUN NADI  -  NL</image:title>
-      <image:caption>Listen to KOUN NADI by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-14.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=14</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/14.%20L%27AI%20Could%20Never%20-%20Background.webp</image:loc>
-      <image:title>L'AI Could Never  -  NL</image:title>
-      <image:caption>Listen to L'AI Could Never by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-15.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=15</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/15.%20L%27bayda%20Mon%20Amour%20-%20Background.webp</image:loc>
-      <image:title>L'bayda Mon Amour  -  NL</image:title>
-      <image:caption>Listen to L'bayda Mon Amour by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-16.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=16</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/16.%20Let%20The%20Rhythm%20Hit%20%27em%20-%20Background.webp</image:loc>
-      <image:title>Let The Rhythm Hit 'em  -  NL</image:title>
-      <image:caption>Listen to Let The Rhythm Hit 'em by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-17.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=17</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/17.%20LMORPHINIYA%2031%20-%20Background.webp</image:loc>
-      <image:title>LMORPHINIYA 31  -  NL</image:title>
-      <image:caption>Listen to LMORPHINIYA 31 by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-18.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=18</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/18.%20LMORPHINIYA%2033%20-%20Background.webp</image:loc>
-      <image:title>LMORPHINIYA 33  -  NL</image:title>
-      <image:caption>Listen to LMORPHINIYA 33 by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-19.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=19</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/19.%20LMORPHINIYA%201013%20-%20Background.webp</image:loc>
-      <image:title>LMORPHINIYA 1013  -  NL</image:title>
-      <image:caption>Listen to LMORPHINIYA 1013 by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-20.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=20</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/20.%20Lmorphinya%2019%20V2%20-%20Background.webp</image:loc>
-      <image:title>Lmorphinya 19 V2  -  NL</image:title>
-      <image:caption>Listen to Lmorphinya 19 V2 by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-21.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=21</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/21.%20MAGNETO%20-%20Background.webp</image:loc>
-      <image:title>MAGNETO  -  NL</image:title>
-      <image:caption>Listen to MAGNETO by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-22.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=22</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/22.%20None%20Shall%20Pass%20-%20Background.webp</image:loc>
-      <image:title>None Shall Pass  -  NL</image:title>
-      <image:caption>Listen to None Shall Pass by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-23.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=23</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/23.%20Ohio%20-%20Background.webp</image:loc>
-      <image:title>Ohio  -  NL</image:title>
-      <image:caption>Listen to Ohio by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-24.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=24</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/24.%20Ostora%20-%20Background.webp</image:loc>
-      <image:title>Ostora  -  NL</image:title>
-      <image:caption>Listen to Ostora by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
   </url>
-
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/share/song-25.html</loc>
-    <lastmod>2026-05-27</lastmod>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=25</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://raw.githubusercontent.com/noureddinelmobaraki/nradio/main/src/assets/images/songs/25.%20Tromso%20-%20Background.webp</image:loc>
-      <image:title>Tromso  -  NL</image:title>
-      <image:caption>Listen to Tromso by NL on NRADIO</image:caption>
-    </image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=26</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=27</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=28</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=29</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=30</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=31</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=32</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=33</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=34</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=35</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=36</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=37</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=38</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=39</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=40</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=41</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=42</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=43</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=44</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=45</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=46</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=47</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?s=48</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 
+  <!-- === END =============================================== -->
 </urlset>
