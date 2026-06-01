@@ -85,7 +85,7 @@ if (!fs.existsSync(songsPath)) {
           lrcFail = true;
           continue;
         }
-        const nfcExpected = `${song.lrcFile}.lrc`.normalize('NFC');
+        const nfcExpected = String(song.lrcFile).normalize('NFC');
         if (!nfcFiles.includes(nfcExpected)) {
           console.error(`  ❌ FAIL: Missing LRC file for Song ID ${song.id} (${song.title}). Expected NFC file "${nfcExpected}"`);
           lrcFail = true;

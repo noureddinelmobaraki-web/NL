@@ -1,4 +1,17 @@
+# robots.txt for NL — Noureddin El Mobaraki
+# Site: https://noureddinelmobaraki-web.github.io/NL/
+
 User-agent: *
 Allow: /
+Disallow: /assets/
+Disallow: /*.json$
 
+# Allow search engine bots to crawl the SPA properly
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Sitemap location (absolute URL — required by Google)
 Sitemap: https://noureddinelmobaraki-web.github.io/NL/sitemap.xml

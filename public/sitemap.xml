@@ -6,14 +6,14 @@
   <!-- ===========================================================
        SITEMAP - NL | Noureddin El Mobaraki
        https://noureddinelmobaraki-web.github.io/NL/
-       Generated: 2026-06-01
+       Generated: 2026-06-01T17:25:09.760Z
        Total songs: 48 | Total videos: 43
        =========================================================== -->
 
   <!-- === MAIN PAGE ============================================ -->
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
@@ -46,291 +46,551 @@
   <!-- === SONG ANCHORS (deep-links into SPA) =================== -->
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=1</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=2</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=3</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=4</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=5</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=6</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=7</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=8</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=9</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=10</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=11</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=12</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=13</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=14</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=15</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=16</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=17</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=18</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=19</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=20</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=21</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=22</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=23</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=24</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=25</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=26</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=27</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=28</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=29</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=30</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=31</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=32</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=33</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=34</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=35</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=36</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=37</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=38</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=39</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=40</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=41</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=42</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=43</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=44</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=45</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=46</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=47</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/?s=48</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+  </url>
+
+  <!-- === VIDEOS (43 entries) =================== -->
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v1</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v2</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v3</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v4</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v5</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v6</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v7</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v8</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v9</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v10</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v11</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v12</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v13</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v14</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v15</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v16</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v17</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v18</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v19</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v20</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v21</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v22</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v23</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v24</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v25</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v26</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v27</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v28</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v29</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v30</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v31</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v32</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v33</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v34</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v35</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v36</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v37</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v38</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v39</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v40</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v41</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v42</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/?v=v43</loc>
+    <lastmod>2026-06-01T17:25:09.760Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 
   <!-- === END =============================================== -->

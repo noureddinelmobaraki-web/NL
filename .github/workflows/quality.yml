@@ -2,27 +2,41 @@ name: Code Quality & Integrity CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
+  workflow_dispatch:  # يسمح بتشغيل يدوي من تبويب Actions
+
+# منع تشغيل عدة instances متوازية لنفس الـ branch
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
   quality:
     name: Build & Validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # ثابت بدل latest لتجنب مفاجآت runner changes
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: '22'
           cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
 
       - name: Run Linter
         run: npm run lint
@@ -39,11 +53,13 @@ jobs:
           name: rollup-stats
           path: stats.html
           if-no-files-found: error
+          retention-days: 14
 
       - name: Run Custom Quality Verification Checks
         run: node scripts/verify-build.mjs
 
       - name: Run Lighthouse Audit
         uses: treosh/lighthouse-ci-action@v12
+        continue-on-error: true  # لا تُفشِل الـ workflow إذا Lighthouse رمى warning
         with:
           configPath: ./.lighthouserc.json

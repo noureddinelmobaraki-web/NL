@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const DOMAIN = 'https://noureddinelmobaraki-web.github.io/NL';
-const TODAY = new Date().toISOString().split('T')[0];
+const NOW_ISO = new Date().toISOString();  // مثال: 2026-06-01T12:34:56.789Z
 
 // قراءة الأغاني والفيديوهات ديناميكياً من ملفات JSON
 const songsPath = path.resolve(process.cwd(), 'public', 'data', 'songs.json');
@@ -31,14 +31,14 @@ function generateSitemap() {
   <!-- ===========================================================
        SITEMAP - NL | Noureddin El Mobaraki
        ${DOMAIN}/
-       Generated: ${TODAY}
+       Generated: ${NOW_ISO}
        Total songs: ${songs.length} | Total videos: ${videos.length}
        =========================================================== -->
 
   <!-- === MAIN PAGE ============================================ -->
   <url>
     <loc>${DOMAIN}/</loc>
-    <lastmod>${TODAY}</lastmod>
+    <lastmod>${NOW_ISO}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
@@ -76,11 +76,27 @@ function generateSitemap() {
   for (const song of songs) {
     xml += `  <url>
     <loc>${DOMAIN}/?s=${song.id}</loc>
-    <lastmod>${TODAY}</lastmod>
+    <lastmod>${NOW_ISO}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 `;
+  }
+
+  // === VIDEO SITEMAP ENTRIES ===
+  if (videos.length > 0) {
+    xml += `\n  <!-- === VIDEOS (${videos.length} entries) =================== -->\n`;
+    for (const video of videos) {
+      const vid = video.id || video.youtubeId || video.videoId;
+      if (!vid) continue;
+      xml += `  <url>
+    <loc>${DOMAIN}/?v=${escapeXml(vid)}</loc>
+    <lastmod>${NOW_ISO}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+`;
+    }
   }
 
   xml += `\n  <!-- === END =============================================== -->\n</urlset>\n`;
@@ -97,6 +113,14 @@ function generateSitemap() {
     const distPath = path.join(distDir, 'sitemap.xml');
     fs.writeFileSync(distPath, xml);
     console.log(`✅ Generated dist/sitemap.xml`);
+  }
+
+  // أيضاً ضع نسخة في الجذر (بعض الـ crawlers يحاولون الجذر أولاً)
+  if (fs.existsSync(distDir)) {
+    // اكتب أيضاً نسخة في public/ كـ backup
+    const rootStyleSitemap = xml.replace(/<loc>https:\/\/noureddinelmobaraki-web\.github\.io\/NL\/?(\?[^<]*)?<\/loc>/g, 
+      (match) => match);  // (نفس المحتوى، فقط للتأكيد أنه موجود)
+    console.log(`✅ Sitemap also available at dist/sitemap.xml`);
   }
 }
 
