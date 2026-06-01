@@ -16,9 +16,6 @@ const THEME_LABELS: Record<string, string> = {
   lite:     'ثيم: لايت',
   retro:    'وضع كلاسيكي (Retro)',
 };
-const THEME_NEXT: Record<string, string> = {
-  dark: 'light', light: 'bit', bit: 'midnight', midnight: 'lite', lite: 'retro', retro: 'dark',
-};
 
 export interface FloatingControlsProps {
   isPlaying: boolean;
