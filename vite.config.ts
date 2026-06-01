@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
     base: '/NL/',
     assetsInclude: ['**/*.xml'],
     plugins: [
-      react(), 
+      react(),
       tailwindcss(),
       mode === 'analyze' && visualizer({
         open: false,
