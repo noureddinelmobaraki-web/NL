@@ -25,6 +25,9 @@ import { AppMobileNav } from "./components/app/AppMobileNav";
 const MySongs = React.lazy(() => import('./components/MySongs/MySongsPage').then(m => ({ default: m.MySongs })));
 const DrawingsPage = React.lazy(() => import('./components/Drawings/DrawingsPage').then(m => ({ default: m.DrawingsPage })));
 const ContactForm = React.lazy(() => import('./components/Contact/ContactForm').then(m => ({ default: m.ContactForm })));
+const RetroWorldPage = React.lazy(() =>
+  import('./components/RetroWorld/RetroWorldPage').then(m => ({ default: m.RetroWorldPage }))
+);
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useParallax } from "./hooks/useParallax";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
@@ -50,10 +53,21 @@ const GallerySection = React.lazy(() =>
 import { AppProvider, useAppContext } from './context/AppContext';
 
 function AppInner() {
-  const { isMobile, isTablet } = useDeviceType();
-  const resolvedTheme = useResolvedTheme();
-  const parallaxRef = useParallax(isMobile ? 0 : 20);
+  const { theme } = useAppContext();
 
+  if (theme === 'retro') {
+    return (
+      <Suspense fallback={<div style={{ background: '#000', color: '#0ff', padding: 40 }}>Loading retro world…</div>}>
+        <RetroWorldPage />
+      </Suspense>
+    );
+  }
+
+  return <MainApp />;
+}
+
+function MainApp() {
+  const { isMobile, isTablet } = useDeviceType();
   const {
     loaded, setLoaded,
     activeSong, setActiveSong,
@@ -62,6 +76,9 @@ function AppInner() {
     audioIntent, setAudioIntent,
     theme, setTheme
   } = useAppContext();
+
+  const resolvedTheme = useResolvedTheme();
+  const parallaxRef = useParallax(isMobile ? 0 : 20);
 
   const {
     isGalleryOpen,

@@ -1,0 +1,92 @@
+[data-theme="retro"] {
+  /* Page background = repeating dark starry tile, served from the CDN */
+  --bg-page:            #000000;
+  --bg-page-rgb:        0, 0, 0;
+  --bg-glass:           rgba(0, 0, 0, 0.88);
+  --bg-glass-strong:    rgba(0, 0, 0, 0.97);
+  --paper-color:        #1a1a2e;
+  --ink-color:          #00ffff;            /* neon cyan */
+  --text-primary:       #ffffff;
+  --text-secondary:     #ff66ff;            /* hot magenta */
+  --text-muted:         #aaaaaa;
+  --text-inverse:       #000000;
+  --border-subtle:      #00ffff;
+  --manga-shadow-color: #ff00ff;
+
+  --hero-overlay:        linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,1) 100%);
+  --halftone-color:      rgba(0, 255, 255, 0.08);
+
+  /* Web-safe retro fonts loaded from the CDN (see @font-face below) */
+  --font-manga:         'ComicNeue', 'Comic Sans MS', cursive;
+  --font-hand:          'GTCinetype', 'Times New Roman', serif;
+
+  --lyric-active-color:  #ffff00;
+  --lyric-active-shadow: rgba(255, 255, 0, 0.8);
+  --accent-indigo:       #00ccff;
+  --accent-red:          #ff0044;
+}
+
+/* === Retro web fonts hosted on the CDN === */
+@font-face {
+  font-family: 'ComicNeue';
+  src: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro/fonts/ComicNeue-Bold.woff2') format('woff2'),
+       url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro/fonts/ComicNeue-Bold.woff')  format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GTCinetype';
+  src: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro/fonts/GT-Cinetype-Regular.woff2') format('woff2'),
+       url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro/fonts/GT-Cinetype-Regular.woff')  format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GTCinetype';
+  src: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro/fonts/GT-Cinetype-Light.woff2') format('woff2'),
+       url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro/fonts/GT-Cinetype-Light.woff')  format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'DigitalDream';
+  src: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro/fonts/digitaldreamfat.woff2') format('woff2'),
+       url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro/fonts/digitaldreamfat.woff')  format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* When retro is active, hide the normal page layout entirely.
+   The <RetroWorldPage> component (added later) will render fullscreen. */
+[data-theme="retro"] body {
+  background-color: #000;
+}
+
+/* Helper class used by RetroSection — sprite-aware tile */
+.retro-graphic {
+  position: absolute;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: block;
+}
+.retro-graphic a {
+  width: 100%; height: 100%; display: block;
+}
+.retro-section {
+  position: relative;
+  width: 100%;
+  background-color: #000;
+  background-position: center top;
+  background-repeat: repeat;
+}
+
+/* Floating controls visibility tweak on retro */
+[data-theme="retro"] .fab-button {
+  background: #000;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 12px #ff00ff;
+}

@@ -26,6 +26,8 @@
     "@fontsource/share-tech-mono": "^5.2.7",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "express": "^5.2.1",
+    "express-rate-limit": "8.5.2",
     "framer-motion": "^12.0.0",
     "hls.js": "1.6.16",
     "lucide-react": "^0.546.0",
@@ -34,8 +36,6 @@
     "tailwindcss": "^4.1.14",
     "terser": "5.47.1",
     "three": "0.184.0",
-    "express": "^5.2.1",
-    "express-rate-limit": "8.5.2",
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
     "vite-plugin-compression2": "^2.5.3"

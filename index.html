@@ -52,7 +52,7 @@
           const raw = localStorage.getItem('nl-prefs-v1');
           if (raw) {
             const saved = JSON.parse(raw);
-            if (saved && saved.theme && ['dark', 'light', 'bit', 'midnight'].includes(saved.theme)) {
+            if (saved && saved.theme && ['dark', 'light', 'bit', 'midnight', 'lite', 'retro'].includes(saved.theme)) {
               document.documentElement.setAttribute('data-theme', saved.theme);
             } else {
               document.documentElement.setAttribute('data-theme', 'midnight');

@@ -14,9 +14,10 @@ const THEME_LABELS: Record<string, string> = {
   bit:      'ثيم: بيكسل',
   midnight: 'ثيم: منتصف الليل',
   lite:     'ثيم: لايت',
+  retro:    'وضع كلاسيكي (Retro)',
 };
 const THEME_NEXT: Record<string, string> = {
-  dark: 'light', light: 'bit', bit: 'midnight', midnight: 'lite', lite: 'dark',
+  dark: 'light', light: 'bit', bit: 'midnight', midnight: 'lite', lite: 'retro', retro: 'dark',
 };
 
 export interface FloatingControlsProps {
@@ -60,27 +61,54 @@ export const FloatingControls = ({
       allowedContexts: ['page'],
       slot: 'topRight',
       render: () => (
-        <button
-          onClick={() => onThemeChange((THEME_NEXT[theme] ?? 'dark') as Theme)}
-          aria-label={(THEME_LABELS[theme] ?? THEME_LABELS.midnight) ?? 'تغيير الثيم'}
-          title={`${(THEME_LABELS[theme] ?? THEME_LABELS.midnight)} — اضغط للتبديل`}
-          className="fab-button flex items-center justify-center"
+        <div 
+          className="flex items-center gap-1.5 p-1.5 rounded-full shadow-lg backdrop-blur-md" 
+          style={{ 
+            pointerEvents: 'auto',
+            background: 'var(--bg-glass-strong, rgba(0,0,0,0.3))',
+            border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))'
+          }}
         >
-          <img 
-            src={getLocalAssetUrl(
-              theme === 'dark' ? 'dark-mode.svg' :
-              theme === 'light' ? 'light-mode.svg' :
-              theme === 'bit' ? 'bit_mode.svg' :
-              theme === 'lite' ? 'lite_mode.svg' :
-              'midnight_mode.svg'
-            )} 
-            alt={`${THEME_LABELS[theme] ?? theme} icon`}
-            className="w-4 h-4 object-contain"
-            style={{ 
-              filter: theme === 'light' ? 'none' : 'invert(1) brightness(2)'
-            }}
-          />
-        </button>
+          {(['dark', 'light', 'midnight', 'bit', 'lite', 'retro'] as Theme[]).map(t => {
+            const isActive = theme === t;
+            return (
+              <button
+                key={t}
+                onClick={() => onThemeChange(t)}
+                aria-label={THEME_LABELS[t] ?? 'تغيير الثيم'}
+                title={`${THEME_LABELS[t]} — اضغط للتبديل`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ease-out ${
+                  isActive
+                    ? 'border shadow-[0_0_12px_rgba(255,255,255,0.4)] scale-110 opacity-100 z-10'
+                    : 'border border-transparent opacity-60 hover:opacity-100 hover:scale-105 z-0'
+                }`}
+                style={{
+                  background: isActive ? 'var(--bg-glass-strong, rgba(255,255,255,0.2))' : 'transparent',
+                  borderColor: isActive ? 'var(--border-subtle, rgba(255,255,255,0.5))' : 'transparent'
+                }}
+              >
+                <img 
+                  src={
+                    t === 'retro'
+                      ? 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro.svg'
+                      : getLocalAssetUrl(
+                          t === 'dark' ? 'dark-mode.svg' :
+                          t === 'light' ? 'light-mode.svg' :
+                          t === 'bit' ? 'bit_mode.svg' :
+                          t === 'lite' ? 'lite_mode.svg' :
+                          'midnight_mode.svg'
+                        )
+                  } 
+                  alt={`${THEME_LABELS[t] ?? t} icon`}
+                  className={`w-4 h-4 object-contain transition-transform duration-300 ${isActive ? 'scale-110' : ''}`}
+                  style={{ 
+                    filter: t === 'light' ? 'none' : 'invert(1) brightness(2)'
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
       )
     });
     return () => unregisterButton('theme');
