@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { StreamingPlatform, SocialChannel } from "../../types";
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
+import { useDeviceType } from '../../hooks/useDeviceType'; // MOBILE-ONLY
 import { getLocalAssetUrl } from '../../constants/assets';
 
 const STREAMING_PLATFORMS: StreamingPlatform[] = [
@@ -89,6 +90,7 @@ const SpotifyLogo = ({ className }: { className?: string }) => (
     className={className}
     fill="currentColor"
     xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
   >
     <path
       fill="#1DB954"
@@ -99,6 +101,7 @@ const SpotifyLogo = ({ className }: { className?: string }) => (
 
 export const StreamingSection = memo(() => {
   const resolvedTheme = useResolvedTheme();
+  const { isMobile, isTablet } = useDeviceType(); // MOBILE-ONLY
 
   // Runtime CSS variable assertion
   useEffect(() => {
@@ -159,7 +162,13 @@ export const StreamingSection = memo(() => {
         <div className="manga-divider streaming-divider-refactored" />
 
         {/* Streaming Cards Grid Container */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className={`grid gap-4 ${
+          isMobile 
+            ? 'grid-cols-2 min-[480px]:grid-cols-3' // MOBILE-ONLY
+            : isTablet 
+              ? 'grid-cols-5' // MOBILE-ONLY
+              : 'grid-cols-2 md:grid-cols-3'
+        }`}>
           {STREAMING_PLATFORMS.map((platform, idx) => (
             <div
               key={platform.name}
@@ -265,7 +274,9 @@ export const StreamingSection = memo(() => {
                   <channel.icon className="w-6 h-6" aria-hidden="true" />
                   <span className="text-xl">{channel.name}</span>
                 </span>
-                <ExternalLink className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
+                <ExternalLink className={`w-4 h-4 opacity-0 transition-opacity ${
+                  isMobile ? 'group-active:opacity-100' : 'group-hover:opacity-100' // MOBILE-ONLY
+                }`} aria-hidden="true" />
               </span>
             </a>
           ))}

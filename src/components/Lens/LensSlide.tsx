@@ -1,3 +1,6 @@
+import { useState } from 'react'; // MOBILE-ONLY
+import { useDeviceType } from '../../hooks/useDeviceType'; // MOBILE-ONLY
+
 export interface LensSlideProps {
   photoUrl: string;
   slotOffset: number; // result of `index - activeIndex`
@@ -33,6 +36,8 @@ export const LensSlide = ({
 }: LensSlideProps) => {
   const scale = getSlotScale(slotOffset);
   const opacity = getSlotOpacity(slotOffset);
+  const { isMobile } = useDeviceType(); // MOBILE-ONLY
+  const [isLoaded, setIsLoaded] = useState(false); // MOBILE-ONLY
 
   return (
     <div 
@@ -42,6 +47,7 @@ export const LensSlide = ({
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
+        background: isMobile ? '#000' : 'transparent', // MOBILE-ONLY
         transform: isActive 
           ? `scale(${zoomScale}) translate(${pan.x / zoomScale}px, ${pan.y / zoomScale}px)`
           : `scale(${scale})`,
@@ -49,9 +55,14 @@ export const LensSlide = ({
         transition: (isActive && zoomScale === 1 && dragY === 0) ? 'transform 300ms ease, opacity 350ms ease' : 'none'
       }}
     >
+      {/* MOBILE-ONLY */}
+      {!isLoaded && isMobile && (
+        <div className="absolute inset-0 bg-[#1a1a1a] animate-pulse z-[1]" />
+      )}
       <img
         src={photoUrl}
         alt="Gallery slide"
+        onLoad={() => setIsLoaded(true)} // MOBILE-ONLY
         style={{
           position: 'relative', 
           zIndex: 2,
@@ -61,8 +72,13 @@ export const LensSlide = ({
           display: 'block',
           width: '100%',
           height: '100%',
+          opacity: (isMobile && !isLoaded) ? 0 : 1, // MOBILE-ONLY
+          transition: 'opacity 300ms ease', // MOBILE-ONLY
+          WebkitTouchCallout: 'none',
+          userSelect: 'none'
         }}
         draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
       />
     </div>
   );

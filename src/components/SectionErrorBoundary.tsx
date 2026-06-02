@@ -10,8 +10,13 @@ export class SectionErrorBoundary extends Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error) {
-    console.warn(`[${this.props.sectionName || 'Section'}] crashed:`, error.message);
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // FIXED: Issue #10 — Added detailed logging for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`[${this.props.sectionName || 'Section'}] crashed:`, error, info);
+    } else {
+      console.warn(`[${this.props.sectionName || 'Section'}] crashed:`, error.message);
+    }
   }
 
   render() {

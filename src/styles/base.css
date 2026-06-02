@@ -80,9 +80,15 @@ img, video {
   display: block;
 }
 
-button {
+button, [role="button"] {
   cursor: pointer;
   touch-action: manipulation;
+}
+
+nav button, nav [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 :focus-visible {
@@ -128,4 +134,37 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  /* Prevent hover styles stuck state on touch devices button/interactive elements */
+  *:hover {
+    background-color: inherit;
+    color: inherit;
+    border-color: inherit;
+    box-shadow: none;
+  }
+}
+
+/* Press feedback for all buttons on touch devices */
+@media (max-width: 1023px) {
+  button:active,
+  [role="button"]:active,
+  a:active {
+    transform: scale(0.97) !important;
+    transition: transform 80ms ease-out !important;
+  }
+}
+
+/* Disable iOS callout/long-press menus on UI elements */
+button, [role="button"], nav, .fab-button, .manga-button {
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: manipulation;
+}
+
+/* Improve scroll momentum on iOS */
+.scroll-momentum {
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
 }

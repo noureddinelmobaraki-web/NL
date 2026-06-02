@@ -46,3 +46,26 @@
 .stream-spacer-12 {
   width: 12px;
 }
+
+/* MOBILE-ONLY */
+@media (max-width: 767px) {
+  .stream-link-refactored {
+    min-height: 80px !important;
+    padding: 12px 8px !important;
+    border-radius: 14px !important;
+  }
+  @keyframes pulse-spotify {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+}
+
+/* TABLET-ONLY */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .stream-link-content-default svg,
+  .stream-link-content-default img {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}

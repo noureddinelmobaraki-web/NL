@@ -166,3 +166,31 @@ Triggers Sharp pipelines to encode original JPG/PNG image structures to optimize
 ```bash
 npm run optimize:images
 ```
+
+---
+
+## 📱 Mobile Testing & Quality Assurance
+
+To ensure a highly optimized mobile-first experience, follow these procedures to verify responsive and device-native behaviors:
+
+### 1. Developer Diagnostic QA Overlay (`?qa=1`)
+In local development, append `?qa=1` to the URL (e.g., `http://localhost:3000/?qa=1`). A persistent green HUD **MOBILE QA SCREEN** will render in the bottom corner of the viewport:
+- **Viewport Parameters**: Verifies real-time viewport dimensions, active tailwind breakpoint (`sm`, `md`, `lg`, `xl`), and device orientation.
+- **Hardware Profile**: Monitors DPR (Device Pixel Ratio) and physical CPU cores.
+- **Context Tracker**: Lists active slide-ups and overlay modals (`Music Mood Screen`, `Radix Dialogue`, `Lens Gallery`, `MeBit Gallery`) for easy testing of state stacks.
+
+### 2. Browser Emulation & Remote Testing
+*   **DevTools emulation**: In Chrome or Safari DevTools, open Device Mode and inspect with targets preset for **iPhone 14 Pro** (notch constraints), **iPad Air** (tablet breakpoints), and **Pixel 7** (Android soft-navigation bars).
+*   **Real-Device LAN Testing**: Since the dev server binds to `0.0.0.0:3000`, fetch your workstation's local IP (e.g., `192.168.1.XX`) and open `http://192.168.1.XX:3000` on your mobile phone connected to the same network.
+*   **Ngrok/Tunnels**: Expose the local container port to test real-world cellular latency:
+    ```bash
+    ngrok http 3000
+    ```
+
+### 3. Automated Mobile Auditing
+*   **Continuous Integration Type Check**: Run strict type-safety checks before shipping:
+    ```bash
+    npm run lint
+    ```
+*   **Google Lighthouse Mobile Audit**: Run Chrome Lighthouse in the "Mobile" configuration on the built production bundle. Ensure it passes performance threshold indicators (aiming for ≥ 90 score), respects 44x44px tap targets, and implements valid ARIA labels for screen reader accessibility.
+

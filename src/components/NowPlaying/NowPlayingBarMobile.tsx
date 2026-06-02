@@ -2,7 +2,6 @@ import {
   Play, 
   Pause, 
   SkipForward, 
-  SkipBack, 
   X
 } from "lucide-react";
 import { ActiveSong } from "../../types";
@@ -10,11 +9,7 @@ import { ActiveSong } from "../../types";
 export interface NowPlayingBarMobileProps {
   activeSong: ActiveSong;
   isPlaying: boolean;
-  currentTime: number;
-  duration: number;
   progress: number;
-  formatTime: (sec: number) => string;
-  onPrev: () => void;
   onNext: () => void;
   onPlayPause: () => void;
   onClose: () => void;
@@ -23,38 +18,53 @@ export interface NowPlayingBarMobileProps {
 export const NowPlayingBarMobile = ({
   activeSong,
   isPlaying,
-  currentTime,
-  duration,
   progress,
-  formatTime,
-  onPrev,
   onNext,
   onPlayPause,
   onClose,
 }: NowPlayingBarMobileProps) => {
   return (
-    <>
-      {/* Mobile Handle Hint */}
-      <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-2" aria-hidden="true" />
+    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      {/* Mini Seek Progress Bar at the absolute Top */}
+      <div 
+        style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: '12px', 
+          right: '12px', 
+          height: '2px', 
+          background: 'rgba(255,255,255,0.1)',
+          borderRadius: '1px',
+          overflow: 'hidden'
+        }}
+      >
+        <div 
+          style={{ 
+            width: `${progress}%`, 
+            height: '100%', 
+            background: 'var(--text-primary)',
+            transition: 'width 0.1s linear'
+          }} 
+        />
+      </div>
 
       <div style={{
         display: "flex",
         alignItems: "center",
-        gap: "10px",
+        gap: "12px",
         width: "100%",
-        marginBottom: "4px",
-        flexShrink: 0
+        padding: "0 4px",
       }}>
-        {/* Left: Cover Art */}
-        <div style={{ position: 'relative', width: '40px', height: '40px', flexShrink: 0 }}>
+        {/* Left: Cover Art (Smaller for 56px bar) */}
+        <div style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0 }}>
           <div 
             style={{ 
               position: 'absolute', 
-              inset: '-4px', 
+              inset: '-2px', 
               borderRadius: '50%', 
               background: `var(--card-control-bg)`, 
-              filter: 'blur(8px)',
-              opacity: isPlaying ? 1 : 0,
+              filter: 'blur(6px)',
+              opacity: isPlaying ? 0.8 : 0,
               transition: 'opacity 1s'
             }} 
           />
@@ -62,14 +72,14 @@ export const NowPlayingBarMobile = ({
             <img 
               src={activeSong.cover || (activeSong as any).backgroundImage} 
               alt={`${activeSong?.title ?? 'Song'} cover art`} 
-              width={40}
-              height={40}
+              width={36}
+              height={36}
               style={{ 
                 width: '100%', 
                 height: '100%', 
                 borderRadius: '50%', 
                 objectFit: 'cover',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
                 animation: isPlaying ? 'spin 12s linear infinite' : 'none'
               }} 
             />
@@ -87,19 +97,20 @@ export const NowPlayingBarMobile = ({
         </div>
 
         {/* Center: Info */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <span style={{ 
             color: "var(--text-primary)", 
-            fontSize: "13px", 
+            fontSize: "12px", 
             fontWeight: "700", 
             whiteSpace: "nowrap", 
             overflow: "hidden", 
             textOverflow: "ellipsis",
-            letterSpacing: "-0.01em"
+            letterSpacing: "-0.01em",
+            lineHeight: "1.2"
           }}>
             {activeSong.title}
           </span>
-          <span style={{ fontSize: '8px', color: 'var(--text-muted)', fontWeight: 'bold', letterSpacing: '0.15em', marginTop: '1px' }}>
+          <span style={{ fontSize: '7px', color: 'var(--text-muted)', fontWeight: 'bold', letterSpacing: '0.1em', marginTop: '1px' }}>
             NOW PLAYING
           </span>
         </div>
@@ -107,40 +118,31 @@ export const NowPlayingBarMobile = ({
         {/* Right: Primary Controls */}
         <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
           <button
-            onClick={onPrev}
-            style={{ color: "var(--text-secondary)", padding: "12px", borderRadius: "50%" }}
-            aria-label="الأغنية السابقة"
-            className="hover:bg-white/10 active:bg-white/20 transition-colors outline-none"
-          >
-            <SkipBack size={20} fill="currentColor" aria-hidden="true" />
-          </button>
-          
-          <button
             onClick={onPlayPause}
             aria-label={isPlaying ? "Pause" : "Play"}
             style={{ 
-              width: "44px", 
-              height: "44px", 
+              width: "38px", 
+              height: "38px", 
               display: "flex", 
               alignItems: "center", 
               justifyContent: "center", 
               borderRadius: "50%", 
               background: "var(--text-primary)", 
               color: "var(--text-inverse)",
-              boxShadow: '0 4px 15px rgba(255,255,255,0.2)'
+              boxShadow: '0 4px 10px rgba(255,255,255,0.1)'
             }}
-            className="hover:scale-105 active:scale-95 shadow-lg outline-none"
+            className="active:scale-95 transition-transform outline-none"
           >
-            {isPlaying ? <Pause size={20} fill="currentColor" aria-hidden="true" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} aria-hidden="true" />}
+            {isPlaying ? <Pause size={18} fill="currentColor" aria-hidden="true" /> : <Play size={18} fill="currentColor" style={{ marginLeft: '1px' }} aria-hidden="true" />}
           </button>
           
           <button
             onClick={onNext}
-            style={{ color: "var(--text-secondary)", padding: "12px", borderRadius: "50%" }}
+            style={{ color: "var(--text-secondary)", padding: "10px", borderRadius: "50%" }}
             aria-label="الأغنية التالية"
-            className="hover:bg-white/10 active:bg-white/20 transition-colors outline-none"
+            className="active:bg-white/10 transition-colors outline-none"
           >
-            <SkipForward size={20} fill="currentColor" aria-hidden="true" />
+            <SkipForward size={18} fill="currentColor" aria-hidden="true" />
           </button>
 
           <button
@@ -149,59 +151,13 @@ export const NowPlayingBarMobile = ({
               color: "var(--text-muted)", 
               padding: "10px", 
             }}
-            className="hover:text-[var(--text-primary)] transition-colors outline-none"
+            className="active:text-[var(--text-primary)] transition-colors outline-none"
             aria-label="Close"
           >
             <X size={18} aria-hidden="true" />
           </button>
         </div>
       </div>
-
-      {/* Seek Section */}
-      <div style={{
-        padding: "4px 8px 0",
-        display: "flex",
-        flexDirection: "column",
-        gap: "4px"
-      }}>
-        <div className="relative w-full py-3 -my-3 cursor-pointer">
-          <input
-            type="range"
-            min={0}
-            max={duration}
-            value={currentTime}
-            step={0.1}
-            onChange={(e) => {
-              if (activeSong.audioRef.current) {
-                activeSong.audioRef.current.currentTime = parseFloat(e.target.value);
-              }
-            }}
-            style={{ 
-              width: '100%', 
-              height: '6px',
-              background: `linear-gradient(to right, var(--text-primary) ${progress}%, rgba(255,255,255,0.1) ${progress}%)`,
-              appearance: 'none',
-              cursor: 'pointer',
-              borderRadius: '3px',
-              outline: 'none',
-              '--thumb-size': '14px',
-              accentColor: 'var(--accent-indigo)'
-            } as any}
-            className="seek-bar"
-          />
-        </div>
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          fontSize: "10px", 
-          color: "var(--text-muted)", 
-          fontVariantNumeric: "tabular-nums",
-          marginTop: "0"
-        }}>
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-      </div>
-    </>
+    </div>
   );
 };

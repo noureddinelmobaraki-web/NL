@@ -74,7 +74,7 @@ function parseLRCFormat(text: string): LyricLine[] {
         const matchIndex = match.index;
         const textChunk = rawText.substring(lastIndex, matchIndex);
         if (textChunk) {
-          words.push({ text: textChunk, time: currentWordTime });
+          words.push({ text: textChunk.trim(), time: currentWordTime });
         }
         
         const min = parseInt(match[1], 10);
@@ -86,7 +86,7 @@ function parseLRCFormat(text: string): LyricLine[] {
       
       const lastChunk = rawText.substring(lastIndex);
       if (lastChunk) {
-        words.push({ text: lastChunk, time: currentWordTime });
+        words.push({ text: lastChunk.trim(), time: currentWordTime });
       }
     }
     
@@ -137,6 +137,11 @@ export function parseLRC(text: string): LyricLine[] {
           currentWord.endTime = currentLine.words[w + 1].time;
         } else {
           currentWord.endTime = currentLine.endTime;
+        }
+        // Cap per-word duration to avoid orphan words hanging forever
+        const MAX_WORD_DURATION = 3.0; // 3 seconds cap
+        if (currentWord.endTime - currentWord.time > MAX_WORD_DURATION) {
+          currentWord.endTime = currentWord.time + MAX_WORD_DURATION;
         }
       }
     }

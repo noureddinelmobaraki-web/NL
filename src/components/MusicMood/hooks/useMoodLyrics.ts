@@ -9,6 +9,7 @@ interface UseMoodLyricsProps {
 
 export function useMoodLyrics({ activeSong, currentTime }: UseMoodLyricsProps) {
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
+  const [previousLine, setPreviousLine] = useState<string>('');
   const [currentLine, setCurrentLine] = useState<string>('');
   const [nextLine, setNextLine] = useState<string>('');
 
@@ -16,6 +17,7 @@ export function useMoodLyrics({ activeSong, currentTime }: UseMoodLyricsProps) {
   useEffect(() => {
     if (!activeSong?.lrc) {
       setLyrics([]);
+      setPreviousLine('');
       setCurrentLine('');
       setNextLine('');
       return;
@@ -34,19 +36,22 @@ export function useMoodLyrics({ activeSong, currentTime }: UseMoodLyricsProps) {
   // ── تحديد الكلمات الحالية بناءً على الوقت
   useEffect(() => {
     if (!lyrics.length) return;
-    let current = '', next = '';
+    let prev = '', current = '', next = '';
     for (let i = 0; i < lyrics.length; i++) {
       if (lyrics[i].time <= currentTime) {
+        prev = lyrics[i - 1]?.text ?? '';
         current = lyrics[i].text;
         next = lyrics[i + 1]?.text ?? '';
       }
     }
+    setPreviousLine(prev);
     setCurrentLine(current);
     setNextLine(next);
   }, [currentTime, lyrics]);
 
   return {
     lyrics,
+    previousLine,
     currentLine,
     nextLine,
     setLyrics,

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import { preloadBlackHoleTransition } from '../MusicMood/BlackHoleTransition';
 import { getLocalAssetUrl } from '../../constants/assets';
 import { audioManager } from '../../audio/audioManager';
 import { ActiveSong } from '../../types';
@@ -16,17 +17,45 @@ export const MySongs = ({
   onSongStop,
   onActiveSongChange,
   onAmbientColorChange,
+  onRegisterMoodTrigger, // FIXED: Expose mood trigger to parent
 }: {
   onSongPlay: () => void;
   onSongStop?: () => void;
   onActiveSongChange: (data: ActiveSong | null) => void;
   onAmbientColorChange?: (color: string | null) => void;
+  onRegisterMoodTrigger?: (fn: () => void) => void;
 }) => {
   const [isMoodTransitioning, setIsMoodTransitioning] = useState(false);
   const [isMoodActive, setIsMoodActive] = useState(false);
   const moodAudioCtxRef = useRef<AudioContext | null>(null);
 
   const { setContext } = useButtonContext();
+
+  // FIXED: Define the trigger logic and register it
+  const handleTriggerMood = () => {
+    if (!moodAudioCtxRef.current || moodAudioCtxRef.current.state === 'closed') {
+      moodAudioCtxRef.current = new AudioContext();
+    }
+    if (moodAudioCtxRef.current.state === 'suspended') {
+      moodAudioCtxRef.current.resume();
+    }
+    if (playback.isPlaying) {
+      playback.audioTagRef.current?.pause();
+      onSongStop?.();
+    }
+    audioManager.pause?.('bg');
+
+    Promise.all([
+      import('../MusicMood/BlackHoleTransition').catch(() => null),
+      import('../MusicMood/MusicMoodScreen').catch(() => null),
+    ]).finally(() => {
+      setIsMoodTransitioning(true);
+    });
+  };
+
+  useEffect(() => {
+    onRegisterMoodTrigger?.(handleTriggerMood);
+  }, [onRegisterMoodTrigger, handleTriggerMood]);
 
   const state = useMySongsState({ onAmbientColorChange });
 
@@ -70,6 +99,18 @@ export const MySongs = ({
     };
   }, [isMoodTransitioning, isMoodActive]);
 
+  // Accessibility: Close lyrics bottom sheet on Escape press
+  useEffect(() => {
+    if (!state.lyricsOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        state.setLyricsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.lyricsOpen, state.setLyricsOpen]);
+
   return (
     <section
       id="my-songs-section"
@@ -112,7 +153,7 @@ export const MySongs = ({
         {state.error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
             <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-2">
-              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
@@ -129,9 +170,9 @@ export const MySongs = ({
           <>
             <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-20">
           <div className="space-y-2">
-            <h1 className="text-fluid-title font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)]">
+            <h2 className="text-fluid-title font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)]">
               MY SONGS
-            </h1>
+            </h2>
             <div className="flex items-center gap-3 flex-wrap">
               <div className="h-1 w-12 bg-[var(--accent-indigo)]" />
               <p className="text-[var(--text-muted)] font-medium tracking-[0.2em] text-xs uppercase text-nowrap">
@@ -139,20 +180,9 @@ export const MySongs = ({
               </p>
               {state.songs.length > 0 && (
                 <button
-                  onClick={() => {
-                    if (!moodAudioCtxRef.current || moodAudioCtxRef.current.state === 'closed') {
-                      moodAudioCtxRef.current = new AudioContext();
-                    }
-                    if (moodAudioCtxRef.current.state === 'suspended') {
-                      moodAudioCtxRef.current.resume();
-                    }
-                    if (playback.isPlaying) {
-                      playback.audioTagRef.current?.pause();
-                      onSongStop?.();
-                    }
-                    audioManager.pause?.('bg');
-                    setIsMoodTransitioning(true);
-                  }}
+                  onMouseEnter={preloadBlackHoleTransition}
+                  onFocus={preloadBlackHoleTransition}
+                  onClick={handleTriggerMood}
                   className="music-mood-trigger px-4 py-2 border rounded-full text-xs font-mono uppercase text-zinc-400 border-zinc-800 hover:border-violet-500 hover:text-violet-400 transition-all flex items-center gap-2 cursor-pointer group"
                 >
                   <img

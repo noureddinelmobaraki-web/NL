@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Song, LyricLine } from '../../types';
 import { SongCard } from './SongCard';
 import { preloadSong } from '../../hooks/useHlsAudio';
+import { useDeviceType } from '../../hooks/useDeviceType';
 
 export interface SongListProps {
   songs: Song[];
@@ -53,6 +54,8 @@ export const SongList = ({
 }: SongListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
+  const { isMobile } = useDeviceType();
+
   const filteredSongs = useMemo(() => {
     if (!searchQuery) return songs;
     return songs.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -61,18 +64,21 @@ export const SongList = ({
   return (
     <div className="space-y-6">
       {/* Dynamic Search/Filter Input */}
-      <div className="flex items-center gap-3 max-w-sm">
+      <div className={`flex items-center gap-3 ${isMobile ? 'w-full' : 'max-w-sm'}`}>
         <input
           type="text"
           placeholder="بحث عن أغنية... (البحث بـ العنوان)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-5 py-2 rounded-full text-xs font-mono focus:outline-none transition-all"
+          className={`w-full rounded-full focus:outline-none transition-all ${isMobile ? 'max-w-none px-[16px] py-[10px] text-[16px] font-sans' : 'px-5 py-2 text-xs font-mono'}`}
           style={{
             background: 'var(--bg-glass-strong, rgba(20,20,30,0.5))',
             border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
             color: 'var(--text-primary, #ffffff)',
+            fontSize: '16px', // Prevents iOS keyboard zoom
           }}
+          inputMode="search"
+          enterKeyHint="search"
           aria-label="Search songs"
         />
         {searchQuery && (

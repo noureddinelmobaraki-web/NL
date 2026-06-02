@@ -158,5 +158,7 @@ export function useHlsAudio(
         cleanupFn();
       }
     };
+    // FIXED: Issue #6 — audioRef.current intentionally read at effect time — RefObject is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
 }

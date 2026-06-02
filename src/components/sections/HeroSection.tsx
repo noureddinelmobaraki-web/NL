@@ -4,6 +4,7 @@ import { getThemedImage, LIGHT_PROFILE_OPENING, LIGHT_PROFILE_MAIN } from "../..
 import { ResponsiveImage } from "../ResponsiveImage";
 
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
+import { useDeviceType } from '../../hooks/useDeviceType'; // MOBILE-ONLY
 import siteData from '../../../metadata.json';
 
 const itemVariants: Variants = {
@@ -17,6 +18,7 @@ const itemVariants: Variants = {
 
 export const HeroSection = memo(() => {
   const resolvedTheme = useResolvedTheme();
+  const { isMobile } = useDeviceType(); // MOBILE-ONLY
   const isAutomated = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
 
   // Light theme profile switching logic
@@ -113,7 +115,11 @@ export const HeroSection = memo(() => {
   return (
     <motion.header 
       variants={itemVariants}
-      className="flex flex-col md:flex-row justify-between gap-6 w-full items-[var(--hero-header-align)]"
+      className={`w-full items-[var(--hero-header-align)] hero-layout-grid ${
+        isMobile 
+          ? 'flex flex-col-reverse gap-[1.5rem]' // MOBILE-ONLY
+          : 'flex flex-col md:flex-row justify-between gap-6'
+      }`}
     >
       {/* Outer wrapper playing container chrome */}
       <div 
@@ -126,8 +132,8 @@ export const HeroSection = memo(() => {
             <div className="hero-titlebar-dot yellow" />
             <div className="hero-titlebar-dot green" />
             <span className="hero-titlebar-controls" aria-hidden="true">
-              <span title="Minimize" className="hover:text-black">─</span>
-              <span title="Maximize" className="hover:text-black">□</span>
+              <span title="Minimize" className={isMobile ? 'active:text-black' : 'hover:text-black'}>─</span>
+              <span title="Maximize" className={isMobile ? 'active:text-black' : 'hover:text-black'}>□</span>
             </span>
           </div>
           <span className="hero-titlebar-text">
@@ -140,7 +146,11 @@ export const HeroSection = memo(() => {
           {['File', 'Edit', 'View'].map((item) => (
             <span 
               key={item} 
-              className="px-1.5 h-full flex items-center transition-colors hover:bg-[#000080] hover:text-white cursor-pointer"
+              className={`px-1.5 h-full flex items-center transition-colors cursor-pointer ${
+                isMobile 
+                  ? 'active:bg-[#000080] active:text-white' // MOBILE-ONLY
+                  : 'hover:bg-[#000080] hover:text-white'
+              }`}
             >
               {item}
             </span>
@@ -150,17 +160,25 @@ export const HeroSection = memo(() => {
         {/* Content Area / Hero ContentCard */}
         <div 
           lang="en"
-          className="hero-header-card p-4 sm:p-6 md:p-8 flex-1 relative group overflow-hidden transition-all duration-500 hover:scale-[1.01] halftone-bg-refactored"
+          className={`hero-header-card p-4 sm:p-6 md:p-8 flex-1 relative group overflow-hidden transition-all duration-500 halftone-bg-refactored ${
+            isMobile ? 'active:scale-[1.01]' : 'hover:scale-[1.01]' // MOBILE-ONLY
+          }`}
           id="header-card"
         >
           {/* Header Background Image with Zoom & Pan Hover Effect */}
           <div 
-            className="absolute inset-0 z-[-1] bg-cover bg-center transition-all duration-700 blur-[3px] group-hover:blur-0 group-hover:scale-125 group-hover:translate-y-[-10%] hero-bg-image-refactored"
+            className={`absolute inset-0 z-[-1] bg-cover bg-center transition-all duration-700 blur-[3px] hero-bg-image-refactored ${
+              isMobile 
+                ? 'group-active:blur-0 group-active:scale-125 group-active:translate-y-[-10%]' // MOBILE-ONLY
+                : 'group-hover:blur-0 group-hover:scale-125 group-hover:translate-y-[-10%]'
+            }`}
             style={{ backgroundImage: 'var(--hero-bg-image-url)' }}
           />
 
           {/* Dark Overlay for Text Legibility */}
-          <div className="absolute inset-0 z-[-1] transition-opacity group-hover:opacity-30 hero-overlay-element" />
+          <div className={`absolute inset-0 z-[-1] transition-opacity hero-overlay-element ${
+            isMobile ? 'group-active:opacity-30' : 'group-hover:opacity-30' // MOBILE-ONLY
+          }`} />
           
           {/* Stable Native Hero Title animation envelope */}
           <motion.div
@@ -191,7 +209,7 @@ export const HeroSection = memo(() => {
           {/* BIO Paragraph */}
           <p 
             lang="en"
-            className="hero-bio mt-4 hero-bio-refactored text-[var(--text-primary)] leading-tight max-w-xl"
+            className="hero-bio mt-4 hero-bio-refactored hero-bio-text text-[var(--text-primary)] leading-tight max-w-xl"
           >
             {siteData.bio}
           </p>
@@ -205,7 +223,7 @@ export const HeroSection = memo(() => {
       </div>
 
       {/* Unified Profile Card Element */}
-      <div className="hero-profile-container">
+      <div className="hero-profile-container hero-profile-image">
         <ResponsiveImage 
           src={activeProfileImg} 
           alt={`${siteData.fullName} — ${siteData.location} based rap artist (${siteData.aliases.join(' / ')})`} 

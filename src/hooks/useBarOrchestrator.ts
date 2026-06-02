@@ -92,22 +92,30 @@ export function useBarOrchestrator({
   const isBarVisible = useMemo(() => {
     if (!activeCardId) return false;
     if (suppressMiniBar) return false;
-    if (activeModalContext === 'lens') return false;
-    if (activeModalContext === 'mebit') return false;
-    if (activeModalContext === 'songs-modal') return false;
+    
+    // Hide bar in any modal context except 'page'
+    if (activeModalContext !== 'page') return false;
+    
     if (isCardVisible) return false;
+
+    // Direct DOM check for specific mobile states (visual safety)
+    if (typeof document !== 'undefined') {
+      if (document.body.classList.contains('drawings-fullscreen-active')) return false;
+      if (document.body.classList.contains('keyboard-open')) return false;
+    }
+
     return true;
   }, [activeCardId, suppressMiniBar, activeModalContext, isCardVisible]);
 
   const geometry = useMemo((): BarGeometry => {
     const base: BarGeometry = {
-      bottom: (isMobile || isTablet) ? 'calc(68px + env(safe-area-inset-bottom))' : '24px',
-      left: '50%',
-      right: 'auto',
-      transform: 'translateX(-50%)',
-      maxWidth: '540px',
-      width: '95vw',
-      borderRadius: '28px',
+      bottom: (isMobile || isTablet) ? 'calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0px) + 8px)' : '24px',
+      left: (isMobile || isTablet) ? '8px' : '50%',
+      right: (isMobile || isTablet) ? '8px' : 'auto',
+      transform: (isMobile || isTablet) ? 'none' : 'translateX(-50%)',
+      maxWidth: (isMobile || isTablet) ? 'none' : '540px',
+      width: (isMobile || isTablet) ? 'auto' : '95vw',
+      borderRadius: (isMobile || isTablet) ? '16px' : '28px',
       scale: 1,
       opacity: 1,
     };
@@ -129,7 +137,7 @@ export function useBarOrchestrator({
       case 'contact':
         return {
           ...base,
-          bottom: (isMobile || isTablet) ? 'calc(80px + env(safe-area-inset-bottom))' : '40px',
+          bottom: (isMobile || isTablet) ? 'calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom) + 20px)' : '40px',
           maxWidth: '480px',
           width: '90vw',
           scale: 0.95,

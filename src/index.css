@@ -6,6 +6,8 @@
 @import "./styles/themes/bit.css" layer(theme);
 @import "./styles/themes/lite.css" layer(theme);
 @import "./styles/themes/retro.css" layer(theme);
+@import "./styles/mobile-overrides.css" layer(theme);
+@import "./styles/touch-fixes.css" layer(theme);
 @import "./styles/base.css" layer(base);
 @import "./styles/theme-transition.css" layer(base);
 @import "./styles/typography.css" layer(base);
@@ -21,3 +23,54 @@
 @import "./styles/utilities/controls.css" layer(utilities);
 @import "./styles/utilities/decorations.css" layer(utilities);
 @import "./styles/utilities/sections.css" layer(utilities);
+
+/* MOBILE-ONLY GALLERY AND LENS IMMERSIVE STYLES */
+body.gallery-immersive nav[aria-label="Mobile Navigation"],
+body.gallery-immersive .app-mobile-nav,
+body.lens-immersive nav[aria-label="Mobile Navigation"],
+body.lens-immersive .app-mobile-nav {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  body.lens-immersive .fab-slot-top-right {
+    top: calc(env(safe-area-inset-top) + 12px) !important;
+    right: calc(env(safe-area-inset-right) + 12px) !important;
+  }
+
+  /* MOBILE-ONLY: SongCard compact styles */
+  .song-card {
+    padding: 12px 14px !important;
+    border-radius: 14px !important;
+  }
+  .song-card:active {
+    transform: scale(0.97);
+    transition: transform 120ms ease-out;
+  }
+}
+
+/* Remove hover stickiness on mobile */
+@media (hover: hover) {
+  .song-card:hover {
+    /* Hover effects applied via tailwind anyway, keeping this empty just in case */
+  }
+}
+
+/* Standalone iOS / PWA Mode Top Spacing Adjustment */
+:root {
+  --standalone-top-padding: 0px;
+}
+body.standalone-app {
+  --standalone-top-padding: 8px;
+  padding-top: 8px !important;
+}
+
+/* Hide scrollbars but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+

@@ -129,3 +129,32 @@
   background: linear-gradient(135deg, transparent 45%, #777 45%, #777 55%, transparent 55%, transparent 70%, #777 70%, #777 80%, transparent 80%, transparent 95%, #777 95%, #777 100%);
   pointer-events: none;
 }
+
+/* MOBILE-ONLY */
+@media (max-width: 767px) {
+  .hero-titlebar-main {
+    overflow-x: hidden;
+  }
+  .hero-titlebar-dots {
+    gap: 2px;
+  }
+  .hero-menubar {
+    overflow-x: hidden;
+  }
+  .hero-profile-container {
+    width: 60vw !important;
+    max-width: 240px !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto !important;
+  }
+  .hero-bio-refactored {
+    font-size: clamp(0.95rem, 4.2vw, 1.1rem) !important;
+    line-height: 1.6 !important;
+  }
+  .hero-alias-refactored {
+    display: inline-flex !important;
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+  }
+}

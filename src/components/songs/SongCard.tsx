@@ -92,6 +92,16 @@ export const SongCard = memo(({
   }, [localLyrics, currentTime]);
 
   useEffect(() => {
+    const handler = () => {
+      setLyricsOpen(false);
+    };
+    document.addEventListener('close-mobile-lyrics', handler);
+    return () => {
+      document.removeEventListener('close-mobile-lyrics', handler);
+    };
+  }, [setLyricsOpen]);
+
+  useEffect(() => {
     if (resolvedTheme === 'light' && isLyricsOpen && currentLineIndex !== -1) {
       const activeEl = document.getElementById(`light-lyric-line-${currentLineIndex}`);
       if (activeEl) {
@@ -193,6 +203,25 @@ export const SongCard = memo(({
     });
   }, [song.cover, song.backgroundImage, isActive, onAmbientColorChange]);
 
+  useEffect(() => {
+    if (isLyricsOpen && (isMobile || isTablet)) {
+      document.body.style.overflow = 'hidden';
+      // Set context for orchestrator
+      document.body.dataset.modalContext = 'songs-modal';
+    } else {
+      const isStillOpen = document.body.dataset.modalContext === 'songs-modal' && 
+                          document.querySelectorAll('.lyrics-bottom-sheet').length > 1;
+      if (!isStillOpen) {
+        document.body.style.overflow = '';
+        document.body.dataset.modalContext = 'page';
+      }
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.dataset.modalContext = 'page';
+    };
+  }, [isLyricsOpen, isMobile, isTablet]);
+
   const renderContent = () => (
     <motion.div 
       id={`song-card-${song.id}`}
@@ -223,17 +252,19 @@ export const SongCard = memo(({
         song-card relative ${(resolvedTheme === 'light' && isLyricsOpen) ? 'overflow-visible' : 'overflow-hidden'} flex flex-col transition-all cursor-pointer
         ${resolvedTheme === 'dark' ? 'bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 transition-all duration-500 rounded-2xl' : (resolvedTheme === 'light' ? 'bg-[#F0EBE3]' : (isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-6 sm:p-8 rounded-2xl' : 'shadow-lg hover:shadow-xl p-5 sm:p-6 rounded-2xl'))}
         ${isActive && resolvedTheme !== 'dark' && resolvedTheme !== 'light' ? 'p-6 sm:p-8' : ''}
+        ${(isMobile || isTablet) ? 'h-[80px] justify-center px-4' : ''}
       `}
       style={{
         backgroundImage: resolvedTheme === 'light' ? 'none' : `url('${song.backgroundImage}'), url('${SONG_BG_FALLBACK}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         gridColumn: isActive && !isMobile ? 'span 2' : 'span 1',
-        transitionDuration: resolvedTheme === 'dark' ? '500ms' : '700ms'
+        transitionDuration: resolvedTheme === 'dark' ? '500ms' : '700ms',
+        ...(isMobile || isTablet ? { minHeight: '80px', maxHeight: '80px' } : {})
       }}
     >
       {/* Bento expansion handle */}
-      {isActive && resolvedTheme !== 'light' && (
+      {isActive && resolvedTheme !== 'light' && !isMobile && (
         <div className="absolute top-4 left-4 z-30 scale-75 sm:scale-100">
           <Waveform isPlaying={isPlaying} />
         </div>
@@ -247,7 +278,7 @@ export const SongCard = memo(({
             backgroundImage: `url('${song.backgroundImage}'), url('${SONG_BG_FALLBACK}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            animation: isActive ? 'slow-zoom 8s ease-in-out infinite alternate' : 'none',
+            animation: isActive && !isMobile ? 'slow-zoom 8s ease-in-out infinite alternate' : 'none',
           }}
         />
       )}
@@ -258,8 +289,8 @@ export const SongCard = memo(({
           className="absolute inset-0 z-10 transition-all duration-600"
           style={{
             background: isActive ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.65)',
-            backdropFilter: (isActive || isTablet) ? 'none' : 'blur(1px)',
-            WebkitBackdropFilter: (isActive || isTablet) ? 'none' : 'blur(1px)',
+            backdropFilter: (isActive || isTablet || isMobile) ? 'none' : 'blur(1px)',
+            WebkitBackdropFilter: (isActive || isTablet || isMobile) ? 'none' : 'blur(1px)',
           }} 
         />
       )}
@@ -285,7 +316,7 @@ export const SongCard = memo(({
         />
 
         {/* Controls shown when active (Block C/D) */}
-        {isActive && (
+        {isActive && !isMobile && !isTablet && (
           <div className="mt-2 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <SongCardControls
               isMobile={isMobile}
@@ -317,6 +348,7 @@ export const SongCard = memo(({
               currentTime={currentTime}
               onSeek={onSeek}
               isMobile={isMobile}
+              isTablet={isTablet}
             />
           </div>
         )}
@@ -336,6 +368,7 @@ export const SongCard = memo(({
         currentTime={currentTime}
         onSeek={onSeek}
         isMobile={isMobile}
+        isTablet={isTablet}
       />
     </motion.div>
   );

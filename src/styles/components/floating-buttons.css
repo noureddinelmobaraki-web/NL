@@ -56,10 +56,10 @@
   pointer-events: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .fab-slot-top-right {
-    top: calc(env(safe-area-inset-top) + 20px);
-    right: 16px;
+    top: calc(env(safe-area-inset-top) + 12px) !important;
+    right: 12px !important;
     gap: 6px;
   }
 }
@@ -74,10 +74,10 @@
   pointer-events: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .fab-slot-top-right-2 {
-    top: calc(env(safe-area-inset-top) + 72px);
-    right: 16px; /* align with top-right */
+    top: calc(env(safe-area-inset-top) + 64px) !important;
+    right: 12px !important; /* align with top-right */
   }
 }
 
@@ -93,14 +93,15 @@
 
 @media (min-width: 768px) and (max-width: 1023px) {
   .fab-slot-bottom-right {
-    bottom: 80px; /* Above the tablet nav bar */
+    bottom: calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom) + 16px) !important; /* Above the tablet nav bar */
+    right: 16px !important;
   }
 }
 
 @media (max-width: 767px) {
   .fab-slot-bottom-right {
-    bottom: calc(80px + env(safe-area-inset-bottom));
-    right: 16px;
+    bottom: calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom) + 16px) !important;
+    right: 16px !important;
   }
 }
 
@@ -119,4 +120,16 @@
 /* Auxiliary body indicator handles if needed */
 body.has-active-modal .fab-slot-top-right {
   /* Dynamic custom overlays can use this for further transition tweaking */
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --mobile-nav-height: 64px;
+  }
+  /* When a modal is active, ensure FAB slots clear of it */
+  body.has-active-modal .fab-slot-bottom-right,
+  body.has-active-modal .fab-slot-top-right,
+  body.has-active-modal .fab-slot-top-right-2 {
+    display: none !important;
+  }
 }

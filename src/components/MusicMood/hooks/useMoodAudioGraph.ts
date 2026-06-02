@@ -37,8 +37,10 @@ export function useMoodAudioGraph({
     // إنشاء analyser مرة واحدة
     if (!analyserRef.current) {
       analyserRef.current = ctx.createAnalyser();
-      analyserRef.current.fftSize = 64;
+      analyserRef.current.fftSize = 128;
     }
+    // Expose the analyser on the audio element for audio-reactive particles
+    (audio as any).__analyser = analyserRef.current;
 
     // إنشاء MediaElementSource مرة واحدة فقط — هذا هو سبب المشكلة
     if (!sourceNodeRef.current) {
@@ -56,7 +58,15 @@ export function useMoodAudioGraph({
     analyserRef.current.connect(ctx.destination);
 
     return () => {
-      // لا تُفصل عند تغيير الأغنية — فقط عند unmount المكوّن كاملاً
+      // FIXED: Issue #2 — Proper cleanup of AudioNodes
+      try {
+        sourceNodeRef.current?.disconnect();
+      } catch (_) { /* ignore: already disconnected */ }
+      try {
+        analyserRef.current?.disconnect();
+      } catch (_) { /* ignore */ }
+      cancelAnimationFrame(animFrameRef.current);
+      // AudioContext closure is handled by MusicMoodScreen onExit
     };
   }, [existingAudioCtx, audioRef]);
 

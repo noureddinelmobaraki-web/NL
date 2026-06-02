@@ -1,7 +1,8 @@
-// src/components/MusicMood/MusicMoodScreen.tsx
+// src/components/MusicMood/MusicMoodScreen.tsx // VIEWPORT-AWARE
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Song } from '../../types';
 import { useHlsAudio } from '../../hooks/useHlsAudio';
 import { useMoodAudioGraph } from './hooks/useMoodAudioGraph';
@@ -9,6 +10,11 @@ import { useMoodLyrics } from './hooks/useMoodLyrics';
 import { useMoodGestures } from './hooks/useMoodGestures';
 import { MoodParticles } from './MoodParticles';
 import { MoodControls } from './MoodControls';
+import { useViewportSize } from '../../hooks/useViewportSize';
+import { useDeviceType } from '../../hooks/useDeviceType';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useButtonContext } from '../layout/ButtonOrchestrator';
+import { useOrientationListener } from '../../hooks/useOrientationListener';
 
 interface MusicMoodScreenProps {
   songs: Song[];            // كل الأغاني الـ 25
@@ -18,6 +24,19 @@ interface MusicMoodScreenProps {
 
 // ══════════════════════════════════
 export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodScreenProps) => {
+  const focusTrapRef = useFocusTrap(true);
+  const viewport = useViewportSize();
+  const { isDesktop } = useDeviceType();
+  const { setContext } = useButtonContext();
+  const [orientationKey, setOrientationKey] = useState(0);
+
+  useOrientationListener(useCallback(() => setOrientationKey(prev => prev + 1), []));
+
+  useEffect(() => {
+    setContext('mebit');
+    return () => setContext('page');
+  }, [setContext]);
+  const isMobileLyr = !isDesktop || (typeof window !== 'undefined' && window.innerWidth < 768);
   const [activeSong, setActiveSong]   = useState<Song | null>(null);
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const [currentTime, setCurrentTime] = useState(0);
@@ -38,8 +57,62 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     activeSong,
   });
 
+  const dotCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = dotCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const W = window.innerWidth;
+    const isMobile = W < 1024;
+    const count = isMobile ? 150 : 300;
+    const dots = Array.from({ length: count }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      distFactor: 0
+    }));
+
+    const resize = () => {
+      canvas.width = window.innerWidth * (window.devicePixelRatio || 1);
+      canvas.height = window.innerHeight * (window.devicePixelRatio || 1);
+      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+      
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      const maxDist = Math.hypot(cx, cy);
+      dots.forEach(d => {
+        const dist = Math.hypot(d.x - cx, d.y - cy);
+        d.distFactor = 1 - (dist / maxDist) * 0.5;
+      });
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    let animId = 0;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      
+      dots.forEach(d => {
+        const radius = 1 + (glowIntensity * 2.5) * d.distFactor;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animId);
+    };
+  }, [glowIntensity]);
+
   // ── تتبع الكلمات ومزامنتها عبر الهوك المخصص
-  const { currentLine, nextLine } = useMoodLyrics({
+  const { previousLine, currentLine, nextLine } = useMoodLyrics({
     activeSong,
     currentTime,
   });
@@ -88,6 +161,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     // تشغيل الأغنية بعد ظهور الشاشة
     const t2 = setTimeout(() => pickRandomSong(), 400);
     return () => { clearTimeout(t1); clearTimeout(t2); };
+    // FIXED: Issue #8 — intentionally empty to run once on mount. pickRandomSong excluded to avoid re-trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -148,13 +222,16 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
 
   // ── وهج بسيط جداً — دائرة رمادية خفيفة في المركز تتنفس مع الموسيقى
   const glowRadius = 30 + glowIntensity * 40;      // أصغر وأكثر تركيزاً
-  const glowOpacity = 0.04 + glowIntensity * 0.10; // خفيف جداً
+  const glowOpacity = 0.04 + glowIntensity * 0.06; // خفيف جداً // AUDIO-REACTIVE-PARTICLES
 
   // ══════════════════════════════════
   // الـ JSX — الشاشة البيضاء النقية
   // ══════════════════════════════════
   return createPortal(
     <div
+      key={orientationKey}
+      ref={focusTrapRef}
+      id="music-mood-immersive-overlay"
       style={{
         position: 'fixed',
         inset: 0,
@@ -165,12 +242,15 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
         alignItems: 'center',
         justifyContent: 'center',
         opacity: isEntering ? 0 : 1,
-        transition: 'opacity 0.8s ease',
+        // FIXED: Issue #5 — small delay for smooth sync with blackhole bloom-out
+        transition: 'opacity 0.5s ease 0.15s',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         // منع أي تفاعل خارجي مع الصفحة تحتها
         pointerEvents: 'all',
       }}
     >
+      {/* FIXED: Issue #5 — Removed redundant white flash div */}
+
       {/* ══ وهج الخلفية يتفاعل مع الصوت ══ */}
       <div
         style={{
@@ -209,6 +289,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
           boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
         }}
         onMouseEnter={e => {
+          if (!isDesktop) return;
           const b = e.currentTarget as HTMLButtonElement;
           b.style.borderColor = 'rgba(0,0,0,0.25)';
           b.style.color = 'rgba(0,0,0,0.8)';
@@ -216,6 +297,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
           b.style.transform = 'scale(1.05)';
         }}
         onMouseLeave={e => {
+          if (!isDesktop) return;
           const b = e.currentTarget as HTMLButtonElement;
           b.style.borderColor = 'rgba(0,0,0,0.08)';
           b.style.color = 'rgba(0,0,0,0.4)';
@@ -229,17 +311,31 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
         </svg>
       </button>
 
-      {/* ══ Particles Canvas — مثل antigravity.google ══ */}
-      <MoodParticles />
+      {/* ══ Dot Field Background Texture ══ */}
+      <canvas
+        ref={dotCanvasRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          width: '100%',
+          height: '100%',
+        }}
+      />
+
+      {/* ══ Particles Canvas — مثل antigravity.google ══ */ /* AUDIO-REACTIVE-PARTICLES */}
+      <MoodParticles glowIntensity={glowIntensity} audioRef={audioRef} />
 
       {/* ══ اسم الأغنية ══ */}
       {activeSong && (
         <p
+          aria-live="polite"
           style={{
             position: 'absolute',
-            top: 'calc(env(safe-area-inset-top) + 10vh)',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            top: viewport.isLandscape ? '24px' : 'calc(env(safe-area-inset-top) + 10vh)',
+            left: viewport.isLandscape ? '24px' : '50%',
+            transform: viewport.isLandscape ? 'none' : 'translateX(-50%)',
             fontSize: 'clamp(10px, 1.5vw, 12px)',
             letterSpacing: '0.45em',
             textTransform: 'uppercase',
@@ -254,78 +350,215 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
         </p>
       )}
 
-      {/* ══ الكلمات الرئيسية (السطر الحالي) ══ */}
+      {/* ══ محتوى الشاشة: تقسيم أفقي في اللاندسكيب وتقسيم عمودي في البورتريه ══ */}
       <div
         style={{
-          position: 'relative',
+          display: 'flex',
+          flexDirection: viewport.isLandscape ? 'row' : 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          maxWidth: '1200px',
+          padding: viewport.isLandscape ? '0 10vw' : '0',
+          gap: viewport.isLandscape ? '64px' : '0',
           zIndex: 1,
-          textAlign: 'center',
-          padding: '0 clamp(24px, 8vw, 120px)',
-          marginBottom: '48px',
         }}
       >
-        {/* السطر الحالي */}
-        <p
-          key={currentLine}
+        {/* النصف الأيسر: الكلمات (في اللاندسكيب) */}
+        <div
           style={{
-            fontSize: 'clamp(22px, 4.5vw, 48px)',
-            fontWeight: 300,
-            color: 'rgba(0,0,0,0.82)',
-            lineHeight: 1.45,
-            letterSpacing: '-0.025em',
-            textShadow: '0 1px 2px rgba(255,255,255,0.8)',
-            fontOpticalSizing: 'auto',
-            margin: 0,
-            marginBottom: '20px',
-            // fade-in عند تغيير السطر
-            animation: 'moodLineFadeIn 0.4s ease forwards',
-            maxWidth: '650px',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            flex: viewport.isLandscape ? 1.2 : 'none',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: viewport.isLandscape ? '100%' : 'auto',
           }}
         >
-          {currentLine || (audioStatus === 'loading' ? '...' : '')}
-        </p>
-
-        {/* السطر التالي (أشفّ) */}
-        {nextLine && (
-          <p
+          {/* ══ الكلمات الرئيسية (السطر الحالي) ══ */}
+          <div
+            aria-live="polite"
             style={{
-              fontSize: 'clamp(14px, 2.4vw, 24px)',
-              fontWeight: 300,
-              color: 'rgba(0,0,0,0.28)',
-              lineHeight: 1.5,
-              margin: 0,
-              letterSpacing: '-0.01em',
-              maxWidth: '650px',
-              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+              position: 'relative',
+              zIndex: 1,
+              textAlign: 'center',
+              padding: viewport.isLandscape ? '0' : '0 clamp(24px, 8vw, 120px)',
+              marginBottom: viewport.isLandscape ? '0' : '48px',
             }}
           >
-            {nextLine}
-          </p>
-        )}
+            {isMobileLyr ? (
+              /* MOBILE-LYRICS: 3-line sliding context, arab support, balance text-wrap */
+              <AnimatePresence mode="popLayout">
+                <motion.div
+                  key={currentLine}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '12px',
+                    width: '100%',
+                  }}
+                >
+                  {/* Previous Line (above, much fainter) */}
+                  {previousLine && (
+                    <p
+                      dir="auto"
+                      className="text-center"
+                      style={{
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif',
+                        fontSize: 'clamp(1rem, 4.6vw, 1.4rem)',
+                        fontWeight: 400,
+                        opacity: 0.15,
+                        color: 'rgba(0,0,0,0.82)',
+                        lineHeight: 1.45,
+                        letterSpacing: '-0.01em',
+                        textWrap: 'balance' as any,
+                        margin: 0,
+                        maxWidth: '90vw',
+                        overflowWrap: 'anywhere' as any,
+                      }}
+                    >
+                      {previousLine}
+                    </p>
+                  )}
 
-        {/* رسالة إذا لم تكن هناك كلمات */}
-        {!activeSong?.lrc && activeSong && (
-          <p
-            style={{
-              fontSize: 'clamp(14px, 2vw, 18px)',
-              color: 'rgba(0,0,0,0.2)',
-              fontStyle: 'italic',
-              margin: 0,
-            }}
-          >
-            ♪ استمع...
-          </p>
-        )}
+                  {/* Current Line (Active) with scale-from-0.95 + glow flash that decays in 400ms */}
+                  <motion.p
+                    dir="auto"
+                    className="text-center"
+                    initial={{ scale: 0.95, textShadow: '0 0 16px rgba(0,0,0,0.2)' }}
+                    animate={{ scale: 1, textShadow: '0 0 0px rgba(0,0,0,0)' }}
+                    transition={{
+                      scale: { duration: 0.4, ease: 'easeOut' },
+                      textShadow: { duration: 0.4, ease: 'easeOut' }
+                    }}
+                    style={{
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif',
+                      fontSize: 'clamp(1.3rem, 5.5vw, 2rem)',
+                      fontWeight: 500,
+                      color: 'rgba(0,0,0,0.82)',
+                      lineHeight: 1.45,
+                      letterSpacing: '-0.01em',
+                      textWrap: 'balance' as any,
+                      margin: 0,
+                      maxWidth: '90vw',
+                      overflowWrap: 'anywhere' as any,
+                    }}
+                  >
+                    {currentLine || (audioStatus === 'loading' ? '...' : '')}
+                  </motion.p>
+
+                  {/* Next Line */}
+                  {nextLine && (
+                    <p
+                      dir="auto"
+                      className="text-center"
+                      style={{
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif',
+                        fontSize: 'clamp(1rem, 4.6vw, 1.4rem)',
+                        fontWeight: 400,
+                        opacity: 0.6,
+                        color: 'rgba(0,0,0,0.82)',
+                        lineHeight: 1.45,
+                        letterSpacing: '-0.01em',
+                        textWrap: 'balance' as any,
+                        margin: 0,
+                        maxWidth: '90vw',
+                        overflowWrap: 'anywhere' as any,
+                      }}
+                    >
+                      {nextLine}
+                    </p>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            ) : (
+              /* DESKTOP LYRICS: Original untouched rendering */
+              <>
+                <p
+                  key={currentLine}
+                  style={{
+                    fontSize: viewport.isLandscape ? 'clamp(18px, 3.5vw, 36px)' : 'clamp(22px, 4.5vw, 48px)',
+                    fontWeight: 300,
+                    color: 'rgba(0,0,0,0.82)',
+                    lineHeight: 1.45,
+                    letterSpacing: '-0.025em',
+                    textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+                    fontOpticalSizing: 'auto',
+                    margin: 0,
+                    marginBottom: '20px',
+                    // fade-in عند تغيير السطر
+                    animation: 'moodLineFadeIn 0.4s ease forwards',
+                    maxWidth: '650px',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                  }}
+                >
+                  {currentLine || (audioStatus === 'loading' ? '...' : '')}
+                </p>
+
+                {/* السطر التالي (أشفّ) */}
+                {nextLine && (
+                  <p
+                    style={{
+                      fontSize: viewport.isLandscape ? 'clamp(12px, 2.2vw, 18px)' : 'clamp(14px, 2.4vw, 24px)',
+                      fontWeight: 300,
+                      color: 'rgba(0,0,0,0.28)',
+                      lineHeight: 1.5,
+                      margin: 0,
+                      letterSpacing: '-0.01em',
+                      maxWidth: '650px',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                    }}
+                  >
+                    {nextLine}
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* رسالة إذا لم تكن هناك كلمات */}
+            {!activeSong?.lrc && activeSong && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '32px' }}>
+                <svg width="40" height="24" viewBox="0 0 40 24" fill="currentColor" style={{ opacity: 0.3, color: 'rgba(0,0,0,0.82)' }}>
+                  <circle cx="8" cy="12" r="3">
+                    <animate attributeName="cy" values="12;6;12" dur="1s" repeatCount="indefinite" begin="0s" />
+                  </circle>
+                  <circle cx="20" cy="12" r="3">
+                    <animate attributeName="cy" values="12;6;12" dur="1s" repeatCount="indefinite" begin="0.2s" />
+                  </circle>
+                  <circle cx="32" cy="12" r="3">
+                    <animate attributeName="cy" values="12;6;12" dur="1s" repeatCount="indefinite" begin="0.4s" />
+                  </circle>
+                </svg>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* النصف الأيمن: أزرار التحكم (في اللاندسكيب) */}
+        <div
+          style={{
+            flex: viewport.isLandscape ? 1 : 'none',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          {/* ══ أزرار التحكم ══ */}
+          <MoodControls
+            audioStatus={audioStatus}
+            handlePlayPause={handlePlayPause}
+            pickRandomSong={pickRandomSong}
+            diceSpinning={diceSpinning}
+          />
+        </div>
       </div>
-
-      {/* ══ أزرار التحكم ══ */}
-      <MoodControls
-        audioStatus={audioStatus}
-        handlePlayPause={handlePlayPause}
-        pickRandomSong={pickRandomSong}
-        diceSpinning={diceSpinning}
-      />
 
       {/* ══ زر الخروج — أسفل الشاشة، شفاف جداً ══ */}
       <button
@@ -345,8 +578,8 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
           transition: 'color 0.2s',
           padding: '8px 16px',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.6)'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.2)'; }}
+        onMouseEnter={e => { if (isDesktop) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.6)'; }}
+        onMouseLeave={e => { if (isDesktop) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.2)'; }}
       >
         ESC — exit mood
       </button>

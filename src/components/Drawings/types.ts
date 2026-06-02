@@ -4,4 +4,6 @@ export interface VideoData {
   poster: string;
   hls: string;
   duration: number;
+  title?: string;
+  desc?: string;
 }

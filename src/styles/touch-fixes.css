@@ -1,0 +1,53 @@
+@media (hover: none) and (pointer: coarse) {
+  /* Remove stuck hover states on touch */
+  *:hover { transition: none !important; }
+  
+  /* Minimum 44×44px tap target (Apple HIG + WCAG 2.5.5) */
+  button, a, [role="button"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  p a[href], span a[href] {
+    min-height: unset;
+    min-width: unset;
+  }
+  
+  /* No tap flash rectangle */
+  button, a, [role="button"], nav, .fab-button {
+    -webkit-tap-highlight-color: transparent;
+    tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Allow text selection in content areas */
+  p, .lyrics-text, [data-lyric], article {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  
+  /* Momentum scrolling in all scroll containers */
+  [data-scroll], .scroll-container, .no-scrollbar {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* Prevent double-tap zoom on interactive elements */
+  button, a, [role="button"], [role="tab"] {
+    touch-action: manipulation;
+  }
+}
+
+/* Prevent iOS input font-size zoom */
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="search"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

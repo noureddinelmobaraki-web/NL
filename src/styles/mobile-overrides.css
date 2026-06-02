@@ -1,0 +1,251 @@
+/* src/styles/mobile-overrides.css */
+@media (max-width: 767px) and (orientation: landscape) {
+  /* LensGallery in landscape: slide height adapts to 100dvh */
+  body.gallery-immersive .lens-slide {
+    height: 100dvh !important;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Stack profile image above bio text */
+  .hero-layout-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 24px !important;
+  }
+  .hero-profile-image {
+    max-width: 200px !important;
+    width: 100% !important;
+    position: relative;
+  }
+  /* Glow halo behind profile image */
+  .hero-profile-image::before {
+    content: '';
+    position: absolute; inset: -16px;
+    background: radial-gradient(circle, var(--accent-red, rgba(255,60,80,0.15)), transparent 70%);
+    border-radius: 50%;
+    z-index: -1;
+  }
+  .hero-bio-text {
+    padding: 0 16px !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    text-align: center !important;
+  }
+}
+
+@media (max-width: 479px) {
+  /* xs: reduce giant title */
+  .text-fluid-title, h2.text-6xl, h2.text-8xl, .hero-title {
+    font-size: clamp(2.2rem, 12vw, 3.5rem) !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* tablet: tighten gap */
+  .hero-layout-grid {
+    gap: 24px !important;
+  }
+  .hero-profile-image {
+    max-width: 280px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  /* ========================================== */
+  /* LIGHT THEME (Poolsuite OS / macOS classic look) overrides */
+  /* ========================================== */
+  
+  /* Scrollbar 16px on desktop is too wide on mobile — set to 4px with thin styling */
+  [data-theme="light"] ::-webkit-scrollbar {
+    width: 4px !important;
+    height: 4px !important;
+  }
+  [data-theme="light"] ::-webkit-scrollbar-thumb {
+    border: none !important;
+    background: #888888 !important;
+    box-shadow: none !important;
+  }
+  [data-theme="light"] ::-webkit-scrollbar-track {
+    background: transparent !important;
+    border: none !important;
+  }
+  [data-theme="light"] ::-webkit-scrollbar-button {
+    display: none !important;
+  }
+
+  /* The chunky cursor SVG override — REMOVE on touch devices */
+  @media (hover: none) {
+    [data-theme="light"], 
+    [data-theme="light"] * {
+      cursor: auto !important;
+    }
+  }
+
+  /* Window chrome (3 dots, title bar) — reduce padding/height & font size to fit narrow mobile screens */
+  [data-theme="light"] .hero-titlebar-main,
+  [data-theme="light"] .streaming-titlebar-refactored,
+  [data-theme="light"] .social-titlebar-refactored {
+    padding: 2px 6px !important;
+    height: 20px !important;
+    font-size: 10px !important;
+    gap: 4px !important;
+    box-shadow: 2px 2px 0px #666 !important;
+  }
+  [data-theme="light"] .hero-menubar {
+    padding-left: 6px !important;
+    gap: 8px !important;
+    height: 16px !important;
+    font-size: 10px !important;
+  }
+  [data-theme="light"] .hero-titlebar-dot {
+    width: 6px !important;
+    height: 6px !important;
+  }
+
+  /* ========================================== */
+  /* DARK & MIDNIGHT THEMES overrides */
+  /* ========================================== */
+  
+  /* Halftone background pattern (radial-gradient ... background-size: 40px 40px) — on mobile reduce to 30px 30px for a more refined feel */
+  [data-theme="dark"] body,
+  [data-theme="midnight"] body {
+    background-image: radial-gradient(circle at 1.5px 1.5px, var(--halftone-color) 0.8px, transparent 0) !important;
+    background-size: 30px 30px !important;
+  }
+
+  /* Reduce glass effect backdrop-filter on mobile to ensure great framerate and jank-free scrolling */
+  [data-theme="dark"] [style*="backdrop-filter"],
+  [data-theme="midnight"] [style*="backdrop-filter"],
+  [data-theme="dark"] .backdrop-blur-md,
+  [data-theme="midnight"] .backdrop-blur-md,
+  [data-theme="dark"] .backdrop-blur,
+  [data-theme="midnight"] .backdrop-blur {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  [data-theme="midnight"] {
+    --backdrop-blur: 12px !important;
+  }
+
+  /* ========================================== */
+  /* BIT THEME (8-bit retro theme) overrides */
+  /* ========================================== */
+  
+  /* Pixel-art rendering: image-rendering: pixelated everywhere. Verify it works on mobile. */
+  [data-theme="bit"] img,
+  [data-theme="bit"] canvas,
+  [data-theme="bit"] .pixel-art {
+    image-rendering: -moz-crisp-edges !important;
+    image-rendering: -webkit-crisp-edges !important;
+    image-rendering: pixelated !important;
+  }
+
+  /* 8-bit fonts (@fontsource/share-tech-mono) — ensure font-size doesn't shrink below readable on tiny screens */
+  [data-theme="bit"] {
+    font-size-adjust: none !important;
+  }
+  [data-theme="bit"] .song-card-text,
+  [data-theme="bit"] .song-index,
+  [data-theme="bit"] .song-duration,
+  [data-theme="bit"] .text-xs,
+  [data-theme="bit"] .text-[10px] {
+    font-size: 11px !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  /* ========================================== */
+  /* LITE THEME (Paper-like/pitch-black theme) overrides */
+  /* ========================================== */
+  /* Ensure clean transitions and layout alignment fit beautifully on mobile scale */
+  [data-theme="lite"] body {
+    background-color: #000000 !important;
+    background-image: none !important;
+  }
+}
+
+/* DRAWINGS VERTICAL FEED & MOBILE-ONLY WORKFLOWS */
+@media (max-width: 1023px) {
+  body.drawings-fullscreen-active .fab-slot-top-right,
+  body.drawings-fullscreen-active .fab-slot-top-right-2,
+  body.drawings-fullscreen-active .fab-slot-bottom-right,
+  body.drawings-fullscreen-active nav[aria-label="Mobile Navigation"] {
+    display: none !important;
+  }
+  body.bh-transitioning .fab-slot-top-right,
+  body.bh-transitioning .fab-slot-top-right-2,
+  body.bh-transitioning .fab-slot-bottom-right {
+    display: none !important;
+  }
+
+  /* Fullscreen height optimizations and container fallbacks */
+  #drawings-fullscreen-overlay {
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: 100dvh;
+  }
+
+  /* Scroll snap adjustments */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+@media (max-width: 767px) {
+  body.keyboard-open nav[aria-label="Mobile Navigation"],
+  body.keyboard-open .now-playing-bar-mobile {
+    display: none !important;
+  }
+}
+@keyframes heartPulse {
+  0% { transform: scale(0); opacity: 0; }
+  15% { transform: scale(1.5); opacity: 0.9; }
+  50% { transform: scale(1.2); opacity: 0.9; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+.animate-heart-pulse {
+  animation: heartPulse 600ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-caption {
+  animation: fadeIn 300ms ease-out forwards;
+}
+
+@media (max-width: 1023px) {
+  /* dvh: accounts for browser chrome appearing/disappearing */
+  .fixed.inset-0,
+  #drawings-fullscreen-overlay,
+  [data-fullscreen="true"] {
+    height: 100dvh !important;
+  }
+  @supports not (height: 100dvh) {
+    .fixed.inset-0,
+    #drawings-fullscreen-overlay {
+      height: 100vh;
+      height: -webkit-fill-available;
+    }
+  }
+}
+
+/* Hide floating buttons + mobile nav during transition on ALL viewports */
+body.bh-transitioning .fab-slot-top-right,
+body.bh-transitioning .fab-slot-top-right-2,
+body.bh-transitioning .fab-slot-bottom-right,
+body.bh-transitioning nav[aria-label="Mobile Navigation"] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Prevent body scroll (html overflow handles it, but belt-and-suspenders) */
+body.bh-transitioning {
+  overflow: hidden !important;
+  user-select: none !important;
+}
+

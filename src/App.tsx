@@ -3,8 +3,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/*
+ * MOBILE QA CHECKLIST — Verify before each release:
+ * 
+ * [ ] Hero section: profile image stacks above bio on phone, fits without horizontal scroll
+ * [ ] Streaming icons: 2-col grid on small phone, no overflow
+ * [ ] MeBit gallery: opens in fullscreen, pinch-zoom works, thumbnails auto-scroll
+ * [ ] Lens gallery: swipe nav, double-tap zoom, exits on swipe-down
+ * [ ] Drawings: vertical TikTok-style scroll-snap, tap to pause, mute toggle
+ * [ ] MySongs: cards compact, lyrics open as bottom sheet, drag-down closes
+ * [ ] Music Mood: black hole transition smooth, particles react to music, dice rolls cleanly
+ * [ ] MobileNavBar: 5 tabs visible, no overlap with notch/island, no overlap with Now Playing
+ * [ ] Theme switch: works on all themes (light/dark/midnight/bit/lite) without layout shift
+ * [ ] Rotation: portrait ↔ landscape transitions cleanly in all modals
+ * [ ] Standalone PWA mode: safe-area respected on iPhone notch + Android gesture bar
+ * [ ] Soft keyboard: ContactForm inputs scroll into view, controls move up
+ * [ ] Browser chrome appearing/disappearing: layout stays stable (100dvh used everywhere)
+ * [ ] No ghost clicks after swipes
+ * [ ] All buttons ≥ 44×44px tap target
+ * [ ] No hover-stuck states on touch
+ */
+
 import { motion } from "framer-motion";
-import React, { useEffect, Suspense } from "react";
+import React, { useEffect, Suspense, useCallback, useRef } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
@@ -29,6 +50,7 @@ const RetroWorldPage = React.lazy(() =>
   import('./components/RetroWorld/RetroWorldPage').then(m => ({ default: m.RetroWorldPage }))
 );
 import { useDeviceType } from "./hooks/useDeviceType";
+import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
 import { useParallax } from "./hooks/useParallax";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import { useGalleryState } from "./hooks/useGalleryState";
@@ -51,6 +73,7 @@ const GallerySection = React.lazy(() =>
 );
 
 import { AppProvider, useAppContext } from './context/AppContext';
+import { MobileQAOverlay } from "./components/dev/MobileQAOverlay";
 
 function AppInner() {
   const { theme } = useAppContext();
@@ -68,6 +91,7 @@ function AppInner() {
 
 function MainApp() {
   const { isMobile, isTablet } = useDeviceType();
+  useKeyboardDetection();
   const {
     loaded, setLoaded,
     activeSong, setActiveSong,
@@ -118,6 +142,15 @@ function MainApp() {
     setSelectedImageIndex,
   });
 
+  // FIXED: Issue #1 — Shared mood trigger state
+  const moodTriggerRef = useRef<(() => void) | null>(null);
+  const handleRegisterMoodTrigger = useCallback((fn: () => void) => {
+    moodTriggerRef.current = fn;
+  }, []);
+  const handleMoodTrigger = useCallback(() => {
+    moodTriggerRef.current?.();
+  }, []);
+
   const renderClock = () => {
     if (resolvedTheme !== 'light') return null;
     return (
@@ -163,19 +196,75 @@ function MainApp() {
     if (isLowEndDevice() || prefersReducedMotion()) {
       document.body.classList.add('low-perf');
     }
+
+    if (!isMobile) return;
+
+    let lastTouch = 0;
+    const handler = (e: TouchEvent) => {
+      const now = Date.now();
+      if (now - lastTouch <= 300) e.preventDefault();
+      lastTouch = now;
+    };
+    document.addEventListener('touchend', handler, { passive: false });
+    return () => document.removeEventListener('touchend', handler);
+  }, [isMobile]);
+
+  // FIXED: Issue #4 — Move background pause logic to stable useCallback
+  const handleBackgroundPause = useCallback(() => {
+    const channels = ['bg', 'song', 'mebit', 'lens', 'video'] as const;
+    channels.forEach(ch => { 
+      try { audioManager.pause(ch); } catch (_) {} 
+    });
+    
+    document.querySelectorAll<HTMLMediaElement>('audio, video').forEach(el => {
+      try { el.pause(); } catch (_) {}
+    });
   }, []);
 
-  const scrollToSection = (id: string) => {
-    const attempt = (tries = 0) => {
+  useEffect(() => {
+    // PWA Standalone app mode detection
+    const checkStandalone = () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+      if (isStandalone) {
+        document.body.classList.add('standalone-app');
+      } else {
+        document.body.classList.remove('standalone-app');
+      }
+    };
+    checkStandalone();
+
+    window.addEventListener('pagehide', handleBackgroundPause);
+    document.addEventListener('visibilitychange', handleBackgroundPause);
+    return () => {
+      window.removeEventListener('pagehide', handleBackgroundPause);
+      document.removeEventListener('visibilitychange', handleBackgroundPause);
+    };
+  }, [handleBackgroundPause]);
+
+  // FIXED: Issue #3 — Robust scrollToSection with cancellation
+  const scrollToSection = useCallback((id: string) => {
+    let cancelled = false;
+    const timerIds: ReturnType<typeof setTimeout>[] = [];
+    
+    const attempt = (tries: number) => {
+      if (cancelled) return;
       const el = document.getElementById(id);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else if (tries < 5) {
-        setTimeout(() => attempt(tries + 1), 150);
+        return;
+      }
+      if (tries < 6) {
+        const t = setTimeout(() => attempt(tries + 1), 150);
+        timerIds.push(t);
       }
     };
-    attempt();
-  };
+    attempt(0);
+    
+    return () => {
+      cancelled = true;
+      timerIds.forEach(clearTimeout);
+    };
+  }, []);
 
   return (
     <ButtonProvider>
@@ -277,12 +366,13 @@ function MainApp() {
                 />
               </Suspense>
 
-              <motion.div 
+              <motion.section 
                 variants={itemVariants} 
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
                 id="my-songs-section"
+                aria-label="أغانيّ المفضلة"
               >
                 <SectionErrorBoundary sectionName="MySongs">
                   <Suspense fallback={<SkeletonSection type="songs" />}>
@@ -291,40 +381,43 @@ function MainApp() {
                       onSongStop={handleSongStop}
                       onActiveSongChange={setActiveSong}
                       onAmbientColorChange={setAmbientColor}
+                      onRegisterMoodTrigger={handleRegisterMoodTrigger}
                     />
                   </Suspense>
                 </SectionErrorBoundary>
-              </motion.div>
+              </motion.section>
 
-              <motion.div
+              <motion.section
                 id="contact-section"
                 variants={itemVariants}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
                 style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}
+                aria-label="اتصل بي"
               >
                 <SectionErrorBoundary sectionName="ContactForm">
                   <Suspense fallback={<SkeletonSection type="contact" />}>
                     <ContactForm />
                   </Suspense>
                 </SectionErrorBoundary>
-              </motion.div>
+              </motion.section>
 
-              <motion.div
+              <motion.section
                 id="drawings-section"
                 variants={itemVariants}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
                 style={{ contentVisibility: 'auto', containIntrinsicSize: '0 600px' }}
+                aria-label="رسوماتي"
               >
                 <SectionErrorBoundary sectionName="DrawingsPage">
                   <Suspense fallback={<SkeletonSection type="drawings" />}>
                     <DrawingsPage onSongPlay={handleSongPlay} />
                   </Suspense>
                 </SectionErrorBoundary>
-              </motion.div>
+              </motion.section>
             </div>
 
             <AppFooter footerDecorationUrl={CONFIG_ASSETS.footerDecoration} />
@@ -347,7 +440,9 @@ function MainApp() {
             audioManager.unpauseBg();
           }
         }}
+        onMoodTrigger={handleMoodTrigger}
       />
+      <MobileQAOverlay />
     </ButtonProvider>
   );
 

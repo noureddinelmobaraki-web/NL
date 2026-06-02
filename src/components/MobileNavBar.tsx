@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useDeviceType } from "../hooks/useDeviceType";
 import { Home, Music2, Camera, Aperture, Pause, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -7,6 +8,7 @@ interface MobileNavBarProps {
   onNavigate: (page: string) => void;
   isBgPlaying: boolean;
   onToggleBg: () => void;
+  onMoodTrigger?: () => void; // FIXED: Added onMoodTrigger prop
 }
 
 export const MobileNavBar = ({
@@ -14,11 +16,28 @@ export const MobileNavBar = ({
   onNavigate,
   isBgPlaying,
   onToggleBg,
+  onMoodTrigger,
 }: MobileNavBarProps) => {
   const { isMobile, isTablet } = useDeviceType();
+  const longPressTimeout = useRef<any>(null);
+
   if (!isMobile && !isTablet) return null;
 
   const MusicIcon = isBgPlaying ? Pause : Play;
+
+  const handleStart = () => {
+    longPressTimeout.current = setTimeout(() => {
+      // FIXED: Use onMoodTrigger instead of fragile DOM query
+      onMoodTrigger?.();
+    }, 600);
+  };
+
+  const handleEnd = () => {
+    if (longPressTimeout.current) {
+      clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
+    }
+  };
 
   const tabs = [
     { id: 'home',         Icon: Home,      label: 'الرئيسية' },
@@ -44,13 +63,14 @@ export const MobileNavBar = ({
         right: 0,
         display: 'grid',
         gridTemplateColumns: `repeat(${tabs.length}, 1fr)`,
-        paddingTop: '8px',
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)',
+        paddingTop: '4px',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 4px)',
         background: 'var(--bg-glass-strong)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderTop: '1px solid var(--border-subtle)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        borderTop: '0.5px solid rgba(255,255,255,0.06)',
         zIndex: 7000,
+        height: 'var(--mobile-nav-height, 64px)',
       }}
     >
       {tabs.map((tab) => {
@@ -64,14 +84,19 @@ export const MobileNavBar = ({
             onClick={() => isMusic ? onToggleBg() : onNavigate(tab.id)}
             aria-current={isActive ? 'page' : undefined}
             aria-label={tab.label}
+            onMouseDown={isMusic ? handleStart : undefined}
+            onMouseUp={isMusic ? handleEnd : undefined}
+            onMouseLeave={isMusic ? handleEnd : undefined}
+            onTouchStart={isMusic ? handleStart : undefined}
+            onTouchEnd={isMusic ? handleEnd : undefined}
             style={{
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '3px',
-              minHeight: '44px',
+              gap: '2px',
+              minHeight: '48px',
               background: 'none',
               border: 'none',
               padding: '0 4px',
@@ -99,12 +124,27 @@ export const MobileNavBar = ({
                 }}
               />
             )}
-            <tab.Icon
-              size={20}
-              strokeWidth={isActive ? 2.5 : 1.5}
-              aria-hidden="true"
-            />
-            <span style={{ fontSize: '9px', fontWeight: isActive ? 'bold' : 'normal' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              }}
+            >
+              <tab.Icon
+                size={18}
+                strokeWidth={isActive ? 2.5 : 1.5}
+                aria-hidden="true"
+              />
+            </div>
+            <span style={{ 
+              fontSize: '9px', 
+              fontWeight: isActive ? '700' : '500',
+              color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+              transition: 'color 0.2s',
+            }}>
               {tab.label}
             </span>
           </button>

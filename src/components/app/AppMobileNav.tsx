@@ -7,6 +7,7 @@ interface AppMobileNavProps {
   isBgPlaying: boolean;
   onNavigate: (page: string) => void;
   onToggleBg: () => void;
+  onMoodTrigger?: () => void; // FIXED: Pass-through for mood trigger
 }
 
 export function AppMobileNav({
@@ -16,6 +17,7 @@ export function AppMobileNav({
   isBgPlaying,
   onNavigate,
   onToggleBg,
+  onMoodTrigger,
 }: AppMobileNavProps) {
   if (!(isMobile || isTablet)) return null;
 
@@ -25,6 +27,7 @@ export function AppMobileNav({
       onNavigate={onNavigate} 
       isBgPlaying={isBgPlaying}
       onToggleBg={onToggleBg}
+      onMoodTrigger={onMoodTrigger}
     />
   );
 }

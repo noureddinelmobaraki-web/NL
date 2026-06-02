@@ -84,6 +84,7 @@ export const FloatingControls = ({
                   borderColor: isActive ? 'var(--border-subtle, rgba(255,255,255,0.5))' : 'transparent'
                 }}
               >
+                <span className="sr-only">{THEME_LABELS[t] ?? t}</span>
                 <img 
                   src={
                     t === 'retro'

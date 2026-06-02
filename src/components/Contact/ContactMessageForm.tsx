@@ -29,6 +29,10 @@ export const ContactMessageForm = ({
 }: ContactMessageFormProps) => {
   const currentStyles = passedStyles || styles;
 
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+  };
+
   if (status === 'success') {
     return (
       <div style={currentStyles.successBox}>
@@ -79,8 +83,12 @@ export const ContactMessageForm = ({
             value={senderName}
             onChange={e => setSenderName(e.target.value)}
             maxLength={50}
-            style={currentStyles.input}
+            style={{ ...currentStyles.input, fontSize: '16px' }}
             disabled={isBlocked}
+            enterKeyHint="next"
+            inputMode="text"
+            autoComplete="name"
+            onFocus={handleInputFocus}
           />
         </>
       )}
@@ -93,9 +101,13 @@ export const ContactMessageForm = ({
           value={message}
           onChange={e => setMessage(e.target.value)}
           maxLength={2000}
-          style={currentStyles.textarea}
+          style={{ ...currentStyles.textarea, fontSize: '16px' }}
           className="focus:!border-[var(--accent-indigo)] focus:!ring-2 focus:!ring-[var(--accent-indigo)]/30"
           disabled={isBlocked}
+          enterKeyHint="done"
+          inputMode="text"
+          autoComplete="off"
+          onFocus={handleInputFocus}
         />
         <span style={{
           ...currentStyles.charCount,
@@ -140,7 +152,7 @@ export const ContactMessageForm = ({
           opacity: (status === 'sending' || isBlocked) ? 0.6 : 1,
           cursor: (status === 'sending' || isBlocked) ? 'not-allowed' : 'pointer'
         }}
-        className="manga-card-hover hover:-translate-x-0.5 hover:-translate-y-0.5 hover:!shadow-[7px_7px_0_var(--manga-shadow-color)] active:translate-x-0.5 active:translate-y-0.5 active:!shadow-[3px_3px_0_var(--manga-shadow-color)]"
+        className="w-full !h-[52px] manga-card-hover hover:-translate-x-0.5 hover:-translate-y-0.5 hover:!shadow-[7px_7px_0_var(--manga-shadow-color)] active:translate-x-0.5 active:translate-y-0.5 active:!shadow-[3px_3px_0_var(--manga-shadow-color)]"
       >
         {status === 'sending' ? (
           <span style={currentStyles.spinner} />

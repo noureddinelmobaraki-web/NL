@@ -93,17 +93,44 @@ export const LyricsDisplay = ({
             activeLine.words && activeLine.words.length > 0 ? (
               activeLine.words.map((word, wordIndex) => {
                 const isPlayed = word.time <= currentTime;
+                const isCurrent = currentTime >= word.time && currentTime < (word.endTime ?? (word.time + 1));
+                const wDuration = (word.endTime ?? (word.time + 1)) - word.time;
+                const progress = Math.max(0, Math.min(100, ((currentTime - word.time) / (wDuration || 1)) * 100));
+                
+                const isArabic = /[\u0600-\u06FF]/.test(word.text);
+                const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+                // MOBILE-LYRICS: smooth 200ms coloring + gradient sliding wiper overlay
+                const style: React.CSSProperties = isMobile ? {
+                  display: 'inline-block',
+                  whiteSpace: 'pre' as const,
+                  transition: 'color 200ms ease-out, opacity 200ms ease-out',
+                  color: isCurrent ? 'transparent' : (isPlayed ? 'var(--lyric-active-color)' : 'var(--lyric-inactive-color)'),
+                  opacity: isPlayed ? 1 : 0.45,
+                  textShadow: isPlayed && theme !== 'light' ? '0 0 20px var(--lyric-active-shadow)' : 'none',
+                  backgroundImage: isCurrent
+                    ? (isArabic
+                      ? `linear-gradient(to left, var(--lyric-active-color) ${progress}%, var(--lyric-inactive-color) ${progress}%)`
+                      : `linear-gradient(to right, var(--lyric-active-color) ${progress}%, var(--lyric-inactive-color) ${progress}%)`
+                    )
+                    : undefined,
+                  WebkitBackgroundClip: isCurrent ? 'text' : undefined,
+                  backgroundClip: isCurrent ? 'text' : undefined,
+                  WebkitTextFillColor: isCurrent ? 'transparent' : undefined,
+                } : {
+                  color: isPlayed ? 'var(--lyric-active-color)' : 'var(--lyric-inactive-color)',
+                  opacity: isPlayed ? 1 : 0.45,
+                  textShadow: isPlayed && theme !== 'light' ? '0 0 20px var(--lyric-active-shadow)' : 'none',
+                  transition: 'all 0.15s ease-out',
+                  display: 'inline-block',
+                  whiteSpace: 'pre' as const,
+                };
+
                 return (
                   <span
                     key={wordIndex}
-                    style={{
-                      color: isPlayed ? 'var(--lyric-active-color)' : 'var(--lyric-inactive-color)',
-                      opacity: isPlayed ? 1 : 0.45,
-                      textShadow: isPlayed && theme !== 'light' ? '0 0 20px var(--lyric-active-shadow)' : 'none',
-                      transition: 'all 0.15s ease-out',
-                      display: 'inline-block',
-                      whiteSpace: 'pre',
-                    }}
+                    style={style}
+                    dir={isArabic ? 'rtl' : 'ltr'}
                   >
                     {word.text}
                   </span>

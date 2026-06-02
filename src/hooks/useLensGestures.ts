@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 interface UseLensGesturesParams {
   containerRef?: React.RefObject<HTMLDivElement | null>;
@@ -14,81 +14,135 @@ interface UseLensGesturesReturn {
   pan: { x: number; y: number };
   setPan: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
   resetZoom: () => void;
-  handleDoubleTap: () => void;
-  onTouchStart: (e: React.TouchEvent) => void;
-  onTouchMove: (e: React.TouchEvent) => void;
-  onTouchEnd: (e: React.TouchEvent) => void;
+  handleDoubleTap: (e: React.PointerEvent) => void;
+  onPointerDown: (e: React.PointerEvent) => void;
+  onPointerMove: (e: React.PointerEvent) => void;
+  onPointerUp: (e: React.PointerEvent) => void;
+  onPointerCancel: (e: React.PointerEvent) => void;
 }
 
 export function useLensGestures({
   onNavigate,
   onClose,
   isMobile,
+  containerRef,
 }: UseLensGesturesParams): UseLensGesturesReturn {
   const [zoomScale, setZoomScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragY, setDragY] = useState(0);
 
-  const touchStartX = useRef(0);
-  const startY = useRef(0);
-  const currentY = useRef(0);
-
-  // Zoom / Gesture refs
-  const lastTapTime = useRef(0);
+  // Pointer tracking
+  const pointers = useRef<Map<number, { x: number, y: number }>>(new Map());
   const initialPinchDist = useRef<number | null>(null);
   const initialZoom = useRef(1);
+  const lastPanPoint = useRef<{ x: number, y: number } | null>(null);
+
+  // Single finger tracking (Swipe / Edge / Inertia)
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const currentY = useRef(0);
+  const startTime = useRef(0);
+  const lastPointerDownEdge = useRef<string | null>(null);
+
+  // Double tap
+  const lastTapTime = useRef(0);
+
+  // Prevent scroll during horizontal swipe (native touchmove listener)
+  useEffect(() => {
+    if (!isMobile || !containerRef?.current) return;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - startX.current;
+      const deltaY = touch.clientY - startY.current;
+      const isHoriz = Math.abs(deltaX) > Math.abs(deltaY) + 10;
+      
+      if (isHoriz && zoomScale === 1) {
+        e.preventDefault();
+      }
+    };
+
+    const el = containerRef.current;
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => el.removeEventListener('touchmove', handleTouchMove);
+  }, [isMobile, containerRef, zoomScale]);
 
   const resetZoom = () => {
     setZoomScale(1);
     setPan({ x: 0, y: 0 });
   };
 
-  const handleDoubleTap = () => {
+  const handleDoubleTap = (e: React.PointerEvent) => {
     const now = Date.now();
     const delay = now - lastTapTime.current;
     if (delay < 300) {
       if (zoomScale > 1) {
         resetZoom();
       } else {
-        setZoomScale(2.5);
+        // Zoom to 2x centered on tap point
+        setZoomScale(2);
+        
+        // Calculate pan to center the tap point
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const offsetX = e.clientX - rect.left - rect.width / 2;
+        const offsetY = e.clientY - rect.top - rect.height / 2;
+        setPan({ x: -offsetX, y: -offsetY });
       }
     }
     lastTapTime.current = now;
   };
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+  const handlePointerDown = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.current.size === 2) {
+      // Setup pinch
+      const pts = Array.from(pointers.current.values());
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       initialPinchDist.current = dist;
       initialZoom.current = zoomScale;
-    } else {
-      touchStartX.current = e.touches[0].clientX; 
-      startY.current = e.touches[0].clientY;
-      handleDoubleTap();
+      lastPanPoint.current = null;
+    } else if (pointers.current.size === 1) {
+      startX.current = e.clientX;
+      startY.current = e.clientY;
+      startTime.current = Date.now();
+      
+      // Edge swipe detection
+      if (isMobile) {
+        if (e.clientX < 40) lastPointerDownEdge.current = 'left';
+        else if (window.innerWidth - e.clientX < 40) lastPointerDownEdge.current = 'right';
+        else lastPointerDownEdge.current = null;
+      }
+      
+      if (zoomScale > 1) {
+        lastPanPoint.current = { x: e.clientX, y: e.clientY };
+      }
+      handleDoubleTap(e);
     }
   };
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && initialPinchDist.current !== null) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.current.size === 2 && initialPinchDist.current !== null) {
+      const pts = Array.from(pointers.current.values());
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       const scale = (dist / initialPinchDist.current) * initialZoom.current;
-      setZoomScale(Math.min(Math.max(scale, 1), 4));
-    } else if (e.touches.length === 1) {
-      const dy = e.touches[0].clientY - startY.current;
-      const dx = e.touches[0].clientX - touchStartX.current;
-      
-      if (zoomScale > 1.05) {
-        setPan(p => ({ x: p.x + dx * 0.5, y: p.y + dy * 0.5 }));
-        touchStartX.current = e.touches[0].clientX;
-        startY.current = e.touches[0].clientY;
-      } else if (isMobile) {
-        if (dy > 0 && Math.abs(dy) > Math.abs(dx)) {
+      setZoomScale(Math.min(Math.max(scale, 1), isMobile ? 3.5 : 3)); 
+    } else if (pointers.current.size === 1) {
+      const dx = e.clientX - startX.current;
+      const dy = e.clientY - startY.current;
+
+      if (zoomScale > 1 && lastPanPoint.current) {
+        const panDx = e.clientX - lastPanPoint.current.x;
+        const panDy = e.clientY - lastPanPoint.current.y;
+        setPan(p => ({ x: p.x + panDx, y: p.y + panDy }));
+        lastPanPoint.current = { x: e.clientX, y: e.clientY };
+      } else if (isMobile && zoomScale === 1) {
+        // Vertical swipe tracking
+        if (Math.abs(dy) > Math.abs(dx)) {
           currentY.current = dy;
           setDragY(dy);
         }
@@ -96,24 +150,54 @@ export function useLensGestures({
     }
   };
 
-  const onTouchEnd = () => {
-    initialPinchDist.current = null;
-    if (zoomScale > 1.05) {
-      return; 
+  const handlePointerUp = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    pointers.current.delete(e.pointerId);
+
+    if (pointers.current.size < 2) {
+      initialPinchDist.current = null;
     }
 
-    if (isMobile && currentY.current > 120) {
-      onClose();
-      currentY.current = 0;
-      setDragY(0);
-      return;
+    if (pointers.current.size === 0) {
+      if (zoomScale > 1) {
+        lastPanPoint.current = null;
+        return;
+      }
+
+      const dx = e.clientX - startX.current;
+      const dy = e.clientY - startY.current;
+      const dt = Date.now() - startTime.current;
+      const vX = Math.abs(dx) / (dt || 1);
+
+      if (isMobile) {
+        // Vertical swipe DOWN (deltaY > 80px, deltaX < 30px)
+        if (dy > 80 && Math.abs(dx) < 30) {
+          onClose();
+          setDragY(0);
+          currentY.current = 0;
+          return;
+        }
+        setDragY(0);
+        currentY.current = 0;
+      }
+
+      // Edge swipes
+      if (isMobile && lastPointerDownEdge.current === 'left' && dx > 30) {
+        onNavigate(-1);
+        lastPointerDownEdge.current = null;
+        return;
+      }
+      if (isMobile && lastPointerDownEdge.current === 'right' && dx < -30) {
+        onNavigate(1);
+        lastPointerDownEdge.current = null;
+        return;
+      }
+
+      // Normal Swipe trigger
+      if (Math.abs(dx) > 50 || vX > 0.5) {
+        onNavigate(dx > 0 ? -1 : 1);
+      }
     }
-    if (isMobile) {
-      setDragY(0);
-      currentY.current = 0;
-    }
-    
-    // Handled in touch ended event with changedTouches in component if needed
   };
 
   return {
@@ -124,15 +208,9 @@ export function useLensGestures({
     setPan,
     resetZoom,
     handleDoubleTap,
-    onTouchStart,
-    onTouchMove,
-    onTouchEnd: (e: React.TouchEvent) => {
-      onTouchEnd();
-      if (zoomScale > 1.05) return;
-      if (e.changedTouches.length === 1) {
-        const delta = touchStartX.current - e.changedTouches[0].clientX;
-        if (Math.abs(delta) > 50) onNavigate(delta > 0 ? 1 : -1);
-      }
-    },
+    onPointerDown: handlePointerDown,
+    onPointerMove: handlePointerMove,
+    onPointerUp: handlePointerUp,
+    onPointerCancel: handlePointerUp,
   };
 }

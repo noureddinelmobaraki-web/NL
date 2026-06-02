@@ -55,7 +55,10 @@ export const DrawingsCarousel = ({
           </div>
 
           {/* Carousel area — 70vh, clips overflow so neighbor cards peek in */}
-          <div className="relative w-full h-[70vh] flex items-center justify-center overflow-hidden">
+          <div 
+            className="relative w-full h-[70vh] flex items-center justify-center overflow-hidden"
+            style={{ touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}
+          >
             {videos.map((video, idx) => (
               <VideoCard
                 key={video.id}

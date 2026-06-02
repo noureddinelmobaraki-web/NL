@@ -6,10 +6,10 @@ export const prefersReducedMotion = (): boolean => {
 export const isLowEndDevice = (): boolean => {
   if (typeof navigator === 'undefined') return false;
   
-  // navigator.deviceMemory gives RAM in GB (approximate)
-  // @ts-ignore - deviceMemory is not in all browsers' TS types
-  const ram = navigator.deviceMemory || 8;
-  const cores = navigator.hardwareConcurrency || 4;
+  // FIXED: Issue #7 — Enhanced check with memory and connection
+  const cores  = navigator.hardwareConcurrency ?? 4;
+  const memory = (navigator as any).deviceMemory ?? 4; // GB
+  const conn   = (navigator as any).connection?.effectiveType ?? '4g';
   
-  return ram < 4 || cores <= 2;
+  return cores <= 2 || memory <= 1 || conn === '2g' || conn === 'slow-2g';
 };

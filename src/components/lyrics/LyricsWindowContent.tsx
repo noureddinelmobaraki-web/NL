@@ -19,6 +19,8 @@ export const LyricsWindowContent = memo(({
   const currentTimeRef = useRef(currentTime);
 
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+  const [isManualScrolling, setIsManualScrolling] = useState(false); // MOBILE-ONLY
+  const manualScrollTimerRef = useRef<number | null>(null); // MOBILE-ONLY
 
   // Sync currentTime to ref for the rAF loop
   useEffect(() => {
@@ -41,6 +43,16 @@ export const LyricsWindowContent = memo(({
     return fallbackIdx;
   }, [lyrics, currentTime]);
 
+  // MOBILE-ONLY: Handle manual scroll detection
+  const handleScroll = () => {
+    if (!isMobilePlayer) return;
+    setIsManualScrolling(true);
+    if (manualScrollTimerRef.current) window.clearTimeout(manualScrollTimerRef.current);
+    manualScrollTimerRef.current = window.setTimeout(() => {
+      setIsManualScrolling(false);
+    }, 3000);
+  };
+
   // AUTO-SCROLL with 250ms debounce
   useEffect(() => {
     if (currentLineIndex !== -1 && lineRefs.current[currentLineIndex]) {
@@ -48,7 +60,9 @@ export const LyricsWindowContent = memo(({
         window.clearTimeout(scrollTimeoutRef.current);
       }
       scrollTimeoutRef.current = window.setTimeout(() => {
-        lineRefs.current[currentLineIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (!isManualScrolling) {
+          lineRefs.current[currentLineIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }, 250);
     }
     
@@ -57,7 +71,7 @@ export const LyricsWindowContent = memo(({
         window.clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [currentLineIndex]);
+  }, [currentLineIndex, isManualScrolling]);
 
   // SMOOTH PROGRESS loop with requestAnimationFrame
   useEffect(() => {
@@ -112,10 +126,12 @@ export const LyricsWindowContent = memo(({
       return {
         ...baseStyle,
         color: isActive ? 'var(--lyric-active-color)' : 'var(--lyric-inactive-color)',
-        fontSize: isActive ? '19px' : '17px',
+        fontSize: isActive ? 'clamp(1.4rem, 6vw, 2rem)' : 'clamp(0.95rem, 3.8vw, 1.1rem)',
         fontWeight: isActive ? 'bold' : 'normal',
         textShadow: isActive ? '0 0 14px var(--lyric-active-shadow)' : 'none',
         opacity: isActive ? 1 : 0.4,
+        lineHeight: 1.45,
+        textAlign: 'center' as const,
       };
     } else {
       return {
@@ -149,6 +165,7 @@ export const LyricsWindowContent = memo(({
       ref={lyricsContainerRef}
       role="region"
       aria-label="Lyrics"
+      onScroll={handleScroll}
       style={{
         flex: 1,
         padding: isMobilePlayer ? '24px 20px' : '40px 20px',
@@ -196,47 +213,64 @@ export const LyricsWindowContent = memo(({
             )}
             
             {isActive && line.words && line.words.length >= 2 ? (
-              line.words.map((word, wIdx) => {
-                const isPlayed = currentTime >= word.time + 0.05;
-                const isCurrent = currentTime >= word.time && currentTime < (word.endTime ?? Infinity);
-                
-                let displayText = word.text;
-                const nextWord = line.words?.[wIdx + 1];
-                if (nextWord) {
-                  const currentEndsWithSpace = /\s$/.test(word.text);
-                  const nextStartsWithSpace = /^\s/.test(nextWord.text);
-                  if (!currentEndsWithSpace && !nextStartsWithSpace) {
-                    displayText += ' ';
+              <div
+                style={isMobilePlayer ? {
+                  display: 'flex',
+                  overflowX: 'auto',
+                  scrollSnapType: 'x proximity',
+                  maxWidth: '100vw',
+                  scrollbarWidth: 'none',
+                } : { display: 'inline', whiteSpace: 'pre-wrap' }}
+                className={isMobilePlayer ? "no-scrollbar" : ""}
+              >
+                {line.words.map((word, wIdx) => {
+                  const isPlayed = currentTime >= word.time + 0.05;
+                  const isCurrent = currentTime >= word.time && currentTime < (word.endTime ?? Infinity);
+                  
+                  let displayText = word.text;
+                  const nextWord = line.words?.[wIdx + 1];
+                  if (nextWord) {
+                    const currentEndsWithSpace = /\s$/.test(word.text);
+                    const nextStartsWithSpace = /^\s/.test(nextWord.text);
+                    if (!currentEndsWithSpace && !nextStartsWithSpace) {
+                      displayText += ' ';
+                    }
                   }
-                }
 
-                return (
-                  <span
-                    key={wIdx}
-                    className={`lyric-word ${isPlayed ? 'lyric-word--played' : ''} ${isCurrent ? 'lyric-word--current' : ''}`}
-                    data-word-idx={wIdx}
-                    data-word-time={word.time}
-                    data-word-endtime={word.endTime}
-                    style={{
-                      display: 'inline-block',
-                      whiteSpace: 'pre-wrap',
-                      transition: 'all 0.15s ease-out',
-                      color: isPlayed ? 'var(--played-color)' : 'var(--idle-color)',
-                      textShadow: isCurrent ? 'var(--current-glow)' : 'none',
-                      background: isCurrent 
-                        ? 'linear-gradient(to right, var(--played-color) var(--word-progress, 0%), var(--idle-color) var(--word-progress, 0%))'
-                        : undefined,
-                      WebkitBackgroundClip: isCurrent ? 'text' : undefined,
-                      WebkitTextFillColor: isCurrent ? 'transparent' : undefined,
-                      ['--played-color' as any]: 'var(--lyric-active-color, #FFFFFF)',
-                      ['--idle-color' as any]: 'var(--lyric-inactive-color, rgba(255,255,255,0.35))',
-                      ['--current-glow' as any]: '0 0 14px var(--lyric-active-shadow, rgba(255,255,255,0.6))',
-                    }}
-                  >
-                    {displayText}
-                  </span>
-                );
-              })
+                  return (
+                    <span
+                      key={wIdx}
+                      className={`lyric-word ${isPlayed ? 'lyric-word--played' : ''} ${isCurrent ? 'lyric-word--current' : ''}`}
+                      data-word-idx={wIdx}
+                      data-word-time={word.time}
+                      data-word-endtime={word.endTime}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSeek(word.time);
+                      }}
+                      style={{
+                        display: 'inline-block',
+                        whiteSpace: isMobilePlayer ? 'pre' : 'pre-wrap',
+                        transition: 'all 0.15s ease-out, color 150ms ease',
+                        color: isPlayed ? 'var(--played-color)' : 'var(--idle-color)',
+                        textShadow: isCurrent ? 'var(--current-glow)' : 'none',
+                        background: isCurrent 
+                          ? 'linear-gradient(to right, var(--played-color) var(--word-progress, 0%), var(--idle-color) var(--word-progress, 0%))'
+                          : undefined,
+                        WebkitBackgroundClip: isCurrent ? 'text' : undefined,
+                        WebkitTextFillColor: isCurrent ? 'transparent' : undefined,
+                        cursor: 'pointer',
+                        scrollSnapAlign: isMobilePlayer && isCurrent ? 'center' : 'none',
+                        ['--played-color' as any]: 'var(--lyric-active-color, #FFFFFF)',
+                        ['--idle-color' as any]: 'var(--lyric-inactive-color, rgba(255,255,255,0.35))',
+                        ['--current-glow' as any]: '0 0 14px var(--lyric-active-shadow, rgba(255,255,255,0.6))',
+                      }}
+                    >
+                      {displayText}
+                    </span>
+                  );
+                })}
+              </div>
             ) : (
               line.text
             )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ActiveSong } from "../../types";
 import { useDeviceType } from "../../hooks/useDeviceType";
@@ -29,9 +29,39 @@ export const NowPlayingBar = ({
     ? ((activeSong?.currentTime || 0) / (activeSong?.duration || 0)) * 100 
     : 0;
 
+  const isMobileOrTablet = isMobile || isTablet;
+
+  // DOM-based visibility tracking for mobile (keyboard, modals, fullscreen)
+  const [isDOMHidden, setIsDOMHidden] = useState(false);
+
+  useEffect(() => {
+    if (!isMobileOrTablet) {
+      setIsDOMHidden(false);
+      return;
+    }
+    const checkVisibility = () => {
+      const modalContext = document.body.dataset.modalContext || "page";
+      const isKeyboardOpen = document.body.classList.contains("keyboard-open");
+      const isDrawingsFullscreen = document.body.classList.contains("drawings-fullscreen-active");
+      
+      setIsDOMHidden(modalContext !== "page" || isKeyboardOpen || isDrawingsFullscreen);
+    };
+
+    const observer = new MutationObserver(checkVisibility);
+    observer.observe(document.body, { 
+      attributes: true, 
+      attributeFilter: ["data-modal-context", "class"] 
+    });
+    
+    checkVisibility();
+    return () => observer.disconnect();
+  }, [isMobileOrTablet]);
+
+  const isActuallyHidden = isMobileOrTablet ? (!isBarVisible || isDOMHidden) : !isBarVisible;
+
   return (
     <AnimatePresence>
-      {isBarVisible && activeSong && (
+      {activeSong && (
         <motion.div
           key="now-playing-bar"
           onMouseEnter={() => setIsHovered(true)}
@@ -43,8 +73,8 @@ export const NowPlayingBar = ({
           aria-label="Music Player"
           initial={{ opacity: 0, y: 24, scale: geometry.scale * 0.95 }}
           animate={{ 
-            opacity: geometry.opacity, 
-            y: 0, 
+            opacity: isActuallyHidden ? 0 : geometry.opacity, 
+            y: isActuallyHidden && isMobileOrTablet ? 0 : 0, 
             scale: geometry.scale,
             transition: { duration: 0.4, ease: [0.23, 1, 0.32, 1] }
           }}
@@ -56,22 +86,28 @@ export const NowPlayingBar = ({
           }}
           style={{
             position: "fixed",
-            bottom: geometry.bottom,
-            left: geometry.left,
-            right: geometry.right,
-            transform: geometry.transform,
+            bottom: isMobileOrTablet ? "calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0px) + 8px)" : geometry.bottom,
+            left: isMobileOrTablet ? "8px" : geometry.left,
+            right: isMobileOrTablet ? "8px" : geometry.right,
+            transform: isMobileOrTablet 
+              ? `translateY(${isActuallyHidden ? '120%' : '0'})` 
+              : geometry.transform,
+            transition: isMobileOrTablet 
+              ? 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1), opacity 280ms ease' 
+              : undefined,
             transformOrigin: "bottom center",
-            maxWidth: geometry.maxWidth,
-            width: geometry.width,
-            minHeight: isHovered && !isMobile && !isTablet ? "120px" : (isMobile || isTablet ? "auto" : "64px"),
-            background: 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.7), rgba(var(--bg-page-rgb), 0.8))',
-            backdropFilter: 'blur(32px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-            borderRadius: geometry.borderRadius,
+            maxWidth: isMobileOrTablet ? "none" : geometry.maxWidth,
+            width: isMobileOrTablet ? "auto" : geometry.width,
+            height: isMobileOrTablet ? "56px" : undefined,
+            minHeight: isHovered && !isMobileOrTablet ? "120px" : (isMobileOrTablet ? "56px" : "64px"),
+            background: isMobileOrTablet ? 'var(--bg-glass-strong)' : 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.7), rgba(var(--bg-page-rgb), 0.8))',
+            backdropFilter: isMobileOrTablet ? 'blur(20px)' : 'blur(32px) saturate(180%)',
+            WebkitBackdropFilter: isMobileOrTablet ? 'blur(20px)' : 'blur(32px) saturate(180%)',
+            borderRadius: isMobileOrTablet ? "16px" : geometry.borderRadius,
             border: '1px solid var(--border-strong)',
             boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 1px 0 var(--border-subtle)',
             zIndex: 8000,
-            padding: (isMobile || isTablet) ? "8px 16px 12px" : "0 16px",
+            padding: (isMobile || isTablet) ? "6px 12px 10px" : "0 16px",
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
@@ -94,11 +130,7 @@ export const NowPlayingBar = ({
         <NowPlayingBarMobile 
           activeSong={activeSong}
           isPlaying={activeSong.isPlaying}
-          currentTime={activeSong.currentTime}
-          duration={activeSong.duration}
           progress={progress}
-          formatTime={formatTime}
-          onPrev={() => activeSong.onPrev()}
           onNext={() => activeSong.onNext()}
           onPlayPause={() => activeSong.onPlayPause()}
           onClose={onClose}

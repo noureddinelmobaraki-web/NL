@@ -6,6 +6,7 @@ import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useMeBitSwipe } from '../../hooks/useMeBitSwipe';
 import { MeBitMainImage } from './MeBitMainImage';
 import { MeBitThumbnails } from './MeBitThumbnails';
+import { useViewportSize } from '../../hooks/useViewportSize';
 
 export interface MeBitGalleryProps {
   isOpen: boolean;
@@ -37,13 +38,61 @@ export const MeBitGallery = ({
   const galleryRef = useFocusTrap(isOpen);
   const { onTouchStart, onTouchEnd } = useMeBitSwipe({ onNext, onPrev, onClose });
   const { setContext, registerButton, unregisterButton } = useButtonContext();
+  const viewport = useViewportSize();
+
 
   useEffect(() => {
     setContext(isOpen ? 'mebit' : 'page');
     return () => setContext('page');
   }, [isOpen, setContext]);
 
+  // Fullscreen & body immersive class for mobile/tablet
+  useEffect(() => {
+    if (isOpen && (isMobile || isTablet)) {
+      document.body.classList.add('gallery-immersive'); // MOBILE-ONLY
+      try {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen();
+        }
+        // Lock orientation to portrait if supported
+        const sor = screen.orientation as any;
+        if (sor && sor.lock) {
+          sor.lock('portrait').catch(() => {});
+        }
+      } catch (e) {
+        // Silently fallback if unsupported (like iOS Safari)
+      }
+    } else {
+      document.body.classList.remove('gallery-immersive'); // MOBILE-ONLY
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+        const sor = screen.orientation as any;
+        if (sor && sor.unlock) {
+          sor.unlock();
+        }
+      } catch (e) {
+        // Silently fallback
+      }
+    }
+
+    return () => {
+      document.body.classList.remove('gallery-immersive'); // MOBILE-ONLY
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+        const sor = screen.orientation as any;
+        if (sor && sor.unlock) {
+          sor.unlock();
+        }
+      } catch (e) {}
+    };
+  }, [isOpen, isMobile, isTablet]);
+
   // Body scroll lock
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -124,20 +173,25 @@ export const MeBitGallery = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-10 md:p-14"
+          className={`fixed inset-0 z-[100] flex items-center justify-center
+            ${(isMobile || isTablet) ? 'p-0' : 'p-4 sm:p-10 md:p-14'}`} // MOBILE-ONLY
         >
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/95 backdrop-blur-3xl cursor-crosshair"
+            className={`absolute inset-0 backdrop-blur-3xl cursor-crosshair
+              ${(isMobile || isTablet) ? 'bg-black' : 'bg-black/95'}`} // MOBILE-ONLY
             onClick={onClose}
           />
 
           {/* Gallery body */}
-          <div className={`relative w-full h-full flex flex-col z-[105] overflow-hidden
-            ${(isMobile || isTablet) ? 'pt-[calc(var(--safe-top)+60px)]' : 'gap-6'}`}>
+          <div 
+            className={`relative w-full h-full flex flex-col z-[105] overflow-hidden
+            ${(isMobile || isTablet) ? (viewport.isLandscape ? 'pt-4 pl-4 select-none' : 'pt-[calc(var(--safe-top)+60px)]') : 'gap-6'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
 
-            <div className={`flex-1 flex flex-col md:flex-row overflow-hidden
-              ${(isMobile || isTablet) ? '' : 'gap-6'}`}>
+            <div className={`flex-1 flex overflow-hidden
+              ${(isMobile || isTablet) ? (viewport.isLandscape ? 'flex-row gap-2' : 'flex-col') : 'flex-col md:flex-row gap-6'}`}>
 
               {/* Main image view */}
               <MeBitMainImage

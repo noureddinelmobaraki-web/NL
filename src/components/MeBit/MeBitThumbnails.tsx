@@ -1,5 +1,7 @@
+import { useRef, useEffect } from 'react';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { ResponsiveImage } from '../ResponsiveImage';
+import { useViewportSize } from '../../hooks/useViewportSize';
 
 export interface MeBitThumbnailsProps {
   images: string[];
@@ -17,22 +19,111 @@ export const MeBitThumbnails = ({
   onToggleAudio: _onToggleAudio,
 }: MeBitThumbnailsProps) => {
   const { isMobile, isTablet } = useDeviceType();
+  const viewport = useViewportSize();
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // MOBILE-ONLY
+  const activeThumbRef = useRef<HTMLButtonElement>(null); // MOBILE-ONLY
+
+  // MOBILE-ONLY: Auto-center active thumbnail
+  useEffect(() => {
+    if ((isMobile || isTablet) && activeThumbRef.current && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const element = activeThumbRef.current;
+      
+      const containerWidth = container.offsetWidth;
+      const elementWidth = element.offsetWidth;
+      const elementLeft = element.offsetLeft;
+      
+      const scrollPosition = elementLeft - (containerWidth / 2) + (elementWidth / 2);
+      
+      container.scrollTo({
+        left: scrollPosition,
+        behavior: 'smooth'
+      });
+    }
+  }, [selectedIndex, isMobile, isTablet]);
+
+  // Mobile / Tablet vertical sidebar when in landscape mode (short screens)
+  if ((isMobile || isTablet) && viewport.isLandscape) {
+    return (
+      <div 
+        ref={scrollContainerRef}
+        className="order-2 w-24 flex flex-col items-center gap-2 px-2 py-4 border-l border-white/10 bg-black/50 backdrop-blur-md"
+        style={{
+          height: '100%',
+          overflowY: 'auto',
+          scrollSnapType: 'y mandatory',
+          WebkitOverflowScrolling: 'touch', // MOBILE-ONLY
+          touchAction: 'pan-y',
+          overscrollBehaviorY: 'contain'
+        }}
+      >
+        {images.map((src, idx) => {
+          const isActive = selectedIndex === idx;
+          return (
+            <button
+              key={idx}
+              ref={isActive ? activeThumbRef : null}
+              onClick={() => onSelectIndex(idx)}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                onSelectIndex(idx);
+              }}
+              className={`relative shrink-0 rounded-lg overflow-hidden transition-all duration-300 pointer-events-auto
+                ${isActive ? 'border-2 border-white scale-100 opacity-100' : 'border-2 border-transparent opacity-45 scale-[0.92]'}`}
+              style={{
+                width: '72px',
+                height: '96px',
+                scrollSnapAlign: 'center' // MOBILE-ONLY
+              }}
+              aria-label={`View moment ${idx + 1}`}
+            >
+              <ResponsiveImage src={src} alt={`Moment ${idx + 1}`} className="w-full h-full object-cover" />
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   // Mobile thumbnail strip
   if (isMobile) {
     return (
-      <div className="order-2 w-full h-[100px] overflow-x-auto flex items-center gap-2 px-4 py-2 border-t border-white/10 bg-black/50 backdrop-blur-md">
-        {images.map((src, idx) => (
-          <button
-            key={idx}
-            onClick={() => onSelectIndex(idx)}
-            className={`relative h-full aspect-[3/4] rounded-lg border-2 overflow-hidden transition-all duration-305 shrink-0
-              ${selectedIndex === idx ? 'border-white scale-95' : 'border-transparent opacity-50'}`}
-            aria-label={`View moment ${idx + 1}`}
-          >
-            <ResponsiveImage src={src} alt={`Moment ${idx + 1}`} className="w-full h-full object-cover" />
-          </button>
-        ))}
+      <div 
+        ref={scrollContainerRef}
+        className="order-2 w-full flex items-center gap-2 px-4 py-2 border-t border-white/10 bg-black/50 backdrop-blur-md"
+        style={{
+          height: '15dvh',
+          overflowX: 'auto',
+          scrollSnapType: 'x mandatory',
+          WebkitOverflowScrolling: 'touch', // MOBILE-ONLY
+          touchAction: 'pan-x',
+          overscrollBehaviorX: 'contain'
+        }}
+      >
+        {images.map((src, idx) => {
+          const isActive = selectedIndex === idx;
+          return (
+            <button
+              key={idx}
+              ref={isActive ? activeThumbRef : null}
+              onClick={() => onSelectIndex(idx)}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                onSelectIndex(idx);
+              }}
+              className={`relative shrink-0 rounded-lg overflow-hidden transition-all duration-300 pointer-events-auto
+                ${isActive ? 'border-2 border-white scale-100 opacity-100' : 'border-2 border-transparent opacity-45 scale-[0.92]'}`}
+              style={{
+                width: '72px',
+                height: 'calc(15dvh - 16px)', // Padding compensation
+                scrollSnapAlign: 'center' // MOBILE-ONLY
+              }}
+              aria-label={`View moment ${idx + 1}`}
+            >
+              <ResponsiveImage src={src} alt={`Moment ${idx + 1}`} className="w-full h-full object-cover" />
+            </button>
+          );
+        })}
       </div>
     );
   }
@@ -40,18 +131,42 @@ export const MeBitThumbnails = ({
   // Tablet thumbnail strip
   if (isTablet) {
     return (
-      <div className="order-2 w-full h-[120px] overflow-x-auto flex items-center gap-3 px-4 py-3 border-t border-white/10 bg-black/50">
-        {images.map((src, idx) => (
-          <button
-            key={idx}
-            onClick={() => onSelectIndex(idx)}
-            className={`relative h-full aspect-square rounded-xl border-2 overflow-hidden shrink-0 transition-all
-              ${selectedIndex === idx ? 'border-white scale-95' : 'border-transparent opacity-50 hover:opacity-80'}`}
-            aria-label={`View moment ${idx + 1}`}
-          >
-            <ResponsiveImage src={src} alt={`Moment ${idx + 1}`} className="w-full h-full object-cover" />
-          </button>
-        ))}
+      <div 
+        ref={scrollContainerRef}
+        className="order-2 w-full flex items-center gap-3 px-4 py-3 border-t border-white/10 bg-black/50"
+        style={{
+          height: '15dvh',
+          overflowX: 'auto',
+          scrollSnapType: 'x mandatory',
+          WebkitOverflowScrolling: 'touch', // MOBILE-ONLY
+          touchAction: 'pan-x',
+          overscrollBehaviorX: 'contain'
+        }}
+      >
+        {images.map((src, idx) => {
+          const isActive = selectedIndex === idx;
+          return (
+            <button
+              key={idx}
+              ref={isActive ? activeThumbRef : null}
+              onClick={() => onSelectIndex(idx)}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                onSelectIndex(idx);
+              }}
+              className={`relative shrink-0 rounded-xl overflow-hidden transition-all duration-300 pointer-events-auto
+                ${isActive ? 'border-2 border-white scale-100 opacity-100' : 'border-2 border-transparent opacity-50 scale-[0.92]'}`}
+              style={{
+                width: '90px',
+                height: 'calc(15dvh - 24px)', // Padding compensation
+                scrollSnapAlign: 'center' // MOBILE-ONLY
+              }}
+              aria-label={`View moment ${idx + 1}`}
+            >
+              <ResponsiveImage src={src} alt={`Moment ${idx + 1}`} className="w-full h-full object-cover" />
+            </button>
+          );
+        })}
       </div>
     );
   }
