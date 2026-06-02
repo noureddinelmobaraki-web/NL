@@ -57,59 +57,6 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     activeSong,
   });
 
-  const dotCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = dotCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const W = window.innerWidth;
-    const isMobile = W < 1024;
-    const count = isMobile ? 150 : 300;
-    const dots = Array.from({ length: count }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      distFactor: 0
-    }));
-
-    const resize = () => {
-      canvas.width = window.innerWidth * (window.devicePixelRatio || 1);
-      canvas.height = window.innerHeight * (window.devicePixelRatio || 1);
-      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-      
-      const cx = window.innerWidth / 2;
-      const cy = window.innerHeight / 2;
-      const maxDist = Math.hypot(cx, cy);
-      dots.forEach(d => {
-        const dist = Math.hypot(d.x - cx, d.y - cy);
-        d.distFactor = 1 - (dist / maxDist) * 0.5;
-      });
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    let animId = 0;
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = 'rgba(0,0,0,0.05)';
-      
-      dots.forEach(d => {
-        const radius = 1 + (glowIntensity * 2.5) * d.distFactor;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, radius, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-
-    return () => {
-      window.removeEventListener('resize', resize);
-      cancelAnimationFrame(animId);
-    };
-  }, [glowIntensity]);
 
   // ── تتبع الكلمات ومزامنتها عبر الهوك المخصص
   const { previousLine, currentLine, nextLine } = useMoodLyrics({
@@ -310,19 +257,6 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
       </button>
-
-      {/* ══ Dot Field Background Texture ══ */}
-      <canvas
-        ref={dotCanvasRef}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: 'none',
-          width: '100%',
-          height: '100%',
-        }}
-      />
 
       {/* ══ Particles Canvas — مثل antigravity.google ══ */ /* AUDIO-REACTIVE-PARTICLES */}
       <MoodParticles glowIntensity={glowIntensity} audioRef={audioRef} />

@@ -4,6 +4,7 @@ import { savePrefs } from '../../../utils/userPrefs';
 import type { RepeatMode } from '../../../utils/userPrefs';
 import { loadSession } from '../../../utils/sessionState';
 import { Song, ActiveSong, LyricLine } from '../../../types';
+import { audioManager } from '../../../audio/audioManager';
 
 export interface UseMySongsPlaybackProps {
   songs: Song[];
@@ -136,6 +137,7 @@ export function useMySongsPlayback({
         onPrev: handlePrev,
         onNext: handleNext,
         onDismiss: () => {
+          audioManager.stop('song');
           if (audioTagRef.current) {
             audioTagRef.current.pause();
             audioTagRef.current.src = '';

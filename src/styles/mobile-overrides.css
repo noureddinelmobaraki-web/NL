@@ -1,11 +1,34 @@
 /* src/styles/mobile-overrides.css */
+
+/* ========================================================================== */
+/* IMMERSIVE GALLERY BODY LOCK — applies to ALL viewports                     */
+/* JS components ALSO set body.style.overflow=hidden (belt-and-suspenders).   */
+/* This rule adds CSS-level guarantees for overscroll & user-select.          */
+/* ========================================================================== */
+body.drawings-fullscreen-active,
+body.gallery-immersive,
+body.lens-immersive {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  /* Lock height to viewport so iOS can't scroll the chrome behind */
+  position: relative;
+}
+
+/* ========================================================================== */
+/* LANDSCAPE LENS SLIDE                                                       */
+/* ========================================================================== */
 @media (max-width: 767px) and (orientation: landscape) {
-  /* LensGallery in landscape: slide height adapts to 100dvh */
+  body.lens-immersive .lens-slide,
   body.gallery-immersive .lens-slide {
     height: 100dvh !important;
   }
 }
 
+/* ========================================================================== */
+/* HERO LAYOUT — MOBILE                                                        */
+/* ========================================================================== */
 @media (max-width: 767px) {
   /* Stack profile image above bio text */
   .hero-layout-grid {
@@ -52,12 +75,11 @@
   }
 }
 
+/* ========================================================================== */
+/* THEME OVERRIDES — MOBILE                                                    */
+/* ========================================================================== */
 @media (max-width: 767px) {
-  /* ========================================== */
-  /* LIGHT THEME (Poolsuite OS / macOS classic look) overrides */
-  /* ========================================== */
-  
-  /* Scrollbar 16px on desktop is too wide on mobile — set to 4px with thin styling */
+  /* LIGHT THEME (Poolsuite OS / macOS classic) ----------------------------- */
   [data-theme="light"] ::-webkit-scrollbar {
     width: 4px !important;
     height: 4px !important;
@@ -75,7 +97,7 @@
     display: none !important;
   }
 
-  /* The chunky cursor SVG override — REMOVE on touch devices */
+  /* Cursor: revert to auto on touch devices */
   @media (hover: none) {
     [data-theme="light"], 
     [data-theme="light"] * {
@@ -83,7 +105,7 @@
     }
   }
 
-  /* Window chrome (3 dots, title bar) — reduce padding/height & font size to fit narrow mobile screens */
+  /* Window chrome (3 dots, title bar) — reduce padding/height & font size */
   [data-theme="light"] .hero-titlebar-main,
   [data-theme="light"] .streaming-titlebar-refactored,
   [data-theme="light"] .social-titlebar-refactored {
@@ -104,37 +126,29 @@
     height: 6px !important;
   }
 
-  /* ========================================== */
-  /* DARK & MIDNIGHT THEMES overrides */
-  /* ========================================== */
-  
-  /* Halftone background pattern (radial-gradient ... background-size: 40px 40px) — on mobile reduce to 30px 30px for a more refined feel */
+  /* DARK & MIDNIGHT ---------------------------------------------------------- */
   [data-theme="dark"] body,
   [data-theme="midnight"] body {
     background-image: radial-gradient(circle at 1.5px 1.5px, var(--halftone-color) 0.8px, transparent 0) !important;
     background-size: 30px 30px !important;
   }
 
-  /* Reduce glass effect backdrop-filter on mobile to ensure great framerate and jank-free scrolling */
+  /* FIXED: Reduced backdrop-filter from 12px to 8px on mobile for perf */
   [data-theme="dark"] [style*="backdrop-filter"],
   [data-theme="midnight"] [style*="backdrop-filter"],
   [data-theme="dark"] .backdrop-blur-md,
   [data-theme="midnight"] .backdrop-blur-md,
   [data-theme="dark"] .backdrop-blur,
   [data-theme="midnight"] .backdrop-blur {
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
   }
 
   [data-theme="midnight"] {
-    --backdrop-blur: 12px !important;
+    --backdrop-blur: 8px !important;
   }
 
-  /* ========================================== */
-  /* BIT THEME (8-bit retro theme) overrides */
-  /* ========================================== */
-  
-  /* Pixel-art rendering: image-rendering: pixelated everywhere. Verify it works on mobile. */
+  /* BIT THEME (8-bit retro) ------------------------------------------------- */
   [data-theme="bit"] img,
   [data-theme="bit"] canvas,
   [data-theme="bit"] .pixel-art {
@@ -143,7 +157,6 @@
     image-rendering: pixelated !important;
   }
 
-  /* 8-bit fonts (@fontsource/share-tech-mono) — ensure font-size doesn't shrink below readable on tiny screens */
   [data-theme="bit"] {
     font-size-adjust: none !important;
   }
@@ -156,48 +169,55 @@
     letter-spacing: -0.01em !important;
   }
 
-  /* ========================================== */
-  /* LITE THEME (Paper-like/pitch-black theme) overrides */
-  /* ========================================== */
-  /* Ensure clean transitions and layout alignment fit beautifully on mobile scale */
+  /* LITE THEME -------------------------------------------------------------- */
   [data-theme="lite"] body {
     background-color: #000000 !important;
     background-image: none !important;
   }
 }
 
-/* DRAWINGS VERTICAL FEED & MOBILE-ONLY WORKFLOWS */
+/* ========================================================================== */
+/* DRAWINGS / MOBILE FULLSCREEN OVERLAY HEIGHT                                */
+/* Single source of truth for the dvh + webkit-fill-available cascade.        */
+/* ========================================================================== */
 @media (max-width: 1023px) {
-  body.drawings-fullscreen-active .fab-slot-top-right,
-  body.drawings-fullscreen-active .fab-slot-top-right-2,
-  body.drawings-fullscreen-active .fab-slot-bottom-right,
-  body.drawings-fullscreen-active nav[aria-label="Mobile Navigation"] {
-    display: none !important;
-  }
-  body.bh-transitioning .fab-slot-top-right,
-  body.bh-transitioning .fab-slot-top-right-2,
-  body.bh-transitioning .fab-slot-bottom-right {
-    display: none !important;
-  }
-
-  /* Fullscreen height optimizations and container fallbacks */
-  #drawings-fullscreen-overlay {
-    height: 100vh;
-    height: -webkit-fill-available;
-    height: 100dvh;
-  }
-
-  /* Scroll snap adjustments */
+  /* Hide scrollbar in mobile feeds */
   .no-scrollbar::-webkit-scrollbar {
     display: none !important;
   }
+
+  /* Mobile fullscreen overlays: progressive enhancement
+     1. Fallback: 100vh (oldest browsers)
+     2. Better:   -webkit-fill-available (older iOS)
+     3. Best:     100dvh (modern iOS 16+, Chrome 108+) */
+  #drawings-fullscreen-overlay,
+  [data-fullscreen="true"] {
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: 100dvh;
+    min-height: -webkit-fill-available;
+  }
+
+  @supports not (height: 100dvh) {
+    #drawings-fullscreen-overlay,
+    [data-fullscreen="true"] {
+      height: 100vh;
+      height: -webkit-fill-available;
+    }
+  }
 }
+
 @media (max-width: 767px) {
+  /* When virtual keyboard opens, hide bottom nav + now-playing bar */
   body.keyboard-open nav[aria-label="Mobile Navigation"],
   body.keyboard-open .now-playing-bar-mobile {
     display: none !important;
   }
 }
+
+/* ========================================================================== */
+/* HEART PULSE + CAPTION FADE ANIMATIONS                                      */
+/* ========================================================================== */
 @keyframes heartPulse {
   0% { transform: scale(0); opacity: 0; }
   15% { transform: scale(1.5); opacity: 0.9; }
@@ -218,23 +238,9 @@
   animation: fadeIn 300ms ease-out forwards;
 }
 
-@media (max-width: 1023px) {
-  /* dvh: accounts for browser chrome appearing/disappearing */
-  .fixed.inset-0,
-  #drawings-fullscreen-overlay,
-  [data-fullscreen="true"] {
-    height: 100dvh !important;
-  }
-  @supports not (height: 100dvh) {
-    .fixed.inset-0,
-    #drawings-fullscreen-overlay {
-      height: 100vh;
-      height: -webkit-fill-available;
-    }
-  }
-}
-
-/* Hide floating buttons + mobile nav during transition on ALL viewports */
+/* ========================================================================== */
+/* BLACK-HOLE TRANSITION — hide chrome on ALL viewports                       */
+/* ========================================================================== */
 body.bh-transitioning .fab-slot-top-right,
 body.bh-transitioning .fab-slot-top-right-2,
 body.bh-transitioning .fab-slot-bottom-right,
@@ -243,9 +249,75 @@ body.bh-transitioning nav[aria-label="Mobile Navigation"] {
   pointer-events: none !important;
 }
 
-/* Prevent body scroll (html overflow handles it, but belt-and-suspenders) */
 body.bh-transitioning {
   overflow: hidden !important;
   user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
+/* ==========================================================
+ * MOBILE SONG CARD — Pro design
+ * ========================================================== */
+@media (max-width: 1023px) {
+  .song-card-mobile {
+    /* Base elevation */
+    background: var(--bg-elevated, rgba(20,20,28,0.55));
+    transition:
+      background 350ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 350ms ease,
+      box-shadow 350ms ease;
+    position: relative;
+  }
+
+  /* Active state — subtle tint + border accent */
+  .song-card-mobile-active {
+    background:
+      linear-gradient(135deg,
+        rgba(167, 139, 250, 0.10) 0%,
+        var(--bg-elevated, rgba(20,20,28,0.55)) 60%
+      ) !important;
+    border-color: var(--border-subtle, rgba(167,139,250,0.35)) !important;
+  }
+
+  /* Progress bar at the very bottom edge of the card (shown only when active+playing) */
+  .song-card-mobile-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    border-radius: 0 0 14px 14px;
+    pointer-events: none;
+  }
+  .song-card-mobile-progress > span {
+    display: block;
+    height: 100%;
+    background: var(--text-primary, #fff);
+    transition: width 0.1s linear;
+  }
+
+  /* Light theme adjustments — keep OsWindow aesthetic */
+  [data-theme="light"] .song-card-mobile {
+    background: var(--paper-color, #F0EBE3) !important;
+  }
+  [data-theme="light"] .song-card-mobile-active {
+    background:
+      linear-gradient(135deg, rgba(0,0,204,0.06) 0%, var(--paper-color, #F0EBE3) 60%) !important;
+    border-color: #0000CC !important;
+  }
+
+  /* Bit theme — flat, sharp edges */
+  [data-theme="bit"] .song-card-mobile {
+    border-radius: 0 !important;
+  }
+  [data-theme="bit"] .song-card-mobile .song-card-mobile-progress {
+    border-radius: 0 !important;
+  }
+}
+
+@keyframes mb-wave {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.7; }
+  50%      { transform: scaleY(1.0); opacity: 1.0; }
+}

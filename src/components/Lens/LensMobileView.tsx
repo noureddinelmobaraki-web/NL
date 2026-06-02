@@ -1,0 +1,330 @@
+import { useRef, useState, useEffect } from 'react';
+import { X, ChevronLeft, Volume2, VolumeX } from 'lucide-react';
+import { useTouchGestures } from '../../hooks/useTouchGestures';
+
+interface LensMobileViewProps {
+  photos: string[];
+  selectedIndex: number;
+  mode: 'grid' | 'view';
+  isMuted: boolean;
+  uiVisible: boolean;
+  onEnterGrid: () => void;
+  onOpenView: (i: number) => void;
+  onIndexChange: (i: number) => void;
+  onClose: () => void;
+  onToggleMute: () => void;
+}
+
+const TOUCH_BTN_SIZE = 44;
+
+export const LensMobileView = ({
+  photos,
+  selectedIndex,
+  mode,
+  isMuted,
+  uiVisible,
+  onEnterGrid,
+  onOpenView,
+  onIndexChange,
+  onClose,
+  onToggleMute,
+}: LensMobileViewProps) => {
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  // Reset zoom/pan when switching image or mode
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [selectedIndex, mode]);
+
+  // Handle drag/pan when zoomed in
+  const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (zoom > 1) {
+      lastTouchRef.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (zoom > 1 && lastTouchRef.current) {
+      const dx = e.clientX - lastTouchRef.current.x;
+      const dy = e.clientY - lastTouchRef.current.y;
+      setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      lastTouchRef.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handlePointerUpOrCancel = () => {
+    lastTouchRef.current = null;
+  };
+
+  useTouchGestures(viewerRef, {
+    enabled: mode === 'view',
+    onSwipeLeft: () => {
+      if (zoom === 1) onIndexChange((selectedIndex + 1) % photos.length);
+    },
+    onSwipeRight: () => {
+      if (zoom === 1) onIndexChange((selectedIndex - 1 + photos.length) % photos.length);
+    },
+    onSwipeDown: () => {
+      if (zoom === 1) onClose();
+    },
+    onDoubleTap: (pt) => {
+      if (zoom > 1) {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      } else {
+        setZoom(2.2);
+        if (viewerRef.current) {
+          const r = viewerRef.current.getBoundingClientRect();
+          setPan({
+            x: -(pt.x - r.left - r.width / 2),
+            y: -(pt.y - r.top - r.height / 2),
+          });
+        }
+      }
+    },
+    onPinch: (scale) => {
+      setZoom(Math.min(Math.max(scale, 1), 3.5));
+    },
+    onPinchEnd: () => {
+      if (zoom < 1.1) {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      }
+    },
+    threshold: 50,
+  });
+
+  // ── GRID MODE ────────────────────────────────────────────
+  if (mode === 'grid') {
+    return (
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          background: '#000',
+        }}
+      >
+        {/* Top bar — close + counter + mute */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            paddingTop: 'calc(env(safe-area-inset-top) + 8px)',
+            paddingBottom: 12,
+            paddingLeft: 12,
+            paddingRight: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)',
+            zIndex: 10,
+            opacity: uiVisible ? 1 : 0,
+            transition: 'opacity 300ms ease',
+            pointerEvents: uiVisible ? 'auto' : 'none',
+          }}
+        >
+          <button onClick={onClose} aria-label="إغلاق المعرض" style={tbBtn()}>
+            <X size={22} color="var(--text-primary, #fff)" />
+          </button>
+          <span
+            style={{
+              fontFamily: 'monospace',
+              fontSize: 13,
+              color: 'var(--text-primary, #fff)',
+              background: 'rgba(0,0,0,0.35)',
+              padding: '4px 10px',
+              borderRadius: 12,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {photos.length} صور
+          </span>
+          <button
+            onClick={onToggleMute}
+            aria-label={isMuted ? 'تشغيل الصوت' : 'كتم الصوت'}
+            aria-pressed={isMuted}
+            style={tbBtn()}
+          >
+            {isMuted ? (
+              <VolumeX size={22} color="var(--text-primary, #fff)" />
+            ) : (
+              <Volume2 size={22} color="var(--text-primary, #fff)" />
+            )}
+          </button>
+        </div>
+
+        {/* Scrollable grid */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            paddingTop: 'calc(env(safe-area-inset-top) + 64px)',
+            paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)',
+            paddingLeft: 12,
+            paddingRight: 12,
+          }}
+          role="grid"
+          aria-label="Lens photos grid"
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 4,
+            }}
+          >
+            {photos.map((src, i) => (
+              <button
+                key={src + i}
+                type="button"
+                onClick={() => onOpenView(i)}
+                aria-label={`فتح الصورة ${i + 1}`}
+                style={{
+                  aspectRatio: '1 / 1',
+                  background: '#111',
+                  borderRadius: 8,
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                  minWidth: 44,
+                  minHeight: 44,
+                }}
+              >
+                <img
+                  src={src}
+                  alt={`Photo ${i + 1}`}
+                  loading={i < 9 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  draggable={false}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── VIEW MODE ────────────────────────────────────────────
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }}>
+      {/* Top bar */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          paddingTop: 'calc(env(safe-area-inset-top) + 8px)',
+          paddingBottom: 12,
+          paddingLeft: 12,
+          paddingRight: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)',
+          zIndex: 10,
+          opacity: uiVisible ? 1 : 0,
+          transition: 'opacity 300ms ease',
+          pointerEvents: uiVisible ? 'auto' : 'none',
+        }}
+      >
+        <button onClick={onEnterGrid} aria-label="عودة للشبكة" style={tbBtn()}>
+          <ChevronLeft size={22} color="var(--text-primary, #fff)" />
+        </button>
+        <span
+          style={{
+            fontFamily: 'monospace',
+            fontSize: 13,
+            color: 'var(--text-primary, #fff)',
+            background: 'rgba(0,0,0,0.35)',
+            padding: '4px 10px',
+            borderRadius: 12,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {selectedIndex + 1} / {photos.length}
+        </span>
+        <button
+          onClick={onToggleMute}
+          aria-label={isMuted ? 'تشغيل الصوت' : 'كتم الصوت'}
+          aria-pressed={isMuted}
+          style={tbBtn()}
+        >
+          {isMuted ? (
+            <VolumeX size={22} color="var(--text-primary, #fff)" />
+          ) : (
+            <Volume2 size={22} color="var(--text-primary, #fff)" />
+          )}
+        </button>
+      </div>
+
+      {/* Viewer */}
+      <div
+        ref={viewerRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUpOrCancel}
+        onPointerCancel={handlePointerUpOrCancel}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          touchAction: zoom > 1 ? 'none' : 'pan-y',
+        }}
+      >
+        <img
+          src={photos[selectedIndex]}
+          alt={`Photo ${selectedIndex + 1}`}
+          draggable={false}
+          style={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain',
+            userSelect: 'none',
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transition: zoom === 1 ? 'transform 250ms ease' : 'none',
+            transformOrigin: 'center center',
+            willChange: 'transform',
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
+// Helper for 44px chrome buttons
+function tbBtn(): React.CSSProperties {
+  return {
+    width: TOUCH_BTN_SIZE,
+    height: TOUCH_BTN_SIZE,
+    minWidth: TOUCH_BTN_SIZE,
+    minHeight: TOUCH_BTN_SIZE,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(0,0,0,0.4)',
+    borderRadius: '50%',
+    border: '1px solid rgba(255,255,255,0.15)',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
+    cursor: 'pointer',
+  };
+}

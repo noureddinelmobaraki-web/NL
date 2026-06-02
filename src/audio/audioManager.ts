@@ -139,7 +139,8 @@ class AudioManager {
     // Instant response for user-triggered playback, smooth for background
     let fadeDuration = 200;
     if (entry.source === 'bg') fadeDuration = 800;
-    else if (entry.source === 'song' || entry.source === 'mebit' || entry.source === 'lens') fadeDuration = 50; 
+    else if (entry.source === 'song') fadeDuration = 0; // ZERO fade for songs
+    else if (entry.source === 'mebit' || entry.source === 'lens') fadeDuration = 50; 
     
     await this.fadeIn(entry.element, entry.volume, fadeDuration);
   }
@@ -150,16 +151,46 @@ class AudioManager {
 
     entry.pendingPlay = false;
 
-    // Faster fade out for manual pause (200ms)
-    this.fadeOut(entry.element, 200).then(() => {
+    if (source === 'song') {
+      this.clearFade(entry.element);
       entry.element.pause();
-      // Rule 7: Volume Reset on Pause
       entry.element.volume = 0;
-      
-      if (source !== 'bg') {
-        this.releaseBg(`active_${source}`);
-      }
-    });
+      this.releaseBg('active_song');
+    } else {
+      // Faster fade out for manual pause (200ms)
+      this.fadeOut(entry.element, 200).then(() => {
+        entry.element.pause();
+        // Rule 7: Volume Reset on Pause
+        entry.element.volume = 0;
+        
+        if (source !== 'bg') {
+          this.releaseBg(`active_${source}`);
+        }
+      });
+    }
+
+    if (source === 'bg') {
+      this.bgUserPaused = true;
+      this.onStateChange?.(false);
+    }
+
+    if (source === this.active) {
+      this.active = null;
+    }
+  }
+
+  stop(source: AudioSource): void {
+    const entry = this.registry.get(source);
+    if (!entry) return;
+
+    entry.pendingPlay = false;
+    this.clearFade(entry.element);
+    entry.element.pause();
+    entry.element.volume = 0;
+
+    if (source !== 'bg') {
+      this.releaseBg(`active_${source}`);
+    }
 
     if (source === 'bg') {
       this.bgUserPaused = true;
@@ -230,6 +261,10 @@ class AudioManager {
   private fadeOut(el: HTMLAudioElement, ms: number): Promise<void> {
     this.clearFade(el);
     return new Promise(resolve => {
+      if (ms <= 0) {
+        el.volume = 0;
+        return resolve();
+      }
       const start = el.volume;
       if (start <= 0) {
         el.volume = 0;
@@ -251,6 +286,10 @@ class AudioManager {
   private fadeIn(el: HTMLAudioElement, target: number, ms: number): Promise<void> {
     this.clearFade(el);
     return new Promise(resolve => {
+      if (ms <= 0) {
+        el.volume = target;
+        return resolve();
+      }
       if (el.volume >= target) return resolve();
       
       const step = (target - el.volume) / (ms / 16);

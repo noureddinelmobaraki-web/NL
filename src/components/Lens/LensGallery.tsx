@@ -9,6 +9,8 @@ import { LensSlide, getSlotScale, getSlotOpacity } from './LensSlide';
 import { LensChrome } from './LensChrome';
 import { useAutoHideUI } from '../../hooks/useAutoHideUI';
 import { useOrientationListener } from '../../hooks/useOrientationListener';
+import { useFullscreenManager } from '../../hooks/useFullscreenManager';
+import { LensMobileView } from './LensMobileView';
 
 const PHOTOS = ASSETS.profile.lens;
 const MUSIC_URL = ASSETS.media.lensMusic;
@@ -29,6 +31,15 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   
+  // MOBILE-ONLY: two-stage mode (grid → view)
+  const [mobileMode, setMobileMode] = useState<'grid' | 'view'>('grid');
+
+  useEffect(() => {
+    if (isOpen && (isMobile || isTablet)) {
+      setMobileMode('grid');
+    }
+  }, [isOpen, isMobile, isTablet]);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const containerRef = useFocusTrap(isOpen);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -38,64 +49,14 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
     return () => setContext('page');
   }, [isOpen, setContext]);
 
-  // MOBILE-ONLY: Fullscreen & immersive mode
-  useEffect(() => {
-    if (isOpen && (isMobile || isTablet)) {
-      document.body.classList.add('lens-immersive');
-      try {
-        if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen();
-        }
-        const sor = screen.orientation as any;
-        if (sor && sor.lock) {
-          sor.lock('portrait').catch(() => {});
-        }
-      } catch (e) {}
-    } else {
-      document.body.classList.remove('lens-immersive');
-      try {
-        if (document.fullscreenElement && document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-        const sor = screen.orientation as any;
-        if (sor && sor.unlock) {
-          sor.unlock();
-        }
-      } catch (e) {}
-    }
-    return () => {
-      document.body.classList.remove('lens-immersive');
-      try {
-        if (document.fullscreenElement && document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-        const sor = screen.orientation as any;
-        if (sor && sor.unlock) {
-          sor.unlock();
-        }
-      } catch (e) {}
-    };
-  }, [isOpen, isMobile, isTablet]);
+  useFullscreenManager(isOpen, {
+    bodyClass: 'lens-immersive',
+    onEscape: onClose,
+    lockOrientation: 'portrait',
+    enabled: isMobile || isTablet,
+  });
 
-  // MOBILE-ONLY: Disable body scroll when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
 
-  // Sync scroll position with activeIndex on initial open or jump
-  useEffect(() => {
-    if (isOpen && isMobile && scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      container.scrollLeft = activeIndex * window.innerWidth;
-    }
-  }, [isOpen, isMobile]);
 
   useEffect(() => {
     if (isOpen && containerRef.current) {
@@ -123,9 +84,10 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
     gestures.resetZoom();
 
     if (isMobile && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
       const next = (activeIndex + direction + PHOTOS.length) % PHOTOS.length;
-      scrollContainerRef.current.scrollTo({
-        left: next * window.innerWidth,
+      container.scrollTo({
+        left: next * container.clientWidth,
         behavior: 'smooth'
       });
       setActiveIndex(next);
@@ -163,14 +125,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
     requestAnimationFrame(animate);
   };
 
-  const handleScroll = () => {
-    if (!isMobile || !scrollContainerRef.current || isTransitioning) return;
-    const scrollLeft = scrollContainerRef.current.scrollLeft;
-    const index = Math.round(scrollLeft / window.innerWidth);
-    if (index !== activeIndex && index >= 0 && index < PHOTOS.length) {
-      setActiveIndex(index);
-    }
-  };
+
 
   // Connect gestural interactions hook
   const gestures = useLensGestures({
@@ -183,7 +138,8 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
   useOrientationListener(useCallback(() => {
     gestures.resetZoom();
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = activeIndex * window.innerWidth;
+      const container = scrollContainerRef.current;
+      container.scrollLeft = activeIndex * container.clientWidth;
     }
   }, [activeIndex, gestures.resetZoom]));
 
@@ -208,6 +164,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
         <button
           onClick={toggleMute}
           className="fab-button"
+          style={{ touchAction: 'manipulation' }}
           aria-label="Mute Lens Music"
         >
           {isMuted ? '🔇' : '🎵'}
@@ -224,7 +181,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
         <button
           onClick={onClose}
           className="fab-button transition-colors hover:bg-red-600/20 border-red-500/30"
-          style={{ color: 'var(--accent-red, #ef4444)' }}
+          style={{ color: 'var(--accent-red, #ef4444)', touchAction: 'manipulation' }}
           aria-label="Close Lens Gallery"
         >
           ✕
@@ -252,35 +209,9 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
 
   if (!isOpen && !isTransitioning) return null;
 
-  // Pagination Dots logic (window of 9)
-  const renderDots = () => {
-    const maxVisible = 9;
-    const total = PHOTOS.length;
-    let start = Math.max(0, activeIndex - Math.floor(maxVisible / 2));
-    let end = Math.min(total - 1, start + maxVisible - 1);
-    
-    if (end - start + 1 < maxVisible) {
-      start = Math.max(0, end - maxVisible + 1);
-    }
 
-    return Array.from({ length: end - start + 1 }).map((_, i) => {
-      const idx = start + i;
-      const isCurrent = idx === activeIndex;
-      return (
-        <div
-          key={idx}
-          style={{
-            width: isCurrent ? '20px' : '6px',
-            height: '6px',
-            borderRadius: '3px',
-            background: isCurrent ? '#fff' : 'rgba(255,255,255,0.4)',
-            transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-            flexShrink: 0,
-          }}
-        />
-      );
-    });
-  };
+
+  const isMobileView = isMobile || isTablet;
 
   return (
     <div 
@@ -290,202 +221,168 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
       aria-label="معرض الصور"
       tabIndex={-1}
       style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 9999,
-      display: isOpen ? 'flex' : 'none',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      background: isMobile ? '#000' : 'var(--gallery-strip-bg)',
-      backgroundPosition: 'center',
-      backgroundSize: 'cover',
-      overflow: 'hidden',
-      height: isMobile ? '100dvh' : '100vh',
-      opacity: isOpen ? 1 : 0,
-      transition: isMobile 
-        ? (gestures.dragY === 0 ? 'transform 300ms ease, opacity 400ms ease' : 'opacity 400ms ease')
-        : 'opacity 400ms ease',
-      transform: isMobile ? `translateY(${gestures.dragY}px)` : 'none',
-    }}>
-      {/* Chrome (overlays / titles etc) */}
-      <LensChrome
-        onClose={onClose}
-        isMuted={isMuted}
-        onToggleMute={toggleMute}
-        activeIndex={activeIndex}
-        totalPhotos={PHOTOS.length}
-        isMobile={isMobile}
-        visible={isMobile ? uiVisible : true}
-      />
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        display: isOpen ? 'flex' : 'none',
+        flexDirection: 'column',
+        background: isMobileView ? '#000' : 'var(--gallery-strip-bg)',
+        overflow: 'hidden',
+        height: isMobileView ? '100dvh' : '100vh',
+        minHeight: isMobileView ? '-webkit-fill-available' : undefined,
+        overscrollBehavior: isMobileView ? 'none' : undefined,
+        contain: isMobileView ? 'strict' : undefined,
+        opacity: isOpen ? 1 : 0,
+        transition: 'opacity 400ms ease',
+      }}
+    >
+      {isMobileView ? (
+        <LensMobileView
+          photos={PHOTOS}
+          selectedIndex={activeIndex}
+          mode={mobileMode}
+          isMuted={isMuted}
+          uiVisible={uiVisible}
+          onEnterGrid={() => setMobileMode('grid')}
+          onOpenView={(i) => {
+            setActiveIndex(i);
+            setMobileMode('view');
+          }}
+          onIndexChange={(i) => setActiveIndex(i)}
+          onClose={onClose}
+          onToggleMute={toggleMute}
+        />
+      ) : (
+        <>
+          {/* Chrome (overlays / titles etc) */}
+          <LensChrome
+            onClose={onClose}
+            isMuted={isMuted}
+            onToggleMute={toggleMute}
+            activeIndex={activeIndex}
+            totalPhotos={PHOTOS.length}
+            isMobile={false}
+            visible={true}
+          />
 
-      {/* MAIN PHOTO VIEWER */}
-      <div 
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        style={{
-          flex: 1, 
-          position: 'relative', 
-          width: '100%',
-          zIndex: 5, 
-          overflowX: isMobile ? 'auto' : 'hidden',
-          overflowY: 'hidden',
-          display: isMobile ? 'flex' : 'block',
-          scrollSnapType: isMobile ? 'x mandatory' : 'none',
-          scrollbarWidth: 'none',
-          WebkitOverflowScrolling: 'touch',
-          touchAction: isMobile ? 'pan-x' : 'none',
-          background: '#000',
-        }}
-        onPointerDown={isMobile ? undefined : gestures.onPointerDown}
-        onPointerMove={isMobile ? undefined : gestures.onPointerMove}
-        onPointerUp={isMobile ? undefined : gestures.onPointerUp}
-      >
-        {isMobile ? (
-          PHOTOS.map((photo, i) => (
-            <div
-              key={i}
-              style={{
-                width: '100vw',
-                height: '100%',
-                flexShrink: 0,
-                scrollSnapAlign: 'center',
-                position: 'relative',
-              }}
-              onPointerDown={gestures.onPointerDown}
-              onPointerMove={gestures.onPointerMove}
-              onPointerUp={gestures.onPointerUp}
-            >
-              <LensSlide
-                photoUrl={photo}
-                slotOffset={i - activeIndex}
-                zoomScale={i === activeIndex ? gestures.zoomScale : 1}
-                pan={i === activeIndex ? gestures.pan : { x: 0, y: 0 }}
-                dragY={gestures.dragY}
-                isActive={i === activeIndex}
-              />
+          {/* MAIN PHOTO VIEWER (DESKTOP) */}
+          <div 
+            ref={scrollContainerRef}
+            style={{
+              flex: 1, 
+              position: 'relative', 
+              width: '100%',
+              zIndex: 5, 
+              overflowX: 'hidden',
+              overflowY: 'hidden',
+              display: 'block',
+              scrollbarWidth: 'none',
+              touchAction: 'none',
+              background: '#000',
+            }}
+            onPointerDown={gestures.onPointerDown}
+            onPointerMove={gestures.onPointerMove}
+            onPointerUp={gestures.onPointerUp}
+          >
+            <div style={{
+              position: 'relative', width: '100%', height: '100%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {/* Layer 1: old photo */}
+              {nextIndex !== null && (
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 2,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  opacity: wipeProgress > 90 ? 1 - (wipeProgress - 90) / 10 : 1,
+                }}>
+                  <img
+                    src={PHOTOS[activeIndex]}
+                    alt={`Photo ${activeIndex + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    draggable={false}
+                  />
+                </div>
+              )}
+
+              {/* Layer 2: new photo with clipPath wipe */}
+              {nextIndex !== null && (
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 3,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  clipPath: `inset(0 ${100 - wipeProgress}% 0 0)`,
+                }}>
+                  <img
+                    src={PHOTOS[nextIndex]}
+                    alt={`Photo ${nextIndex + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    draggable={false}
+                  />
+                </div>
+              )}
+
+              {/* Current photo when no transition */}
+              {nextIndex === null && (
+                <LensSlide
+                  photoUrl={PHOTOS[activeIndex]}
+                  slotOffset={0}
+                  zoomScale={gestures.zoomScale}
+                  pan={gestures.pan}
+                  dragY={gestures.dragY}
+                  isActive={true}
+                />
+              )}
             </div>
-          ))
-        ) : (
-          <div style={{
-            position: 'relative', width: '100%', height: '100%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {/* Layer 1: old photo */}
-            {nextIndex !== null && (
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 2,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                opacity: wipeProgress > 90 ? 1 - (wipeProgress - 90) / 10 : 1,
-              }}>
-                <img
-                  src={PHOTOS[activeIndex]}
-                  alt={`Photo ${activeIndex + 1}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  draggable={false}
-                />
-              </div>
-            )}
-
-            {/* Layer 2: new photo with clipPath wipe */}
-            {nextIndex !== null && (
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 3,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                clipPath: `inset(0 ${100 - wipeProgress}% 0 0)`,
-              }}>
-                <img
-                  src={PHOTOS[nextIndex]}
-                  alt={`Photo ${nextIndex + 1}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  draggable={false}
-                />
-              </div>
-            )}
-
-            {/* Current photo when no transition */}
-            {nextIndex === null && (
-              <LensSlide
-                photoUrl={PHOTOS[activeIndex]}
-                slotOffset={0}
-                zoomScale={gestures.zoomScale}
-                pan={gestures.pan}
-                dragY={gestures.dragY}
-                isActive={true}
-              />
-            )}
           </div>
-        )}
-      </div>
 
-      {/* BOTTOM PAGINATION DOTS (MOBILE) */}
-      {isMobile && (
-        <div style={{
-          position: 'absolute',
-          bottom: 'calc(20px + env(safe-area-inset-bottom))',
-          left: 0,
-          right: 0,
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '8px',
-          zIndex: 100,
-          pointerEvents: 'none',
-          opacity: uiVisible ? 1 : 0,
-          transition: 'opacity 300ms ease',
-        }}>
-          {renderDots()}
-        </div>
-      )}
-
-      {/* FILMSTRIP CAROUSEL (DESKTOP) */}
-      {!isMobile && (
-        <div style={{
-          width: '100%', position: 'relative', zIndex: 5,
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          gap: '8px',
-          padding: '16px 12px',
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-          background: 'var(--gallery-strip-bg)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid var(--gallery-strip-border)',
-        }}>
-          {(isMobile ? [-2,-1,0,1,2] : [-3,-2,-1,0,1,2,3]).map(offset => {
-            const photoIndex = (activeIndex + offset + PHOTOS.length) % PHOTOS.length;
-            let scale = getSlotScale(offset);
-            let opacity = getSlotOpacity(offset);
-            const isCenter = offset === 0;
-            const thumbWidth = Math.round(56 * scale);
-            const thumbHeight = Math.round(72 * scale);
-            
-            return (
-              <button
-                key={offset}
-                onClick={() => !isTransitioning && setActiveIndex(photoIndex)}
-                style={{
-                  flexShrink: 0,
-                  width: `${thumbWidth}px`,
-                  height: `${thumbHeight}px`,
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  border: isCenter ? '2px solid var(--text-primary)' : '1px solid var(--border-subtle)',
-                  opacity,
-                  cursor: isCenter ? 'default' : 'pointer',
-                  transition: 'all 350ms cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  background: '#111',
-                }}
-              >
-                <img
-                  src={PHOTOS[photoIndex]}
-                  alt={`Thumb ${photoIndex + 1}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  draggable={false}
-                />
-              </button>
-            );
-          })}
-        </div>
+          {/* FILMSTRIP CAROUSEL (DESKTOP) */}
+          <div style={{
+            width: '100%', position: 'relative', zIndex: 5,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            gap: '8px',
+            padding: '16px 12px',
+            paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+            background: 'var(--gallery-strip-bg)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderTop: '1px solid var(--gallery-strip-border)',
+          }}>
+            {[-3,-2,-1,0,1,2,3].map(offset => {
+              const photoIndex = (activeIndex + offset + PHOTOS.length) % PHOTOS.length;
+              let scale = getSlotScale(offset);
+              let opacity = getSlotOpacity(offset);
+              const isCenter = offset === 0;
+              const thumbWidth = Math.round(56 * scale);
+              const thumbHeight = Math.round(72 * scale);
+              
+              return (
+                <button
+                  key={offset}
+                  onClick={() => !isTransitioning && setActiveIndex(photoIndex)}
+                  style={{
+                    flexShrink: 0,
+                    width: `${thumbWidth}px`,
+                    height: `${thumbHeight}px`,
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    border: isCenter ? '2px solid var(--text-primary)' : '1px solid var(--border-subtle)',
+                    opacity,
+                    cursor: isCenter ? 'default' : 'pointer',
+                    transition: 'all 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    background: '#111',
+                  }}
+                >
+                  <img
+                    src={PHOTOS[photoIndex]}
+                    alt={`Thumb ${photoIndex + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    draggable={false}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

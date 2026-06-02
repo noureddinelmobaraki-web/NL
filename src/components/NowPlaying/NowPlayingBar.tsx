@@ -98,8 +98,8 @@ export const NowPlayingBar = ({
             transformOrigin: "bottom center",
             maxWidth: isMobileOrTablet ? "none" : geometry.maxWidth,
             width: isMobileOrTablet ? "auto" : geometry.width,
-            height: isMobileOrTablet ? "56px" : undefined,
-            minHeight: isHovered && !isMobileOrTablet ? "120px" : (isMobileOrTablet ? "56px" : "64px"),
+            height: isMobileOrTablet ? "72px" : undefined,
+            minHeight: isHovered && !isMobileOrTablet ? "120px" : (isMobileOrTablet ? "72px" : "64px"),
             background: isMobileOrTablet ? 'var(--bg-glass-strong)' : 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.7), rgba(var(--bg-page-rgb), 0.8))',
             backdropFilter: isMobileOrTablet ? 'blur(20px)' : 'blur(32px) saturate(180%)',
             WebkitBackdropFilter: isMobileOrTablet ? 'blur(20px)' : 'blur(32px) saturate(180%)',
@@ -131,8 +131,20 @@ export const NowPlayingBar = ({
           activeSong={activeSong}
           isPlaying={activeSong.isPlaying}
           progress={progress}
+          currentTime={activeSong.currentTime}
+          duration={activeSong.duration}
+          isShuffle={activeSong.isShuffle}
+          repeatMode={activeSong.repeatMode}
+          onSeek={(val) => {
+            if (activeSong.audioRef?.current) {
+              activeSong.audioRef.current.currentTime = val;
+            }
+          }}
+          onPrev={() => activeSong.onPrev()}
           onNext={() => activeSong.onNext()}
           onPlayPause={() => activeSong.onPlayPause()}
+          onShuffleToggle={() => activeSong.onShuffleToggle()}
+          onRepeatToggle={() => activeSong.onRepeatToggle()}
           onClose={onClose}
         />
       ) : (

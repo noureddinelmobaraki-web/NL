@@ -40,7 +40,6 @@ import {
 } from "./components/app/appConstants";
 import { AppBackgroundFx } from "./components/app/AppBackgroundFx";
 import { AppNavGrid } from "./components/app/AppNavGrid";
-import { AppFooter } from "./components/app/AppFooter";
 import { AppMobileNav } from "./components/app/AppMobileNav";
 
 const MySongs = React.lazy(() => import('./components/MySongs/MySongsPage').then(m => ({ default: m.MySongs })));
@@ -419,8 +418,6 @@ function MainApp() {
                 </SectionErrorBoundary>
               </motion.section>
             </div>
-
-            <AppFooter footerDecorationUrl={CONFIG_ASSETS.footerDecoration} />
           </motion.div>
         </div>
       </div>

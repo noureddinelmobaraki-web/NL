@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Song, LyricLine } from '../../types';
 import { SONG_BG_FALLBACK } from '../../constants/assets';
@@ -68,6 +68,9 @@ export const SongCard = memo(({
   const { isMobile, isTablet } = useDeviceType();
   const resolvedTheme = useResolvedTheme();
 
+  // FIXED: save/restore scroll position when lyrics bottom sheet opens
+  const savedScrollY = useRef(0);
+
   // ─── Local lyrics state (fetches LRC file independently) ───
   const [localLyrics, setLocalLyrics] = useState<LyricLine[]>(() => {
     if (lyrics && lyrics.length > 0) return lyrics;
@@ -100,6 +103,17 @@ export const SongCard = memo(({
       document.removeEventListener('close-mobile-lyrics', handler);
     };
   }, [setLyricsOpen]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ songId: number }>).detail;
+      if (detail?.songId === song.id) {
+        setLyricsOpen(true);
+      }
+    };
+    document.addEventListener('open-song-lyrics', handler);
+    return () => document.removeEventListener('open-song-lyrics', handler);
+  }, [song.id, setLyricsOpen]);
 
   useEffect(() => {
     if (resolvedTheme === 'light' && isLyricsOpen && currentLineIndex !== -1) {
@@ -203,22 +217,37 @@ export const SongCard = memo(({
     });
   }, [song.cover, song.backgroundImage, isActive, onAmbientColorChange]);
 
+  // FIXED: Body scroll lock with save/restore pattern (2025 best practice)
+  //   - Save scrollY before lock to avoid iOS jump-to-top on unlock
+  //   - Restore via requestAnimationFrame after browser repaints
+  //   - DO NOT mutate body.dataset.modalContext here — ButtonOrchestrator
+  //     is the single source of truth for modal context state.
   useEffect(() => {
-    if (isLyricsOpen && (isMobile || isTablet)) {
+    if (!isMobile && !isTablet) return; // desktop: lyrics inline, no body lock needed
+
+    if (isLyricsOpen) {
+      savedScrollY.current = window.scrollY;
       document.body.style.overflow = 'hidden';
-      // Set context for orchestrator
-      document.body.dataset.modalContext = 'songs-modal';
     } else {
-      const isStillOpen = document.body.dataset.modalContext === 'songs-modal' && 
-                          document.querySelectorAll('.lyrics-bottom-sheet').length > 1;
-      if (!isStillOpen) {
+      // Only release if we previously locked
+      if (document.body.style.overflow === 'hidden') {
         document.body.style.overflow = '';
-        document.body.dataset.modalContext = 'page';
+        if (savedScrollY.current > 0) {
+          const y = savedScrollY.current;
+          requestAnimationFrame(() => window.scrollTo(0, y));
+        }
       }
     }
+
     return () => {
-      document.body.style.overflow = '';
-      document.body.dataset.modalContext = 'page';
+      // Safety cleanup
+      if (document.body.style.overflow === 'hidden') {
+        document.body.style.overflow = '';
+        if (savedScrollY.current > 0) {
+          const y = savedScrollY.current;
+          requestAnimationFrame(() => window.scrollTo(0, y));
+        }
+      }
     };
   }, [isLyricsOpen, isMobile, isTablet]);
 
@@ -249,10 +278,13 @@ export const SongCard = memo(({
         }
       }}
       className={`
-        song-card relative ${(resolvedTheme === 'light' && isLyricsOpen) ? 'overflow-visible' : 'overflow-hidden'} flex flex-col transition-all cursor-pointer
-        ${resolvedTheme === 'dark' ? 'bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 transition-all duration-500 rounded-2xl' : (resolvedTheme === 'light' ? 'bg-[#F0EBE3]' : (isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-6 sm:p-8 rounded-2xl' : 'shadow-lg hover:shadow-xl p-5 sm:p-6 rounded-2xl'))}
-        ${isActive && resolvedTheme !== 'dark' && resolvedTheme !== 'light' ? 'p-6 sm:p-8' : ''}
-        ${(isMobile || isTablet) ? 'h-[80px] justify-center px-4' : ''}
+        song-card relative ${
+          ((resolvedTheme === 'light' && isLyricsOpen) || ((isMobile || isTablet) && isLyricsOpen))
+            ? 'overflow-visible'
+            : 'overflow-hidden'
+        } flex flex-col transition-all cursor-pointer
+        ${(isMobile || isTablet) ? `song-card-mobile justify-center ${isActive ? 'song-card-mobile-active' : ''}` : (resolvedTheme === 'dark' ? 'bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 transition-all duration-500 rounded-2xl' : (resolvedTheme === 'light' ? 'bg-[#F0EBE3]' : (isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-6 sm:p-8 rounded-2xl' : 'shadow-lg hover:shadow-xl p-5 sm:p-6 rounded-2xl')))}
+        ${isActive && resolvedTheme !== 'dark' && resolvedTheme !== 'light' && !isMobile && !isTablet ? 'p-6 sm:p-8' : ''}
       `}
       style={{
         backgroundImage: resolvedTheme === 'light' ? 'none' : `url('${song.backgroundImage}'), url('${SONG_BG_FALLBACK}')`,
@@ -260,7 +292,20 @@ export const SongCard = memo(({
         backgroundPosition: 'center',
         gridColumn: isActive && !isMobile ? 'span 2' : 'span 1',
         transitionDuration: resolvedTheme === 'dark' ? '500ms' : '700ms',
-        ...(isMobile || isTablet ? { minHeight: '80px', maxHeight: '80px' } : {})
+        ...(
+          (isMobile || isTablet)
+            ? {
+                minHeight: '80px',
+                ...(isLyricsOpen ? {} : { maxHeight: '80px' }),
+                padding: '12px 16px',
+                borderRadius: resolvedTheme === 'light' ? '0' : '14px',
+                border: isActive
+                  ? '1px solid var(--border-subtle, rgba(255,255,255,0.25))'
+                  : '1px solid transparent',
+                ...(isActive ? { boxShadow: '0 4px 16px rgba(0,0,0,0.25)' } : {})
+              }
+            : {}
+        )
       }}
     >
       {/* Bento expansion handle */}
@@ -312,7 +357,14 @@ export const SongCard = memo(({
           duration={duration}
           onPlay={onPlay}
           onPlayPause={onPlayPause}
-          onToggleLyrics={() => setLyricsOpen(prev => !prev)}
+          onToggleLyrics={() => {
+            if (!isActive) {
+              onPlay();
+              setLyricsOpen(true);
+            } else {
+              setLyricsOpen(prev => !prev);
+            }
+          }}
         />
 
         {/* Controls shown when active (Block C/D) */}
@@ -353,6 +405,17 @@ export const SongCard = memo(({
           </div>
         )}
       </div>
+
+      {/* Mobile-only thin progress bar at card bottom (only when active+playing) */}
+      {(isMobile || isTablet) && isActive && (
+        <div className="song-card-mobile-progress" aria-hidden="true">
+          <span style={{
+            width: duration && duration > 0
+              ? `${Math.min(100, ((currentTime || 0) / duration) * 100)}%`
+              : '0%',
+          }} />
+        </div>
+      )}
 
       {/* Floating Light Lyrics Popover Window */}
       <SongCardLyricsPanel

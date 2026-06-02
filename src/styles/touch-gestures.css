@@ -1,0 +1,6 @@
+@media (max-width: 1023px) {
+  .gesture-area-pan-y { touch-action: pan-y; }
+  .gesture-area-pan-x { touch-action: pan-x; }
+  .gesture-area-pinch { touch-action: none; }
+  .gesture-area-none  { touch-action: none; }
+}

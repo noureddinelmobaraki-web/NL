@@ -37,7 +37,10 @@ export function useMoodAudioGraph({
     // إنشاء analyser مرة واحدة
     if (!analyserRef.current) {
       analyserRef.current = ctx.createAnalyser();
-      analyserRef.current.fftSize = 128;
+      analyserRef.current.fftSize = 1024;
+      analyserRef.current.smoothingTimeConstant = 0.45;
+      analyserRef.current.minDecibels = -85;
+      analyserRef.current.maxDecibels = -15;
     }
     // Expose the analyser on the audio element for audio-reactive particles
     (audio as any).__analyser = analyserRef.current;
@@ -77,6 +80,61 @@ export function useMoodAudioGraph({
       audioCtxRef.current.resume().catch(() => {});
     }
   }, [activeSong]);
+
+  // ── CORS fallback detection: إن كان HLS بدون CORS، حلّ بديل
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !activeSong) return;
+    
+    let checkTimer: number | null = null;
+    let fallbackInterval: number | null = null;
+    
+    const checkCorsAndFallback = () => {
+      const analyser = analyserRef.current;
+      if (!analyser) return;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(data);
+      const sum = data.reduce((a, b) => a + b, 0);
+      
+      if (sum === 0 && !audio.paused) {
+        // CORS فشل → ابدأ pseudo-bass fallback
+        console.info('[Mood] CORS blocked HLS analyser → activating pseudo-bass');
+        let phase = 0;
+        const bpm = 95;  // متوسط BPM للأغاني الهادئة
+        const beatInterval = 60000 / bpm;
+        
+        // استبدل __analyser بـ pseudo-analyser
+        const fakeData = new Uint8Array(analyser.frequencyBinCount);
+        (audio as any).__analyser = {
+          frequencyBinCount: analyser.frequencyBinCount,
+          getByteFrequencyData: (out: Uint8Array) => {
+            // محاكاة Bass nice + harmonics
+            const t = performance.now() / beatInterval;
+            const beat = Math.max(0, Math.sin(t * Math.PI * 2));
+            const decay = Math.pow(beat, 4);
+            for (let i = 0; i < out.length; i++) {
+              if (i < 8) out[i] = Math.floor(decay * 220 + Math.random() * 20);
+              else if (i < 40) out[i] = Math.floor(decay * 80);
+              else out[i] = Math.floor(decay * 30);
+            }
+          }
+        };
+      }
+    };
+    
+    // افحص بعد 800ms من بدء التشغيل
+    const onPlay = () => {
+      if (checkTimer) clearTimeout(checkTimer);
+      checkTimer = window.setTimeout(checkCorsAndFallback, 800);
+    };
+    audio.addEventListener('play', onPlay);
+    
+    return () => {
+      audio.removeEventListener('play', onPlay);
+      if (checkTimer) clearTimeout(checkTimer);
+      if (fallbackInterval) clearInterval(fallbackInterval);
+    };
+  }, [activeSong, audioRef]);
 
   // ── حلقة قياس الـ bass لتحريك الـ glow
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Song, LyricLine } from '../../types';
 import { LyricsWindowContent } from '../LyricsEngine';
@@ -346,104 +347,161 @@ export const SongCardLyricsPanel = ({
     }
 
     // MOBILE / TABLET BOTTOM SHEET
-    return (
+    if (typeof window === 'undefined') return null;
+
+    return createPortal(
       <AnimatePresence>
         {isLyricsOpen && (
-          <motion.div
-            key="lyrics-sheet"
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.3 }}
-            onDragEnd={(_, info) => {
-              if (info.velocity.y > 500 || info.offset.y > 100) {
-                document.dispatchEvent(new CustomEvent('close-mobile-lyrics'));
-              }
-            }}
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="lyrics-bottom-sheet fixed inset-x-0 bottom-0 z-[8000] flex flex-col"
-            style={{
-              height: '85vh',
-              background: 'var(--bg-glass-strong, rgba(15,15,20,0.95))',
-              backdropFilter: 'blur(30px)',
-              WebkitBackdropFilter: 'blur(30px)',
-              borderRadius: '24px 24px 0 0',
-              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-              boxShadow: '0 -10px 50px rgba(0,0,0,0.5)',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Drag handle */}
-            <div style={{ width: 40, height: 5, background: 'rgba(255,255,255,0.2)', borderRadius: 2.5, margin: '14px auto 10px', flexShrink: 0 }} />
-            
-            <div className="flex flex-col flex-1 overflow-hidden">
-              <div 
-                ref={mobileScrollContainerRef}
-                className="flex-1 overflow-y-auto px-6 py-4 no-scrollbar"
-                style={{ scrollbarWidth: 'none' }}
-              >
-                {!localLyrics || localLyrics.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-500">
-                    <div className="spinner !w-6 !h-6" />
-                    <span className="text-xs font-mono uppercase tracking-widest">تحميل الكلمات...</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-4 py-8">
-                    {localLyrics.map((line, i) => {
-                      const isActive = i === currentLineIndex;
-                      const isHeader = isHeaderLineHelper(line.text);
-                      const isArabic = /[\u0600-\u06FF]/.test(line.text);
+          <>
+            {/* Backdrop for extreme screen focus */}
+            <motion.div
+              key="lyrics-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.55 }}
+              exit={{ opacity: 0 }}
+              onClick={() => document.dispatchEvent(new CustomEvent('close-mobile-lyrics'))}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: '#000',
+                zIndex: 10999,
+                pointerEvents: 'auto',
+                touchAction: 'none',
+              }}
+            />
 
-                      if (isHeader) {
+            <motion.div
+              key="lyrics-sheet"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 32, stiffness: 350 }}
+              className="lyrics-bottom-sheet fixed inset-x-0 bottom-0 flex flex-col"
+              style={{
+                height: '80vh',
+                background: 'rgba(15, 15, 20, 0.98)',
+                backdropFilter: 'blur(30px)',
+                WebkitBackdropFilter: 'blur(30px)',
+                borderRadius: '24px 24px 0 0',
+                paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                boxShadow: '0 -15px 50px rgba(0,0,0,0.8)',
+                borderTop: '1px solid rgba(255,255,255,0.12)',
+                borderLeft: '1px solid rgba(255,255,255,0.1)',
+                borderRight: '1px solid rgba(255,255,255,0.1)',
+                zIndex: 11000,
+                pointerEvents: 'auto',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header inside bottom sheet */}
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  padding: '16px 20px', 
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.08)', 
+                  flexShrink: 0 
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, marginRight: '12px', textAlign: 'left' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {song.title}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }}>
+                    NOW PLAYING
+                  </span>
+                </div>
+                <button
+                  onClick={() => document.dispatchEvent(new CustomEvent('close-mobile-lyrics'))}
+                  aria-label="إغلاق الكلمات"
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '15px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    touchAction: 'manipulation',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="flex flex-col flex-1 overflow-hidden">
+                <div 
+                  ref={mobileScrollContainerRef}
+                  className="flex-1 overflow-y-auto px-6 py-4 no-scrollbar"
+                  style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+                >
+                  {!localLyrics || localLyrics.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-500">
+                      <div className="spinner !w-6 !h-6" />
+                      <span className="text-xs font-mono uppercase tracking-widest">تحميل الكلمات...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4 py-8">
+                      {localLyrics.map((line, i) => {
+                        const isActive = i === currentLineIndex;
+                        const isHeader = isHeaderLineHelper(line.text);
+                        const isArabic = /[\u0600-\u06FF]/.test(line.text);
+
+                        if (isHeader) {
+                          return (
+                            <div 
+                              key={`lyric-mob-${i}`}
+                              className="flex justify-center my-6"
+                            >
+                              <span className="bg-white/5 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase text-white/40 border border-white/5">
+                                {line.text.replace(/\[|\]/g, '')}
+                              </span>
+                            </div>
+                          );
+                        }
+
                         return (
-                          <div 
+                          <div
                             key={`lyric-mob-${i}`}
-                            className="flex justify-center my-6"
+                            id={`light-lyric-line-mobile-${i}`}
+                            onClick={() => onSeek?.(line.time)}
+                            className={`
+                              relative py-3 transition-all duration-300 transform
+                              ${isActive ? 'scale-105 opacity-100' : 'opacity-30 hover:opacity-50'}
+                            `}
+                            style={{
+                              textAlign: isArabic ? 'right' : 'left',
+                              direction: isArabic ? 'rtl' : 'ltr'
+                            }}
                           >
-                            <span className="bg-white/5 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase text-white/40 border border-white/5">
-                              {line.text.replace(/\[|\]/g, '')}
-                            </span>
+                            <p style={{
+                              fontFamily: isArabic ? 'var(--font-manga, sans-serif)' : 'var(--font-sans, sans-serif)',
+                              fontSize: 'clamp(1.4rem, 6vw, 2.2rem)',
+                              fontWeight: isActive ? 800 : 700,
+                              lineHeight: 1.3,
+                              color: isActive ? 'var(--text-primary, white)' : 'white',
+                              textShadow: isActive ? '0 0 30px rgba(255,255,255,0.3)' : 'none',
+                            }}>
+                              {line.text}
+                            </p>
                           </div>
                         );
-                      }
-
-                      return (
-                        <div
-                          key={`lyric-mob-${i}`}
-                          id={`light-lyric-line-mobile-${i}`}
-                          onClick={() => onSeek?.(line.time)}
-                          className={`
-                            relative py-3 transition-all duration-300 transform
-                            ${isActive ? 'scale-105 opacity-100' : 'opacity-30 hover:opacity-50'}
-                          `}
-                          style={{
-                            textAlign: isArabic ? 'right' : 'left',
-                            direction: isArabic ? 'rtl' : 'ltr'
-                          }}
-                        >
-                          <p style={{
-                            fontFamily: isArabic ? 'var(--font-manga, sans-serif)' : 'var(--font-sans, sans-serif)',
-                            fontSize: 'clamp(1.4rem, 6vw, 2.2rem)',
-                            fontWeight: isActive ? 800 : 700,
-                            lineHeight: 1.3,
-                            color: isActive ? 'var(--text-primary, white)' : 'white',
-                            textShadow: isActive ? '0 0 30px rgba(255,255,255,0.3)' : 'none',
-                          }}>
-                            {line.text}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
     );
   }
 

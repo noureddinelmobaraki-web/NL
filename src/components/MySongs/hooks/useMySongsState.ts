@@ -33,8 +33,10 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
 
   // Reset lyrics/karaoke on activeId change
   useEffect(() => {
-    setLyricsOpen(false);
-    setKaraokeMode(false);
+    if (activeId === null) {
+      setLyricsOpen(false);
+      setKaraokeMode(false);
+    }
   }, [activeId]);
 
   // ─── Eagerly preload LRC for current + next + prev songs ───────────────

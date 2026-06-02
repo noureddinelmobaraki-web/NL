@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useDeviceType } from '../../hooks/useDeviceType';
+import { createPortal } from 'react-dom';
 import { audioManager } from '../../audio/audioManager';
 import { VideoData } from './types';
 import { VideoPreview } from './VideoPreview';
-import { DrawingsCarousel } from './DrawingsCarousel';
 import { DrawingsFullscreen } from './DrawingsFullscreen';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 
@@ -14,27 +13,23 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
-  const { isMobile, isTablet } = useDeviceType();
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const { setContext } = useButtonContext();
 
-  const [tiltStyle, setTiltStyle] = useState<React.CSSProperties>({});
-  const posterRef = useRef<HTMLDivElement>(null);
+  // FIXED: Save scroll position via useRef instead of polluting DOM with dataset
+  const savedScrollY = useRef(0);
 
-  // true when we should use fullscreen mobile layout
-  const isMobileView = isMobile || isTablet;
-
-  // Sync button orchestrator context to hide FAB controls on mobile/tablet when fullscreen is open
+  // Hide FAB buttons on ALL viewports when gallery/fullscreen is open
   useEffect(() => {
-    if (isOpen && isMobileView) {
-      setContext('mebit');
+    if (isOpen) {
+      setContext('mebit'); // 'mebit' = hide all FABs (works for mobile AND desktop)
     } else {
       setContext('page');
     }
     return () => {
       setContext('page');
     };
-  }, [isOpen, isMobileView, setContext]);
+  }, [isOpen, setContext]);
 
   useEffect(() => {
     setError(false);
@@ -73,17 +68,32 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
     }
   }, [isMuted]);
 
-  // MOBILE-ONLY: Body scroll lock
+  // FIXED: Body scroll lock with proper save/restore pattern (2025 best practice)
+  // - Uses useRef instead of body.dataset (cleaner, no DOM pollution)
+  // - Restores via requestAnimationFrame to avoid iOS Safari flicker
+  // - DrawingsFullscreen does NOT touch body.style (single source of truth)
   useEffect(() => {
-    if (isOpen && (isMobile || isTablet)) {
+    if (isOpen) {
+      savedScrollY.current = window.scrollY;
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
+      if (savedScrollY.current > 0) {
+        const y = savedScrollY.current;
+        requestAnimationFrame(() => window.scrollTo(0, y));
+      }
     }
     return () => {
-      document.body.style.overflow = '';
+      // Safety cleanup — only restore if currently locked
+      if (document.body.style.overflow === 'hidden') {
+        document.body.style.overflow = '';
+        if (savedScrollY.current > 0) {
+          const y = savedScrollY.current;
+          requestAnimationFrame(() => window.scrollTo(0, y));
+        }
+      }
     };
-  }, [isOpen, isMobile, isTablet]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || videos.length === 0) return;
@@ -112,39 +122,6 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
     setIsOpen(true);
   }, []);
 
-  const handleTouchStart = () => {
-    setTiltStyle({
-      transform: 'perspective(600px) scale(0.98)',
-      transition: 'transform 150ms ease-out'
-    });
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!posterRef.current) return;
-    const rect = posterRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-
-    const normX = (x / rect.width) - 0.5;
-    const normY = (y / rect.height) - 0.5;
-
-    const rotateX = -normY * 8; // Max ±4 deg
-    const rotateY = normX * 8;  // Max ±4 deg
-
-    setTiltStyle({
-      transform: `perspective(600px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(0.98)`,
-      transition: 'transform 50ms ease-out'
-    });
-  };
-
-  const handleTouchEnd = () => {
-    setTiltStyle({
-      transform: 'perspective(600px) rotateX(0deg) rotateY(0deg) scale(1)',
-      transition: 'transform 300ms ease-out'
-    });
-  };
-
   if (error) {
     return (
       <section id="drawings-section" className="w-full py-20 px-6 sm:px-12 font-sans">
@@ -159,6 +136,7 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
           <button
             onClick={() => setRetryCount(c => c + 1)}
             className="px-8 py-3 bg-[var(--accent-red)] text-white rounded-full font-bold transition-all shadow-lg shadow-red-500/20"
+            style={{ minHeight: '44px', minWidth: '44px', touchAction: 'manipulation' }}
           >
             إعادة المحاولة
           </button>
@@ -186,116 +164,58 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
           </div>
         </header>
 
-        {/* Closed state: 6-card grid + "View All" button */}
+        {/* Closed state: 3-card grid with 9:16 TikTok ratio */}
         {!isOpen && (
           <div className="space-y-8 mt-10">
-            {!isMobileView ? (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full">
-                  {videos.slice(0, 6).map((video, i) => (
-                    <div
-                      key={video.id}
-                      className="bg-[var(--bg-elevated)] rounded-[8px] overflow-hidden cursor-pointer"
-                      onClick={() => openGallery(i)}
-                    >
-                      <VideoPreview video={video} index={i} />
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => openGallery(0)}
-                  className="manga-button !py-4 !px-8 text-xl bg-[var(--paper-color)] text-[var(--text-primary)] shadow-[8px_8px_0px_var(--manga-shadow-color)] hover:shadow-[12px_12px_0px_var(--manga-shadow-color)] transition-all w-full sm:w-auto"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
-                >
-                  <span style={{ fontSize: '1.2rem' }}>▶</span>
-                  <span>VIEW ALL {videos.length} STORIES</span>
-                  <span style={{ opacity: 0.5, fontSize: '0.85rem' }}>→</span>
-                </button>
-              </>
-            ) : (
-              <div
-                ref={posterRef}
-                onClick={() => openGallery(0)}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                onTouchCancel={handleTouchEnd}
-                className="relative aspect-[4/5] max-h-[70vh] w-full rounded-[24px] overflow-hidden cursor-pointer shadow-lg select-none"
-                style={{
-                  ...tiltStyle,
-                  willChange: 'transform',
-                }}
-              >
-                {/* Background Image */}
-                <img
-                  src={videos[0]?.poster}
-                  alt="Drawings Feed Cover"
-                  className="w-full h-full object-cover select-none pointer-events-none"
-                  referrerPolicy="no-referrer"
-                />
-
-                {/* Dark Gradient Overlay */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-5xl mx-auto justify-center">
+              {videos.slice(0, 3).map((video, i) => (
                 <div
-                  className="absolute inset-0 pointer-events-none"
+                  key={video.id}
+                  className="w-full max-w-[320px] mx-auto cursor-pointer relative group overflow-hidden bg-black transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_30px_rgba(0,0,0,0.5)]"
                   style={{
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)',
+                    aspectRatio: '9 / 16',
+                    borderRadius: '16px',
+                    border: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
                   }}
-                />
-
-                {/* Centered CTA */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div
-                    className="flex items-center gap-2 bg-white/15 backdrop-blur-md border border-white/30 px-6 py-3 rounded-full text-white font-bold tracking-wide shadow-md active:scale-95 transition-transform"
-                  >
-                    <span>▶ Open Feed</span>
-                  </div>
+                  onClick={() => openGallery(i)}
+                >
+                  <VideoPreview video={video} index={i} />
                 </div>
+              ))}
+            </div>
 
-                {/* Bottom-left text */}
-                <div className="absolute bottom-6 left-6 text-left flex flex-col pointer-events-none">
-                  <span className="font-bold text-white uppercase text-[22px] tracking-tight leading-tight">
-                    MY DRAWINGS
-                  </span>
-                  <span className="font-mono text-xs text-white/60 tracking-wider mt-1">
-                    {videos.length} WORKS
-                  </span>
-                </div>
-              </div>
-            )}
+            <div className="text-center pt-4">
+              <button
+                onClick={() => openGallery(0)}
+                className="manga-button !py-4 !px-8 text-xl bg-[var(--paper-color)] text-[var(--text-primary)] shadow-[8px_8px_0px_var(--manga-shadow-color)] hover:shadow-[12px_12px_0px_var(--manga-shadow-color)] transition-all w-full sm:w-auto"
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
+              >
+                <span style={{ fontSize: '1.2rem' }}>▶</span>
+                <span>VIEW ALL {videos.length} STORIES</span>
+                <span style={{ opacity: 0.5, fontSize: '0.85rem' }}>→</span>
+              </button>
+            </div>
           </div>
         )}
 
-        {/* ── DESKTOP open state: inline glass carousel ──────────────────────── */}
-        {isOpen && !isMobileView && (
-          <DrawingsCarousel
+        {/* ── Vertical Fullscreen Snap Scroll Gallery (TikTok-style) ─────────────────────────── */}
+        {isOpen && createPortal(
+          <DrawingsFullscreen
             videos={videos}
             activeIndex={activeIndex}
+            onIndexChange={setActiveIndex}
             isMuted={isMuted}
             onClose={() => setIsOpen(false)}
             onToggleMute={toggleMute}
             onNext={nextVideo}
             onPrev={prevVideo}
+            onTouchStart={() => {}}
+            onTouchEnd={() => {}}
             onRef={(el, i) => videoRefs.current[i] = el}
-          />
+          />,
+          document.body
         )}
       </div>
-
-      {/* ── MOBILE/TABLET open state: true fullscreen ─────────────────────────── */}
-      {isOpen && isMobileView && (
-        <DrawingsFullscreen
-          videos={videos}
-          activeIndex={activeIndex}
-          onIndexChange={setActiveIndex} // MOBILE-ONLY
-          isMuted={isMuted}
-          onClose={() => setIsOpen(false)}
-          onToggleMute={toggleMute}
-          onNext={() => {}} // MOBILE-ONLY
-          onPrev={() => {}} // MOBILE-ONLY
-          onTouchStart={() => {}} // MOBILE-ONLY
-          onTouchEnd={() => {}} // MOBILE-ONLY
-          onRef={(el, i) => videoRefs.current[i] = el}
-        />
-      )}
     </section>
   );
 };

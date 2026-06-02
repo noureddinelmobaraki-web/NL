@@ -58,6 +58,12 @@ export const ButtonProvider: React.FC<ButtonProviderProps> = ({ children }) => {
 
   // Update body classes and data attributes for styling/control
   useEffect(() => {
+    // PATCH: Also set data attribute on portal root for CSS targeting
+    const portal = document.getElementById('orchestrator-portal-root');
+    if (portal) {
+      portal.dataset.activeContext = activeContext;
+    }
+    
     if (activeContext !== 'page') {
       document.body.classList.add('has-active-modal');
       document.body.setAttribute('data-has-active-modal', 'true');
@@ -72,6 +78,8 @@ export const ButtonProvider: React.FC<ButtonProviderProps> = ({ children }) => {
     });
     document.body.classList.add(`modal-context-${activeContext}`);
     document.body.setAttribute('data-modal-context', activeContext);
+    // Mark page-active for CSS transition timing
+    document.body.setAttribute('data-page-active', activeContext === 'page' ? 'true' : 'false');
   }, [activeContext]);
 
   // Sort and group active buttons by slot
@@ -97,17 +105,35 @@ export const ButtonProvider: React.FC<ButtonProviderProps> = ({ children }) => {
     );
   };
 
-  // Render Slots via React Portal to document.body
+  // Compute visibility per slot for ALL viewports
+  const topRightButtons  = getSlotRendered('topRight');
+  const topRight2Buttons = getSlotRendered('topRight2');
+  const bottomRightButtons = getSlotRendered('bottomRight');
+
+  // Use data attributes to signal CSS that slots have content
   const portalContent = (
-    <div id="orchestrator-portal-root" style={{ pointerEvents: 'none' }}>
-      <div className="fab-slot-top-right">
-        {getSlotRendered('topRight')}
+    <div
+      id="orchestrator-portal-root"
+      style={{ pointerEvents: 'none' }}
+      data-active-context={activeContext}
+    >
+      <div
+        className="fab-slot-top-right"
+        data-has-content={topRightButtons !== null ? 'true' : 'false'}
+      >
+        {topRightButtons}
       </div>
-      <div className="fab-slot-top-right-2">
-        {getSlotRendered('topRight2')}
+      <div
+        className="fab-slot-top-right-2"
+        data-has-content={topRight2Buttons !== null ? 'true' : 'false'}
+      >
+        {topRight2Buttons}
       </div>
-      <div className="fab-slot-bottom-right">
-        {getSlotRendered('bottomRight')}
+      <div
+        className="fab-slot-bottom-right"
+        data-has-content={bottomRightButtons !== null ? 'true' : 'false'}
+      >
+        {bottomRightButtons}
       </div>
     </div>
   );

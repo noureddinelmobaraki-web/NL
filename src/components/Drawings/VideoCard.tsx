@@ -187,7 +187,7 @@ export const VideoCard = memo(({
         className="relative flex items-center justify-center bg-black video-card-wrapper" // MOBILE-ONLY: added video-card-wrapper
         data-index={index} // MOBILE-ONLY
         style={{
-          width: '100vw',
+          width: '100%',
           height: '100dvh',
           scrollSnapAlign: 'start', // MOBILE-ONLY
           scrollSnapStop: 'always', // MOBILE-ONLY
@@ -212,7 +212,7 @@ export const VideoCard = memo(({
           style={{
             width: '100%',
             height: '100%',
-            objectFit: 'contain', // MOBILE-ONLY: fixed to contain
+            objectFit: 'cover', // MOBILE-ONLY: covered to match TikTok ratio
             background: resolvedTheme === 'light' ? '#fff' : '#000', // MOBILE-ONLY: matches theme
             filter: isLongPressing ? 'brightness(0.4)' : 'none', // MOBILE-ONLY: brightness(0.4)
             transition: 'filter 200ms ease' // MOBILE-ONLY
@@ -270,7 +270,7 @@ export const VideoCard = memo(({
       muted={isMuted}
       autoPlay={isActive}
       preload={Math.abs(index - activeIndex) <= 5 ? "auto" : "none"}
-      className="absolute inset-0 w-full h-full object-contain"
+      className="absolute inset-0 w-full h-full object-cover"
       style={{ background: resolvedTheme === 'light' ? 'white' : 'black' }}
     />
   );

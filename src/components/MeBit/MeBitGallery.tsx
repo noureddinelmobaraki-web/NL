@@ -1,12 +1,13 @@
 import { X, Maximize2, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useMeBitSwipe } from '../../hooks/useMeBitSwipe';
 import { MeBitMainImage } from './MeBitMainImage';
 import { MeBitThumbnails } from './MeBitThumbnails';
-import { useViewportSize } from '../../hooks/useViewportSize';
+import { useFullscreenManager } from '../../hooks/useFullscreenManager';
+import { MeBitMobileView } from './MeBitMobileView';
 
 export interface MeBitGalleryProps {
   isOpen: boolean;
@@ -38,71 +39,18 @@ export const MeBitGallery = ({
   const galleryRef = useFocusTrap(isOpen);
   const { onTouchStart, onTouchEnd } = useMeBitSwipe({ onNext, onPrev, onClose });
   const { setContext, registerButton, unregisterButton } = useButtonContext();
-  const viewport = useViewportSize();
-
 
   useEffect(() => {
     setContext(isOpen ? 'mebit' : 'page');
     return () => setContext('page');
   }, [isOpen, setContext]);
 
-  // Fullscreen & body immersive class for mobile/tablet
-  useEffect(() => {
-    if (isOpen && (isMobile || isTablet)) {
-      document.body.classList.add('gallery-immersive'); // MOBILE-ONLY
-      try {
-        if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen();
-        }
-        // Lock orientation to portrait if supported
-        const sor = screen.orientation as any;
-        if (sor && sor.lock) {
-          sor.lock('portrait').catch(() => {});
-        }
-      } catch (e) {
-        // Silently fallback if unsupported (like iOS Safari)
-      }
-    } else {
-      document.body.classList.remove('gallery-immersive'); // MOBILE-ONLY
-      try {
-        if (document.fullscreenElement && document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-        const sor = screen.orientation as any;
-        if (sor && sor.unlock) {
-          sor.unlock();
-        }
-      } catch (e) {
-        // Silently fallback
-      }
-    }
-
-    return () => {
-      document.body.classList.remove('gallery-immersive'); // MOBILE-ONLY
-      try {
-        if (document.fullscreenElement && document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-        const sor = screen.orientation as any;
-        if (sor && sor.unlock) {
-          sor.unlock();
-        }
-      } catch (e) {}
-    };
-  }, [isOpen, isMobile, isTablet]);
-
-  // Body scroll lock
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  useFullscreenManager(isOpen, {
+    bodyClass: 'gallery-immersive',
+    onEscape: onClose,
+    lockOrientation: 'portrait',
+    enabled: isMobile || isTablet,
+  });
 
   // Register MeBit custom buttons in the portaled orchestrator
   useEffect(() => {
@@ -117,6 +65,7 @@ export const MeBitGallery = ({
         <button
           onClick={onToggleAudio}
           className="fab-button"
+          style={{ touchAction: 'manipulation' }}
           aria-label="Toggle Gallery Music"
         >
           {isMeBitPlaying ? (
@@ -137,7 +86,7 @@ export const MeBitGallery = ({
         <button
           onClick={onClose}
           className="fab-button transition-colors hover:bg-red-600/20 border-red-500/30"
-          style={{ color: 'var(--accent-red, #ef4444)' }}
+          style={{ color: 'var(--accent-red, #ef4444)', touchAction: 'manipulation' }}
           aria-label="Close gallery"
         >
           <X className="w-5 h-5" aria-hidden="true" />
@@ -162,6 +111,25 @@ export const MeBitGallery = ({
     return () => document.removeEventListener('keydown', handleKey);
   }, [isOpen, onNext, onPrev, onClose]);
 
+  const isMobileView = isMobile || isTablet;
+
+  // MOBILE-ONLY: Two-stage navigation — grid first, fullscreen viewer second
+  const [mobileMode, setMobileMode] = useState<'grid' | 'view'>('grid');
+
+  // Reset to grid whenever the gallery is (re)opened
+  useEffect(() => {
+    if (isOpen && isMobileView) {
+      setMobileMode(selectedIndex !== null ? 'view' : 'grid');
+    }
+  }, [isOpen, isMobileView, selectedIndex]);
+
+  // When user opens via thumbnail, ensure we go straight to view
+  useEffect(() => {
+    if (isMobileView && isOpen && selectedIndex !== null) {
+      setMobileMode('view');
+    }
+  }, [selectedIndex, isOpen, isMobileView]);
+
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
@@ -174,50 +142,73 @@ export const MeBitGallery = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className={`fixed inset-0 z-[100] flex items-center justify-center
-            ${(isMobile || isTablet) ? 'p-0' : 'p-4 sm:p-10 md:p-14'}`} // MOBILE-ONLY
+            ${isMobileView ? 'p-0' : 'p-4 sm:p-10 md:p-14'}`}
+          style={isMobileView ? {
+            // MOBILE-ONLY: dvh + webkit fallback + perf hints
+            height: '100dvh',
+            minHeight: '-webkit-fill-available',
+            overscrollBehavior: 'none',
+            contain: 'strict',
+          } : undefined}
         >
-          {/* Backdrop */}
+          {/* Backdrop — solid black on mobile (skip expensive backdrop-blur), glass on desktop */}
           <div
-            className={`absolute inset-0 backdrop-blur-3xl cursor-crosshair
-              ${(isMobile || isTablet) ? 'bg-black' : 'bg-black/95'}`} // MOBILE-ONLY
+            className={`absolute inset-0 cursor-crosshair
+              ${isMobileView ? 'bg-black' : 'bg-black/95 backdrop-blur-3xl'}`}
             onClick={onClose}
+            style={isMobileView ? { touchAction: 'manipulation' } : undefined}
           />
 
           {/* Gallery body */}
           <div 
             className={`relative w-full h-full flex flex-col z-[105] overflow-hidden
-            ${(isMobile || isTablet) ? (viewport.isLandscape ? 'pt-4 pl-4 select-none' : 'pt-[calc(var(--safe-top)+60px)]') : 'gap-6'}`}
+            ${isMobileView ? '' : 'gap-6'}`}
             onClick={(e) => e.stopPropagation()}
           >
-
-            <div className={`flex-1 flex overflow-hidden
-              ${(isMobile || isTablet) ? (viewport.isLandscape ? 'flex-row gap-2' : 'flex-col') : 'flex-col md:flex-row gap-6'}`}>
-
-              {/* Main image view */}
-              <MeBitMainImage
-                imageUrl={selectedIndex !== null ? images[selectedIndex] : ''}
+            {isMobileView ? (
+              <MeBitMobileView
+                images={images}
                 selectedIndex={selectedIndex ?? 0}
-                totalImages={images.length}
-                isMobile={isMobile}
-                isTablet={isTablet}
+                mode={mobileMode}
+                onEnterGrid={() => setMobileMode('grid')}
+                onOpenView={(i) => {
+                  onSelectIndex(i);
+                  setMobileMode('view');
+                }}
                 onClose={onClose}
                 onNext={onNext}
                 onPrev={onPrev}
-                onSwipeStart={onTouchStart}
-                onSwipeEnd={onTouchEnd}
               />
+            ) : (
+              <>
+                <div className="flex-1 flex overflow-hidden flex-col md:flex-row gap-6">
+                  {/* Main image view */}
+                  <MeBitMainImage
+                    imageUrl={selectedIndex !== null ? images[selectedIndex] : ''}
+                    selectedIndex={selectedIndex ?? 0}
+                    totalImages={images.length}
+                    isMobile={isMobile}
+                    isTablet={isTablet}
+                    onClose={onClose}
+                    onNext={onNext}
+                    onPrev={onPrev}
+                    onSwipeStart={onTouchStart}
+                    onSwipeEnd={onTouchEnd}
+                  />
 
-              {/* Responsive thumbnail strip or sidebar */}
-              <MeBitThumbnails
-                images={images}
-                selectedIndex={selectedIndex ?? 0}
-                onSelectIndex={onSelectIndex}
-                isMeBitPlaying={isMeBitPlaying}
-                onToggleAudio={onToggleAudio}
-              />
-            </div>
+                  {/* Responsive thumbnail strip or sidebar */}
+                  <MeBitThumbnails
+                    images={images}
+                    selectedIndex={selectedIndex ?? 0}
+                    onSelectIndex={onSelectIndex}
+                    isMeBitPlaying={isMeBitPlaying}
+                    onToggleAudio={onToggleAudio}
+                  />
+                </div>
+              </>
+            )}
 
-            {/* Desktop footer bar */}
+            {/* Desktop footer bar — unchanged */}
             {!isMobile && !isTablet && (
               <motion.div
                 initial={{ y: 50, opacity: 0 }}

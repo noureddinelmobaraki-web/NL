@@ -19,6 +19,7 @@ export const VideoPreview = memo(({ video, index }: { video: VideoData; index: n
       <video
         ref={videoRef}
         src={video.src}
+        poster={video.poster}
         muted
         loop
         playsInline

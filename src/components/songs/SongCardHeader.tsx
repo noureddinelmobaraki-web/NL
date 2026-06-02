@@ -34,17 +34,72 @@ export const SongCardHeader = ({
   onPlayPause,
   onToggleLyrics,
 }: SongCardHeaderProps) => {
+  const isTouch = isMobile || isTablet;
+
+  // FIXED: Lyrics button — visible on ALL themes via solid purple bg + border.
+  //   - 44x44px on mobile/tablet (iOS HIG minimum)
+  //   - 32x32px on desktop (denser layout)
+  //   - Clear ♪ / ✕ icon instead of opaque ◉
+  //   - aria-pressed for screen readers
+  const lyricsBtnSize = isTouch ? 44 : 32;
+  const lyricsBtnFontSize = isTouch ? 18 : 12;
+  const lyricsBtnBg = isLyricsOpen
+    ? 'rgba(239, 68, 68, 0.95)'         // solid red when active
+    : 'rgba(139, 92, 246, 0.25)';        // soft purple when idle — visible on all themes
+  const lyricsBtnBorder = isLyricsOpen
+    ? '1px solid rgba(239, 68, 68, 0.5)'
+    : '1px solid rgba(139, 92, 246, 0.55)';
+  const lyricsBtnColor = isLyricsOpen ? '#fff' : 'rgba(255, 255, 255, 0.95)';
+
+  // FIXED: Play button — guaranteed 44x44px touch target on mobile/tablet
+  const playBtnSize = isTouch ? 44 : 44;
+
   return (
-    <div className={`flex items-center justify-between gap-3 w-full ${isMobile || isTablet ? 'h-full' : ''}`}>
+    <div className={`flex items-center justify-between gap-3 w-full ${isTouch ? 'h-full' : ''}`}>
       {/* Thumbnail + Title/Artist (Left) */}
       <div className="flex items-center gap-3 md:gap-5 flex-1 min-w-0">
-        {(isMobile || isTablet) ? (
-          <div className="relative w-[50px] h-[50px] flex-shrink-0">
+        {isTouch ? (
+          <div style={{
+            position: 'relative',
+            width: 54,
+            height: 54,
+            flexShrink: 0,
+            borderRadius: 10,
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+          }}>
             <img 
               src={song.cover || song.backgroundImage} 
               alt={song.title} 
-              className="w-full h-full object-cover rounded-lg shadow-md"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
+            {isActive && isPlaying && (
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+                gap: 2,
+                padding: '0 0 6px',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent 60%)',
+                pointerEvents: 'none',
+              }}>
+                {[0, 1, 2].map(i => (
+                  <span
+                    key={i}
+                    style={{
+                      width: 3,
+                      height: 12,
+                      borderRadius: 1.5,
+                      background: 'var(--text-primary, #fff)',
+                      animation: `mb-wave 0.9s ease-in-out ${i * 0.13}s infinite`,
+                      transformOrigin: 'bottom',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <span className={`font-mono text-xs font-bold ${isActive ? (resolvedTheme === 'light' ? 'text-[#0000CC]' : 'text-indigo-400') : (resolvedTheme === 'light' ? 'text-[#777]' : 'text-zinc-400')}`}>
@@ -54,50 +109,117 @@ export const SongCardHeader = ({
         <div className="flex flex-col min-w-0">
           <h3 
             lang="ar"
-            className={`font-bold tracking-tight ${resolvedTheme === 'light' ? 'text-[#000]' : 'rainbow-text'} ${isMobile ? 'text-[0.95rem] leading-snug' : 'text-lg'}`}
-            style={resolvedTheme === 'light' ? { fontFamily: 'Geneva, sans-serif' } : {
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))'
+            className={`font-bold tracking-tight ${resolvedTheme === 'light' ? 'text-[#000]' : 'rainbow-text'}`}
+            style={{
+              ...(isTouch ? {
+                fontSize: 15,
+                fontWeight: 700,
+                lineHeight: 1.25,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                ...(resolvedTheme === 'light' ? { fontFamily: 'Geneva, sans-serif' } : {
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))'
+                })
+              } : (resolvedTheme === 'light' ? { fontFamily: 'Geneva, sans-serif', fontSize: '1.125rem' } : {
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))'
+              })),
+              ...(song.id === 1 ? {
+                fontStyle: 'italic',
+                lineHeight: '13px',
+                fontSize: '10.6px',
+                borderColor: '#41fae6',
+                backgroundColor: '#291818',
+              } : {})
             }}
           >
             {song.title}
           </h3>
-          <div className="flex items-center gap-2 mt-0.5" style={isMobile ? { fontSize: '0.65rem', opacity: 0.7 } : {}}>
-            <span className={`text-[9px] font-bold uppercase tracking-wider px-1 py-0.5 rounded ${song.lrc ? (resolvedTheme === 'light' ? 'bg-[#0000CC] text-white' : 'bg-indigo-500/30 text-indigo-200') : (resolvedTheme === 'light' ? 'bg-[#999] text-white' : 'bg-zinc-800/80 text-zinc-400')}`}>
+          <div className="flex items-center gap-2 mt-1" style={isTouch ? { fontSize: 11 } : {}}>
+            <span 
+              className={`font-bold uppercase tracking-wider rounded ${
+                song.lrc 
+                  ? (resolvedTheme === 'light' ? 'bg-[#0000CC] text-white' : 'bg-indigo-500/30 text-indigo-200') 
+                  : (resolvedTheme === 'light' ? 'bg-[#999] text-white' : 'bg-zinc-800/80 text-zinc-400')
+              }`}
+              style={isTouch 
+                ? { fontSize: 11, padding: '1px 6px', letterSpacing: '0.06em' } 
+                : { fontSize: 9, padding: '2px 4px' }}
+            >
               {song.lrc ? "LRC" : "INST"}
             </span>
-            <span className="text-[10px] text-zinc-400/80 font-mono uppercase">Noureddin</span>
+            {isTouch ? (
+              duration ? (
+                <span className="font-mono uppercase text-zinc-400" style={{
+                  fontSize: 11,
+                  color: 'var(--text-muted, rgba(255,255,255,0.55))',
+                  letterSpacing: '0.04em',
+                }}>
+                  {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}
+                </span>
+              ) : null
+            ) : (
+              <span className="text-[10px] text-zinc-400/80 font-mono uppercase">Noureddin</span>
+            )}
           </div>
         </div>
       </div>
       
       {/* Duration + Play (Right) */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {(isMobile || isTablet) && duration && (
-          <span className="font-mono text-[11px] text-zinc-400 font-bold px-2 py-1 bg-white/5 rounded">
-            {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}
-          </span>
-        )}
         
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5" style={{ position: 'relative', zIndex: 5 }}>
           {song.lrc && (
             <button 
               onClick={(e) => { e.stopPropagation(); onToggleLyrics(); }}
               className={`lyrics-btn-compact ${isLyricsOpen ? 'active' : ''}`}
+              aria-label={isLyricsOpen ? 'إغلاق كلمات الأغنية' : 'فتح كلمات الأغنية'}
+              aria-pressed={isLyricsOpen}
+              title={isLyricsOpen ? 'Close Lyrics' : 'Show Lyrics'}
               style={{
-                width: '32px',
-                height: '32px',
+                width: `${lyricsBtnSize}px`,
+                height: `${lyricsBtnSize}px`,
+                minWidth: `${lyricsBtnSize}px`,
+                minHeight: `${lyricsBtnSize}px`,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: isLyricsOpen ? 'var(--accent-red)' : 'var(--card-control-bg)',
-                color: isLyricsOpen ? 'white' : 'var(--text-muted)',
-                border: 'none',
-                fontSize: '10px'
+                background: lyricsBtnBg,
+                color: lyricsBtnColor,
+                border: lyricsBtnBorder,
+                fontSize: `${lyricsBtnFontSize}px`,
+                fontWeight: 700,
+                lineHeight: 1,
+                cursor: 'pointer',
+                transition: 'transform 150ms ease, background 200ms ease',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                userSelect: 'none',
+                boxShadow: isLyricsOpen
+                  ? '0 2px 8px rgba(239, 68, 68, 0.4)'
+                  : '0 2px 6px rgba(139, 92, 246, 0.25)',
+                flexShrink: 0,
+                position: 'relative',
+                zIndex: 5,
               }}
-              title="Lyrics"
             >
-              ◉
+              {isLyricsOpen ? (
+                '✕'
+              ) : (
+                <img
+                  src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lyrics.svg"
+                  alt="Lyrics"
+                  style={{
+                    width: isTouch ? '22px' : '15px',
+                    height: isTouch ? '22px' : '15px',
+                    display: 'block',
+                    pointerEvents: 'none',
+                    filter: 'invert(1) brightness(2)',
+                    transition: 'transform 150ms ease',
+                  }}
+                />
+              )}
             </button>
           )}
 
@@ -114,12 +236,20 @@ export const SongCardHeader = ({
               className={`
                 flex items-center justify-center transition-all duration-300 shadow-lg active:scale-90
                 ${resolvedTheme === 'light' ? 'bg-[#F0EBE3] border border-[#999] rounded-none' : 'rounded-full'}
-                ${isMobile || isTablet ? 'w-[38px] h-[38px]' : 'w-11 h-11'}
                 ${isActive && isPlaying && resolvedTheme !== 'light'
                   ? 'bg-white text-black scale-105' 
                   : (resolvedTheme === 'light' ? 'text-black' : 'bg-white/10 text-white hover:bg-white/20')}
               `}
-              style={resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {}}
+              style={{
+                width: `${playBtnSize}px`,
+                height: `${playBtnSize}px`,
+                minWidth: `${playBtnSize}px`,
+                minHeight: `${playBtnSize}px`,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                flexShrink: 0,
+                ...(resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {}),
+              }}
               aria-label={isActive && isPlaying ? "Pause" : "Play"}
             >
               {isActive && isWaiting ? (
