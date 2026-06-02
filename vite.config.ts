@@ -6,7 +6,7 @@ import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig(({ mode }) => {
   return {
-    base: '/NL/',
+    base: '/',
     assetsInclude: ['**/*.xml'],
     plugins: [
       react(),
