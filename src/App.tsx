@@ -208,18 +208,6 @@ function MainApp() {
     return () => document.removeEventListener('touchend', handler);
   }, [isMobile]);
 
-  // FIXED: Issue #4 — Move background pause logic to stable useCallback
-  const handleBackgroundPause = useCallback(() => {
-    const channels = ['bg', 'song', 'mebit', 'lens', 'video'] as const;
-    channels.forEach(ch => { 
-      try { audioManager.pause(ch); } catch (_) {} 
-    });
-    
-    document.querySelectorAll<HTMLMediaElement>('audio, video').forEach(el => {
-      try { el.pause(); } catch (_) {}
-    });
-  }, []);
-
   useEffect(() => {
     // PWA Standalone app mode detection
     const checkStandalone = () => {
@@ -231,16 +219,9 @@ function MainApp() {
       }
     };
     checkStandalone();
+  }, []);
 
-    window.addEventListener('pagehide', handleBackgroundPause);
-    document.addEventListener('visibilitychange', handleBackgroundPause);
-    return () => {
-      window.removeEventListener('pagehide', handleBackgroundPause);
-      document.removeEventListener('visibilitychange', handleBackgroundPause);
-    };
-  }, [handleBackgroundPause]);
-
-  // FIXED: Issue #3 — Robust scrollToSection with cancellation
+  // Fixed: Issue #3 — Robust scrollToSection with cancellation
   const scrollToSection = useCallback((id: string) => {
     let cancelled = false;
     const timerIds: ReturnType<typeof setTimeout>[] = [];

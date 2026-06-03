@@ -64,7 +64,12 @@ export const SongList = ({
   return (
     <div className="space-y-6">
       {/* Dynamic Search/Filter Input */}
-      <div className={`flex items-center gap-3 ${isMobile ? 'w-full' : 'max-w-sm'}`}>
+      <div className={`relative flex items-center gap-3 ${isMobile ? 'w-full' : 'max-w-sm'}`}>
+        <img 
+          src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/music%20mood.webp" 
+          alt="Meme Pointing" 
+          className="absolute bottom-[95%] left-1/2 -translate-x-[52%] w-[210px] max-w-none h-auto pointer-events-none z-10 select-none transform"
+        />
         <input
           type="text"
           placeholder="بحث عن أغنية... (البحث بـ العنوان)"

@@ -9,17 +9,17 @@ interface UseMoodLyricsProps {
 
 export function useMoodLyrics({ activeSong, currentTime }: UseMoodLyricsProps) {
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
-  const [previousLine, setPreviousLine] = useState<string>('');
-  const [currentLine, setCurrentLine] = useState<string>('');
-  const [nextLine, setNextLine] = useState<string>('');
+  const [previousLine, setPreviousLine] = useState<LyricLine | null>(null);
+  const [currentLine, setCurrentLine] = useState<LyricLine | null>(null);
+  const [nextLine, setNextLine] = useState<LyricLine | null>(null);
 
   // ── جلب وتحليل الـ LRC
   useEffect(() => {
     if (!activeSong?.lrc) {
       setLyrics([]);
-      setPreviousLine('');
-      setCurrentLine('');
-      setNextLine('');
+      setPreviousLine(null);
+      setCurrentLine(null);
+      setNextLine(null);
       return;
     }
     const ctrl = new AbortController();
@@ -36,12 +36,12 @@ export function useMoodLyrics({ activeSong, currentTime }: UseMoodLyricsProps) {
   // ── تحديد الكلمات الحالية بناءً على الوقت
   useEffect(() => {
     if (!lyrics.length) return;
-    let prev = '', current = '', next = '';
+    let prev: LyricLine | null = null, current: LyricLine | null = null, next: LyricLine | null = null;
     for (let i = 0; i < lyrics.length; i++) {
       if (lyrics[i].time <= currentTime) {
-        prev = lyrics[i - 1]?.text ?? '';
-        current = lyrics[i].text;
-        next = lyrics[i + 1]?.text ?? '';
+        prev = lyrics[i - 1] ?? null;
+        current = lyrics[i];
+        next = lyrics[i + 1] ?? null;
       }
     }
     setPreviousLine(prev);

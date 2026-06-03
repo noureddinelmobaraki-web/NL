@@ -8,6 +8,7 @@ import { useHlsAudio } from '../../hooks/useHlsAudio';
 import { useMoodAudioGraph } from './hooks/useMoodAudioGraph';
 import { useMoodLyrics } from './hooks/useMoodLyrics';
 import { useMoodGestures } from './hooks/useMoodGestures';
+import { KaraokeText } from './KaraokeText';
 import { MoodParticles } from './MoodParticles';
 import { MoodControls } from './MoodControls';
 import { useViewportSize } from '../../hooks/useViewportSize';
@@ -325,7 +326,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
               /* MOBILE-LYRICS: 3-line sliding context, arab support, balance text-wrap */
               <AnimatePresence mode="popLayout">
                 <motion.div
-                  key={currentLine}
+                  key={currentLine?.time ?? 'empty'}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
@@ -347,9 +348,10 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                       style={{
                         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif',
                         fontSize: 'clamp(1rem, 4.6vw, 1.4rem)',
-                        fontWeight: 400,
+                        fontWeight: 600,
                         opacity: 0.15,
-                        color: 'rgba(0,0,0,0.82)',
+                        color: '#000000',
+                        textShadow: '0 0 8px rgba(255,255,255,0.8)',
                         lineHeight: 1.45,
                         letterSpacing: '-0.01em',
                         textWrap: 'balance' as any,
@@ -358,7 +360,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                         overflowWrap: 'anywhere' as any,
                       }}
                     >
-                      {previousLine}
+                      <KaraokeText line={previousLine} currentTime={currentTime} isPrevious />
                     </p>
                   )}
 
@@ -366,17 +368,18 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                   <motion.p
                     dir="auto"
                     className="text-center"
-                    initial={{ scale: 0.95, textShadow: '0 0 16px rgba(0,0,0,0.2)' }}
-                    animate={{ scale: 1, textShadow: '0 0 0px rgba(0,0,0,0)' }}
+                    initial={{ scale: 0.95, filter: 'blur(4px)' }}
+                    animate={{ scale: 1, filter: 'blur(0px)' }}
                     transition={{
                       scale: { duration: 0.4, ease: 'easeOut' },
-                      textShadow: { duration: 0.4, ease: 'easeOut' }
+                      filter: { duration: 0.4, ease: 'easeOut' }
                     }}
                     style={{
                       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif',
-                      fontSize: 'clamp(1.3rem, 5.5vw, 2rem)',
-                      fontWeight: 500,
-                      color: 'rgba(0,0,0,0.82)',
+                      fontSize: 'clamp(1.5rem, 6vw, 2.5rem)',
+                      fontWeight: 800,
+                      color: '#000000',
+                      textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8)',
                       lineHeight: 1.45,
                       letterSpacing: '-0.01em',
                       textWrap: 'balance' as any,
@@ -385,7 +388,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                       overflowWrap: 'anywhere' as any,
                     }}
                   >
-                    {currentLine || (audioStatus === 'loading' ? '...' : '')}
+                    {currentLine ? <KaraokeText line={currentLine} currentTime={currentTime} /> : (audioStatus === 'loading' ? '...' : '')}
                   </motion.p>
 
                   {/* Next Line */}
@@ -396,9 +399,10 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                       style={{
                         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif',
                         fontSize: 'clamp(1rem, 4.6vw, 1.4rem)',
-                        fontWeight: 400,
+                        fontWeight: 600,
                         opacity: 0.6,
-                        color: 'rgba(0,0,0,0.82)',
+                        color: '#000000',
+                        textShadow: '0 0 8px rgba(255,255,255,0.8)',
                         lineHeight: 1.45,
                         letterSpacing: '-0.01em',
                         textWrap: 'balance' as any,
@@ -407,7 +411,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                         overflowWrap: 'anywhere' as any,
                       }}
                     >
-                      {nextLine}
+                      <KaraokeText line={nextLine} currentTime={currentTime} isNext />
                     </p>
                   )}
                 </motion.div>
@@ -416,14 +420,14 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
               /* DESKTOP LYRICS: Original untouched rendering */
               <>
                 <p
-                  key={currentLine}
+                  key={currentLine?.time ?? 'empty'}
                   style={{
                     fontSize: viewport.isLandscape ? 'clamp(18px, 3.5vw, 36px)' : 'clamp(22px, 4.5vw, 48px)',
-                    fontWeight: 300,
-                    color: 'rgba(0,0,0,0.82)',
-                    lineHeight: 1.45,
+                    fontWeight: 800,
+                    color: '#000000',
+                    lineHeight: 1.5,
                     letterSpacing: '-0.025em',
-                    textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+                    textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8)',
                     fontOpticalSizing: 'auto',
                     margin: 0,
                     marginBottom: '20px',
@@ -433,7 +437,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                   }}
                 >
-                  {currentLine || (audioStatus === 'loading' ? '...' : '')}
+                  {currentLine ? <KaraokeText line={currentLine} currentTime={currentTime} /> : (audioStatus === 'loading' ? '...' : '')}
                 </p>
 
                 {/* السطر التالي (أشفّ) */}
@@ -441,16 +445,18 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                   <p
                     style={{
                       fontSize: viewport.isLandscape ? 'clamp(12px, 2.2vw, 18px)' : 'clamp(14px, 2.4vw, 24px)',
-                      fontWeight: 300,
-                      color: 'rgba(0,0,0,0.28)',
+                      fontWeight: 600,
+                      color: '#000000',
+                      opacity: 0.6,
                       lineHeight: 1.5,
                       margin: 0,
                       letterSpacing: '-0.01em',
+                      textShadow: '0 0 8px rgba(255,255,255,0.8)',
                       maxWidth: '650px',
                       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                     }}
                   >
-                    {nextLine}
+                    <KaraokeText line={nextLine} currentTime={currentTime} isNext />
                   </p>
                 )}
               </>

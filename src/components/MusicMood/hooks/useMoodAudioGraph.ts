@@ -99,12 +99,10 @@ export function useMoodAudioGraph({
       if (sum === 0 && !audio.paused) {
         // CORS فشل → ابدأ pseudo-bass fallback
         console.info('[Mood] CORS blocked HLS analyser → activating pseudo-bass');
-        let phase = 0;
         const bpm = 95;  // متوسط BPM للأغاني الهادئة
         const beatInterval = 60000 / bpm;
         
         // استبدل __analyser بـ pseudo-analyser
-        const fakeData = new Uint8Array(analyser.frequencyBinCount);
         (audio as any).__analyser = {
           frequencyBinCount: analyser.frequencyBinCount,
           getByteFrequencyData: (out: Uint8Array) => {

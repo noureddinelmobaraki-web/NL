@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { preloadBlackHoleTransition } from '../MusicMood/BlackHoleTransition';
-import { getLocalAssetUrl } from '../../constants/assets';
+import newMoodIcon from '../../assets/images/regenerated_image_1780500901330.png';
 import { audioManager } from '../../audio/audioManager';
 import { ActiveSong } from '../../types';
 const BlackHoleTransition = lazy(() => import('../MusicMood/BlackHoleTransition').then(m => ({ default: m.BlackHoleTransition })));
@@ -27,7 +27,19 @@ export const MySongs = ({
 }) => {
   const [isMoodTransitioning, setIsMoodTransitioning] = useState(false);
   const [isMoodActive, setIsMoodActive] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? (window.innerWidth >= 1024 && !window.matchMedia("(pointer: coarse)").matches && !/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) : true);
   const moodAudioCtxRef = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+      const isMobileUA = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      setIsDesktop(window.innerWidth >= 1024 && !coarsePointer && !isMobileUA);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const { setContext } = useButtonContext();
 
@@ -173,34 +185,148 @@ export const MySongs = ({
             <h2 className="text-fluid-title font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)]">
               MY SONGS
             </h2>
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="h-1 w-12 bg-[var(--accent-indigo)]" />
-              <p className="text-[var(--text-muted)] font-medium tracking-[0.2em] text-xs uppercase text-nowrap">
+            <div
+              style={isDesktop ? {
+                paddingLeft: '-4px'
+              } : {}}
+              className="flex items-center gap-3 flex-wrap"
+            >
+              <div
+                style={isDesktop ? {
+                  marginLeft: '-16px'
+                } : {
+                  marginTop: '56px'
+                }}
+                className="h-1 w-12 bg-[var(--accent-indigo)]"
+              />
+              <p
+                style={isDesktop ? {
+                  paddingTop: '3px',
+                  paddingLeft: '-5px',
+                  marginLeft: '300px',
+                  width: '169.339px',
+                } : {
+                  marginLeft: '-8px',
+                  paddingTop: '1px',
+                  marginRight: '0px',
+                  marginBottom: '-55px',
+                }}
+                className="text-[var(--text-muted)] font-medium tracking-[0.2em] text-xs uppercase text-nowrap"
+              >
                 Curated Soundscape
               </p>
               {state.songs.length > 0 && (
-                <button
-                  onMouseEnter={preloadBlackHoleTransition}
-                  onFocus={preloadBlackHoleTransition}
-                  onClick={handleTriggerMood}
-                  className="music-mood-trigger px-4 py-2 border rounded-full text-xs font-mono uppercase text-zinc-400 border-zinc-800 hover:border-violet-500 hover:text-violet-400 transition-all flex items-center gap-2 cursor-pointer group"
-                >
-                  <img
-                    src={getLocalAssetUrl('music mood.svg')}
-                    width={16}
-                    height={16}
-                    className="w-4 h-4 object-contain transition-all group-hover:scale-110"
-                    style={{ filter: 'invert(1)' }}
-                    alt="Music Mood mode"
-                  />
-                  MUSIC MOOD
-                </button>
+                <div className="relative flex items-center">
+                  <div
+                    style={isDesktop ? {
+                      marginLeft: '-149px'
+                    } : {}}
+                    className="absolute -left-16 flex items-center animate-pulse hidden sm:flex"
+                  >
+                    <span
+                      style={isDesktop ? {
+                        marginLeft: '-271px'
+                      } : {}}
+                      className="text-[var(--text-primary)] font-bold text-[10px] uppercase tracking-wider mr-1"
+                    >
+                      Tap
+                    </span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[var(--text-primary)] animate-bounce-horizontal">
+                      <path
+                        d="M5 12H19M19 12L12 5M19 12L12 19"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={isDesktop ? {
+                          marginLeft: '-58px',
+                          paddingTop: '-12px',
+                          paddingLeft: '-8px',
+                          paddingRight: '-7px',
+                          marginBottom: '-8px'
+                        } : {}}
+                      />
+                    </svg>
+                  </div>
+                  <div className="relative inline-block">
+                    <button
+                      onMouseEnter={preloadBlackHoleTransition}
+                      onFocus={preloadBlackHoleTransition}
+                      onClick={handleTriggerMood}
+                      className="music-mood-trigger px-4 py-2 border rounded-full text-xs font-mono uppercase text-zinc-400 border-zinc-800 hover:border-violet-500 hover:text-violet-400 transition-all flex items-center gap-2 cursor-pointer group relative overflow-visible shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.5)] bg-black/20 backdrop-blur-md"
+                      style={isDesktop ? {
+                        paddingRight: '39px',
+                        paddingLeft: '-49px',
+                        paddingTop: '10px',
+                        paddingBottom: '13px',
+                        marginLeft: '-409px',
+                        width: '125.98400000000001px',
+                        height: '46.0645px',
+                        marginTop: '3px',
+                        marginBottom: '1px',
+                        marginRight: '0px'
+                      } : {
+                        marginLeft: '56px',
+                        marginRight: '-31px',
+                        paddingBottom: '16px',
+                        paddingRight: '-9px',
+                        paddingLeft: '17px',
+                        marginTop: '24px',
+                        height: '41px',
+                        width: '135.984px',
+                        paddingTop: '19px',
+                        marginBottom: '-88px',
+                      }}
+                    >
+                      {/* Mobile Tap Indicator */}
+                      <div className="absolute -top-6 sm:hidden left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce">
+                        <span className="text-[var(--text-primary)] font-bold text-[9px] uppercase tracking-widest bg-black/50 px-2 rounded-full mb-1">Tap</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[var(--text-primary)] rotate-90">
+                          <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                      
+                      <img
+                        src={newMoodIcon}
+                        width={16}
+                        height={16}
+                        className="w-4 h-4 object-contain transition-all group-hover:scale-110"
+                        alt="Music Mood mode"
+                      />
+                      MUSIC MOOD
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
           <div className="text-right">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[var(--accent-indigo)] font-mono text-4xl font-bold tracking-tighter">
+            <div
+              style={isDesktop ? {} : {
+                marginLeft: '-2px',
+                marginRight: '-3px',
+                marginBottom: '-3px',
+                paddingBottom: '-3px',
+                paddingRight: '-4px',
+                paddingLeft: '-4px',
+                paddingTop: '-4px',
+                marginTop: '-9px',
+              }}
+              className="flex items-baseline gap-2"
+            >
+              <span
+                style={isDesktop ? {} : {
+                  marginLeft: '-20px',
+                  marginTop: '-18px',
+                  marginBottom: '41px',
+                  marginRight: '-5px',
+                  paddingBottom: '2px',
+                  paddingRight: '9px',
+                  paddingLeft: '-1px',
+                  paddingTop: '-5px',
+                }}
+                className="text-[var(--accent-indigo)] font-mono text-4xl font-bold tracking-tighter"
+              >
                 {state.songs.length}
               </span>
               <span className="text-[var(--text-muted)] text-sm font-medium uppercase tracking-[0.3em] pb-1">

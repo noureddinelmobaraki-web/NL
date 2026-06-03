@@ -52,14 +52,17 @@ export function useSongPlayer({
       waiting: () => setAudioStatus('loading'),
       playing: () => {
         setAudioStatus('playing');
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         onPlay();
       },
       pause: () => {
         setAudioStatus('paused');
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         onPause();
       },
       ended: () => {
         setAudioStatus('ended');
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
         onSongEnd();
       },
       loadedmetadata: () => setDuration(audio.duration),
@@ -82,6 +85,40 @@ export function useSongPlayer({
     audio.addEventListener('loadedmetadata', handlers.loadedmetadata);
     audio.addEventListener('timeupdate', handlers.timeupdate);
     audio.addEventListener('error', handlers.error);
+
+    // Media Session Integration for Background Playback
+    if ('mediaSession' in navigator && currentSong) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentSong.title,
+        artist: 'Noureddine',
+        album: 'My Songs',
+        artwork: currentSong.cover ? [
+          { src: currentSong.cover, sizes: '512x512', type: 'image/jpeg' }
+        ] : []
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        audioManager.play('song');
+        onPlay();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        audioManager.pause('song');
+        onPause();
+      });
+      if (onNext) {
+        navigator.mediaSession.setActionHandler('nexttrack', () => onNext());
+      }
+      if (onPrev) {
+        navigator.mediaSession.setActionHandler('previoustrack', () => onPrev());
+      }
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.fastSeek && 'fastSeek' in audio) {
+          audio.fastSeek(details.seekTime || 0);
+        } else {
+          audio.currentTime = details.seekTime || 0;
+        }
+      });
+    }
 
     return () => {
       audio.removeEventListener('loadstart', handlers.loadstart);

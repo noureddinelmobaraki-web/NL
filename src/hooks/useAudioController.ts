@@ -131,9 +131,6 @@ export function useAudioController({
     // Skip on initial mount — handled by the audio init useEffect([])
     if (!currentBgUrlRef.current || currentBgUrlRef.current === newUrl) return;
 
-    const wasPlaying = !audio.paused && audioManager.isSourceActive('bg');
-    const wasNotUserPaused = audioIntent !== 'user-paused';
-
     // 1. Fade out and pause current bg
     audioManager.pause('bg');
 
