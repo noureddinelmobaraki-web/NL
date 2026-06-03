@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect, lazy, Suspense } from 'react';
-import { preloadBlackHoleTransition } from '../MusicMood/BlackHoleTransition';
+import { useState, useRef, useEffect } from 'react';
+import { preloadBlackHoleTransition, BlackHoleTransition } from '../MusicMood/BlackHoleTransition';
+import { MusicMoodScreen } from '../MusicMood/MusicMoodScreen';
 import newMoodIcon from '../../assets/images/regenerated_image_1780500901330.png';
 import { audioManager } from '../../audio/audioManager';
 import { ActiveSong } from '../../types';
-const BlackHoleTransition = lazy(() => import('../MusicMood/BlackHoleTransition').then(m => ({ default: m.BlackHoleTransition })));
-const MusicMoodScreen = lazy(() => import('../MusicMood/MusicMoodScreen').then(m => ({ default: m.MusicMoodScreen })));
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useMySongsState } from './hooks/useMySongsState';
 import { useMySongsPlayback } from './hooks/useMySongsPlayback';
@@ -57,12 +56,7 @@ export const MySongs = ({
     }
     audioManager.pause?.('bg');
 
-    Promise.all([
-      import('../MusicMood/BlackHoleTransition').catch(() => null),
-      import('../MusicMood/MusicMoodScreen').catch(() => null),
-    ]).finally(() => {
-      setIsMoodTransitioning(true);
-    });
+    setIsMoodTransitioning(true);
   };
 
   useEffect(() => {
@@ -139,26 +133,22 @@ export const MySongs = ({
       }}
     >
       {isMoodTransitioning && (
-        <Suspense fallback={null}>
-          <BlackHoleTransition
-            onNearComplete={() => setIsMoodActive(true)}
-            onComplete={() => setIsMoodTransitioning(false)}
-          />
-        </Suspense>
+        <BlackHoleTransition
+          onNearComplete={() => setIsMoodActive(true)}
+          onComplete={() => setIsMoodTransitioning(false)}
+        />
       )}
       {isMoodActive && (
-        <Suspense fallback={null}>
-          <MusicMoodScreen
-            songs={state.songs}
-            existingAudioCtx={moodAudioCtxRef.current}
-            onExit={() => {
-              setIsMoodActive(false);
-              onSongStop?.();
-              if (typeof audioManager.unpauseBg === 'function') audioManager.unpauseBg();
-              else (audioManager as any).resume?.('bg');
-            }}
-          />
-        </Suspense>
+        <MusicMoodScreen
+          songs={state.songs}
+          existingAudioCtx={moodAudioCtxRef.current}
+          onExit={() => {
+            setIsMoodActive(false);
+            onSongStop?.();
+            if (typeof audioManager.unpauseBg === 'function') audioManager.unpauseBg();
+            else (audioManager as any).resume?.('bg');
+          }}
+        />
       )}
       <audio ref={playback.audioTagRef} preload="none" crossOrigin="anonymous" style={{ display: 'none' }} />
       <div className="max-w-6xl mx-auto relative z-10">

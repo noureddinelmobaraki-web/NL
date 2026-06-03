@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Song, LyricLine } from '../../types';
 import { SongCard } from './SongCard';
@@ -53,6 +53,23 @@ export const SongList = ({
   onAmbientColorChange,
 }: SongListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [memeOpacity, setMemeOpacity] = useState(0);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    const initialTimeout = setTimeout(() => {
+      setMemeOpacity(1); // fade in
+      
+      intervalId = setInterval(() => {
+        setMemeOpacity((prev) => (prev === 1 ? 0 : 1));
+      }, 10000); // 10s shown, 10s faded
+    }, 2500); // 2.5s delay before first showing
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
 
   const { isMobile } = useDeviceType();
 
@@ -68,7 +85,8 @@ export const SongList = ({
         <img 
           src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/music%20mood.webp" 
           alt="Meme Pointing" 
-          className="absolute bottom-[95%] left-1/2 -translate-x-[52%] w-[210px] max-w-none h-auto pointer-events-none z-10 select-none transform"
+          className="absolute bottom-[95%] left-1/2 -translate-x-[52%] w-[210px] max-w-none h-auto pointer-events-none z-10 select-none transform transition-opacity duration-1000 ease-in-out"
+          style={{ opacity: memeOpacity }}
         />
         <input
           type="text"

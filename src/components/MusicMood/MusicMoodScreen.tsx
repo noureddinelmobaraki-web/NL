@@ -41,7 +41,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
   const [activeSong, setActiveSong]   = useState<Song | null>(null);
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const [currentTime, setCurrentTime] = useState(0);
-  const [isEntering, setIsEntering]   = useState(true); // fade-in animation
+  const isEntering = false; // Mount immediately with full opacity
   const [diceSpinning, setDiceSpinning] = useState(false);
   const [needsUserTap, setNeedsUserTap] = useState(false);
 
@@ -103,12 +103,9 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
 
   // ── تشغيل أول أغنية عشوائية فور الدخول
   useEffect(() => {
-    setIsEntering(true);
-    // الـ fade in يحدث خلال آخر لحظة من الثقب الأسود (200ms كافية)
-    const t1 = setTimeout(() => setIsEntering(false), 200);
     // تشغيل الأغنية بعد ظهور الشاشة
-    const t2 = setTimeout(() => pickRandomSong(), 400);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t2 = setTimeout(() => pickRandomSong(), 200);
+    return () => { clearTimeout(t2); };
     // FIXED: Issue #8 — intentionally empty to run once on mount. pickRandomSong excluded to avoid re-trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

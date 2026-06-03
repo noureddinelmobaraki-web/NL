@@ -285,7 +285,12 @@ export const RetroWorldPage: React.FC = () => {
           <RetroSection section={item.sec} scaleFactor={scaleFactor} />
         </div>
       ))}
-      <PersonalPhotoFloater scrollY={scrollY} viewportHeight={viewportHeight} />
+      <PersonalPhotoFloater 
+        scrollY={scrollY} 
+        viewportHeight={viewportHeight} 
+        totalBlockHeight={TOTAL_BLOCK_HEIGHT}
+        scaleFactor={scaleFactor}
+      />
     </div>
   );
 };

@@ -1,128 +1,155 @@
-import React, { useEffect, memo, useState } from 'react';
+import React, { memo, useState } from 'react';
 import { PERSONAL_PHOTOS, PERSONAL_PHOTOS_CDN } from './personal-photos';
-
-const SWAP_DISTANCE_MULT = 1.8;
-const HISTORY = Array.from({ length: 23 }, (_, i) => i);
-
-export const getPhotoIndexForBlock = (blockIndex: number): number => {
-  while (HISTORY.length <= blockIndex) {
-    const recent = HISTORY.slice(-3);
-    const pool = Array.from({ length: 23 }, (_, i) => i).filter(id => !recent.includes(id));
-    const nextId = pool[Math.floor(Math.random() * pool.length)];
-    HISTORY.push(nextId);
-  }
-  return HISTORY[blockIndex];
-};
 
 interface Props {
   scrollY: number;
   viewportHeight: number;
+  totalBlockHeight: number;
+  scaleFactor: number;
 }
 
-const PersonalPhotoFloaterInner: React.FC<Props> = ({ scrollY, viewportHeight }) => {
+const PersonalPhotoFloaterInner: React.FC<Props> = ({ scrollY, viewportHeight, totalBlockHeight }) => {
   const [reducedMotion] = useState(() => 
     typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false
   );
 
-  const blockIndex = Math.floor(Math.max(0, scrollY) / (viewportHeight * SWAP_DISTANCE_MULT || 1));
-  const photoIndex = getPhotoIndexForBlock(blockIndex);
-  const nextPhotoIndex = getPhotoIndexForBlock(blockIndex + 1);
-  const isEven = photoIndex % 2 === 0;
+  if (!totalBlockHeight) return null;
 
-  const currentPhoto = PERSONAL_PHOTOS[photoIndex];
-  const nextPhoto = PERSONAL_PHOTOS[nextPhotoIndex];
+  const buffer = viewportHeight * 1.5; 
+  const minY = Math.max(0, scrollY - buffer);
+  const maxY = scrollY + viewportHeight + buffer;
 
-  useEffect(() => {
-    if (!nextPhoto) return;
-    const link = document.createElement('link');
-    link.rel = 'prefetch';
-    link.as = 'image';
-    link.href = `${PERSONAL_PHOTOS_CDN}/${nextPhoto.file}`;
-    document.head.appendChild(link);
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, [nextPhoto]);
+  const startLoopIndex = Math.floor(minY / totalBlockHeight);
+  const endLoopIndex = Math.floor(maxY / totalBlockHeight);
 
-  const rotation = reducedMotion ? '0deg' : (isEven ? '-4deg' : '3.5deg');
-  const yOffset = scrollY + viewportHeight * 0.25;
+  // Define 5 relative vertical positions per loop, alternating left/right
+  const CARD_CONFIGS = [
+    { ratio: 0.15, side: 'left' as const, rot: '-5deg', xOffset: '3%' },
+    { ratio: 0.35, side: 'right' as const, rot: '4deg', xOffset: '3%' },
+    { ratio: 0.55, side: 'left' as const, rot: '-3deg', xOffset: '4%' },
+    { ratio: 0.75, side: 'right' as const, rot: '6deg', xOffset: '4%' },
+    { ratio: 0.90, side: 'left' as const, rot: '-4deg', xOffset: '3%' },
+  ];
+
+  const cardsToRender: Array<{
+    key: string;
+    top: number;
+    side: 'left' | 'right';
+    xOffset: string;
+    rotation: string;
+    photoIndex: number;
+    caption: string;
+  }> = [];
+
+  for (let loop = startLoopIndex; loop <= endLoopIndex; loop++) {
+    CARD_CONFIGS.forEach((config, cardIdx) => {
+      const top = loop * totalBlockHeight + totalBlockHeight * config.ratio;
+      // Fetch photo in a deterministic, repeating order so they are distinct
+      const photoIndex = (loop * 5 + cardIdx) % PERSONAL_PHOTOS.length;
+      
+      cardsToRender.push({
+        key: `card-${loop}-${cardIdx}`,
+        top,
+        side: config.side,
+        xOffset: config.xOffset,
+        rotation: reducedMotion ? '0deg' : config.rot,
+        photoIndex,
+        caption: `NL · ${26 + (loop % 5)}`,
+      });
+    });
+  }
 
   return (
     <>
       <style>{`
-        #personal-photo-floater {
+        .personal-photo-card {
           position: absolute;
-          top: 0;
           z-index: 50;
-          transition: ${reducedMotion ? 'none' : 'transform 600ms ease-out'};
           background-color: white;
-          padding: 14px 14px 50px 14px;
-          box-shadow: 6px 6px 0 #000, 12px 12px 0 #ff00ff;
-          max-width: 260px;
+          padding: 12px 12px 36px 12px;
+          box-shadow: 5px 5px 0 #000, 10px 10px 0 #ff00ff;
+          width: 230px;
+          transition: transform 300ms ease-out;
+        }
+        .personal-photo-card:hover {
+          transform: scale(1.08) rotate(0deg) !important;
+          z-index: 999;
+          box-shadow: 8px 8px 0 #000, 15px 15px 0 #00ffff;
+        }
+        @media (max-width: 1200px) {
+          .personal-photo-card {
+            width: 170px;
+            padding: 9px 9px 28px 9px;
+            box-shadow: 4px 4px 0 #000, 8px 8px 0 #ff00ff;
+          }
         }
         @media (max-width: 768px) {
-          #personal-photo-floater {
-            max-width: 170px;
+          .personal-photo-card {
+            width: 110px;
+            padding: 6px 6px 20px 6px;
+            box-shadow: 3px 3px 0 #000, 6px 6px 0 #ff00ff;
           }
         }
         .personal-photo-caption {
           position: absolute;
-          bottom: 12px;
+          bottom: 10px;
           left: 0;
           right: 0;
           text-align: center;
           font-family: var(--font-manga, 'Comic Neue', cursive);
-          font-size: 14px;
+          font-size: 13px;
           font-weight: bold;
           color: #000;
           pointer-events: none;
         }
+        @media (max-width: 768px) {
+          .personal-photo-caption {
+            font-size: 9px;
+            bottom: 4px;
+          }
+        }
       `}</style>
-      <div
-        id="personal-photo-floater"
-        style={{
-          left: isEven ? '6%' : undefined,
-          right: !isEven ? '6%' : undefined,
-          transform: `translateY(${yOffset}px) rotate(${rotation})`,
-        }}
-      >
-        <img
-          key={photoIndex}
-          src={`${PERSONAL_PHOTOS_CDN}/${currentPhoto.file}`}
-          alt="Personal Retro"
-          loading="eager"
-          decoding="async"
-          // @ts-ignore
-          fetchPriority="high"
-          style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }}
-        />
-        <div className="personal-photo-caption">NL · 26</div>
-      </div>
+      {cardsToRender.map(card => {
+        const photo = PERSONAL_PHOTOS[card.photoIndex];
+        if (!photo) return null;
+
+        const style: React.CSSProperties = {
+          top: `${card.top}px`,
+          transform: `rotate(${card.rotation})`,
+        };
+
+        if (card.side === 'left') {
+          style.left = card.xOffset;
+        } else {
+          style.right = card.xOffset;
+        }
+
+        return (
+          <div
+            key={card.key}
+            className="personal-photo-card"
+            style={style}
+          >
+            <img
+              src={`${PERSONAL_PHOTOS_CDN}/${photo.file}`}
+              alt={`Personal Retro ${card.photoIndex}`}
+              loading="lazy"
+              decoding="async"
+              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }}
+            />
+            <div className="personal-photo-caption">{card.caption}</div>
+          </div>
+        );
+      })}
     </>
   );
 };
 
 export const PersonalPhotoFloater = memo(PersonalPhotoFloaterInner, (prev, next) => {
-  const S_prev = prev.viewportHeight * SWAP_DISTANCE_MULT;
-  const S_next = next.viewportHeight * SWAP_DISTANCE_MULT;
-
-  const oldBlock = Math.floor(Math.max(0, prev.scrollY) / (S_prev || 1));
-  const newBlock = Math.floor(Math.max(0, next.scrollY) / (S_next || 1));
-
-  if (oldBlock === newBlock && prev.viewportHeight === next.viewportHeight) {
-    const el = document.getElementById('personal-photo-floater');
-    const prefersReducedMotion = typeof window !== 'undefined' 
-      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches 
-      : false;
-      
-    if (el) {
-      const photoIdx = getPhotoIndexForBlock(newBlock);
-      const isEven = photoIdx % 2 === 0;
-      const rotation = prefersReducedMotion ? '0deg' : (isEven ? '-4deg' : '3.5deg');
-      const yOffset = next.scrollY + next.viewportHeight * 0.25;
-      el.style.transform = `translateY(${yOffset}px) rotate(${rotation})`;
-    }
-    return true; // Skip re-render
-  }
-  return false;
+  return (
+    prev.scrollY === next.scrollY &&
+    prev.viewportHeight === next.viewportHeight &&
+    prev.totalBlockHeight === next.totalBlockHeight &&
+    prev.scaleFactor === next.scaleFactor
+  );
 });

@@ -6,8 +6,8 @@ interface BlackHoleTransitionProps {
   onNearComplete?: () => void;
 }
 
-const TOTAL_DURATION = 2400; // 2.4 seconds
-const NEAR_COMPLETE_AT = 0.55; // fire at 55% → 1320ms left for MusicMoodScreen to mount
+const TOTAL_DURATION = 3000; // 3.0 seconds
+const NEAR_COMPLETE_AT = 0.8333; // fire exactly 500ms before transition ends (2500ms / 3000ms)
 
 const prefersReducedMotion = (): boolean =>
   typeof window !== 'undefined' &&

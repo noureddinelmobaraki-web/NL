@@ -177,10 +177,11 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       const isMobile = canvasW < 768;
       const audioEl = audioRef?.current;
       const analyser = audioEl ? (audioEl as any).__analyser : null;
+      const isPlaying = !!(audioEl && !audioEl.paused && !audioEl.ended);
 
       // ─── Optimize: Pull frequency data ONCE per frame ───
       let freqDataArray: Uint8Array | null = null;
-      if (analyser && !audioEl?.paused && sceneState === 2) {
+      if (analyser && isPlaying && sceneState === 2) {
         freqDataArray = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(freqDataArray);
 
@@ -194,13 +195,14 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           }
         }
         audioIntensity = sum / freqDataArray.length;
-        bassIntensity = bassSum / 12;
+        // Focus purely on heavy kick drums/lowest sub-bass frequencies
+        const bassVal = (freqDataArray[0] + freqDataArray[1] + freqDataArray[2] + freqDataArray[3]) / 4;
+        bassIntensity = bassVal;
         trebleIntensity = trebleSum / (trebleCount || 1);
       } else {
-        const glowVal = (glowIntensityRef.current || 0) * 255;
-        audioIntensity = audioIntensity * 0.95 + glowVal * 0.5 * 0.05; 
-        bassIntensity = bassIntensity * 0.95 + glowVal * 0.05; 
-        trebleIntensity = trebleIntensity * 0.95 + glowVal * 0.3 * 0.05;
+        audioIntensity = audioIntensity * 0.85; 
+        bassIntensity = bassIntensity * 0.85; 
+        trebleIntensity = trebleIntensity * 0.85;
       }
 
       let elapsedTimeInScene2 = 0;
@@ -246,7 +248,8 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           overlayElement.classList.remove('scene-dark');
         }
 
-        timeline += 0.010; // adjusted for smoother math
+        const timelineInc = isPlaying ? 0.010 : 0.003;
+        timeline += timelineInc; // slower when paused to keep visualizer calm
         let loopPeriod = (Date.now() / 15000) * Math.PI * 2;
         let zoomFactor = (Math.sin(loopPeriod) + 1) * 0.5;
 
@@ -318,18 +321,19 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           let frequencyIndex = Math.floor(20 + (i % 60));
           
           let rawFreq = 0;
-          if (freqDataArray) {
+          if (isPlaying && freqDataArray) {
             rawFreq = freqDataArray[frequencyIndex % freqDataArray.length] || 0;
           } else {
-            rawFreq = Math.abs(Math.sin(timeline * 12 + i)) * 110;
+            // Calm breathing pattern when paused so it stays beautiful and still
+            rawFreq = Math.abs(Math.sin(Date.now() * 0.001 + i)) * 6;
           }
 
           // Spikes react aggressively to the song
           let spikeDynamic = rawFreq * (rawFreq / 255) * (isMobile ? 0.8 : 1.2);
-          let spikeLength = (isMobile ? 10 : 16) + spikeDynamic + (trebleIntensity * 0.5);
+          let spikeLength = (isMobile ? 10 : 16) + spikeDynamic + (isPlaying ? (trebleIntensity * 0.5) : 0);
           let startX = Math.cos(angle) * baseHoleRadius;
           let startZ = Math.sin(angle) * baseHoleRadius;
-          let startY = Math.sin(timeline * 6 + i) * 2;
+          let startY = isPlaying ? Math.sin(timeline * 6 + i) * 2 : Math.sin(Date.now() * 0.0005 + i) * 0.4;
 
           let endX = Math.cos(angle) * (baseHoleRadius + spikeLength);
           let endZ = Math.sin(angle) * (baseHoleRadius + spikeLength);
@@ -382,21 +386,23 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           let naturalWave = Math.sin(waveFrequency) * (isMobile ? 3 : 5); 
           let audioWave = 0;
 
-          let bassThreshold = 90;
-          if (bassIntensity > bassThreshold) {
+          // React strictly to heavy beats (bass/drum kits)
+          let bassThreshold = 100;
+          if (isPlaying && freqDataArray && bassIntensity > bassThreshold) {
             let sampleIdx = Math.floor(particle.dist04) % 30;
-            let rawFreqVal = 0;
-            if (freqDataArray) {
-              rawFreqVal = freqDataArray[sampleIdx % freqDataArray.length] || 0;
-            } else {
-              rawFreqVal = Math.sin(timeline * 8 + sampleIdx) * 128 + 128;
-            }
+            let rawFreqVal = freqDataArray[sampleIdx % freqDataArray.length] || 0;
             let audioFactor = rawFreqVal / 255;
-            let beatPower = Math.pow((bassIntensity - bassThreshold) / (255 - bassThreshold), 1.5); // non-linear scaling
-            audioWave = Math.sin(particle.dist0068 - count12) * (beatPower * 80) * audioFactor; 
+            let beatPower = Math.pow((bassIntensity - bassThreshold) / (255 - bassThreshold), 1.8); // sharper exponential curve for heavy beats
+            audioWave = Math.sin(particle.dist0068 - count12) * (beatPower * 110) * audioFactor; 
           }
-          // The natural wave is greatly reduced, taking the backseat. Audio wave takes over on beats.
-          particle.y = (naturalWave * 0.3) + audioWave;
+          
+          if (isPlaying) {
+            // Blend natural background wave with heavy beat-driven waves
+            particle.y = (naturalWave * 0.25) + audioWave;
+          } else {
+            // Smoothly settle the grid waves to a gentle, serene breathing pattern
+            particle.y = naturalWave * 0.15;
+          }
         }
 
         // Inline 3D Projection for extreme performance
@@ -467,7 +473,8 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         }
       }
       
-      count += 0.007 + (bassIntensity * 0.00015);
+      const countInc = isPlaying ? (0.007 + (bassIntensity * 0.00015)) : 0.0015;
+      count += countInc;
       animRef.current = requestAnimationFrame(draw);
     };
 
