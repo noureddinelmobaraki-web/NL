@@ -10,7 +10,7 @@ import { PersonalPhotoFloater } from './PersonalPhotoFloater';
 // The original Cameron's World preserved section numbering even when sections were dropped.
 
 export const RetroWorldPage: React.FC = () => {
-  const { setTheme } = useAppContext();
+  const { setTheme, setAudioIntent } = useAppContext();
   const [scrollY, setScrollY] = useState(0);
   
   const [scaleFactor, setScaleFactor] = useState(() => {
@@ -202,7 +202,11 @@ export const RetroWorldPage: React.FC = () => {
 
   const handleLeaveRetro = () => {
     setTheme('midnight');
+    setAudioIntent('user-playing');
     window.scrollTo({ top: 0 });
+    import('../../utils/userPrefs').then(({ savePrefs }) => {
+      savePrefs({ audioIntent: 'user-playing' });
+    });
   };
 
   const visibleItems = useMemo(() => {

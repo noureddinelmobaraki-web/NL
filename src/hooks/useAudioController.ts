@@ -173,13 +173,12 @@ export function useAudioController({
       // 5. Re-register the same audio element with audioManager (url changed)
       audioManager.register('bg', audio, 0.7);
 
-      // 6. Resume playback if it was active and user hasn't manually paused
-      if (wasPlaying && wasNotUserPaused) {
-        // Small delay to allow HLS manifest to start loading
-        setTimeout(() => {
-          audioManager.unpauseBg();
-        }, 400);
-      }
+      // 6. Resume playback ALWAYS when switching themes
+      setTimeout(() => {
+        audioManager.unpauseBg();
+        setAudioIntent('user-playing');
+        savePrefs({ audioIntent: 'user-playing' });
+      }, 400);
     };
 
     swapHls();
