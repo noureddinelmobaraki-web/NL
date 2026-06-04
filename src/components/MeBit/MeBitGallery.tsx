@@ -52,9 +52,9 @@ export const MeBitGallery = ({
     enabled: isMobile || isTablet,
   });
 
-  // Register MeBit custom buttons in the portaled orchestrator
+  // Register MeBit custom buttons in the portaled orchestrator (DESKTOP ONLY)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isMobile || isTablet) return;
 
     registerButton({
       id: 'mebitAudio',
@@ -98,7 +98,7 @@ export const MeBitGallery = ({
       unregisterButton('mebitAudio');
       unregisterButton('mebitClose');
     };
-  }, [isOpen, isMeBitPlaying, onClose, onToggleAudio, registerButton, unregisterButton]);
+  }, [isOpen, isMeBitPlaying, onClose, onToggleAudio, registerButton, unregisterButton, isMobile, isTablet]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -178,6 +178,8 @@ export const MeBitGallery = ({
                 onClose={onClose}
                 onNext={onNext}
                 onPrev={onPrev}
+                isMeBitPlaying={isMeBitPlaying}
+                onToggleAudio={onToggleAudio}
               />
             ) : (
               <>
