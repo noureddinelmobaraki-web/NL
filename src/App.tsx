@@ -77,6 +77,11 @@ import { MobileQAOverlay } from "./components/dev/MobileQAOverlay";
 function AppInner() {
   const { theme } = useAppContext();
 
+  useEffect(() => {
+    applyThemeUtil(theme);
+    savePrefs({ theme });
+  }, [theme]);
+
   if (theme === 'retro') {
     return (
       <Suspense fallback={<div style={{ background: '#000', color: '#0ff', padding: 40 }}>Loading retro world…</div>}>
@@ -169,11 +174,6 @@ function MainApp() {
       </div>
     );
   };
-
-  useEffect(() => {
-    applyThemeUtil(theme);
-    savePrefs({ theme });
-  }, [theme]);
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);

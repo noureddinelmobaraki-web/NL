@@ -1,155 +1,119 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useMemo } from 'react';
 import { PERSONAL_PHOTOS, PERSONAL_PHOTOS_CDN } from './personal-photos';
 
 interface Props {
-  scrollY: number;
-  viewportHeight: number;
-  totalBlockHeight: number;
-  scaleFactor: number;
+  wrapperRef: React.RefObject<HTMLDivElement | null>;
 }
 
-const PersonalPhotoFloaterInner: React.FC<Props> = ({ scrollY, viewportHeight, totalBlockHeight }) => {
-  const [reducedMotion] = useState(() => 
-    typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false
-  );
+const PersonalPhotoFloaterInner: React.FC<Props> = ({ wrapperRef }) => {
+  // استخدام useMemo لاختيار 20 صورة مبعثرة عشوائياً لضمان استقرار توزيعها وحفظ العمليات الحسابية
+  const scatteredCards = useMemo(() => {
+    // خلط عشوائي واختيار حتى 20 صورة
+    const selectedPhotos = [...PERSONAL_PHOTOS]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 20);
 
-  if (!totalBlockHeight) return null;
+    return selectedPhotos.map((photo, index) => {
+      // تفريق الارتفاعات بشكل منتظم على امتداد صفحة الـ 16000px لتجنب التكدس والتصادم
+      const segmentSize = 14200 / 20; // المسافة بين 800px و 15000px مقسمة على 20 مرحلة
+      const segmentStart = 800 + index * segmentSize;
+      const top = Math.floor(segmentStart + Math.random() * (segmentSize * 0.8));
 
-  const buffer = viewportHeight * 1.5; 
-  const minY = Math.max(0, scrollY - buffer);
-  const maxY = scrollY + viewportHeight + buffer;
+      // توزيع عشوائي جهة اليمين أو اليسار بالتناوب لضمان مظهر متوازن وممتع بصرياً
+      const side = index % 2 === 0 ? 'left' : 'right';
+      const xOffset = `${2 + Math.random() * 6}%`; // إزاحة جانبية بين 2% و 8%
+      const rotationVal = -15 + Math.random() * 30; // دوران عشوائي بين -15 و 15 درجة
+      const rotation = `${rotationVal.toFixed(1)}deg`;
 
-  const startLoopIndex = Math.floor(minY / totalBlockHeight);
-  const endLoopIndex = Math.floor(maxY / totalBlockHeight);
+      // مدة وتأخير البدء لجعل كل صورة تسترخي وتتحرك بحرية مستقلة تماماً
+      const bobDuration = `${(3 + Math.random() * 3).toFixed(1)}s`;
+      const bobDelay = `${-(Math.random() * 6).toFixed(1)}s`;
 
-  // Define 5 relative vertical positions per loop, alternating left/right
-  const CARD_CONFIGS = [
-    { ratio: 0.15, side: 'left' as const, rot: '-5deg', xOffset: '3%' },
-    { ratio: 0.35, side: 'right' as const, rot: '4deg', xOffset: '3%' },
-    { ratio: 0.55, side: 'left' as const, rot: '-3deg', xOffset: '4%' },
-    { ratio: 0.75, side: 'right' as const, rot: '6deg', xOffset: '4%' },
-    { ratio: 0.90, side: 'left' as const, rot: '-4deg', xOffset: '3%' },
-  ];
-
-  const cardsToRender: Array<{
-    key: string;
-    top: number;
-    side: 'left' | 'right';
-    xOffset: string;
-    rotation: string;
-    photoIndex: number;
-    caption: string;
-  }> = [];
-
-  for (let loop = startLoopIndex; loop <= endLoopIndex; loop++) {
-    CARD_CONFIGS.forEach((config, cardIdx) => {
-      const top = loop * totalBlockHeight + totalBlockHeight * config.ratio;
-      // Fetch photo in a deterministic, repeating order so they are distinct
-      const photoIndex = (loop * 5 + cardIdx) % PERSONAL_PHOTOS.length;
-      
-      cardsToRender.push({
-        key: `card-${loop}-${cardIdx}`,
+      return {
+        key: `static-card-${index}-${photo.file}`,
+        photo,
         top,
-        side: config.side,
-        xOffset: config.xOffset,
-        rotation: reducedMotion ? '0deg' : config.rot,
-        photoIndex,
-        caption: `NL · ${26 + (loop % 5)}`,
-      });
+        side,
+        xOffset,
+        rotation,
+        bobDuration,
+        bobDelay,
+      };
     });
-  }
+  }, []);
 
   return (
     <>
       <style>{`
         .personal-photo-card {
-          position: absolute;
-          z-index: 50;
-          background-color: white;
-          padding: 12px 12px 36px 12px;
+          background: white;
+          padding: 8px 8px 24px 8px;
           box-shadow: 5px 5px 0 #000, 10px 10px 0 #ff00ff;
-          width: 230px;
-          transition: transform 300ms ease-out;
+          border: 2px solid #000;
+          width: 180px;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          pointer-events: auto;
+        }
+        @media (max-width: 768px) {
+          .personal-photo-card { width: 120px; padding: 6px 6px 18px 6px; }
         }
         .personal-photo-card:hover {
-          transform: scale(1.08) rotate(0deg) !important;
-          z-index: 999;
-          box-shadow: 8px 8px 0 #000, 15px 15px 0 #00ffff;
+          transform: scale(1.1) rotate(0deg) !important;
+          box-shadow: 10px 10px 0 #000, 20px 20px 0 #00ffff;
+          cursor: pointer;
         }
-        @media (max-width: 1200px) {
-          .personal-photo-card {
-            width: 170px;
-            padding: 9px 9px 28px 9px;
-            box-shadow: 4px 4px 0 #000, 8px 8px 0 #ff00ff;
-          }
-        }
-        @media (max-width: 768px) {
-          .personal-photo-card {
-            width: 110px;
-            padding: 6px 6px 20px 6px;
-            box-shadow: 3px 3px 0 #000, 6px 6px 0 #ff00ff;
-          }
-        }
-        .personal-photo-caption {
-          position: absolute;
-          bottom: 10px;
-          left: 0;
-          right: 0;
-          text-align: center;
-          font-family: var(--font-manga, 'Comic Neue', cursive);
-          font-size: 13px;
-          font-weight: bold;
-          color: #000;
-          pointer-events: none;
-        }
-        @media (max-width: 768px) {
-          .personal-photo-caption {
-            font-size: 9px;
-            bottom: 4px;
-          }
+        @keyframes gentleBob {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(-15px); }
         }
       `}</style>
-      {cardsToRender.map(card => {
-        const photo = PERSONAL_PHOTOS[card.photoIndex];
-        if (!photo) return null;
 
-        const style: React.CSSProperties = {
-          top: `${card.top}px`,
-          transform: `rotate(${card.rotation})`,
-        };
+      {/* الحاوية الخارجية الحرة المعرفة خارجياً بالـ ref والمسئولة عن التمرير الـ GPU-accelerated */}
+      <div 
+        ref={wrapperRef} 
+        style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          width: '100%', 
+          height: '100vh', 
+          pointerEvents: 'none', 
+          zIndex: 50,
+          willChange: 'transform'
+        }}
+      >
+        {scatteredCards.map(card => {
+          const photo = card.photo;
+          if (!photo) return null;
 
-        if (card.side === 'left') {
-          style.left = card.xOffset;
-        } else {
-          style.right = card.xOffset;
-        }
-
-        return (
-          <div
-            key={card.key}
-            className="personal-photo-card"
-            style={style}
-          >
-            <img
-              src={`${PERSONAL_PHOTOS_CDN}/${photo.file}`}
-              alt={`Personal Retro ${card.photoIndex}`}
-              loading="lazy"
-              decoding="async"
-              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }}
-            />
-            <div className="personal-photo-caption">{card.caption}</div>
-          </div>
-        );
-      })}
+          return (
+            <div 
+              key={card.key} 
+              style={{
+                position: 'absolute',
+                top: `${card.top}px`,
+                left: card.side === 'left' ? card.xOffset : 'auto',
+                right: card.side === 'right' ? card.xOffset : 'auto',
+                animation: `gentleBob ${card.bobDuration} ease-in-out infinite alternate`,
+                animationDelay: card.bobDelay,
+                pointerEvents: 'auto',
+              }}
+            >
+              <div className="personal-photo-card" style={{ transform: `rotate(${card.rotation})` }}>
+                <img
+                  src={`${PERSONAL_PHOTOS_CDN}/${photo.file}`}
+                  alt={`Personal Retro ${card.photo.file}`}
+                  loading="lazy"
+                  decoding="async"
+                  style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', border: '1px solid #ddd' }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 };
 
-export const PersonalPhotoFloater = memo(PersonalPhotoFloaterInner, (prev, next) => {
-  return (
-    prev.scrollY === next.scrollY &&
-    prev.viewportHeight === next.viewportHeight &&
-    prev.totalBlockHeight === next.totalBlockHeight &&
-    prev.scaleFactor === next.scaleFactor
-  );
-});
+export const PersonalPhotoFloater = memo(PersonalPhotoFloaterInner);
