@@ -26,7 +26,14 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'es2020',
       cssCodeSplit: true,
-      sourcemap: false,
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        },
+      },
+      sourcemap: 'hidden',
       reportCompressedSize: true,
       chunkSizeWarningLimit: 800,
       assetsInlineLimit: 0,

@@ -1,8 +1,9 @@
-const CACHE_SHELL = 'nl-shell-v5';
-const CACHE_IMAGES = 'nl-images-v5';
-const CACHE_HLS = 'nl-hls-v5';
-const CACHE_AUDIO = 'nl-audio-v5';
-const CACHE_FONTS = 'nl-fonts-v5';
+const VERSION = '__BUILD_HASH__';
+const CACHE_SHELL = `nl-shell-${VERSION}`;
+const CACHE_IMAGES = `nl-images-${VERSION}`;
+const CACHE_HLS = `nl-hls-${VERSION}`;
+const CACHE_AUDIO = `nl-audio-${VERSION}`;
+const CACHE_FONTS = `nl-fonts-${VERSION}`;
 
 const PRECACHE_URLS = [
   '/NL/',
@@ -70,6 +71,18 @@ self.addEventListener('activate', (event) => {
     }
     
     await self.clients.claim();
+
+    // Check storage estimates on activate
+    if (self.navigator && self.navigator.storage && self.navigator.storage.estimate) {
+      try {
+        const { usage, quota } = await self.navigator.storage.estimate();
+        if (usage && quota && usage / quota > 0.8) {
+          console.warn(`[SW] Storage at ${Math.round((usage / quota) * 100)}%`);
+        }
+      } catch (e) {
+        // Ignored
+      }
+    }
   })());
 });
 
@@ -98,26 +111,21 @@ async function handleRangeRequest(request, responseOverride = null) {
   });
 }
 
-let hlsWriteCount = 0;
+const LIMITS = {
+  'nl-images': { max: 80 },
+  'nl-hls': { max: 30 },
+  'nl-audio': { max: 15 },
+};
 
-async function cleanupLruHls() {
-  const cache = await caches.open(CACHE_HLS);
+async function trimCache(cacheName) {
+  const baseName = cacheName.replace(/-[^-]+$/, ''); // Remove hash
+  const limit = LIMITS[baseName]?.max;
+  if (!limit) return;
+  const cache = await caches.open(cacheName);
   const keys = await cache.keys();
-  const tsEntries = [];
-
-  for (const key of keys) {
-    if (key.url.endsWith('.ts')) {
-      const response = await cache.match(key);
-      const cachedAt = response?.headers.get('x-cached-at');
-      tsEntries.push({ key, cachedAt: cachedAt ? parseInt(cachedAt, 10) : 0 });
-    }
-  }
-
-  if (tsEntries.length > 200) {
-    tsEntries.sort((a, b) => a.cachedAt - b.cachedAt);
-    const toDelete = tsEntries.slice(0, tsEntries.length - 200);
-    for (const entry of toDelete) {
-      await cache.delete(entry.key);
+  if (keys.length > limit) {
+    for (let i = 0; i < keys.length - limit; i++) {
+      await cache.delete(keys[i]);
     }
   }
 }
@@ -158,6 +166,7 @@ self.addEventListener('fetch', (event) => {
         headers.append('x-cached-at', Date.now().toString());
         const body = await cloned.blob();
         await cache.put(event.request, new Response(body, { headers }));
+        event.waitUntil(trimCache(CACHE_IMAGES));
         return response;
       })()
     );
@@ -175,6 +184,7 @@ self.addEventListener('fetch', (event) => {
         const response = await fetch(event.request);
         if (response.status === 200) {
            await cache.put(event.request, response.clone());
+           event.waitUntil(trimCache(CACHE_AUDIO));
         }
         return response;
       })()
@@ -200,10 +210,7 @@ self.addEventListener('fetch', (event) => {
         headers.append('x-cached-at', Date.now().toString());
         const body = await cloned.blob();
         await cache.put(event.request, new Response(body, { headers }));
-        
-        hlsWriteCount++;
-        if (hlsWriteCount % 20 === 0) cleanupLruHls();
-        
+        event.waitUntil(trimCache(CACHE_HLS));
         return response;
       })()
     );
@@ -223,6 +230,7 @@ self.addEventListener('fetch', (event) => {
             headers.append('x-cached-at', Date.now().toString());
             const body = await cloned.blob();
             await cache.put(event.request, new Response(body, { headers }));
+            event.waitUntil(trimCache(CACHE_HLS));
           }
           return response;
         } catch {
@@ -247,6 +255,7 @@ self.addEventListener('fetch', (event) => {
         const response = await fetch(event.request);
         if (response.status === 200) {
            await cache.put(event.request, response.clone());
+           event.waitUntil(trimCache(CACHE_AUDIO));
         }
         return response;
       })()
@@ -272,6 +281,7 @@ self.addEventListener('fetch', (event) => {
         headers.append('x-cached-at', Date.now().toString());
         const body = await cloned.blob();
         await cache.put(event.request, new Response(body, { headers }));
+        event.waitUntil(trimCache(CACHE_IMAGES));
         return response;
       })()
     );

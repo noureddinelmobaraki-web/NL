@@ -10,6 +10,7 @@ export const RetroWorldPage: React.FC = () => {
   const hlsRef = useRef<Hls | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const floaterRef = useRef<HTMLDivElement | null>(null);
+  const handleScrollRef = useRef<(() => void) | null>(null);
 
   const [isAudioMuted, setIsAudioMuted] = useState(false);
 
@@ -20,22 +21,29 @@ export const RetroWorldPage: React.FC = () => {
 
   useEffect(() => {
     if (theme === 'retro') {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
+      document.body.classList.add('retro-active');
     }
     return () => {
-      document.body.style.overflow = 'auto';
+      document.body.classList.remove('retro-active');
+      if (iframeRef.current?.contentWindow && handleScrollRef.current) {
+        try {
+          iframeRef.current.contentWindow.removeEventListener('scroll', handleScrollRef.current);
+        } catch {}
+      }
     };
   }, [theme]);
 
-  // إدارة وتشغيل الموسيقى (Kid Cudi)
+  // Effect 1: إنشاء وتدمير HLS و Audio — مرة واحدة فقط عند دخول/خروج retro
   useEffect(() => {
     if (theme !== 'retro') {
-      if (hlsRef.current) hlsRef.current.destroy();
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
+        audioRef.current = null;
       }
       return;
     }
@@ -45,11 +53,19 @@ export const RetroWorldPage: React.FC = () => {
     audio.loop = true;
     audio.crossOrigin = 'anonymous';
     audio.muted = isAudioMuted;
+
     const source = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Kid_Cudi_By_Design/Kid_Cudi_By_Design.m3u8';
+
+    audio.addEventListener('error', (e) => {
+      console.error('[RetroWorld] Audio source failed:', source, e);
+    });
 
     if (Hls.isSupported()) {
       const hls = new Hls({ startPosition: -1 });
       hlsRef.current = hls;
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        console.error('[RetroWorld] HLS error:', data.type, data.details);
+      });
       hls.loadSource(source);
       hls.attachMedia(audio);
     } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
@@ -57,8 +73,8 @@ export const RetroWorldPage: React.FC = () => {
     }
 
     const playAudio = () => {
-      if (audioRef.current && theme === 'retro' && !isAudioMuted) {
-        audioRef.current.play().catch(() => {});
+      if (audioRef.current && !audioRef.current.muted) {
+        audioRef.current.play().catch(err => console.warn('[RetroWorld] play blocked:', err));
       }
     };
 
@@ -66,15 +82,19 @@ export const RetroWorldPage: React.FC = () => {
     document.addEventListener('touchstart', playAudio, { once: true });
 
     return () => {
-      if (hlsRef.current) hlsRef.current.destroy();
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-      }
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; audioRef.current = null; }
       document.removeEventListener('click', playAudio);
       document.removeEventListener('touchstart', playAudio);
     };
-  }, [theme, isAudioMuted]);
+  }, [theme]);  // ⚠️ فقط theme
+
+  // Effect 2: تطبيق mute بدون إعادة إنشاء
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isAudioMuted;
+    }
+  }, [isAudioMuted]);
 
   const toggleAudio = () => {
     if (audioRef.current) {
@@ -96,6 +116,15 @@ export const RetroWorldPage: React.FC = () => {
     const iframe = iframeRef.current;
     if (iframe && iframe.contentWindow) {
       try {
+        if (iframe.contentWindow.document.readyState !== 'complete') {
+          iframe.addEventListener('load', () => handleIframeLoad());
+          return;
+        }
+      } catch (e) {
+        // Ignored or logged if cross-origin
+      }
+
+      try {
         const cw = iframe.contentWindow;
         const cd = iframe.contentDocument;
 
@@ -113,6 +142,8 @@ export const RetroWorldPage: React.FC = () => {
           }
         };
 
+        handleScrollRef.current = handleScroll;
+
         // استماع للتمرير داخل الـ iframe
         cw.addEventListener('scroll', handleScroll);
         cd?.addEventListener('scroll', handleScroll, true);
@@ -128,7 +159,7 @@ export const RetroWorldPage: React.FC = () => {
         cd?.addEventListener('touchstart', playAudio, { once: true });
         cd?.addEventListener('scroll', playAudio, { once: true });
       } catch (e) {
-        console.warn("Cannot access iframe tracking.");
+        console.error('[RetroWorld] Iframe scroll tracking failed:', e);
       }
     }
   };
@@ -139,6 +170,12 @@ export const RetroWorldPage: React.FC = () => {
     <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, backgroundColor: '#000' }}>
       
       {/* أدوات التحكم العلوية (خروج + صوت) */}
+      <style>{`
+        .retro-control-btn:focus-visible {
+          outline: 3px solid #fff;
+          outline-offset: 3px;
+        }
+      `}</style>
       <div style={{ 
         position: 'absolute', 
         top: 'calc(env(safe-area-inset-top, 0px) + 24px)', 
@@ -149,10 +186,13 @@ export const RetroWorldPage: React.FC = () => {
       }}>
         {/* زر التحكم بالصوت */}
         <button
+          type="button"
           onClick={toggleAudio}
+          className="retro-control-btn"
+          aria-label={isAudioMuted ? "تشغيل الموسيقى" : "كتم الموسيقى"}
           style={{
             background: 'rgba(255, 0, 0, 0.85)', border: '2px solid rgba(255, 0, 0, 1)', color: 'white',
-            width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center',
+            width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center',
             justifyContent: 'center', cursor: 'pointer',
             boxShadow: '0 0 15px rgba(255, 0, 0, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.3)',
             transition: 'transform 0.2s',
@@ -164,10 +204,13 @@ export const RetroWorldPage: React.FC = () => {
 
         {/* زر الخروج */}
         <button
+          type="button"
           onClick={handleLeaveRetro}
+          className="retro-control-btn"
+          aria-label="الخروج من الوضع الريترو"
           style={{
             background: 'rgba(255, 0, 0, 0.85)', border: '2px solid rgba(255, 0, 0, 1)', color: 'white',
-            width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center',
+            width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center',
             justifyContent: 'center', cursor: 'pointer',
             boxShadow: '0 0 15px rgba(255, 0, 0, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.3)',
             transition: 'transform 0.2s',

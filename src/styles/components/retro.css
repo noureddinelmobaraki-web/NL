@@ -71,3 +71,8 @@
     width: 8px !important;
   }
 }
+
+body.retro-active {
+  overflow: hidden;
+  overscroll-behavior: none;
+}

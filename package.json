@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "prebuild": "node scripts/generate-sw-version.js",
     "build": "node scripts/verify-lrc.mjs && node scripts/hash.mjs --write && vite build --emptyOutDir && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs && node scripts/generate-sitemap.mjs",
     "start": "node dist/server.cjs",
     "optimize:images": "node scripts/optimize-images.mjs",
