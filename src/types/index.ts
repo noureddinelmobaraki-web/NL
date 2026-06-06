@@ -107,8 +107,9 @@ declare global {
 
   interface HTMLAudioElement {
     __analyser?: AnalyserNode | {
-      frequencyBinCount: number;
+      readonly frequencyBinCount: number;
       getByteFrequencyData: (out: Uint8Array) => void;
+      // الـ pseudo-analyser لا يحتاج باقي خصائص AnalyserNode، لكن TS سيقبل duck typing
     };
   }
 }

@@ -63,13 +63,20 @@ interface MusicMoodScreenProps {
 
 // ══════════════════════════════════
 export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodScreenProps) => {
-  const focusTrapRef = useFocusTrap(true);
+  const [trapReady, setTrapReady] = useState(false);
+  const focusTrapRef = useFocusTrap(trapReady);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setTrapReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
   const viewport = useViewportSize();
   const { isDesktop } = useDeviceType();
   const { setContext } = useButtonContext();
-  const [orientationKey, setOrientationKey] = useState(0);
-
-  useOrientationListener(useCallback(() => setOrientationKey(prev => prev + 1), []));
+  const [, forceLayoutTick] = useState(0);
+  useOrientationListener(useCallback(() => {
+    // tick لإعادة قراءة viewport وحساب styles فقط
+    forceLayoutTick(prev => prev + 1);
+  }, []));
 
   useEffect(() => {
     setContext('mebit');
@@ -86,11 +93,14 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
   const activeSongRef = useRef<Song | null>(null);
   useEffect(() => { activeSongRef.current = activeSong; }, [activeSong]);
 
-  const audioRef = useRef<HTMLAudioElement>((() => {
+  // FIXED: Lazy single-instance Audio creation — guarantees only ONE element created.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  if (audioRef.current === null) {
     const a = new Audio();
     a.crossOrigin = 'anonymous';
-    return a;
-  })());
+    a.preload = 'auto';
+    audioRef.current = a;
+  }
 
   // ── جلب وتتبع الصوت (Web Audio Setup) عبر الهوك المخصص
   const { glowIntensity, audioCtxRef } = useMoodAudioGraph({
@@ -128,7 +138,8 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     if (audioCtxRef.current?.state === 'suspended') {
       audioCtxRef.current.resume();
     }
-    if (audioRef.current.paused) {
+    if (audioRef.current?.paused) {
+      if (!audioRef.current) return;
       audioManager.register('song', audioRef.current, 0.7);
       audioManager.play('song').catch(err => {
         console.warn('Play blocked:', err);
@@ -146,13 +157,22 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
 
   // ── تثبيت اتجاه الشاشة على الوضع الطولي (portrait) أثناء استخدام MusicMood ثم تركه حراً بعدها
   useEffect(() => {
-    if (screen.orientation && 'lock' in screen.orientation) {
-      (screen.orientation as any).lock('portrait').catch(() => {});
-    }
+    // FIXED: حماية شاملة من أخطاء lock/unlock على Desktop و iOS Safari
+    const isMobileLike = typeof window !== 'undefined' &&
+      (window.matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent));
+    if (!isMobileLike) return;
+
+    const orient = (screen as any).orientation;
+    if (!orient || typeof orient.lock !== 'function') return;
+
+    try {
+      orient.lock('portrait').catch(() => {/* تجاهل بصمت */});
+    } catch { /* تجاهل */ }
+
     return () => {
-      if (screen.orientation && 'unlock' in screen.orientation) {
-        (screen.orientation as any).unlock();
-      }
+      try {
+        if (typeof orient.unlock === 'function') orient.unlock();
+      } catch { /* تجاهل */ }
     };
   }, []);
 
@@ -173,6 +193,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     const tryPlay = async () => {
       try {
         if (ctx && ctx.state === 'suspended') await ctx.resume();
+        if (!audioRef.current) return;
         audioManager.register('song', audioRef.current, 0.7);
         await audioManager.play('song');
         setAudioStatus('playing');
@@ -189,6 +210,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
   // ── تتبع الوقت
   useEffect(() => {
     const el = audioRef.current;
+    if (!el) return;
     let rafId = 0;
     let lastUpdate = 0;
 
@@ -220,18 +242,18 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
   }, [pickRandomSong]);
 
   // ── تنظيف كامل عند الخروج من MusicMood
+  // FIXED: useMoodAudioGraph يتولى إغلاق AudioContext بنفسه — لا نكرر الإغلاق هنا
   useEffect(() => {
     return () => {
-      // أوقف الصوت
       const audio = audioRef.current;
       if (audio) {
-        audioManager.stop('song');
-        audio.src = '';
+        try { audioManager.stop('song'); } catch {}
+        try { audio.pause(); } catch {}
+        try { audio.removeAttribute('src'); audio.load(); } catch {}
       }
-      // أغلق AudioContext
-      audioCtxRef.current?.close().catch(() => {});
+      // ❌ تم حذف audioCtxRef.current?.close() — useMoodAudioGraph يتكفل بهذا
     };
-  }, [audioCtxRef]);
+  }, []);
 
   // ── وهج بسيط جداً — دائرة رمادية خفيفة في المركز تتنفس مع الموسيقى
   const glowRadius = 30 + glowIntensity * 40;      // أصغر وأكثر تركيزاً
@@ -242,7 +264,6 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
   // ══════════════════════════════════
   return createPortal(
     <div
-      key={orientationKey}
       ref={focusTrapRef}
       id="music-mood-immersive-overlay"
       style={{
@@ -389,13 +410,13 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
           >
             {isMobileLyr ? (
               /* MOBILE-LYRICS: 3-line sliding context, arab support, balance text-wrap */
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={currentLine?.time ?? 'empty'}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
-                  transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
+                  transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',

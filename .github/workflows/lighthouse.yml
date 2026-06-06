@@ -1,4 +1,5 @@
 name: Lighthouse CI
+
 on:
   pull_request:
     branches: [main]
@@ -9,17 +10,29 @@ jobs:
   lighthouse:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
-      - run: npm ci
-      - run: npm run build
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /NL/
+
       - name: Run Lighthouse
         uses: treosh/lighthouse-ci-action@v11
         with:
           urls: |
             http://localhost:3000/NL/
+          startServerCommand: npm run preview -- --port 3000
+          startServerReadyPattern: 'Local:'
           uploadArtifacts: true
           temporaryPublicStorage: true
           configPath: ./.lighthouserc.json

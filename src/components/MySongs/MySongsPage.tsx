@@ -98,30 +98,34 @@ export const MySongs = ({
   });
 
   const handleTriggerMood = useCallback(() => {
-    setIsMoodTransitioning((prevTransitioning) => {
-      if (prevTransitioning) return true;
-      setIsMoodActive((prevActive) => {
-        if (prevActive) return true;
-
-        if (!moodAudioCtxRef.current || moodAudioCtxRef.current.state === 'closed') {
-          moodAudioCtxRef.current = new AudioContext();
-        }
-        if (moodAudioCtxRef.current.state === 'suspended') {
-          moodAudioCtxRef.current.resume().catch(() => {});
-        }
-        try {
-          if (playback?.isPlaying) {
-            playback.audioTagRef.current?.pause();
-            onSongStop?.();
-          }
-        } catch {}
-        audioManager.pause?.('bg');
-
-        return false; // don't set active here
-      });
+    // FIXED: side effects خارج setState — والشرط check خارج الـ updaters
+    setIsMoodTransitioning(prev => {
+      if (prev) return prev;
+      if (isMoodActive) return prev; // إذا كان Mood شغّال أصلاً، لا تبدأ transition جديدة
       return true;
     });
-  }, [playback?.isPlaying, playback?.audioTagRef, onSongStop]);
+
+    // إنشاء/استئناف AudioContext مرة واحدة فقط
+    if (!moodAudioCtxRef.current || moodAudioCtxRef.current.state === 'closed') {
+      try {
+        moodAudioCtxRef.current = new AudioContext();
+      } catch (err) {
+        console.warn('[MySongsPage] AudioContext creation failed:', err);
+      }
+    }
+    if (moodAudioCtxRef.current?.state === 'suspended') {
+      moodAudioCtxRef.current.resume().catch(() => {});
+    }
+
+    // إيقاف ما يلعب حالياً قبل دخول Mood
+    try {
+      if (playback?.isPlaying) {
+        playback.audioTagRef.current?.pause();
+        onSongStop?.();
+      }
+    } catch {}
+    try { audioManager.pause?.('bg'); } catch {}
+  }, [isMoodActive, playback?.isPlaying, playback?.audioTagRef, onSongStop]);
 
   useEffect(() => {
     onRegisterMoodTrigger?.(handleTriggerMood);

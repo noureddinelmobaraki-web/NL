@@ -106,11 +106,8 @@ export function useHlsAudio(
         // MP3 fallback
         audio.src = url;
         audio.load();
-        if (audio.readyState >= 2) {
-          handleCanPlay();
-        } else {
-          audio.addEventListener('canplay', handleCanPlay, { once: true });
-        }
+        // FIXED: انتظر canplay صراحة دائماً — لا نعتمد على readyState السابق
+        audio.addEventListener('canplay', handleCanPlay, { once: true });
         cleanupFn = () => audio.removeEventListener('canplay', handleCanPlay);
         return;
       }
@@ -119,11 +116,8 @@ export function useHlsAudio(
       if (audio.canPlayType('application/vnd.apple.mpegurl')) {
         audio.src = url;
         audio.load();
-        if (audio.readyState >= 2) {
-          handleCanPlay();
-        } else {
-          audio.addEventListener('canplay', handleCanPlay, { once: true });
-        }
+        // FIXED: نفس المنطق — انتظر canplay
+        audio.addEventListener('canplay', handleCanPlay, { once: true });
         cleanupFn = () => audio.removeEventListener('canplay', handleCanPlay);
         return;
       }

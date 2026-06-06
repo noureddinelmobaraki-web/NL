@@ -41,23 +41,26 @@ export function useMoodLyrics({ activeSong, currentTime }: UseMoodLyricsProps) {
   }, [activeSong]);
 
   const lastIndexRef = useRef(-1);
-
-  useEffect(() => {
-    lastIndexRef.current = -1;
-  }, [activeSong]);
+  const prevSongIdRef = useRef<number | null>(null);
 
   // ── تحديد الكلمات الحالية بناءً على الوقت
   useEffect(() => {
+    // FIXED: امسح الـ cache فوراً إذا تغيّرت الأغنية، قبل أي حساب
+    if (activeSong?.id !== prevSongIdRef.current) {
+      lastIndexRef.current = -1;
+      prevSongIdRef.current = activeSong?.id ?? null;
+    }
+
     if (!lyrics.length) return;
 
-    // 1) تحقق سريع من الـ cache
+    // 1) cache check
     const cached = lastIndexRef.current;
     if (
       cached >= 0 && cached < lyrics.length &&
       lyrics[cached].time <= currentTime &&
       (cached + 1 >= lyrics.length || lyrics[cached + 1].time > currentTime)
     ) {
-      return; // ما زلنا على نفس السطر، لا تحديث
+      return;
     }
 
     // 2) binary search
@@ -74,7 +77,7 @@ export function useMoodLyrics({ activeSong, currentTime }: UseMoodLyricsProps) {
       setCurrentLine(idx >= 0 ? lyrics[idx] : null);
       setNextLine(idx + 1 < lyrics.length ? lyrics[idx + 1] : null);
     }
-  }, [currentTime, lyrics]);
+  }, [currentTime, lyrics, activeSong]);
 
   return {
     lyrics,

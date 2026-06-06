@@ -164,7 +164,7 @@ body.lens-immersive {
   [data-theme="bit"] .song-index,
   [data-theme="bit"] .song-duration,
   [data-theme="bit"] .text-xs,
-  [data-theme="bit"] .text-[10px] {
+  [data-theme="bit"] .text-\[10px\] {
     font-size: 11px !important;
     letter-spacing: -0.01em !important;
   }

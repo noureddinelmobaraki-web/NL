@@ -127,15 +127,9 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
     return () => {
       window.removeEventListener('resize', handleResize);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      
-      // Clean up connections on unmount as requested
-      if (graph && graph.isConnected) {
-        try {
-          source.disconnect(analyser);
-          analyser.disconnect(ctx.destination);
-          graph.isConnected = false;
-        } catch (e) {}
-      }
+      // FIXED: لا نفصل المصدر/التحليلية — إعادة الفصل ثم الربط تُلقي InvalidStateError
+      // الـ WeakMap cache يحتفظ بـ graph حياً ما دام audio element حياً
+      // عند unmount الفعلي لـ audio element، الـ GC يزيل الـ entry من WeakMap تلقائياً
     };
   }, [isPlaying, audioRef, isMobile]);
 
