@@ -10,9 +10,9 @@ jobs:
   lighthouse:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -26,13 +26,19 @@ jobs:
         env:
           VITE_BASE_PATH: /NL/
 
+      - name: Start preview server
+        run: npm run preview -- --port 3000 < /dev/null &
+        env:
+          VITE_BASE_PATH: /NL/
+
+      - name: Wait for server
+        run: npx wait-on http-get://localhost:3000/NL/ --timeout 30000
+
       - name: Run Lighthouse
         uses: treosh/lighthouse-ci-action@v11
         with:
           urls: |
             http://localhost:3000/NL/
-          startServerCommand: npm run preview -- --port 3000
-          startServerReadyPattern: 'Local:'
           uploadArtifacts: true
           temporaryPublicStorage: true
           configPath: ./.lighthouserc.json
