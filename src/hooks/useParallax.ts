@@ -24,12 +24,10 @@ export function useParallax(intensity = 20) {
       }
     };
 
-    let scrollTimeout: any = null;
+    let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
     const handleScroll = () => {
       document.body.classList.add('scrolling');
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
+      if (scrollTimeout) clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         document.body.classList.remove('scrolling');
       }, 200);

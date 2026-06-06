@@ -3,6 +3,8 @@ import { useAppContext } from '../../context/AppContext';
 import { X, Volume2, VolumeX } from 'lucide-react';
 import Hls from 'hls.js';
 import { PersonalPhotoFloater } from './PersonalPhotoFloater';
+import { audioManager } from '../../audio/audioManager';
+import { RetroViewportProvider } from '../RetroViewportProvider';
 
 export const RetroWorldPage: React.FC = () => {
   const { theme, setTheme, setAudioIntent } = useAppContext();
@@ -25,40 +27,52 @@ export const RetroWorldPage: React.FC = () => {
     }
     return () => {
       document.body.classList.remove('retro-active');
-      if (iframeRef.current?.contentWindow && handleScrollRef.current) {
+      const iframeEl = iframeRef.current;
+      const handler = handleScrollRef.current;
+      if (iframeEl && handler) {
         try {
-          iframeRef.current.contentWindow.removeEventListener('scroll', handleScrollRef.current);
+          iframeEl.contentWindow?.removeEventListener('scroll', handler);
+          iframeEl.contentDocument?.removeEventListener('scroll', handler);
         } catch {}
       }
+      handleScrollRef.current = null;
     };
   }, [theme]);
 
   // Effect 1: إنشاء وتدمير HLS و Audio — مرة واحدة فقط عند دخول/خروج retro
   useEffect(() => {
+    const purge = (a: HTMLAudioElement | null) => {
+      if (!a) return;
+      try { a.pause(); } catch {}
+      try { a.removeAttribute('src'); a.load(); } catch {}
+    };
+
     if (theme !== 'retro') {
       if (hlsRef.current) {
-        hlsRef.current.destroy();
+        try { hlsRef.current.destroy(); } catch {}
         hlsRef.current = null;
       }
       if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
+        audioManager.stop('bg');
+        purge(audioRef.current);
         audioRef.current = null;
       }
       return;
     }
+
+    let cancelled = false;
 
     const audio = new Audio();
     audioRef.current = audio;
     audio.loop = true;
     audio.crossOrigin = 'anonymous';
     audio.muted = isAudioMuted;
+    audioManager.register('bg', audio, 0.7);
 
     const source = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Kid_Cudi_By_Design/Kid_Cudi_By_Design.m3u8';
 
-    audio.addEventListener('error', (e) => {
-      console.error('[RetroWorld] Audio source failed:', source, e);
-    });
+    const onAudioError = (e: any) => console.error('[RetroWorld] Audio source failed:', source, e);
+    audio.addEventListener('error', onAudioError);
 
     if (Hls.isSupported()) {
       const hls = new Hls({ startPosition: -1 });
@@ -73,8 +87,11 @@ export const RetroWorldPage: React.FC = () => {
     }
 
     const playAudio = () => {
+      if (cancelled) return;
       if (audioRef.current && !audioRef.current.muted) {
-        audioRef.current.play().catch(err => console.warn('[RetroWorld] play blocked:', err));
+        audioManager.play('bg').catch(err =>
+          console.warn('[RetroWorld] play blocked by audioManager:', err)
+        );
       }
     };
 
@@ -82,10 +99,14 @@ export const RetroWorldPage: React.FC = () => {
     document.addEventListener('touchstart', playAudio, { once: true });
 
     return () => {
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; audioRef.current = null; }
+      cancelled = true;
+      audio.removeEventListener('error', onAudioError);
       document.removeEventListener('click', playAudio);
       document.removeEventListener('touchstart', playAudio);
+      if (hlsRef.current) { try { hlsRef.current.destroy(); } catch {} hlsRef.current = null; }
+      audioManager.stop('bg');
+      purge(audioRef.current);
+      audioRef.current = null;
     };
   }, [theme]);  // ⚠️ فقط theme
 
@@ -99,11 +120,11 @@ export const RetroWorldPage: React.FC = () => {
   const toggleAudio = () => {
     if (audioRef.current) {
       if (audioRef.current.paused) {
-        audioRef.current.play().catch(() => {});
+        audioManager.play('bg').catch(() => {});
         audioRef.current.muted = false;
         setIsAudioMuted(false);
       } else {
-        audioRef.current.pause();
+        audioManager.pause('bg');
         setIsAudioMuted(true);
       }
     } else {
@@ -133,8 +154,14 @@ export const RetroWorldPage: React.FC = () => {
           if (!ticked) {
             window.requestAnimationFrame(() => {
               const sy = cw.scrollY || cd?.documentElement?.scrollTop || cd?.body?.scrollTop || 0;
+              // Compensate for mobile viewport scaling: iframe internal coords
+              // are in 880px space, visually scaled to match outer viewport.
+              const iframeEl = iframeRef.current;
+              const iframeVisualWidth = iframeEl ? iframeEl.clientWidth : 880;
+              const scaleFactor = Math.min(1, iframeVisualWidth / 880);
+              const adjustedSy = sy * scaleFactor;
               if (floaterRef.current) {
-                floaterRef.current.style.transform = `translate3d(0, -${sy}px, 0)`;
+                floaterRef.current.style.transform = `translate3d(0, -${adjustedSy}px, 0)`;
               }
               ticked = false;
             });
@@ -145,8 +172,8 @@ export const RetroWorldPage: React.FC = () => {
         handleScrollRef.current = handleScroll;
 
         // استماع للتمرير داخل الـ iframe
-        cw.addEventListener('scroll', handleScroll);
-        cd?.addEventListener('scroll', handleScroll, true);
+        cw.addEventListener('scroll', handleScroll, { passive: true });
+        cd?.addEventListener('scroll', handleScroll, { passive: true });
         handleScroll(); // تحديث أولي
 
         // تشغيل الموسيقى عند التفاعل مع الـ iframe
@@ -167,9 +194,10 @@ export const RetroWorldPage: React.FC = () => {
   if (theme !== 'retro') return null;
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, backgroundColor: '#000' }}>
-      
-      {/* أدوات التحكم العلوية (خروج + صوت) */}
+    <RetroViewportProvider desktopWidth={1024}>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, backgroundColor: '#000' }}>
+        
+        {/* أدوات التحكم العلوية (خروج + صوت) */}
       <style>{`
         .retro-control-btn:focus-visible {
           outline: 3px solid #fff;
@@ -232,5 +260,6 @@ export const RetroWorldPage: React.FC = () => {
         title="Retro World"
       />
     </div>
+    </RetroViewportProvider>
   );
 };

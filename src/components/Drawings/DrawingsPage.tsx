@@ -40,8 +40,13 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
         if (!r.ok) throw new Error('Fetch failed');
         return r.json();
       })
-      .then(data => {
-        const resolved = data.map((v: any) => ({
+      .then((data: unknown) => {
+        if (!Array.isArray(data)) throw new Error('videos.json expected an array');
+
+        interface VideoApiRow extends VideoData {}
+
+        const rows = data as VideoApiRow[];
+        const resolved = rows.map((v) => ({
           ...v,
           poster: v.poster.startsWith('/')
             ? (base.endsWith('/') ? base : base + '/') + v.poster.slice(1)

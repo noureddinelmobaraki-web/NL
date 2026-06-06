@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type Hls from 'hls.js';
+import type { ErrorData, Events } from 'hls.js';
 import { getOrCreateHls, getHlsClass } from '../audio/hlsPool';
 
 // preload يبقى كما هو (لكن مع force-cache)
@@ -10,7 +11,12 @@ async function preloadFirstSegments(m3u8Url: string, targetSeconds = 4): Promise
   preloadedUrls.add(m3u8Url);
   try {
     const res = await fetch(m3u8Url, { cache: 'force-cache' });
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (import.meta.env.DEV) {
+        console.warn(`[HLS preload] manifest HTTP ${res.status} for ${m3u8Url}`);
+      }
+      return;
+    }
     const text = await res.text();
     const baseUrl = m3u8Url.substring(0, m3u8Url.lastIndexOf('/') + 1);
     const lines = text.split('\n');
@@ -25,8 +31,18 @@ async function preloadFirstSegments(m3u8Url: string, targetSeconds = 4): Promise
         if (accumulated >= targetSeconds) break;
       }
     }
-    await Promise.all(toFetch.map(u => fetch(u, { cache: 'force-cache' }).catch(() => {})));
-  } catch {}
+    await Promise.all(
+      toFetch.map((u) =>
+        fetch(u, { cache: 'force-cache' }).catch((err) => {
+          if (import.meta.env.DEV) console.warn('[HLS preload] segment failed', u, err);
+        })
+      )
+    );
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[HLS preload] unexpected error', m3u8Url, err);
+    }
+  }
 }
 
 export async function preloadAllSongs(urls: string[], targetSeconds = 4, batchSize = 2, batchDelay = 600) {
@@ -61,16 +77,24 @@ export function useHlsAudio(
     const audio = audioRef.current;
     if (!audio || !url) return;
 
-    // فصل HLS السابق دون تدميره (يبقى في pool)
+    try {
+      if (!audio.paused) audio.pause();
+    } catch {}
     if (currentHlsRef.current) {
-      currentHlsRef.current.detachMedia();
+      try { currentHlsRef.current.detachMedia(); } catch {}
       currentHlsRef.current = null;
+    }
+    if (audio.src && audio.src !== url) {
+      try {
+        audio.removeAttribute('src');
+        audio.load();
+      } catch {}
     }
 
     const isHls = url.endsWith('.m3u8') || url.includes('/index.m3u8');
 
-    // unified onReady handler via canplay event
     const handleCanPlay = () => {
+      if (!active) return;
       onReadyRef.current?.();
     };
 
@@ -126,7 +150,7 @@ export function useHlsAudio(
           hls.on(HlsClass.Events.MANIFEST_PARSED, onManifestParsed);
         }
 
-        const errHandler = (_: any, data: any) => {
+        const errHandler = (_event: Events.ERROR, data: ErrorData) => {
           if (!data.fatal) return;
           if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) {
             console.warn("[HLS] Network error, retrying...", data);
@@ -158,7 +182,7 @@ export function useHlsAudio(
         cleanupFn();
       }
     };
-    // FIXED: Issue #6 — audioRef.current intentionally read at effect time — RefObject is stable
+    // audioRef.current intentionally read at effect time — RefObject is stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
 }

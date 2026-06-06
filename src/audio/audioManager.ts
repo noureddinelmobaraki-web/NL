@@ -5,6 +5,7 @@ interface AudioEntry {
   element: HTMLAudioElement;
   volume: number;
   pendingPlay: boolean;
+  generation: number;
   _cleanup?: () => void;
 }
 
@@ -17,6 +18,7 @@ class AudioManager {
   private onStateChange: ((isPlaying: boolean) => void) | null = null;
   private manifestParsedCallbacks = new Set<() => void>();
   private isManifestParsed = false;
+  private playChain: Promise<void> = Promise.resolve();
 
   triggerManifestParsed() {
     this.isManifestParsed = true;
@@ -38,22 +40,33 @@ class AudioManager {
   }
 
   register(source: AudioSource, element: HTMLAudioElement, volume = 0.7) {
-    // Rule 7 Cleanup: Ensure initial state is silent and clean up previous listeners if any
     const existing = this.registry.get(source);
-    if (existing && existing.element !== element) {
+    if (existing) {
       this.clearFade(existing.element);
       existing._cleanup?.();
+      existing.pendingPlay = false;
+      if (existing.element !== element) {
+        try {
+          existing.element.pause();
+          existing.element.volume = 0;
+        } catch {}
+      }
     }
 
-    const entry: AudioEntry = { source, element, volume, pendingPlay: false };
+    const generation = (existing?.generation ?? 0) + 1;
+    const entry: AudioEntry = { source, element, volume, pendingPlay: false, generation };
     this.registry.set(source, entry);
 
     const onCanPlay = () => {
-      // Re-verify it's still the active element for this source
       const current = this.registry.get(source);
-      if (current && current.element === element && current.pendingPlay) {
+      if (
+        current &&
+        current.element === element &&
+        current.generation === generation &&
+        current.pendingPlay
+      ) {
         current.pendingPlay = false;
-        this.executePlay(current);
+        this.executePlay(current, generation);
       }
     };
 
@@ -69,40 +82,52 @@ class AudioManager {
   }
 
   async play(source: AudioSource): Promise<void> {
-    const entry = this.registry.get(source);
-    if (!entry) return;
+    const run = async () => {
+      const entry = this.registry.get(source);
+      if (!entry) return;
 
-    // Rule 2 Hierarchy Check
-    if (this.active && this.active !== source) {
-      const currentPriority = this.getPriority(this.active);
-      const incomingPriority = this.getPriority(source);
-      
-      // If incoming is lower priority, it CANNOT interrupt.
-      if (incomingPriority < currentPriority) {
-        console.warn(`[AudioManager] Incoming ${source} (p:${incomingPriority}) cannot interrupt ${this.active} (p:${currentPriority})`);
+      entry.generation += 1;
+      const myGeneration = entry.generation;
+
+      // Rule 2 Hierarchy Check
+      if (this.active && this.active !== source) {
+        const currentPriority = this.getPriority(this.active);
+        const incomingPriority = this.getPriority(source);
+        
+        // If incoming is lower priority, it CANNOT interrupt.
+        if (incomingPriority < currentPriority) {
+          console.warn(`[AudioManager] Incoming ${source} (p:${incomingPriority}) cannot interrupt ${this.active} (p:${currentPriority})`);
+          return;
+        }
+
+        // Rule 1: Single Active Source - silencing lower priority active source
+        const prev = this.registry.get(this.active);
+        if (prev) {
+          this.clearFade(prev.element);
+          try {
+            prev.element.pause();
+            prev.element.volume = 0;
+          } catch {}
+          prev.pendingPlay = false;
+        }
+      }
+
+      // Rule 3: BG Suppression logic
+      if (source !== 'bg') {
+        this.suppressBg(`active_${source}`);
+      }
+
+      // Rule 4: Slow connection check (HAVE_CURRENT_DATA = 2)
+      if (entry.element.readyState < 2) {
+        entry.pendingPlay = true;
         return;
       }
 
-      // Rule 1: Single Active Source - silencing lower priority active source
-      const prev = this.registry.get(this.active);
-      if (prev) {
-        // Fast fade out for interruption (150ms)
-        this.fadeOut(prev.element, 150); 
-      }
-    }
+      await this.executePlay(entry, myGeneration);
+    };
 
-    // Rule 3: BG Suppression logic
-    if (source !== 'bg') {
-      this.suppressBg(`active_${source}`);
-    }
-
-    // Rule 4: Slow connection check (HAVE_CURRENT_DATA = 2)
-    if (entry.element.readyState < 2) {
-      entry.pendingPlay = true;
-      return;
-    }
-
-    await this.executePlay(entry);
+    this.playChain = this.playChain.then(run, run);
+    return this.playChain;
   }
 
   private getPriority(source: AudioSource): number {
@@ -116,7 +141,13 @@ class AudioManager {
     return priorities[source] || 0;
   }
 
-  private async executePlay(entry: AudioEntry) {
+  private async executePlay(entry: AudioEntry, expectedGeneration?: number) {
+    const isStale = () =>
+      expectedGeneration !== undefined &&
+      this.registry.get(entry.source)?.generation !== expectedGeneration;
+
+    if (isStale()) return;
+
     // Rule 5: Clear any existing fades before starting
     this.clearFade(entry.element);
 
@@ -130,6 +161,11 @@ class AudioManager {
         entry.pendingPlay = false;
         return; 
       }
+    }
+
+    if (isStale()) {
+      try { entry.element.pause(); entry.element.volume = 0; } catch {}
+      return;
     }
 
     // Rule 1/6: Set active only after confirmed playing

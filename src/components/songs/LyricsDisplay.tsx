@@ -1,15 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LyricLine } from '../../types';
+import { LyricLine, Song } from '../../types';
 import { parseLRC, LyricsWindowContent } from '../LyricsEngine';
 import { loadSession, saveSession } from '../../utils/sessionState';
 
 export interface LyricsDisplayProps {
-  song: any;
+  song: Song | null;
   currentTime: number;
   theme?: string;
   karaokeMode?: boolean;
   onSeek?: (time: number) => void;
 }
+
+type LyricsState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; lines: LyricLine[] }
+  | { status: 'error' };
 
 export const LyricsDisplay = ({
   song,
@@ -18,20 +24,22 @@ export const LyricsDisplay = ({
   karaokeMode = false,
   onSeek,
 }: LyricsDisplayProps) => {
-  const [lyrics, setLyrics] = useState<LyricLine[]>([]);
+  const [lyricsState, setLyricsState] = useState<LyricsState>({ status: 'idle' });
+  const lyrics = lyricsState.status === 'ready' ? lyricsState.lines : [];
 
   useEffect(() => {
     if (!song || !song.lrc) {
-      setLyrics([]);
+      setLyricsState({ status: 'idle' });
       return;
     }
 
     const session = loadSession();
     if (session.lrcCache[song.id]) {
-      setLyrics(session.lrcCache[song.id]);
+      setLyricsState({ status: 'ready', lines: session.lrcCache[song.id] });
       return;
     }
 
+    setLyricsState({ status: 'loading' });
     const controller = new AbortController();
     const filename = song.lrc.split('/').pop() || '';
     const encodedFilename = encodeURIComponent(filename);
@@ -43,26 +51,37 @@ export const LyricsDisplay = ({
       })
       .then((text) => {
         const parsed = parseLRC(text);
-        setLyrics(parsed);
+        setLyricsState({ status: 'ready', lines: parsed });
         saveSession({ lrcCache: { ...loadSession().lrcCache, [song.id]: parsed } });
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.error('LRC fetch error inside LyricsDisplay:', err);
-        }
+        if (err.name === 'AbortError') return;
+        console.error('LRC fetch error inside LyricsDisplay:', err);
+        setLyricsState({ status: 'error' });
       });
 
     return () => controller.abort();
   }, [song]);
 
   const activeLine = useMemo(() => {
-    let line = null;
-    for (const l of lyrics) {
-      if (l.time <= currentTime) line = l;
-      else break;
+    if (!lyrics.length) return null;
+    // Binary search — lyrics are time-sorted by parseLRC
+    let lo = 0;
+    let hi = lyrics.length - 1;
+    let result: LyricLine | null = null;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (lyrics[mid].time <= currentTime) {
+        result = lyrics[mid];
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
     }
-    return line;
+    return result;
   }, [lyrics, currentTime]);
+
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   if (!song || !song.lrc) return null;
 
@@ -98,7 +117,6 @@ export const LyricsDisplay = ({
                 const progress = Math.max(0, Math.min(100, ((currentTime - word.time) / (wDuration || 1)) * 100));
                 
                 const isArabic = /[\u0600-\u06FF]/.test(word.text);
-                const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
                 // MOBILE-LYRICS: smooth 200ms coloring + gradient sliding wiper overlay
                 const style: React.CSSProperties = isMobile ? {
@@ -147,7 +165,9 @@ export const LyricsDisplay = ({
               </span>
             )
           ) : (
-            <span style={{ color: 'var(--lyric-inactive-color)' }}>♪</span>
+            <span style={{ color: 'var(--lyric-inactive-color)' }}>
+              {lyricsState.status === 'loading' ? '...' : '♪'}
+            </span>
           )}
         </p>
       </div>

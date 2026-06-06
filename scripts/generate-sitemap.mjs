@@ -101,27 +101,45 @@ function generateSitemap() {
 
   xml += `\n  <!-- === END =============================================== -->\n</urlset>\n`;
 
-  // اكتب إلى public/sitemap.xml
-  fs.writeFileSync(songsPath.replace(/data\/songs\.json$/, 'sitemap.xml').replace(/\\/g, '/'), xml);
   const publicSitemap = path.resolve(process.cwd(), 'public', 'sitemap.xml');
   fs.writeFileSync(publicSitemap, xml);
-  console.log(`✅ Updated public/sitemap.xml (${songs.length} songs)`);
+  console.log(`✅ Generated public/sitemap.xml`);
 
-  // اكتب أيضاً إلى dist/sitemap.xml (يُستدعى بعد vite build)
   const distDir = path.resolve(process.cwd(), 'dist');
   if (fs.existsSync(distDir)) {
-    const distPath = path.join(distDir, 'sitemap.xml');
-    fs.writeFileSync(distPath, xml);
+    const distSitemap = path.join(distDir, 'sitemap.xml');
+    fs.writeFileSync(distSitemap, xml);
     console.log(`✅ Generated dist/sitemap.xml`);
   }
+}
 
-  // أيضاً ضع نسخة في الجذر (بعض الـ crawlers يحاولون الجذر أولاً)
+function generateSongsJsonLd() {
+  const ldData = {
+    "@context": "https://schema.org",
+    "@graph": songs.map(song => ({
+      "@type": "MusicRecording",
+      "name": song.title,
+      "byArtist": { "@type": "MusicGroup", "name": "NL" },
+      "duration": "PT3M00S",
+      "inAlbum": { "@type": "MusicAlbum", "name": "NL Singles" },
+      "url": `${DOMAIN}/#song-${song.id}`,
+      "audio": song.url
+    }))
+  };
+
+  const jsonString = JSON.stringify(ldData, null, 2);
+
+  const publicJsonLd = path.resolve(process.cwd(), 'public', 'songs-jsonld.json');
+  fs.writeFileSync(publicJsonLd, jsonString);
+  console.log(`✅ Updated public/songs-jsonld.json (${songs.length} songs)`);
+
+  const distDir = path.resolve(process.cwd(), 'dist');
   if (fs.existsSync(distDir)) {
-    // اكتب أيضاً نسخة في public/ كـ backup
-    const rootStyleSitemap = xml.replace(/<loc>https:\/\/noureddinelmobaraki-web\.github\.io\/NL\/?(\?[^<]*)?<\/loc>/g, 
-      (match) => match);  // (نفس المحتوى، فقط للتأكيد أنه موجود)
-    console.log(`✅ Sitemap also available at dist/sitemap.xml`);
+    const distJsonLd = path.join(distDir, 'songs-jsonld.json');
+    fs.writeFileSync(distJsonLd, jsonString);
+    console.log(`✅ Generated dist/songs-jsonld.json`);
   }
 }
 
 generateSitemap();
+generateSongsJsonLd();

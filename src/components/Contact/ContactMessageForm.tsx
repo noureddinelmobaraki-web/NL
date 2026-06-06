@@ -54,6 +54,7 @@ export const ContactMessageForm = ({
     <>
       <div style={currentStyles.toggleRow}>
         <button
+          type="button"
           style={mode === 'anonymous' ? currentStyles.toggleActive : currentStyles.toggleInactive}
           onClick={() => setMode('anonymous')}
           disabled={isBlocked}
@@ -63,6 +64,7 @@ export const ContactMessageForm = ({
           مجهول
         </button>
         <button
+          type="button"
           style={mode === 'named' ? currentStyles.toggleActive : currentStyles.toggleInactive}
           onClick={() => setMode('named')}
           disabled={isBlocked}

@@ -61,7 +61,7 @@ export const MeBitThumbnails = ({
           const isActive = selectedIndex === idx;
           return (
             <button
-              key={idx}
+              key={src}
               ref={isActive ? activeThumbRef : null}
               onClick={() => onSelectIndex(idx)}
               onTouchEnd={(e) => {
@@ -104,7 +104,7 @@ export const MeBitThumbnails = ({
           const isActive = selectedIndex === idx;
           return (
             <button
-              key={idx}
+              key={src}
               ref={isActive ? activeThumbRef : null}
               onClick={() => onSelectIndex(idx)}
               onTouchEnd={(e) => {
@@ -147,7 +147,7 @@ export const MeBitThumbnails = ({
           const isActive = selectedIndex === idx;
           return (
             <button
-              key={idx}
+              key={src}
               ref={isActive ? activeThumbRef : null}
               onClick={() => onSelectIndex(idx)}
               onTouchEnd={(e) => {
@@ -186,7 +186,7 @@ export const MeBitThumbnails = ({
       <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-3 pr-2 custom-scrollbar pb-4 content-start">
         {images.map((src, idx) => (
           <button
-            key={idx}
+            key={src}
             onClick={() => onSelectIndex(idx)}
             className={`relative aspect-[3/4] rounded-xl border-2 overflow-hidden transition-all duration-300 transform
               ${selectedIndex === idx

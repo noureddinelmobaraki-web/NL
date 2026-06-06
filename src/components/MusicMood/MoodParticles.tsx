@@ -64,6 +64,7 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
     let SEPARATION = 13; 
     let AMOUNTX = 155;   
     let AMOUNTY = 155;    
+    let prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let particles: Array<{
       x: number; z: number; y: number;
       dist: number; isResetAfterIntro: boolean;
@@ -73,7 +74,23 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       originalX: number; originalZ: number;
     }> = [];
     let count = 0;
+    // Cache overlay reference once - it's stable from mount
+    const cachedOverlayElement = document.getElementById('music-mood-immersive-overlay');
+    let cachedFreqDataArray: Uint8Array | null = null;
     let timeline = 0;
+
+    // === Adaptive Quality Loop ===
+    let fpsSamples: number[] = [];
+    let lastFpsCheck = performance.now();
+    let qualityTier = 1; // 0=low, 1=med, 2=high
+
+    const applyQuality = () => {
+      if (qualityTier === 0)      { SEPARATION = 16; AMOUNTX = 50; AMOUNTY = 50; }
+      else if (qualityTier === 1) { SEPARATION = 14; AMOUNTX = 70; AMOUNTY = 70; }
+      else                        { SEPARATION = 12; AMOUNTX = 90; AMOUNTY = 90; }
+      particles.length = 0;
+      initParticles();
+    };
 
     let rotationX = 0.52;
     let rotationY = 0;
@@ -101,10 +118,35 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       windowHalfX = window.innerWidth / 2;
       windowHalfY = window.innerHeight / 2;
 
-      if (window.innerWidth < 768) {
-        SEPARATION = 11; AMOUNTX = 100; AMOUNTY = 100;
+      if (prefersReducedMotion) {
+        SEPARATION = 22; AMOUNTX = 40; AMOUNTY = 40;
       } else {
-        SEPARATION = 13; AMOUNTX = 155; AMOUNTY = 155;
+        const cores = navigator.hardwareConcurrency || 4;
+        const dprVal = Math.min(window.devicePixelRatio || 1, 2);
+        const memGb = (navigator as any).deviceMemory || 4;
+        
+        if (window.innerWidth < 768) {
+          // Mobile tiering
+          if (cores <= 4 || memGb <= 2) {
+            SEPARATION = 14; AMOUNTX = 60; AMOUNTY = 60;   // ~3,600 particles
+          } else {
+            SEPARATION = 12; AMOUNTX = 90; AMOUNTY = 90;   // ~8,100 particles
+          }
+        } else {
+          // Desktop/tablet tiering
+          if (cores >= 8 && memGb >= 8) {
+            SEPARATION = 13; AMOUNTX = 155; AMOUNTY = 155; // 24,025 (current max)
+          } else if (cores >= 4) {
+            SEPARATION = 14; AMOUNTX = 120; AMOUNTY = 120; // 14,400
+          } else {
+            SEPARATION = 16; AMOUNTX = 80; AMOUNTY = 80;   // 6,400
+          }
+        }
+        // Further reduce on high DPR screens (more shading work)
+        if (dprVal >= 2 && AMOUNTX > 100) {
+          AMOUNTX = Math.floor(AMOUNTX * 0.85);
+          AMOUNTY = Math.floor(AMOUNTY * 0.85);
+        }
       }
       initParticles();
     };
@@ -162,8 +204,28 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       audio.addEventListener('playing', handlePlaybackStarted);
     }
 
+    const isVisibleRef = { current: true };
+    const io = new IntersectionObserver(
+      (entries) => {
+        isVisibleRef.current = entries[0].isIntersecting;
+      },
+      { threshold: 0.01 }
+    );
+    io.observe(canvas);
+
     const draw = () => {
-      if (document.hidden) {
+      const now = performance.now();
+      fpsSamples.push(now);
+      if (fpsSamples.length > 60) fpsSamples.shift();
+      if (now - lastFpsCheck > 2000 && fpsSamples.length >= 30) {
+        const avgFrameTime = (fpsSamples[fpsSamples.length-1] - fpsSamples[0]) / (fpsSamples.length-1);
+        const fps = 1000 / avgFrameTime;
+        if (fps < 30 && qualityTier > 0) { qualityTier--; applyQuality(); }
+        else if (fps > 55 && qualityTier < 2) { qualityTier++; applyQuality(); }
+        lastFpsCheck = now;
+      }
+
+      if (document.hidden || !isVisibleRef.current) {
         animRef.current = requestAnimationFrame(draw);
         return;
       }
@@ -179,10 +241,14 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       const analyser = audioEl ? (audioEl as any).__analyser : null;
       const isPlaying = !!(audioEl && !audioEl.paused && !audioEl.ended);
 
-      // ─── Optimize: Pull frequency data ONCE per frame ───
+      // ─── Optimize: Pull frequency data ONCE per frame without allocation ───
       let freqDataArray: Uint8Array | null = null;
       if (analyser && isPlaying && sceneState === 2) {
-        freqDataArray = new Uint8Array(analyser.frequencyBinCount);
+        const binCount = analyser.frequencyBinCount;
+        if (!cachedFreqDataArray || cachedFreqDataArray.length !== binCount) {
+          cachedFreqDataArray = new Uint8Array(binCount);
+        }
+        freqDataArray = cachedFreqDataArray;
         analyser.getByteFrequencyData(freqDataArray);
 
         let sum = 0, bassSum = 0, trebleSum = 0, trebleCount = 0;
@@ -212,25 +278,33 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       }
 
       // --- Scene Management ---
-      const overlayElement = document.getElementById('music-mood-immersive-overlay');
+      // overlayElement is captured once in useEffect scope (see top of effect)
 
       if (sceneState === 0) {
         currentBgColor = '#000000';
-        rotationY += 0.001;
+        if (!prefersReducedMotion) {
+          rotationY += 0.001;
+        }
         whiteHoleRadius = 40 + Math.sin(Date.now() * 0.002) * 2;
-        if (overlayElement && !overlayElement.classList.contains('scene-dark')) {
-          overlayElement.classList.add('scene-dark');
+        if (cachedOverlayElement && !cachedOverlayElement.classList.contains('scene-dark')) {
+          cachedOverlayElement.classList.add('scene-dark');
         }
       }
       else if (sceneState === 1) {
         transitionProgress += 0.015;
         cameraDistance = 1100 - (1095 * Math.pow(transitionProgress, 3));
-        rotationY += 0.008 + transitionProgress * 0.06;
-        rotationX += (0.0 - rotationX) * 0.05;
+        if (!prefersReducedMotion) {
+          rotationY += 0.008 + transitionProgress * 0.06;
+          rotationX += (0.0 - rotationX) * 0.05;
+        } else {
+          rotationX = 0.52;
+          rotationY = 0;
+          rotationZ = 0;
+        }
         whiteHoleRadius = 40 + Math.pow(transitionProgress, 4) * 800;
 
-        if (overlayElement && !overlayElement.classList.contains('scene-dark')) {
-          overlayElement.classList.add('scene-dark');
+        if (cachedOverlayElement && !cachedOverlayElement.classList.contains('scene-dark')) {
+          cachedOverlayElement.classList.add('scene-dark');
         }
 
         if (transitionProgress >= 1.0) {
@@ -239,17 +313,19 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           cameraDistance = 10;
           timeline = 0;
           scene2StartTime = Date.now();
-          if (overlayElement) overlayElement.classList.remove('scene-dark');
+          if (cachedOverlayElement) cachedOverlayElement.classList.remove('scene-dark');
         }
       }
       else if (sceneState === 2) {
         currentBgColor = '#ffffff';
-        if (overlayElement && overlayElement.classList.contains('scene-dark')) {
-          overlayElement.classList.remove('scene-dark');
+        if (cachedOverlayElement && cachedOverlayElement.classList.contains('scene-dark')) {
+          cachedOverlayElement.classList.remove('scene-dark');
         }
 
         const timelineInc = isPlaying ? 0.010 : 0.003;
-        timeline += timelineInc; // slower when paused to keep visualizer calm
+        if (!prefersReducedMotion) {
+          timeline += timelineInc; // slower when paused to keep visualizer calm
+        }
         let loopPeriod = (Date.now() / 15000) * Math.PI * 2;
         let zoomFactor = (Math.sin(loopPeriod) + 1) * 0.5;
 
@@ -257,7 +333,9 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         let maxPossibleDist = isMobile ? 480 : 650;
         
         let currentTargetDist = maxPossibleDist - (zoomFactor * (maxPossibleDist - minPossibleDist));
-        cameraDistance += (currentTargetDist - cameraDistance) * 0.04;
+        if (!prefersReducedMotion) {
+          cameraDistance += (currentTargetDist - cameraDistance) * 0.04;
+        }
 
         let randomTrackX = Math.sin(timeline * 0.4) * 0.6 + Math.cos(timeline * 0.15) * 0.2;
         let randomTrackY = timeline * 0.4;
@@ -265,9 +343,16 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
 
         let spiralBoost = Math.pow(zoomFactor, 4); 
         
-        rotationX = randomTrackX + (spiralBoost * 1.5); 
-        rotationY = randomTrackY + (spiralBoost * 4.5) + (bassIntensity * 0.00005);
-        rotationZ = randomTrackZ + (spiralBoost * 2.0);
+        if (!prefersReducedMotion) {
+          rotationX = randomTrackX + (spiralBoost * 1.5); 
+          rotationY = randomTrackY + (spiralBoost * 4.5) + (bassIntensity * 0.00005);
+          rotationZ = randomTrackZ + (spiralBoost * 2.0);
+        } else {
+          cameraDistance = 10;
+          rotationX = 0.52;
+          rotationY = 0;
+          rotationZ = 0;
+        }
       }
 
       // Precalculate 3D constants to avoid calling Math trig inside particle loops
@@ -367,7 +452,8 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         let particle = particles[i];
         
         if (sceneState === 0) {
-          particle.y = Math.sin((particle.originalX + count) * 0.4) * 3 + Math.cos((particle.originalZ + count) * 0.4) * 3;
+          let wave = Math.sin((particle.originalX + count) * 0.4) * 3 + Math.cos((particle.originalZ + count) * 0.4) * 3;
+          particle.y = prefersReducedMotion ? wave * 0.3 : wave;
         }
         else if (sceneState === 1) {
           let speed = transitionProgress * transitionProgress * 18 * particle.speedFactor;
@@ -398,10 +484,14 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           
           if (isPlaying) {
             // Blend natural background wave with heavy beat-driven waves
-            particle.y = (naturalWave * 0.25) + audioWave;
+            particle.y = prefersReducedMotion 
+              ? ((naturalWave * 0.25) + audioWave) * 0.3
+              : (naturalWave * 0.25) + audioWave;
           } else {
             // Smoothly settle the grid waves to a gentle, serene breathing pattern
-            particle.y = naturalWave * 0.15;
+            particle.y = prefersReducedMotion
+              ? (naturalWave * 0.15) * 0.3
+              : naturalWave * 0.15;
           }
         }
 
@@ -474,24 +564,34 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       }
       
       const countInc = isPlaying ? (0.007 + (bassIntensity * 0.00015)) : 0.0015;
-      count += countInc;
+      if (!prefersReducedMotion) {
+        count += countInc;
+      }
       animRef.current = requestAnimationFrame(draw);
     };
+
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => {
+      prefersReducedMotion = mq.matches;
+      resize();
+    };
+    mq.addEventListener('change', onChange);
 
     resize();
     window.addEventListener('resize', resize);
     animRef.current = requestAnimationFrame(draw);
 
     return () => {
+      io.disconnect();
+      mq.removeEventListener('change', onChange);
       window.removeEventListener('resize', resize);
       cancelAnimationFrame(animRef.current);
       if (audio) {
         audio.removeEventListener('play', handlePlaybackStarted);
         audio.removeEventListener('playing', handlePlaybackStarted);
       }
-      let overlayElement = document.getElementById('music-mood-immersive-overlay');
-      if (overlayElement) {
-        overlayElement.classList.remove('scene-dark');
+      if (cachedOverlayElement) {
+        cachedOverlayElement.classList.remove('scene-dark');
       }
     };
   }, [audioRef]);

@@ -64,7 +64,7 @@ export const GallerySection = ({
             {[...ME_BIT_IMAGES, ...ME_BIT_IMAGES].map((src, idx) => (
               <button 
                 type="button"
-                key={idx}
+                key={`${src}-${idx}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onGalleryOpen(idx % ME_BIT_IMAGES.length);

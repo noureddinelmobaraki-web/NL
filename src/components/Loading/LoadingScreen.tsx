@@ -4,11 +4,10 @@ import { audioManager } from '../../audio/audioManager';
 import { useLoadingPhase } from '../../hooks/useLoadingPhase';
 import { LoadingVideo } from './LoadingVideo';
 import { LoadingDisclaimer } from './LoadingDisclaimer';
+import { LOADING_TIMINGS } from '../../constants/loading';
 
 const OPENING_VIDEO_URL = ASSETS.media.opening;
 const POSTER_IMAGE_URL = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp';
-const ZOOM_DURATION = 900; // ms for exit zoom animation
-const DISCLAIMER_DELAY = 3800; // ms before disclaimer appears
 
 export interface LoadingScreenProps {
   onComplete: () => void;
@@ -44,19 +43,19 @@ export const LoadingScreen = ({
   }, [isAutomated, onComplete, setPhase]);
 
   // Determine standard Display Duration based on connection and history status
-  let displayDuration = 4500;
+  let displayDuration: number = LOADING_TIMINGS.default;
   if (isAutomated) {
-    displayDuration = 0;
+    displayDuration = LOADING_TIMINGS.automated;
   } else if (useStatic) {
-    displayDuration = 1000;
+    displayDuration = LOADING_TIMINGS.staticFallback;
   } else if (isReturning) {
-    displayDuration = 1500;
+    displayDuration = LOADING_TIMINGS.returning;
   }
 
   /* disclaimer appears at ~3.8 seconds if not skipping */
   useEffect(() => {
     if (isReturning || useStatic) return;
-    const t = setTimeout(() => setShowDisclaimer(true), DISCLAIMER_DELAY);
+    const t = setTimeout(() => setShowDisclaimer(true), LOADING_TIMINGS.disclaimerDelay);
     return () => clearTimeout(t);
   }, [isReturning, useStatic, setShowDisclaimer]);
 
@@ -68,7 +67,7 @@ export const LoadingScreen = ({
     setTimeout(() => {
       setPhase('hidden');
       onComplete();
-    }, ZOOM_DURATION);
+    }, LOADING_TIMINGS.zoomOut);
   };
 
   /* hard timeout fallback for safety */
@@ -120,7 +119,7 @@ export const LoadingScreen = ({
   if (phase === 'hidden') return null;
 
   const zoomStyle = phase === 'zooming'
-    ? { animation: `nl-zoom-in ${ZOOM_DURATION}ms cubic-bezier(0.4,0,0.2,1) forwards`, transformOrigin: 'center center' }
+    ? { animation: `nl-zoom-in ${LOADING_TIMINGS.zoomOut}ms cubic-bezier(0.4,0,0.2,1) forwards`, transformOrigin: 'center center' }
     : {};
 
   const handleVideoFail = () => {
@@ -150,9 +149,18 @@ export const LoadingScreen = ({
       `}</style>
 
       <div
+        role="button"
+        tabIndex={0}
         onClick={() => {
           onAudioUnlock();
           finish();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onAudioUnlock();
+            finish();
+          }
         }}
         style={{
           position: 'fixed',
@@ -165,6 +173,7 @@ export const LoadingScreen = ({
           justifyContent: 'center',
           overflow: 'hidden',
           cursor: 'pointer',
+          outline: 'none',
           ...zoomStyle,
         }}
       >

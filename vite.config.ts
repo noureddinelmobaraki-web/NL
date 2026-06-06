@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      outDir: 'dist',
+      emptyOutDir: true,
       target: 'es2020',
       cssCodeSplit: true,
       minify: 'terser',

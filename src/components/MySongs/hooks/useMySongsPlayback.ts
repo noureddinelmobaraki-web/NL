@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSongPlayer } from '../../songs/SongPlayer';
 import { savePrefs } from '../../../utils/userPrefs';
 import type { RepeatMode } from '../../../utils/userPrefs';
@@ -64,9 +64,18 @@ export function useMySongsPlayback({
     onPrev: () => handlePrev(),
   });
 
+  const SWITCH_COOLDOWN_MS = 180;
+  const lastSwitchAtRef = useRef(0);
+
   const handlePlayToggle = useCallback(
     (song?: Song) => {
       if (song && song.id !== activeId) {
+        const now = performance.now();
+        if (now - lastSwitchAtRef.current < SWITCH_COOLDOWN_MS) return;
+        lastSwitchAtRef.current = now;
+
+        audioManager.stop('song');
+
         pendingPlayRef.current = true;
         setActiveId(song.id);
         setIsDismissed(false);
@@ -81,6 +90,7 @@ export function useMySongsPlayback({
 
   const handleNext = useCallback(() => {
     if (!songs.length) return;
+    if (performance.now() - lastSwitchAtRef.current < SWITCH_COOLDOWN_MS) return;
     const idx = songs.findIndex((s) => s.id === activeId);
     let nIdx = isShuffle ? Math.floor(Math.random() * songs.length) : (idx + 1) % songs.length;
     if (isShuffle && nIdx === idx && songs.length > 1) nIdx = (nIdx + 1) % songs.length;
@@ -89,6 +99,7 @@ export function useMySongsPlayback({
 
   const handlePrev = useCallback(() => {
     if (!songs.length) return;
+    if (performance.now() - lastSwitchAtRef.current < SWITCH_COOLDOWN_MS) return;
     const idx = songs.findIndex((s) => s.id === activeId);
     let pIdx = isShuffle ? Math.floor(Math.random() * songs.length) : (idx - 1 + songs.length) % songs.length;
     if (isShuffle && pIdx === idx && songs.length > 1) pIdx = (pIdx - 1 + songs.length) % songs.length;
@@ -199,15 +210,14 @@ export function useMySongsPlayback({
   // Share URL param parameter routing
   useEffect(() => {
     const songId = new URLSearchParams(window.location.search).get('s');
-    if (songId && songs.length) {
-      const s = songs.find((x) => x.id === parseInt(songId));
-      if (s) {
-        setTimeout(() => {
-          handlePlayToggle(s);
-          document.getElementById('my-songs-section')?.scrollIntoView({ behavior: 'smooth' });
-        }, 1000);
-      }
-    }
+    if (!songId || !songs.length) return;
+    const s = songs.find((x) => x.id === parseInt(songId));
+    if (!s) return;
+    const t = setTimeout(() => {
+      handlePlayToggle(s);
+      document.getElementById('my-songs-section')?.scrollIntoView({ behavior: 'smooth' });
+    }, 1000);
+    return () => clearTimeout(t);
   }, [songs, handlePlayToggle]);
 
   return {

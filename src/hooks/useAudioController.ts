@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { ErrorData, Events } from 'hls.js';
 import { audioManager } from '../audio/audioManager';
 import { getOrCreateHls, getHlsClass } from '../audio/hlsPool';
 import { THEME_BG_MUSIC, ASSETS } from '../constants/assets';
@@ -30,6 +31,8 @@ export function useAudioController({
   const meBitAudioRef = useRef<HTMLAudioElement | null>(null);
   const meBitHlsAttached = useRef(false);
   const currentBgUrlRef = useRef<string>('');
+  const themeSwapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const themeSwapAbortRef = useRef<AbortController | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMeBitPlaying, setIsMeBitPlaying] = useState(false);
@@ -68,7 +71,7 @@ export function useAudioController({
           hls.once(HlsClass.Events.MANIFEST_PARSED, () => {
             audioManager.triggerManifestParsed();
           });
-          const errHandler = (_: any, data: any) => {
+          const errHandler = (_event: Events.ERROR, data: ErrorData) => {
             if (!data.fatal) return;
             if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) hls.startLoad();
             else if (data.type === HlsClass.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
@@ -131,6 +134,16 @@ export function useAudioController({
     // Skip on initial mount — handled by the audio init useEffect([])
     if (!currentBgUrlRef.current || currentBgUrlRef.current === newUrl) return;
 
+    if (themeSwapTimerRef.current) {
+      clearTimeout(themeSwapTimerRef.current);
+      themeSwapTimerRef.current = null;
+    }
+    if (themeSwapAbortRef.current) themeSwapAbortRef.current.abort();
+    const abort = new AbortController();
+    themeSwapAbortRef.current = abort;
+
+    const shouldResumeAfterSwap = audioIntent === 'user-playing';
+
     // 1. Fade out and pause current bg
     audioManager.pause('bg');
 
@@ -138,10 +151,11 @@ export function useAudioController({
       // 2. Detach old HLS instance (kept alive in pool)
       if (!audio.canPlayType('application/vnd.apple.mpegurl')) {
         const HlsClass = await getHlsClass();
+        if (abort.signal.aborted) return;
         if (HlsClass.isSupported()) {
-          // detach from pool instance — do not destroy, keep buffered
           const oldHls = await getOrCreateHls(currentBgUrlRef.current);
-          oldHls.detachMedia();
+          if (abort.signal.aborted) return;
+          try { oldHls.detachMedia(); } catch {}
         }
       }
 
@@ -150,14 +164,15 @@ export function useAudioController({
 
       // 4. Attach new HLS instance
       if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari: set src directly
         audio.src = newUrl;
         audio.load();
       } else {
         const HlsClass = await getHlsClass();
+        if (abort.signal.aborted) return;
         if (HlsClass.isSupported()) {
-          const newHls = await getOrCreateHls(newUrl); // pre-warmed if visited before
-          const errHandler = (_: any, data: any) => {
+          const newHls = await getOrCreateHls(newUrl);
+          if (abort.signal.aborted) return;
+          const errHandler = (_event: Events.ERROR, data: ErrorData) => {
             if (!data.fatal) return;
             if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) newHls.startLoad();
             else if (data.type === HlsClass.ErrorTypes.MEDIA_ERROR) newHls.recoverMediaError();
@@ -166,21 +181,32 @@ export function useAudioController({
           newHls.attachMedia(audio);
         }
       }
+      if (abort.signal.aborted) return;
 
       // 5. Re-register the same audio element with audioManager (url changed)
       audioManager.register('bg', audio, 0.7);
 
-      // 6. Resume playback ALWAYS when switching themes
-      setTimeout(() => {
-        audioManager.unpauseBg();
-        setAudioIntent('user-playing');
-        savePrefs({ audioIntent: 'user-playing' });
-      }, 400);
+      // 6. Resume playback only if the user had already chosen to play bg audio
+      if (shouldResumeAfterSwap) {
+        themeSwapTimerRef.current = setTimeout(() => {
+          themeSwapTimerRef.current = null;
+          if (abort.signal.aborted) return;
+          audioManager.unpauseBg();
+          savePrefs({ audioIntent: 'user-playing' });
+        }, 400);
+      }
     };
 
     swapHls();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme]);
+
+    return () => {
+      abort.abort();
+      if (themeSwapTimerRef.current) {
+        clearTimeout(themeSwapTimerRef.current);
+        themeSwapTimerRef.current = null;
+      }
+    };
+  }, [theme, audioIntent]);
   // ─────────────────────────────────────────────────────────────────
 
   // Lens suppression (isLensGalleryOpen effect)
@@ -203,22 +229,33 @@ export function useAudioController({
 
   // audioIntent + loaded effect
   useEffect(() => {
-    if (audioRef.current && loaded) {
-      const audio = audioRef.current;
-      if (audioIntent === 'user-playing') {
-        audioManager.unpauseBg();
-      } else if (audioIntent === 'initial') {
-        const onInteraction = () => {
-          audio.muted = false;
-          setAudioIntent('user-playing');
-          audioManager.unpauseBg();
-          window.removeEventListener('click', onInteraction);
-          window.removeEventListener('scroll', onInteraction);
-        };
-        window.addEventListener('click', onInteraction, { once: true });
-        window.addEventListener('scroll', onInteraction, { once: true, passive: true });
-      }
+    if (!audioRef.current || !loaded) return;
+    const audio = audioRef.current;
+
+    if (audioIntent === 'user-playing') {
+      audioManager.unpauseBg();
+      return;
     }
+    if (audioIntent !== 'initial') return;
+
+    let active = true;
+    const onInteraction = () => {
+      if (!active) return;
+      active = false;
+      audio.muted = false;
+      setAudioIntent('user-playing');
+      audioManager.unpauseBg();
+      window.removeEventListener('click', onInteraction);
+      window.removeEventListener('scroll', onInteraction);
+    };
+    window.addEventListener('click', onInteraction, { once: true });
+    window.addEventListener('scroll', onInteraction, { once: true, passive: true });
+
+    return () => {
+      active = false;
+      window.removeEventListener('click', onInteraction);
+      window.removeEventListener('scroll', onInteraction);
+    };
   }, [audioIntent, loaded, setAudioIntent]);
 
   const toggleAudio = useCallback(() => {

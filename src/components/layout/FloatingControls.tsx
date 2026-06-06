@@ -92,8 +92,7 @@ export const FloatingControls = ({
                 border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
                 width: '229.065px',
                 height: '39.0645px',
-                backgroundColor: '#464646',
-                borderWidth: '-7.96774px'
+                backgroundColor: '#464646'
               }}
             >
               {(['dark', 'light', 'midnight', 'bit', 'lite', 'retro'] as Theme[]).map(t => {

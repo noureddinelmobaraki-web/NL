@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "prebuild": "node scripts/generate-sw-version.js",
-    "build": "node scripts/verify-lrc.mjs && node scripts/hash.mjs --write && vite build --emptyOutDir && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs && node scripts/generate-sitemap.mjs",
-    "start": "node dist/server.cjs",
+    "prebuild": "node scripts/generate-sw-version.js && node scripts/verify-lrc.mjs && node scripts/hash.mjs --write",
+    "build": "vite build --emptyOutDir && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs && node scripts/generate-sitemap.mjs",
+    "start:local": "node dist/server.cjs",
     "optimize:images": "node scripts/optimize-images.mjs",
     "preview": "vite preview",
     "analyze": "vite build --mode analyze",
@@ -38,7 +38,8 @@
     "terser": "5.47.1",
     "three": "0.184.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "esbuild": "0.28.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
@@ -47,7 +48,6 @@
     "@types/react-dom": "^19.0.0",
     "@types/three": "0.184.1",
     "autoprefixer": "^10.4.21",
-    "esbuild": "0.28.0",
     "jsdom": "29.1.1",
     "p-limit": "^7.3.0",
     "rollup-plugin-visualizer": "^7.0.1",

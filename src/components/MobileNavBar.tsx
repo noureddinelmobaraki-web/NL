@@ -19,7 +19,7 @@ export const MobileNavBar = ({
   onMoodTrigger,
 }: MobileNavBarProps) => {
   const { isMobile, isTablet } = useDeviceType();
-  const longPressTimeout = useRef<any>(null);
+  const longPressTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (!isMobile && !isTablet) return null;
 

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import emailjs from '@emailjs/browser';
 import { styles } from './ContactForm.styles';
 import { ContactMethods } from './ContactMethods';
 import { ContactMessageForm } from './ContactMessageForm';
+import { useClientRateLimit } from '../../hooks/useClientRateLimit';
 
 type Mode = 'anonymous' | 'named';
 type Status = 'idle' | 'sending' | 'success' | 'error';
@@ -17,44 +18,12 @@ export const ContactForm = () => {
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [sendLog, setSendLog] = useState<string[]>([]);
-
-  // Hydrate send log from localStorage
-  useEffect(() => {
-    try {
-      if (typeof window === 'undefined' || !window.localStorage) return;
-      const saved = localStorage.getItem('nl-send-log-v1');
-      if (saved) {
-        const parsed: string[] = JSON.parse(saved);
-        const now = new Date().getTime();
-        const oneDay = 24 * 60 * 60 * 1000;
-
-        // Filter out entries older than 24 hours
-        const validEntries = parsed.filter(ts => {
-          const time = new Date(ts).getTime();
-          return now - time < oneDay;
-        });
-
-        setSendLog(validEntries);
-        if (validEntries.length >= 3) {
-          setIsBlocked(true);
-        }
-
-        // Update storage with cleaned entries
-        localStorage.setItem('nl-send-log-v1', JSON.stringify(validEntries));
-      }
-    } catch (e) {
-      console.warn('Failed to parse or access send log', e);
-    }
-  }, []);
+  const { isBlocked, remaining, recordSend } = useClientRateLimit();
 
   const handleSend = async () => {
     if (isBlocked) return;
 
-    // Honeypot check
-    if ((window as any).__nl_bot_detected) {
-      // Pretend success without sending
+    if (window.__nl_bot_detected) {
       setStatus('success');
       setMessage('');
       return;
@@ -70,17 +39,13 @@ export const ContactForm = () => {
       return;
     }
 
-    if (sendLog.length >= 3) {
-      setIsBlocked(true);
-      return;
-    }
+    if (remaining <= 0) return;
 
     setStatus('sending');
     setErrorMsg('');
 
     try {
       try {
-        // Server-side rate limit check
         const rateLimitRes = await fetch('/api/contact', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -95,10 +60,10 @@ export const ContactForm = () => {
           setStatus('idle');
           return;
         }
-        // Any other status (200, 5xx) → fall through and proceed with emailjs
-      } catch {
-        // Server not available (production/GitHub Pages) → proceed with client-side emailjs only
-        // The localStorage 3/day guard still applies as a first-pass protection
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.info('[ContactForm] /api/contact unreachable, falling back to emailjs-only:', err);
+        }
       }
 
       await emailjs.send(
@@ -114,28 +79,17 @@ export const ContactForm = () => {
         EMAILJS_KEY
       );
 
-      const newTimestamp = new Date().toISOString();
-      const updatedLog = [...sendLog, newTimestamp];
-
-      setSendLog(updatedLog);
-      try {
-        localStorage.setItem('nl-send-log-v1', JSON.stringify(updatedLog));
-      } catch (e) {
-        console.warn('Failed to save send log', e);
-      }
+      recordSend();
 
       setStatus('success');
       setMessage('');
       setSenderName('');
 
       setTimeout(() => {
-        if (updatedLog.length >= 3) {
-          setIsBlocked(true);
-        } else {
-          setStatus('idle');
-        }
+        setStatus('idle');
       }, 4000);
     } catch (err) {
+      console.error('[ContactForm] emailjs.send failed:', err);
       setStatus('error');
       setErrorMsg('فشل الإرسال، حاول مرة أخرى');
       setTimeout(() => setStatus('idle'), 3000);
@@ -198,7 +152,7 @@ export const ContactForm = () => {
           status={status}
           errorMsg={errorMsg}
           isBlocked={isBlocked}
-          remainingToday={3 - sendLog.length}
+          remainingToday={remaining}
           styles={styles}
         />
       </form>

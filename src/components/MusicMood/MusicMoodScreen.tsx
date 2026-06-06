@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Song } from '../../types';
 import { useHlsAudio } from '../../hooks/useHlsAudio';
+import { audioManager } from '../../audio/audioManager';
 import { useMoodAudioGraph } from './hooks/useMoodAudioGraph';
 import { useMoodLyrics } from './hooks/useMoodLyrics';
 import { useMoodGestures } from './hooks/useMoodGestures';
@@ -16,6 +17,43 @@ import { useDeviceType } from '../../hooks/useDeviceType';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useOrientationListener } from '../../hooks/useOrientationListener';
+
+// === Stable Style Constants ===
+const LYRIC_FONT_STACK = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif';
+
+const STYLE_CURRENT_LINE_MOBILE: React.CSSProperties = {
+  fontFamily: LYRIC_FONT_STACK,
+  fontSize: 'clamp(1.5rem, 6vw, 2.5rem)',
+  fontWeight: 800,
+  color: '#000000',
+  WebkitTextStroke: '0.5px rgba(255,255,255,0.55)',
+  paintOrder: 'stroke fill',
+  textShadow: '0 1px 2px rgba(255,255,255,0.45)',
+  lineHeight: 1.45,
+  letterSpacing: '-0.01em',
+  textWrap: 'balance',
+  margin: 0,
+  maxWidth: '90vw',
+  overflowWrap: 'anywhere',
+  background: 'transparent',
+};
+
+const STYLE_PREV_NEXT_MOBILE_BASE: React.CSSProperties = {
+  fontFamily: LYRIC_FONT_STACK,
+  fontSize: 'clamp(1rem, 4.6vw, 1.4rem)',
+  fontWeight: 600,
+  color: '#000000',
+  WebkitTextStroke: '0.4px rgba(255,255,255,0.4)',
+  paintOrder: 'stroke fill',
+  textShadow: '0 1px 1.5px rgba(255,255,255,0.35)',
+  lineHeight: 1.45,
+  letterSpacing: '-0.01em',
+  textWrap: 'balance',
+  margin: 0,
+  maxWidth: '90vw',
+  overflowWrap: 'anywhere',
+  background: 'transparent',
+};
 
 interface MusicMoodScreenProps {
   songs: Song[];            // كل الأغاني الـ 25
@@ -45,6 +83,9 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
   const [diceSpinning, setDiceSpinning] = useState(false);
   const [needsUserTap, setNeedsUserTap] = useState(false);
 
+  const activeSongRef = useRef<Song | null>(null);
+  useEffect(() => { activeSongRef.current = activeSong; }, [activeSong]);
+
   const audioRef = useRef<HTMLAudioElement>((() => {
     const a = new Audio();
     a.crossOrigin = 'anonymous';
@@ -71,13 +112,14 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     setDiceSpinning(true);
     setTimeout(() => setDiceSpinning(false), 600);
 
-    const pool = activeSong
-      ? songs.filter(s => s.id !== activeSong.id)
+    const current = activeSongRef.current;
+    const pool = current
+      ? songs.filter(s => s.id !== current.id)
       : songs;
     const picked = pool[Math.floor(Math.random() * pool.length)];
     setActiveSong(picked);
     setCurrentTime(0);
-  }, [songs, activeSong]);
+  }, [songs]);
 
   // ── play/pause
   const handlePlayPause = useCallback(() => {
@@ -87,11 +129,12 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
       audioCtxRef.current.resume();
     }
     if (audioRef.current.paused) {
-      audioRef.current.play().catch(err => {
+      audioManager.register('song', audioRef.current, 0.7);
+      audioManager.play('song').catch(err => {
         console.warn('Play blocked:', err);
       });
     } else {
-      audioRef.current.pause();
+      audioManager.pause('song');
     }
   }, [audioCtxRef]);
 
@@ -100,6 +143,18 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     onExit,
     handlePlayPause,
   });
+
+  // ── تثبيت اتجاه الشاشة على الوضع الطولي (portrait) أثناء استخدام MusicMood ثم تركه حراً بعدها
+  useEffect(() => {
+    if (screen.orientation && 'lock' in screen.orientation) {
+      (screen.orientation as any).lock('portrait').catch(() => {});
+    }
+    return () => {
+      if (screen.orientation && 'unlock' in screen.orientation) {
+        (screen.orientation as any).unlock();
+      }
+    };
+  }, []);
 
   // ── تشغيل أول أغنية عشوائية فور الدخول
   useEffect(() => {
@@ -118,7 +173,8 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     const tryPlay = async () => {
       try {
         if (ctx && ctx.state === 'suspended') await ctx.resume();
-        await audioRef.current.play();
+        audioManager.register('song', audioRef.current, 0.7);
+        await audioManager.play('song');
         setAudioStatus('playing');
       } catch (err) {
         console.warn('Play blocked — waiting for user tap:', err);
@@ -133,21 +189,33 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
   // ── تتبع الوقت
   useEffect(() => {
     const el = audioRef.current;
-    const onTime  = () => setCurrentTime(el.currentTime);
-    const onPlay  = () => setAudioStatus('playing');
-    const onPause = () => setAudioStatus('paused');
-    const onEnd   = () => pickRandomSong(); // عند انتهاء الأغنية → أغنية عشوائية تلقائياً
+    let rafId = 0;
+    let lastUpdate = 0;
 
-    el.addEventListener('timeupdate', onTime);
-    el.addEventListener('play',       onPlay);
-    el.addEventListener('pause',      onPause);
-    el.addEventListener('ended',      onEnd);
+    const tick = () => {
+      const now = performance.now();
+      if (now - lastUpdate > 100) {
+        setCurrentTime(el.currentTime);
+        lastUpdate = now;
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const onPlay  = () => { setAudioStatus('playing'); rafId = requestAnimationFrame(tick); };
+    const onPause = () => { setAudioStatus('paused'); cancelAnimationFrame(rafId); };
+    const onEnd   = () => pickRandomSong();
+
+    el.addEventListener('play',  onPlay);
+    el.addEventListener('pause', onPause);
+    el.addEventListener('ended', onEnd);
+
+    if (!el.paused) { rafId = requestAnimationFrame(tick); }
 
     return () => {
-      el.removeEventListener('timeupdate', onTime);
-      el.removeEventListener('play',       onPlay);
-      el.removeEventListener('pause',      onPause);
-      el.removeEventListener('ended',      onEnd);
+      el.removeEventListener('play',  onPlay);
+      el.removeEventListener('pause', onPause);
+      el.removeEventListener('ended', onEnd);
+      cancelAnimationFrame(rafId);
     };
   }, [pickRandomSong]);
 
@@ -156,8 +224,8 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     return () => {
       // أوقف الصوت
       const audio = audioRef.current;
-      if (audio && !audio.paused) {
-        audio.pause();
+      if (audio) {
+        audioManager.stop('song');
         audio.src = '';
       }
       // أغلق AudioContext
@@ -181,7 +249,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
         position: 'fixed',
         inset: 0,
         zIndex: 2147483646,
-        background: '#FFFFFF',
+        background: 'radial-gradient(ellipse at center, #FAFAFA 0%, #FFFFFF 70%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -342,20 +410,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                     <p
                       dir="auto"
                       className="text-center"
-                      style={{
-                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif',
-                        fontSize: 'clamp(1rem, 4.6vw, 1.4rem)',
-                        fontWeight: 600,
-                        opacity: 0.15,
-                        color: '#000000',
-                        textShadow: '0 0 8px rgba(255,255,255,0.8)',
-                        lineHeight: 1.45,
-                        letterSpacing: '-0.01em',
-                        textWrap: 'balance' as any,
-                        margin: 0,
-                        maxWidth: '90vw',
-                        overflowWrap: 'anywhere' as any,
-                      }}
+                      style={{ ...STYLE_PREV_NEXT_MOBILE_BASE, opacity: 0.15 }}
                     >
                       <KaraokeText line={previousLine} currentTime={currentTime} isPrevious />
                     </p>
@@ -364,26 +419,14 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                   {/* Current Line (Active) with scale-from-0.95 + glow flash that decays in 400ms */}
                   <motion.p
                     dir="auto"
-                    className="text-center"
+                    className="text-center mood-lyric-current"
                     initial={{ scale: 0.95, filter: 'blur(4px)' }}
                     animate={{ scale: 1, filter: 'blur(0px)' }}
                     transition={{
                       scale: { duration: 0.4, ease: 'easeOut' },
                       filter: { duration: 0.4, ease: 'easeOut' }
                     }}
-                    style={{
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif',
-                      fontSize: 'clamp(1.5rem, 6vw, 2.5rem)',
-                      fontWeight: 800,
-                      color: '#000000',
-                      textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8)',
-                      lineHeight: 1.45,
-                      letterSpacing: '-0.01em',
-                      textWrap: 'balance' as any,
-                      margin: 0,
-                      maxWidth: '90vw',
-                      overflowWrap: 'anywhere' as any,
-                    }}
+                    style={STYLE_CURRENT_LINE_MOBILE}
                   >
                     {currentLine ? <KaraokeText line={currentLine} currentTime={currentTime} /> : (audioStatus === 'loading' ? '...' : '')}
                   </motion.p>
@@ -393,20 +436,7 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                     <p
                       dir="auto"
                       className="text-center"
-                      style={{
-                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif',
-                        fontSize: 'clamp(1rem, 4.6vw, 1.4rem)',
-                        fontWeight: 600,
-                        opacity: 0.6,
-                        color: '#000000',
-                        textShadow: '0 0 8px rgba(255,255,255,0.8)',
-                        lineHeight: 1.45,
-                        letterSpacing: '-0.01em',
-                        textWrap: 'balance' as any,
-                        margin: 0,
-                        maxWidth: '90vw',
-                        overflowWrap: 'anywhere' as any,
-                      }}
+                      style={{ ...STYLE_PREV_NEXT_MOBILE_BASE, opacity: 0.6 }}
                     >
                       <KaraokeText line={nextLine} currentTime={currentTime} isNext />
                     </p>
@@ -424,14 +454,16 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                     color: '#000000',
                     lineHeight: 1.5,
                     letterSpacing: '-0.025em',
-                    textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8)',
+                    WebkitTextStroke: '0.8px rgba(255,255,255,0.6)',
+                    paintOrder: 'stroke fill',
+                    textShadow: '0 2px 4px rgba(255,255,255,0.4)',
                     fontOpticalSizing: 'auto',
                     margin: 0,
                     marginBottom: '20px',
                     // fade-in عند تغيير السطر
                     animation: 'moodLineFadeIn 0.4s ease forwards',
                     maxWidth: '650px',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                    fontFamily: LYRIC_FONT_STACK,
                   }}
                 >
                   {currentLine ? <KaraokeText line={currentLine} currentTime={currentTime} /> : (audioStatus === 'loading' ? '...' : '')}
@@ -448,9 +480,11 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
                       lineHeight: 1.5,
                       margin: 0,
                       letterSpacing: '-0.01em',
-                      textShadow: '0 0 8px rgba(255,255,255,0.8)',
+                      WebkitTextStroke: '0.5px rgba(255,255,255,0.4)',
+                      paintOrder: 'stroke fill',
+                      textShadow: '0 1px 2px rgba(255,255,255,0.3)',
                       maxWidth: '650px',
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                      fontFamily: LYRIC_FONT_STACK,
                     }}
                   >
                     <KaraokeText line={nextLine} currentTime={currentTime} isNext />

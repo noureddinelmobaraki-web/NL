@@ -7,6 +7,7 @@ import { ASSETS, SONG_BG_FALLBACK } from '../../../constants/assets';
 import { preloadAllSongs, preloadSong } from '../../../hooks/useHlsAudio';
 import { extractDominantColorCached } from '../../../utils/extractColors';
 import { parseLRC } from '../../../components/LyricsEngine';
+import { safeFetch, safeFetchJson, SafeFetchError } from '../../../utils/safeFetch';
 
 const initialPrefs = loadPrefs();
 
@@ -51,93 +52,117 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
       songs[idx],
       songs[(idx + 1) % songs.length],
       songs[(idx - 1 + songs.length) % songs.length],
-    ].filter((s) => Boolean(s.lrc));
+    ].filter((s): s is Song & { lrc: string } => Boolean(s?.lrc));
 
     const base = import.meta.env.BASE_URL || './';
     const ctrl = new AbortController();
+    const timeoutIds: ReturnType<typeof setTimeout>[] = [];
 
     targets.forEach((s, i) => {
-      // Skip if already in session cache
       if (loadSession().lrcCache[s.id]?.length) return;
+      const filename = s.lrc.split('/').pop() || '';
+      const delay = i * 60; // 0 / 60 / 120 ms stagger
 
-      const filename = s.lrc!.split('/').pop()!;
-      const delay = i * 60; // 0 ms, 60 ms, 120 ms stagger
-
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         if (ctrl.signal.aborted) return;
-        fetch(`${base}lrc/${encodeURIComponent(filename)}`, {
+        safeFetch(`${base}lrc/${encodeURIComponent(filename)}`, {
           signal: ctrl.signal,
+          timeoutMs: 8000,
+          retryOnFailure: false,
         })
-          .then((r) => {
-            if (!r.ok) throw new Error(`LRC ${r.status}`);
-            return r.text();
-          })
+          .then((r) => r.text())
           .then((txt) => {
+            if (ctrl.signal.aborted) return;
             const parsed = parseLRC(txt);
             if (!parsed.length) return;
-
-            // Persist to session so any consumer can read it
             const cur = loadSession();
             saveSession({ lrcCache: { ...cur.lrcCache, [s.id]: parsed } });
-
-            // Notify any mounted SongCard without prop-drilling
             window.dispatchEvent(
-              new CustomEvent('lrc-ready', {
-                detail: { songId: s.id, lyrics: parsed },
-              })
+              new CustomEvent('lrc-ready', { detail: { songId: s.id, lyrics: parsed } })
             );
           })
           .catch((err) => {
-            if (err.name !== 'AbortError') {
-              console.warn('[LRC preload]', s.id, err.message);
-            }
+            if (err instanceof SafeFetchError && err.kind === 'abort') return;
+            console.warn('[LRC preload]', s.id, err?.message ?? err);
           });
       }, delay);
+      timeoutIds.push(timeoutId);
     });
 
-    return () => ctrl.abort();
+    return () => {
+      ctrl.abort();
+      timeoutIds.forEach((id) => clearTimeout(id));
+    };
   }, [activeId, songs]);
   // ────────────────────────────────────────────────────────────────────────
 
   // Fetch songs
   useEffect(() => {
     setError(false);
+    let mounted = true;
+    let observer: IntersectionObserver | null = null;
+    const localTimers: ReturnType<typeof setTimeout>[] = [];
+    const ctrl = new AbortController();
     const base = import.meta.env.BASE_URL || './';
-    fetch(`${base}data/songs.json`)
-      .then((r) => {
-        if (!r.ok) throw new Error('Fetch failed');
-        return r.json();
-      })
-      .then((data: any[]) => {
-        const mapped: Song[] = data.map((s) => ({
+    let idleId: number | null = null;
+
+    safeFetchJson<unknown>(`${base}data/songs.json`, {
+      signal: ctrl.signal,
+      timeoutMs: 10_000,
+    })
+      .then((data: unknown) => {
+        if (!mounted) return;
+        if (!Array.isArray(data)) throw new Error('songs.json: expected an array');
+
+        interface SongApiRow {
+          id: number;
+          title: string;
+          url: string;
+          hasLrc?: boolean;
+          lrcFile?: string | null;
+          bgIndex?: number;
+        }
+
+        const rows = data as SongApiRow[];
+        const mapped: Song[] = rows.map((s) => ({
           id: s.id,
           title: s.title,
           url: s.url,
           lrc: s.hasLrc && s.lrcFile ? `${base}lrc/${s.lrcFile}` : null,
-          backgroundImage: ASSETS.songs.backgrounds[s.bgIndex] || SONG_BG_FALLBACK,
+          backgroundImage:
+            (typeof s.bgIndex === 'number' && ASSETS.songs.backgrounds[s.bgIndex]) ||
+            SONG_BG_FALLBACK,
         }));
         setSongs(mapped);
 
         const sectionEl = document.getElementById('my-songs-section');
         if (sectionEl && 'IntersectionObserver' in window) {
-          const observer = new IntersectionObserver(
+          observer = new IntersectionObserver(
             (entries) => {
+              if (!mounted || !observer) return;
               if (entries[0].isIntersecting) {
                 observer.disconnect();
-                setTimeout(() => {
+                observer = null;
+                localTimers.push(setTimeout(() => {
+                  if (!mounted) return;
                   mapped.slice(0, 3).forEach((s) => preloadSong(s.url));
-                }, 5000);
+                }, 5000));
                 const startPhase2 = () => {
+                  if (!mounted) return;
                   const allUrls = mapped.map((s) => s.url);
-                  setTimeout(() => {
+                  localTimers.push(setTimeout(() => {
+                    if (!mounted) return;
                     preloadAllSongs(allUrls.slice(0, 8), 8, 2, 300);
-                    setTimeout(() => preloadAllSongs(allUrls.slice(8), 8, 1, 800), 3000);
-                  }, 5000);
+                    localTimers.push(setTimeout(() => {
+                      if (!mounted) return;
+                      preloadAllSongs(allUrls.slice(8), 8, 1, 800);
+                    }, 3000));
+                  }, 5000));
                 };
-                if ('requestIdleCallback' in window) {
-                   (window as any).requestIdleCallback(startPhase2, { timeout: 2000 });
+                if (typeof window.requestIdleCallback === 'function') {
+                   idleId = window.requestIdleCallback(startPhase2, { timeout: 2000 });
                 } else {
-                  setTimeout(startPhase2, 1000);
+                  localTimers.push(setTimeout(startPhase2, 1000));
                 }
               }
             },
@@ -145,15 +170,28 @@ export function useMySongsState({ onAmbientColorChange }: UseMySongsStateProps =
           );
           observer.observe(sectionEl);
         } else {
-          setTimeout(() => {
+          localTimers.push(setTimeout(() => {
+            if (!mounted) return;
             mapped.forEach((s) => preloadSong(s.url));
-          }, 5000);
+          }, 5000));
         }
       })
       .catch((err) => {
+        if (!mounted) return;
+        if (err instanceof SafeFetchError && err.kind === 'abort') return;
         console.error('[useMySongsState] fetch error:', err);
         setError(true);
       });
+
+    return () => {
+      mounted = false;
+      ctrl.abort();
+      if (observer) { try { observer.disconnect(); } catch {} observer = null; }
+      if (idleId !== null && typeof (window as any).cancelIdleCallback === 'function') {
+        (window as any).cancelIdleCallback(idleId);
+      }
+      localTimers.forEach((id) => clearTimeout(id));
+    };
   }, [retryCount]);
 
   // Sync ambient color

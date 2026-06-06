@@ -26,6 +26,14 @@ export function useSongPlayer({
   const progressRef = useRef<HTMLInputElement | null>(null);
   const pendingPlayRef = useRef(false);
 
+  const songTokenRef = useRef(0);
+  const currentSongIdRef = useRef<number | string | null>(null);
+  if (currentSong && currentSong.id !== currentSongIdRef.current) {
+    songTokenRef.current += 1;
+    currentSongIdRef.current = currentSong.id;
+  }
+  if (!currentSong) currentSongIdRef.current = null;
+
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [audioStatus, setAudioStatus] = useState<AudioStatus>('idle');
@@ -34,10 +42,17 @@ export function useSongPlayer({
 
   // HLS audio effect
   useHlsAudio(audioTagRef, currentSong?.url, () => {
+    const tokenAtFire = songTokenRef.current;
     if (pendingPlayRef.current) {
       pendingPlayRef.current = false;
-      audioManager.register('song', audioTagRef.current!, 0.7);
-      audioManager.play('song');
+      if (tokenAtFire !== songTokenRef.current) return;
+      const el = audioTagRef.current;
+      if (!el) return;
+      audioManager.register('song', el, 0.7);
+      if (tokenAtFire !== songTokenRef.current) return;
+      audioManager.play('song').catch(err => {
+        console.warn('[SongPlayer] play() rejected:', err);
+      });
       onPlay();
     }
   });
@@ -90,15 +105,19 @@ export function useSongPlayer({
     if ('mediaSession' in navigator && currentSong) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentSong.title,
-        artist: 'Noureddine',
-        album: 'My Songs',
-        artwork: currentSong.cover ? [
-          { src: currentSong.cover, sizes: '512x512', type: 'image/jpeg' }
-        ] : []
+        artist: 'NL — Noureddin El Mobaraki',
+        album: (currentSong as any).album || 'NL Archive',
+        artwork: [
+          {
+            src: (currentSong as any).coverUrl || currentSong.cover || 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp',
+            sizes: '512x512',
+            type: 'image/webp'
+          }
+        ]
       });
 
       navigator.mediaSession.setActionHandler('play', () => {
-        audioManager.play('song');
+        audioManager.play('song').catch(() => {});
         onPlay();
       });
       navigator.mediaSession.setActionHandler('pause', () => {
@@ -112,10 +131,8 @@ export function useSongPlayer({
         navigator.mediaSession.setActionHandler('previoustrack', () => onPrev());
       }
       navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.fastSeek && 'fastSeek' in audio) {
-          audio.fastSeek(details.seekTime || 0);
-        } else {
-          audio.currentTime = details.seekTime || 0;
+        if (details.seekTime != null) {
+          audio.currentTime = details.seekTime;
         }
       });
     }
@@ -129,17 +146,34 @@ export function useSongPlayer({
       audio.removeEventListener('loadedmetadata', handlers.loadedmetadata);
       audio.removeEventListener('timeupdate', handlers.timeupdate);
       audio.removeEventListener('error', handlers.error);
-    };
-  }, [currentSong, onPlay, onPause, onSongEnd, onTimeUpdate]);
 
+      if ('mediaSession' in navigator) {
+        try {
+          navigator.mediaSession.setActionHandler('play', null);
+          navigator.mediaSession.setActionHandler('pause', null);
+          navigator.mediaSession.setActionHandler('nexttrack', null);
+          navigator.mediaSession.setActionHandler('previoustrack', null);
+          navigator.mediaSession.setActionHandler('seekto', null);
+        } catch {}
+      }
+    };
+  }, [currentSong, onPlay, onPause, onSongEnd, onTimeUpdate, onNext, onPrev]);
+
+  const toggleLockRef = useRef(false);
   const handlePlayPause = useCallback(() => {
     const audio = audioTagRef.current;
     if (!audio || !currentSong) return;
 
+    if (toggleLockRef.current) return;
+    toggleLockRef.current = true;
+    requestAnimationFrame(() => { toggleLockRef.current = false; });
+
     if (audioStatus === 'playing') {
       audioManager.pause('song');
     } else {
-      audioManager.play('song');
+      audioManager.play('song').catch(err => {
+        console.warn('[SongPlayer] play() rejected:', err);
+      });
       onPlay();
     }
   }, [audioStatus, currentSong, onPlay]);

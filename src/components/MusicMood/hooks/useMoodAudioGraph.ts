@@ -15,26 +15,20 @@ export function useMoodAudioGraph({
   const [glowIntensity, setGlowIntensity] = useState(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const animFrameRef = useRef<number>(0);
+  const animFrameRef = useRef<number | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const freqDataRef = useRef<Uint8Array | null>(null);
 
-  // ── Web Audio Setup — يُنشأ مرة واحدة فقط
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // إنشاء AudioContext مرة واحدة فقط طوال عمر المكوّن
     if (!audioCtxRef.current) {
       audioCtxRef.current = existingAudioCtx ?? new AudioContext();
     }
     const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
-    // استئناف إن كان suspended
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-
-    // إنشاء analyser مرة واحدة
     if (!analyserRef.current) {
       analyserRef.current = ctx.createAnalyser();
       analyserRef.current.fftSize = 1024;
@@ -42,34 +36,40 @@ export function useMoodAudioGraph({
       analyserRef.current.minDecibels = -85;
       analyserRef.current.maxDecibels = -15;
     }
-    // Expose the analyser on the audio element for audio-reactive particles
-    (audio as any).__analyser = analyserRef.current;
+    audio.__analyser = analyserRef.current;
 
-    // إنشاء MediaElementSource مرة واحدة فقط — هذا هو سبب المشكلة
+    if (!freqDataRef.current || freqDataRef.current.length !== analyserRef.current.frequencyBinCount) {
+      freqDataRef.current = new Uint8Array(analyserRef.current.frequencyBinCount);
+    }
+
     if (!sourceNodeRef.current) {
       try {
         sourceNodeRef.current = ctx.createMediaElementSource(audio);
+        sourceNodeRef.current.connect(analyserRef.current);
+        analyserRef.current.connect(ctx.destination);
       } catch (err) {
-        // إذا رُمي InvalidStateError، الـ source موجود بالفعل في graph آخر
-        console.warn('MediaElementSource already created:', err);
-        return;
+        console.warn('MediaElementSource already exists — reusing graph:', err);
+        try { analyserRef.current.connect(ctx.destination); } catch {}
       }
+    } else {
+      try { analyserRef.current.connect(ctx.destination); } catch {}
     }
 
-    // ربط الـ graph: source → analyser → destination (السماعات)
-    sourceNodeRef.current.connect(analyserRef.current);
-    analyserRef.current.connect(ctx.destination);
-
     return () => {
-      // FIXED: Issue #2 — Proper cleanup of AudioNodes
-      try {
-        sourceNodeRef.current?.disconnect();
-      } catch (_) { /* ignore: already disconnected */ }
-      try {
-        analyserRef.current?.disconnect();
-      } catch (_) { /* ignore */ }
-      cancelAnimationFrame(animFrameRef.current);
-      // AudioContext closure is handled by MusicMoodScreen onExit
+      try { sourceNodeRef.current?.disconnect(); } catch {}
+      try { analyserRef.current?.disconnect(); } catch {}
+      sourceNodeRef.current = null;
+      analyserRef.current = null;
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+
+      const c = audioCtxRef.current;
+      if (c && !existingAudioCtx && c.state !== 'closed') {
+        c.close().catch(err => console.warn('[useMoodAudioGraph] close failed:', err));
+      }
+      audioCtxRef.current = null;
     };
   }, [existingAudioCtx, audioRef]);
 
@@ -87,26 +87,28 @@ export function useMoodAudioGraph({
     if (!audio || !activeSong) return;
     
     let checkTimer: number | null = null;
-    let fallbackInterval: number | null = null;
     
     const checkCorsAndFallback = () => {
       const analyser = analyserRef.current;
       if (!analyser) return;
-      const data = new Uint8Array(analyser.frequencyBinCount);
+      if (!freqDataRef.current || freqDataRef.current.length !== analyser.frequencyBinCount) {
+        freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
+      }
+      const data = freqDataRef.current;
       analyser.getByteFrequencyData(data);
-      const sum = data.reduce((a, b) => a + b, 0);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        sum += data[i];
+      }
       
       if (sum === 0 && !audio.paused) {
-        // CORS فشل → ابدأ pseudo-bass fallback
         console.info('[Mood] CORS blocked HLS analyser → activating pseudo-bass');
-        const bpm = 95;  // متوسط BPM للأغاني الهادئة
+        const bpm = 95;
         const beatInterval = 60000 / bpm;
         
-        // استبدل __analyser بـ pseudo-analyser
-        (audio as any).__analyser = {
+        audio.__analyser = {
           frequencyBinCount: analyser.frequencyBinCount,
           getByteFrequencyData: (out: Uint8Array) => {
-            // محاكاة Bass nice + harmonics
             const t = performance.now() / beatInterval;
             const beat = Math.max(0, Math.sin(t * Math.PI * 2));
             const decay = Math.pow(beat, 4);
@@ -120,7 +122,6 @@ export function useMoodAudioGraph({
       }
     };
     
-    // افحص بعد 800ms من بدء التشغيل
     const onPlay = () => {
       if (checkTimer) clearTimeout(checkTimer);
       checkTimer = window.setTimeout(checkCorsAndFallback, 800);
@@ -130,24 +131,37 @@ export function useMoodAudioGraph({
     return () => {
       audio.removeEventListener('play', onPlay);
       if (checkTimer) clearTimeout(checkTimer);
-      if (fallbackInterval) clearInterval(fallbackInterval);
     };
   }, [activeSong, audioRef]);
 
   // ── حلقة قياس الـ bass لتحريك الـ glow
   useEffect(() => {
     const tick = () => {
-      if (analyserRef.current) {
-        const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(data);
-        // نأخذ متوسط الـ bass (أول 8 قيم)
-        const bass = data.slice(0, 8).reduce((a, b) => a + b, 0) / 8;
+      const analyser = analyserRef.current;
+      if (analyser) {
+        if (!freqDataRef.current || freqDataRef.current.length !== analyser.frequencyBinCount) {
+          freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
+        }
+        const data = freqDataRef.current;
+        analyser.getByteFrequencyData(data);
+        // نأخذ متوسط الـ bass (أول 8 قيم) بدون allocation
+        let bassSum = 0;
+        for (let i = 0; i < 8; i++) {
+          bassSum += data[i];
+        }
+        const bass = bassSum / 8;
         setGlowIntensity(bass / 255); // 0 → 1
       }
       animFrameRef.current = requestAnimationFrame(tick);
     };
     animFrameRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animFrameRef.current);
+    return () => {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      freqDataRef.current = null;
+    };
   }, []);
 
   return {

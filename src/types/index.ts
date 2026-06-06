@@ -81,5 +81,34 @@ export type AudioStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'ended';
 declare global {
   interface Window {
     webkitAudioContext?: typeof AudioContext;
+    __nl_bot_detected?: boolean;
+    requestIdleCallback(
+      callback: IdleRequestCallback,
+      options?: IdleRequestOptions
+    ): number;
+  }
+
+  interface Navigator {
+    webdriver?: boolean;
+    deviceMemory?: number;
+    connection?: {
+      effectiveType?: '2g' | 'slow-2g' | '3g' | '4g';
+      downlink?: number;
+      rtt?: number;
+      saveData?: boolean;
+    };
+    standalone?: boolean;
+  }
+
+  interface ScreenOrientation {
+    lock(orientation: string): Promise<void>;
+    unlock(): void;
+  }
+
+  interface HTMLAudioElement {
+    __analyser?: AnalyserNode | {
+      frequencyBinCount: number;
+      getByteFrequencyData: (out: Uint8Array) => void;
+    };
   }
 }

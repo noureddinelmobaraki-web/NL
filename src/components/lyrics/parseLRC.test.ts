@@ -7,7 +7,11 @@ describe('parseLRC', () => {
   });
 
   it('parses single valid LRC line', () => {
-    expect(parseLRC('[00:01.50]Hello')).toEqual([{ time: 1.5, text: 'Hello' }]);
+    const result = parseLRC('[00:01.50]Hello');
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ time: 1.5, text: 'Hello' });
+    expect(result[0].endTime).toBe(Infinity);
   });
 
   it('ignores line with no timestamp', () => {

@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { preloadBlackHoleTransition, BlackHoleTransition } from '../MusicMood/BlackHoleTransition';
 import { MusicMoodScreen } from '../MusicMood/MusicMoodScreen';
+import { SectionErrorBoundary } from '../SectionErrorBoundary';
 import newMoodIcon from '../../assets/images/regenerated_image_1780500901330.png';
 import { audioManager } from '../../audio/audioManager';
 import { ActiveSong } from '../../types';
@@ -40,29 +41,40 @@ export const MySongs = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const { setContext } = useButtonContext();
-
-  // FIXED: Define the trigger logic and register it
-  const handleTriggerMood = () => {
-    if (!moodAudioCtxRef.current || moodAudioCtxRef.current.state === 'closed') {
-      moodAudioCtxRef.current = new AudioContext();
-    }
-    if (moodAudioCtxRef.current.state === 'suspended') {
-      moodAudioCtxRef.current.resume();
-    }
-    if (playback.isPlaying) {
-      playback.audioTagRef.current?.pause();
-      onSongStop?.();
-    }
-    audioManager.pause?.('bg');
-
-    setIsMoodTransitioning(true);
-  };
-
   useEffect(() => {
-    onRegisterMoodTrigger?.(handleTriggerMood);
-  }, [onRegisterMoodTrigger, handleTriggerMood]);
+    const base = import.meta.env.BASE_URL || '/';
+    const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+    const controller = new AbortController();
 
+    fetch(`${normalizedBase}songs-jsonld.json`, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`JSON-LD ${r.status}`);
+        return r.json();
+      })
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        document.getElementById('songs-jsonld')?.remove();
+
+        const script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.id = 'songs-jsonld';
+        script.textContent = JSON.stringify(data);
+        document.head.appendChild(script);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        if (import.meta.env.DEV) {
+          console.warn('[MySongsPage] failed to load JSON-LD:', err);
+        }
+      });
+    return () => {
+      controller.abort();
+      document.getElementById('songs-jsonld')?.remove();
+    };
+  }, []);
+
+  const { setContext } = useButtonContext();
+  
   const state = useMySongsState({ onAmbientColorChange });
 
   const playback = useMySongsPlayback({
@@ -84,6 +96,36 @@ export const MySongs = ({
     onSongStop,
     onActiveSongChange,
   });
+
+  const handleTriggerMood = useCallback(() => {
+    setIsMoodTransitioning((prevTransitioning) => {
+      if (prevTransitioning) return true;
+      setIsMoodActive((prevActive) => {
+        if (prevActive) return true;
+
+        if (!moodAudioCtxRef.current || moodAudioCtxRef.current.state === 'closed') {
+          moodAudioCtxRef.current = new AudioContext();
+        }
+        if (moodAudioCtxRef.current.state === 'suspended') {
+          moodAudioCtxRef.current.resume().catch(() => {});
+        }
+        try {
+          if (playback?.isPlaying) {
+            playback.audioTagRef.current?.pause();
+            onSongStop?.();
+          }
+        } catch {}
+        audioManager.pause?.('bg');
+
+        return false; // don't set active here
+      });
+      return true;
+    });
+  }, [playback?.isPlaying, playback?.audioTagRef, onSongStop]);
+
+  useEffect(() => {
+    onRegisterMoodTrigger?.(handleTriggerMood);
+  }, [onRegisterMoodTrigger, handleTriggerMood]);
 
   useEffect(() => {
     if (isMoodActive) {
@@ -133,22 +175,26 @@ export const MySongs = ({
       }}
     >
       {isMoodTransitioning && (
-        <BlackHoleTransition
-          onNearComplete={() => setIsMoodActive(true)}
-          onComplete={() => setIsMoodTransitioning(false)}
-        />
+        <SectionErrorBoundary sectionName="BlackHoleTransition">
+          <BlackHoleTransition
+            onNearComplete={() => setIsMoodActive(true)}
+            onComplete={() => setIsMoodTransitioning(false)}
+          />
+        </SectionErrorBoundary>
       )}
       {isMoodActive && (
-        <MusicMoodScreen
-          songs={state.songs}
-          existingAudioCtx={moodAudioCtxRef.current}
-          onExit={() => {
-            setIsMoodActive(false);
-            onSongStop?.();
-            if (typeof audioManager.unpauseBg === 'function') audioManager.unpauseBg();
-            else (audioManager as any).resume?.('bg');
-          }}
-        />
+        <SectionErrorBoundary sectionName="MusicMoodScreen">
+          <MusicMoodScreen
+            songs={state.songs}
+            existingAudioCtx={moodAudioCtxRef.current}
+            onExit={() => {
+              setIsMoodActive(false);
+              onSongStop?.();
+              if (typeof audioManager.unpauseBg === 'function') audioManager.unpauseBg();
+              else (audioManager as any).resume?.('bg');
+            }}
+          />
+        </SectionErrorBoundary>
       )}
       <audio ref={playback.audioTagRef} preload="none" crossOrigin="anonymous" style={{ display: 'none' }} />
       <div className="max-w-6xl mx-auto relative z-10">

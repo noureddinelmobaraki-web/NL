@@ -9,13 +9,17 @@ const userLang = params.get('lang') || (navigator.language.startsWith('ar') ? 'a
 document.documentElement.setAttribute('lang', userLang);
 document.documentElement.setAttribute('dir', userLang === 'ar' ? 'rtl' : 'ltr');
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Fatal: #root element not found in index.html');
+}
+createRoot(rootElement).render(
   <StrictMode>
     <App />
   </StrictMode>,
 );
 
-const isAutomatedMain = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
+const isAutomatedMain = typeof navigator !== 'undefined' && navigator.webdriver === true;
 if (!isAutomatedMain) {
   registerServiceWorker();
 }

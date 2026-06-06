@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Song, LyricLine } from '../../../types';
 import { parseLRC } from '../../LyricsEngine';
+import { safeFetchText, SafeFetchError } from '../../../utils/safeFetch';
 
 interface UseMoodLyricsProps {
   activeSong: Song | null;
@@ -15,38 +16,64 @@ export function useMoodLyrics({ activeSong, currentTime }: UseMoodLyricsProps) {
 
   // ── جلب وتحليل الـ LRC
   useEffect(() => {
-    if (!activeSong?.lrc) {
-      setLyrics([]);
-      setPreviousLine(null);
-      setCurrentLine(null);
-      setNextLine(null);
-      return;
-    }
+    setLyrics([]);
+    setPreviousLine(null);
+    setCurrentLine(null);
+    setNextLine(null);
+
+    if (!activeSong?.lrc) return;
+
     const ctrl = new AbortController();
     const filename = activeSong.lrc.split('/').pop() || '';
     const encoded = encodeURIComponent(filename);
-    fetch(`${import.meta.env.BASE_URL}lrc/${encoded}`, { signal: ctrl.signal })
-      .then((r) => r.text())
+
+    safeFetchText(`${import.meta.env.BASE_URL}lrc/${encoded}`, {
+      signal: ctrl.signal,
+      timeoutMs: 10000,
+    })
       .then((text) => parseLRC(text))
       .then((parsed) => setLyrics(parsed))
-      .catch(() => {});
+      .catch((err) => {
+        if (err instanceof SafeFetchError && err.kind === 'abort') return;
+      });
+
     return () => ctrl.abort();
+  }, [activeSong]);
+
+  const lastIndexRef = useRef(-1);
+
+  useEffect(() => {
+    lastIndexRef.current = -1;
   }, [activeSong]);
 
   // ── تحديد الكلمات الحالية بناءً على الوقت
   useEffect(() => {
     if (!lyrics.length) return;
-    let prev: LyricLine | null = null, current: LyricLine | null = null, next: LyricLine | null = null;
-    for (let i = 0; i < lyrics.length; i++) {
-      if (lyrics[i].time <= currentTime) {
-        prev = lyrics[i - 1] ?? null;
-        current = lyrics[i];
-        next = lyrics[i + 1] ?? null;
-      }
+
+    // 1) تحقق سريع من الـ cache
+    const cached = lastIndexRef.current;
+    if (
+      cached >= 0 && cached < lyrics.length &&
+      lyrics[cached].time <= currentTime &&
+      (cached + 1 >= lyrics.length || lyrics[cached + 1].time > currentTime)
+    ) {
+      return; // ما زلنا على نفس السطر، لا تحديث
     }
-    setPreviousLine(prev);
-    setCurrentLine(current);
-    setNextLine(next);
+
+    // 2) binary search
+    let lo = 0, hi = lyrics.length - 1, idx = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (lyrics[mid].time <= currentTime) { idx = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+
+    if (idx !== cached) {
+      lastIndexRef.current = idx;
+      setPreviousLine(idx > 0 ? lyrics[idx - 1] : null);
+      setCurrentLine(idx >= 0 ? lyrics[idx] : null);
+      setNextLine(idx + 1 < lyrics.length ? lyrics[idx + 1] : null);
+    }
   }, [currentTime, lyrics]);
 
   return {
