@@ -25,3 +25,12 @@ export function applyTheme(next: Theme): void {
   }
   window.setTimeout(() => { root.classList.remove(SWITCH_CLASS); }, SWITCH_DURATION);
 }
+
+export function withViewTransition(fn: () => void) {
+  if (typeof document.startViewTransition !== 'function' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    fn();
+    return;
+  }
+  document.startViewTransition(fn);
+}

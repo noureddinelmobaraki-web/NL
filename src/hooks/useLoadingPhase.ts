@@ -12,6 +12,12 @@ export function useLoadingPhase() {
   const [slowConnection, setSlowConnection] = useState(false);
   const [forceStatic, setForceStatic] = useState(() => {
     if (typeof window !== 'undefined') {
+      // Clear legacy broken static state once to recover from previous .mp4 404 bug
+      if (!localStorage.getItem('nl_force_static_fixed')) {
+        localStorage.removeItem('nl_force_static');
+        localStorage.setItem('nl_force_static_fixed', 'true');
+        return false;
+      }
       return localStorage.getItem('nl_force_static') === 'true';
     }
     return false;

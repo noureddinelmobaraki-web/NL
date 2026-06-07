@@ -58,7 +58,7 @@ export const MeBitGallery = ({
 
     registerButton({
       id: 'mebitAudio',
-      priority: 2,
+      priority: 1,
       allowedContexts: ['mebit'],
       slot: 'topRight',
       render: () => (
@@ -79,7 +79,7 @@ export const MeBitGallery = ({
 
     registerButton({
       id: 'mebitClose',
-      priority: 1,
+      priority: 2,
       allowedContexts: ['mebit'],
       slot: 'topRight',
       render: () => (

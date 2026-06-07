@@ -1,21 +1,12 @@
 import { useEffect, memo } from 'react';
-import { motion, Variants } from "framer-motion";
 import { Music2, Youtube } from "lucide-react";
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
+import { useFadeInOnView } from '../../hooks/useFadeInOnView';
 
 interface HighlightsSectionProps {
   vaultPlaylistCoverUrl: string;
   youtubeHighlightsBgUrl: string;
 }
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.6, ease: [0.175, 0.885, 0.32, 1.275] }
-  }
-};
 
 const STYLES_REFACTORED = {
   SHADOW_BLACK_SOLID: { textShadow: '2px 2px 0 var(--manga-shadow-color)' },
@@ -32,6 +23,7 @@ export const HighlightsSection = memo(({
   youtubeHighlightsBgUrl: _y 
 }: HighlightsSectionProps) => {
   const resolvedTheme = useResolvedTheme();
+  const sectionRef = useFadeInOnView<HTMLElement>();
 
   useEffect(() => {
     if (import.meta.env.DEV && typeof window !== 'undefined') {
@@ -52,9 +44,9 @@ export const HighlightsSection = memo(({
   }, [resolvedTheme]);
 
   return (
-    <motion.section 
-      variants={itemVariants}
-      className="grid grid-cols-1 md:grid-cols-2 gap-8"
+    <section 
+      ref={sectionRef}
+      className="fade-in-section grid grid-cols-1 md:grid-cols-2 gap-8"
     >
       {/* The Vault - Playlist Section */}
       <div className="flex flex-col gap-4">
@@ -108,6 +100,6 @@ export const HighlightsSection = memo(({
           </div>
         </a>
       </div>
-    </motion.section>
+    </section>
   );
 });

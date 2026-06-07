@@ -1,5 +1,4 @@
 import { useEffect, memo } from 'react';
-import { motion, Variants } from "framer-motion";
 import { 
   Instagram, 
   Facebook, 
@@ -13,6 +12,7 @@ import { StreamingPlatform, SocialChannel } from "../../types";
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { useDeviceType } from '../../hooks/useDeviceType'; // MOBILE-ONLY
 import { getLocalAssetUrl } from '../../constants/assets';
+import { useFadeInOnView } from '../../hooks/useFadeInOnView';
 
 const STREAMING_PLATFORMS: StreamingPlatform[] = [
   {
@@ -75,15 +75,6 @@ const SOCIAL_CHANNELS: SocialChannel[] = [
   },
 ];
 
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.6, ease: [0.175, 0.885, 0.32, 1.275] }
-  }
-};
-
 const SpotifyLogo = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 24 24"
@@ -102,6 +93,8 @@ const SpotifyLogo = ({ className }: { className?: string }) => (
 export const StreamingSection = memo(() => {
   const resolvedTheme = useResolvedTheme();
   const { isMobile, isTablet } = useDeviceType(); // MOBILE-ONLY
+  const section1Ref = useFadeInOnView<HTMLElement>();
+  const section2Ref = useFadeInOnView<HTMLElement>();
 
   // Runtime CSS variable assertion
   useEffect(() => {
@@ -140,7 +133,7 @@ export const StreamingSection = memo(() => {
   return (
     <main className="grid grid-cols-1 md:grid-cols-2 gap-10">
       {/* Streaming Platforms Section */}
-      <motion.section variants={itemVariants} className="flex flex-col gap-6" lang="en">
+      <section ref={section1Ref} className="fade-in-section flex flex-col gap-6" lang="en">
         <div className="streaming-header-container">
           {/* Titlebar Style for light theme */}
           <div className="streaming-titlebar-refactored">
@@ -221,10 +214,10 @@ export const StreamingSection = memo(() => {
             </div>
           ))}
         </div>
-      </motion.section>
+      </section>
 
       {/* Social Channels Section */}
-      <motion.section variants={itemVariants} className="flex flex-col gap-6" lang="en">
+      <section ref={section2Ref} className="fade-in-section flex flex-col gap-6" lang="en">
         <div className="social-header-container">
           {/* Titlebar Style for light theme */}
           <div className="social-titlebar-refactored">
@@ -281,7 +274,7 @@ export const StreamingSection = memo(() => {
             </a>
           ))}
         </div>
-      </motion.section>
+      </section>
     </main>
   );
 });

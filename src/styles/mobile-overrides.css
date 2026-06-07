@@ -1,3 +1,4 @@
+@layer overrides {
 /* src/styles/mobile-overrides.css */
 
 /* ========================================================================== */
@@ -321,3 +322,55 @@ body.bh-transitioning {
   0%, 100% { transform: scaleY(0.4); opacity: 0.7; }
   50%      { transform: scaleY(1.0); opacity: 1.0; }
 }
+
+/* ========================================================================== */
+/* iOS SAFARI SPECIFIC OVERRIDES — أضيفت بجانب القواعد الموجودة، لا تلغيها  */
+/* يُستخدم (-webkit-touch-callout) كـdetector لأنه خاص بـiOS Safari فقط     */
+/* ========================================================================== */
+@supports (-webkit-touch-callout: none) {
+
+  /* 1. Dynamic Viewport Height — يحل مشكلة address bar على iOS */
+  .min-h-screen { min-height: 100dvh !important; }
+  
+  /* Full-height overlays وmodals */
+  .fixed.inset-0,
+  [style*="height: 100vh"],
+  .fullscreen-overlay { height: 100dvh !important; }
+
+  /* 2. Safe Area Insets — notch وhome indicator */
+  .mobile-nav-bar,
+  [class*="nav-bar"],
+  [class*="bottom-bar"] {
+    padding-bottom: max(
+      env(safe-area-inset-bottom, 0px),
+      16px
+    ) !important;
+  }
+
+  [class*="now-playing"],
+  [class*="player-bar"] {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  /* 3. Scroll momentum على iOS — بدونه الـscroll يتوقف فجأة */
+  .overflow-y-auto,
+  .overflow-y-scroll,
+  [class*="scroll"] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 4. Tap highlight إزالة على iOS للأزرار الـcustom */
+  button,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 5. منع zoom عند focus على inputs على iOS */
+  input[type="text"],
+  input[type="email"],
+  textarea {
+    font-size: max(16px, 1rem) !important;
+  }
+}
+}
+

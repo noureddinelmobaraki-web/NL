@@ -1,0 +1,79 @@
+@layer components {
+  /* Define SongCard as a container */
+  .song-card-container {
+    container-type: inline-size;
+    container-name: song-card;
+  }
+
+  /* Default (Desktop) styles for SongCardControls */
+  .song-card-controls-wrapper {
+    gap: 12px;
+  }
+
+  .song-card-controls-btn-nav {
+    width: 40px;
+    height: 40px;
+  }
+
+  .song-card-controls-icon-nav {
+    width: 16px;
+    height: 16px;
+  }
+
+  .song-card-controls-btn-play {
+    width: 52px;
+    height: 52px;
+  }
+
+  .song-card-controls-icon-play {
+    width: 22px;
+    height: 22px;
+  }
+
+  .song-card-controls-spinner {
+    width: 20px;
+    height: 20px;
+  }
+
+  .song-card-controls-icon-vol {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Mobile layout (when container is small) */
+  @container song-card (max-width: 480px) {
+    .song-card-controls-wrapper {
+      gap: 24px;
+    }
+
+    .song-card-controls-btn-nav {
+      width: 52px;
+      height: 52px;
+    }
+
+    .song-card-controls-icon-nav {
+      width: 20px;
+      height: 20px;
+    }
+
+    .song-card-controls-btn-play {
+      width: 72px;
+      height: 72px;
+    }
+
+    .song-card-controls-icon-play {
+      width: 28px;
+      height: 28px;
+    }
+
+    .song-card-controls-spinner {
+      width: 28px;
+      height: 28px;
+    }
+
+    .song-card-controls-icon-vol {
+      width: 18px;
+      height: 18px;
+    }
+  }
+}

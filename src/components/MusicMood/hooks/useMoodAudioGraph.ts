@@ -26,7 +26,16 @@ export function useMoodAudioGraph({
     // FIXED: AudioContext إنشاء مرة واحدة فقط طوال عمر الـ audio element
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
       try {
-        audioCtxRef.current = existingAudioCtx ?? new AudioContext();
+        const AudioContextClass: typeof AudioContext =
+          window.AudioContext ??
+          window.webkitAudioContext ??
+          undefined;
+
+        if (!AudioContextClass) {
+          console.warn('[useMoodAudioGraph] AudioContext not supported');
+          return;
+        }
+        audioCtxRef.current = existingAudioCtx ?? new AudioContextClass();
       } catch (err) {
         console.warn('[useMoodAudioGraph] AudioContext init failed:', err);
         return;
@@ -121,7 +130,7 @@ export function useMoodAudioGraph({
         freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
       }
       const data = freqDataRef.current;
-      analyser.getByteFrequencyData(data);
+      analyser.getByteFrequencyData(data as any);
       let sum = 0;
       for (let i = 0; i < data.length; i++) sum += data[i];
 
@@ -213,7 +222,7 @@ export function useMoodAudioGraph({
           freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
         }
         const data = freqDataRef.current;
-        analyser.getByteFrequencyData(data);
+        analyser.getByteFrequencyData(data as any);
         // نأخذ متوسط الـ bass (أول 8 قيم) بدون allocation
         let bassSum = 0;
         for (let i = 0; i < 8; i++) {

@@ -1,3 +1,4 @@
+@layer utilities {
 .tablet-px {
   @media (min-width: 768px) and (max-width: 1023px) {
     padding-left: 2rem;
@@ -153,6 +154,12 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  @supports (-webkit-touch-callout: none) {
+    /* iOS Safari override */
+    .fullscreen-control,
+    [class*="fullscreen"] { height: 100dvh !important; }
+  }
+
   /* Mobile back button — always visible */
   .mobile-back-btn {
     display: flex !important;
@@ -227,4 +234,5 @@
 
   /* NowPlayingBar فوق MobileNavBar */
   .now-playing-bar { bottom: 60px !important; }
+}
 }

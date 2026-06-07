@@ -5,9 +5,32 @@ import Hls from 'hls.js';
 import { PersonalPhotoFloater } from './PersonalPhotoFloater';
 import { audioManager } from '../../audio/audioManager';
 import { RetroViewportProvider } from '../RetroViewportProvider';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getLocalAssetUrl } from '../../constants/assets';
+import type { Theme } from '../../utils/userPrefs';
+
+const THEME_LABELS: Record<string, string> = {
+  dark:     'Dark',
+  light:    'Light',
+  bit:      'Bit',
+  midnight: 'Midnight',
+  lite:     'Lite',
+  retro:    'Retro',
+};
+
+const themeIconUrl = (t: Theme) =>
+  t === 'retro'
+    ? 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro.svg'
+    : getLocalAssetUrl(
+        t === 'dark' ? 'dark-mode.svg' :
+        t === 'light' ? 'light-mode.svg' :
+        t === 'bit' ? 'bit_mode.svg' :
+        t === 'lite' ? 'lite_mode.svg' :
+        'midnight_mode.svg'
+      );
 
 export const RetroWorldPage: React.FC = () => {
-  const { theme, setTheme, setAudioIntent } = useAppContext();
+  const { theme, setTheme, setAudioIntent, setLoaded } = useAppContext();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -15,11 +38,7 @@ export const RetroWorldPage: React.FC = () => {
   const handleScrollRef = useRef<(() => void) | null>(null);
 
   const [isAudioMuted, setIsAudioMuted] = useState(false);
-
-  const handleLeaveRetro = () => {
-    setTheme('midnight');
-    setAudioIntent('user-playing');
-  };
+  const [isThemeOpen, setIsThemeOpen] = useState(false);
 
   useEffect(() => {
     if (theme === 'retro') {
@@ -195,7 +214,7 @@ export const RetroWorldPage: React.FC = () => {
 
   return (
     <RetroViewportProvider desktopWidth={1024}>
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, backgroundColor: '#000' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100dvh', zIndex: 9999, backgroundColor: '#000' }}>
         
         {/* أدوات التحكم العلوية (خروج + صوت) */}
       <style>{`
@@ -210,43 +229,253 @@ export const RetroWorldPage: React.FC = () => {
         right: 'calc(env(safe-area-inset-right, 0px) + 24px)', 
         zIndex: 100000,
         display: 'flex',
+        alignItems: 'center',
         gap: '12px'
       }}>
-        {/* زر التحكم بالصوت */}
+        {/* زر التحكم بالصوت (صغير وشفاف) */}
         <button
           type="button"
           onClick={toggleAudio}
           className="retro-control-btn"
           aria-label={isAudioMuted ? "تشغيل الموسيقى" : "كتم الموسيقى"}
           style={{
-            background: 'rgba(255, 0, 0, 0.85)', border: '2px solid rgba(255, 0, 0, 1)', color: 'white',
-            width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', cursor: 'pointer',
-            boxShadow: '0 0 15px rgba(255, 0, 0, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.3)',
-            transition: 'transform 0.2s',
+            background: 'rgba(255, 255, 255, 0.1)', 
+            border: '1px solid rgba(255, 255, 255, 0.2)', 
+            color: 'white',
+            width: '36px', 
+            height: '36px', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center',
+            justifyContent: 'center', 
+            cursor: 'pointer',
+            transition: 'background-color 0.2s, color 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
           }}
           title={isAudioMuted ? "تشغيل الموسيقى" : "كتم الموسيقى"}
         >
-          {isAudioMuted ? <VolumeX size={24} strokeWidth={3} /> : <Volume2 size={24} strokeWidth={3} />}
+          {isAudioMuted ? <VolumeX size={18} strokeWidth={2} /> : <Volume2 size={18} strokeWidth={2} />}
         </button>
 
-        {/* زر الخروج */}
-        <button
-          type="button"
-          onClick={handleLeaveRetro}
-          className="retro-control-btn"
-          aria-label="الخروج من الوضع الريترو"
-          style={{
-            background: 'rgba(255, 0, 0, 0.85)', border: '2px solid rgba(255, 0, 0, 1)', color: 'white',
-            width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', cursor: 'pointer',
-            boxShadow: '0 0 15px rgba(255, 0, 0, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.3)',
-            transition: 'transform 0.2s',
-          }}
-          title="خروج من الوضع"
-        >
-          <X size={24} strokeWidth={3} />
-        </button>
+        {/* زر تغيير الأوضاع (dropdown صغير وشفاف) */}
+        <div style={{ position: 'relative', pointerEvents: 'auto' }}>
+          <button
+            type="button"
+            onClick={() => setIsThemeOpen(v => !v)}
+            aria-expanded={isThemeOpen}
+            aria-haspopup="menu"
+            aria-label={`تغيير الوضع. الحالي: ${THEME_LABELS[theme] ?? theme}`}
+            className="retro-control-btn"
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+              transition: 'transform 200ms ease, background-color 0.2s',
+              transform: isThemeOpen ? 'rotate(90deg) scale(1.05)' : 'rotate(0deg) scale(1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            }}
+          >
+            <img
+              src={themeIconUrl(theme)}
+              alt=""
+              aria-hidden="true"
+              style={{
+                width: '18px',
+                height: '18px',
+                objectFit: 'contain',
+                filter: 'invert(1) brightness(2)',
+              }}
+            />
+          </button>
+
+          {/* القائمة المنسدلة لاختيار الأوضاع */}
+          <AnimatePresence>
+            {isThemeOpen && (
+              <>
+                {/* خلفية للإغلاق عند النقر بالخارج */}
+                <motion.div
+                  key="retro-theme-bd"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsThemeOpen(false)}
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(0,0,0,0.4)',
+                    zIndex: 99990,
+                    cursor: 'default',
+                  }}
+                />
+                
+                {/* قائمة الخيارات */}
+                <motion.div
+                  key="retro-theme-menu"
+                  role="menu"
+                  initial={{ opacity: 0, y: -8, scale: 0.92 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.92 }}
+                  transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    padding: '6px',
+                    background: 'rgba(15, 15, 20, 0.95)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    zIndex: 99991,
+                    minWidth: '140px',
+                  }}
+                >
+                  {(['dark', 'light', 'midnight', 'bit', 'lite', 'retro'] as Theme[]).map((t, idx) => {
+                    const isActive = theme === t;
+                    return (
+                      <motion.button
+                        key={t}
+                        role="menuitemradio"
+                        aria-checked={isActive}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.03 }}
+                        onClick={() => {
+                          setTheme(t);
+                          setIsThemeOpen(false);
+                          setAudioIntent('user-playing');
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                          border: 'none',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s',
+                          textAlign: 'left',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <span style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          flexShrink: 0,
+                        }}>
+                          <img
+                            src={themeIconUrl(t)}
+                            alt=""
+                            aria-hidden="true"
+                            style={{
+                              width: '12px',
+                              height: '12px',
+                              objectFit: 'contain',
+                              filter: t === 'light' ? 'none' : 'invert(1) brightness(2)',
+                            }}
+                          />
+                        </span>
+                        <span style={{ flexGrow: 1 }}>
+                          {THEME_LABELS[t] ?? t}
+                        </span>
+                      </motion.button>
+                    );
+                  })}
+                  <motion.button
+                    key="exit"
+                    id="retro-theme-option-exit"
+                    role="menuitem"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 6 * 0.03 }}
+                    onClick={() => {
+                      setLoaded(false);
+                      setTheme('midnight');
+                      setAudioIntent('user-paused');
+                      setIsThemeOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#ff4d4d',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s',
+                      textAlign: 'left',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 77, 77, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <span style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'rgba(255, 77, 77, 0.15)',
+                      flexShrink: 0,
+                    }}>
+                      <X size={12} color="#ff4d4d" strokeWidth={2.5} />
+                    </span>
+                    <span style={{ flexGrow: 1 }}>
+                      exit
+                    </span>
+                  </motion.button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* الصور الشخصية: نمرر لها الـ ref للتحديث المباشر للـ DOM */}

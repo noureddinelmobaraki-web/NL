@@ -19,7 +19,6 @@ interface SongCardControlsProps {
 }
 
 export const SongCardControls = ({
-  isMobile,
   resolvedTheme,
   currentTime,
   duration,
@@ -35,11 +34,10 @@ export const SongCardControls = ({
   return (
     <>
       {/* Full Playback Controls */}
-      <div style={{
+      <div className="song-card-controls-wrapper" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: isMobile ? '24px' : '12px',
         padding: '12px 0 16px',
         borderBottom: '1px solid var(--card-border-line)',
         marginBottom: '8px',
@@ -48,8 +46,6 @@ export const SongCardControls = ({
         <button
           onClick={(e) => { e.stopPropagation(); onPrev?.(); }}
           style={{
-            width: isMobile ? '52px' : '40px', 
-            height: isMobile ? '52px' : '40px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderRadius: resolvedTheme === 'light' ? '0' : '50%',
             background: 'var(--card-control-bg)',
@@ -60,10 +56,10 @@ export const SongCardControls = ({
             flexShrink: 0,
             ...(resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {})
           }}
-          className="hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
+          className="song-card-controls-btn-nav hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
           aria-label="Previous song"
         >
-          <SkipBack size={isMobile ? 20 : 16} fill="currentColor" />
+          <SkipBack className="song-card-controls-icon-nav" fill="currentColor" />
         </button>
 
         {/* Play / Pause — main CTA */}
@@ -73,8 +69,6 @@ export const SongCardControls = ({
             onPlayPause?.();
           }}
           style={{
-            width: isMobile ? '72px' : '52px', 
-            height: isMobile ? '72px' : '52px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderRadius: resolvedTheme === 'light' ? '0' : '50%',
             background: isPlaying ? (resolvedTheme === 'light' ? '#DDD' : 'rgba(255,255,255,0.95)') : 'white',
@@ -85,23 +79,21 @@ export const SongCardControls = ({
             boxShadow: resolvedTheme === 'light' ? 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' : '0 4px 16px rgba(0,0,0,0.4)',
             flexShrink: 0,
           }}
-          className="hover:scale-110 active:scale-90"
+          className="song-card-controls-btn-play hover:scale-110 active:scale-90"
           aria-label={isPlaying ? 'Pause' : 'Play'}
           aria-pressed={isPlaying}
         >
           {isWaiting ? (
-            <div style={{
-              width: isMobile ? '28px' : '20px', 
-              height: isMobile ? '28px' : '20px',
+            <div className="song-card-controls-spinner" style={{
               border: '3px solid rgba(0,0,0,0.3)',
               borderTopColor: 'black',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
             }} />
           ) : isPlaying ? (
-            <Pause size={isMobile ? 28 : 22} fill="currentColor" />
+            <Pause className="song-card-controls-icon-play" fill="currentColor" />
           ) : (
-            <Play size={isMobile ? 28 : 22} fill="currentColor" style={{ marginLeft: '2px' }} />
+            <Play className="song-card-controls-icon-play" fill="currentColor" style={{ marginLeft: '2px' }} />
           )}
         </button>
 
@@ -109,8 +101,6 @@ export const SongCardControls = ({
         <button
           onClick={(e) => { e.stopPropagation(); onNext?.(); }}
           style={{
-            width: isMobile ? '52px' : '40px', 
-            height: isMobile ? '52px' : '40px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderRadius: resolvedTheme === 'light' ? '0' : '50%',
             background: 'var(--card-control-bg)',
@@ -121,10 +111,10 @@ export const SongCardControls = ({
             flexShrink: 0,
             ...(resolvedTheme === 'light' ? { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' } : {})
           }}
-          className="hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
+          className="song-card-controls-btn-nav hover:bg-white/15 hover:text-white hover:scale-105 active:scale-90"
           aria-label="Next song"
         >
-          <SkipForward size={isMobile ? 20 : 16} fill="currentColor" />
+          <SkipForward className="song-card-controls-icon-nav" fill="currentColor" />
         </button>
       </div>
 
@@ -150,7 +140,7 @@ export const SongCardControls = ({
 
       {/* Volume Control */}
       <div className="flex items-center gap-3 pt-2">
-        <Volume2 size={isMobile ? 18 : 14} className={resolvedTheme === 'light' ? 'text-black/60' : 'text-white/60'} />
+        <Volume2 className={`song-card-controls-icon-vol ${resolvedTheme === 'light' ? 'text-black/60' : 'text-white/60'}`} />
         <input 
           type="range"
           min={0}

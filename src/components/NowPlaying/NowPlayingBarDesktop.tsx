@@ -58,26 +58,11 @@ export const NowPlayingBarDesktop = ({
 }: NowPlayingBarDesktopProps) => {
   return (
     <>
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        width: "100%",
-        height: "64px",
-        flexShrink: 0
-      }}>
+      <div className="flex items-center gap-3 w-full h-16 shrink-0">
         {/* Left: Cover Art */}
-        <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
+        <div className="relative w-11 h-11 shrink-0">
           <div 
-            style={{ 
-              position: 'absolute', 
-              inset: '-4px', 
-              borderRadius: '50%', 
-              background: `var(--card-control-bg)`, 
-              filter: 'blur(8px)',
-              opacity: isPlaying ? 1 : 0,
-              transition: 'opacity 1s'
-            }} 
+            className={`absolute -inset-1 rounded-full bg-[var(--card-control-bg)] blur-md duration-1000 transition-opacity ${isPlaying ? "opacity-100" : "opacity-0"}`}
           />
           {activeSong.cover || (activeSong as any).backgroundImage ? (
             <img 
@@ -85,52 +70,28 @@ export const NowPlayingBarDesktop = ({
               alt={`${activeSong?.title ?? 'Song'} cover art`} 
               width={44}
               height={44}
-              style={{ 
-                width: '100%', 
-                height: '100%', 
-                borderRadius: '50%', 
-                objectFit: 'cover',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                animation: isPlaying ? 'spin 12s linear infinite' : 'none'
-              }} 
+              className={`w-full h-full rounded-full object-cover shadow-[0_4px_12px_rgba(0,0,0,0.3)] ${isPlaying ? "animate-[spin_12s_linear_infinite]" : ""}`}
             />
           ) : (
-            <div style={{ 
-              width: '100%', 
-              height: '100%', 
-              borderRadius: '50%', 
-              background: 'linear-gradient(45deg, #333, #666)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }} />
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-neutral-700 to-neutral-500 flex items-center justify-center" />
           )}
         </div>
 
         {/* Center: Info */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          <span style={{ 
-            color: "var(--text-primary)", 
-            fontSize: "14px", 
-            fontWeight: "700", 
-            whiteSpace: "nowrap", 
-            overflow: "hidden", 
-            textOverflow: "ellipsis",
-            letterSpacing: "-0.01em"
-          }}>
+        <div className="flex-1 min-w-0 flex flex-col">
+          <span className="text-[var(--text-primary)] text-sm font-bold truncate tracking-[-0.01em]">
             {activeSong.title}
           </span>
-          <span style={{ fontSize: '8px', color: 'var(--text-muted)', fontWeight: 'bold', letterSpacing: '0.15em', marginTop: '1px' }}>
+          <span className="text-[8px] text-[var(--text-muted)] font-bold tracking-[0.15em] mt-[1px]">
             NOW PLAYING
           </span>
         </div>
 
         {/* Desktop Extra Controls (Middle-Right) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginRight: '8px' }}>
+        <div className="flex items-center gap-1 mr-2">
           <button
             onClick={onShuffleToggle}
-            style={{ color: isShuffle ? 'var(--accent-indigo)' : 'var(--text-muted)', padding: '8px' }}
-            className="hover:scale-110 active:scale-95 transition-all outline-none"
+            className={`p-2 hover:scale-110 active:scale-95 transition-all outline-none ${isShuffle ? "text-[var(--accent-indigo)]" : "text-[var(--text-muted)]"}`}
             title="Shuffle"
             aria-label={isShuffle ? 'إيقاف العشوائي' : 'تشغيل العشوائي'}
           >
@@ -138,8 +99,7 @@ export const NowPlayingBarDesktop = ({
           </button>
           <button
             onClick={onRepeatToggle}
-            style={{ color: repeatMode !== 'off' ? 'var(--accent-indigo)' : 'var(--text-muted)', padding: '8px' }}
-            className="hover:scale-110 active:scale-95 transition-all outline-none"
+            className={`p-2 hover:scale-110 active:scale-95 transition-all outline-none ${repeatMode !== 'off' ? "text-[var(--accent-indigo)]" : "text-[var(--text-muted)]"}`}
             title="Repeat"
             aria-label={repeatMode === 'off' ? 'تكرار إيقاف' : repeatMode === 'all' ? 'تكرار الكل' : 'تكرار الأغنية'}
           >
@@ -148,12 +108,11 @@ export const NowPlayingBarDesktop = ({
         </div>
 
         {/* Right: Primary Controls */}
-        <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
+        <div className="flex gap-0.5 items-center">
           <button
             onClick={onPrev}
-            style={{ color: "var(--text-secondary)", padding: "10px" }}
             aria-label="الأغنية السابقة"
-            className="hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
+            className="p-2.5 text-[var(--text-secondary)] hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
           >
             <SkipBack size={20} fill="currentColor" aria-hidden="true" />
           </button>
@@ -161,37 +120,24 @@ export const NowPlayingBarDesktop = ({
           <button
             onClick={onPlayPause}
             aria-label={isPlaying ? "Pause" : "Play"}
-            style={{ 
-              width: "48px", 
-              height: "48px", 
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center", 
-              borderRadius: "50%", 
-              background: "var(--text-primary)", 
-              color: "var(--text-inverse)",
-              boxShadow: '0 4px 15px rgba(255,255,255,0.2)',
-              margin: '0 4px'
-            }}
-            className="hover:scale-105 active:scale-95 shadow-lg outline-none"
+            className="w-12 h-12 flex items-center justify-center rounded-full bg-[var(--text-primary)] text-[var(--text-inverse)] shadow-[0_4px_15px_rgba(255,255,255,0.2)] mx-1 hover:scale-105 active:scale-95 shadow-lg outline-none"
           >
-            {isPlaying ? <Pause size={20} fill="currentColor" aria-hidden="true" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} aria-hidden="true" />}
+            {isPlaying ? <Pause size={20} fill="currentColor" aria-hidden="true" /> : <Play size={20} fill="currentColor" className="ml-0.5" aria-hidden="true" />}
           </button>
 
           <button
             onClick={onNext}
-            style={{ color: "var(--text-secondary)", padding: "10px" }}
             aria-label="الأغنية التالية"
-            className="hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
+            className="p-2.5 text-[var(--text-secondary)] hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
           >
             <SkipForward size={20} fill="currentColor" aria-hidden="true" />
           </button>
 
           {/* Desktop Hover Controls (Volume/Queue) */}
           {isHovered && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px' }}>
-                {volume === 0 ? <VolumeX size={16} style={{ color: 'var(--text-muted)' }} /> : <Volume2 size={16} style={{ color: 'var(--text-secondary)' }} />}
+            <div className="flex items-center gap-2 ml-3">
+              <div className="flex items-center gap-2 w-[100px]">
+                {volume === 0 ? <VolumeX size={16} className="text-[var(--text-muted)]" /> : <Volume2 size={16} className="text-[var(--text-secondary)]" />}
                 <input 
                   type="range"
                   min={0}
@@ -199,14 +145,12 @@ export const NowPlayingBarDesktop = ({
                   step={0.01}
                   value={volume}
                   onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-                  className="volume-slider"
-                  style={{ flex: 1, height: '3px', cursor: 'pointer', accentColor: 'var(--text-primary)' }}
+                  className="volume-slider flex-1 h-[3px] cursor-pointer accent-[var(--text-primary)]"
                 />
               </div>
               <button
                 onClick={onToggleQueue}
-                style={{ color: showQueue ? 'var(--text-primary)' : 'var(--text-muted)', padding: '8px' }}
-                className="hover:text-[var(--text-primary)] transition-colors outline-none"
+                className={`p-2 transition-colors outline-none ${showQueue ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
                 title="Queue"
                 aria-label={showQueue ? 'إخفاء القائمة' : 'عرض القائمة'}
               >
@@ -217,11 +161,7 @@ export const NowPlayingBarDesktop = ({
 
           <button
             onClick={onClose}
-            style={{ 
-              color: "var(--text-muted)", 
-              padding: "10px", 
-            }}
-            className="hover:text-[var(--text-primary)] transition-colors outline-none"
+            className="p-2.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors outline-none"
             aria-label="Close"
           >
             <X size={18} aria-hidden="true" />
@@ -231,12 +171,7 @@ export const NowPlayingBarDesktop = ({
 
       {/* Seek Section */}
       {isHovered && (
-        <div style={{
-          padding: "0 12px 12px 12px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "4px"
-        }}>
+        <div className="px-3 pb-3 flex flex-col gap-1">
           <div className="relative w-full py-3 -my-3 cursor-pointer">
             <input
               type="range"
@@ -250,27 +185,12 @@ export const NowPlayingBarDesktop = ({
                 }
               }}
               style={{ 
-                width: '100%', 
-                height: '6px',
-                background: `linear-gradient(to right, var(--text-primary) ${progress}%, rgba(255,255,255,0.1) ${progress}%)`,
-                appearance: 'none',
-                cursor: 'pointer',
-                borderRadius: '3px',
-                outline: 'none',
-                '--thumb-size': '14px',
-                accentColor: 'var(--accent-indigo)'
-              } as any}
-              className="seek-bar"
+                background: `linear-gradient(to right, var(--text-primary) ${progress}%, rgba(255,255,255,0.1) ${progress}%)`
+              }}
+              className="seek-bar w-full h-1.5 appearance-none cursor-pointer rounded-[3px] outline-none accent-[var(--accent-indigo)]"
             />
           </div>
-          <div style={{ 
-            display: "flex", 
-            justifyContent: "space-between", 
-            fontSize: "10px", 
-            color: "var(--text-muted)", 
-            fontVariantNumeric: "tabular-nums",
-            marginTop: "4px"
-          }}>
+          <div className="flex justify-between text-[10px] text-[var(--text-muted)] tabular-nums mt-1">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
@@ -279,15 +199,12 @@ export const NowPlayingBarDesktop = ({
 
       {/* Progress line indicator (Visible when not expanded) */}
       {!isHovered && (
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          height: '3px',
-          background: `linear-gradient(to right, var(--text-primary) ${progress}%, transparent ${progress}%)`,
-          opacity: 0.8,
-          transition: "opacity 300ms",
-          borderBottomLeftRadius: '28px',
-          borderBottomRightRadius: '28px',
-        }} />
+        <div 
+          style={{
+            background: `linear-gradient(to right, var(--text-primary) ${progress}%, transparent ${progress}%)`
+          }}
+          className="absolute bottom-0 left-0 right-0 h-[3px] opacity-80 transition-opacity duration-300 rounded-b-[28px]"
+        />
       )}
     </>
   );

@@ -14,11 +14,32 @@ class AudioManager {
   private registry = new Map<AudioSource, AudioEntry>();
   private bgSuppressors = new Set<string>(); // Rule 3: BG Suppression mechanisms
   private bgUserPaused = false;
-  private fadeIntervals = new Map<HTMLAudioElement, ReturnType<typeof setInterval>>();
+  private fadeIntervals = new Map<HTMLAudioElement, number>(); // رقم rAF handle
   private onStateChange: ((isPlaying: boolean) => void) | null = null;
   private manifestParsedCallbacks = new Set<() => void>();
   private isManifestParsed = false;
   private playChain: Promise<void> = Promise.resolve();
+  private stateSubscribers = new Map<AudioSource, Set<() => void>>();
+
+  subscribeState(source: AudioSource, cb: () => void): () => void {
+    if (!this.stateSubscribers.has(source)) this.stateSubscribers.set(source, new Set());
+    this.stateSubscribers.get(source)!.add(cb);
+    return () => {
+      this.stateSubscribers.get(source)?.delete(cb);
+    };
+  }
+
+  private notifyStateChange(source: AudioSource) {
+    this.stateSubscribers.get(source)?.forEach(cb => cb());
+  }
+
+  private setActive(source: AudioSource | null) {
+    if (this.active === source) return;
+    const oldActive = this.active;
+    this.active = source;
+    if (oldActive) this.notifyStateChange(oldActive);
+    if (source) this.notifyStateChange(source);
+  }
 
   triggerManifestParsed() {
     this.isManifestParsed = true;
@@ -169,8 +190,11 @@ class AudioManager {
     }
 
     // Rule 1/6: Set active only after confirmed playing
-    this.active = entry.source;
-    if (entry.source === 'bg') this.onStateChange?.(true);
+    this.setActive(entry.source);
+    if (entry.source === 'bg') {
+      this.bgUserPaused = false; // FIX: clear user-paused flag when bg starts
+      this.onStateChange?.(true);
+    }
 
     // Instant response for user-triggered playback, smooth for background
     let fadeDuration = 200;
@@ -211,7 +235,7 @@ class AudioManager {
     }
 
     if (source === this.active) {
-      this.active = null;
+      this.setActive(null);
     }
   }
 
@@ -234,7 +258,7 @@ class AudioManager {
     }
 
     if (source === this.active) {
-      this.active = null;
+      this.setActive(null);
     }
   }
 
@@ -252,7 +276,7 @@ class AudioManager {
       this.fadeOut(bg.element, 150).then(() => {
         bg.element.pause();
         bg.element.volume = 0;
-        if (this.active === 'bg') this.active = null;
+        if (this.active === 'bg') this.setActive(null);
         this.onStateChange?.(false);
       });
     }
@@ -281,7 +305,7 @@ class AudioManager {
         return;
       }
     }
-    this.active = 'bg';
+    this.setActive('bg');
     this.onStateChange?.(true);
     await this.fadeIn(bg.element, bg.volume, 800);
   }
@@ -297,53 +321,56 @@ class AudioManager {
   private fadeOut(el: HTMLAudioElement, ms: number): Promise<void> {
     this.clearFade(el);
     return new Promise(resolve => {
-      if (ms <= 0) {
-        el.volume = 0;
-        return resolve();
-      }
-      const start = el.volume;
-      if (start <= 0) {
-        el.volume = 0;
-        return resolve();
-      }
-      
-      const step = start / (ms / 16);
-      const iv = setInterval(() => {
-        el.volume = Math.max(el.volume - step, 0);
-        if (el.volume <= 0) {
-          this.clearFade(el);
-          resolve(); 
+      if (ms <= 0) { el.volume = 0; return resolve(); }
+      const startVol = el.volume;
+      if (startVol <= 0) { el.volume = 0; return resolve(); }
+      const startTime = performance.now();
+      let cancelled = false;
+      const tick = (now: number) => {
+        if (cancelled || !this.fadeIntervals.has(el)) { resolve(); return; }
+        const progress = Math.max(0, Math.min((now - startTime) / ms, 1));
+        el.volume = Math.max(0, Math.min(startVol * (1 - progress), 1));
+        if (progress < 1) {
+          this.fadeIntervals.set(el, requestAnimationFrame(tick));
+        } else {
+          el.volume = 0;
+          this.fadeIntervals.delete(el);
+          resolve();
         }
-      }, 16);
-      this.fadeIntervals.set(el, iv);
+      };
+      this.fadeIntervals.set(el, requestAnimationFrame(tick));
     });
   }
 
   private fadeIn(el: HTMLAudioElement, target: number, ms: number): Promise<void> {
     this.clearFade(el);
     return new Promise(resolve => {
-      if (ms <= 0) {
-        el.volume = target;
-        return resolve();
-      }
-      if (el.volume >= target) return resolve();
-      
-      const step = (target - el.volume) / (ms / 16);
-      const iv = setInterval(() => {
-        el.volume = Math.min(el.volume + step, target);
-        if (el.volume >= target) {
-          this.clearFade(el);
+      const safeTarget = Math.max(0, Math.min(target, 1));
+      if (ms <= 0) { el.volume = safeTarget; return resolve(); }
+      if (el.volume >= safeTarget) return resolve();
+      const startVol = el.volume;
+      const startTime = performance.now();
+      let cancelled = false;
+      const tick = (now: number) => {
+        if (cancelled || !this.fadeIntervals.has(el)) { resolve(); return; }
+        const progress = Math.max(0, Math.min((now - startTime) / ms, 1));
+        el.volume = Math.max(0, Math.min(startVol + (safeTarget - startVol) * progress, safeTarget));
+        if (progress < 1) {
+          this.fadeIntervals.set(el, requestAnimationFrame(tick));
+        } else {
+          el.volume = safeTarget;
+          this.fadeIntervals.delete(el);
           resolve();
         }
-      }, 16);
-      this.fadeIntervals.set(el, iv);
+      };
+      this.fadeIntervals.set(el, requestAnimationFrame(tick));
     });
   }
 
   private clearFade(el: HTMLAudioElement) {
-    const iv = this.fadeIntervals.get(el);
-    if (iv) {
-      clearInterval(iv);
+    const handle = this.fadeIntervals.get(el);
+    if (handle !== undefined) {
+      cancelAnimationFrame(handle);
       this.fadeIntervals.delete(el);
     }
   }

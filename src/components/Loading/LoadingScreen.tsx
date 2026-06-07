@@ -1,130 +1,73 @@
-import { useEffect, useRef } from 'react';
-import { ASSETS } from '../../constants/assets';
-import { audioManager } from '../../audio/audioManager';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { INTRO_VIDEOS, INTRO_MUSIC_HLS } from '../../constants/assets';
 import { useLoadingPhase } from '../../hooks/useLoadingPhase';
+import { useIntroAudio } from '../../hooks/useIntroAudio';
 import { LoadingVideo } from './LoadingVideo';
-import { LoadingDisclaimer } from './LoadingDisclaimer';
+import { IntroSpeakerButton } from './IntroSpeakerButton';
+import { ThemePicker } from './ThemePicker';
 import { LOADING_TIMINGS } from '../../constants/loading';
+import { isAutomatedEnv } from '../../utils/env';
+import type { Theme } from '../../utils/userPrefs';
 
-const OPENING_VIDEO_URL = ASSETS.media.opening;
 const POSTER_IMAGE_URL = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp';
 
 export interface LoadingScreenProps {
-  onComplete: () => void;
-  onAudioUnlock: () => void;
+  onComplete: (chosenTheme: Theme, musicConsent: boolean) => void;
 }
 
-export const LoadingScreen = ({
-  onComplete,
-  onAudioUnlock,
-}: LoadingScreenProps) => {
-  // Instant exit for automated/headless environments (Lighthouse, CI)
-  const isAutomated = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
-
-  const {
-    phase,
-    setPhase,
-    dots,
-    isReturning,
-    useStatic,
-    showDisclaimer,
-    setShowDisclaimer,
-    triggerVideoFailed,
-  } = useLoadingPhase();
-
+export const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
+  const isAutomated = isAutomatedEnv();
+  const { phase, setPhase, useStatic, triggerVideoFailed } = useLoadingPhase();
   const doneRef = useRef(false);
+
+  const [musicConsent, setMusicConsent] = useState(false);
+  
+  const introAudio = useIntroAudio({
+    src: INTRO_MUSIC_HLS,
+    enabled: musicConsent,
+    volume: 0.6,
+  });
 
   useEffect(() => {
     if (isAutomated && !doneRef.current) {
       doneRef.current = true;
       setPhase('hidden');
-      onComplete();
+      onComplete('midnight', false);
     }
   }, [isAutomated, onComplete, setPhase]);
 
-  // Determine standard Display Duration based on connection and history status
-  let displayDuration: number = LOADING_TIMINGS.default;
-  if (isAutomated) {
-    displayDuration = LOADING_TIMINGS.automated;
-  } else if (useStatic) {
-    displayDuration = LOADING_TIMINGS.staticFallback;
-  } else if (isReturning) {
-    displayDuration = LOADING_TIMINGS.returning;
-  }
+  const handleSpeakerToggle = useCallback(() => {
+    if (musicConsent) {
+      introAudio.pause();
+      setMusicConsent(false);
+    } else {
+      setMusicConsent(true);
+      setTimeout(() => introAudio.play(), 50);
+    }
+  }, [musicConsent, introAudio]);
 
-  /* disclaimer appears at ~3.8 seconds if not skipping */
-  useEffect(() => {
-    if (isReturning || useStatic) return;
-    const t = setTimeout(() => setShowDisclaimer(true), LOADING_TIMINGS.disclaimerDelay);
-    return () => clearTimeout(t);
-  }, [isReturning, useStatic, setShowDisclaimer]);
-
-  /* cinematic exit: zoom-in → fade → reveal site */
-  const finish = () => {
+  const finishWithTheme = useCallback((theme: Theme) => {
     if (doneRef.current) return;
     doneRef.current = true;
     setPhase('zooming');
+    
+    // Stop intro music smoothly
+    if (musicConsent) {
+      introAudio.fadeOut(800);
+    }
+    
+    // Hand over background music consent implicitly since user interacted
     setTimeout(() => {
       setPhase('hidden');
-      onComplete();
+      onComplete(theme, musicConsent);
     }, LOADING_TIMINGS.zoomOut);
-  };
-
-  /* hard timeout fallback for safety */
-  useEffect(() => {
-    const t = setTimeout(finish, displayDuration);
-    return () => clearTimeout(t);
-  }, [displayDuration]);
-
-  /* Eager complete check */
-  useEffect(() => {
-    let isMounted = true;
-
-    // Minimum visual rhythm time: 800ms
-    const timerPromise = new Promise<void>((resolve) => {
-      setTimeout(resolve, 800);
-    });
-
-    // hero_bg.webp decoding promise
-    const dImg = new Image();
-    dImg.src = POSTER_IMAGE_URL;
-    const decodePromise = dImg.decode().catch((err) => {
-      console.warn('[LoadingScreen] hero_bg decoding skipped/failed:', err);
-    });
-
-    // bg-audio HLS manifest parsed promise
-    const manifestPromise = new Promise<void>((resolve) => {
-      const unsubscribe = audioManager.onManifestParsed(() => {
-        unsubscribe();
-        resolve();
-      });
-    });
-
-    // Fire onComplete when all three criteria are satisfied
-    Promise.all([timerPromise, decodePromise, manifestPromise])
-      .then(() => {
-        if (isMounted) {
-          finish();
-        }
-      })
-      .catch((err) => {
-        console.warn('[LoadingScreen] Eager load error:', err);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  }, [musicConsent, onComplete, setPhase, introAudio]);
 
   if (phase === 'hidden') return null;
 
   const zoomStyle = phase === 'zooming'
     ? { animation: `nl-zoom-in ${LOADING_TIMINGS.zoomOut}ms cubic-bezier(0.4,0,0.2,1) forwards`, transformOrigin: 'center center' }
     : {};
-
-  const handleVideoFail = () => {
-    triggerVideoFailed();
-  };
 
   return (
     <>
@@ -135,136 +78,52 @@ export const LoadingScreen = ({
           100% { transform: scale(1.18); opacity: 0; }
         }
         @keyframes nl-fade-up {
-          from { opacity: 0; transform: translateY(10px); }
+          from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes nl-disclaimer-in {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes nl-line-in {
-          from { opacity: 0; transform: translateX(-6px); }
-          to   { opacity: 1; transform: translateX(0); }
         }
       `}</style>
-
       <div
-        role="button"
-        tabIndex={0}
-        onClick={() => {
-          onAudioUnlock();
-          finish();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onAudioUnlock();
-            finish();
-          }
-        }}
         style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          background: 'black',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          cursor: 'pointer',
-          outline: 'none',
-          ...zoomStyle,
+          position: 'fixed', inset: 0, zIndex: 9999, background: '#050a1f',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden', ...zoomStyle,
         }}
       >
-        {/* Loading Video / Image Container */}
         <LoadingVideo
-          videoUrl={OPENING_VIDEO_URL}
+          desktopUrl={INTRO_VIDEOS.desktop}
+          mobileUrl={INTRO_VIDEOS.mobile}
           posterUrl={POSTER_IMAGE_URL}
           useStatic={useStatic}
-          isReturning={isReturning}
-          onFail={handleVideoFail}
+          onFail={triggerVideoFailed}
         />
-
-        {/* Vignette */}
         <div style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-          background: 'radial-gradient(ellipse at center,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.55) 100%)',
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at center,rgba(0,0,0,0.18) 0%,rgba(0,0,0,0.58) 100%)',
         }} />
-
-        {/* NL */}
+        <IntroSpeakerButton enabled={musicConsent} onToggle={handleSpeakerToggle} />
         <div style={{
-          position: 'relative',
-          zIndex: 1,
+          position: 'relative', zIndex: 2,
           color: 'white',
-          fontSize: 'clamp(3.5rem,12vw,7rem)',
+          fontSize: 'clamp(2.4rem,7vw,4.2rem)',
           fontWeight: 'bold',
           letterSpacing: '0.25em',
           fontFamily: 'var(--font-manga,"Impact",sans-serif)',
-          textShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+          textShadow: '3px 3px 0 rgba(0,0,0,0.65)',
+          marginBottom: 'clamp(18px,3vw,30px)',
           animation: 'nl-fade-up 0.8s ease-out both',
-        }}>
-          NL{dots}
-        </div>
-
-        {/* TAP TO ENABLE SOUND */}
+        }}>NL</div>
+        <ThemePicker onPick={finishWithTheme} />
         <div style={{
-          position: 'relative',
-          zIndex: 1,
+          position: 'absolute', bottom: 'clamp(14px,2vh,24px)',
           color: 'rgba(255,255,255,0.55)',
-          fontSize: '0.75rem',
-          letterSpacing: '0.35em',
-          marginTop: '1.2rem',
-          textTransform: 'uppercase',
-          fontFamily: 'var(--font-manga,monospace)',
-          animation: 'nl-fade-up 0.8s 0.3s ease-out both',
+          fontSize: 'clamp(0.62rem,1.4vw,0.74rem)',
+          letterSpacing: '0.25em', textTransform: 'uppercase',
+          fontFamily: 'var(--font-mono, monospace)',
+          textAlign: 'center', padding: '0 16px',
+          animation: 'nl-fade-up 0.8s 0.6s ease-out both',
         }}>
-          TAP TO ENABLE SOUND
+          Pick a theme to enter · Tap the speaker to enable sound
         </div>
-
-        {/* Disclaimer */}
-        <LoadingDisclaimer visible={showDisclaimer} />
-
-        {/* Keyboard-focusable "Skip" button in bottom right */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAudioUnlock();
-            finish();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              e.stopPropagation();
-              onAudioUnlock();
-              finish();
-            }
-          }}
-          aria-label="Skip intro"
-          style={{
-            position: 'absolute',
-            bottom: '20px',
-            right: '20px',
-            zIndex: 10,
-            background: 'rgba(0,0,0,0.6)',
-            border: '1px solid rgba(255,255,255,0.25)',
-            color: 'white',
-            padding: '6px 12px',
-            fontSize: '0.65rem',
-            fontFamily: 'var(--font-mono, monospace)',
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-            borderRadius: '4px',
-            transition: 'all 0.2s ease',
-            outline: 'none',
-          }}
-          className="hover:bg-white hover:text-black focus:ring-1 focus:ring-white focus:bg-white focus:text-black"
-        >
-          SKIP
-        </button>
       </div>
     </>
   );

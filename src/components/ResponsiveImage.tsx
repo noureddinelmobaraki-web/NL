@@ -54,20 +54,24 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   width,
   height,
   className,
-  loading = 'lazy',
-  fetchPriority = 'auto',
-  decoding = 'async',
+  loading,
+  fetchPriority,
+  decoding,
   style,
   dataLqip,
   onContextMenu,
   draggable,
 }) => {
+  const resolvedLoading = loading || 'lazy';
+  const resolvedDecoding = decoding || 'async';
+  const resolvedFetchPriority = resolvedLoading === 'eager' ? 'high' : (fetchPriority || 'auto');
+
   const [lqip, setLqip] = useState<string | undefined>(dataLqip);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
   // Skip LQIP for eager/high-priority images (LCP candidates like profile photo)
-  const isLcpImage = loading === 'eager' || fetchPriority === 'high';
+  const isLcpImage = resolvedLoading === 'eager' || resolvedFetchPriority === 'high';
 
   useEffect(() => {
     if (!lqip && !isLcpImage) {
@@ -103,10 +107,10 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
         width={width}
         height={height}
         className={className} 
-        loading={loading} 
+        loading={resolvedLoading} 
         // @ts-ignore - fetchPriority is supported in modern types or can be ignored if lagging
-        fetchPriority={fetchPriority}
-        decoding={decoding}
+        fetchPriority={resolvedFetchPriority}
+        decoding={resolvedDecoding}
         style={style} 
         onError={() => setHasError(true)}
         referrerPolicy="no-referrer"
@@ -142,10 +146,10 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
         width={width}
         height={height}
         className={`${className || ''} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
-        loading={loading} 
+        loading={resolvedLoading} 
         // @ts-ignore - fetchPriority is supported in modern types or can be ignored if lagging
-        fetchPriority={fetchPriority}
-        decoding={decoding}
+        fetchPriority={resolvedFetchPriority}
+        decoding={resolvedDecoding}
         onLoad={() => setIsLoaded(true)}
         onError={() => setHasError(true)}
         referrerPolicy="no-referrer"

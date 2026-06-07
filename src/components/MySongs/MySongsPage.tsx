@@ -181,8 +181,10 @@ export const MySongs = ({
       {isMoodTransitioning && (
         <SectionErrorBoundary sectionName="BlackHoleTransition">
           <BlackHoleTransition
-            onNearComplete={() => setIsMoodActive(true)}
-            onComplete={() => setIsMoodTransitioning(false)}
+            onComplete={() => {
+              setIsMoodTransitioning(false);
+              setIsMoodActive(true);
+            }}
           />
         </SectionErrorBoundary>
       )}
@@ -190,12 +192,13 @@ export const MySongs = ({
         <SectionErrorBoundary sectionName="MusicMoodScreen">
           <MusicMoodScreen
             songs={state.songs}
+            initialSong={playback.currentSong}
             existingAudioCtx={moodAudioCtxRef.current}
             onExit={() => {
               setIsMoodActive(false);
               onSongStop?.();
               if (typeof audioManager.unpauseBg === 'function') audioManager.unpauseBg();
-              else (audioManager as any).resume?.('bg');
+              else audioManager.unpauseBg();
             }}
           />
         </SectionErrorBoundary>

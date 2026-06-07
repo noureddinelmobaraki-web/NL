@@ -6,9 +6,9 @@ export type SafeFetchErrorKind = 'timeout' | 'network' | 'server' | 'parse' | 'a
 export class SafeFetchError extends Error {
   kind: SafeFetchErrorKind;
   status?: number;
-  originalError?: any;
+  originalError?: unknown;
 
-  constructor(message: string, kind: SafeFetchErrorKind, status?: number, originalError?: any) {
+  constructor(message: string, kind: SafeFetchErrorKind, status?: number, originalError?: unknown) {
     super(message);
     this.name = 'SafeFetchError';
     this.kind = kind;
@@ -94,7 +94,7 @@ export async function safeFetch(
       }
 
       return response;
-    } catch (err: any) {
+    } catch (err: unknown) {
       cleanup();
       if (externalSignal) {
         externalSignal.removeEventListener('abort', onExternalAbort);
@@ -104,16 +104,19 @@ export async function safeFetch(
 
       if (err instanceof SafeFetchError) {
         errorToThrow = err;
-      } else if (err.name === 'AbortError') {
-        if (isTimeout) {
-          errorToThrow = new SafeFetchError('Request timed out', 'timeout', undefined, err);
-        } else {
-          errorToThrow = new SafeFetchError('Request aborted', 'abort', undefined, err);
-        }
-      } else if (err.name === 'TypeError') {
-        errorToThrow = new SafeFetchError('Network error or connection failed', 'network', undefined, err);
       } else {
-        errorToThrow = new SafeFetchError(err.message || 'Unknown network error', 'network', undefined, err);
+        const errorObj = err as { name?: string; message?: string };
+        if (errorObj.name === 'AbortError') {
+          if (isTimeout) {
+            errorToThrow = new SafeFetchError('Request timed out', 'timeout', undefined, err);
+          } else {
+            errorToThrow = new SafeFetchError('Request aborted', 'abort', undefined, err);
+          }
+        } else if (errorObj.name === 'TypeError') {
+          errorToThrow = new SafeFetchError('Network error or connection failed', 'network', undefined, err);
+        } else {
+          errorToThrow = new SafeFetchError(errorObj.message || 'Unknown network error', 'network', undefined, err);
+        }
       }
 
       // If aborted externally, do not retry
@@ -147,7 +150,7 @@ export async function safeFetchJson<T>(
   const response = await safeFetch(url, options);
   try {
     return await response.json() as T;
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new SafeFetchError('Failed to parse response as JSON', 'parse', response.status, err);
   }
 }
@@ -167,7 +170,7 @@ export async function safeFetchText(
   const response = await safeFetch(url, options);
   try {
     return await response.text();
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new SafeFetchError('Failed to parse response as text', 'parse', response.status, err);
   }
 }

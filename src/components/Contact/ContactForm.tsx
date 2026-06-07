@@ -45,27 +45,6 @@ export const ContactForm = () => {
     setErrorMsg('');
 
     try {
-      try {
-        const rateLimitRes = await fetch('/api/contact', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            sender_name: mode === 'anonymous' ? 'مجهول' : (senderName.trim() || 'مجهول'), 
-            message: message.trim() 
-          })
-        });
-
-        if (rateLimitRes.status === 429) {
-          setErrorMsg('وصلت الحد اليومي، حاول غداً');
-          setStatus('idle');
-          return;
-        }
-      } catch (err) {
-        if (import.meta.env.DEV) {
-          console.info('[ContactForm] /api/contact unreachable, falling back to emailjs-only:', err);
-        }
-      }
-
       await emailjs.send(
         EMAILJS_SERVICE,
         EMAILJS_TEMPLATE,

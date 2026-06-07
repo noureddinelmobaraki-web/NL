@@ -8,8 +8,8 @@ export const isLowEndDevice = (): boolean => {
   
   // FIXED: Issue #7 — Enhanced check with memory and connection
   const cores  = navigator.hardwareConcurrency ?? 4;
-  const memory = (navigator as any).deviceMemory ?? 4; // GB
-  const conn   = (navigator as any).connection?.effectiveType ?? '4g';
+  const memory = navigator.deviceMemory ?? 4; // GB
+  const conn   = navigator.connection?.effectiveType ?? '4g';
   
   return cores <= 2 || memory <= 1 || conn === '2g' || conn === 'slow-2g';
 };

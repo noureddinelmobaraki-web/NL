@@ -2,6 +2,7 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 import type { Theme, AudioIntent } from '../utils/userPrefs';
 import { loadPrefs } from '../utils/userPrefs';
 import { ActiveSong } from '../types';
+import { isAutomatedEnv } from '../utils/env';
 
 interface AppContextType {
   theme: Theme;
@@ -29,7 +30,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [ambientColor, setAmbientColor] = useState<string | null>(null);
   const [activeSong, setActiveSong] = useState<ActiveSong | null>(null);
-  const isAutomatedCtx = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
+  const isAutomatedCtx = isAutomatedEnv();
   const [loaded, setLoaded] = useState(isAutomatedCtx);
   const [currentPage, setCurrentPage] = useState('home');
 

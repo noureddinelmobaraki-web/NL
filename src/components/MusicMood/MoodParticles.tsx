@@ -10,12 +10,19 @@ interface MoodParticlesProps {
 }
 
 export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticlesProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const glowIntensityRef = useRef(glowIntensity);
+  const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
     glowIntensityRef.current = glowIntensity;
+    if (workerRef.current) {
+      workerRef.current.postMessage({
+        type: 'glow',
+        data: { value: glowIntensity }
+      });
+    }
   }, [glowIntensity]);
 
   useEffect(() => {
@@ -55,8 +62,148 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
   }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.style.position = 'absolute';
+    canvas.style.inset = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '1';
+    container.appendChild(canvas);
+
+    // Check if OffscreenCanvas is supported
+    const hasOffscreen = typeof OffscreenCanvas !== 'undefined' && canvas.transferControlToOffscreen;
+
+    if (hasOffscreen) {
+      const offscreen = canvas.transferControlToOffscreen();
+      const worker = new Worker(
+        new URL('./particles.worker.ts', import.meta.url),
+        { type: 'module' }
+      );
+      workerRef.current = worker;
+
+      // Send initial configurations and transfer control of OffscreenCanvas to the worker
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      worker.postMessage({
+        type: 'init',
+        data: {
+          canvas: offscreen,
+          width: window.innerWidth,
+          height: window.innerHeight,
+          dpr: dpr,
+          prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+          cores: navigator.hardwareConcurrency || 4,
+          memGb: navigator.deviceMemory ?? 4,
+        }
+      }, [offscreen]); // transfers ownership with zero copy cost
+
+      // Listen to sceneState updates from worker to update main thread DOM classes
+      worker.onmessage = (e) => {
+        const { type, value } = e.data;
+        if (type === 'sceneState') {
+          const cachedOverlayElement = document.getElementById('music-mood-immersive-overlay');
+          if (cachedOverlayElement) {
+            if (value === 0 || value === 1) {
+              if (!cachedOverlayElement.classList.contains('scene-dark')) {
+                cachedOverlayElement.classList.add('scene-dark');
+              }
+            } else {
+              cachedOverlayElement.classList.remove('scene-dark');
+            }
+          }
+        }
+      };
+
+      let mainAnimId = 0;
+      let cachedFreqData: Uint8Array | null = null;
+      const isVisibleRef = { current: true };
+      
+      const io = new IntersectionObserver(
+        (entries) => {
+          isVisibleRef.current = entries[0].isIntersecting;
+        },
+        { threshold: 0.01 }
+      );
+      io.observe(canvas);
+
+      // Web Audio Analyser query frequency tick
+      const tick = () => {
+        if (isVisibleRef.current && !document.hidden) {
+          const audioEl = audioRef?.current;
+          const analyser = audioEl ? (audioEl as any).__analyser : null;
+          const isPlaying = !!(audioEl && !audioEl.paused && !audioEl.ended);
+          
+          let freqDataArray: Uint8Array | null = null;
+          if (analyser && isPlaying) {
+            const binCount = analyser.frequencyBinCount;
+            if (!cachedFreqData || cachedFreqData.length !== binCount) {
+              cachedFreqData = new Uint8Array(binCount);
+            }
+            analyser.getByteFrequencyData(cachedFreqData);
+            freqDataArray = cachedFreqData;
+          }
+
+          worker.postMessage({
+            type: 'audioFrame',
+            data: {
+              isPlaying,
+              freqDataArray,
+            }
+          });
+        }
+        mainAnimId = requestAnimationFrame(tick);
+      };
+      
+      tick();
+
+      const resizeObserver = new ResizeObserver(() => {
+        const dprVal = Math.min(window.devicePixelRatio || 1, 2);
+        worker.postMessage({
+          type: 'resize',
+          data: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            dpr: dprVal,
+            prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+            cores: navigator.hardwareConcurrency || 4,
+            memGb: navigator.deviceMemory ?? 4,
+          }
+        });
+      });
+      resizeObserver.observe(canvas);
+
+      const handlePlaybackStarted = () => {};
+      const audio = audioRef?.current;
+      if (audio) {
+        audio.addEventListener('play', handlePlaybackStarted);
+        audio.addEventListener('playing', handlePlaybackStarted);
+      }
+
+      return () => {
+        io.disconnect();
+        cancelAnimationFrame(mainAnimId);
+        resizeObserver.disconnect();
+        worker.postMessage({ type: 'destroy' });
+        worker.terminate();
+        workerRef.current = null;
+        if (audio) {
+          audio.removeEventListener('play', handlePlaybackStarted);
+          audio.removeEventListener('playing', handlePlaybackStarted);
+        }
+        const cachedOverlayElement = document.getElementById('music-mood-immersive-overlay');
+        if (cachedOverlayElement) {
+          cachedOverlayElement.classList.remove('scene-dark');
+        }
+        try {
+          if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+        } catch {}
+      };
+    }
+
+    // FALLBACK: Draw loop in main thread
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
@@ -74,23 +221,19 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       originalX: number; originalZ: number;
     }> = [];
     let count = 0;
-    // Cache overlay reference once - it's stable from mount
     const cachedOverlayElement = document.getElementById('music-mood-immersive-overlay');
     let cachedFreqDataArray: Uint8Array | null = null;
     let timeline = 0;
 
-    // === Adaptive Quality Loop ===
     let fpsSamples: number[] = [];
     let lastFpsCheck = performance.now();
-    let qualityTier = 1; // 0=low, 1=med, 2=high
+    let qualityTier = 1;
 
-    // === Adaptive Beat Tracker — يتعلم loudness كل أغنية ===
-    // يستخدم EMA (Exponential Moving Average) لتعقّب متوسط البيس الديناميكي
-    let bassEMA = 0;          // متوسط البيس المتحرّك
-    let bassPeakEMA = 0;      // ذروة البيس المتحرّكة
-    let beatPulse = 0;        // قيمة 0-1 تنبض مع كل beat
-    const EMA_ALPHA_FAST = 0.18;  // للذروات (سريع)
-    const EMA_ALPHA_SLOW = 0.008; // للمتوسط (بطيء)
+    let bassEMA = 0;          
+    let bassPeakEMA = 0;      
+    let beatPulse = 0;        
+    const EMA_ALPHA_FAST = 0.18;  
+    const EMA_ALPHA_SLOW = 0.008; 
     let lastBeatTime = 0;
     let beatCount = 0;
 
@@ -133,26 +276,23 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       } else {
         const cores = navigator.hardwareConcurrency || 4;
         const dprVal = Math.min(window.devicePixelRatio || 1, 2);
-        const memGb = (navigator as any).deviceMemory || 4;
+        const memGb = navigator.deviceMemory ?? 4;
         
         if (window.innerWidth < 768) {
-          // Mobile tiering
           if (cores <= 4 || memGb <= 2) {
-            SEPARATION = 14; AMOUNTX = 60; AMOUNTY = 60;   // ~3,600 particles
+            SEPARATION = 14; AMOUNTX = 60; AMOUNTY = 60;
           } else {
-            SEPARATION = 12; AMOUNTX = 90; AMOUNTY = 90;   // ~8,100 particles
+            SEPARATION = 12; AMOUNTX = 90; AMOUNTY = 90;
           }
         } else {
-          // Desktop/tablet tiering
           if (cores >= 8 && memGb >= 8) {
-            SEPARATION = 13; AMOUNTX = 155; AMOUNTY = 155; // 24,025 (current max)
+            SEPARATION = 13; AMOUNTX = 155; AMOUNTY = 155;
           } else if (cores >= 4) {
-            SEPARATION = 14; AMOUNTX = 120; AMOUNTY = 120; // 14,400
+            SEPARATION = 14; AMOUNTX = 120; AMOUNTY = 120;
           } else {
-            SEPARATION = 16; AMOUNTX = 80; AMOUNTY = 80;   // 6,400
+            SEPARATION = 16; AMOUNTX = 80; AMOUNTY = 80;
           }
         }
-        // Further reduce on high DPR screens (more shading work)
         if (dprVal >= 2 && AMOUNTX > 100) {
           AMOUNTX = Math.floor(AMOUNTX * 0.85);
           AMOUNTY = Math.floor(AMOUNTY * 0.85);
@@ -214,14 +354,14 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       audio.addEventListener('playing', handlePlaybackStarted);
     }
 
-    const isVisibleRef = { current: true };
-    const io = new IntersectionObserver(
+    const isVisibleRefFallback = { current: true };
+    const ioDraw = new IntersectionObserver(
       (entries) => {
-        isVisibleRef.current = entries[0].isIntersecting;
+        isVisibleRefFallback.current = entries[0].isIntersecting;
       },
       { threshold: 0.01 }
     );
-    io.observe(canvas);
+    ioDraw.observe(canvas);
 
     const draw = () => {
       const now = performance.now();
@@ -235,7 +375,7 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         lastFpsCheck = now;
       }
 
-      if (document.hidden || !isVisibleRef.current) {
+      if (document.hidden || !isVisibleRefFallback.current) {
         animRef.current = requestAnimationFrame(draw);
         return;
       }
@@ -251,14 +391,7 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       const analyser = audioEl ? (audioEl as any).__analyser : null;
       const isPlaying = !!(audioEl && !audioEl.paused && !audioEl.ended);
 
-      // ─── Multi-band frequency analysis (PRO) ───
-      // الترددات مقسّمة إلى 4 نطاقات بحدود واضحة:
-      // - Sub-bass (0-7):     ~0-150 Hz   → kick drum, 808 bass
-      // - Bass (8-30):        ~150-650 Hz → bass guitar, low mid
-      // - Mid (30-120):       ~650-2.5kHz → vocals, snare body
-      // - High (120-400):     ~2.5-8 kHz  → hi-hat, cymbals, vocal harmonics
       let freqDataArray: Uint8Array | null = null;
-      // FIXED: التفاعل يبدأ من sceneState >= 1 (وليس 2 فقط) — لا ننتظر transition كامل
       if (analyser && isPlaying && sceneState >= 1) {
         const binCount = analyser.frequencyBinCount;
         if (!cachedFreqDataArray || cachedFreqDataArray.length !== binCount) {
@@ -281,36 +414,29 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         }
 
         audioIntensity = totalSum / len;
-        // البيس الفعلي = sub-bass غالباً (kick drum) + bass guitar قليلاً
         const subBassAvg = subBassSum / 8;
         const bassAvg = bassSum / 22;
         bassIntensity = subBassAvg * 0.75 + bassAvg * 0.25;
-        // الميد للـ snare والكلامية (يحرّك حركات وسطى)
         const midAvg = midSum / 90;
-        // الهاي للـ hi-hat والـ shimmer
         trebleIntensity = highSum / 280;
 
-        // ─── Adaptive EMA tracking ───
         bassEMA = bassEMA * (1 - EMA_ALPHA_SLOW) + bassIntensity * EMA_ALPHA_SLOW;
         if (bassIntensity > bassPeakEMA) {
           bassPeakEMA = bassPeakEMA * (1 - EMA_ALPHA_FAST) + bassIntensity * EMA_ALPHA_FAST;
         } else {
-          bassPeakEMA *= 0.985; // decay تدريجي للذروات
+          bassPeakEMA *= 0.985;
         }
 
-        // ─── Beat Detection (adaptive threshold) ───
-        // beat = bassIntensity > EMA متوسط * 1.3 + min refractory period
+        const refractoryMs = 180;
         const adaptiveThreshold = Math.max(20, bassEMA * 1.35);
-        const refractoryMs = 180; // لا نسمح بـ beat ثاني قبل 180ms (= max 333 BPM)
         if (bassIntensity > adaptiveThreshold && (now - lastBeatTime) > refractoryMs) {
           lastBeatTime = now;
           beatCount++;
-          beatPulse = 1.0; // pulse كامل عند الـ beat
+          beatPulse = 1.0;
         } else {
-          beatPulse *= 0.88; // decay سريع
+          beatPulse *= 0.88;
         }
 
-        // unused variable warning suppression
         void midAvg;
       } else {
         audioIntensity *= 0.85;
@@ -326,9 +452,6 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         if (scene2StartTime === 0) scene2StartTime = Date.now();
         elapsedTimeInScene2 = (Date.now() - scene2StartTime) / 1000;
       }
-
-      // --- Scene Management ---
-      // overlayElement is captured once in useEffect scope (see top of effect)
 
       if (sceneState === 0) {
         currentBgColor = '#000000';
@@ -374,7 +497,7 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
 
         const timelineInc = isPlaying ? 0.010 : 0.003;
         if (!prefersReducedMotion) {
-          timeline += timelineInc; // slower when paused to keep visualizer calm
+          timeline += timelineInc;
         }
         let loopPeriod = (Date.now() / 15000) * Math.PI * 2;
         let zoomFactor = (Math.sin(loopPeriod) + 1) * 0.5;
@@ -405,7 +528,6 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         }
       }
 
-      // Precalculate 3D constants to avoid calling Math trig inside particle loops
       const cosY = Math.cos(rotationY);
       const sinY = Math.sin(rotationY);
       const cosX = Math.cos(rotationX);
@@ -425,7 +547,6 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         return { x: x3 * scale + windowHalfX, y: y3 * scale + windowHalfY, scale: scale };
       };
 
-      // --- 🕳️ Central Hole Rendering ---
       let centerNode = project3D(0, 0, 0);
       if (centerNode.scale > 0 && sceneState < 2) {
         ctx.shadowBlur = 30;
@@ -454,24 +575,18 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         for (let i = 0; i < totalSpikes; i++) {
           let angle = (i / totalSpikes) * Math.PI * 2;
 
-          // ─── PRO: كل spike يستجيب لـ freq band مختلف ───
-          // spikes الأولى → بيس عميق، spikes الوسطى → ميد، spikes الأخيرة → هاي
           let frequencyIndex: number;
           if (i < totalSpikes * 0.3) {
-            // 30% أولى = sub-bass + bass (bins 2-25)
             frequencyIndex = 2 + Math.floor((i / (totalSpikes * 0.3)) * 23);
           } else if (i < totalSpikes * 0.7) {
-            // 40% وسطى = mid (bins 30-120)
             frequencyIndex = 30 + Math.floor(((i - totalSpikes * 0.3) / (totalSpikes * 0.4)) * 90);
           } else {
-            // 30% أخيرة = high (bins 130-380)
             frequencyIndex = 130 + Math.floor(((i - totalSpikes * 0.7) / (totalSpikes * 0.3)) * 250);
           }
 
           let rawFreq = 0;
           if (isPlaying && freqDataArray) {
             rawFreq = freqDataArray[frequencyIndex % freqDataArray.length] || 0;
-            // إضافة beatPulse للـ spikes الأولى فقط (البيس spikes)
             if (i < totalSpikes * 0.3) {
               rawFreq = Math.min(255, rawFreq + beatPulse * 60);
             }
@@ -488,7 +603,6 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           let endX = Math.cos(angle) * (baseHoleRadius + spikeLength);
           let endZ = Math.sin(angle) * (baseHoleRadius + spikeLength);
           let endY = startY + (Math.cos(angle * 2) * 3);
-          // unused suppression for endY (used implicitly via projection if needed in future)
           void endY;
 
           let pStart = project3D(startX, startY, startZ);
@@ -497,13 +611,11 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           ctx.beginPath();
           ctx.moveTo(pStart.x, pStart.y);
           ctx.lineTo(pEnd.x, pEnd.y);
-          // line width ينبض مع البيس قليلاً
           ctx.lineWidth = Math.max(1.0, (isMobile ? 1.6 : 2.5) * pEnd.scale * (1 + beatPulse * 0.3));
           ctx.stroke();
         }
       }
 
-      // --- 🌊 Space Grid & Moving Particles Rendering ---
       let maxRadiusFromCenter = Math.min(windowHalfX, windowHalfY) * 1.5; 
       let colorTransitionProgress = 0;
       if (elapsedTimeInScene2 > 40) {
@@ -540,33 +652,23 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           let naturalWave = Math.sin(waveFrequency) * (isMobile ? 3 : 5);
           let audioWave = 0;
 
-          // ─── PROFESSIONAL multi-band particle reaction ───
-          // كل جزيئة تأخذ ترددها الخاص بناءً على بُعدها من المركز
-          // هذا يخلق "موجة" تنتشر من الوسط للخارج مع الموسيقى
           if (isPlaying && freqDataArray) {
-            // نطاق الـ freq bin يعتمد على بُعد الجزيئة:
-            // - جزيئات قريبة (dist < 100) → bins البيس (0-15)
-            // - جزيئات متوسطة (dist 100-300) → bins الميد (15-80)
-            // - جزيئات بعيدة (dist > 300) → bins الهاي (80-300)
             const distRatio = Math.min(1, particle.dist / 400);
-            const binFloor = Math.floor(distRatio * 80);     // bin أساسي للجزيئة
-            const binRange = 8 + Math.floor(distRatio * 40); // عرض المسح
+            const binFloor = Math.floor(distRatio * 80);
+            const binRange = 8 + Math.floor(distRatio * 40);
             const binIdx = (binFloor + Math.floor(particle.dist04 * 0.7) % binRange) % freqDataArray.length;
             const rawFreqVal = freqDataArray[binIdx] || 0;
             const audioFactor = rawFreqVal / 255;
 
-            // قوة التفاعل = beatPulse (للنبض) + audioFactor (للحركة المستمرة)
             const reactivePower = beatPulse * 0.7 + audioFactor * 0.5;
             audioWave = Math.sin(particle.dist0068 - count12) * reactivePower * (isMobile ? 70 : 95);
 
-            // إضافة "shimmer" للجزيئات البعيدة عند الترددات العالية
             if (distRatio > 0.6 && trebleIntensity > 30) {
               audioWave += Math.sin(timeline * 14 + particle.angleId * 3) * (trebleIntensity / 255) * 8;
             }
           }
 
           if (isPlaying) {
-            // مزج الموجة الطبيعية + الموجة الصوتية + نبضة الـ beat
             const beatBoost = 1 + beatPulse * 0.4;
             particle.y = prefersReducedMotion
               ? ((naturalWave * 0.25) + audioWave) * 0.3
@@ -578,7 +680,6 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           }
         }
 
-        // Inline 3D Projection for extreme performance
         let x1 = particle.x * cosY - particle.z * sinY;
         let z1 = particle.z * cosY + particle.x * sinY;
         let y1 = particle.y * cosX - z1 * sinX;
@@ -592,12 +693,10 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
 
         let radius;
         if (sceneState < 2) {
-          // في scene 0/1: نبض بسيط مع البيس
           radius = Math.max(0.8, (1.6 + beatPulse * 0.4) * scale);
         } else {
           let waveFreq = particle.dist0068 - count;
           let radiusWave = (Math.sin(waveFreq) + 1) * 0.5;
-          // ─── PRO: radius يكبر مع البيس + ينبض مع الـ beat ───
           const beatBoost = 1 + beatPulse * 0.5;
           const bassBoost = bassSizeInc * 1.5;
           radius = Math.max(0.55, radiusWave * scale * (sizeFactor + bassBoost) * beatBoost);
@@ -612,7 +711,6 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         let alpha = Math.min(1, scale * alphaScaleFactor) * edgeFade;
 
         if (alpha > 0.01) { 
-          // Rendering Optimizations: Use fillRect for small radius points, use hardware globalAlpha Instead of rgba formats
           if (sceneState < 2) {
             ctx.fillStyle = '#ffffff';
             ctx.globalAlpha = alpha;
@@ -620,10 +718,9 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
             else { ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.fill(); }
           } 
           else if (colorTransitionProgress > 0) {
-            // ─── PRO: hue يدور أسرع مع البيس + saturation ينبض مع الـ beat ───
             let hue = Math.floor(particle.hueOffset + count15 + beatPulse * 40) % 360;
-            const saturation = Math.floor(45 + beatPulse * 25); // 45-70% saturation
-            const lightness = Math.floor(particle.lightnessOffset + beatPulse * 8); // ينير قليلاً مع الـ beat
+            const saturation = Math.floor(45 + beatPulse * 25); 
+            const lightness = Math.floor(particle.lightnessOffset + beatPulse * 8); 
             const coloredStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 
             if (colorTransitionProgress >= 1) {
@@ -632,7 +729,6 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
               if (radius <= 2.0) ctx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
               else { ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.fill(); }
             } else {
-              // Fade from black to colored
               ctx.fillStyle = '#000000';
               ctx.globalAlpha = alpha * 0.95 * (1 - colorTransitionProgress);
               if (radius <= 2.0) ctx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
@@ -652,11 +748,9 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
         }
       }
       
-      // ─── Count progression — يبقى حياً حتى في الصمت ───
-      // base rate ثابت + boost من البيس + beat pulse
       const countInc = isPlaying
         ? (0.008 + bassIntensity * 0.00018 + beatPulse * 0.005)
-        : 0.003; // أسرع من 0.0015 السابق — يبقى الحركة سلسة حتى أثناء الـ pauses
+        : 0.003;
       if (!prefersReducedMotion) {
         count += countInc;
       }
@@ -671,13 +765,16 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
     mq.addEventListener('change', onChange);
 
     resize();
-    window.addEventListener('resize', resize);
+    const resizeObserver = new ResizeObserver(() => {
+      resize();
+    });
+    resizeObserver.observe(canvas);
     animRef.current = requestAnimationFrame(draw);
 
     return () => {
-      io.disconnect();
+      ioDraw.disconnect();
       mq.removeEventListener('change', onChange);
-      window.removeEventListener('resize', resize);
+      resizeObserver.disconnect();
       cancelAnimationFrame(animRef.current);
       if (audio) {
         audio.removeEventListener('play', handlePlaybackStarted);
@@ -686,12 +783,15 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
       if (cachedOverlayElement) {
         cachedOverlayElement.classList.remove('scene-dark');
       }
+      try {
+        if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+      } catch {}
     };
   }, [audioRef]);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
+      ref={containerRef}
       style={{
         position: 'absolute',
         inset: 0,

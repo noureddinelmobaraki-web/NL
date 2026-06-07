@@ -37,92 +37,25 @@ function showUpdateToast() {
 
   const toast = document.createElement('div');
   toast.id = 'sw-update-toast';
-  
-  Object.assign(toast.style, {
-    position: 'fixed',
-    bottom: '24px',
-    left: '24px',
-    zIndex: '100000',
-    backgroundColor: 'rgba(10, 10, 15, 0.95)',
-    border: '1px solid rgba(184, 255, 63, 0.4)',
-    boxShadow: '0 0 20px rgba(184, 255, 63, 0.15), 0 10px 30px rgba(0, 0, 0, 0.9)',
-    borderRadius: '4px',
-    padding: '16px 20px',
-    maxWidth: '380px',
-    backdropFilter: 'blur(8px)',
-    color: '#ffffff',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    animation: 'sw-toast-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-  });
-
-  if (!document.getElementById('sw-toast-styles')) {
-    const styleTag = document.createElement('style');
-    styleTag.id = 'sw-toast-styles';
-    styleTag.textContent = `
-      @keyframes sw-toast-in {
-        from { transform: translateY(40px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-      }
-    `;
-    document.head.appendChild(styleTag);
-  }
+  toast.className = 'sw-toast';
 
   const messageText = document.createElement('div');
   messageText.textContent = 'New version available — refresh when ready';
-  Object.assign(messageText.style, {
-    fontSize: '13px',
-    lineHeight: '1.5',
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
-  });
+  messageText.className = 'sw-toast-message';
 
   const btnContainer = document.createElement('div');
-  Object.assign(btnContainer.style, {
-    display: 'flex',
-    gap: '10px',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  });
+  btnContainer.className = 'sw-toast-btn-container';
 
   const dismissBtn = document.createElement('button');
   dismissBtn.textContent = 'Dismiss';
-  Object.assign(dismissBtn.style, {
-    background: 'transparent',
-    border: 'none',
-    color: 'rgba(255, 255, 255, 0.45)',
-    fontSize: '11px',
-    cursor: 'pointer',
-    padding: '6px 12px',
-    borderRadius: '4px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    transition: 'all 0.2s',
-  });
-  dismissBtn.onmouseover = () => { dismissBtn.style.color = '#ffffff'; };
-  dismissBtn.onmouseout = () => { dismissBtn.style.color = 'rgba(255, 255, 255, 0.45)'; };
+  dismissBtn.className = 'sw-toast-btn-dismiss';
   dismissBtn.onclick = () => {
     toast.remove();
   };
 
   const refreshBtn = document.createElement('button');
   refreshBtn.textContent = 'Refresh Now';
-  Object.assign(refreshBtn.style, {
-    backgroundColor: '#B8FF3F',
-    border: 'none',
-    color: '#000000',
-    fontSize: '11px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    padding: '6px 14px',
-    borderRadius: '4px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    boxShadow: '0 2px 4px rgba(184, 255, 63, 0.2)',
-    transition: 'all 0.2s',
-  });
-  refreshBtn.onmouseover = () => { refreshBtn.style.backgroundColor = '#a3e635'; };
-  refreshBtn.onmouseout = () => { refreshBtn.style.backgroundColor = '#B8FF3F'; };
+  refreshBtn.className = 'sw-toast-btn-refresh';
   refreshBtn.onclick = () => {
     saveCurrentPlaybackState();
     window.location.reload();
@@ -137,36 +70,30 @@ function showUpdateToast() {
   document.body.appendChild(toast);
 }
 
-export function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
+export function registerServiceWorker(): () => void {
+  if (!('serviceWorker' in navigator)) return () => {};
 
   if (!import.meta.env.PROD) {
-    // In dev mode, aggressively unregister any service workers to clear cache bugs
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       for (const registration of registrations) {
-        registration.unregister().then((success) => {
-          if (success) {
-            console.log('[SW Tool] Successfully unregistered stale service worker.');
-          }
-        });
+        registration.unregister();
       }
-    }).catch((err) => {
-      console.warn('[SW Tool] Failed to unregister service workers:', err);
-    });
-    return;
+    }).catch(() => {});
+    return () => {};
   }
-  
-  window.addEventListener('load', async () => {
+
+  const cleanupFns: Array<() => void> = [];
+  let lastUpdate = Date.now();
+
+  const onLoad = async () => {
     try {
-      const reg = await navigator.serviceWorker.register('/NL/sw.js', { 
-        scope: '/NL/',
-        updateViaCache: 'none'  // always check for SW updates
+      const base = import.meta.env.BASE_URL || '/';
+      const reg = await navigator.serviceWorker.register(`${base}sw.js`, {
+        scope: base,
+        updateViaCache: 'none',
       });
-      
-      // Listen to visibilitychange and only check for service worker updates
-      // when document is visible and at least 30 minutes have elapsed since last check
-      let lastUpdate = Date.now();
-      document.addEventListener('visibilitychange', () => {
+
+      const onVisibility = () => {
         if (document.visibilityState === 'visible') {
           const now = Date.now();
           if (now - lastUpdate >= 30 * 60 * 1000) {
@@ -174,43 +101,49 @@ export function registerServiceWorker() {
             lastUpdate = now;
           }
         }
-      });
-      
-      // When a new SW is waiting, activate it immediately
-      reg.addEventListener('updatefound', () => {
+      };
+      document.addEventListener('visibilitychange', onVisibility);
+      cleanupFns.push(() => document.removeEventListener('visibilitychange', onVisibility));
+
+      const onUpdateFound = () => {
         const newWorker = reg.installing;
         if (!newWorker) return;
-        newWorker.addEventListener('statechange', () => {
+        const onStateChange = () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // New version available — skip waiting immediately
             newWorker.postMessage({ type: 'SKIP_WAITING' });
           }
-        });
-      });
-    } catch (e) {
-      // SW failed — site still works, just without caching
+        };
+        newWorker.addEventListener('statechange', onStateChange);
+        cleanupFns.push(() => newWorker.removeEventListener('statechange', onStateChange));
+      };
+      reg.addEventListener('updatefound', onUpdateFound);
+      cleanupFns.push(() => reg.removeEventListener('updatefound', onUpdateFound));
+    } catch {
+      /* SW failed — site still works */
     }
-  });
-  
-  // Reload when new SW takes control
+  };
+  window.addEventListener('load', onLoad);
+  cleanupFns.push(() => window.removeEventListener('load', onLoad));
+
   let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) {
-      refreshing = true;
-      
-      // Check if any audio is currently playing
-      const isAudioPlaying = Array.from(document.querySelectorAll('audio, video')).some(
-        (el) => !(el as HTMLMediaElement).paused && (el as HTMLMediaElement).currentTime > 0
-      );
-
-      saveCurrentPlaybackState();
-
-      if (!isAudioPlaying) {
-        window.location.reload();
-      } else {
-        refreshing = false; // Reset to allow manual reload via the toast button
-        showUpdateToast();
-      }
+  const onControllerChange = () => {
+    if (refreshing) return;
+    refreshing = true;
+    const isAudioPlaying = Array.from(document.querySelectorAll('audio, video')).some(
+      (el) => !(el as HTMLMediaElement).paused && (el as HTMLMediaElement).currentTime > 0
+    );
+    saveCurrentPlaybackState();
+    if (!isAudioPlaying) {
+      window.location.reload();
+    } else {
+      refreshing = false;
+      showUpdateToast();
     }
-  });
+  };
+  navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+  cleanupFns.push(() =>
+    navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+  );
+
+  return () => cleanupFns.forEach((fn) => fn());
 }

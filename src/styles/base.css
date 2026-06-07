@@ -1,3 +1,4 @@
+@layer base {
 /* Resets, body, scrollbar, selection */
 html {
   scroll-behavior: smooth;
@@ -54,6 +55,12 @@ body {
   overscroll-behavior-y: contain;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari only — dynamic viewport excludes browser chrome */
+  .min-h-screen,
+  [class*="min-h-screen"] { min-height: 100dvh; }
 }
 
 @media (min-width: 1024px) {
@@ -167,4 +174,5 @@ button, [role="button"], nav, .fab-button, .manga-button {
 .scroll-momentum {
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
+}
 }

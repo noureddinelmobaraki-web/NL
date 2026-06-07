@@ -139,7 +139,7 @@ export const ContactMessageForm = ({
         onChange={(e) => {
           // If changed = bot, set flag
           if (e.target.value) {
-            (window as any).__nl_bot_detected = true;
+            window.__nl_bot_detected = true;
           }
         }}
       />
@@ -168,7 +168,7 @@ export const ContactMessageForm = ({
           fontSize: '0.72rem',
           marginTop: '8px'
         }}>
-          {3 - (3 - remainingToday < 0 ? 0 : 3 - remainingToday)} رسالة متبقية اليوم
+          {Math.max(0, remainingToday)} رسالة متبقية اليوم
         </p>
       )}
     </>

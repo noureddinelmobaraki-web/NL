@@ -1,9 +1,24 @@
 {
+  "id": "/NL/",
   "name": "NL — Noureddin El Mobaraki",
   "short_name": "NL",
   "description": "الموقع الرسمي للفنان NL (Noureddin El Mobaraki) — Rap/Hip-Hop من الدار البيضاء",
   "start_url": "./",
   "scope": "./",
+  "screenshots": [
+    {
+      "src": "./og-image.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "NL — Hero"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Songs",    "url": "./#my-songs-section",  "icons": [{ "src": "./profile_img-192.webp", "sizes": "192x192" }] },
+    { "name": "Drawings", "url": "./#drawings-section",  "icons": [{ "src": "./profile_img-192.webp", "sizes": "192x192" }] },
+    { "name": "Contact",  "url": "./#contact-section",   "icons": [{ "src": "./profile_img-192.webp", "sizes": "192x192" }] }
+  ],
   "display": "standalone",
   "orientation": "any",
   "background_color": "#080a14",

@@ -76,7 +76,7 @@ const PersonalPhotoFloaterInner: React.FC<Props> = ({ wrapperRef }) => {
           top: 0, 
           left: 0, 
           width: '100%', 
-          height: '100vh', 
+          height: '100dvh', 
           pointerEvents: 'none', 
           zIndex: 50,
           willChange: 'transform'

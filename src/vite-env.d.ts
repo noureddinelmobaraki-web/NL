@@ -19,3 +19,15 @@ declare interface ServiceWorkerRegistration {
   readonly active: ServiceWorker | null;
   readonly installing: ServiceWorker | null;
 }
+
+declare global {
+  interface Window {
+    __nl_bot_detected?: boolean;
+    /** Safari iOS standalone PWA flag */
+    navigator: Navigator & { standalone?: boolean };
+  }
+}
+
+
+
+export {};

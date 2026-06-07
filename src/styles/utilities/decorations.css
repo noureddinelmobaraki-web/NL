@@ -1,3 +1,4 @@
+@layer utilities {
 .spotify-king {
   border-color: #1DB954;
   z-index: var(--z-content);
@@ -190,4 +191,5 @@ body::before {
 }
 .scrolling .parallax-bg {
   will-change: transform;
+}
 }

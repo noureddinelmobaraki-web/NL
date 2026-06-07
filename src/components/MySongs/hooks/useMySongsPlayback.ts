@@ -109,8 +109,9 @@ export function useMySongsPlayback({
   // Sync volume with physical player
   useEffect(() => {
     if (audioTagRef.current) {
-      audioTagRef.current.volume = volume;
-      savePrefs({ lastVolume: volume });
+      const safeVol = Math.max(0, Math.min(volume, 1));
+      audioTagRef.current.volume = safeVol;
+      savePrefs({ lastVolume: safeVol });
     }
   }, [volume, audioTagRef]);
 

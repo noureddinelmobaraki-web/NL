@@ -1,25 +1,18 @@
 import { useState, useRef, useEffect, memo } from 'react';
-import { motion, Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import { getThemedImage, LIGHT_PROFILE_OPENING, LIGHT_PROFILE_MAIN } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
 
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { useDeviceType } from '../../hooks/useDeviceType'; // MOBILE-ONLY
+import { useFadeInOnView } from '../../hooks/useFadeInOnView';
 import siteData from '../../../metadata.json';
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.6, ease: [0.175, 0.885, 0.32, 1.275] }
-  }
-};
 
 export const HeroSection = memo(() => {
   const resolvedTheme = useResolvedTheme();
   const { isMobile } = useDeviceType(); // MOBILE-ONLY
   const isAutomated = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
+  const headerRef = useFadeInOnView<HTMLElement>();
 
   // Light theme profile switching logic
   const [lightProfileSrc, setLightProfileSrc] = useState<string>(LIGHT_PROFILE_OPENING);
@@ -113,9 +106,9 @@ export const HeroSection = memo(() => {
   const activeProfileImg = profileImages[resolvedTheme] || profileImages['dark'];
 
   return (
-    <motion.header 
-      variants={itemVariants}
-      className={`w-full items-[var(--hero-header-align)] hero-layout-grid ${
+    <header 
+      ref={headerRef}
+      className={`fade-in-section w-full items-[var(--hero-header-align)] hero-layout-grid ${
         isMobile 
           ? 'flex flex-col-reverse gap-[1.5rem]' // MOBILE-ONLY
           : 'flex flex-col md:flex-row justify-between gap-6'
@@ -234,6 +227,6 @@ export const HeroSection = memo(() => {
           fetchPriority="high"
         />
       </div>
-    </motion.header>
+    </header>
   );
 });

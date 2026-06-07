@@ -142,7 +142,10 @@ export const AudioVisualizer = ({ audioRef, isPlaying }: AudioVisualizerProps) =
         bottom: 0,
         left: 0,
         width: '100vw',
-        height: '100vh',
+        height: '100dvh',
+        /* CSS fallback for browsers that don't support dvh */
+        ...(typeof CSS !== 'undefined' && !CSS.supports('height', '100dvh') 
+          ? { height: '100vh' } : {}),
         pointerEvents: 'none',
         zIndex: 0,
         opacity: isPlaying ? 1 : 0,

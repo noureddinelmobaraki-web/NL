@@ -277,7 +277,7 @@ export const SongCard = memo(({
           });
         }
       }}
-      className={`
+      className={`song-card-container
         song-card relative ${
           ((resolvedTheme === 'light' && isLyricsOpen) || ((isMobile || isTablet) && isLyricsOpen))
             ? 'overflow-visible'

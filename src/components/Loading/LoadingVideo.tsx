@@ -1,101 +1,61 @@
 import { useEffect, useRef, useState } from 'react';
+import { useViewportMode } from '../../hooks/useViewportMode';
 
 interface LoadingVideoProps {
-  videoUrl: string;
+  desktopUrl: string;
+  mobileUrl: string;
   posterUrl: string;
   useStatic: boolean;
-  isReturning: boolean;
   onFail: () => void;
   onCanPlay?: () => void;
 }
 
 export const LoadingVideo = ({
-  videoUrl,
-  posterUrl,
-  useStatic,
-  isReturning: _isReturning,
-  onFail,
-  onCanPlay,
+  desktopUrl, mobileUrl, posterUrl, useStatic, onFail, onCanPlay,
 }: LoadingVideoProps) => {
+  const { isMobile, isTablet } = useViewportMode();
+  const videoUrl = (isMobile || isTablet) ? mobileUrl : desktopUrl;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [localFailed, setLocalFailed] = useState(false);
 
-  const triggerFail = () => {
-    setLocalFailed(true);
-    onFail();
-  };
+  const triggerFail = () => { setLocalFailed(true); onFail(); };
 
   useEffect(() => {
     if (useStatic) return;
     const video = videoRef.current;
     if (!video) return;
-
     video.load();
-    const tryPlay = () => {
-      video.play()
-        .then(() => {
-          onCanPlay?.();
-        })
-        .catch(triggerFail);
-    };
-
-    if (video.readyState >= 2) {
-      tryPlay();
-    } else {
-      video.addEventListener('canplay', tryPlay, { once: true });
-    }
-
-    const stall = setTimeout(() => {
-      triggerFail();
-    }, 3000);
-
-    const handlePlaying = () => {
-      clearTimeout(stall);
-    };
-
-    video.addEventListener('playing', handlePlaying, { once: true });
-
+    const tryPlay = () => video.play().then(() => onCanPlay?.()).catch(e => {
+        console.warn('Video failed to play:', e);
+        triggerFail();
+    });
+    if (video.readyState >= 2) tryPlay();
+    else video.addEventListener('canplay', tryPlay, { once: true });
+    
     return () => {
-      clearTimeout(stall);
-      if (video) {
-        video.removeEventListener('canplay', tryPlay);
-        video.removeEventListener('playing', handlePlaying);
-      }
+      video.removeEventListener('canplay', tryPlay);
     };
   }, [useStatic, videoUrl]);
 
   if (useStatic) {
     return (
-      <img
-        src={posterUrl}
-        alt="Loading screen background"
-        referrerPolicy="no-referrer"
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-      />
+      <img src={posterUrl} alt="" referrerPolicy="no-referrer"
+        style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} />
     );
   }
-
   if (localFailed) {
-    return (
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: 'radial-gradient(circle at 2px 2px,rgba(255,255,255,0.04) 1px,transparent 0), linear-gradient(135deg,#0a0a0f 0%,#141428 50%,#0a0a0f 100%)',
-        backgroundSize: '20px 20px, auto',
-      }} />
-    );
+    return <div style={{ position:'absolute', inset:0, background:
+      'radial-gradient(circle at 50% 50%, #1e3a8a 0%, #0c1f4d 60%, #050a1f 100%)' }} />;
   }
-
   return (
     <video
       ref={videoRef}
-      src={videoUrl}
-      autoPlay
-      muted
-      loop
-      playsInline
-      preload="none"
+      key={videoUrl}
+      autoPlay muted loop playsInline preload="auto"
       onError={triggerFail}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-    />
+      style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }}
+    >
+      <source src={videoUrl} type="video/webm" />
+    </video>
   );
 };

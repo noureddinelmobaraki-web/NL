@@ -24,7 +24,8 @@ export class SectionErrorBoundary extends Component<Props, State> {
       if (this.props.sectionName === 'App') {
         return (
           <div style={{ 
-            height: '100vh',
+            height: '100svh',  /* small viewport height — ignores browser chrome on iOS */
+            minHeight: '100vh', /* fallback for older browsers */
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -64,9 +65,28 @@ export class SectionErrorBoundary extends Component<Props, State> {
           textAlign: 'center', 
           color: 'rgba(255,255,255,0.3)',
           fontFamily: 'monospace',
-          fontSize: '12px'
+          fontSize: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '12px',
         }}>
-          — section unavailable —
+          <span>— section unavailable —</span>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            style={{
+              padding: '6px 16px',
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '4px',
+              color: 'rgba(255,255,255,0.4)',
+              fontFamily: 'monospace',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            retry
+          </button>
         </div>
       );
     }

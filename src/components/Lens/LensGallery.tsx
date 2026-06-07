@@ -157,7 +157,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
 
     registerButton({
       id: 'lensAudio',
-      priority: 2,
+      priority: 1,
       allowedContexts: ['lens'],
       slot: 'topRight',
       render: () => (
@@ -174,7 +174,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
 
     registerButton({
       id: 'lensClose',
-      priority: 1,
+      priority: 2,
       allowedContexts: ['lens'],
       slot: 'topRight',
       render: () => (

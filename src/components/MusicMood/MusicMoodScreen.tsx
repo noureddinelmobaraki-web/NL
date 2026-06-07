@@ -56,13 +56,14 @@ const STYLE_PREV_NEXT_MOBILE_BASE: React.CSSProperties = {
 };
 
 interface MusicMoodScreenProps {
-  songs: Song[];            // كل الأغاني الـ 25
-  onExit: () => void;       // عند الخروج من الوضع
+  songs: Song[];
+  initialSong?: Song | null;
+  onExit: () => void;
   existingAudioCtx?: AudioContext | null;
 }
 
 // ══════════════════════════════════
-export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodScreenProps) => {
+export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }: MusicMoodScreenProps) => {
   const [trapReady, setTrapReady] = useState(false);
   const focusTrapRef = useFocusTrap(trapReady);
   useEffect(() => {
@@ -83,10 +84,11 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     return () => setContext('page');
   }, [setContext]);
   const isMobileLyr = !isDesktop || (typeof window !== 'undefined' && window.innerWidth < 768);
-  const [activeSong, setActiveSong]   = useState<Song | null>(null);
+  const [activeSong, setActiveSong]   = useState<Song | null>(initialSong || null);
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const [currentTime, setCurrentTime] = useState(0);
   const isEntering = false; // Mount immediately with full opacity
+
   const [diceSpinning, setDiceSpinning] = useState(false);
   const [needsUserTap, setNeedsUserTap] = useState(false);
 
@@ -108,7 +110,6 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     existingAudioCtx,
     activeSong,
   });
-
 
   // ── تتبع الكلمات ومزامنتها عبر الهوك المخصص
   const { previousLine, currentLine, nextLine } = useMoodLyrics({
@@ -176,12 +177,13 @@ export const MusicMoodScreen = ({ songs, onExit, existingAudioCtx }: MusicMoodSc
     };
   }, []);
 
-  // ── تشغيل أول أغنية عشوائية فور الدخول
+  // ── تشغيل المقطع فور الدخول
   useEffect(() => {
-    // تشغيل الأغنية بعد ظهور الشاشة
-    const t2 = setTimeout(() => pickRandomSong(), 200);
-    return () => { clearTimeout(t2); };
-    // FIXED: Issue #8 — intentionally empty to run once on mount. pickRandomSong excluded to avoid re-trigger.
+    // إذا لم تكن هناك أغنية مبدئية، اختر واحدة عشوائية.
+    if (!initialSong) {
+      const t2 = setTimeout(() => pickRandomSong(), 200);
+      return () => { clearTimeout(t2); };
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

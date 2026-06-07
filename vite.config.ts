@@ -9,7 +9,9 @@ export default defineConfig(({ mode }) => {
     base: process.env.VITE_BASE_PATH ?? '/',
     assetsInclude: ['**/*.xml'],
     plugins: [
-      react(),
+      react({
+        babel: { plugins: [['babel-plugin-react-compiler', { target: '19' }]] }
+      }),
       tailwindcss(),
       mode === 'analyze' && visualizer({
         open: false,
@@ -31,8 +33,15 @@ export default defineConfig(({ mode }) => {
       minify: 'terser',
       terserOptions: {
         compress: {
-          drop_console: true,
+          pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace', 'console.warn'],
           drop_debugger: true,
+          passes: 2,
+        },
+        format: {
+          comments: false,
+        },
+        mangle: {
+          safari10: true,
         },
       },
       sourcemap: 'hidden',

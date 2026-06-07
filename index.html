@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
+  object-src 'none';
   script-src 'self' 'sha256-mMLKiQVBqCTgUvkpCqy8BSQVcmJjexcF1bvCBVuWO4A=' https://cdn.emailjs.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   img-src 'self' data: blob: https: 
@@ -184,9 +185,18 @@
       crossorigin
     >
 
+    <!-- Eager preload for high-traffic lazy chunks -->
+    <link rel="modulepreload" href="/src/components/MySongs/MySongsPage.tsx" />
+    <link rel="modulepreload" href="/src/components/layout/GallerySection.tsx" />
+
   </head>
   <body>
     <div id="root"></div>
+    <script
+      src="https://cdn.emailjs.com/sdk/4.4.1/email.min.js"
+      integrity="sha384-mdbrFEj5dVNAmY4milkN30ioerhgkEeyH6gwWvJFTQCuVpxiFJx+9uDWqtjk+NnQ"
+      crossorigin="anonymous"
+    ></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

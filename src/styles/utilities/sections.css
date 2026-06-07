@@ -1,3 +1,4 @@
+@layer utilities {
 /* === THEMED SECTION REFACTOR AUXILIARY STYLES === */
 .hero-profile-container {
   width: var(--hero-profile-width, 12rem);
@@ -349,4 +350,5 @@
 
   /* Footer */
   .footer-img { max-width: 90% !important; }
+}
 }

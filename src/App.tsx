@@ -26,8 +26,28 @@
 
 import { motion } from "framer-motion";
 import React, { useEffect, Suspense, useCallback, useRef } from "react";
+
+// Runtime fallbacks for experimental/unstable React 19 features to adapt dynamically
+function useEffectEventFallback<T extends Function>(fn: T): T {
+  const ref = useRef(fn);
+  ref.current = fn;
+  const cb = useCallback((...args: any[]) => ref.current(...args), []);
+  return cb as any;
+}
+
+interface ActivityProps {
+  mode: 'visible' | 'hidden';
+  children: React.ReactNode;
+}
+
+function ActivityFallback({ mode, children }: ActivityProps) {
+  return <div style={{ display: mode === 'hidden' ? 'none' : 'block' }}>{children}</div>;
+}
+
+const useEffectEvent = (React as any).useEffectEvent || (React as any).experimental_useEffectEvent || useEffectEventFallback;
+const Activity = (React as any).Activity || (React as any).unstable_Activity || ActivityFallback;
 import { savePrefs, trackVisit } from './utils/userPrefs';
-import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
+import { applyTheme as applyThemeUtil, withViewTransition } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { LoadingScreen } from "./components/Loading/LoadingScreen";
 import { SkeletonSection } from './components/SkeletonSection';
@@ -35,7 +55,6 @@ import { SkeletonSection } from './components/SkeletonSection';
 import { 
   CONFIG_ASSETS, 
   containerVariants, 
-  itemVariants, 
   ME_BIT_IMAGES 
 } from "./components/app/appConstants";
 import { AppBackgroundFx } from "./components/app/AppBackgroundFx";
@@ -54,6 +73,7 @@ import { useParallax } from "./hooks/useParallax";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import { useGalleryState } from "./hooks/useGalleryState";
 import { useAudioController } from "./hooks/useAudioController";
+import { useFadeInOnView } from "./hooks/useFadeInOnView";
 import { MeBitGallery } from './components/MeBit/MeBitGallery';
 import { ButtonProvider } from "./components/layout/ButtonOrchestrator";
 const AudioVisualizer = React.lazy(() => 
@@ -72,6 +92,7 @@ const GallerySection = React.lazy(() =>
 );
 
 import { AppProvider, useAppContext } from './context/AppContext';
+import { isAutomatedEnv } from './utils/env';
 import { MobileQAOverlay } from "./components/dev/MobileQAOverlay";
 
 function AppInner() {
@@ -107,6 +128,10 @@ function MainApp() {
 
   const resolvedTheme = useResolvedTheme();
   const parallaxRef = useParallax(isMobile ? 0 : 20);
+  
+  const songsRef = useFadeInOnView<HTMLElement>();
+  const contactRef = useFadeInOnView<HTMLElement>();
+  const drawingsRef = useFadeInOnView<HTMLElement>();
 
   const {
     isGalleryOpen,
@@ -123,7 +148,7 @@ function MainApp() {
 
   const activeModalContext = getActiveContext() || "page";
   const isAnyModalOpen = getActiveContext() !== null;
-  const isAutomated = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
+  const isAutomated = isAutomatedEnv();
 
   const {
     audioRef,
@@ -145,6 +170,33 @@ function MainApp() {
     setIsGalleryOpen,
     setSelectedImageIndex,
   });
+
+  // Keyboard shortcuts for playback
+  const onKeyboardShortcut = useEffectEvent((e: KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+    switch (e.code) {
+      case 'Space':
+        e.preventDefault();
+        toggleAudio();
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        activeSong?.onNext?.();
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        activeSong?.onPrev?.();
+        break;
+    }
+  });
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => onKeyboardShortcut(e);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← لا يحتاج dependencies لأن useEffectEvent دائماً stable
 
   // FIXED: Issue #1 — Shared mood trigger state
   const moodTriggerRef = useRef<(() => void) | null>(null);
@@ -176,18 +228,20 @@ function MainApp() {
   };
 
   const handleNavigate = (page: string) => {
-    setCurrentPage(page);
-    if (page === 'home') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (page === 'songs') {
-      scrollToSection('my-songs-section');
-    } else if (page === 'drawings') {
-      scrollToSection('drawings-section');
-    } else if (page === 'mebit') {
-      scrollToSection('me-bit-gallery');
-    } else if (page === 'lens') {
-      scrollToSection('lens-section');
-    }
+    withViewTransition(() => {
+      setCurrentPage(page);
+      if (page === 'home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (page === 'songs') {
+        scrollToSection('my-songs-section');
+      } else if (page === 'drawings') {
+        scrollToSection('drawings-section');
+      } else if (page === 'mebit') {
+        scrollToSection('me-bit-gallery');
+      } else if (page === 'lens') {
+        scrollToSection('lens-section');
+      }
+    });
   };
 
   useEffect(() => {
@@ -211,7 +265,7 @@ function MainApp() {
   useEffect(() => {
     // PWA Standalone app mode detection
     const checkStandalone = () => {
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
       if (isStandalone) {
         document.body.classList.add('standalone-app');
       } else {
@@ -263,26 +317,29 @@ function MainApp() {
         <AudioVisualizer audioRef={audioRef} isPlaying={isPlaying} />
       </Suspense>
 
-      <FloatingControls
-        isPlaying={isPlaying}
-        isMobile={isMobile}
-        isTablet={isTablet}
-        theme={theme}
-        activeSong={activeSong}
-        activeCardId={activeSong?.id ?? null}
-        onToggleAudio={toggleAudio}
-        onThemeChange={setTheme}
-        isAnyModalOpen={isAnyModalOpen}
-        activeModalContext={activeModalContext}
-      />
+      {loaded && (
+        <FloatingControls
+          isPlaying={isPlaying}
+          isMobile={isMobile}
+          isTablet={isTablet}
+          theme={theme}
+          activeSong={activeSong}
+          activeCardId={activeSong?.id ?? null}
+          onToggleAudio={toggleAudio}
+          onThemeChange={setTheme}
+          isAnyModalOpen={isAnyModalOpen}
+          activeModalContext={activeModalContext}
+        />
+      )}
 
       {!loaded && (
         <LoadingScreen 
-          onComplete={() => setLoaded(true)} 
-          onAudioUnlock={() => {
-            if (audioIntent !== 'user-paused') {
+          onComplete={(chosenTheme, musicConsent) => {
+            setTheme(chosenTheme);
+            if (musicConsent) {
               setAudioIntent('user-playing');
             }
+            setLoaded(true);
           }}
         />
       )}
@@ -346,11 +403,9 @@ function MainApp() {
                 />
               </Suspense>
 
-              <motion.section 
-                variants={itemVariants} 
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: "-100px" }}
+              <section 
+                ref={songsRef} 
+                className="fade-in-section"
                 id="my-songs-section"
                 aria-label="أغانيّ المفضلة"
               >
@@ -365,14 +420,12 @@ function MainApp() {
                     />
                   </Suspense>
                 </SectionErrorBoundary>
-              </motion.section>
+              </section>
 
-              <motion.section
+              <section
                 id="contact-section"
-                variants={itemVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: "-100px" }}
+                ref={contactRef}
+                className="fade-in-section"
                 style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}
                 aria-label="اتصل بي"
               >
@@ -381,46 +434,47 @@ function MainApp() {
                     <ContactForm />
                   </Suspense>
                 </SectionErrorBoundary>
-              </motion.section>
+              </section>
 
-              <motion.section
+              <section
                 id="drawings-section"
-                variants={itemVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: "-100px" }}
-                style={{ contentVisibility: 'auto', containIntrinsicSize: '0 600px' }}
+                ref={drawingsRef}
+                className="fade-in-section"
                 aria-label="رسوماتي"
               >
                 <SectionErrorBoundary sectionName="DrawingsPage">
                   <Suspense fallback={<SkeletonSection type="drawings" />}>
-                    <DrawingsPage onSongPlay={handleSongPlay} />
+                    <Activity mode={loaded ? 'visible' : 'hidden'}>
+                      <DrawingsPage onSongPlay={handleSongPlay} />
+                    </Activity>
                   </Suspense>
                 </SectionErrorBoundary>
-              </motion.section>
+              </section>
             </div>
           </motion.div>
         </div>
       </div>
 
-      <AppMobileNav
-        isMobile={isMobile}
-        isTablet={isTablet}
-        currentPage={currentPage}
-        isBgPlaying={isPlaying}
-        onNavigate={handleNavigate}
-        onToggleBg={() => {
-          if (isPlaying) {
-            audioManager.pause('bg');
-            setAudioIntent('user-paused');
-          } else {
-            setAudioIntent('user-playing');
-            audioManager.unpauseBg();
-          }
-        }}
-        onMoodTrigger={handleMoodTrigger}
-      />
-      <MobileQAOverlay />
+      {loaded && (
+        <AppMobileNav
+          isMobile={isMobile}
+          isTablet={isTablet}
+          currentPage={currentPage}
+          isBgPlaying={isPlaying}
+          onNavigate={handleNavigate}
+          onToggleBg={() => {
+            if (isPlaying) {
+              audioManager.pause('bg');
+              setAudioIntent('user-paused');
+            } else {
+              setAudioIntent('user-playing');
+              audioManager.unpauseBg();
+            }
+          }}
+          onMoodTrigger={handleMoodTrigger}
+        />
+      )}
+      {import.meta.env.DEV && <MobileQAOverlay />}
     </ButtonProvider>
   );
 
