@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import './index.css';
 import { registerServiceWorker } from './utils/registerSW';
 import { reportWebVitals } from './utils/vitals';
@@ -17,7 +18,9 @@ if (!rootElement) {
 }
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <SectionErrorBoundary sectionName="App">
+      <App />
+    </SectionErrorBoundary>
   </StrictMode>,
 );
 

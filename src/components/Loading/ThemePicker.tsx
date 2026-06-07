@@ -1,29 +1,58 @@
 import type { Theme } from '../../utils/userPrefs';
 
-import midnightIcon from './assets/midnight_icon.png';
-import midnightBg from './assets/midnight_BG.png';
-import darkIcon from './assets/dark_icon.gif';
-import darkBg from './assets/dark_BG.png';
-import lightIcon from './assets/light_icon.gif';
-import lightBg from './assets/light_BG.gif';
-import bitIcon from './assets/bit_icon.gif';
-import bitBg from './assets/bit_BG.gif';
-import liteIcon from './assets/lite_icon.gif';
-import liteBg from './assets/lite_BG.png';
-import retroIcon from './assets/retro_icon.gif';
-import retroBg from './assets/retro_BG.png';
-
 interface Props {
   onPick: (theme: Theme) => void;
 }
 
 const THEMES: Array<{ id: Theme; label: string; icon: string; bg: string; fg: string; textShadow?: string }> = [
-  { id: 'midnight', label: 'Midnight', icon: midnightIcon, bg: `url("${midnightBg}") center/cover`, fg: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)' },
-  { id: 'dark',     label: 'Dark',     icon: darkIcon,     bg: `url("${darkBg}") center/cover`,     fg: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)' },
-  { id: 'light',    label: 'Light',    icon: lightIcon,    bg: `url("${lightBg}") center/cover`,    fg: '#222', textShadow: '0 2px 4px rgba(255,255,255,0.8)' },
-  { id: 'bit',      label: '8-Bit',    icon: bitIcon,      bg: `url("${bitBg}") center/cover`,      fg: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)' },
-  { id: 'lite',     label: 'Lite',     icon: liteIcon,     bg: `url("${liteBg}") center/cover`,     fg: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)' },
-  { id: 'retro',    label: 'Retro',    icon: retroIcon,    bg: `url("${retroBg}") center/cover`,    fg: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)' },
+  { 
+    id: 'midnight', 
+    label: 'Midnight', 
+    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/midnight%20icon.png', 
+    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/midnight%20BG.png") center/cover', 
+    fg: '#fff', 
+    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
+  },
+  { 
+    id: 'dark',     
+    label: 'Dark',     
+    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/dark%20icon.gif',     
+    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/dark%20BG.png") center/cover',     
+    fg: '#fff', 
+    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
+  },
+  { 
+    id: 'light',    
+    label: 'Light',    
+    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/light%20icon.gif',    
+    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/light%20BG.gif") center/cover',    
+    fg: '#222', 
+    textShadow: '0 2px 4px rgba(255,255,255,0.8)' 
+  },
+  { 
+    id: 'bit',      
+    label: '8-Bit',    
+    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bit%20icon.gif',      
+    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bit%20BG.gif") center/cover',      
+    fg: '#fff', 
+    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
+  },
+  { 
+    id: 'lite',     
+    label: 'Lite',     
+    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lite%20icon.gif',     
+    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lite%20BG.png") center/cover',     
+    fg: '#fff', 
+    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
+  },
+  { 
+    id: 'retro',    
+    label: 'Retro',    
+    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro%20icon.gif',    
+    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro%20BG.png") center/cover',    
+    fg: '#fff', 
+    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
+  },
 ];
 
 export const ThemePicker = ({ onPick }: Props) => (

@@ -224,6 +224,12 @@ function draw() {
 
   let prevSceneState = sceneState;
 
+  if (isPlaying && sceneState === 0) {
+    sceneState = 1;
+    transitionProgress = 0;
+    scene2StartTime = 0;
+  }
+
   if (sceneState === 0) {
     currentBgColor = '#000000';
     if (!prefersReducedMotion) {

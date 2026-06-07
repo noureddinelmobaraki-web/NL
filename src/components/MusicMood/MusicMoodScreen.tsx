@@ -17,6 +17,7 @@ import { useDeviceType } from '../../hooks/useDeviceType';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useOrientationListener } from '../../hooks/useOrientationListener';
+import { TIMING, AUDIO, GLOW, Z_INDEX } from './constants';
 
 // === Stable Style Constants ===
 const LYRIC_FONT_STACK = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif';
@@ -95,11 +96,22 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
   const activeSongRef = useRef<Song | null>(null);
   useEffect(() => { activeSongRef.current = activeSong; }, [activeSong]);
 
+  const diceTimeoutRef = useRef<number | null>(null);
+
+  // تنظيف diceTimeout عند unmount
+  useEffect(() => {
+    return () => {
+      if (diceTimeoutRef.current !== null) {
+        clearTimeout(diceTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // FIXED: Lazy single-instance Audio creation — guarantees only ONE element created.
   const audioRef = useRef<HTMLAudioElement | null>(null);
   if (audioRef.current === null) {
     const a = new Audio();
-    a.crossOrigin = 'anonymous';
+    a.crossOrigin = AUDIO.CROSS_ORIGIN;
     a.preload = 'auto';
     audioRef.current = a;
   }
@@ -120,13 +132,22 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
   // ── اختيار أغنية عشوائية
   const pickRandomSong = useCallback(() => {
     if (!songs.length) return;
+
     setDiceSpinning(true);
-    setTimeout(() => setDiceSpinning(false), 600);
+    if (diceTimeoutRef.current !== null) {
+      clearTimeout(diceTimeoutRef.current);
+    }
+    diceTimeoutRef.current = window.setTimeout(() => {
+      setDiceSpinning(false);
+      diceTimeoutRef.current = null;
+    }, TIMING.DICE_SPIN_DURATION);
 
     const current = activeSongRef.current;
     const pool = current
       ? songs.filter(s => s.id !== current.id)
       : songs;
+    if (!pool.length) return; // حماية إضافية
+
     const picked = pool[Math.floor(Math.random() * pool.length)];
     setActiveSong(picked);
     setCurrentTime(0);
@@ -141,7 +162,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
     }
     if (audioRef.current?.paused) {
       if (!audioRef.current) return;
-      audioManager.register('song', audioRef.current, 0.7);
+      audioManager.register('song', audioRef.current, AUDIO.DEFAULT_VOLUME);
       audioManager.play('song').catch(err => {
         console.warn('Play blocked:', err);
       });
@@ -163,7 +184,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
       (window.matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent));
     if (!isMobileLike) return;
 
-    const orient = (screen as any).orientation;
+    const orient = screen.orientation;
     if (!orient || typeof orient.lock !== 'function') return;
 
     try {
@@ -179,11 +200,12 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
 
   // ── تشغيل المقطع فور الدخول
   useEffect(() => {
-    // إذا لم تكن هناك أغنية مبدئية، اختر واحدة عشوائية.
-    if (!initialSong) {
-      const t2 = setTimeout(() => pickRandomSong(), 200);
-      return () => { clearTimeout(t2); };
-    }
+    // إذا كانت هناك أغنية مبدئية، لا حاجة لـ cleanup
+    if (initialSong) return undefined;
+
+    // وإلا اختر واحدة عشوائية بعد 200ms
+    const t2 = setTimeout(() => pickRandomSong(), TIMING.PICK_RANDOM_DELAY);
+    return () => clearTimeout(t2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -196,7 +218,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
       try {
         if (ctx && ctx.state === 'suspended') await ctx.resume();
         if (!audioRef.current) return;
-        audioManager.register('song', audioRef.current, 0.7);
+        audioManager.register('song', audioRef.current, AUDIO.DEFAULT_VOLUME);
         await audioManager.play('song');
         setAudioStatus('playing');
       } catch (err) {
@@ -218,7 +240,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
 
     const tick = () => {
       const now = performance.now();
-      if (now - lastUpdate > 100) {
+      if (now - lastUpdate > TIMING.THROTTLE_TIME_UPDATE) {
         setCurrentTime(el.currentTime);
         lastUpdate = now;
       }
@@ -258,8 +280,8 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
   }, []);
 
   // ── وهج بسيط جداً — دائرة رمادية خفيفة في المركز تتنفس مع الموسيقى
-  const glowRadius = 30 + glowIntensity * 40;      // أصغر وأكثر تركيزاً
-  const glowOpacity = 0.04 + glowIntensity * 0.06; // خفيف جداً // AUDIO-REACTIVE-PARTICLES
+  const glowRadius = GLOW.RADIUS_BASE + glowIntensity * GLOW.RADIUS_MULTIPLIER;      // أصغر وأكثر تركيزاً
+  const glowOpacity = GLOW.OPACITY_BASE + glowIntensity * GLOW.OPACITY_MULTIPLIER; // خفيف جداً // AUDIO-REACTIVE-PARTICLES
 
   // ══════════════════════════════════
   // الـ JSX — الشاشة البيضاء النقية
@@ -271,7 +293,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 2147483646,
+        zIndex: Z_INDEX.OVERLAY,
         background: 'radial-gradient(ellipse at center, #FAFAFA 0%, #FFFFFF 70%)',
         display: 'flex',
         flexDirection: 'column',
@@ -318,7 +340,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 2147483647,
+          zIndex: Z_INDEX.CLOSE_BUTTON,
           transition: 'all 0.2s ease',
           color: 'rgba(0,0,0,0.4)',
           padding: 0,
@@ -384,7 +406,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
           maxWidth: '1200px',
           padding: viewport.isLandscape ? '0 10vw' : '0',
           gap: viewport.isLandscape ? '64px' : '0',
-          zIndex: 1,
+          zIndex: Z_INDEX.CONTENT,
         }}
       >
         {/* النصف الأيسر: الكلمات (في اللاندسكيب) */}
@@ -613,7 +635,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            zIndex: 10,
+            zIndex: Z_INDEX.TAP_TO_PLAY,
             background: 'rgba(255,255,255,0.8)'
           }}
         >

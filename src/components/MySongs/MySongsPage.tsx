@@ -9,8 +9,19 @@ import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useMySongsState } from './hooks/useMySongsState';
 import { useMySongsPlayback } from './hooks/useMySongsPlayback';
 import { MySongsList } from './MySongsList';
-
-const PRIMARY_RGB = '99, 102, 241';
+import {
+  SUBTITLE_STYLE_DESKTOP,
+  SUBTITLE_STYLE_MOBILE,
+  TAP_HINT_STYLE_DESKTOP,
+  TAP_HINT_TEXT_STYLE_DESKTOP,
+  MOOD_BTN_STYLE_DESKTOP,
+  MOOD_BTN_STYLE_MOBILE,
+  TRACKS_CONTAINER_STYLE_MOBILE,
+  TRACKS_NUMBER_STYLE_MOBILE,
+} from './MySongsPage.styles';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
+import { useStructuredData } from '../../hooks/useStructuredData';
+import '../../styles/components/mySongs.css';
 
 export const MySongs = ({
   onSongPlay,
@@ -27,51 +38,10 @@ export const MySongs = ({
 }) => {
   const [isMoodTransitioning, setIsMoodTransitioning] = useState(false);
   const [isMoodActive, setIsMoodActive] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? (window.innerWidth >= 1024 && !window.matchMedia("(pointer: coarse)").matches && !/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) : true);
+  const isDesktop = useIsDesktop();
   const moodAudioCtxRef = useRef<AudioContext | null>(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handleResize = () => {
-      const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
-      const isMobileUA = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-      setIsDesktop(window.innerWidth >= 1024 && !coarsePointer && !isMobileUA);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    const base = import.meta.env.BASE_URL || '/';
-    const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-    const controller = new AbortController();
-
-    fetch(`${normalizedBase}songs-jsonld.json`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error(`JSON-LD ${r.status}`);
-        return r.json();
-      })
-      .then((data) => {
-        if (controller.signal.aborted) return;
-        document.getElementById('songs-jsonld')?.remove();
-
-        const script = document.createElement('script');
-        script.type = 'application/ld+json';
-        script.id = 'songs-jsonld';
-        script.textContent = JSON.stringify(data);
-        document.head.appendChild(script);
-      })
-      .catch((err: unknown) => {
-        if (err instanceof Error && err.name === 'AbortError') return;
-        if (import.meta.env.DEV) {
-          console.warn('[MySongsPage] failed to load JSON-LD:', err);
-        }
-      });
-    return () => {
-      controller.abort();
-      document.getElementById('songs-jsonld')?.remove();
-    };
-  }, []);
+  useStructuredData('songs-jsonld.json', 'songs-jsonld');
 
   const { setContext } = useButtonContext();
   
@@ -192,13 +162,12 @@ export const MySongs = ({
         <SectionErrorBoundary sectionName="MusicMoodScreen">
           <MusicMoodScreen
             songs={state.songs}
-            initialSong={playback.currentSong}
+            initialSong={state.currentSong}
             existingAudioCtx={moodAudioCtxRef.current}
             onExit={() => {
               setIsMoodActive(false);
               onSongStop?.();
-              if (typeof audioManager.unpauseBg === 'function') audioManager.unpauseBg();
-              else audioManager.unpauseBg();
+              audioManager.unpauseBg();
             }}
           />
         </SectionErrorBoundary>
@@ -243,17 +212,7 @@ export const MySongs = ({
                 className="h-1 w-12 bg-[var(--accent-indigo)]"
               />
               <p
-                style={isDesktop ? {
-                  paddingTop: '3px',
-                  paddingLeft: '-5px',
-                  marginLeft: '300px',
-                  width: '169.339px',
-                } : {
-                  marginLeft: '-8px',
-                  paddingTop: '1px',
-                  marginRight: '0px',
-                  marginBottom: '-55px',
-                }}
+                style={isDesktop ? SUBTITLE_STYLE_DESKTOP : SUBTITLE_STYLE_MOBILE}
                 className="text-[var(--text-muted)] font-medium tracking-[0.2em] text-xs uppercase text-nowrap"
               >
                 Curated Soundscape
@@ -261,15 +220,11 @@ export const MySongs = ({
               {state.songs.length > 0 && (
                 <div className="relative flex items-center">
                   <div
-                    style={isDesktop ? {
-                      marginLeft: '-149px'
-                    } : {}}
+                    style={isDesktop ? TAP_HINT_STYLE_DESKTOP : undefined}
                     className="absolute -left-16 flex items-center animate-pulse hidden sm:flex"
                   >
                     <span
-                      style={isDesktop ? {
-                        marginLeft: '-271px'
-                      } : {}}
+                      style={isDesktop ? TAP_HINT_TEXT_STYLE_DESKTOP : undefined}
                       className="text-[var(--text-primary)] font-bold text-[10px] uppercase tracking-wider mr-1"
                     >
                       Tap
@@ -297,29 +252,7 @@ export const MySongs = ({
                       onFocus={preloadBlackHoleTransition}
                       onClick={handleTriggerMood}
                       className="music-mood-trigger px-4 py-2 border rounded-full text-xs font-mono uppercase text-zinc-400 border-zinc-800 hover:border-violet-500 hover:text-violet-400 transition-all flex items-center gap-2 cursor-pointer group relative overflow-visible shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.5)] bg-black/20 backdrop-blur-md"
-                      style={isDesktop ? {
-                        paddingRight: '39px',
-                        paddingLeft: '-49px',
-                        paddingTop: '10px',
-                        paddingBottom: '13px',
-                        marginLeft: '-409px',
-                        width: '125.98400000000001px',
-                        height: '46.0645px',
-                        marginTop: '3px',
-                        marginBottom: '1px',
-                        marginRight: '0px'
-                      } : {
-                        marginLeft: '56px',
-                        marginRight: '-31px',
-                        paddingBottom: '16px',
-                        paddingRight: '-9px',
-                        paddingLeft: '17px',
-                        marginTop: '24px',
-                        height: '41px',
-                        width: '135.984px',
-                        paddingTop: '19px',
-                        marginBottom: '-88px',
-                      }}
+                      style={isDesktop ? MOOD_BTN_STYLE_DESKTOP : MOOD_BTN_STYLE_MOBILE}
                     >
                       {/* Mobile Tap Indicator */}
                       <div className="absolute -top-6 sm:hidden left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce">
@@ -345,29 +278,11 @@ export const MySongs = ({
           </div>
           <div className="text-right">
             <div
-              style={isDesktop ? {} : {
-                marginLeft: '-2px',
-                marginRight: '-3px',
-                marginBottom: '-3px',
-                paddingBottom: '-3px',
-                paddingRight: '-4px',
-                paddingLeft: '-4px',
-                paddingTop: '-4px',
-                marginTop: '-9px',
-              }}
+              style={isDesktop ? undefined : TRACKS_CONTAINER_STYLE_MOBILE}
               className="flex items-baseline gap-2"
             >
               <span
-                style={isDesktop ? {} : {
-                  marginLeft: '-20px',
-                  marginTop: '-18px',
-                  marginBottom: '41px',
-                  marginRight: '-5px',
-                  paddingBottom: '2px',
-                  paddingRight: '9px',
-                  paddingLeft: '-1px',
-                  paddingTop: '-5px',
-                }}
+                style={isDesktop ? undefined : TRACKS_NUMBER_STYLE_MOBILE}
                 className="text-[var(--accent-indigo)] font-mono text-4xl font-bold tracking-tighter"
               >
                 {state.songs.length}
@@ -405,112 +320,6 @@ export const MySongs = ({
         </>
         )}
       </div>
-
-      <style>{`
-        :root {
-          --primary-rgb: ${PRIMARY_RGB};
-        }
-        @keyframes slow-zoom {
-          from { transform: scale(1); }
-          to { transform: scale(1.05); }
-        }
-        .rainbow-text {
-          color: var(--song-title-color);
-          text-shadow: 0 0 12px var(--song-title-shadow);
-          font-weight: 900 !important;
-          letter-spacing: -0.01em;
-          animation: golden-glow 3s ease-in-out infinite alternate;
-          font-size: clamp(1.1rem, 3vw, 1.7rem) !important;
-        }
-        @keyframes golden-glow {
-          from { text-shadow: 0 0 8px var(--song-title-shadow); }
-          to { text-shadow: 0 0 20px var(--song-title-shadow), 0 0 30px var(--song-title-shadow); }
-        }
-        @keyframes pulse-glow {
-          0%, 100% { box-shadow: 0 0 4px rgba(139,92,246,0.3); }
-          50% { box-shadow: 0 0 12px rgba(139,92,246,0.7); }
-        }
-        .lyrics-btn {
-          background: rgba(139, 92, 246, 0.2);
-          border: 1px solid rgba(139, 92, 246, 0.6);
-          color: #a78bfa;
-          padding: 6px 14px;
-          border-radius: 20px;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          cursor: pointer;
-          transition: all 200ms ease;
-          animation: pulse-glow 2s ease-in-out infinite;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          white-space: nowrap;
-        }
-        .lyrics-btn:hover {
-          background: rgba(139, 92, 246, 0.4);
-          transform: scale(1.05);
-        }
-        .lyrics-btn-active {
-          background: rgba(139, 92, 246, 0.5);
-          border-color: rgba(139, 92, 246, 1);
-          color: white;
-        }
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        @keyframes wave {
-          0%, 100% { height: 4px; }
-          50% { height: 16px; }
-        }
-        @property --angle {
-          syntax: '<angle>';
-          initial-value: 0deg;
-          inherits: false;
-        }
-        @keyframes rotate-angle {
-          to { --angle: 360deg; }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        .song-card {
-          grid-column: span 1;
-          transition: grid-column 300ms cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .song-card::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          padding: 2px;
-          background: conic-gradient(from var(--angle, 0deg), rgba(139,92,246,0.5), transparent 40%, rgba(139,92,246,0.5));
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          animation: rotate-angle 3s linear infinite;
-          opacity: 0;
-          transition: opacity 300ms;
-          pointer-events: none;
-          z-index: 15;
-        }
-        .song-card:hover::before {
-          opacity: 1;
-        }
-        .song-card.active {
-          grid-column: span 2;
-        }
-        @media (max-width: 768px) {
-          .song-card.active {
-            grid-column: span 1;
-          }
-        }
-      `}</style>
     </section>
   );
 };
