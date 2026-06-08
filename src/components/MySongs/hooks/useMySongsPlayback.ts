@@ -64,6 +64,11 @@ export function useMySongsPlayback({
     onPrev: () => handlePrev(),
   });
 
+  const currentTimeRef = useRef(currentTime);
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
   const SWITCH_COOLDOWN_MS = 180;
   const lastSwitchAtRef = useRef(0);
 
@@ -143,7 +148,7 @@ export function useMySongsPlayback({
         cover: currentSong.cover || currentSong.backgroundImage,
         audioRef: { current: audioTagRef.current },
         isPlaying,
-        currentTime,
+        get currentTime() { return currentTimeRef.current; },
         duration,
         onPlayPause: () => handlePlayToggle(),
         onPrev: handlePrev,
@@ -187,7 +192,6 @@ export function useMySongsPlayback({
   }, [
     activeId,
     isPlaying,
-    currentTime,
     duration,
     songs,
     isShuffle,

@@ -38,6 +38,10 @@ export const MySongs = ({
 }) => {
   const [isMoodTransitioning, setIsMoodTransitioning] = useState(false);
   const [isMoodActive, setIsMoodActive] = useState(false);
+  const isMoodActiveRef = useRef(false);
+  useEffect(() => {
+    isMoodActiveRef.current = isMoodActive;
+  }, [isMoodActive]);
   const isDesktop = useIsDesktop();
   const moodAudioCtxRef = useRef<AudioContext | null>(null);
 
@@ -71,7 +75,7 @@ export const MySongs = ({
     // FIXED: side effects خارج setState — والشرط check خارج الـ updaters
     setIsMoodTransitioning(prev => {
       if (prev) return prev;
-      if (isMoodActive) return prev; // إذا كان Mood شغّال أصلاً، لا تبدأ transition جديدة
+      if (isMoodActiveRef.current) return prev; // إذا كان Mood شغّال أصلاً، لا تبدأ transition جديدة
       return true;
     });
 
@@ -95,7 +99,7 @@ export const MySongs = ({
       }
     } catch {}
     try { audioManager.pause?.('bg'); } catch {}
-  }, [isMoodActive, playback?.isPlaying, playback?.audioTagRef, onSongStop]);
+  }, [playback?.isPlaying, playback?.audioTagRef, onSongStop]);
 
   useEffect(() => {
     onRegisterMoodTrigger?.(handleTriggerMood);
@@ -172,7 +176,13 @@ export const MySongs = ({
           />
         </SectionErrorBoundary>
       )}
-      <audio ref={playback.audioTagRef} preload="none" crossOrigin="anonymous" style={{ display: 'none' }} />
+      <audio
+        ref={playback.audioTagRef}
+        preload="none"
+        crossOrigin="anonymous"
+        style={{ display: 'none' }}
+        aria-hidden="true"
+      />
       <div className="max-w-6xl mx-auto relative z-10">
         {state.error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
@@ -199,7 +209,7 @@ export const MySongs = ({
             </h2>
             <div
               style={isDesktop ? {
-                paddingLeft: '-4px'
+                marginLeft: '-4px'
               } : {}}
               className="flex items-center gap-3 flex-wrap"
             >
@@ -237,10 +247,9 @@ export const MySongs = ({
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         style={isDesktop ? {
-                          marginLeft: '-58px',
-                          paddingTop: '-12px',
-                          paddingLeft: '-8px',
-                          paddingRight: '-7px',
+                          marginTop: '-12px',
+                          marginLeft: '-8px',
+                          marginRight: '-7px',
                           marginBottom: '-8px'
                         } : {}}
                       />

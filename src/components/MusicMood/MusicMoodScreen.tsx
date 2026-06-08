@@ -17,44 +17,7 @@ import { useDeviceType } from '../../hooks/useDeviceType';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useOrientationListener } from '../../hooks/useOrientationListener';
-import { TIMING, AUDIO, GLOW, Z_INDEX } from './constants';
-
-// === Stable Style Constants ===
-const LYRIC_FONT_STACK = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif';
-
-const STYLE_CURRENT_LINE_MOBILE: React.CSSProperties = {
-  fontFamily: LYRIC_FONT_STACK,
-  fontSize: 'clamp(1.5rem, 6vw, 2.5rem)',
-  fontWeight: 800,
-  color: '#000000',
-  WebkitTextStroke: '0.5px rgba(255,255,255,0.55)',
-  paintOrder: 'stroke fill',
-  textShadow: '0 1px 2px rgba(255,255,255,0.45)',
-  lineHeight: 1.45,
-  letterSpacing: '-0.01em',
-  textWrap: 'balance',
-  margin: 0,
-  maxWidth: '90vw',
-  overflowWrap: 'anywhere',
-  background: 'transparent',
-};
-
-const STYLE_PREV_NEXT_MOBILE_BASE: React.CSSProperties = {
-  fontFamily: LYRIC_FONT_STACK,
-  fontSize: 'clamp(1rem, 4.6vw, 1.4rem)',
-  fontWeight: 600,
-  color: '#000000',
-  WebkitTextStroke: '0.4px rgba(255,255,255,0.4)',
-  paintOrder: 'stroke fill',
-  textShadow: '0 1px 1.5px rgba(255,255,255,0.35)',
-  lineHeight: 1.45,
-  letterSpacing: '-0.01em',
-  textWrap: 'balance',
-  margin: 0,
-  maxWidth: '90vw',
-  overflowWrap: 'anywhere',
-  background: 'transparent',
-};
+import { TIMING, AUDIO, GLOW } from './constants';
 
 interface MusicMoodScreenProps {
   songs: Song[];
@@ -88,7 +51,6 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
   const [activeSong, setActiveSong]   = useState<Song | null>(initialSong || null);
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const [currentTime, setCurrentTime] = useState(0);
-  const isEntering = false; // Mount immediately with full opacity
 
   const [diceSpinning, setDiceSpinning] = useState(false);
   const [needsUserTap, setNeedsUserTap] = useState(false);
@@ -161,7 +123,6 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
       audioCtxRef.current.resume();
     }
     if (audioRef.current?.paused) {
-      if (!audioRef.current) return;
       audioManager.register('song', audioRef.current, AUDIO.DEFAULT_VOLUME);
       audioManager.play('song').catch(err => {
         console.warn('Play blocked:', err);
@@ -290,34 +251,17 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
     <div
       ref={focusTrapRef}
       id="music-mood-immersive-overlay"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: Z_INDEX.OVERLAY,
-        background: 'radial-gradient(ellipse at center, #FAFAFA 0%, #FFFFFF 70%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: isEntering ? 0 : 1,
-        // FIXED: Issue #5 — small delay for smooth sync with blackhole bloom-out
-        transition: 'opacity 0.5s ease 0.15s',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        // منع أي تفاعل خارجي مع الصفحة تحتها
-        pointerEvents: 'all',
-      }}
+      className="mood-overlay"
     >
       {/* FIXED: Issue #5 — Removed redundant white flash div */}
 
       {/* ══ وهج الخلفية يتفاعل مع الصوت ══ */}
       <div
+        className="mood-glow"
         style={{
-          position: 'absolute',
-          inset: 0,
-          background: `radial-gradient(circle ${glowRadius}% at 50% 50%, rgba(0,0,0,${glowOpacity}) 0%, rgba(255,255,255,0) 70%)`,
-          transition: 'background 0.1s ease',
-          pointerEvents: 'none',
-        }}
+          '--glow-radius': `${glowRadius}%`,
+          '--glow-opacity': glowOpacity,
+        } as React.CSSProperties}
       />
 
       {/* ══ زر إغلاق (X) دقيق وأنيق للشاشات والهواتف ══ */}
@@ -325,43 +269,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
         onClick={onExit}
         aria-label="إغلاق"
         title="إغلاق"
-        style={{
-          position: 'absolute',
-          top: 'calc(env(safe-area-inset-top) + 24px)',
-          right: 'calc(env(safe-area-inset-right) + 24px)',
-          width: '44px',
-          height: '44px',
-          borderRadius: '50%',
-          border: '1.5px solid rgba(0,0,0,0.08)',
-          background: 'rgba(255,255,255,0.7)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: Z_INDEX.CLOSE_BUTTON,
-          transition: 'all 0.2s ease',
-          color: 'rgba(0,0,0,0.4)',
-          padding: 0,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-        }}
-        onMouseEnter={e => {
-          if (!isDesktop) return;
-          const b = e.currentTarget as HTMLButtonElement;
-          b.style.borderColor = 'rgba(0,0,0,0.25)';
-          b.style.color = 'rgba(0,0,0,0.8)';
-          b.style.background = '#FFFFFF';
-          b.style.transform = 'scale(1.05)';
-        }}
-        onMouseLeave={e => {
-          if (!isDesktop) return;
-          const b = e.currentTarget as HTMLButtonElement;
-          b.style.borderColor = 'rgba(0,0,0,0.08)';
-          b.style.color = 'rgba(0,0,0,0.4)';
-          b.style.background = 'rgba(255,255,255,0.7)';
-          b.style.transform = 'scale(1)';
-        }}
+        className="mood-close-btn"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -376,20 +284,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
       {activeSong && (
         <p
           aria-live="polite"
-          style={{
-            position: 'absolute',
-            top: viewport.isLandscape ? '24px' : 'calc(env(safe-area-inset-top) + 10vh)',
-            left: viewport.isLandscape ? '24px' : '50%',
-            transform: viewport.isLandscape ? 'none' : 'translateX(-50%)',
-            fontSize: 'clamp(10px, 1.5vw, 12px)',
-            letterSpacing: '0.45em',
-            textTransform: 'uppercase',
-            color: 'rgba(0,0,0,0.22)',
-            fontWeight: 400,
-            whiteSpace: 'nowrap',
-            userSelect: 'none',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-          }}
+          className={`mood-title ${viewport.isLandscape ? 'landscape' : ''}`}
         >
           {activeSong.title}
         </p>
@@ -397,40 +292,16 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
 
       {/* ══ محتوى الشاشة: تقسيم أفقي في اللاندسكيب وتقسيم عمودي في البورتريه ══ */}
       <div
-        style={{
-          display: 'flex',
-          flexDirection: viewport.isLandscape ? 'row' : 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          maxWidth: '1200px',
-          padding: viewport.isLandscape ? '0 10vw' : '0',
-          gap: viewport.isLandscape ? '64px' : '0',
-          zIndex: Z_INDEX.CONTENT,
-        }}
+        className={`mood-content-container ${viewport.isLandscape ? 'landscape' : ''}`}
       >
         {/* النصف الأيسر: الكلمات (في اللاندسكيب) */}
         <div
-          style={{
-            flex: viewport.isLandscape ? 1.2 : 'none',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: viewport.isLandscape ? '100%' : 'auto',
-          }}
+          className={`mood-lyrics-wrapper ${viewport.isLandscape ? 'landscape' : ''}`}
         >
           {/* ══ الكلمات الرئيسية (السطر الحالي) ══ */}
           <div
             aria-live="polite"
-            style={{
-              position: 'relative',
-              zIndex: 1,
-              textAlign: 'center',
-              padding: viewport.isLandscape ? '0' : '0 clamp(24px, 8vw, 120px)',
-              marginBottom: viewport.isLandscape ? '0' : '48px',
-            }}
+            className={`mood-lyrics-content ${viewport.isLandscape ? 'landscape' : ''}`}
           >
             {isMobileLyr ? (
               /* MOBILE-LYRICS: 3-line sliding context, arab support, balance text-wrap */
@@ -441,21 +312,13 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
                   transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '12px',
-                    width: '100%',
-                  }}
+                  className="flex flex-col items-center justify-center gap-3 w-full"
                 >
                   {/* Previous Line (above, much fainter) */}
                   {previousLine && (
                     <p
                       dir="auto"
-                      className="text-center"
-                      style={{ ...STYLE_PREV_NEXT_MOBILE_BASE, opacity: 0.15 }}
+                      className="text-center mood-lyric-mobile-prev-next opacity-[0.15]"
                     >
                       <KaraokeText line={previousLine} currentTime={currentTime} isPrevious />
                     </p>
@@ -464,14 +327,13 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
                   {/* Current Line (Active) with scale-from-0.95 + glow flash that decays in 400ms */}
                   <motion.p
                     dir="auto"
-                    className="text-center mood-lyric-current"
+                    className="text-center mood-lyric-current mood-lyric-mobile-current"
                     initial={{ scale: 0.95, filter: 'blur(4px)' }}
                     animate={{ scale: 1, filter: 'blur(0px)' }}
                     transition={{
                       scale: { duration: 0.4, ease: 'easeOut' },
                       filter: { duration: 0.4, ease: 'easeOut' }
                     }}
-                    style={STYLE_CURRENT_LINE_MOBILE}
                   >
                     {currentLine ? <KaraokeText line={currentLine} currentTime={currentTime} /> : (audioStatus === 'loading' ? '...' : '')}
                   </motion.p>
@@ -480,8 +342,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
                   {nextLine && (
                     <p
                       dir="auto"
-                      className="text-center"
-                      style={{ ...STYLE_PREV_NEXT_MOBILE_BASE, opacity: 0.6 }}
+                      className="text-center mood-lyric-mobile-prev-next opacity-[0.6]"
                     >
                       <KaraokeText line={nextLine} currentTime={currentTime} isNext />
                     </p>
@@ -493,23 +354,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
               <>
                 <p
                   key={currentLine?.time ?? 'empty'}
-                  style={{
-                    fontSize: viewport.isLandscape ? 'clamp(18px, 3.5vw, 36px)' : 'clamp(22px, 4.5vw, 48px)',
-                    fontWeight: 800,
-                    color: '#000000',
-                    lineHeight: 1.5,
-                    letterSpacing: '-0.025em',
-                    WebkitTextStroke: '0.8px rgba(255,255,255,0.6)',
-                    paintOrder: 'stroke fill',
-                    textShadow: '0 2px 4px rgba(255,255,255,0.4)',
-                    fontOpticalSizing: 'auto',
-                    margin: 0,
-                    marginBottom: '20px',
-                    // fade-in عند تغيير السطر
-                    animation: 'moodLineFadeIn 0.4s ease forwards',
-                    maxWidth: '650px',
-                    fontFamily: LYRIC_FONT_STACK,
-                  }}
+                  className={`mood-desk-lyric-current ${viewport.isLandscape ? 'landscape' : ''}`}
                 >
                   {currentLine ? <KaraokeText line={currentLine} currentTime={currentTime} /> : (audioStatus === 'loading' ? '...' : '')}
                 </p>
@@ -517,20 +362,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
                 {/* السطر التالي (أشفّ) */}
                 {nextLine && (
                   <p
-                    style={{
-                      fontSize: viewport.isLandscape ? 'clamp(12px, 2.2vw, 18px)' : 'clamp(14px, 2.4vw, 24px)',
-                      fontWeight: 600,
-                      color: '#000000',
-                      opacity: 0.6,
-                      lineHeight: 1.5,
-                      margin: 0,
-                      letterSpacing: '-0.01em',
-                      WebkitTextStroke: '0.5px rgba(255,255,255,0.4)',
-                      paintOrder: 'stroke fill',
-                      textShadow: '0 1px 2px rgba(255,255,255,0.3)',
-                      maxWidth: '650px',
-                      fontFamily: LYRIC_FONT_STACK,
-                    }}
+                    className={`mood-desk-lyric-next ${viewport.isLandscape ? 'landscape' : ''}`}
                   >
                     <KaraokeText line={nextLine} currentTime={currentTime} isNext />
                   </p>
@@ -540,8 +372,8 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
 
             {/* رسالة إذا لم تكن هناك كلمات */}
             {!activeSong?.lrc && activeSong && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '32px' }}>
-                <svg width="40" height="24" viewBox="0 0 40 24" fill="currentColor" style={{ opacity: 0.3, color: 'rgba(0,0,0,0.82)' }}>
+              <div className="flex justify-center items-center min-h-[32px]">
+                <svg width="40" height="24" viewBox="0 0 40 24" fill="currentColor" className="opacity-30 text-[rgba(0,0,0,0.82)]">
                   <circle cx="8" cy="12" r="3">
                     <animate attributeName="cy" values="12;6;12" dur="1s" repeatCount="indefinite" begin="0s" />
                   </circle>
@@ -559,12 +391,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
 
         {/* النصف الأيمن: أزرار التحكم (في اللاندسكيب) */}
         <div
-          style={{
-            flex: viewport.isLandscape ? 1 : 'none',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
+          className={`mood-controls-wrapper ${viewport.isLandscape ? 'landscape' : ''}`}
         >
           {/* ══ أزرار التحكم ══ */}
           <MoodControls
@@ -579,77 +406,27 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
       {/* ══ زر الخروج — أسفل الشاشة، شفاف جداً ══ */}
       <button
         onClick={onExit}
-        style={{
-          position: 'absolute',
-          bottom: 'calc(env(safe-area-inset-bottom) + 32px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '11px',
-          letterSpacing: '0.3em',
-          color: 'rgba(0,0,0,0.2)',
-          textTransform: 'uppercase',
-          transition: 'color 0.2s',
-          padding: '8px 16px',
-        }}
-        onMouseEnter={e => { if (isDesktop) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.6)'; }}
-        onMouseLeave={e => { if (isDesktop) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.2)'; }}
+        className="mood-exit-btn"
       >
         ESC — exit mood
       </button>
 
       {/* ══ مؤشر loading دقيق ══ */}
       {audioStatus === 'loading' && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '40px',
-            height: '2px',
-            background: 'rgba(0,0,0,0.08)',
-            borderRadius: '1px',
-            overflow: 'hidden',
-          }}
-        >
-          <div style={{
-            height: '100%',
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: '1px',
-            animation: 'moodLoadingBar 1.2s ease infinite',
-          }} />
+        <div className="mood-loading-container">
+          <div className="mood-loading-bar" />
         </div>
       )}
 
       {/* ══ Tap To Play overlay ══ */}
       {needsUserTap && (
-        <div
-          onClick={handlePlayPause}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: Z_INDEX.TAP_TO_PLAY,
-            background: 'rgba(255,255,255,0.8)'
-          }}
-        >
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '12px',
-          }}>
+        <div onClick={handlePlayPause} className="mood-tap-to-play">
+          <div className="mood-tap-to-play-inner">
             <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
               <circle cx="24" cy="24" r="23" stroke="rgba(0,0,0,0.1)" strokeWidth="1"/>
               <polygon points="18,14 36,24 18,34" fill="rgba(0,0,0,0.4)"/>
             </svg>
-            <span style={{ fontSize: '11px', letterSpacing: '0.3em', color: 'rgba(0,0,0,0.3)', fontWeight: 500 }}>
+            <span className="mood-tap-to-play-text">
               TAP TO PLAY
             </span>
           </div>

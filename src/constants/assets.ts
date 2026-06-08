@@ -60,7 +60,7 @@ export const INTRO_VIDEOS = {
 // Mood transition videos (responsive)
 export const MOOD_TRANSITION_VIDEOS = {
   desktop: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Transition_web.webm',
-  mobile:  'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Transition_phone_web.webm',
+  mobile:  'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Transition%20phone_web.webm',
 } as const;
 
 export const MOOD_TRANSITION_TIMING = {
@@ -125,8 +125,8 @@ export const ASSETS = {
       `${CDN}/11.%20GOUROU%20-%20Background.webp`,
       `${CDN}/12.%20ITCHY%20W%20SCRATCHY%20-%20Background.webp`,
       `${CDN}/13.%20KOUN%20NADI%20-%20Background.webp`,
-      `${CDN}/14.%20KOUN%20MAA%20HBIBI%20-%20Background.webp`,
-      `${CDN}/15.%20LAA%20W%20LAAH%20-%20Background.webp`,
+      `${CDN}/CAPTCHA.webp`,
+      `${CDN}/Couteau%20Suisse.webp`,
       `${CDN}/16.%20Let%20The%20R...%20-%20Background.webp`,
       `${CDN}/17.%20LMORPHINIYA%2031%20-%20Background.webp`,
       `${CDN}/18.%20LMORPHINIYA%2033%20-%20Background.webp`,

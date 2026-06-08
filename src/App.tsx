@@ -264,15 +264,17 @@ function MainApp() {
 
   useEffect(() => {
     // PWA Standalone app mode detection
+    const mq = window.matchMedia('(display-mode: standalone)');
+    
     const checkStandalone = () => {
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-      if (isStandalone) {
-        document.body.classList.add('standalone-app');
-      } else {
-        document.body.classList.remove('standalone-app');
-      }
+      const isStandalone = mq.matches || window.navigator.standalone === true;
+      document.body.classList.toggle('standalone-app', isStandalone);
     };
+    
     checkStandalone();
+    mq.addEventListener('change', checkStandalone);
+    
+    return () => mq.removeEventListener('change', checkStandalone);
   }, []);
 
   // Fixed: Issue #3 — Robust scrollToSection with cancellation
@@ -406,7 +408,6 @@ function MainApp() {
               <section 
                 ref={songsRef} 
                 className="fade-in-section"
-                id="my-songs-section"
                 aria-label="أغانيّ المفضلة"
               >
                 <SectionErrorBoundary sectionName="MySongs">

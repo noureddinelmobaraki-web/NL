@@ -9,3 +9,7 @@ coverage/
 # Custom exclusions
 win12-main/
 public/win12/img/*.png
+
+# Development artifacts
+tmp/
+workspace/

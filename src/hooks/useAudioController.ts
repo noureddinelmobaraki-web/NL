@@ -142,8 +142,6 @@ export function useAudioController({
     const abort = new AbortController();
     themeSwapAbortRef.current = abort;
 
-    const shouldResumeAfterSwap = audioIntent === 'user-playing';
-
     // 1. Fade out and pause current bg
     audioManager.pause('bg');
 
@@ -186,15 +184,14 @@ export function useAudioController({
       // 5. Re-register the same audio element with audioManager (url changed)
       audioManager.register('bg', audio, 0.7);
 
-      // 6. Resume playback only if the user had already chosen to play bg audio
-      if (shouldResumeAfterSwap) {
-        themeSwapTimerRef.current = setTimeout(() => {
-          themeSwapTimerRef.current = null;
-          if (abort.signal.aborted) return;
-          audioManager.unpauseBg();
-          savePrefs({ audioIntent: 'user-playing' });
-        }, 400);
-      }
+      // 6. Play the background audio unconditionally when transitioning to any of the 6 modes/themes!
+      themeSwapTimerRef.current = setTimeout(() => {
+        themeSwapTimerRef.current = null;
+        if (abort.signal.aborted) return;
+        audioManager.unpauseBg();
+        setAudioIntent('user-playing');
+        savePrefs({ audioIntent: 'user-playing' });
+      }, 400);
     };
 
     swapHls();

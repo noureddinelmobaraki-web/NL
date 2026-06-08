@@ -23,6 +23,7 @@
 @import "./styles/components/streaming.css" layer(components);
 @import "./styles/components/song-card.css" layer(components);
 @import "./styles/components/sw-toast.css" layer(components);
+@import "./styles/components/musicMood.css" layer(components);
 @import "./styles/animations.css" layer(utilities);
 @import "./styles/touch-gestures.css" layer(utilities);
 @import "./styles/utilities/typography.css" layer(utilities);
