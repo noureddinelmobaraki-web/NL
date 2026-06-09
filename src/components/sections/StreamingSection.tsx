@@ -174,6 +174,7 @@ export const StreamingSection = memo(() => {
                       src={getLocalAssetUrl('apple-music.svg')} 
                       className="w-6 h-6 shrink-0 object-contain" 
                       style={{ filter: 'invert(1)' }} 
+                      loading="lazy"
                       alt={`${platform.name} logo`} 
                     />
                   ) : (

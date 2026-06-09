@@ -6,7 +6,9 @@ import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig(({ mode }) => {
   return {
-    base: process.env.VITE_BASE_PATH ?? '/',
+    // Default to the GitHub Pages sub-path so local/preview builds match production
+    // and the service worker scope (/NL/). CI still overrides via VITE_BASE_PATH.
+    base: process.env.VITE_BASE_PATH ?? '/NL/',
     assetsInclude: ['**/*.xml'],
     plugins: [
       react({
@@ -78,7 +80,14 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
     },
     test: {
-      environment: 'jsdom'
+      environment: 'jsdom',
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html', 'lcov'],
+        reportsDirectory: './coverage',
+        exclude: ['**/*.config.*', '**/dist/**', '**/e2e/**', '**/*.d.ts', 'scripts/**', 'server.ts', '**/*.test.*'],
+        thresholds: { lines: 35, functions: 35, statements: 35, branches: 35 },
+      }
     }
   };
 });

@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useDeviceType } from "../hooks/useDeviceType";
 import { Home, Music2, Camera, Aperture, Pause, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTranslation } from "react-i18next";
 
 interface MobileNavBarProps {
   currentPage: string;
@@ -19,6 +20,7 @@ export const MobileNavBar = ({
   onMoodTrigger,
 }: MobileNavBarProps) => {
   const { isMobile, isTablet } = useDeviceType();
+  const { t, i18n } = useTranslation();
   const longPressTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (!isMobile && !isTablet) return null;
@@ -40,21 +42,21 @@ export const MobileNavBar = ({
   };
 
   const tabs = [
-    { id: 'home',         Icon: Home,      label: 'الرئيسية' },
-    { id: 'songs',        Icon: Music2,    label: 'أغاني'    },
-    { id: 'mebit',        Icon: Camera,    label: 'صوري'     },
-    { id: 'lens',         Icon: Aperture,  label: 'LENS'     },
+    { id: 'home',         Icon: Home,      label: t('nav.home') },
+    { id: 'songs',        Icon: Music2,    label: t('nav.songs') },
+    { id: 'mebit',        Icon: Camera,    label: t('nav.mebit') },
+    { id: 'lens',         Icon: Aperture,  label: t('nav.lens') },
     {
       id: 'music-toggle',
       Icon: MusicIcon,
-      label: isBgPlaying ? 'إيقاف' : 'موسيقى',
+      label: isBgPlaying ? t('nav.pause') : t('nav.play'),
       isAction: true
     },
   ];
 
   return (
     <nav
-      lang="ar"
+      lang={i18n.resolvedLanguage || i18n.language || 'en'}
       aria-label="Mobile Navigation"
       style={{
         position: 'fixed',

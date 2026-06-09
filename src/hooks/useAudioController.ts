@@ -119,12 +119,20 @@ export function useAudioController({
   // ── حظر موسيقى الخلفية كاملةً ما دامت شاشة الاستقبال ظاهرة ──
   // يمنع تشغيل bg (midnight) مع موسيقى intro المستقلة. سلطة صوت واحدة.
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
     if (!loaded) {
       audioManager.suppressBg('loading-screen');
+      // Refresh suppressor so it doesn't expire if user stays on LoadingScreen for >30s
+      interval = setInterval(() => {
+        audioManager.suppressBg('loading-screen');
+      }, 10000);
     } else {
       audioManager.releaseBg('loading-screen');
       audioManager.armUserGestureResume(); // ← الآن فقط بعد الدخول الفعلي
     }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [loaded]);
 
   const ensureMeBitLoaded = useCallback(async () => {

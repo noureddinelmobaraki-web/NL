@@ -4,9 +4,5 @@
 User-agent: *
 Allow: /
 
-# نسمحو بـ render-critical assets (JS/CSS) باش Google يقدر يـ render الـ SPA
-Allow: /assets/
-Allow: /NL/assets/
-
-# Sitemap (رابط مطلق — مطلوب من Google)
+# Absolute sitemap URL (required by Google). Must be the /NL/ sub-path.
 Sitemap: https://noureddinelmobaraki-web.github.io/NL/sitemap.xml

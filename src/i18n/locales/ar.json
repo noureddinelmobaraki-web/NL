@@ -1,0 +1,15 @@
+{
+  "nav": {
+    "home": "الرئيسية",
+    "songs": "أغاني",
+    "mebit": "صوري",
+    "drawings": "رسوماتي",
+    "lens": "LENS",
+    "play": "موسيقى",
+    "pause": "إيقاف",
+    "language": "العربية"
+  },
+  "buttons": {
+    "changeLanguage": "تغيير اللغة"
+  }
+}

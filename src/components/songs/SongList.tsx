@@ -59,6 +59,7 @@ export const SongList = ({
   onHoverPrefetchLrc,
 }: SongListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'default' | 'name'>('default');
   const [memeOpacity, setMemeOpacity] = useState(0);
 
   useEffect(() => {
@@ -80,44 +81,69 @@ export const SongList = ({
   const { isMobile } = useDeviceType();
 
   const filteredSongs = useMemo(() => {
-    if (!searchQuery) return songs;
-    return songs.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [songs, searchQuery]);
+    let result = songs;
+    if (searchQuery) {
+      result = result.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    if (sortOrder === 'name') {
+      result = [...result].sort((a, b) => a.title.localeCompare(b.title));
+    }
+    return result;
+  }, [songs, searchQuery, sortOrder]);
 
   return (
     <div className="space-y-6">
       {/* Dynamic Search/Filter Input */}
-      <div className={`relative flex items-center gap-3 ${isMobile ? 'w-full' : 'max-w-sm'}`}>
-        <img 
-          src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/music%20mood.webp" 
-          alt="Meme Pointing" 
-          className="absolute bottom-[95%] left-1/2 -translate-x-[52%] w-[210px] max-w-none h-auto pointer-events-none z-10 select-none transform transition-opacity duration-1000 ease-in-out"
-          style={{ opacity: memeOpacity }}
-        />
-        <input
-          type="text"
-          placeholder="بحث عن أغنية... (البحث بـ العنوان)"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className={`w-full rounded-full focus:outline-none transition-all ${isMobile ? 'max-w-none px-[16px] py-[10px] text-[16px] font-sans' : 'px-5 py-2 text-xs font-mono'}`}
-          style={{
-            background: 'var(--bg-glass-strong, rgba(20,20,30,0.5))',
-            border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
-            color: 'var(--text-primary, #ffffff)',
-            fontSize: '16px', // Prevents iOS keyboard zoom
-          }}
-          inputMode="search"
-          enterKeyHint="search"
-          aria-label="Search songs"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="text-[10px] font-mono uppercase bg-zinc-800/80 text-zinc-400 px-3 py-1.5 rounded-full hover:text-white transition-colors"
+      <div className={`relative flex items-center justify-between gap-3 flex-wrap`}>
+        <div className={`relative flex items-center gap-3 ${isMobile ? 'w-full' : 'w-full max-w-sm'}`}>
+          <img 
+            src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/music%20mood.webp" 
+            alt="Meme Pointing" 
+            className="absolute bottom-[95%] left-1/2 -translate-x-[52%] w-[210px] max-w-none h-auto pointer-events-none z-10 select-none transform transition-opacity duration-1000 ease-in-out"
+            style={{ opacity: memeOpacity }}
+          />
+          <input
+            type="text"
+            placeholder="بحث عن أغنية... (البحث بـ العنوان)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={`w-full rounded-full focus:outline-none transition-all ${isMobile ? 'px-[16px] py-[10px] text-[16px] font-sans' : 'px-5 py-2 text-xs font-mono'}`}
+            style={{
+              background: 'var(--bg-glass-strong, rgba(20,20,30,0.5))',
+              border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
+              color: 'var(--text-primary, #ffffff)',
+              fontSize: '16px', // Prevents iOS keyboard zoom
+            }}
+            inputMode="search"
+            enterKeyHint="search"
+            aria-label="Search songs"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute left-3 text-[10px] font-mono uppercase bg-zinc-800/80 text-zinc-400 px-3 py-1.5 rounded-full hover:text-white transition-colors"
+            >
+              مسح
+            </button>
+          )}
+        </div>
+        
+        <div className={`flex items-center gap-2 ${isMobile ? 'w-full justify-between' : ''}`}>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">Sort By</span>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'default' | 'name')}
+            className={`rounded-full focus:outline-none transition-all text-[12px] font-mono px-4 py-1.5 appearance-none cursor-pointer`}
+            style={{
+              background: 'var(--bg-glass-strong, rgba(20,20,30,0.5))',
+              border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
+              color: 'var(--text-primary, #ffffff)',
+            }}
           >
-            مسح
-          </button>
-        )}
+            <option value="default">التاريخ (الافتراضي)</option>
+            <option value="name">الاسم (أ-ي)</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-max">

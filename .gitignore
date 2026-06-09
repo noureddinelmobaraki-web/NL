@@ -13,3 +13,8 @@ public/win12/img/*.png
 # Development artifacts
 tmp/
 workspace/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/

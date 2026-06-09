@@ -3,6 +3,7 @@ import { Camera, Music2, Pencil, Aperture } from 'lucide-react';
 import { NavButton } from '../NavButton';
 import { audioManager } from '../../audio/audioManager';
 import { itemVariants } from './appConstants';
+import { useTranslation } from 'react-i18next';
 
 interface AppNavGridProps {
   resolvedTheme: string;
@@ -15,6 +16,8 @@ export function AppNavGrid({
   onScrollToSection,
   onOpenLens,
 }: AppNavGridProps) {
+  const { t } = useTranslation();
+
   return (
     <motion.div 
       variants={itemVariants} 
@@ -22,25 +25,25 @@ export function AppNavGrid({
     >
       <NavButton 
         icon={Camera} 
-        label="ME BIT" 
+        label={t('nav.mebit').toUpperCase()} 
         onClick={() => onScrollToSection('me-bit-gallery')} 
         theme={resolvedTheme} 
       />
       <NavButton 
         icon={Music2} 
-        label="MY SONGS" 
+        label={t('nav.songs').toUpperCase()} 
         onClick={() => onScrollToSection('my-songs-section')} 
         theme={resolvedTheme} 
       />
       <NavButton 
         icon={Pencil} 
-        label="MY DRAWINGS" 
+        label={t('nav.drawings').toUpperCase()} 
         onClick={() => onScrollToSection('drawings-section')} 
         theme={resolvedTheme} 
       />
       <NavButton 
         icon={Aperture} 
-        label="LENS" 
+        label={t('nav.lens').toUpperCase()} 
         onClick={() => { 
           audioManager.play('lens'); 
           onOpenLens(); 

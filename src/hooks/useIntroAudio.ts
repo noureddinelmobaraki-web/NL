@@ -8,52 +8,59 @@ export interface UseIntroAudioOpts {
   volume?: number;
 }
 
-export const useIntroAudio = ({ src, enabled, volume = 0.6 }: UseIntroAudioOpts) => {
+export const useIntroAudio = ({ src, volume = 0.6 }: UseIntroAudioOpts) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    if (!enabled || audioRef.current) return;
+    // Only initialize once
+    if (initialized.current) return;
+    initialized.current = true;
+    
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
     audio.loop = true;
+    audio.volume = 0; // Starts at 0, audioManager handles fade
     audioRef.current = audio;
 
-    // Register with AudioManager
     audioManager.register('intro', audio, volume);
 
-    const attach = async () => {
-      if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-        audio.src = src;
-        audio.load();
-      } else {
-        const Hls = await getHlsClass();
-        if (Hls.isSupported()) {
-          const hls = await getOrCreateHls(src);
-          hls.attachMedia(audio);
-        }
-      }
-      setIsReady(true);
-      // Auto-play when ready if enabled
+    const setupStream = async () => {
       try {
-        await audioManager.play('intro');
-        setIsPlaying(true);
+        if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+          audio.src = src;
+          audio.load();
+        } else {
+          const Hls = await getHlsClass();
+          if (Hls.isSupported()) {
+            const hls = await getOrCreateHls(src);
+            hls.attachMedia(audio);
+          }
+        }
       } catch (err) {
-        console.warn('[useIntroAudio] auto-play blocked:', err);
+        console.warn('[useIntroAudio] Setup failed:', err);
       }
     };
-    attach();
+    
+    setupStream();
+
     return () => {
-      audioManager.unregister('intro');
+      audioManager.stop('intro'); // Full stop, unregisters implicitly or safely
+      audio.pause();
       audio.src = '';
       audioRef.current = null;
     };
-  }, [enabled, src, volume]);
+  }, [src, volume]);
 
   const play = useCallback(async () => {
+    if (!audioRef.current) return;
     try {
-      await audioManager.play('intro');
+      // Synchronous play to capture user gesture
+      const playPromise = audioRef.current.play();
+      // Delegate to audio manager for fade, state, and suppression
+      audioManager.play('intro').catch(() => {});
+      await playPromise;
       setIsPlaying(true);
     } catch (err) {
       console.warn('[useIntroAudio] play blocked:', err);
@@ -70,6 +77,6 @@ export const useIntroAudio = ({ src, enabled, volume = 0.6 }: UseIntroAudioOpts)
     setIsPlaying(false);
   }, []);
 
-  return { play, pause, fadeOut, isPlaying, isReady, audioRef };
+  return { play, pause, fadeOut, isPlaying, isReady: true, audioRef };
 };
 

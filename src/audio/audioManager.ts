@@ -90,6 +90,7 @@ class AudioManager {
   // P01.6: visibility recovery
   private visibilityListenersInstalled = false;
   private pendingGestureResume = false;
+  private lastRecoverAt = 0;
 
   constructor() {
     this.installVisibilityListenersIfBrowser();
@@ -304,7 +305,7 @@ class AudioManager {
   private getPriority(source: AudioSource): number {
     const priorities: Record<AudioSource, number> = {
       'song': 10,  // highest
-      'intro': 9,
+      'intro': 4,
       'lens': 8,
       'mebit': 8,
       'video': 5,
@@ -656,6 +657,10 @@ class AudioManager {
    * Used to fix lingering suppressors after navigation.
    */
   recoverAudio(): void {
+    const now = Date.now();
+    if (now - this.lastRecoverAt < 400) return; // dedupe rapid double-calls
+    this.lastRecoverAt = now;
+
     const staleSources: AudioSource[] = ['song', 'lens', 'video', 'mebit'];
     staleSources.forEach(src => {
       if (this.active !== src && this.hasActiveSuppressor(`active_${src}`)) {

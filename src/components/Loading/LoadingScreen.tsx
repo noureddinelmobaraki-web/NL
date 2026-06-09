@@ -42,7 +42,7 @@ export const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
       setMusicConsent(false);
     } else {
       setMusicConsent(true);
-      setTimeout(() => introAudio.play(), 50);
+      introAudio.play();
     }
   }, [musicConsent, introAudio]);
 

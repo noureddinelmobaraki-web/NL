@@ -51,6 +51,7 @@ import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { LoadingScreen } from "./components/Loading/LoadingScreen";
 import { SkeletonSection } from './components/SkeletonSection';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 
 import { 
   CONFIG_ASSETS, 
@@ -61,11 +62,21 @@ import { AppBackgroundFx } from "./components/app/AppBackgroundFx";
 import { AppNavGrid } from "./components/app/AppNavGrid";
 import { AppMobileNav } from "./components/app/AppMobileNav";
 
-const MySongs = React.lazy(() => import('./components/MySongs/MySongsPage').then(m => ({ default: m.MySongs })));
-const DrawingsPage = React.lazy(() => import('./components/Drawings/DrawingsPage').then(m => ({ default: m.DrawingsPage })));
-const ContactForm = React.lazy(() => import('./components/Contact/ContactForm').then(m => ({ default: m.ContactForm })));
-const RetroWorldPage = React.lazy(() =>
-  import('./components/RetroWorld/RetroWorldPage').then(m => ({ default: m.RetroWorldPage }))
+const MySongs = lazyWithRetry(
+  () => import('./components/MySongs/MySongsPage').then(m => ({ default: m.MySongs })),
+  'MySongsPage',
+);
+const DrawingsPage = lazyWithRetry(
+  () => import('./components/Drawings/DrawingsPage').then(m => ({ default: m.DrawingsPage })),
+  'DrawingsPage',
+);
+const ContactForm = lazyWithRetry(
+  () => import('./components/Contact/ContactForm').then(m => ({ default: m.ContactForm })),
+  'ContactForm',
+);
+const RetroWorldPage = lazyWithRetry(
+  () => import('./components/RetroWorld/RetroWorldPage').then(m => ({ default: m.RetroWorldPage })),
+  'RetroWorldPage',
 );
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
@@ -76,8 +87,9 @@ import { useAudioController } from "./hooks/useAudioController";
 import { useFadeInOnView } from "./hooks/useFadeInOnView";
 import { MeBitGallery } from './components/MeBit/MeBitGallery';
 import { ButtonProvider } from "./components/layout/ButtonOrchestrator";
-const AudioVisualizer = React.lazy(() => 
-  import('./components/AudioVisualizer').then(m => ({ default: m.AudioVisualizer }))
+const AudioVisualizer = lazyWithRetry(
+  () => import('./components/AudioVisualizer').then(m => ({ default: m.AudioVisualizer })),
+  'AudioVisualizer',
 );
 import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
@@ -87,8 +99,11 @@ import { getThemedImage } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
 import { FloatingControls } from "./components/layout/FloatingControls";
-const GallerySection = React.lazy(() => 
-  import('./components/layout/GallerySection').then(m => ({ default: m.GallerySection }))
+import { IntroMusicButton } from './components/layout/IntroMusicButton';
+import { LanguageSwitcher } from "./components/layout/LanguageSwitcher";
+const GallerySection = lazyWithRetry(
+  () => import('./components/layout/GallerySection').then(m => ({ default: m.GallerySection })),
+  'GallerySection',
 );
 
 import { AppProvider, useAppContext } from './context/AppContext';
@@ -310,19 +325,24 @@ function MainApp() {
       </Suspense>
 
       {loaded && (
-        <FloatingControls
-          isPlaying={isPlaying}
-          isMobile={isMobile}
-          isTablet={isTablet}
-          theme={theme}
-          activeSong={activeSong}
-          activeCardId={activeSong?.id ?? null}
-          onToggleAudio={toggleAudio}
-          onThemeChange={setTheme}
-          isAnyModalOpen={isAnyModalOpen}
-          activeModalContext={activeModalContext}
-        />
+        <>
+          <FloatingControls
+            isPlaying={isPlaying}
+            isMobile={isMobile}
+            isTablet={isTablet}
+            theme={theme}
+            activeSong={activeSong}
+            activeCardId={activeSong?.id ?? null}
+            onToggleAudio={toggleAudio}
+            onThemeChange={setTheme}
+            isAnyModalOpen={isAnyModalOpen}
+            activeModalContext={activeModalContext}
+          />
+          <LanguageSwitcher />
+        </>
       )}
+
+      {loaded && <IntroMusicButton />}
 
       {!loaded && (
         <LoadingScreen 

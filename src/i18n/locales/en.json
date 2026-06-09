@@ -1,0 +1,15 @@
+{
+  "nav": {
+    "home": "Home",
+    "songs": "Songs",
+    "mebit": "My Bit",
+    "drawings": "My Drawings",
+    "lens": "LENS",
+    "play": "Music",
+    "pause": "Pause",
+    "language": "English"
+  },
+  "buttons": {
+    "changeLanguage": "Change Language"
+  }
+}

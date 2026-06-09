@@ -1,6 +1,7 @@
 {
   "name": "nl-noureddin-website",
   "private": true,
+  "license": "UNLICENSED",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -25,8 +26,11 @@
     "generate:posters": "node scripts/generate-posters.mjs",
     "audit": "npm audit --omit=dev --audit-level=high",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "test:song": "vitest run songs lyrics hooks"
+    "test:song": "vitest run songs lyrics hooks",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@emailjs/browser": "4.4.1",
@@ -34,15 +38,19 @@
     "@fontsource/comic-neue": "^5.2.7",
     "@fontsource/patrick-hand": "^5.2.8",
     "@fontsource/share-tech-mono": "^5.2.7",
+    "@sentry/react": "10.57.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "esbuild": "0.28.0",
     "express": "5.2.1",
     "framer-motion": "^12.0.0",
     "hls.js": "1.6.16",
+    "i18next": "26.3.1",
+    "i18next-browser-languagedetector": "8.2.1",
     "lucide-react": "^0.546.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-i18next": "17.0.8",
     "tailwindcss": "^4.1.14",
     "terser": "5.47.1",
     "typescript": "~5.9.0",
@@ -50,11 +58,13 @@
     "web-vitals": "5.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@testing-library/react": "16.3.2",
     "@types/express": "5.0.6",
     "@types/node": "^22.14.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitest/coverage-v8": "4.1.7",
     "autoprefixer": "^10.4.21",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9.18.0",

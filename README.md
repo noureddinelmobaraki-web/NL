@@ -1,196 +1,306 @@
-# NL — Noureddin El Mobaraki (Nordine GB) Official Web Architecture
+<div align="center">
 
-[![Production Deployment](https://img.shields.io/badge/Production-Live-success.svg?style=flat-square&color=A6FF2B&labelColor=111111)](https://noureddinelmobaraki-web.github.io/NL/)
-[![Tech Stack](https://img.shields.io/badge/Stack-React%2019%20%7C%20Vite%206%20%7C%20TS-blue.svg?style=flat-square&color=00D1FF&labelColor=111111)](#system-architecture--tech-stack)
-[![Linter](https://img.shields.io/badge/Linter-Strict%20TypeScript-brightgreen.svg?style=flat-square&color=00FF66&labelColor=111111)](#testing--quality-assurance)
+# 🎧 NL — Noureddin El Mobaraki
+### <sub>aka **Nordine GB** · Official Web Platform</sub>
 
-This repository houses the complete visual portfolio, music distribution archive, and interactive media player core for Moroccan rap artist and independent music producer **Noureddin El Mobaraki**, known professionaly as **NL** (and **Nordine GB**). 
+<p>
+<a href="https://noureddinelmobaraki-web.github.io/NL/">
+  <img src="https://img.shields.io/badge/🌐_LIVE_SITE-A6FF2B?style=for-the-badge&labelColor=111111&color=A6FF2B" alt="Live">
+</a>
+<img src="https://img.shields.io/badge/license-proprietary-FF5252?style=for-the-badge&labelColor=111111" alt="License">
+<img src="https://img.shields.io/badge/PRs-by_invite-555?style=for-the-badge&labelColor=111111" alt="PRs">
+</p>
 
-The application is engineered as a high-performance, single-page web environment (SPA) featuring immersive retro cassette radio simulators, an automated share-page generator, and robust search crawler indexing.
+<p>
+<img src="https://img.shields.io/badge/React-19-00D1FF?style=for-the-badge&logo=react&logoColor=white&labelColor=111111" alt="React">
+<img src="https://img.shields.io/badge/Vite-6-B36BFF?style=for-the-badge&logo=vite&logoColor=white&labelColor=111111" alt="Vite">
+<img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=111111" alt="TypeScript">
+<img src="https://img.shields.io/badge/Tailwind-v4-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white&labelColor=111111" alt="Tailwind">
+</p>
+<p>
+<img src="https://img.shields.io/badge/Framer_Motion-12-FF4D8D?style=for-the-badge&logo=framer&logoColor=white&labelColor=111111" alt="Framer Motion">
+<img src="https://img.shields.io/badge/hls.js-1.6-FF7A18?style=for-the-badge&logo=hls.js&logoColor=white&labelColor=111111" alt="hls.js">
+<img src="https://img.shields.io/badge/Vitest-4-6E9F18?style=for-the-badge&logo=vitest&logoColor=white&labelColor=111111" alt="Vitest">
+<img src="https://img.shields.io/badge/CSP-strict-FF5252?style=for-the-badge&logo=letsencrypt&logoColor=white&labelColor=111111" alt="CSP">
+</p>
+
+<br>
+
+<table>
+<tr>
+<td align="center" width="33%">🎵<br><b>Immersive Player</b><br><sub>Adaptive HLS audio &amp; video</sub></td>
+<td align="center" width="33%">📻<br><b>Retro World</b><br><sub>Cassette / radio simulator</sub></td>
+<td align="center" width="33%">🚀<br><b>SEO-First Static</b><br><sub>JSON-LD · sitemap · share cards</sub></td>
+</tr>
+</table>
+
+</div>
+
+> <div dir="rtl"><b>بالعربية:</b> هذا الموقع هو المنصة الرسمية للفنان المغربي <b>نور الدين المباركي (NL / Nordine GB)</b> — مشغّل موسيقى تفاعلي، أرشيف إصدارات، وعالم ريترو، مع دعم كامل للفهرسة (SEO) والعربية/الإنجليزية.</div>
+
+The official single-page web platform of Moroccan rap artist and independent producer **Noureddin El Mobaraki** — known as **NL** / **Nordine GB**. It combines an immersive media player, a retro cassette-radio world, an automated social share-page system, and a strict, SEO-first static deployment.
+
+<div align="center"><b>🌐 Live:</b> <a href="https://noureddinelmobaraki-web.github.io/NL/">noureddinelmobaraki-web.github.io/NL/</a></div>
 
 ---
 
-## 🔗 Production URL & Live Targets
-The primary public deployment of this application is statically generated, optimized, and served directly at:
-👉 **[https://noureddinelmobaraki-web.github.io/NL/](https://noureddinelmobaraki-web.github.io/NL/)**
+## 🗺️ Table of Contents
+
+<table>
+<tr>
+<td>
+
+- [✨ Features](#-features)
+- [🧱 Tech Stack](#-tech-stack)
+- [🏛️ Architecture](#-architecture)
+- [⚡ Getting Started](#-getting-started)
+
+</td>
+<td>
+
+- [🛠️ Scripts](#-scripts)
+- [📦 Build Pipeline](#-build-pipeline)
+- [🔒 Security &amp; CSP](#-security--csp)
+- [📈 SEO Architecture](#-seo-architecture)
+
+</td>
+<td>
+
+- [🧪 Testing &amp; QA](#-testing--qa)
+- [🚀 Deployment](#-deployment)
+- [🎶 Distribution](#-distribution-channels)
+- [📄 License](#-license)
+
+</td>
+</tr>
+</table>
 
 ---
 
-## 🏛️ System Architecture & Tech Stack
+## ✨ Features
 
-The architecture is built on a modular client-server framework. It enables an asset-optimized static user interface while retaining local server capabilities for developer tasks and AI-driven content organizing.
+| | Feature | Description |
+| :---: | :--- | :--- |
+| 🎵 | **Immersive media player** | Adaptive HLS (`.m3u8`) streaming via `hls.js`, with a managed audio engine that prioritizes sources (background, song, lens, video, intro) so they never overlap. |
+| 📻 | **Retro world** | An interactive cassette/radio simulator with its own ambience track. |
+| 🔗 | **Automated share pages** | Pre-rendered static wrappers under `public/share/` with rich Open Graph / Twitter cards for WhatsApp, Facebook and X previews. |
+| 🔍 | **SEO-first** | Canonical URL, `Person` JSON-LD, image sitemap, and an absolute `robots.txt` sitemap reference. |
+| 🔒 | **Strict CSP** | Inline-script hashes generated at build time; no `unsafe-inline` for scripts. |
+| ♻️ | **Service worker** | Versioned at build time for safe cache invalidation. |
+| 🌐 | **RTL-first** | `index.html` ships `lang="ar" dir="rtl"` with bilingual metadata. |
+| 📱 | **Mobile QA overlay** | A `?qa=1` developer HUD for live viewport / breakpoint / context inspection. |
+
+---
+
+## 🧱 Tech Stack
+
+| | Layer | Technology | Notes |
+| :---: | :--- | :--- | :--- |
+| ⚛️ | UI runtime | **React 19** | Hooks-based; React Compiler enabled (`babel-plugin-react-compiler`). |
+| ⚡ | Bundler | **Vite 6** | esbuild + Rollup pipeline; visualizer for `analyze`. |
+| 🔷 | Language | **TypeScript ~5.9** | `tsc --noEmit` enforced in CI lint. |
+| 🎨 | Styling | **Tailwind CSS v4** | Native Vite plugin (`@tailwindcss/vite`). |
+| 🎬 | Animation | **Framer Motion v12** | Physics-based transitions. |
+| 📡 | Streaming | **hls.js 1.6** | Adaptive bitrate audio/video. |
+| 🖥️ | Dev/SSR server | **Express 5 (tsx)** | `server.ts`, bundled with esbuild for production. |
+| 🧪 | Tests | **Vitest 4** | jsdom + Testing Library. |
+| 🌟 | Icons | **lucide-react** | |
+| 🖼️ | Images | **sharp** | WebP optimization pipeline. |
+
+> 💡 Always treat `package.json` as the source of truth for exact versions.
+
+---
+
+## 🏛️ Architecture
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        CLIENT APPLICATION (SPA)                        │
-├───────────────────────────────────┬────────────────────────────────────┤
-│ Presentational Layer              │ Reactive state & motion animations │
-│ Audio Engine & Feed Filters       │ HLS.js video player / custom views │
-│ SEO / Structured Data Markup      │ LocalStorage channel caches        │
-└─────────────────────────────────┬─┴────────────────────────────────────┘
-                                  │ JSON payload request (limits: ~50MB)
-                                  ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                        EXPRESS BACKEND ENGINE                          │
-├────────────────────────────────────────────────────────────────────────┤
-│ • Node.js / Express Core (v5.x / tsx runtime engine)                    │
-│ • Adaptive payload deserializers for large playlist mapping (50MB)     │
-└────────────────────────────────────────────────────────────────────────┘
+╔═════════════════════════════════════════════════════╗
+║              CLIENT APPLICATION (SPA)                  ║
+║   React 19 · Vite 6 · Tailwind v4 · Framer Motion      ║
+╠════════════════════════════════════════════════════╣
+║  ─ Managed audio engine (priority + fade)              ║
+║  ─ hls.js adaptive player                              ║
+║  ─ SEO / JSON-LD / share-card metadata                 ║
+║  ─ LocalStorage caches · Service worker                ║
+╚═════════════════════════╦══════════════════════════╝
+                          │ HLS (.m3u8) over HTTPS
+                          ▼
+╔═════════════════════════════════════════════════════╗
+║     EXTERNAL AUDIO / VIDEO CDN (GitHub Pages)          ║
+║     noureddinelmobaraki-web.github.io/nl-audio-cdn     ║
+╚═════════════════════════════════════════════════════╝
+
+  Dev/build only:  Express 5 server (server.ts via tsx → dist/server.cjs)
 ```
 
-### Core Frontend Stack
-*   **Reactive Runtime:** [React 19.x](https://react.dev) — Employs custom hooks, optimized Virtual DOM execution, and stateful hook composition.
-*   **Build Bundler:** [Vite 6.x](https://vite.dev) — Fast HMR-free local bundler powered by esbuild and Rollup compilation pipelines.
-*   **Strong Typing:** [TypeScript ~5.8.x](https://www.typescriptlang.org) — Enforces type-safety across all components, APIs, and playlist stream datasets.
-*   **Styling Engine:** [Tailwind CSS v4](https://tailwindcss.com) — Modern compiler built for CSS-native components, optimized bundle delivery, and custom utility declarations.
-*   **Transition Engine:** [Framer Motion v12.x](https://www.framer.com/motion/) — Handles physics-based interactive micro-animations and spatial transitions.
-*   **Adaptive Streaming Player:** [HLS.js v1.6.x](https://github.com/video-dev/hls.js) — Facilitates client-side parsing and adaptive bitrate playback for HLS (`.m3u8`) audio and TV streams.
+<div align="center"><b>Deployed base path:</b> <code>/NL/</code> on GitHub Pages.</div>
 
 ---
 
-## 🦾 Automated Workflows & Build Pipelines
+## ⚡ Getting Started
 
-The project's build processes are automated via customized build pipelines in `package.json`.
+<table>
+<tr><th>Prerequisite</th><th>Version</th></tr>
+<tr><td>🟢 Node.js</td><td><code>&gt;= 20</code> (see <code>engines</code> in <code>package.json</code>)</td></tr>
+<tr><td>📦 npm</td><td><code>&gt;= 10</code></td></tr>
+</table>
 
 ```bash
-"build": "node scripts/generate-share.cjs && vite build && node scripts/generate-sitemap.mjs"
+npm install      # install dependencies
+npm run dev      # start the local Express + Vite dev server (server.ts via tsx)
 ```
 
-### 1. Dedicated Multi-Channel Share Page Generation (`scripts/generate-share.cjs`)
-To satisfy SEO requirements for indexing on dynamic song assets, the pre-build hook dynamically compiles 25 standalone static share layout wrappers inside `/public/share/song-[id].html`. Each page leverages custom pre-defined meta tag wrappers to support rich preview cards on social networks (WhatsApp, Facebook, Twitter).
-
-### 2. Algorithmic Sitemap Composition (`scripts/generate-sitemap.mjs`)
-The secondary post-build pipeline parses the overall application parameters and writes a comprehensive XML Sitemap output to `public/sitemap.xml` and `dist/sitemap.xml`. It completely structure-maps:
-- The authoritative canonical root.
-- The 25 programmatic static song share pages.
-- Advanced Google Image markup (`<image:image>`) for indexing artist graphics, posters, and digital artwork.
+> 💡 Then open the printed local URL in your browser.
 
 ---
 
-## 📈 Search Engine Optimization (SEO) Architecture
+## 🛠️ Scripts
 
-This system is configured using strict search-engine optimization directives to ensure perfect discoverability:
+<details open>
+<summary><b>🔹 Core</b> — develop, build, run</summary>
 
-### 1. Meta Representation
-The `<head>` of `index.html` implements explicit bilingual index pointers:
-- **Canonical Address:** `https://noureddinelmobaraki-web.github.io/NL/`
-- **Descriptions:** Dedicated Arabic and English synopses targeting keywords, geographical parameters, and artist identities.
-- **Open Graph (OG) & Twitter Spec:** Complete metadata layouts with responsive fallback images sized correctly at `1200x630px` to enhance user engagement.
+| Script | Command | Purpose |
+| :--- | :--- | :--- |
+| `dev` | `tsx server.ts` | Local development server. |
+| `build` | `build:client && build:server && build:sitemap` | Full production build (runs `prebuild` first). |
+| `build:client` | `vite build` | Compile the client bundle. |
+| `build:server` | `esbuild server.ts → dist/server.cjs` | Bundle the server for production. |
+| `build:sitemap` | `node scripts/generate-sitemap.mjs` | Generate `sitemap.xml`. |
+| `start` | `node dist/server.cjs` | Run the built production server. |
+| `preview` | `vite preview` | Preview the built client bundle. |
 
-### 2. Person JSON-LD Schema
-Integrated directly into the site root is a rich Google Knowledge Graph schema:
-```json
-{
-  "@context": "https://schema.org",
-  "@type": "Person",
-  "name": "Noureddin El Mobaraki",
-  "additionalName": "Nordine GB",
-  "alternateName": "NL",
-  "description": "Independent Rap and Hip-Hop Music Producer and Lyricist based in Casablanca.",
-  "url": "https://noureddinelmobaraki-web.github.io/NL/",
-  "address": {
-    "@type": "PostalAddress",
-    "addressLocality": "Casablanca",
-    "addressCountry": "MA"
-  },
-  "sameAs": [
-    "https://www.youtube.com/@nourdin_el_mobaraki",
-    "https://music.apple.com/us/artist/nl/1535833912",
-    "https://www.deezer.com/en/artist/362375722"
-  ]
-}
-```
+</details>
 
-### 3. Static Proof Verification
-*   **Google Search Console Token:** `public/googlef1f185223603a83e.html` is embedded at the site root to assert continuous domain ownership.
-*   **Crawl Governance (`public/robots.txt`):** Defines strict instruction pointers for spiders:
-    ```text
-    User-agent: *
-    Allow: /
-    Allow: /sitemap.xml
+<details>
+<summary><b>🔸 Pre-build hooks</b> — auto-run before <code>build</code></summary>
 
-    Sitemap: https://noureddinelmobaraki-web.github.io/NL/sitemap.xml
-    ```
+| Script | Command | Purpose |
+| :--- | :--- | :--- |
+| `prebuild` | `prebuild:sw && prebuild:lrc && prebuild:csp` | Orchestrates the three hooks below. |
+| `prebuild:sw` | `node scripts/generate-sw-version.js` | Stamp a service-worker version. |
+| `prebuild:lrc` | `node scripts/verify-lrc.mjs` | Validate lyric (`.lrc`) assets. |
+| `prebuild:csp` | `node scripts/hash.mjs --write` | Recompute CSP inline-script hashes. |
+
+</details>
+
+<details>
+<summary><b>🔸 Quality</b> — lint &amp; tests</summary>
+
+| Script | Command | Purpose |
+| :--- | :--- | :--- |
+| `lint` | `tsc --noEmit && eslint src --max-warnings=0` | Strict type + lint check. |
+| `lint:ts` | `tsc --noEmit` | Type check only. |
+| `lint:eslint` | `eslint src --max-warnings=0` | ESLint only. |
+| `test` | `vitest run` | Run the unit test suite once. |
+| `test:watch` | `vitest` | Watch-mode tests. |
+| `test:song` | `vitest run songs lyrics hooks` | Focused song/lyrics/hooks tests. |
+| `audit` | `npm audit --omit=dev --audit-level=high` | Production dependency audit. |
+
+</details>
+
+<details>
+<summary><b>🔸 Assets &amp; tooling</b></summary>
+
+| Script | Command | Purpose |
+| :--- | :--- | :--- |
+| `optimize:images` | `node scripts/optimize-images.mjs` | Encode images to WebP via sharp. |
+| `generate:posters` | `node scripts/generate-posters.mjs` | Generate poster artwork. |
+| `analyze` | `vite build --mode analyze` | Bundle-size visualizer. |
+| `hash:csp` | `node scripts/hash.mjs` | Print CSP hashes (no write). |
+| `clean` | `rm -rf dist` | Remove build output. |
+
+</details>
 
 ---
 
-## 🎵 Live Digital Distribution Channels
+## 📦 Build Pipeline
 
-The official distribution nodes for NL (Noureddin El Mobaraki) are compiled into the streaming registry:
+Running `npm run build` executes, in order:
 
-| Platform | Production Distribution Target |
+```mermaid
+flowchart LR
+    A["prebuild:sw<br/>SW version"] --> B["prebuild:lrc<br/>verify lyrics"]
+    B --> C["prebuild:csp<br/>CSP hashes"]
+    C --> D["build:client<br/>vite build"]
+    D --> E["build:server<br/>esbuild → server.cjs"]
+    E --> F["build:sitemap<br/>sitemap.xml"]
+```
+
+1. **`prebuild`** — stamps a fresh service-worker version, verifies lyric files, and recomputes inline-script hashes into the CSP meta tag.
+2. **`build:client`** — Vite compiles the SPA into `dist/`.
+3. **`build:server`** — esbuild bundles `server.ts` into `dist/server.cjs`.
+4. **`build:sitemap`** — generates the canonical XML sitemap.
+
+> ⚠️ If you change any inline `<script>` in `index.html`, you **must** re-run `prebuild:csp` (or a full build) or the CSP will block it in production.
+
+---
+
+## 🔒 Security & CSP
+
+- The site ships a **strict Content Security Policy** in the `<head>` of `index.html`. Script execution relies on **per-hash allowlisting**, regenerated by `scripts/hash.mjs --write` during `prebuild`.
+- Allowed external origins are intentionally narrow (self + the audio CDN + EmailJS for the contact form). Adding a new third-party origin requires updating the CSP `connect-src` / `script-src` accordingly.
+- See **[SECURITY.md](./SECURITY.md)** for the vulnerability disclosure policy.
+
+---
+
+## 📈 SEO Architecture
+
+| Element | Detail |
 | :--- | :--- |
-| **Spotify** | [NL on Spotify](https://open.spotify.com/artist/5nwGOyilF1p4uv35v6vb2u) |
-| **Apple Music** | [NL on Apple Music](https://music.apple.com/us/artist/nl/1535833912) |
-| **Deezer** | [NL on Deezer](https://www.deezer.com/en/artist/362375722) |
-| **Amazon Music** | [NL on Amazon Music](https://music.amazon.fr/artists/B0025ODH90/nl) |
-| **Anghami** | [NL on Anghami](https://play.anghami.com/artist/1430009) |
-| **SoundCloud** | [NL on SoundCloud](https://on.soundcloud.com/Ok8zBgOjCPqjvStEA) |
-| **YouTube** | [Nordine GB - YouTube](https://www.youtube.com/@nourdin_el_mobaraki) |
+| 🎯 **Canonical** | `https://noureddinelmobaraki-web.github.io/NL/` |
+| 🧠 **Structured data** | A `Person` JSON-LD block (name, `alternateName`, locality Casablanca, `sameAs` platform links) for the Google Knowledge Graph. |
+| 🗺️ **Sitemap** | Generated by `scripts/generate-sitemap.mjs`; includes the canonical root, static share pages, and `<image:image>` artwork entries. |
+| 🤖 **robots.txt** | References the sitemap with an **absolute** URL: `https://noureddinelmobaraki-web.github.io/NL/sitemap.xml`. |
+| ✅ **Ownership** | A Google Search Console verification file lives at the site root. |
+
+> 💡 When submitting to Google Search Console, submit the `/NL/sitemap.xml` path (the project is served from the `/NL/` sub-path, not the bare domain root).
 
 ---
 
-## 💻 Local Development & Engineering
+## 🧪 Testing & QA
 
-### Prerequisites
-*   Node.js v20.0.0 or higher.
-*   npm v10.0.0 or higher.
+- **Unit tests:** `npm run test` (Vitest + jsdom + Testing Library). Use `npm run test:song` for the song/lyrics/hooks subset.
+- **Type & lint gate:** `npm run lint` must pass with **zero** warnings.
+- **Mobile QA overlay:** append <kbd>?qa=1</kbd> to the dev URL to render a live HUD showing viewport size, active Tailwind breakpoint, DPR, CPU cores, and open overlays/modals.
+- **Lighthouse:** run a Mobile audit on the production build; target ≥ 90 performance, 44×44px tap targets, and valid ARIA labels.
 
-### Command Guide
+---
 
-#### 1. Setup Dependencies
+## 🚀 Deployment
+
+The app is a static client bundle served from **GitHub Pages** under the `/NL/` base path. See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the full release procedure.
+
 ```bash
-npm install
-```
-
-#### 2. Launch Local Environment
-Boots up the TSX Express server on port 3000 mapping hot-module assets safely and mounting static assets locally:
-```bash
-npm run dev
-```
-
-#### 3. Run Production Build Workflow
-Runs the complete production pipeline (Share Page Generation -> Vite Compilation -> XML sitemap writing):
-```bash
-npm run build
-```
-
-#### 4. Strict Type Audit
-Checks types across all modules:
-```bash
-npm run lint
-```
-
-#### 5. Image Compression & Optimizer
-Triggers Sharp pipelines to encode original JPG/PNG image structures to optimized, next-generation WebP formatting:
-```bash
-npm run optimize:images
+npm run build     # produces dist/
+# publish dist/ to the GitHub Pages target documented in DEPLOYMENT.md
 ```
 
 ---
 
-## 📱 Mobile Testing & Quality Assurance
+## 🎶 Distribution Channels
 
-To ensure a highly optimized mobile-first experience, follow these procedures to verify responsive and device-native behaviors:
+<div align="center">
 
-### 1. Developer Diagnostic QA Overlay (`?qa=1`)
-In local development, append `?qa=1` to the URL (e.g., `http://localhost:3000/?qa=1`). A persistent green HUD **MOBILE QA SCREEN** will render in the bottom corner of the viewport:
-- **Viewport Parameters**: Verifies real-time viewport dimensions, active tailwind breakpoint (`sm`, `md`, `lg`, `xl`), and device orientation.
-- **Hardware Profile**: Monitors DPR (Device Pixel Ratio) and physical CPU cores.
-- **Context Tracker**: Lists active slide-ups and overlay modals (`Music Mood Screen`, `Radix Dialogue`, `Lens Gallery`, `MeBit Gallery`) for easy testing of state stacks.
+| Platform | Link |
+| :---: | :--- |
+| 🟢 **Spotify** | [open.spotify.com/artist/…](https://open.spotify.com/artist/5nwGOyilF1p4uv35v6vb2u) |
+| 🍎 **Apple Music** | [music.apple.com/…/nl](https://music.apple.com/us/artist/nl/1535833912) |
+| 🎵 **Deezer** | [deezer.com/…/artist](https://www.deezer.com/en/artist/362375722) |
+| 📦 **Amazon Music** | [music.amazon.fr/…/nl](https://music.amazon.fr/artists/B0025ODH90/nl) |
+| 🎧 **Anghami** | [play.anghami.com/artist](https://play.anghami.com/artist/1430009) |
+| ☁️ **SoundCloud** | [on.soundcloud.com/…](https://on.soundcloud.com/Ok8zBgOjCPqjvStEA) |
+| ▶️ **YouTube** | [@nourdin_el_mobaraki](https://www.youtube.com/@nourdin_el_mobaraki) |
 
-### 2. Browser Emulation & Remote Testing
-*   **DevTools emulation**: In Chrome or Safari DevTools, open Device Mode and inspect with targets preset for **iPhone 14 Pro** (notch constraints), **iPad Air** (tablet breakpoints), and **Pixel 7** (Android soft-navigation bars).
-*   **Real-Device LAN Testing**: Since the dev server binds to `0.0.0.0:3000`, fetch your workstation's local IP (e.g., `192.168.1.XX`) and open `http://192.168.1.XX:3000` on your mobile phone connected to the same network.
-*   **Ngrok/Tunnels**: Expose the local container port to test real-world cellular latency:
-    ```bash
-    ngrok http 3000
-    ```
+</div>
 
-### 3. Automated Mobile Auditing
-*   **Continuous Integration Type Check**: Run strict type-safety checks before shipping:
-    ```bash
-    npm run lint
-    ```
-*   **Google Lighthouse Mobile Audit**: Run Chrome Lighthouse in the "Mobile" configuration on the built production bundle. Ensure it passes performance threshold indicators (aiming for ≥ 90 score), respects 44x44px tap targets, and implements valid ARIA labels for screen reader accessibility.
+---
 
+## 📄 License
+
+<div align="center">
+
+**Proprietary &amp; private** (`"private": true`) · All rights reserved © Noureddin El Mobaraki (NL / Nordine GB)
+
+<sub>The code, music, artwork, and brand assets may not be copied, redistributed, or reused without explicit written permission.</sub>
+
+</div>

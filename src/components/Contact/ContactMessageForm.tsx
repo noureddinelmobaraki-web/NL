@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { styles } from './ContactForm.styles';
 
 export interface ContactMessageFormProps {
@@ -33,22 +34,16 @@ export const ContactMessageForm = ({
     setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
   };
 
-  if (status === 'success') {
-    return (
-      <div style={currentStyles.successBox}>
-        <div style={{
-          fontSize: '3rem',
-          fontFamily: 'var(--font-manga)',
-          color: '#27c93f',
-          textShadow: '3px 3px 0 var(--manga-shadow-color)',
-          animation: 'scaleIn 400ms ease',
-          letterSpacing: '0.05em',
-        }}>✓ OK</div>
-        <p style={currentStyles.successText}>وصلت الرسالة لنورالدين</p>
-        <p style={currentStyles.successSub}>شكراً على صراحتك</p>
-      </div>
-    );
-  }
+  const [showToast, setShowToast] = useState(false);
+
+  useEffect(() => {
+    if (status === 'success' || status === 'error') {
+      setShowToast(true);
+      const timer = setTimeout(() => setShowToast(false), 3500);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [status]);
 
   return (
     <>
@@ -170,6 +165,45 @@ export const ContactMessageForm = ({
         }}>
           {Math.max(0, remainingToday)} رسالة متبقية اليوم
         </p>
+      )}
+
+      {/* Modern Toast Notification */}
+      {showToast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: status === 'success' ? '#27c93f' : '#ff5f56',
+          color: '#fff',
+          padding: '12px 24px',
+          borderRadius: '24px',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.05)',
+          fontFamily: 'var(--font-manga), sans-serif',
+          fontWeight: 'bold',
+          fontSize: '1rem',
+          zIndex: 10000,
+          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }} role="alert" aria-live="assertive">
+          {status === 'success' ? (
+            <>
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              تم الإرسال بنجاح!
+            </>
+          ) : (
+            <>
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              فشل الإرسال
+            </>
+          )}
+        </div>
       )}
     </>
   );

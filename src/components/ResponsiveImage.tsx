@@ -113,25 +113,41 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   // إيلا فشلت الصورة: تجاهلها كليًا (ما نعرضو والو) — نعرضو فقط الصور الموجودة.
   if (hasError) return null;
 
+  const imgProps = {
+    src: finalSrc,
+    alt,
+    width,
+    height,
+    loading: resolvedLoading,
+    // @ts-ignore
+    fetchPriority: resolvedFetchPriority,
+    decoding: resolvedDecoding,
+    onError: () => setHasError(true),
+    referrerPolicy: 'no-referrer' as const,
+    crossOrigin: finalSrc.startsWith('http') ? 'anonymous' as const : undefined,
+    onContextMenu,
+    draggable,
+  };
+
+  const renderSources = () => {
+    if (finalSrc.endsWith('.webp')) {
+      const avifSrc = finalSrc.replace(/\.webp$/, '.avif');
+      return (
+        <>
+          <source type="image/avif" srcSet={avifSrc} />
+          <source type="image/webp" srcSet={finalSrc} />
+        </>
+      );
+    }
+    return null;
+  };
+
   if (!hasLqip || isLcpImage) {
     return (
-      <img
-        src={finalSrc}
-        alt={alt}
-        width={width}
-        height={height}
-        className={className}
-        loading={resolvedLoading}
-        // @ts-ignore
-        fetchPriority={resolvedFetchPriority}
-        decoding={resolvedDecoding}
-        style={style}
-        onError={() => setHasError(true)}
-        referrerPolicy="no-referrer"
-        crossOrigin={finalSrc.startsWith('http') ? 'anonymous' : undefined}
-        onContextMenu={onContextMenu}
-        draggable={draggable}
-      />
+      <picture>
+        {renderSources()}
+        <img {...imgProps} className={className} style={style} />
+      </picture>
     );
   }
 
@@ -151,25 +167,16 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
           zIndex: 1,
         }}
       />
-      <img
-        src={finalSrc}
-        alt={alt}
-        width={width}
-        height={height}
-        className={`${className || ''} ${
-          isLoaded ? 'opacity-100' : 'opacity-0'
-        } transition-opacity duration-300`}
-        loading={resolvedLoading}
-        // @ts-ignore
-        fetchPriority={resolvedFetchPriority}
-        decoding={resolvedDecoding}
-        onLoad={() => setIsLoaded(true)}
-        onError={() => setHasError(true)}
-        referrerPolicy="no-referrer"
-        crossOrigin={finalSrc.startsWith('http') ? 'anonymous' : undefined}
-        onContextMenu={onContextMenu}
-        draggable={draggable}
-      />
+      <picture>
+        {renderSources()}
+        <img
+          {...imgProps}
+          className={`${className || ''} ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          } transition-opacity duration-300`}
+          onLoad={() => setIsLoaded(true)}
+        />
+      </picture>
     </div>
   );
 };

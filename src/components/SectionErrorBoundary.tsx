@@ -1,4 +1,6 @@
 import { Component, ReactNode } from 'react';
+import { isChunkLoadError } from '../utils/lazyWithRetry';
+import { captureError } from '../utils/sentry';
 
 interface Props { children: ReactNode; sectionName?: string; }
 interface State { hasError: boolean; }
@@ -11,11 +13,23 @@ export class SectionErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // FIXED: Issue #10 — Added detailed logging for debugging
     if (process.env.NODE_ENV === 'development') {
       console.error(`[${this.props.sectionName || 'Section'}] crashed:`, error, info);
     } else {
       console.warn(`[${this.props.sectionName || 'Section'}] crashed:`, error.message);
+    }
+
+    captureError(error, { section: this.props.sectionName });
+
+    // Auto-recover from a stale-deploy chunk fetch failure: reload ONCE.
+    if (isChunkLoadError(error)) {
+      const sentinel = 'nl_boundary_chunk_reload';
+      let alreadyReloaded = false;
+      try { alreadyReloaded = sessionStorage.getItem(sentinel) === '1'; } catch { /* ignore */ }
+      if (!alreadyReloaded) {
+        try { sessionStorage.setItem(sentinel, '1'); } catch { /* ignore */ }
+        window.location.reload();
+      }
     }
   }
 

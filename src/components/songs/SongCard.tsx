@@ -62,7 +62,7 @@ export const SongCard = memo(({
   volume, onVolumeChange,
   karaokeMode = false, setKaraokeMode,
   currentLyricLine, onAmbientColorChange,
-  observeCard, isRevealed = true, onHoverPrefetchLrc,
+  observeCard, onHoverPrefetchLrc,
 }: SongCardProps) => {
   const { isMobile, isTablet } = useDeviceType();
   const resolvedTheme = useResolvedTheme();
@@ -120,17 +120,6 @@ export const SongCard = memo(({
   // ── Light-theme scroll-to-active is now owned by SongCardLyricsPanel ──
 
   const renderContent = () => {
-    if (!isRevealed && !isActive) {
-      if (resolvedTheme === 'light') {
-        return (
-          <OsWindow title={`song_card.${song.id}`}>
-            <div className="opacity-0 w-full h-[120px]" />
-          </OsWindow>
-        );
-      }
-      return <div className="opacity-0 w-full h-[120px]" />;
-    }
-
     return (
     <motion.div
       ref={setRefs}

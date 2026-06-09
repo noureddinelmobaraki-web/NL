@@ -2,28 +2,22 @@ import fs from 'fs';
 import path from 'path';
 
 const DOMAIN = 'https://noureddinelmobaraki-web.github.io/NL';
-const NOW_ISO = new Date().toISOString();  // مثال: 2026-06-01T12:34:56.789Z
+const NOW_ISO = new Date().toISOString();
 
-// قراءة الأغاني والفيديوهات ديناميكياً من ملفات JSON
+// Songs are still read so we can keep songs-jsonld.json in sync.
 const songsPath = path.resolve(process.cwd(), 'public', 'data', 'songs.json');
-const videosPath = path.resolve(process.cwd(), 'public', 'data', 'videos.json');
-
 const songs = JSON.parse(fs.readFileSync(songsPath, 'utf8'));
-const videos = fs.existsSync(videosPath)
-  ? JSON.parse(fs.readFileSync(videosPath, 'utf8'))
-  : [];
 
-function escapeXml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
+/**
+ * SITEMAP POLICY (important for SEO):
+ * The site is a single-page app. Every `?s=<id>` / `?v=<id>` deep-link loads
+ * the SAME index.html and shares ONE hard canonical (`/NL/`). Listing those
+ * query-parameter URLs makes Google report "Alternate page with proper
+ * canonical tag" and excludes them. So the sitemap intentionally contains
+ * ONLY the canonical home URL.
+ */
 function generateSitemap() {
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset
   xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
@@ -32,10 +26,9 @@ function generateSitemap() {
        SITEMAP - NL | Noureddin El Mobaraki
        ${DOMAIN}/
        Generated: ${NOW_ISO}
-       Total songs: ${songs.length} | Total videos: ${videos.length}
+       Canonical-only sitemap (SPA): single indexable URL.
        =========================================================== -->
 
-  <!-- === MAIN PAGE ============================================ -->
   <url>
     <loc>${DOMAIN}/</loc>
     <lastmod>${NOW_ISO}</lastmod>
@@ -68,63 +61,32 @@ function generateSitemap() {
     </image:image>
   </url>
 
-  <!-- === SONG ANCHORS (deep-links into SPA) =================== -->
+</urlset>
 `;
-
-  // كل أغنية تحصل على URL بـ query parameter ?s=ID 
-  // (الموقع SPA، الـ App.tsx يقرأ ?s= ويفتح الأغنية المناسبة)
-  for (const song of songs) {
-    xml += `  <url>
-    <loc>${DOMAIN}/?s=${song.id}</loc>
-    <lastmod>${NOW_ISO}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-`;
-  }
-
-  // === VIDEO SITEMAP ENTRIES ===
-  if (videos.length > 0) {
-    xml += `\n  <!-- === VIDEOS (${videos.length} entries) =================== -->\n`;
-    for (const video of videos) {
-      const vid = video.id || video.youtubeId || video.videoId;
-      if (!vid) continue;
-      xml += `  <url>
-    <loc>${DOMAIN}/?v=${escapeXml(vid)}</loc>
-    <lastmod>${NOW_ISO}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-`;
-    }
-  }
-
-  xml += `\n  <!-- === END =============================================== -->\n</urlset>\n`;
 
   const publicSitemap = path.resolve(process.cwd(), 'public', 'sitemap.xml');
   fs.writeFileSync(publicSitemap, xml);
-  console.log(`✅ Generated public/sitemap.xml`);
+  console.log('✅ Generated public/sitemap.xml (canonical-only)');
 
   const distDir = path.resolve(process.cwd(), 'dist');
   if (fs.existsSync(distDir)) {
-    const distSitemap = path.join(distDir, 'sitemap.xml');
-    fs.writeFileSync(distSitemap, xml);
-    console.log(`✅ Generated dist/sitemap.xml`);
+    fs.writeFileSync(path.join(distDir, 'sitemap.xml'), xml);
+    console.log('✅ Generated dist/sitemap.xml');
   }
 }
 
 function generateSongsJsonLd() {
   const ldData = {
-    "@context": "https://schema.org",
-    "@graph": songs.map(song => ({
-      "@type": "MusicRecording",
-      "name": song.title,
-      "byArtist": { "@type": "MusicGroup", "name": "NL" },
-      "duration": "PT3M00S",
-      "inAlbum": { "@type": "MusicAlbum", "name": "NL Singles" },
-      "url": `${DOMAIN}/#song-${song.id}`,
-      "audio": song.url
-    }))
+    '@context': 'https://schema.org',
+    '@graph': songs.map((song) => ({
+      '@type': 'MusicRecording',
+      name: song.title,
+      byArtist: { '@type': 'MusicGroup', name: 'NL' },
+      duration: 'PT3M00S',
+      inAlbum: { '@type': 'MusicAlbum', name: 'NL Singles' },
+      url: `${DOMAIN}/#song-${song.id}`,
+      audio: song.url,
+    })),
   };
 
   const jsonString = JSON.stringify(ldData, null, 2);
@@ -135,9 +97,8 @@ function generateSongsJsonLd() {
 
   const distDir = path.resolve(process.cwd(), 'dist');
   if (fs.existsSync(distDir)) {
-    const distJsonLd = path.join(distDir, 'songs-jsonld.json');
-    fs.writeFileSync(distJsonLd, jsonString);
-    console.log(`✅ Generated dist/songs-jsonld.json`);
+    fs.writeFileSync(path.join(distDir, 'songs-jsonld.json'), jsonString);
+    console.log('✅ Generated dist/songs-jsonld.json');
   }
 }
 

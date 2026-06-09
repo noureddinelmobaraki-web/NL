@@ -158,8 +158,7 @@ export const ASSETS = {
       `${CDN}/VVS.webp`,
       `${CDN}/ink.webp`,
       `${CDN}/عبلة.webp`,
-    ],
-    sharePaths: Array.from({ length: 48 }, (_, i) => `/NL/share/song-${i + 1}.html`)
+    ]
   },
   gallery: {
     // These are small (20-36KB) — keep them bundled locally, no CDN needed

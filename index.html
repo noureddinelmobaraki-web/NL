@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   object-src 'none';
-  script-src 'self' 'sha256-mMLKiQVBqCTgUvkpCqy8BSQVcmJjexcF1bvCBVuWO4A=' https://cdn.emailjs.com;
+  script-src 'self' 'sha256-mMLKiQVBqCTgUvkpCqy8BSQVcmJjexcF1bvCBVuWO4A=' https://cdn.emailjs.com https://plausible.io;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   img-src 'self' data: blob: https: 
     https://noureddinelmobaraki-web.github.io 
@@ -13,7 +13,7 @@
     https://i.ytimg.com;
   media-src 'self' blob: https://noureddinelmobaraki-web.github.io;
   font-src 'self' data: https://fonts.gstatic.com;
-  connect-src 'self' https://api.emailjs.com https://noureddinelmobaraki-web.github.io;
+  connect-src 'self' https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io;
   worker-src 'self';
   manifest-src 'self';
   frame-ancestors 'none';
@@ -21,6 +21,14 @@
   form-action 'self' https://api.emailjs.com;
   upgrade-insecure-requests;
 ">
+    <!-- Speculation Rules for faster navigation -->
+    <script type="speculationrules">
+    { "prefetch": [{ "source": "document", "where": { "href_matches": "/NL/*" }, "eagerness": "moderate" }] }
+    </script>
+
+    <!-- Plausible Analytics -->
+    <script defer data-domain="noureddinelmobaraki-web.github.io" src="https://plausible.io/js/script.js"></script>
+
     <!-- CDN preconnect — critical for first paint -->
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin>
     <link rel="dns-prefetch" href="https://noureddinelmobaraki-web.github.io">
@@ -160,6 +168,7 @@
     }
     </script>
     <link rel="icon" type="image/webp" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp" />
+    <link rel="icon" href="/NL/favicon.ico" sizes="any" />
     <link rel="manifest" href="/manifest.webmanifest">
     
     <!-- Performance -->
@@ -186,10 +195,6 @@
       type="image/webp"
       crossorigin
     >
-
-    <!-- Eager preload for high-traffic lazy chunks -->
-    <link rel="modulepreload" href="/src/components/MySongs/MySongsPage.tsx" />
-    <link rel="modulepreload" href="/src/components/layout/GallerySection.tsx" />
 
   </head>
   <body>

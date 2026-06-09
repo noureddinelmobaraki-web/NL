@@ -79,8 +79,6 @@ export const RetroWorldPage: React.FC = () => {
       return;
     }
 
-    let cancelled = false;
-
     const audio = new Audio();
     audioRef.current = audio;
     audio.loop = true;
@@ -105,29 +103,41 @@ export const RetroWorldPage: React.FC = () => {
       audio.src = source;
     }
 
-    const playAudio = () => {
-      if (cancelled) return;
-      if (audioRef.current && !audioRef.current.muted) {
-        audioManager.play('bg').catch(err =>
-          console.warn('[RetroWorld] play blocked by audioManager:', err)
-        );
-      }
-    };
-
-    document.addEventListener('click', playAudio, { once: true });
-    document.addEventListener('touchstart', playAudio, { once: true });
-
     return () => {
-      cancelled = true;
       audio.removeEventListener('error', onAudioError);
-      document.removeEventListener('click', playAudio);
-      document.removeEventListener('touchstart', playAudio);
       if (hlsRef.current) { try { hlsRef.current.destroy(); } catch {} hlsRef.current = null; }
       audioManager.stop('bg');
       purge(audioRef.current);
       audioRef.current = null;
     };
   }, [theme]);  // ⚠️ فقط theme
+
+  // Auto-play the retro background track immediately on entering retro mode.
+  // No dependency on an iframe-internal interaction. If autoplay is blocked,
+  // resume on the next user gesture.
+  useEffect(() => {
+    if (theme !== 'retro') return;
+    let cancelled = false;
+
+    const startRetroAudio = async () => {
+      try {
+        await audioManager.play('bg');
+        if (!cancelled) setIsAudioMuted(false);
+      } catch {
+        // Autoplay blocked: retry on the next user gesture.
+        if (!cancelled) {
+          setIsAudioMuted(true);
+          audioManager.armUserGestureResume();
+        }
+      }
+    };
+
+    void startRetroAudio();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Effect 2: تطبيق mute بدون إعادة إنشاء
   useEffect(() => {
@@ -137,17 +147,17 @@ export const RetroWorldPage: React.FC = () => {
   }, [isAudioMuted]);
 
   const toggleAudio = () => {
-    if (audioRef.current) {
-      if (audioRef.current.paused) {
-        audioManager.play('bg').catch(() => {});
-        audioRef.current.muted = false;
-        setIsAudioMuted(false);
-      } else {
-        audioManager.pause('bg');
-        setIsAudioMuted(true);
-      }
+    if (audioManager.isSourceActive('bg')) {
+      audioManager.pause('bg'); // keeps position
+      setIsAudioMuted(true);
     } else {
-      setIsAudioMuted(prev => !prev);
+      audioManager
+        .play('bg')
+        .then(() => setIsAudioMuted(false))
+        .catch(() => {
+          setIsAudioMuted(true);
+          audioManager.armUserGestureResume();
+        });
     }
   };
 
@@ -194,16 +204,6 @@ export const RetroWorldPage: React.FC = () => {
         cw.addEventListener('scroll', handleScroll, { passive: true });
         cd?.addEventListener('scroll', handleScroll, { passive: true });
         handleScroll(); // تحديث أولي
-
-        // تشغيل الموسيقى عند التفاعل مع الـ iframe
-        const playAudio = () => {
-          if (audioRef.current && theme === 'retro' && !isAudioMuted) {
-            audioRef.current.play().catch(() => {});
-          }
-        };
-        cd?.addEventListener('click', playAudio, { once: true });
-        cd?.addEventListener('touchstart', playAudio, { once: true });
-        cd?.addEventListener('scroll', playAudio, { once: true });
       } catch (e) {
         console.error('[RetroWorld] Iframe scroll tracking failed:', e);
       }
@@ -485,6 +485,7 @@ export const RetroWorldPage: React.FC = () => {
         ref={iframeRef}
         onLoad={handleIframeLoad}
         src={`${import.meta.env.BASE_URL}retro/index.html`}
+        loading="lazy"
         style={{ width: '100%', height: '100%', border: 'none', backgroundColor: '#000', position: 'absolute', top: 0, left: 0, zIndex: 1 }}
         title="Retro World"
       />

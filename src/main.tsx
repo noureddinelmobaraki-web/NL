@@ -6,11 +6,12 @@ import './index.css';
 import { registerServiceWorker } from './utils/registerSW';
 import { reportWebVitals } from './utils/vitals';
 import { isAutomatedEnv } from './utils/env';
+import { initSentry } from './utils/sentry';
+import './i18n';
+import i18n, { applyDirection } from './i18n';
 
-const params = new URLSearchParams(window.location.search);
-const userLang = params.get('lang') || (navigator.language.startsWith('ar') ? 'ar' : 'en');
-document.documentElement.setAttribute('lang', userLang);
-document.documentElement.setAttribute('dir', userLang === 'ar' ? 'rtl' : 'ltr');
+initSentry();
+applyDirection(i18n.resolvedLanguage || 'ar');
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
