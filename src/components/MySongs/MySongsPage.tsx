@@ -9,6 +9,7 @@ import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useMySongsState } from './hooks/useMySongsState';
 import { useMySongsPlayback } from './hooks/useMySongsPlayback';
 import { useLrcHoverPreload } from './hooks/useLrcHoverPreload';
+import { useMediaSession } from '../../hooks/useMediaSession';
 import { MySongsList } from './MySongsList';
 import {
   SUBTITLE_STYLE_DESKTOP,
@@ -84,6 +85,17 @@ export const MySongs = ({
     onSongPlay,
     onSongStop,
     onActiveSongChange,
+  });
+
+  useMediaSession({
+    track: state.currentSong
+      ? { title: state.currentSong.title, artist: 'NL', artwork: state.currentSong.backgroundImage }
+      : null,
+    isPlaying: playback.isPlaying,
+    onPlay: playback.handlePlayPause,
+    onPause: playback.handlePlayPause,
+    onNext: playback.handleNext,
+    onPrev: playback.handlePrev,
   });
 
   const handleTriggerMood = useCallback(() => {

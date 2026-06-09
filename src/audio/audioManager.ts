@@ -1,4 +1,4 @@
-type AudioSource = 'bg' | 'song' | 'lens' | 'video' | 'mebit';
+type AudioSource = 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro';
 
 /** Metadata لكل suppressor مسجَّل في bgSuppressors. */
 interface SuppressorMeta {
@@ -304,6 +304,7 @@ class AudioManager {
   private getPriority(source: AudioSource): number {
     const priorities: Record<AudioSource, number> = {
       'song': 10,  // highest
+      'intro': 9,
       'lens': 8,
       'mebit': 8,
       'video': 5,
@@ -348,7 +349,7 @@ class AudioManager {
 
     // Instant response for user-triggered playback, smooth for background
     let fadeDuration = 200;
-    if (entry.source === 'bg') fadeDuration = 800;
+    if (entry.source === 'bg' || entry.source === 'intro') fadeDuration = 800;
     else if (entry.source === 'song') fadeDuration = 0; // ZERO fade for songs
     else if (entry.source === 'mebit' || entry.source === 'lens') fadeDuration = 50; 
     
@@ -363,7 +364,7 @@ class AudioManager {
    *
    * @param source - مصدر الصوت المراد إيقافه مؤقتاً.
    */
-  pause(source: AudioSource): void {
+  pause(source: AudioSource, fadeMs?: number): void {
     const entry = this.registry.get(source);
     if (!entry) return;
 
@@ -375,8 +376,8 @@ class AudioManager {
       entry.element.volume = 0;
       this.releaseBg('active_song');
     } else {
-      // Faster fade out for manual pause (200ms)
-      this.fadeOut(entry.element, 200).then(() => {
+      const ms = fadeMs ?? (source === 'intro' ? 800 : 200);
+      this.fadeOut(entry.element, ms).then(() => {
         entry.element.pause();
         // Rule 7: Volume Reset on Pause
         entry.element.volume = 0;

@@ -331,7 +331,10 @@ self.addEventListener('fetch', (event) => {
         const fetchPromise = fetch(event.request).then(response => {
           if (response.ok) cache.put(event.request, response.clone());
           return response;
-        }).catch(() => cached || new Response('{}', { status: 503 }));
+        }).catch(() => cached || new Response('[]', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
         return cached || fetchPromise;
       })()
     );

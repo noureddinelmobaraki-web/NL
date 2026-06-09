@@ -116,6 +116,20 @@ export function useVirtualSongList(
     return () => cancelAnimationFrame(id);
   }, [initialVisibleCount]);
 
+  // ── Hard safety net: اكشف كل الكروت بعد 2.5s مهما كان ──
+  // يطابق سلوك useFadeInOnView. يمنع "المساحة الفارغة" إذا فشل الـ observer.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setRevealed((prev) => {
+        const next = new Set(prev);
+        observeOrderRef.current.forEach((id) => next.add(id));
+        idToElementRef.current.forEach((_, id) => next.add(id));
+        return next;
+      });
+    }, 2500);
+    return () => window.clearTimeout(t);
+  }, []);
+
   const observe = useCallback((id: number | string, el: HTMLElement | null) => {
     const sid = String(id);
     // unmount path

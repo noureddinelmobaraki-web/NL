@@ -29,7 +29,9 @@ export function AppBackgroundFx({
           <div 
             className="fixed inset-0 z-[var(--z-bg-effects)] pointer-events-none" 
             style={{
-              background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%)'
+              background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%)',
+              contain: 'strict',
+              willChange: 'opacity'
             }} 
           />
           <div 

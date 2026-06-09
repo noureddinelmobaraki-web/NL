@@ -55,7 +55,6 @@ export function useAudioController({
     // Register immediately with AudioManager
     audioManager.register('bg', audio, 0.7);
     audioManager.setStateCallback((playing) => setIsPlaying(playing));
-    audioManager.armUserGestureResume(); // ← P01.6: prime iOS gesture path
 
     const initialResolved = theme === 'dark' ? 'dark'
       : theme === 'light' ? 'light'
@@ -116,6 +115,17 @@ export function useAudioController({
       audioManager.pause('mebit');
     };
   }, []); // runs once on mount
+
+  // ── حظر موسيقى الخلفية كاملةً ما دامت شاشة الاستقبال ظاهرة ──
+  // يمنع تشغيل bg (midnight) مع موسيقى intro المستقلة. سلطة صوت واحدة.
+  useEffect(() => {
+    if (!loaded) {
+      audioManager.suppressBg('loading-screen');
+    } else {
+      audioManager.releaseBg('loading-screen');
+      audioManager.armUserGestureResume(); // ← الآن فقط بعد الدخول الفعلي
+    }
+  }, [loaded]);
 
   const ensureMeBitLoaded = useCallback(async () => {
     if (meBitHlsAttached.current || !meBitAudioRef.current) return;

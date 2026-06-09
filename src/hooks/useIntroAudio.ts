@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getHlsClass, getOrCreateHls } from '../audio/hlsPool';
+import { audioManager } from '../audio/audioManager';
 
 export interface UseIntroAudioOpts {
   src: string;
@@ -17,8 +18,10 @@ export const useIntroAudio = ({ src, enabled, volume = 0.6 }: UseIntroAudioOpts)
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
     audio.loop = true;
-    audio.volume = volume;
     audioRef.current = audio;
+
+    // Register with AudioManager
+    audioManager.register('intro', audio, volume);
 
     const attach = async () => {
       if (audio.canPlayType('application/vnd.apple.mpegurl')) {
@@ -34,7 +37,7 @@ export const useIntroAudio = ({ src, enabled, volume = 0.6 }: UseIntroAudioOpts)
       setIsReady(true);
       // Auto-play when ready if enabled
       try {
-        await audio.play();
+        await audioManager.play('intro');
         setIsPlaying(true);
       } catch (err) {
         console.warn('[useIntroAudio] auto-play blocked:', err);
@@ -42,16 +45,15 @@ export const useIntroAudio = ({ src, enabled, volume = 0.6 }: UseIntroAudioOpts)
     };
     attach();
     return () => {
-      audio.pause();
+      audioManager.unregister('intro');
       audio.src = '';
       audioRef.current = null;
     };
   }, [enabled, src, volume]);
 
   const play = useCallback(async () => {
-    if (!audioRef.current) return;
     try {
-      await audioRef.current.play();
+      await audioManager.play('intro');
       setIsPlaying(true);
     } catch (err) {
       console.warn('[useIntroAudio] play blocked:', err);
@@ -59,28 +61,15 @@ export const useIntroAudio = ({ src, enabled, volume = 0.6 }: UseIntroAudioOpts)
   }, []);
 
   const pause = useCallback(() => {
-    audioRef.current?.pause();
+    audioManager.pause('intro');
     setIsPlaying(false);
   }, []);
 
   const fadeOut = useCallback((ms: number = 800) => {
-    if (!audioRef.current) return;
-    const audio = audioRef.current;
-    const startVol = audio.volume;
-    const startTime = performance.now();
-    const tick = (now: number) => {
-      let progress = (now - startTime) / ms;
-      if (progress >= 1) progress = 1;
-      audio.volume = Math.max(0, startVol * (1 - progress));
-      if (progress < 1) {
-        requestAnimationFrame(tick);
-      } else {
-        audio.pause();
-        setIsPlaying(false);
-      }
-    };
-    requestAnimationFrame(tick);
+    audioManager.pause('intro', ms);
+    setIsPlaying(false);
   }, []);
 
   return { play, pause, fadeOut, isPlaying, isReady, audioRef };
 };
+

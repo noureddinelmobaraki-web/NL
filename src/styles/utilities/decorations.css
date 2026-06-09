@@ -24,6 +24,17 @@ body::before {
   z-index: var(--z-loading-screen);
   mix-blend-mode: overlay;
   animation: sw-noise 0.2s steps(2) infinite;
+  transform: translateZ(0);
+  will-change: transform;
+  contain: strict;
+}
+
+body.low-perf::before,
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    background-image: none !important;
+    animation: none !important;
+  }
 }
 
 /*Theme specific grain details*/
