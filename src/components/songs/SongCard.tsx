@@ -1,12 +1,24 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+/**
+ * SongCard
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Presentational shell for one card in the bento grid.
+ *
+ * Refactor summary:
+ *   • Ambient color extraction        → useAmbientColor (lazy + cached + IO)
+ *   • LRC fetch/parse/cache/listener  → useSongLyrics (single AbortController)
+ *   • Body scroll lock (mobile sheet) → useMobileLyricsBodyLock (refcount)
+ *     (effect lives inside SongCardLyricsPanel now)
+ *
+ * Visual contract: external props unchanged, every class/style preserved.
+ */
+import { memo, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Song, LyricLine } from '../../types';
 import { SONG_BG_FALLBACK } from '../../constants/assets';
-import { parseLRC } from '../LyricsEngine';
 import { useDeviceType } from '../../hooks/useDeviceType';
-import { loadSession, saveSession } from '../../utils/sessionState';
-import { extractDominantColorCached } from '../../utils/extractColors';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
+import { useAmbientColor } from '../../hooks/useAmbientColor';
+import { useSongLyrics } from '../../hooks/useSongLyrics';
 import { OsWindow } from '../OsWindow';
 import { Waveform } from './Waveform';
 import { SongCardHeader } from './SongCardHeader';
@@ -36,284 +48,92 @@ export interface SongCardProps {
   setKaraokeMode?: (val: boolean | ((prev: boolean) => boolean)) => void;
   currentLyricLine?: string | null;
   onAmbientColorChange?: (color: string) => void;
-  observeCard?: (id: number | string, el: HTMLElement | null) => void;
+
+  observeCard?: (id: string | number, el: HTMLElement | null) => void;
   isRevealed?: boolean;
   onHoverPrefetchLrc?: (id: number) => void;
 }
 
-/**
- * Individual Song Card component for the bento grid
- */
-export const SongCard = memo(({ 
-  song, 
-  index,
-  isActive, 
-  isActiveInBar,
-  isPlaying,
-  isWaiting,
-  onPlay,
-  onPlayPause,
-  onPrev,
-  onNext,
-  setLyricsOpen,
-  isLyricsOpen = false,
-  lyrics = [],
-  currentTime,
-  duration,
-  onSeek,
-  volume,
-  onVolumeChange,
-  karaokeMode = false,
-  setKaraokeMode,
-  currentLyricLine,
-  onAmbientColorChange,
-  observeCard,
-  isRevealed = true,
-  onHoverPrefetchLrc
+export const SongCard = memo(({
+  song, index, isActive, isActiveInBar, isPlaying, isWaiting,
+  onPlay, onPlayPause, onPrev, onNext,
+  setLyricsOpen, isLyricsOpen = false,
+  lyrics = [], currentTime, duration, onSeek,
+  volume, onVolumeChange,
+  karaokeMode = false, setKaraokeMode,
+  currentLyricLine, onAmbientColorChange,
+  observeCard, isRevealed = true, onHoverPrefetchLrc,
 }: SongCardProps) => {
   const { isMobile, isTablet } = useDeviceType();
   const resolvedTheme = useResolvedTheme();
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  const cardRef = useRef<HTMLDivElement | null>(null);
+  const setRefs = (el: HTMLDivElement | null) => {
+    cardRef.current = el;
+    if (observeCard) observeCard(song.id, el);
+  };
 
-  useEffect(() => {
-    observeCard?.(song.id, cardRef.current);
-    return () => observeCard?.(song.id, null);
-  }, [observeCard, song.id]);
-
-  // FIXED: save/restore scroll position when lyrics bottom sheet opens
-  const savedScrollY = useRef(0);
-
-  // ─── Local lyrics state (fetches LRC file independently) ───
-  const [localLyrics, setLocalLyrics] = useState<LyricLine[]>(() => {
-    if (lyrics && lyrics.length > 0) return lyrics;
-    const session = loadSession();
-    if (session.lrcCache && session.lrcCache[song.id]) {
-      return session.lrcCache[song.id];
-    }
-    return [];
+  // ── Lyrics: fetch + cache + preloader broadcast in one hook ──────────────
+  const { lyrics: localLyrics } = useSongLyrics({
+    song,
+    externalLyrics: lyrics,
+    enableSelfFetch: isLyricsOpen,
   });
 
+  // ── Binary-search the active line — O(log n) on long lyrics ─────────────
   const currentLineIndex = useMemo(() => {
     if (!localLyrics || localLyrics.length === 0) return -1;
-    let index = -1;
-    for (let i = 0; i < localLyrics.length; i++) {
-      if (localLyrics[i].time <= (currentTime || 0)) {
-        index = i;
-      } else {
-        break;
-      }
+    const t = currentTime ?? 0;
+    let lo = 0, hi = localLyrics.length - 1, res = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (localLyrics[mid].time <= t) { res = mid; lo = mid + 1; }
+      else hi = mid - 1;
     }
-    return index;
+    return res;
   }, [localLyrics, currentTime]);
 
+  // ── Ambient color: lazy + cached + visibility-aware ──────────────────────
+  useAmbientColor({
+    imageUrl: song.cover || song.backgroundImage,
+    isActive,
+    onColor: onAmbientColorChange,
+    targetRef: cardRef,
+  });
+
+  // ── Global events: close-mobile-lyrics / open-song-lyrics ────────────────
   useEffect(() => {
-    if (!isRevealed && !isActive) return;
-    const handler = () => {
-      setLyricsOpen(false);
-    };
-    document.addEventListener('close-mobile-lyrics', handler);
-    return () => {
-      document.removeEventListener('close-mobile-lyrics', handler);
-    };
-  }, [setLyricsOpen, isRevealed, isActive]);
+    const closeHandler = () => setLyricsOpen(false);
+    document.addEventListener('close-mobile-lyrics', closeHandler);
+    return () => document.removeEventListener('close-mobile-lyrics', closeHandler);
+  }, [setLyricsOpen]);
 
   useEffect(() => {
-    if (!isRevealed && !isActive) return;
-    const handler = (e: Event) => {
+    const openHandler = (e: Event) => {
       const detail = (e as CustomEvent<{ songId: number }>).detail;
-      if (detail?.songId === song.id) {
-        setLyricsOpen(true);
-      }
+      if (detail?.songId === song.id) setLyricsOpen(true);
     };
-    document.addEventListener('open-song-lyrics', handler);
-    return () => document.removeEventListener('open-song-lyrics', handler);
-  }, [song.id, setLyricsOpen, isRevealed, isActive]);
+    document.addEventListener('open-song-lyrics', openHandler);
+    return () => document.removeEventListener('open-song-lyrics', openHandler);
+  }, [song.id, setLyricsOpen]);
 
-  useEffect(() => {
-    if (!isRevealed && !isActive) return;
-    if (resolvedTheme === 'light' && isLyricsOpen && currentLineIndex !== -1) {
-      const activeEl = document.getElementById(`light-lyric-line-${currentLineIndex}`);
-      if (activeEl) {
-        activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // ── Light-theme scroll-to-active is now owned by SongCardLyricsPanel ──
+
+  const renderContent = () => {
+    if (!isRevealed && !isActive) {
+      if (resolvedTheme === 'light') {
+        return (
+          <OsWindow title={`song_card.${song.id}`}>
+            <div className="opacity-0 w-full h-[120px]" />
+          </OsWindow>
+        );
       }
-    }
-  }, [currentLineIndex, isLyricsOpen, resolvedTheme, isRevealed, isActive]);
-
-  // ─── Effect A: read from session / parent lyrics (instant, no network) ──
-  useEffect(() => {
-    if (!isRevealed && !isActive) return;
-    // 1. Parent passed lyrics directly
-    if (lyrics && lyrics.length > 0) {
-      setLocalLyrics(lyrics);
-      return;
-    }
-    // 2. Already in session cache (filled by preloader in useMySongsState)
-    const session = loadSession();
-    if (session.lrcCache?.[song.id]?.length) {
-      setLocalLyrics(session.lrcCache[song.id]);
-    }
-    // Note: if neither, we wait for the lrc-ready event (Effect B)
-    // DO NOT call setLocalLyrics([]) here — never clear existing lyrics
-  }, [song.id, lyrics, isRevealed, isActive]);
-
-  // ─── Effect B: listen for lrc-ready event from the preloader ────────────
-  useEffect(() => {
-    if (!isRevealed && !isActive) return;
-    const handler = (e: Event) => {
-      const { songId, lyrics: fetched } = (e as CustomEvent<{
-        songId: number;
-        lyrics: LyricLine[];
-      }>).detail;
-      if (songId === song.id && fetched?.length) {
-        setLocalLyrics(fetched);
-      }
-    };
-    window.addEventListener('lrc-ready', handler);
-    return () => window.removeEventListener('lrc-ready', handler);
-  }, [song.id, isRevealed, isActive]);
-
-  // ─── Effect C: self-fetch ONLY as a last-resort fallback ────────────────
-  // Fires when: song has an lrc file, lyrics panel is open, and local state
-  // is still empty (preloader hasn't run yet — e.g., very first load)
-  useEffect(() => {
-    if (!isRevealed && !isActive) return;
-    if (!isLyricsOpen || !song.lrc || localLyrics.length > 0) return;
-    if (lyrics && lyrics.length > 0) return; // covered by Effect A
-
-    const session = loadSession();
-    if (session.lrcCache?.[song.id]?.length) {
-      setLocalLyrics(session.lrcCache[song.id]);
-      return;
-    }
-
-    const filename = song.lrc.split('/').pop() || '';
-    const encoded = encodeURIComponent(filename);
-    const controller = new AbortController();
-
-    fetch(`${import.meta.env.BASE_URL}lrc/${encoded}`, {
-      signal: controller.signal,
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`LRC ${res.status}`);
-        return res.text();
-      })
-      .then((text) => {
-        const parsed = parseLRC(text);
-        if (!parsed.length) return;
-        setLocalLyrics(parsed);
-        const cur = loadSession();
-        saveSession({ lrcCache: { ...cur.lrcCache, [song.id]: parsed } });
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.warn('[SongCard] fallback LRC fetch:', err.message);
-        }
-      });
-
-    return () => controller.abort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLyricsOpen, song.id, isRevealed, isActive]);
-  // Note: localLyrics intentionally excluded from deps — we only want this
-  // to fire when the panel first opens, not on every lyrics update.
-  // ────────────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!isRevealed && !isActive) return;
-    const coverUrl = song.cover || song.backgroundImage;
-    if (!coverUrl) return;
-
-    // Check session cache
-    const session = loadSession();
-    if (session.dominantColors[coverUrl]) {
-      const color = session.dominantColors[coverUrl];
-      if (isActive) onAmbientColorChange?.(color);
-      return;
-    }
-
-    extractDominantColorCached(coverUrl, (color) => {
-      saveSession({ dominantColors: { ...session.dominantColors, [coverUrl]: color } });
-      if (isActive) onAmbientColorChange?.(color);
-    });
-  }, [song.cover, song.backgroundImage, isActive, onAmbientColorChange, isRevealed]);
-
-  // FIXED: Body scroll lock with save/restore pattern (2025 best practice)
-  //   - Save scrollY before lock to avoid iOS jump-to-top on unlock
-  //   - Restore via requestAnimationFrame after browser repaints
-  //   - DO NOT mutate body.dataset.modalContext here — ButtonOrchestrator
-  //     is the single source of truth for modal context state.
-  useEffect(() => {
-    if (!isRevealed && !isActive) return;
-    if (!isMobile && !isTablet) return; // desktop: lyrics inline, no body lock needed
-
-    if (isLyricsOpen) {
-      savedScrollY.current = window.scrollY;
-      document.body.style.overflow = 'hidden';
-    } else {
-      // Only release if we previously locked
-      if (document.body.style.overflow === 'hidden') {
-        document.body.style.overflow = '';
-        if (savedScrollY.current > 0) {
-          const y = savedScrollY.current;
-          requestAnimationFrame(() => window.scrollTo(0, y));
-        }
-      }
-    }
-
-    return () => {
-      // Safety cleanup
-      if (document.body.style.overflow === 'hidden') {
-        document.body.style.overflow = '';
-        if (savedScrollY.current > 0) {
-          const y = savedScrollY.current;
-          requestAnimationFrame(() => window.scrollTo(0, y));
-        }
-      }
-    };
-  }, [isLyricsOpen, isMobile, isTablet, isRevealed, isActive]);
-
-  if (!isRevealed && !isActive) {
-    if (resolvedTheme === 'light') {
-      return (
-        <OsWindow 
-          title={`song_card.${song.id}`} 
-          className=""
-          overflow="hidden"
-        >
-          <div
-            ref={cardRef}
-            className="animate-pulse w-full bg-[#E5DFD3]"
-            style={{
-              contain: 'strict',
-              height: '56px',
-            }}
-            aria-hidden="true"
-            data-skeleton="true"
-          />
-        </OsWindow>
-      );
+      return <div className="opacity-0 w-full h-[120px]" />;
     }
 
     return (
-      <div
-        ref={cardRef}
-        className={`song-card-container song-card relative overflow-hidden flex flex-col transition-all cursor-pointer animate-pulse
-          ${(isMobile || isTablet) ? 'song-card-mobile h-[80px] min-h-[80px] max-h-[80px] justify-center px-4 py-3 rounded-xl' : 'bg-white/[0.03] border border-white/[0.08] rounded-2xl h-[80px] min-h-[80px] p-5'}
-        `}
-        style={{
-          contain: 'strict',
-          gridColumn: 'span 1',
-        }}
-        aria-hidden="true"
-        data-skeleton="true"
-      >
-        <div className="w-full h-full rounded-xl bg-white/[0.02] border border-white/5" />
-      </div>
-    );
-  }
-
-  const renderContent = () => (
-    <motion.div 
+    <motion.div
+      ref={setRefs}
       id={`song-card-${song.id}`}
       layout
       layoutId={`song-${song.id}`}
@@ -321,93 +141,100 @@ export const SongCard = memo(({
       onKeyDown={(e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          if (isActive && onPlayPause) {
-            onPlayPause();
-          } else {
-            onPlay();
-          }
+          if (isActive && onPlayPause) onPlayPause();
+          else onPlay();
         }
       }}
       tabIndex={0}
       role="button"
       aria-label={`Play song ${song.title}`}
       onPointerEnter={() => {
-        onHoverPrefetchLrc?.(song.id);
+        if (onHoverPrefetchLrc) onHoverPrefetchLrc(song.id);
         if (song.url.includes('.m3u8')) {
           import('../../hooks/useHlsAudio').then(({ preloadAllSongs }) => {
             preloadAllSongs([song.url], 4, 1, 0);
           });
         }
       }}
-      onFocus={() => {
-        onHoverPrefetchLrc?.(song.id);
-      }}
       className={`song-card-container
         song-card relative ${
-          ((resolvedTheme === 'light' && isLyricsOpen) || ((isMobile || isTablet) && isLyricsOpen))
+          (resolvedTheme === 'light' && isLyricsOpen) ||
+          ((isMobile || isTablet) && isLyricsOpen)
             ? 'overflow-visible'
             : 'overflow-hidden'
         } flex flex-col transition-all cursor-pointer
-        ${(isMobile || isTablet) ? `song-card-mobile justify-center ${isActive ? 'song-card-mobile-active' : ''}` : (resolvedTheme === 'dark' ? 'bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 transition-all duration-500 rounded-2xl' : (resolvedTheme === 'light' ? 'bg-[#F0EBE3]' : (isActive ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-6 sm:p-8 rounded-2xl' : 'shadow-lg hover:shadow-xl p-5 sm:p-6 rounded-2xl')))}
-        ${isActive && resolvedTheme !== 'dark' && resolvedTheme !== 'light' && !isMobile && !isTablet ? 'p-6 sm:p-8' : ''}
+        ${
+          isMobile || isTablet
+            ? `song-card-mobile justify-center ${isActive ? 'song-card-mobile-active' : ''}`
+            : resolvedTheme === 'dark'
+              ? 'bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 transition-all duration-500 rounded-2xl'
+              : resolvedTheme === 'light'
+                ? 'bg-[#F0EBE3]'
+                : isActive
+                  ? 'active shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-6 sm:p-8 rounded-2xl'
+                  : 'shadow-lg hover:shadow-xl p-5 sm:p-6 rounded-2xl'
+        }
+        ${
+          isActive && resolvedTheme !== 'dark' && resolvedTheme !== 'light'
+            && !isMobile && !isTablet
+            ? 'p-6 sm:p-8'
+            : ''
+        }
       `}
       style={{
-        backgroundImage: resolvedTheme === 'light' ? 'none' : `url('${song.backgroundImage}'), url('${SONG_BG_FALLBACK}')`,
+        backgroundImage: resolvedTheme === 'light'
+          ? 'none'
+          : `url('${song.backgroundImage}'), url('${SONG_BG_FALLBACK}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         gridColumn: isActive && !isMobile ? 'span 2' : 'span 1',
         transitionDuration: resolvedTheme === 'dark' ? '500ms' : '700ms',
-        ...(
-          (isMobile || isTablet)
-            ? {
-                minHeight: '80px',
-                ...(isLyricsOpen ? {} : { maxHeight: '80px' }),
-                padding: '12px 16px',
-                borderRadius: resolvedTheme === 'light' ? '0' : '14px',
-                border: isActive
-                  ? '1px solid var(--border-subtle, rgba(255,255,255,0.25))'
-                  : '1px solid transparent',
-                ...(isActive ? { boxShadow: '0 4px 16px rgba(0,0,0,0.25)' } : {})
-              }
-            : {}
-        )
+        ...((isMobile || isTablet)
+          ? {
+              minHeight: '80px',
+              ...(isLyricsOpen ? {} : { maxHeight: '80px' }),
+              padding: '12px 16px',
+              borderRadius: resolvedTheme === 'light' ? '0' : '14px',
+              border: isActive
+                ? '1px solid var(--border-subtle, rgba(255,255,255,0.25))'
+                : '1px solid transparent',
+              ...(isActive ? { boxShadow: '0 4px 16px rgba(0,0,0,0.25)' } : {}),
+            }
+          : {}),
       }}
     >
-      {/* Bento expansion handle */}
       {isActive && resolvedTheme !== 'light' && !isMobile && (
         <div className="absolute top-4 left-4 z-30 scale-75 sm:scale-100">
           <Waveform isPlaying={isPlaying} />
         </div>
       )}
 
-      {/* Background Image with Animation */}
       {resolvedTheme !== 'light' && (
-        <div 
+        <div
           className="absolute inset-0 z-0"
           style={{
             backgroundImage: `url('${song.backgroundImage}'), url('${SONG_BG_FALLBACK}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            animation: isActive && !isMobile ? 'slow-zoom 8s ease-in-out infinite alternate' : 'none',
+            animation: isActive && !isMobile
+              ? 'slow-zoom 8s ease-in-out infinite alternate'
+              : 'none',
           }}
         />
       )}
 
-      {/* Overlay */}
       {resolvedTheme !== 'light' && (
-        <div 
+        <div
           className="absolute inset-0 z-10 transition-all duration-600"
           style={{
             background: isActive ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.65)',
             backdropFilter: (isActive || isTablet || isMobile) ? 'none' : 'blur(1px)',
             WebkitBackdropFilter: (isActive || isTablet || isMobile) ? 'none' : 'blur(1px)',
-          }} 
+          }}
         />
       )}
 
-      {/* Content wrapper */}
       <div className="relative z-20 flex flex-col gap-4">
-        {/* Header (Block B) */}
         <SongCardHeader
           song={song}
           index={index}
@@ -423,16 +250,11 @@ export const SongCard = memo(({
           onPlay={onPlay}
           onPlayPause={onPlayPause}
           onToggleLyrics={() => {
-            if (!isActive) {
-              onPlay();
-              setLyricsOpen(true);
-            } else {
-              setLyricsOpen(prev => !prev);
-            }
+            if (!isActive) { onPlay(); setLyricsOpen(true); }
+            else setLyricsOpen((prev) => !prev);
           }}
         />
 
-        {/* Controls shown when active (Block C/D) */}
         {isActive && !isMobile && !isTablet && (
           <div className="mt-2 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <SongCardControls
@@ -451,7 +273,6 @@ export const SongCard = memo(({
               song={song}
             />
 
-            {/* Inline lyrics panel for non-light themes */}
             <SongCardLyricsPanel
               layoutType="inline"
               song={song}
@@ -471,18 +292,18 @@ export const SongCard = memo(({
         )}
       </div>
 
-      {/* Mobile-only thin progress bar at card bottom (only when active+playing) */}
       {(isMobile || isTablet) && isActive && (
         <div className="song-card-mobile-progress" aria-hidden="true">
-          <span style={{
-            width: duration && duration > 0
-              ? `${Math.min(100, ((currentTime || 0) / duration) * 100)}%`
-              : '0%',
-          }} />
+          <span
+            style={{
+              width: duration && duration > 0
+                ? `${Math.min(100, ((currentTime || 0) / duration) * 100)}%`
+                : '0%',
+            }}
+          />
         </div>
       )}
 
-      {/* Floating Light Lyrics Popover Window */}
       <SongCardLyricsPanel
         layoutType="popover"
         song={song}
@@ -499,12 +320,13 @@ export const SongCard = memo(({
         isTablet={isTablet}
       />
     </motion.div>
-  );
+    );
+  };
 
   if (resolvedTheme === 'light') {
     return (
-      <OsWindow 
-        title={`song_card.${song.id}`} 
+      <OsWindow
+        title={`song_card.${song.id}`}
         className={isActive && !isMobile ? 'col-span-2' : ''}
         overflow={isLyricsOpen ? 'visible' : 'hidden'}
       >

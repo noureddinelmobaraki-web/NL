@@ -43,6 +43,7 @@ export interface LyricLine {
   text: string;
   words?: LyricWord[];
   endTime?: number;
+  translation?: string;
 }
 
 export interface WindowGeometry {

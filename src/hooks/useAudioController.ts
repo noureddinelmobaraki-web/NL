@@ -98,7 +98,8 @@ export function useAudioController({
       lensAudio.preload = 'none';
       audioManager.register('lens', lensAudio, 0.7);
 
-      // ME bit (Pre-initialize for instant playback)
+      // ME bit — element registered but HLS attached lazily.
+      // ensureMeBitLoaded() is called by useMeBitPrefetch on hover / intersection / first open.
       const meBitAudio = new Audio();
       meBitAudio.crossOrigin = "anonymous";
       meBitAudio.loop = true;
@@ -106,19 +107,6 @@ export function useAudioController({
       meBitAudio.volume = 0;
       meBitAudioRef.current = meBitAudio;
       audioManager.register('mebit', meBitAudio, 0.6);
-
-      const meBitUrl = ASSETS.media.meBitMusic;
-      if (meBitAudio.canPlayType('application/vnd.apple.mpegurl')) {
-        meBitAudio.src = meBitUrl;
-        meBitAudio.load();
-      } else {
-        const HlsClass = await getHlsClass();
-        if (HlsClass.isSupported()) {
-          const hls = await getOrCreateHls(meBitUrl);
-          hls.attachMedia(meBitAudio);
-          meBitHlsAttached.current = true;
-        }
-      }
     };
 
     setupHls();
@@ -128,6 +116,26 @@ export function useAudioController({
       audioManager.pause('mebit');
     };
   }, []); // runs once on mount
+
+  const ensureMeBitLoaded = useCallback(async () => {
+    if (meBitHlsAttached.current || !meBitAudioRef.current) return;
+    const meBitAudio = meBitAudioRef.current;
+    const meBitUrl = ASSETS.media.meBitMusic;
+
+    if (meBitAudio.canPlayType('application/vnd.apple.mpegurl')) {
+      if (!meBitAudio.src || !meBitAudio.src.includes('m3u8')) {
+        meBitAudio.src = meBitUrl;
+        meBitAudio.load();
+      }
+    } else {
+      const HlsClass = await getHlsClass();
+      if (HlsClass.isSupported()) {
+        const hls = await getOrCreateHls(meBitUrl);
+        hls.attachMedia(meBitAudio);
+        meBitHlsAttached.current = true;
+      }
+    }
+  }, []);
 
   // ── Per-theme background music swap ──────────────────────────────
   // Reads audioIntent / writes prefs WITHOUT entering the effect's deps.
@@ -262,12 +270,11 @@ export function useAudioController({
     }
   }, [isLensGalleryOpen]);
 
-  // Gallery suppression (isGalleryOpen effect)
+  // Suppression is now owned by useMeBitSession inside MeBitGallery.
+  // Keep this effect only as a coarse fallback for legacy callers.
   useEffect(() => {
-    if (isGalleryOpen) {
-      audioManager.suppressBg('mebit_open');
-    } else {
-      audioManager.releaseBg('mebit_open');
+    if (!isGalleryOpen) {
+      audioManager.forceReleaseBgPrefix('mebit-session');
     }
   }, [isGalleryOpen]);
 
@@ -378,6 +385,7 @@ export function useAudioController({
   }, [isLensGalleryOpen, isGalleryOpen]);
 
   const handleGalleryOpen = useCallback((index = 0) => {
+    ensureMeBitLoaded();
     audioManager.play('mebit');
     if (setIsGalleryOpen) {
       setIsGalleryOpen(true);
@@ -386,7 +394,7 @@ export function useAudioController({
       setSelectedImageIndex(index);
     }
     setIsMeBitPlaying(true);
-  }, [setIsGalleryOpen, setSelectedImageIndex]);
+  }, [setIsGalleryOpen, setSelectedImageIndex, ensureMeBitLoaded]);
 
   const handleGalleryClose = useCallback(() => {
     audioManager.pause('mebit');
@@ -418,5 +426,6 @@ export function useAudioController({
     handleGalleryOpen,
     handleGalleryClose,
     toggleMeBitAudio,
+    ensureMeBitLoaded,
   };
 }

@@ -1,7 +1,9 @@
-import { useEffect, memo } from 'react';
+import { memo } from 'react';
 import { Music2, Youtube } from "lucide-react";
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { useFadeInOnView } from '../../hooks/useFadeInOnView';
+import { useDevCSSVarCheck } from '../../utils/dev/cssVarCheck';
+import { REQUIRED_HIGHLIGHTS_VARS } from '../../constants/cssVarLists';
 
 interface HighlightsSectionProps {
   vaultPlaylistCoverUrl: string;
@@ -25,23 +27,7 @@ export const HighlightsSection = memo(({
   const resolvedTheme = useResolvedTheme();
   const sectionRef = useFadeInOnView<HTMLElement>();
 
-  useEffect(() => {
-    if (import.meta.env.DEV && typeof window !== 'undefined') {
-      const REQUIRED_HIGHLIGHTS_VARS = [
-        '--yt-highlights-bg',
-        '--vault-playlist-bg',
-        '--highlights-vault-radius',
-        '--highlights-yt-radius'
-      ];
-      const style = getComputedStyle(document.documentElement);
-      REQUIRED_HIGHLIGHTS_VARS.forEach((v) => {
-        const value = style.getPropertyValue(v).trim();
-        if (!value) {
-          console.warn(`[Theme Check] Warning: Required CSS variable "${v}" is not resolved in active theme.`);
-        }
-      });
-    }
-  }, [resolvedTheme]);
+  useDevCSSVarCheck(REQUIRED_HIGHLIGHTS_VARS, resolvedTheme, 'Highlights Check');
 
   return (
     <section 

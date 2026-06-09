@@ -1,4 +1,4 @@
-import { useEffect, memo } from 'react';
+import { memo } from 'react';
 import { 
   Instagram, 
   Facebook, 
@@ -13,6 +13,8 @@ import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { useDeviceType } from '../../hooks/useDeviceType'; // MOBILE-ONLY
 import { getLocalAssetUrl } from '../../constants/assets';
 import { useFadeInOnView } from '../../hooks/useFadeInOnView';
+import { useDevCSSVarCheck } from '../../utils/dev/cssVarCheck';
+import { REQUIRED_STREAMING_VARS } from '../../constants/cssVarLists';
 
 const STREAMING_PLATFORMS: StreamingPlatform[] = [
   {
@@ -97,38 +99,7 @@ export const StreamingSection = memo(() => {
   const section2Ref = useFadeInOnView<HTMLElement>();
 
   // Runtime CSS variable assertion
-  useEffect(() => {
-    if (import.meta.env.DEV && typeof window !== 'undefined') {
-      const REQUIRED_STREAMING_VARS = [
-        '--streaming-titlebar-display',
-        '--streaming-h2-display',
-        '--streaming-divider-display',
-        '--social-titlebar-display',
-        '--social-h2-display',
-        '--stream-card-border',
-        '--stream-card-shadow',
-        '--stream-card-bg',
-        '--stream-card-flex-dir',
-        '--stream-mini-titlebar-display',
-        '--stream-content-dark-display',
-        '--stream-content-light-display',
-        '--stream-content-default-display',
-        '--social-content-dark-display',
-        '--social-content-light-display',
-        '--social-content-default-display',
-        '--social-card-rotate',
-        '--social-card-radius',
-        '--social-card-shadow'
-      ];
-      const style = getComputedStyle(document.documentElement);
-      REQUIRED_STREAMING_VARS.forEach((v) => {
-        const value = style.getPropertyValue(v).trim();
-        if (!value) {
-          console.warn(`[Theme Check] Warning: Required CSS variable "${v}" is not resolved in active theme.`);
-        }
-      });
-    }
-  }, [resolvedTheme]);
+  useDevCSSVarCheck(REQUIRED_STREAMING_VARS, resolvedTheme, 'Streaming Check');
 
   return (
     <main className="grid grid-cols-1 md:grid-cols-2 gap-10">

@@ -2,12 +2,14 @@ import { X, Maximize2, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useMeBitSession } from '../../hooks/useMeBitSession';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useMeBitSwipe } from '../../hooks/useMeBitSwipe';
 import { MeBitMainImage } from './MeBitMainImage';
 import { MeBitThumbnails } from './MeBitThumbnails';
 import { useFullscreenManager } from '../../hooks/useFullscreenManager';
 import { MeBitMobileView } from './MeBitMobileView';
+import { useMeBitPrefetch } from '../../hooks/useMeBitPrefetch';
 
 export interface MeBitGalleryProps {
   isOpen: boolean;
@@ -37,6 +39,8 @@ export const MeBitGallery = ({
   onToggleAudio,
 }: MeBitGalleryProps) => {
   const galleryRef = useFocusTrap(isOpen);
+  useMeBitSession(isOpen);
+  useMeBitPrefetch(images, selectedIndex ?? 0);
   const { onTouchStart, onTouchEnd } = useMeBitSwipe({ onNext, onPrev, onClose });
   const { setContext, registerButton, unregisterButton } = useButtonContext();
 

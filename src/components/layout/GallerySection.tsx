@@ -1,3 +1,6 @@
+import { useRef } from "react";
+import { useMeBitPrefetch } from "../MeBit/useMeBitPrefetch";
+import { useDeviceType } from "../../hooks/useDeviceType";
 import { motion, Variants } from "framer-motion";
 import { Maximize2 } from "lucide-react";
 import { ASSETS, getThemedImage, getLocalAssetUrl } from "../../constants/assets";
@@ -22,6 +25,7 @@ export interface GallerySectionProps {
   onGalleryOpen: (index?: number) => void;
   onLensOpen: () => void;
   onLensClose: () => void;
+  onPrefetchMeBit?: () => void;
 }
 
 export const GallerySection = ({
@@ -30,7 +34,16 @@ export const GallerySection = ({
   onGalleryOpen,
   onLensOpen,
   onLensClose,
+  onPrefetchMeBit,
 }: GallerySectionProps) => {
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const { isMobile } = useDeviceType();
+
+  useMeBitPrefetch({
+    ctaRef,
+    isMobile,
+    onPrefetch: onPrefetchMeBit || (() => {}),
+  });
 
   return (
     <>
@@ -49,6 +62,7 @@ export const GallerySection = ({
         <div className="manga-divider" />
         
         <div 
+          ref={ctaRef}
           onClick={() => onGalleryOpen()}
           className="relative w-full border-[4px] border-[var(--ink-color)] bg-[var(--paper-color)] p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[6px_6px_0px_var(--manga-shadow-color)] sm:shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[8px_8px_0px_var(--manga-shadow-color)] sm:hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[220px] sm:h-[260px] md:h-[280px] manga-panel"
         >

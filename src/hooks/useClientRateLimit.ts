@@ -1,3 +1,12 @@
+/**
+ * useClientRateLimit — client-side throttle for the contact form.
+ *
+ * CHANGED (PROMPT 12.5): the hook now ALSO returns the raw `log` array so
+ * `useRateLimitCountdown` can compute the next-available timestamp WITHOUT
+ * touching localStorage or duplicating window-config logic.
+ *
+ * Threshold and storage key remain identical (3 messages / 24 h).
+ */
 import { useEffect, useState, useCallback } from 'react';
 import { CONTACT_LIMITS } from '../constants/contact';
 

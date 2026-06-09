@@ -25,7 +25,8 @@
     "generate:posters": "node scripts/generate-posters.mjs",
     "audit": "npm audit --omit=dev --audit-level=high",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:song": "vitest run songs lyrics hooks"
   },
   "dependencies": {
     "@emailjs/browser": "4.4.1",

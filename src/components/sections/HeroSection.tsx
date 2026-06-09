@@ -1,11 +1,14 @@
-import { useState, useRef, useEffect, memo } from 'react';
+import { memo } from 'react';
 import { motion } from "framer-motion";
-import { getThemedImage, LIGHT_PROFILE_OPENING, LIGHT_PROFILE_MAIN } from "../../constants/assets";
+import { getThemedImage } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
 
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { useDeviceType } from '../../hooks/useDeviceType'; // MOBILE-ONLY
 import { useFadeInOnView } from '../../hooks/useFadeInOnView';
+import { useDevCSSVarCheck } from '../../utils/dev/cssVarCheck';
+import { REQUIRED_HERO_VARS } from '../../constants/cssVarLists';
+import { useLightProfileImage } from '../../hooks/useLightProfileImage';
 import siteData from '../../../metadata.json';
 
 export const HeroSection = memo(() => {
@@ -15,87 +18,10 @@ export const HeroSection = memo(() => {
   const headerRef = useFadeInOnView<HTMLElement>();
 
   // Light theme profile switching logic
-  const [lightProfileSrc, setLightProfileSrc] = useState<string>(LIGHT_PROFILE_OPENING);
-  const lightProfileInitializedRef = useRef(false);
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    if (resolvedTheme.startsWith('light')) {
-      setLightProfileSrc(LIGHT_PROFILE_OPENING);
-      lightProfileInitializedRef.current = false;
-      timer = setTimeout(() => {
-        setLightProfileSrc(LIGHT_PROFILE_MAIN);
-        lightProfileInitializedRef.current = true;
-      }, 1500);
-    }
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [resolvedTheme]);
+  const lightProfileSrc = useLightProfileImage(resolvedTheme);
 
   // Dev runtime CSS variable integration check
-  useEffect(() => {
-    if (import.meta.env.DEV && typeof window !== 'undefined') {
-      const REQUIRED_HERO_VARS = [
-        '--window-chrome-display',
-        '--window-border',
-        '--window-shadow',
-        '--window-bg',
-        '--hero-header-align',
-        '--hero-card-bg',
-        '--hero-card-border',
-        '--hero-card-shadow',
-        '--hero-bg-image-url',
-        '--hero-bg-filter',
-        '--hero-bg-opacity',
-        '--hero-bg-blend',
-        '--hero-overlay-bg',
-        '--hero-title-font',
-        '--hero-title-weight',
-        '--hero-title-color',
-        '--hero-title-size',
-        '--hero-title-shadow',
-        '--hero-title-style',
-        '--hero-title-lines',
-        '--hero-title-transform',
-        '--hero-divider-top',
-        '--hero-divider-style',
-        '--hero-loc-font',
-        '--hero-loc-size',
-        '--hero-loc-weight',
-        '--hero-loc-shadow',
-        '--hero-loc-prefix',
-        '--hero-loc-suffix',
-        '--hero-alias-bg',
-        '--hero-alias-border',
-        '--hero-alias-color',
-        '--hero-alias-size',
-        '--hero-alias-tracking',
-        '--hero-alias-transform',
-        '--hero-alias-font',
-        '--hero-alias-deco',
-        '--hero-alias-padding',
-        '--hero-bio-font',
-        '--hero-bio-size',
-        '--hero-bio-shadow',
-        '--hero-bio-filter',
-        '--hero-bio-style',
-        '--hero-profile-width',
-        '--hero-profile-border',
-        '--hero-profile-shadow',
-        '--hero-profile-transform',
-        '--hero-profile-hover-transform',
-        '--hero-profile-display'
-      ];
-      const style = getComputedStyle(document.documentElement);
-      REQUIRED_HERO_VARS.forEach((v) => {
-        const value = style.getPropertyValue(v).trim();
-        if (!value) {
-          console.warn(`[Theme Check] Warning: Required CSS variable "${v}" is not resolved in active theme.`);
-        }
-      });
-    }
-  }, [resolvedTheme]);
+  useDevCSSVarCheck(REQUIRED_HERO_VARS, resolvedTheme, 'Hero Check');
 
   const profileImages: Record<string, string> = {
     light: lightProfileSrc,

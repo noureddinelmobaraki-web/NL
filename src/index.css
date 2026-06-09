@@ -91,4 +91,47 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) {
   margin-top: -23px;
 }
 
+/* ── Karaoke per-word highlighting (used by SongCardLyricsPanel inline) ── */
+:root {
+  --lyric-active-color:    #ffffff;
+  --lyric-inactive-color:  rgba(255, 255, 255, 0.45);
+  --lyric-active-shadow:   rgba(167, 139, 250, 0.6);
+}
+
+[data-theme="light"] {
+  --lyric-active-color:    #000000;
+  --lyric-inactive-color:  rgba(0, 0, 0, 0.35);
+  --lyric-active-shadow:   rgba(0, 0, 0, 0.15);
+}
+
+/* === NEW-4: توافقية الأجهزة + لمس آمن (إضافة فقط) === */
+
+/* إزالة تأخير اللمس 300ms على كل العناصر التفاعلية */
+button, a, [role="button"], input, select, textarea, label {
+  touch-action: manipulation;
+}
+
+/* focus واضح للتنقّل بلوحة المفاتيح (a11y) — كيبان فقط مع keyboard، ماشي مع الماوس */
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* iOS: منع التكبير التلقائي ملي كتدوز على input (خاص font-size >= 16px) */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* احترام تفضيل تقليل الحركة على مستوى الموقع */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 

@@ -47,7 +47,7 @@ function ActivityFallback({ mode, children }: ActivityProps) {
 const useEffectEvent = (React as any).useEffectEvent || (React as any).experimental_useEffectEvent || useEffectEventFallback;
 const Activity = (React as any).Activity || (React as any).unstable_Activity || ActivityFallback;
 import { savePrefs, trackVisit } from './utils/userPrefs';
-import { applyTheme as applyThemeUtil, withViewTransition } from './utils/themeSwitcher';
+import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { LoadingScreen } from "./components/Loading/LoadingScreen";
 import { SkeletonSection } from './components/SkeletonSection';
@@ -94,6 +94,8 @@ const GallerySection = React.lazy(() =>
 import { AppProvider, useAppContext } from './context/AppContext';
 import { isAutomatedEnv } from './utils/env';
 import { MobileQAOverlay } from "./components/dev/MobileQAOverlay";
+import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
+import { useNavigateSection } from './hooks/useNavigateSection';
 
 function AppInner() {
   const { theme } = useAppContext();
@@ -117,14 +119,18 @@ function AppInner() {
 function MainApp() {
   const { isMobile, isTablet } = useDeviceType();
   useKeyboardDetection();
+  useNavigationAudioRecovery();
   const {
     loaded, setLoaded,
     activeSong, setActiveSong,
-    currentPage, setCurrentPage,
+    currentPage,
     ambientColor, setAmbientColor,
     audioIntent, setAudioIntent,
     theme, setTheme
   } = useAppContext();
+
+  const navigateSection = useNavigateSection();
+
 
   const resolvedTheme = useResolvedTheme();
   const parallaxRef = useParallax(isMobile ? 0 : 20);
@@ -160,6 +166,7 @@ function MainApp() {
     handleGalleryOpen,
     handleGalleryClose,
     toggleMeBitAudio,
+    ensureMeBitLoaded,
   } = useAudioController({
     isLensGalleryOpen,
     isGalleryOpen,
@@ -225,23 +232,6 @@ function MainApp() {
         <OsClockDisplay />
       </div>
     );
-  };
-
-  const handleNavigate = (page: string) => {
-    withViewTransition(() => {
-      setCurrentPage(page);
-      if (page === 'home') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else if (page === 'songs') {
-        scrollToSection('my-songs-section');
-      } else if (page === 'drawings') {
-        scrollToSection('drawings-section');
-      } else if (page === 'mebit') {
-        scrollToSection('me-bit-gallery');
-      } else if (page === 'lens') {
-        scrollToSection('lens-section');
-      }
-    });
   };
 
   useEffect(() => {
@@ -402,6 +392,7 @@ function MainApp() {
                   onGalleryOpen={handleGalleryOpen}
                   onLensOpen={openLens}
                   onLensClose={closeLens}
+                  onPrefetchMeBit={ensureMeBitLoaded}
                 />
               </Suspense>
 
@@ -462,7 +453,7 @@ function MainApp() {
           isTablet={isTablet}
           currentPage={currentPage}
           isBgPlaying={isPlaying}
-          onNavigate={handleNavigate}
+          onNavigate={navigateSection}
           onToggleBg={() => {
             if (isPlaying) {
               audioManager.pause('bg');

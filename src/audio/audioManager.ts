@@ -489,6 +489,26 @@ class AudioManager {
   }
 
   /**
+   * Safety belt: drop all bg suppressors that match a given prefix.
+   * Used by MeBit session lifecycle to guarantee bg can resume even if
+   * one of the symmetric release() calls was missed (e.g. Strict Mode double mount).
+   */
+  forceReleaseBgPrefix(prefix: string) {
+    let removed = 0;
+    for (const reason of this.bgSuppressors.keys()) {
+      if (reason === prefix || reason.startsWith(prefix + ':')) {
+        this.bgSuppressors.delete(reason);
+        removed++;
+      }
+    }
+    if (removed > 0) {
+      this.suppressionToken++;
+      if (this.bgSuppressors.size === 0) this.stopPurgeTimer();
+      this.checkResumeBg();
+    }
+  }
+
+  /**
    * Atomic cleanup when a song finishes naturally (ended event).
    * Releases the 'active_song' bg-suppressor AND clears active state if needed.
    * Idempotent — safe to call multiple times.
@@ -628,6 +648,30 @@ class AudioManager {
       return 1;
     }
     return 0;
+  }
+
+  /**
+   * Drops stale nav-scoped suppressors and attempts to resume background audio if appropriate.
+   * Used to fix lingering suppressors after navigation.
+   */
+  recoverAudio(): void {
+    const staleSources: AudioSource[] = ['song', 'lens', 'video', 'mebit'];
+    staleSources.forEach(src => {
+      if (this.active !== src && this.hasActiveSuppressor(`active_${src}`)) {
+        this.forceReleaseBg(`active_${src}`);
+      }
+    });
+
+    if (this.bgSuppressors.size === 0) {
+      if (this.active === 'bg') {
+        const bg = this.registry.get('bg');
+        if (bg && bg.element.paused && !this.bgUserPaused) {
+           this.resumeBg();
+        }
+      } else {
+        this.checkResumeBg();
+      }
+    }
   }
 
   // ─── P01.5: stale suppressor purge ──────────────────────────────────

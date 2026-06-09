@@ -3,15 +3,10 @@
 
 User-agent: *
 Allow: /
-Disallow: /assets/
-Disallow: /*.json$
 
-# Allow search engine bots to crawl the SPA properly
-User-agent: Googlebot
-Allow: /
+# نسمحو بـ render-critical assets (JS/CSS) باش Google يقدر يـ render الـ SPA
+Allow: /assets/
+Allow: /NL/assets/
 
-User-agent: Bingbot
-Allow: /
-
-# Sitemap location (absolute URL — required by Google)
+# Sitemap (رابط مطلق — مطلوب من Google)
 Sitemap: https://noureddinelmobaraki-web.github.io/NL/sitemap.xml

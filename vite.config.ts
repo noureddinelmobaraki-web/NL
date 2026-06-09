@@ -33,7 +33,10 @@ export default defineConfig(({ mode }) => {
       minify: 'terser',
       terserOptions: {
         compress: {
-          pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace', 'console.warn'],
+          pure_funcs: [
+            'console.log', 'console.info', 'console.debug', 'console.trace',
+            'console.warn', 'console.error', 'console.group', 'console.groupEnd',
+          ],
           drop_debugger: true,
           passes: 2,
         },

@@ -1,4 +1,4 @@
-const VERSION = 'mq1mioij-xhrb';
+const VERSION = 'nogit-mq60mflh';
 const CACHE_SHELL = `nl-shell-${VERSION}`;
 const CACHE_IMAGES = `nl-images-${VERSION}`;
 const CACHE_HLS = `nl-hls-${VERSION}`;
@@ -133,6 +133,19 @@ async function trimCache(cacheName) {
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+
+  // ⛔️ Bypass صارم: ماشي مسموح للـ SW يخدم ملفات XML/TXT/manifest عبر fallback القشرة.
+  // هاد الملفات خاص تُخدَم native (GitHub Pages / السيرفر) بالـ Content-Type الصحيح
+  // (application/xml للـ sitemap، text/plain للـ robots) باش الزواحف والمتصفّح يقراوها مزيان.
+  {
+    const bypassUrl = new URL(request.url);
+    if (
+      bypassUrl.origin === self.location.origin &&
+      /(\.xml|\.txt)$|\/(sitemap\.xml|robots\.txt|manifest\.webmanifest)$/i.test(bypassUrl.pathname)
+    ) {
+      return; // بلا respondWith → المتصفّح/Pages كيخدمها بنفسو بالنوع الصحيح
+    }
+  }
 
   // Navigation requests: serve cached shell as fallback
   if (request.mode === 'navigate') {
