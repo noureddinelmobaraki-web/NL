@@ -27,6 +27,9 @@ export interface SongListProps {
   setKaraokeMode?: (val: boolean | ((prev: boolean) => boolean)) => void;
   currentLyricLine?: string | null;
   onAmbientColorChange?: (color: string) => void;
+  observeCard?: (id: number | string, el: HTMLElement | null) => void;
+  isCardRevealed?: (id: number | string) => boolean;
+  onHoverPrefetchLrc?: (id: number) => void;
 }
 
 export const SongList = ({
@@ -51,6 +54,9 @@ export const SongList = ({
   setKaraokeMode = () => {},
   currentLyricLine = null,
   onAmbientColorChange,
+  observeCard,
+  isCardRevealed,
+  onHoverPrefetchLrc,
 }: SongListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [memeOpacity, setMemeOpacity] = useState(0);
@@ -121,7 +127,10 @@ export const SongList = ({
             return (
               <div
                 key={song.id}
-                onMouseEnter={() => preloadSong(song.url)}
+                onMouseEnter={() => {
+                  preloadSong(song.url);
+                  onHoverPrefetchLrc?.(song.id);
+                }}
                 style={{ display: 'contents' }}
               >
                 <SongCard
@@ -147,6 +156,9 @@ export const SongList = ({
                   setKaraokeMode={setKaraokeMode}
                   currentLyricLine={isActive ? currentLyricLine : null}
                   onAmbientColorChange={onAmbientColorChange}
+                  observeCard={observeCard}
+                  isRevealed={isCardRevealed ? isCardRevealed(song.id) : true}
+                  onHoverPrefetchLrc={onHoverPrefetchLrc}
                 />
               </div>
             );

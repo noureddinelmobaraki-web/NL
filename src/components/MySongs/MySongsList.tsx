@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { Song, LyricLine } from '../../types';
 import { SongList } from '../songs/SongList';
+import { useVirtualSongList } from '../../hooks/useVirtualSongList';
 
 export interface MySongsListProps {
   songs: Song[];
@@ -23,32 +25,51 @@ export interface MySongsListProps {
   setLyricsOpen: (val: boolean | ((prev: boolean) => boolean)) => void;
   setKaraokeMode: (v: boolean | ((p: boolean) => boolean)) => void;
   onAmbientColorChange: (c: string) => void;
+  onCardRevealed?: (id: number | string) => void;
+  onHoverPrefetchLrc?: (id: number) => void;
 }
 
-export const MySongsList = ({
-  songs,
-  activeId,
-  isPlaying,
-  isWaiting,
-  currentTime,
-  duration,
-  volume,
-  lyricsOpen,
-  karaokeMode,
-  currentLyricLine,
-  durationCache,
-  lrcCache = {},
-  onPlay,
-  onPlayPause,
-  onPrev,
-  onNext,
-  onSeek,
-  onVolumeChange,
-  setLyricsOpen,
-  setKaraokeMode,
-  onAmbientColorChange,
-}: MySongsListProps) => {
+export const MySongsList = (props: MySongsListProps) => {
+  const {
+    songs,
+    activeId,
+    isPlaying,
+    isWaiting,
+    currentTime,
+    duration,
+    volume,
+    lyricsOpen,
+    karaokeMode,
+    currentLyricLine,
+    durationCache,
+    lrcCache = {},
+    onPlay,
+    onPlayPause,
+    onPrev,
+    onNext,
+    onSeek,
+    onVolumeChange,
+    setLyricsOpen,
+    setKaraokeMode,
+    onAmbientColorChange,
+    onCardRevealed,
+    onHoverPrefetchLrc,
+  } = props;
+
   const currentSong = songs.find((s) => s.id === activeId) || null;
+
+  const forcedVisibleIds = useMemo(() => {
+    const s = new Set<number | string>();
+    if (activeId != null) s.add(activeId);
+    return s;
+  }, [activeId]);
+
+  const { observe, isRevealed } = useVirtualSongList({
+    rootMargin: '300px 0px 300px 0px',
+    initialVisibleCount: 6,
+    forcedVisibleIds,
+    onCardRevealed,
+  });
 
   return (
     <SongList
@@ -73,6 +94,9 @@ export const MySongsList = ({
       setKaraokeMode={setKaraokeMode}
       currentLyricLine={currentLyricLine}
       onAmbientColorChange={onAmbientColorChange}
+      observeCard={observe}
+      isCardRevealed={isRevealed}
+      onHoverPrefetchLrc={onHoverPrefetchLrc}
     />
   );
 };

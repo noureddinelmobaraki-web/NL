@@ -1,10 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ErrorData, Events } from 'hls.js';
 import { audioManager } from '../audio/audioManager';
-import { getOrCreateHls, getHlsClass } from '../audio/hlsPool';
+import { getOrCreateHls, getHlsClass, safeDetach } from '../audio/hlsPool';
 import { THEME_BG_MUSIC, ASSETS } from '../constants/assets';
-import { savePrefs } from '../utils/userPrefs';
+import { savePrefs, needsUserGesture } from '../utils/userPrefs';
 import type { Theme, AudioIntent } from '../utils/userPrefs';
+
+const useEffectEvent = <T extends (...a: any[]) => any>(fn: T): T => {
+  const ref = useRef(fn);
+  useEffect(() => {
+    ref.current = fn;
+  });
+  return useCallback(((...a) => ref.current(...a)) as T, []);
+};
 
 export interface UseAudioControllerProps {
   isLensGalleryOpen: boolean;
@@ -33,6 +41,8 @@ export function useAudioController({
   const currentBgUrlRef = useRef<string>('');
   const themeSwapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const themeSwapAbortRef = useRef<AbortController | null>(null);
+  const themeSwapBgPausedRef = useRef<boolean>(false);  // ← NEW
+  const themeSwapInFlightUrlRef = useRef<string | null>(null);  // ← NEW
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMeBitPlaying, setIsMeBitPlaying] = useState(false);
@@ -45,6 +55,7 @@ export function useAudioController({
     // Register immediately with AudioManager
     audioManager.register('bg', audio, 0.7);
     audioManager.setStateCallback((playing) => setIsPlaying(playing));
+    audioManager.armUserGestureResume(); // ← P01.6: prime iOS gesture path
 
     const initialResolved = theme === 'dark' ? 'dark'
       : theme === 'light' ? 'light'
@@ -119,6 +130,14 @@ export function useAudioController({
   }, []); // runs once on mount
 
   // ── Per-theme background music swap ──────────────────────────────
+  // Reads audioIntent / writes prefs WITHOUT entering the effect's deps.
+  const promoteIntentToPlaying = useEffectEvent(() => {
+    if (audioIntent !== 'user-playing') {
+      setAudioIntent('user-playing');
+      savePrefs({ audioIntent: 'user-playing' });
+    }
+  });
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -131,8 +150,17 @@ export function useAudioController({
 
     const newUrl = THEME_BG_MUSIC[resolved] ?? ASSETS.media.music;
 
-    // Skip on initial mount — handled by the audio init useEffect([])
-    if (!currentBgUrlRef.current || currentBgUrlRef.current === newUrl) return;
+    // ─── Robust dedup guard ──────────────────────────────────────────
+    // (a) Never run on initial mount (the init effect handles it).
+    if (!currentBgUrlRef.current) return;
+
+    // (b) URL didn't change — silent return.
+    if (currentBgUrlRef.current === newUrl) return;
+
+    // (c) An in-flight swap is already targeting this exact URL — skip.
+    if (themeSwapInFlightUrlRef.current === newUrl) return;
+
+    themeSwapInFlightUrlRef.current = newUrl;
 
     if (themeSwapTimerRef.current) {
       clearTimeout(themeSwapTimerRef.current);
@@ -142,34 +170,39 @@ export function useAudioController({
     const abort = new AbortController();
     themeSwapAbortRef.current = abort;
 
-    // 1. Fade out and pause current bg
+    // ▶ Mark that *this* effect is the owner of the bg-paused state.
     audioManager.pause('bg');
+    themeSwapBgPausedRef.current = true;
 
     const swapHls = async () => {
-      // 2. Detach old HLS instance (kept alive in pool)
+      const checkAbort = () => abort.signal.aborted;
+      const prevUrl = currentBgUrlRef.current;
+
+      // ─── Detach old HLS instance ──────────────────────────────────
       if (!audio.canPlayType('application/vnd.apple.mpegurl')) {
         const HlsClass = await getHlsClass();
-        if (abort.signal.aborted) return;
-        if (HlsClass.isSupported()) {
-          const oldHls = await getOrCreateHls(currentBgUrlRef.current);
-          if (abort.signal.aborted) return;
-          try { oldHls.detachMedia(); } catch {}
+        if (checkAbort()) return;
+        if (HlsClass.isSupported() && prevUrl) {
+          safeDetach(prevUrl);   // ← idempotent, no await needed
         }
       }
+      if (checkAbort()) return;
 
-      // 3. Update tracking ref
+      // ─── Commit new URL ───────────────────────────────────────────
       currentBgUrlRef.current = newUrl;
 
-      // 4. Attach new HLS instance
+      // ─── Attach new HLS instance ──────────────────────────────────
       if (audio.canPlayType('application/vnd.apple.mpegurl')) {
         audio.src = newUrl;
         audio.load();
       } else {
         const HlsClass = await getHlsClass();
-        if (abort.signal.aborted) return;
+        if (checkAbort()) { safeDetach(newUrl); return; }
         if (HlsClass.isSupported()) {
           const newHls = await getOrCreateHls(newUrl);
-          if (abort.signal.aborted) return;
+          // ▶ CRITICAL: between the two awaits the user may have switched again.
+          if (checkAbort()) { safeDetach(newUrl); return; }
+
           const errHandler = (_event: Events.ERROR, data: ErrorData) => {
             if (!data.fatal) return;
             if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) newHls.startLoad();
@@ -177,20 +210,27 @@ export function useAudioController({
           };
           newHls.on(HlsClass.Events.ERROR, errHandler);
           newHls.attachMedia(audio);
+
+          // ▶ If abort fires *during* attachMedia, undo it.
+          if (checkAbort()) {
+            try { newHls.off(HlsClass.Events.ERROR, errHandler); } catch {}
+            safeDetach(newUrl);
+            return;
+          }
         }
       }
-      if (abort.signal.aborted) return;
 
-      // 5. Re-register the same audio element with audioManager (url changed)
+      // ─── Re-register & schedule unmute ────────────────────────────
+      if (checkAbort()) return;
       audioManager.register('bg', audio, 0.7);
 
-      // 6. Play the background audio unconditionally when transitioning to any of the 6 modes/themes!
       themeSwapTimerRef.current = setTimeout(() => {
         themeSwapTimerRef.current = null;
-        if (abort.signal.aborted) return;
+        if (checkAbort()) return;
         audioManager.unpauseBg();
-        setAudioIntent('user-playing');
-        savePrefs({ audioIntent: 'user-playing' });
+        themeSwapBgPausedRef.current = false;
+        themeSwapInFlightUrlRef.current = null;  // ← NEW: clear flight marker
+        promoteIntentToPlaying();  // from Prompt G2
       }, 400);
     };
 
@@ -202,8 +242,15 @@ export function useAudioController({
         clearTimeout(themeSwapTimerRef.current);
         themeSwapTimerRef.current = null;
       }
+      if (themeSwapBgPausedRef.current) {
+        audioManager.unpauseBg();
+        themeSwapBgPausedRef.current = false;
+      }
+      themeSwapInFlightUrlRef.current = null;
+      // ▶ Final safety net: clear any leftover suppressors tagged 'theme-swap'.
+      audioManager.forceReleaseBg('theme-swap');
     };
-  }, [theme, audioIntent]);
+  }, [theme]);
   // ─────────────────────────────────────────────────────────────────
 
   // Lens suppression (isLensGalleryOpen effect)
@@ -230,10 +277,15 @@ export function useAudioController({
     const audio = audioRef.current;
 
     if (audioIntent === 'user-playing') {
-      audioManager.unpauseBg();
-      return;
+      if (needsUserGesture()) {
+        // Defer until first interaction — same listener as 'initial' branch.
+        // Fall through to the gesture wait block below.
+      } else {
+        audioManager.unpauseBg();
+        return;
+      }
     }
-    if (audioIntent !== 'initial') return;
+    if (audioIntent !== 'initial' && !(audioIntent === 'user-playing' && needsUserGesture())) return;
 
     let active = true;
     const onInteraction = () => {
@@ -254,6 +306,44 @@ export function useAudioController({
       window.removeEventListener('scroll', onInteraction);
     };
   }, [audioIntent, loaded, setAudioIntent]);
+
+  // ── Visibility / pageshow recovery (iOS Safari 18 quirks) ────────
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const trigger = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        if (document.visibilityState !== 'visible') return;
+        // Primary: use hardened recoverAudio() from audioManager.
+        if (typeof (audioManager as any).recoverAudio === 'function') {
+          (audioManager as any).recoverAudio();
+        } else {
+          // Fallback: best-effort resume.
+          if (!audioManager.isSourceActive('song') && !audioManager.isSourceActive('lens') && !audioManager.isSourceActive('mebit')) {
+            audioManager.unpauseBg();
+          }
+        }
+      }, 250);
+    };
+
+    const onVisibility = () => trigger();
+    const onPageShow = (e: PageTransitionEvent) => {
+      // bfcache restore — always retry.
+      if (e.persisted) trigger();
+      else trigger();
+    };
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pageshow', onPageShow);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, []);
 
   const toggleAudio = useCallback(() => {
     if (!audioRef.current) return;

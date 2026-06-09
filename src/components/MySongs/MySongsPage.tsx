@@ -8,6 +8,7 @@ import { ActiveSong } from '../../types';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useMySongsState } from './hooks/useMySongsState';
 import { useMySongsPlayback } from './hooks/useMySongsPlayback';
+import { useLrcHoverPreload } from './hooks/useLrcHoverPreload';
 import { MySongsList } from './MySongsList';
 import {
   SUBTITLE_STYLE_DESKTOP,
@@ -49,7 +50,21 @@ export const MySongs = ({
 
   const { setContext } = useButtonContext();
   
-  const state = useMySongsState({ onAmbientColorChange });
+  const [visibleIds, setVisibleIds] = useState<Set<number | string>>(() => new Set());
+  
+  const state = useMySongsState({ onAmbientColorChange, visibleIds });
+
+  const { prefetchLrc } = useLrcHoverPreload(state.songs);
+
+  const handleCardRevealed = useCallback((id: number | string) => {
+    setVisibleIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    prefetchLrc(Number(id));
+  }, [prefetchLrc]);
 
   const playback = useMySongsPlayback({
     songs: state.songs,
@@ -325,6 +340,8 @@ export const MySongs = ({
           setKaraokeMode={state.setKaraokeMode}
           currentLyricLine={playback.currentLyricLine}
           onAmbientColorChange={(color) => onAmbientColorChange?.(`rgb(${color})`)}
+          onCardRevealed={handleCardRevealed}
+          onHoverPrefetchLrc={prefetchLrc}
         />
         </>
         )}

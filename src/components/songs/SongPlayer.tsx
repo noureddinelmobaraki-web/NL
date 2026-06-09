@@ -38,6 +38,21 @@ export function useSongPlayer({
   const [duration, setDuration] = useState(0);
   const [audioStatus, setAudioStatus] = useState<AudioStatus>('idle');
 
+  // Refs for Media Session callbacks — updated each render, registered once
+  const onPlayRef = useRef(onPlay);
+  const onPauseRef = useRef(onPause);
+  const onNextRef = useRef(onNext);
+  const onPrevRef = useRef(onPrev);
+  useEffect(() => { onPlayRef.current = onPlay; }, [onPlay]);
+  useEffect(() => { onPauseRef.current = onPause; }, [onPause]);
+  useEffect(() => { onNextRef.current = onNext; }, [onNext]);
+  useEffect(() => { onPrevRef.current = onPrev; }, [onPrev]);
+
+  const onSongEndRef = useRef(onSongEnd);
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  useEffect(() => { onSongEndRef.current = onSongEnd; }, [onSongEnd]);
+  useEffect(() => { onTimeUpdateRef.current = onTimeUpdate; }, [onTimeUpdate]);
+
   const isPlaying = audioStatus === 'playing';
 
   // HLS audio effect
@@ -57,7 +72,7 @@ export function useSongPlayer({
     }
   });
 
-  // Timeupdate & progress tracking event listeners
+  // ─── Effect 1: Audio element events (deps minimal) ──────────────────────
   useEffect(() => {
     const audio = audioTagRef.current;
     if (!audio) return;
@@ -68,28 +83,29 @@ export function useSongPlayer({
       playing: () => {
         setAudioStatus('playing');
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-        onPlay();
+        onPlayRef.current();
       },
       pause: () => {
         setAudioStatus('paused');
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-        onPause();
+        onPauseRef.current();
       },
       ended: () => {
         setAudioStatus('ended');
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
-        onSongEnd();
+        audioManager.onSongEnd();
+        onSongEndRef.current();
       },
       loadedmetadata: () => setDuration(audio.duration),
       timeupdate: () => {
         setCurrentTime(audio.currentTime);
         setDuration(audio.duration || 0);
-        onTimeUpdate(audio.currentTime);
+        onTimeUpdateRef.current(audio.currentTime);
       },
       error: (e: any) => {
-        console.error("Audio Load Error:", e);
+        console.error('Audio Load Error:', e);
         setAudioStatus('idle');
-      }
+      },
     };
 
     audio.addEventListener('loadstart', handlers.loadstart);
@@ -101,42 +117,6 @@ export function useSongPlayer({
     audio.addEventListener('timeupdate', handlers.timeupdate);
     audio.addEventListener('error', handlers.error);
 
-    // Media Session Integration for Background Playback
-    if ('mediaSession' in navigator && currentSong) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentSong.title,
-        artist: 'NL — Noureddin El Mobaraki',
-        album: (currentSong as any).album || 'NL Archive',
-        artwork: [
-          {
-            src: (currentSong as any).coverUrl || currentSong.cover || 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp',
-            sizes: '512x512',
-            type: 'image/webp'
-          }
-        ]
-      });
-
-      navigator.mediaSession.setActionHandler('play', () => {
-        audioManager.play('song').catch(() => {});
-        onPlay();
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        audioManager.pause('song');
-        onPause();
-      });
-      if (onNext) {
-        navigator.mediaSession.setActionHandler('nexttrack', () => onNext());
-      }
-      if (onPrev) {
-        navigator.mediaSession.setActionHandler('previoustrack', () => onPrev());
-      }
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime != null) {
-          audio.currentTime = details.seekTime;
-        }
-      });
-    }
-
     return () => {
       audio.removeEventListener('loadstart', handlers.loadstart);
       audio.removeEventListener('waiting', handlers.waiting);
@@ -146,18 +126,87 @@ export function useSongPlayer({
       audio.removeEventListener('loadedmetadata', handlers.loadedmetadata);
       audio.removeEventListener('timeupdate', handlers.timeupdate);
       audio.removeEventListener('error', handlers.error);
+    };
+    // deps تشتمل على currentSong لضمان ربط الأحداث عند التحميل أو تبديل الأغنية
+  }, [currentSong]);
 
-      if ('mediaSession' in navigator) {
-        try {
-          navigator.mediaSession.setActionHandler('play', null);
-          navigator.mediaSession.setActionHandler('pause', null);
-          navigator.mediaSession.setActionHandler('nexttrack', null);
-          navigator.mediaSession.setActionHandler('previoustrack', null);
-          navigator.mediaSession.setActionHandler('seekto', null);
-        } catch {}
+  // ─── Effect 2: Media Session metadata ONLY (refreshes per song) ─────────
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentSong) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.title,
+      artist: 'NL — Noureddin El Mobaraki',
+      album: (currentSong as any).album || 'NL Archive',
+      artwork: [{
+        src: (currentSong as any).coverUrl || currentSong.cover ||
+             'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp',
+        sizes: '512x512',
+        type: 'image/webp',
+      }],
+    });
+  }, [currentSong]);
+
+  // ─── Effect 3: Media Session action handlers (REGISTERED ONCE) ──────────
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    const ms = navigator.mediaSession;
+
+    const playHandler = () => {
+      audioManager.play('song').catch(() => {});
+      onPlayRef.current();
+    };
+    const pauseHandler = () => {
+      audioManager.pause('song');
+      onPauseRef.current();
+    };
+    const nextHandler = () => onNextRef.current?.();
+    const prevHandler = () => onPrevRef.current?.();
+    const seekHandler = (details: MediaSessionActionDetails) => {
+      const audio = audioTagRef.current;
+      if (audio && details.seekTime != null) {
+        audio.currentTime = details.seekTime;
       }
     };
-  }, [currentSong, onPlay, onPause, onSongEnd, onTimeUpdate, onNext, onPrev]);
+
+    ms.setActionHandler('play', playHandler);
+    ms.setActionHandler('pause', pauseHandler);
+    ms.setActionHandler('nexttrack', nextHandler);
+    ms.setActionHandler('previoustrack', prevHandler);
+    ms.setActionHandler('seekto', seekHandler);
+
+    return () => {
+      try {
+        ms.setActionHandler('play', null);
+        ms.setActionHandler('pause', null);
+        ms.setActionHandler('nexttrack', null);
+        ms.setActionHandler('previoustrack', null);
+        ms.setActionHandler('seekto', null);
+      } catch {}
+    };
+    // ❗ deps فارغة — لا re-register أبداً خلال life-cycle الكومبوننت
+  }, []);
+
+  // ─── Hard cleanup on unmount ────────────────────────────────────────────
+  useEffect(() => {
+    const audio = audioTagRef.current;
+    return () => {
+      // 1) إيقاف فوري لأي playback نشط
+      if (audio) {
+        try {
+          audio.pause();
+          // لا نمسح src هنا — useHlsAudio يتكفّل بذلك عبر detach
+        } catch {}
+      }
+      // 2) تحرير bg-suppressor إن كان موجوداً (الإصلاح الحرج)
+      try {
+        audioManager.stop('song');           // يستدعي releaseBg('active_song') داخلياً
+        audioManager.releaseBg('active_song'); // safety net — مزدوج متعمَّد
+      } catch (err) {
+        console.warn('[SongPlayer] cleanup error:', err);
+      }
+    };
+    // run مرة واحدة فقط عند unmount
+  }, []);
 
   const toggleLockRef = useRef(false);
   const handlePlayPause = useCallback(() => {

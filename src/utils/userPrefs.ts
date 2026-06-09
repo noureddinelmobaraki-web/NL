@@ -71,3 +71,24 @@ export function savePrefs(patch: Partial<NLPrefs>): void {
 export function clearPrefs(): void {
   try { localStorage.removeItem(PREFS_KEY); } catch {}
 }
+
+/**
+ * Derived helper: does the user need to perform a gesture before audio can play?
+ * Returns true if browser autoplay policy will likely block play(),
+ * AND the saved intent is 'user-playing' (so we need to wait for a click).
+ *
+ * Browsers grant "autoplay permission" after the first user interaction in
+ * the session OR if media-engagement-index is high. This helper is best-effort.
+ */
+export function needsUserGesture(): boolean {
+  try {
+    const prefs = loadPrefs();
+    if (prefs.audioIntent !== 'user-playing') return false;
+    // hasInteracted is persisted across sessions (visit count > 1 = trusted).
+    if (prefs.hasInteracted && prefs.visitCount > 1) return false;
+    return true;
+  } catch {
+    return true;
+  }
+}
+

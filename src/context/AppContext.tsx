@@ -25,9 +25,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const initialPrefs = loadPrefs();
   
   const [theme, setTheme] = useState<Theme>(initialPrefs.theme);
-  const [audioIntent, setAudioIntent] = useState<AudioIntent>(
-    initialPrefs.audioIntent === 'user-playing' ? 'initial' : initialPrefs.audioIntent
-  );
+  // FIX: respect user's prior choice. The 'needsUserGesture' flag is what
+  // guards autoplay — see useAudioController's audioIntent+loaded effect.
+  const [audioIntent, setAudioIntent] = useState<AudioIntent>(initialPrefs.audioIntent);
   const [ambientColor, setAmbientColor] = useState<string | null>(null);
   const [activeSong, setActiveSong] = useState<ActiveSong | null>(null);
   const isAutomatedCtx = isAutomatedEnv();

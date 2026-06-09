@@ -65,3 +65,14 @@ export function destroyAllHls(): void {
   pool.forEach(hls => hls.destroy());
   pool.clear();
 }
+
+/**
+ * Safely detach an Hls instance from any media element it may be attached to.
+ * Idempotent: calling on an already-detached instance is a no-op.
+ * Does NOT destroy the instance — it stays in the pool for reuse.
+ */
+export function safeDetach(url: string): void {
+  const hls = pool.get(url);
+  if (!hls) return;
+  try { hls.detachMedia(); } catch { /* already detached or destroyed */ }
+}
