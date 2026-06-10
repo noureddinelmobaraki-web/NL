@@ -25,7 +25,9 @@ export const LyricsDisplay = ({
   onSeek,
 }: LyricsDisplayProps) => {
   const [lyricsState, setLyricsState] = useState<LyricsState>({ status: 'idle' });
-  const lyrics = lyricsState.status === 'ready' ? lyricsState.lines : [];
+  const lyrics = useMemo(() => {
+    return lyricsState.status === 'ready' ? lyricsState.lines : [];
+  }, [lyricsState]);
 
   useEffect(() => {
     if (!song || !song.lrc) {

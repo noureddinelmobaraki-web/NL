@@ -58,7 +58,7 @@ export const NowPlayingBarDesktop = ({
 }: NowPlayingBarDesktopProps) => {
   return (
     <>
-      <div className="flex items-center gap-3 w-full h-16 shrink-0">
+      <div className="now-playing-bar mid-player flex items-center gap-3 w-full h-16 shrink-0">
         {/* Left: Cover Art */}
         <div className="relative w-11 h-11 shrink-0">
           <div 
@@ -185,7 +185,8 @@ export const NowPlayingBarDesktop = ({
                 }
               }}
               style={{ 
-                background: `linear-gradient(to right, var(--text-primary) ${progress}%, rgba(255,255,255,0.1) ${progress}%)`
+                background: `linear-gradient(to right, var(--text-primary) ${progress}%, rgba(255,255,255,0.1) ${progress}%)`,
+                ['--seek-progress' as any]: `${progress}%`
               }}
               className="seek-bar w-full h-1.5 appearance-none cursor-pointer rounded-[3px] outline-none accent-[var(--accent-indigo)]"
             />

@@ -1,4 +1,4 @@
-const VERSION = 'nogit-mq60mflh';
+const VERSION = 'nogit-mq8dap79';
 const CACHE_SHELL = `nl-shell-${VERSION}`;
 const CACHE_IMAGES = `nl-images-${VERSION}`;
 const CACHE_HLS = `nl-hls-${VERSION}`;
@@ -331,7 +331,10 @@ self.addEventListener('fetch', (event) => {
         const fetchPromise = fetch(event.request).then(response => {
           if (response.ok) cache.put(event.request, response.clone());
           return response;
-        }).catch(() => cached || new Response('{}', { status: 503 }));
+        }).catch(() => cached || new Response('[]', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
         return cached || fetchPromise;
       })()
     );
@@ -353,17 +356,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 6. App Shell (JS/CSS/HTML)
+  // 6. App Shell (JS/CSS/HTML) — network-first so redeploys self-heal,
+  //    and NEVER cache a non-OK (e.g. 404) response.
   if (sameOrigin && (/\.(js|css|html)$/.test(url.pathname) || url.pathname === '/NL/')) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE_SHELL);
-        const cached = await cache.match(event.request);
-        const fetchPromise = fetch(event.request).then(response => {
-          cache.put(event.request, response.clone());
+        try {
+          const response = await fetch(event.request);
+          if (response && response.ok) {
+            cache.put(event.request, response.clone());
+          }
           return response;
-        });
-        return cached || fetchPromise;
+        } catch (err) {
+          const cached = await cache.match(event.request);
+          if (cached) return cached;
+          throw err;
+        }
       })()
     );
     return;

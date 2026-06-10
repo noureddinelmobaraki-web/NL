@@ -1,0 +1,122 @@
+/* ===== Glass Mode Switcher — فقاعة زجاجية حيّة، كل الأوضاع، أعلى-اليمين ===== */
+/* الحاوية المثبّتة (anchor) لا تتحرّك ولا تتحوّل: مرجع ثابت للتموضع والقياس. */
+.glass-switcher-anchor{
+  position:fixed;
+  top:max(16px, env(safe-area-inset-top));
+  right:max(16px, env(safe-area-inset-right));
+  z-index:2147483600;            /* فوق كل الطبقات والمعارض */
+  pointer-events:none;            /* التفاعل على السطح الداخلي فقط */
+}
+
+/* السطح = الفقاعة نفسها التي تتحوّل (morph) بين الحالات */
+.glass-switcher{
+  pointer-events:auto;
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  isolation:isolate; overflow:hidden;
+  border-radius:30px;
+  background:linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid rgba(255,255,255,0.35);
+  box-shadow:
+    0 10px 34px rgba(0,0,0,0.28),
+    0 2px 8px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 -8px 18px rgba(255,255,255,0.06),
+    0 0 var(--gs-glow, 18px) rgba(139,148,255,0.55),
+    0 0 calc(var(--gs-glow, 18px) * 2) rgba(255,140,66,0.35);
+  cursor:pointer;
+  will-change:transform, width, height, border-radius, box-shadow;
+  animation:gs-breathe 3.6s ease-in-out infinite;
+}
+
+/* ── الحالات الثلاث ── */
+.glass-switcher[data-state="dot"]{ width:18px; height:18px; border-radius:50%; }
+.glass-switcher[data-state="orb"]{ width:58px; height:58px; border-radius:50%; }
+.glass-switcher[data-state="open"]{
+  width:min(86vw, 360px); border-radius:26px; padding:10px; cursor:default;
+}
+.glass-switcher.is-mobile[data-state="open"]{ width:min(92vw, 320px); }
+
+/* ── طبقة الدخان اللوني المتحرّك (smoke / fluid) ── */
+.glass-switcher__smoke{
+  position:absolute; inset:-30%; z-index:-2; border-radius:inherit; pointer-events:none;
+  background:
+    radial-gradient(40% 40% at 30% 30%, rgba(255,140,66,0.55), transparent 70%),
+    radial-gradient(45% 45% at 70% 40%, rgba(139,148,255,0.55), transparent 70%),
+    radial-gradient(50% 50% at 50% 75%, rgba(70,224,192,0.45), transparent 70%),
+    radial-gradient(40% 40% at 60% 60%, rgba(255,111,174,0.45), transparent 70%);
+  filter:blur(14px) saturate(160%);
+  mix-blend-mode:screen;
+  opacity:.65;
+  animation:gs-smoke 14s ease-in-out infinite alternate;
+}
+@keyframes gs-smoke{
+  0%{ transform:translate3d(-6%,-4%,0) rotate(0deg) scale(1.05); }
+  50%{ transform:translate3d(6%,5%,0) rotate(180deg) scale(1.2); }
+  100%{ transform:translate3d(-4%,6%,0) rotate(360deg) scale(1.08); }
+}
+
+/* ── لمعة علوية زجاجية ── */
+.glass-switcher__sheen{
+  position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0) 45%);
+  opacity:.7;
+}
+
+@keyframes gs-breathe{
+  0%,100%{ --gs-glow:14px; }
+  50%{ --gs-glow:30px; }
+}
+@property --gs-glow{ syntax:"<length>"; inherits:false; initial-value:18px; }
+
+.glass-switcher[data-state="dot"]{
+  animation:gs-breathe 2.4s ease-in-out infinite;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    0 0 var(--gs-glow, 18px) rgba(139,148,255,0.8),
+    0 0 calc(var(--gs-glow, 18px) * 2) rgba(255,140,66,0.6);
+}
+
+/* ── شبكة الأزرار: خلايا متساوية تماماً ── */
+.glass-switcher__grid{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:8px; width:100%;
+}
+.glass-switcher.is-mobile .glass-switcher__grid{ grid-template-columns:repeat(2, 1fr); }
+
+.gs-cell{
+  display:flex; align-items:center; justify-content:center;
+  height:44px; min-width:0; padding:0 6px; border-radius:14px;
+  font:600 12px/1 -apple-system,"SF Pro Text",system-ui,sans-serif;
+  color:#10131c; text-align:center; white-space:nowrap;
+  border:1px solid rgba(255,255,255,0.4);
+  background:rgba(255,255,255,0.42);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);
+  cursor:pointer; transition:transform .18s, background .18s, box-shadow .18s;
+}
+.gs-cell:hover{ transform:translateY(-1px); background:rgba(255,255,255,0.62); }
+.gs-cell.is-active{
+  background:linear-gradient(135deg,#FFB066,#FF8C42); color:#1a1004;
+  box-shadow:0 4px 14px rgba(255,140,66,.45), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.gs-exit{ color:#b00020; }
+
+/* ── ضمان الأولوية القصوى في كل الأوضاع بما فيها retro ── */
+body.retro-active .glass-switcher-anchor{ z-index:2147483600 !important; }
+
+/* ── fallback لمتصفّحات بلا backdrop-filter ── */
+@supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){
+  .glass-switcher{ background:rgba(245,247,255,0.92); }
+  .gs-cell{ background:rgba(245,247,255,0.96); }
+}
+
+/* ── احترام prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce){
+  .glass-switcher,
+  .glass-switcher[data-state="dot"],
+  .glass-switcher__smoke{ animation:none; }
+}

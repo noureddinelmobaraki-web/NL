@@ -1,5 +1,6 @@
 import { useEffect, useRef, useSyncExternalStore, useCallback } from 'react';
 import { audioManager } from '../audio/audioManager';
+import { ensureAutoplay } from '../audio/ensureAutoplay';
 
 type AudioSource = 'bg' | 'song' | 'lens' | 'video' | 'mebit';
 
@@ -36,6 +37,7 @@ export function useSectionAudio({
 
   // Register on mount
   useEffect(() => {
+    let cleanupAutoplay: (() => void) | undefined;
     if (!audioRef.current && url) {
       const audio = new Audio(url);
       audio.crossOrigin = 'anonymous';
@@ -45,10 +47,13 @@ export function useSectionAudio({
       audioRef.current = audio;
       audioManager.register(source, audio, volume);
       if (autoplay) {
-        audioManager.play(source).catch(() => {});
+        cleanupAutoplay = ensureAutoplay(source);
       }
     }
     return () => {
+      if (cleanupAutoplay) {
+        cleanupAutoplay();
+      }
       if (audioRef.current) {
         audioManager.stop(source);
         audioRef.current = null;

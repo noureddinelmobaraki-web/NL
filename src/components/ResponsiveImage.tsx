@@ -46,28 +46,21 @@ function loadLqipManifest(): Promise<Record<string, string>> {
 
 /**
  * Normalize image URLs for GitHub Pages deployments with a base path (e.g. /NL/).
- * - If src is an absolute path like "/images/x.webp", convert to "{BASE_URL}images/x.webp"
- * - Keep fully-qualified URLs (http/https) as-is
- * - Keep relative paths as-is
  */
 function resolveImageSrc(src: string): string {
   const base = import.meta.env.BASE_URL || '/';
-
-  // External URLs
   if (/^https?:\/\//i.test(src)) return src;
-
-  // Absolute path should respect BASE_URL (GitHub Pages subpath)
   if (src.startsWith('/')) {
     const normalizedBase = base.endsWith('/') ? base : base + '/';
     return normalizedBase + src.slice(1);
   }
-
   return src;
 }
 
 /**
- * ResponsiveImage component that utilizes <picture> for multi-format and responsive delivery.
- * Assumes that optimized assets are generated at build time with filename convention: [name]-[width].[format]
+ * ResponsiveImage — <picture> بصيغة webp فقط.
+ * مهم: لا نُخرج أي <source type="image/avif"> لأن نسخ AVIF غير موجودة على الـ CDN،
+ * وإخراجها يُجبر المتصفّح على رابط 404 ثم يُخفي الصورة. كذلك لا نُخفي الصورة عند أي خطأ.
  */
 export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   src,
@@ -90,7 +83,6 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
 
   const [lqip, setLqip] = useState<string | undefined>(dataLqip);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
 
   // Skip LQIP for eager/high-priority images (LCP candidates like profile photo)
   const isLcpImage = resolvedLoading === 'eager' || resolvedFetchPriority === 'high';
@@ -110,34 +102,25 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
 
   const hasLqip = !!lqip;
 
-  // إيلا فشلت الصورة: تجاهلها كليًا (ما نعرضو والو) — نعرضو فقط الصور الموجودة.
-  if (hasError) return null;
-
   const imgProps = {
     src: finalSrc,
     alt,
     width,
     height,
     loading: resolvedLoading,
-    // @ts-ignore
+    // @ts-ignore - fetchPriority is a valid HTML attribute but not yet in React DOM typings
     fetchPriority: resolvedFetchPriority,
     decoding: resolvedDecoding,
-    onError: () => setHasError(true),
     referrerPolicy: 'no-referrer' as const,
     crossOrigin: finalSrc.startsWith('http') ? 'anonymous' as const : undefined,
     onContextMenu,
     draggable,
   };
 
+  // webp فقط — لا AVIF.
   const renderSources = () => {
     if (finalSrc.endsWith('.webp')) {
-      const avifSrc = finalSrc.replace(/\.webp$/, '.avif');
-      return (
-        <>
-          <source type="image/avif" srcSet={avifSrc} />
-          <source type="image/webp" srcSet={finalSrc} />
-        </>
-      );
+      return <source type="image/webp" srcSet={finalSrc} />;
     }
     return null;
   };

@@ -152,17 +152,19 @@ export const MySongs = ({
     };
   }, [isMoodTransitioning, isMoodActive]);
 
+  const { lyricsOpen, setLyricsOpen } = state;
+
   // Accessibility: Close lyrics bottom sheet on Escape press
   useEffect(() => {
-    if (!state.lyricsOpen) return;
+    if (!lyricsOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        state.setLyricsOpen(false);
+        setLyricsOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.lyricsOpen, state.setLyricsOpen]);
+  }, [lyricsOpen, setLyricsOpen]);
 
   return (
     <section

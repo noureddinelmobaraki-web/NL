@@ -39,8 +39,13 @@ body.lens-immersive {
     gap: 24px !important;
   }
   .hero-profile-image {
-    max-width: 200px !important;
-    width: 100% !important;
+    max-width: 302.194px !important;
+    width: 302.194px !important;
+    height: 302.194px !important;
+    padding-top: -2px !important;
+    padding-bottom: -3px !important;
+    margin-left: 0px !important;
+    margin-top: 48px !important;
     position: relative;
   }
   /* Glow halo behind profile image */

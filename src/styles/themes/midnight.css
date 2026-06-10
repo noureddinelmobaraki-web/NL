@@ -3,9 +3,9 @@
   --bg-page: #080a14;
   --bg-page-rgb: 8, 10, 20;
   --bg-elevated: #161929;
-  --bg-overlay: rgba(16, 18, 32, 0.88);
-  --bg-glass: rgba(100, 110, 180, 0.04);
-  --bg-glass-strong: rgba(120, 130, 200, 0.12);
+  --bg-overlay: rgba(16, 18, 32, 0.55);
+  --bg-glass: rgba(100, 110, 180, 0.15);
+  --bg-glass-strong: rgba(120, 130, 200, 0.25);
 
   /* Text */
   --text-primary: #e8eaf6;
@@ -64,13 +64,13 @@
   --hero-card-border: 4px solid var(--ink-color);
   --hero-card-shadow: none;
   --hero-bg-image-url: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp');
-  --hero-bg-filter: blur(3px);
+  --hero-bg-filter: blur(0px) brightness(0.7);
   --hero-bg-opacity: 1;
   --hero-bg-blend: normal;
-  --hero-overlay-bg: rgba(8,10,20,0.4);
+  --hero-overlay-bg: linear-gradient(180deg, rgba(8,10,20,0.2) 0%, rgba(8,10,20,0.75) 100%);
 
   --hero-title-font: var(--font-manga);
-  --hero-title-weight: 900;
+  --hero-title-weight: 800;
   --hero-title-color: var(--text-primary);
   --hero-title-size: clamp(2rem, 6vw, 5rem);
   --hero-title-shadow: 2px 2px 0px var(--manga-shadow-color);
@@ -86,17 +86,17 @@
   --hero-loc-weight: bold;
   --hero-loc-shadow: 2px 2px 0px var(--manga-shadow-color);
   --hero-loc-prefix: "";
-  --hero-loc-suffix: " 📍";
+  --hero-loc-suffix: "";
 
   --hero-alias-bg: var(--ink-color);
-  --hero-alias-border: 1px solid var(--border-subtle);
+  --hero-alias-border: 1px solid var(--glass-border, rgba(160,178,255,0.18));
   --hero-alias-color: var(--text-inverse);
   --hero-alias-size: 0.875rem;
   --hero-alias-tracking: normal;
   --hero-alias-transform: none;
   --hero-alias-font: var(--font-manga);
   --hero-alias-deco: none;
-  --hero-alias-padding: 0.25rem 0.75rem;
+  --hero-alias-padding: 0.35rem 0.9rem;
 
   --hero-bio-font: var(--font-hand);
   --hero-bio-size: 1.5rem;
@@ -105,7 +105,7 @@
   --hero-bio-style: normal;
 
   --hero-profile-width: 12rem;
-  --hero-profile-border: 3px solid var(--ink-color);
+  --hero-profile-border: 2px solid rgba(255,255,255,0.2);
   --hero-profile-shadow: none;
   --hero-profile-transform: rotate(2deg);
   --hero-profile-hover-transform: rotate(0deg);
@@ -141,4 +141,77 @@
   --highlights-shadow-color: rgba(100, 120, 220, 0.5);
   --highlights-vault-radius: 12px 5px 18px 8px / 8px 18px 5px 12px;
   --highlights-yt-radius: 5px 15px 8px 20px / 15px 8px 20px 5px;
+
+  /* === NEUMORPH+GLASS OVERRIDE (midnight) === */
+  --ink-color: rgba(150,170,255,0.18);
+  --manga-shadow-color: rgba(0,0,0,0.0);
+  --manga-shadow: none;
+
+  --hero-card-border: none;
+  --hero-title-shadow: none;
+  --hero-loc-shadow: none;
+  --hero-title-transform: none;
+  --hero-profile-transform: none;
+  --hero-profile-hover-transform: none;
+  --hero-alias-bg: rgba(255,255,255,0.06);
+  --hero-alias-color: var(--text-primary);
+  --social-card-rotate: 0deg;
+  --social-card-radius: 22px;
+  --highlights-vault-radius: 22px;
+  --highlights-yt-radius: 22px;
 }
+
+[data-theme="midnight"] body::before{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(60% 40% at 18% 12%, rgba(139,148,255,0.22), transparent 60%),
+    radial-gradient(50% 38% at 85% 20%, rgba(255,140,66,0.16), transparent 60%),
+    radial-gradient(70% 50% at 50% 100%, rgba(70,224,192,0.12), transparent 60%),
+    linear-gradient(180deg, #070a14, #0b1024);
+}
+
+/* === v12: APPLE GLASS FONT + VAR OVERRIDES (midnight only) === */
+[data-theme="midnight"] {
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+
+  /* اقتل خطوط المانغا/اليد في كل العناصر التي تستهلكها تحت الميدنايت */
+  --font-manga: var(--font-ui);
+  --font-hand: var(--font-ui);
+
+  /* عناوين الهيرو */
+  --hero-title-font: var(--font-ui);
+  --hero-loc-font: var(--font-ui);
+  --hero-alias-font: var(--font-ui);
+  --hero-bio-font: var(--font-ui);
+  --hero-title-weight: 700;
+  --hero-title-transform: none;
+  --hero-alias-transform: none;
+  --hero-title-shadow: none;
+  --hero-loc-shadow: none;
+  --hero-bio-shadow: none;
+  --hero-bio-filter: none;
+  --hero-card-border: none;
+  --hero-card-shadow: none;
+  --hero-profile-transform: none;
+  --hero-profile-hover-transform: none;
+
+  /* لا ظلال مانغا، لا حواف ممزقة */
+  --manga-shadow: none;
+  --manga-shadow-color: rgba(0,0,0,0);
+  --ink-color: rgba(180,196,255,0.16);
+  --social-card-rotate: 0deg;
+  --social-card-radius: 22px;
+  --highlights-vault-radius: 22px;
+  --highlights-yt-radius: 22px;
+
+  /* متغيّرات تستهلكها حاوية المشغّل (inline) — نجعلها زجاجية */
+  --bg-glass-strong: rgba(34, 42, 78, 0.55);
+  --border-strong: rgba(195, 208, 255, 0.28);
+  --border-subtle: rgba(170, 184, 255, 0.16);
+
+  /* ألوان الكلمات (كاريوكي) — برتقالي Euphoria */
+  --lyric-active-color: #FF8C42;
+  --lyric-active-shadow: rgba(255, 140, 66, 0.65);
+  --lyric-inactive-color: rgba(200, 210, 240, 0.42);
+}
+

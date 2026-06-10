@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
-import { X, ChevronLeft, Volume2, VolumeX } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { useTouchGestures } from '../../hooks/useTouchGestures';
+import { useGalleryThemeSkin } from '../../hooks/useGalleryThemeSkin';
+import { motion } from 'framer-motion';
 
 interface MobileMeBitViewProps {
   images: string[];
@@ -15,8 +17,6 @@ interface MobileMeBitViewProps {
   onToggleAudio: () => void;
 }
 
-const TOUCH_BTN_SIZE = 44;
-
 export const MeBitMobileView = ({
   images,
   selectedIndex,
@@ -29,17 +29,46 @@ export const MeBitMobileView = ({
   isMeBitPlaying,
   onToggleAudio,
 }: MobileMeBitViewProps) => {
+  const skin = useGalleryThemeSkin();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [chromeVisible, setChromeVisible] = useState(true);
 
-  // Reset zoom whenever active image changes or mode transitions
+  // Reset zoom whenever image changes or mode transitions
   useEffect(() => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
   }, [selectedIndex, mode]);
 
-  // Handle drag/pan when zoomed in
+  // Synchronize CSS scroll snap container when selectedIndex changes
+  useEffect(() => {
+    if (mode === 'view' && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const targetLeft = selectedIndex * container.clientWidth;
+      if (Math.abs(container.scrollLeft - targetLeft) > 10) {
+        container.scrollTo({ left: targetLeft, behavior: 'auto' });
+      }
+    }
+  }, [selectedIndex, mode]);
+
+  // Handle snapping in iOS momentum Scroll Snap
+  const handleScroll = () => {
+    if (mode !== 'view' || !scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+    if (container.clientWidth === 0) return;
+    const currentScrollIndex = Math.round(container.scrollLeft / container.clientWidth);
+    if (currentScrollIndex >= 0 && currentScrollIndex < images.length && currentScrollIndex !== selectedIndex) {
+      if (currentScrollIndex > selectedIndex) {
+        onNext();
+      } else {
+        onPrev();
+      }
+    }
+  };
+
+  // Handle zoom dragging
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -48,7 +77,7 @@ export const MeBitMobileView = ({
     }
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const handlePointerImgMove = (e: React.PointerEvent) => {
     if (zoom > 1 && lastTouchRef.current) {
       const dx = e.clientX - lastTouchRef.current.x;
       const dy = e.clientY - lastTouchRef.current.y;
@@ -99,129 +128,56 @@ export const MeBitMobileView = ({
     threshold: 50,
   });
 
+  const toggleChrome = (_e: React.MouseEvent) => {
+    if (zoom > 1) return;
+    setChromeVisible(prev => !prev);
+  };
+
   // ── Grid mode ────────────────────────────────────────────
   if (mode === 'grid') {
     return (
-      <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000', overflow: 'hidden' }}>
-        {/* Fixed Top bar for Grid Mode */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            paddingTop: 'calc(env(safe-area-inset-top) + 8px)',
-            paddingBottom: 12,
-            paddingLeft: 16,
-            paddingRight: 16,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0))',
-            zIndex: 10,
-          }}
-        >
-          <span style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
-            ME bit
-          </span>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Audio Toggle Button */}
+      <div className="mobile-gallery-root transition-all duration-300" data-gallery-skin={skin}>
+        {/* Glass Header for Grid Mode */}
+        <div className="ios-chrome-bar">
+          <span className="text-white text-lg font-bold tracking-tight">ME bit</span>
+          <div className="flex items-center gap-2">
             <button
-              onClick={onToggleAudio}
+              onClick={(e) => { e.stopPropagation(); onToggleAudio(); }}
+              className="ios-btn"
               aria-label={isMeBitPlaying ? 'إيقاف الموسيقى' : 'تشغيل الموسيقى'}
-              style={{
-                width: TOUCH_BTN_SIZE,
-                height: TOUCH_BTN_SIZE,
-                minWidth: TOUCH_BTN_SIZE,
-                minHeight: TOUCH_BTN_SIZE,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(0,0,0,0.4)',
-                borderRadius: '50%',
-                border: '1px solid rgba(255,255,255,0.15)',
-                color: '#fff',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent',
-                cursor: 'pointer',
-              }}
+              type="button"
             >
-              {isMeBitPlaying ? <Volume2 size={22} /> : <VolumeX size={22} className="text-zinc-500" />}
+              {isMeBitPlaying ? <Volume2 size={20} /> : <VolumeX size={20} className="text-zinc-400" />}
             </button>
-
-            {/* Close/Exit Button */}
             <button
-              onClick={onClose}
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              className="ios-btn ios-btn-close"
               aria-label="إغلاق المعرض"
-              style={{
-                width: TOUCH_BTN_SIZE,
-                height: TOUCH_BTN_SIZE,
-                minWidth: TOUCH_BTN_SIZE,
-                minHeight: TOUCH_BTN_SIZE,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(239, 68, 68, 0.4)',
-                borderRadius: '50%',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                color: '#fff',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent',
-                cursor: 'pointer',
-              }}
+              type="button"
             >
-              <X size={22} />
+              <X size={20} />
             </button>
           </div>
         </div>
 
-        {/* Scrollable grid area */}
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            paddingTop: 'calc(env(safe-area-inset-top) + 64px)',
-            paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)',
-            paddingLeft: 12,
-            paddingRight: 12,
-          }}
-        >
-          <div
-            role="grid"
-            aria-label="MeBit gallery grid"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '8px',
-            }}
-          >
+        {/* Momentum Grid Scroll */}
+        <div className="ios-grid-container">
+          <div className="ios-grid" role="grid" aria-label="MeBit gallery grid">
             {images.map((src, i) => (
               <button
                 key={src + i}
                 type="button"
                 onClick={() => onOpenView(i)}
+                className="grid-photo-btn"
                 aria-label={`فتح الصورة ${i + 1}`}
-                style={{
-                  aspectRatio: '1 / 1',
-                  background: '#111',
-                  borderRadius: 8,
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  overflow: 'hidden',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent',
-                }}
               >
-                <img
+                <motion.img
+                  layoutId={i === selectedIndex ? "mebit-img-active" : undefined}
                   src={src}
                   alt={`MeBit ${i + 1}`}
-                  loading={i < 9 ? 'eager' : 'lazy'}
+                  loading={i < 12 ? 'eager' : 'lazy'}
                   decoding="async"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  className="w-full h-full object-cover block"
                   draggable={false}
                 />
               </button>
@@ -234,146 +190,119 @@ export const MeBitMobileView = ({
 
   // ── View mode ────────────────────────────────────────────
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }}>
-      {/* Top bar: Back + counter + audio + close */}
-      <div
+    <div className="mobile-gallery-root relative overflow-hidden select-none" data-gallery-skin={skin} onClick={toggleChrome}>
+      {/* iOS Tap-to-toggle Top Bar */}
+      <div 
+        className="ios-chrome-bar"
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          paddingTop: 'calc(env(safe-area-inset-top) + 8px)',
-          paddingBottom: 12,
-          paddingLeft: 12,
-          paddingRight: 12,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)',
-          zIndex: 10,
+          opacity: chromeVisible ? 1 : 0,
+          transform: chromeVisible ? 'translateY(0)' : 'translateY(-100%)',
+          pointerEvents: chromeVisible ? 'auto' : 'none'
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <button
-          onClick={onEnterGrid}
+          onClick={(e) => { e.stopPropagation(); onEnterGrid(); }}
+          className="ios-btn"
           aria-label="عودة للشبكة"
-          style={{
-            width: TOUCH_BTN_SIZE,
-            height: TOUCH_BTN_SIZE,
-            minWidth: TOUCH_BTN_SIZE,
-            minHeight: TOUCH_BTN_SIZE,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.4)',
-            borderRadius: '50%',
-            border: '1px solid rgba(255,255,255,0.15)',
-            color: 'var(--text-primary, #fff)',
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent',
-            cursor: 'pointer',
-          }}
+          type="button"
         >
-          <ChevronLeft size={22} />
+          <ChevronLeft size={20} />
         </button>
 
-        <span
-          style={{
-            fontFamily: 'monospace',
-            fontSize: 13,
-            color: 'var(--text-primary, #fff)',
-            background: 'rgba(0,0,0,0.35)',
-            padding: '4px 10px',
-            borderRadius: 12,
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
+        <span className="ios-counter">
           {selectedIndex + 1} / {images.length}
         </span>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Audio Toggle Button */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={onToggleAudio}
+            onClick={(e) => { e.stopPropagation(); onToggleAudio(); }}
+            className="ios-btn"
             aria-label={isMeBitPlaying ? 'إيقاف الموسيقى' : 'تشغيل الموسيقى'}
-            style={{
-              width: TOUCH_BTN_SIZE,
-              height: TOUCH_BTN_SIZE,
-              minWidth: TOUCH_BTN_SIZE,
-              minHeight: TOUCH_BTN_SIZE,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(0,0,0,0.4)',
-              borderRadius: '50%',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff',
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent',
-              cursor: 'pointer',
-            }}
+            type="button"
           >
-            {isMeBitPlaying ? <Volume2 size={22} /> : <VolumeX size={22} className="text-zinc-500" />}
+            {isMeBitPlaying ? <Volume2 size={20} /> : <VolumeX size={20} className="text-zinc-400" />}
           </button>
-
-          {/* Close button */}
           <button
-            onClick={onClose}
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="ios-btn ios-btn-close"
             aria-label="إغلاق المعرض"
-            style={{
-              width: TOUCH_BTN_SIZE,
-              height: TOUCH_BTN_SIZE,
-              minWidth: TOUCH_BTN_SIZE,
-              minHeight: TOUCH_BTN_SIZE,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(239, 68, 68, 0.4)',
-              borderRadius: '50%',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: 'var(--text-primary, #fff)',
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent',
-              cursor: 'pointer',
-            }}
+            type="button"
           >
-            <X size={22} />
+            <X size={20} />
           </button>
         </div>
       </div>
 
-      {/* Image viewer area (gesture-target) */}
+      {/* Snap Horizontal Scroll View */}
       <div
-        ref={viewerRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUpOrCancel}
-        onPointerCancel={handlePointerUpOrCancel}
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          touchAction: zoom > 1 ? 'none' : 'pan-y',
-        }}
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="ios-scroll-container"
       >
-        <img
-          src={images[selectedIndex]}
-          alt={`MeBit ${selectedIndex + 1}`}
-          draggable={false}
-          style={{
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain',
-            userSelect: 'none',
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transition: zoom === 1 ? 'transform 250ms ease' : 'none',
-            transformOrigin: 'center center',
-            willChange: 'transform',
-          }}
-        />
+        {images.map((src, i) => (
+          <div key={`view-${src}-${i}`} className="ios-scroll-item">
+            {i === selectedIndex ? (
+              <div
+                ref={viewerRef}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerImgMove}
+                onPointerUp={handlePointerUpOrCancel}
+                onPointerCancel={handlePointerUpOrCancel}
+                className="w-full h-full flex items-center justify-center p-4 bg-black"
+                style={{ touchAction: zoom > 1 ? 'none' : 'pan-y' }}
+              >
+                <motion.img
+                  layoutId="mebit-img-active"
+                  src={src}
+                  alt={`MeBit ${selectedIndex + 1}`}
+                  draggable={false}
+                  className="max-w-full max-h-full object-contain select-none transform-gpu origin-center"
+                  style={{
+                    scale: zoom,
+                    x: pan.x,
+                    y: pan.y,
+                    transition: zoom === 1 ? 'transform 250ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
+                    willChange: 'transform'
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-black">
+                <img
+                  src={src}
+                  alt={`MeBit ${i + 1}`}
+                  draggable={false}
+                  className="max-w-full max-h-full object-contain select-none"
+                  loading="lazy"
+                />
+              </div>
+            )}
+          </div>
+        ))}
       </div>
+
+      {/* أسهم تنقّل شفافة — تظهر فقط عند عدم التكبير */}
+      {zoom === 1 && (
+        <>
+          <button
+            type="button"
+            className="gallery-nav-arrow gallery-nav-prev"
+            aria-label="الصورة السابقة"
+            onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          >
+            <ChevronLeft size={26} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="gallery-nav-arrow gallery-nav-next"
+            aria-label="الصورة التالية"
+            onClick={(e) => { e.stopPropagation(); onNext(); }}
+          >
+            <ChevronRight size={26} aria-hidden="true" />
+          </button>
+        </>
+      )}
     </div>
   );
 };

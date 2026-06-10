@@ -1,5 +1,5 @@
 /* إعلان ترتيب الـlayers — من الأقل لـالأعلى أولوية */
-@layer base, components, utilities, overrides;
+@layer base, components, utilities, overrides, midnight;
 
 @import "tailwindcss";
 @import "./styles/themes/_base.css" layer(theme);
@@ -9,6 +9,7 @@
 @import "./styles/themes/bit.css" layer(theme);
 @import "./styles/themes/lite.css" layer(theme);
 @import "./styles/themes/retro.css" layer(theme);
+@import "./styles/themes/midnight-skin.css" layer(midnight);
 @import "./styles/mobile-overrides.css" layer(theme);
 @import "./styles/touch-fixes.css" layer(theme);
 @import "./styles/base.css" layer(base);
@@ -24,6 +25,8 @@
 @import "./styles/components/song-card.css" layer(components);
 @import "./styles/components/sw-toast.css" layer(components);
 @import "./styles/components/musicMood.css" layer(components);
+@import "./styles/components/glass-switcher.css" layer(components);
+@import "./styles/components/mobile-gallery.css" layer(components);
 @import "./styles/animations.css" layer(utilities);
 @import "./styles/touch-gestures.css" layer(utilities);
 @import "./styles/utilities/typography.css" layer(utilities);

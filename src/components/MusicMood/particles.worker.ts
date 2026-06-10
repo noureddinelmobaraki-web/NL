@@ -54,6 +54,10 @@ let windowHalfX = 0;
 let windowHalfY = 0;
 let maxRadiusFromCenter = 0;
 
+let extSubBass = 0, extBass = 0, extTreble = 0, extLevel = 0;
+let extBeatEma = 0, extLastBeat = 0, extBeatPulse = 0;
+let extActive = false; // هل وصلت نطاقات خارجية هذا الإطار؟
+
 // Inputs from main thread
 let isPlaying = false;
 let freqDataArray: Uint8Array | null = null;
@@ -189,21 +193,28 @@ function draw() {
     const midAvg = midSum / 90;
     trebleIntensity = highSum / 280;
 
-    bassEMA = bassEMA * (1 - EMA_ALPHA_SLOW) + bassIntensity * EMA_ALPHA_SLOW;
-    if (bassIntensity > bassPeakEMA) {
-      bassPeakEMA = bassPeakEMA * (1 - EMA_ALPHA_FAST) + bassIntensity * EMA_ALPHA_FAST;
+    // Prioritize external bands if active
+    const bassDrive = extActive ? extBass * 255 : bassIntensity;
+
+    bassEMA = bassEMA * (1 - EMA_ALPHA_SLOW) + bassDrive * EMA_ALPHA_SLOW;
+    if (bassDrive > bassPeakEMA) {
+      bassPeakEMA = bassPeakEMA * (1 - EMA_ALPHA_FAST) + bassDrive * EMA_ALPHA_FAST;
     } else {
       bassPeakEMA *= 0.985;
     }
 
     const MuscatRefractoryMs = 180;
     const adaptiveThreshold = Math.max(20, bassEMA * 1.35);
-    if (bassIntensity > adaptiveThreshold && (now - lastBeatTime) > MuscatRefractoryMs) {
-      lastBeatTime = now;
-      beatCount++;
-      beatPulse = 1.0;
+    if (!extActive) {
+      if (bassDrive > adaptiveThreshold && (now - lastBeatTime) > MuscatRefractoryMs) {
+        lastBeatTime = now;
+        beatCount++;
+        beatPulse = 1.0;
+      } else {
+        beatPulse *= 0.88;
+      }
     } else {
-      beatPulse *= 0.88;
+      beatPulse = extBeatPulse;
     }
 
     void midAvg;
@@ -215,6 +226,12 @@ function draw() {
     bassPeakEMA *= 0.95;
     beatPulse *= 0.88;
   }
+
+  // Final drives to use in the rest of the draw loop
+  const currentAudioIntensity = extActive ? extLevel * 255 : audioIntensity;
+  const currentBassIntensity = extActive ? extBass * 255 : bassIntensity;
+  const currentTrebleIntensity = extActive ? extTreble * 255 : trebleIntensity;
+  const currentBeatPulse = extActive ? extBeatPulse : beatPulse;
 
   let elapsedTimeInScene2 = 0;
   if (sceneState === 2) {
@@ -284,7 +301,7 @@ function draw() {
 
     if (!prefersReducedMotion) {
       rotationX = randomTrackX + (spiralBoost * 1.5);
-      rotationY = randomTrackY + (spiralBoost * 4.5) + (bassIntensity * 0.00005);
+      rotationY = randomTrackY + (spiralBoost * 4.5) + (currentBassIntensity * 0.00005);
       rotationZ = randomTrackZ + (spiralBoost * 2.0);
     } else {
       cameraDistance = 10;
@@ -330,9 +347,9 @@ function draw() {
   }
   else if (centerNode.scale > 0 && sceneState === 2) {
     let responsiveHoleSize = isMobile ? 16 : 24;
-    let baseHoleRadius = responsiveHoleSize + (audioIntensity * 0.4);
+    let baseHoleRadius = responsiveHoleSize + (currentAudioIntensity * 0.4);
 
-    ctx.shadowBlur = 35 + (bassIntensity * 0.6);
+    ctx.shadowBlur = 35 + (currentBassIntensity * 0.6);
     ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
     ctx.fillStyle = '#000000';
     ctx.beginPath();
@@ -359,17 +376,17 @@ function draw() {
       if (isPlaying && freqDataArray) {
         rawFreq = freqDataArray[frequencyIndex % freqDataArray.length] || 0;
         if (i < totalSpikes * 0.3) {
-          rawFreq = Math.min(255, rawFreq + beatPulse * 60);
+          rawFreq = Math.min(255, rawFreq + currentBeatPulse * 60);
         }
       } else {
         rawFreq = Math.abs(Math.sin(Date.now() * 0.001 + i)) * 6;
       }
 
       let spikeDynamic = rawFreq * (rawFreq / 255) * (isMobile ? 0.9 : 1.4);
-      let spikeLength = (isMobile ? 10 : 16) + spikeDynamic + (isPlaying ? (trebleIntensity * 0.4) : 0);
+      let spikeLength = (isMobile ? 10 : 16) + spikeDynamic + (isPlaying ? (currentTrebleIntensity * 0.4) : 0);
       let startX = Math.cos(angle) * baseHoleRadius;
       let startZ = Math.sin(angle) * baseHoleRadius;
-      let startY = isPlaying ? Math.sin(timeline * 6 + i) * (2 + beatPulse * 3) : Math.sin(Date.now() * 0.0005 + i) * 0.4;
+      let startY = isPlaying ? Math.sin(timeline * 6 + i) * (2 + currentBeatPulse * 3) : Math.sin(Date.now() * 0.0005 + i) * 0.4;
 
       let endX = Math.cos(angle) * (baseHoleRadius + spikeLength);
       let endZ = Math.sin(angle) * (baseHoleRadius + spikeLength);
@@ -382,7 +399,7 @@ function draw() {
       ctx.beginPath();
       ctx.moveTo(pStart.x, pStart.y);
       ctx.lineTo(pEnd.x, pEnd.y);
-      ctx.lineWidth = Math.max(1.0, (isMobile ? 1.6 : 2.5) * pEnd.scale * (1 + beatPulse * 0.3));
+      ctx.lineWidth = Math.max(1.0, (isMobile ? 1.6 : 2.5) * pEnd.scale * (1 + currentBeatPulse * 0.3));
       ctx.stroke();
     }
   }
@@ -397,7 +414,7 @@ function draw() {
   const count15 = count * 15;
   const count12 = count * 1.2;
   const sizeFactor = isMobile ? 0.8 : 1.1;
-  const bassSizeInc = bassIntensity / 50;
+  const bassSizeInc = currentBassIntensity / 50;
   const alphaScaleFactor = isMobile ? 4.5 : 3.8;
 
   for (let i = 0; i < particles.length; i++) {
@@ -432,16 +449,16 @@ function draw() {
         const rawFreqVal = freqDataArray[binIdx] || 0;
         const audioFactor = rawFreqVal / 255;
 
-        const reactivePower = beatPulse * 0.7 + audioFactor * 0.5;
+        const reactivePower = currentBeatPulse * 0.7 + audioFactor * 0.5;
         audioWave = Math.sin(particle.dist0068 - count12) * reactivePower * (isMobile ? 70 : 95);
 
-        if (distRatio > 0.6 && trebleIntensity > 30) {
-          audioWave += Math.sin(timeline * 14 + particle.angleId * 3) * (trebleIntensity / 255) * 8;
+        if (distRatio > 0.6 && currentTrebleIntensity > 30) {
+          audioWave += Math.sin(timeline * 14 + particle.angleId * 3) * (currentTrebleIntensity / 255) * 8;
         }
       }
 
       if (isPlaying) {
-        const beatBoost = 1 + beatPulse * 0.4;
+        const beatBoost = 1 + currentBeatPulse * 0.4;
         particle.y = prefersReducedMotion
           ? ((naturalWave * 0.25) + audioWave) * 0.3
           : ((naturalWave * 0.25) + audioWave) * beatBoost;
@@ -465,11 +482,11 @@ function draw() {
 
     let radius;
     if (sceneState < 2) {
-      radius = Math.max(0.8, (1.6 + beatPulse * 0.4) * scale);
+      radius = Math.max(0.8, (1.6 + currentBeatPulse * 0.4) * scale);
     } else {
       let waveFreq = particle.dist0068 - count;
       let radiusWave = (Math.sin(waveFreq) + 1) * 0.5;
-      const beatBoost = 1 + beatPulse * 0.5;
+      const beatBoost = 1 + currentBeatPulse * 0.5;
       const bassBoost = bassSizeInc * 1.5;
       radius = Math.max(0.55, radiusWave * scale * (sizeFactor + bassBoost) * beatBoost);
     }
@@ -491,14 +508,14 @@ function draw() {
       }
       else if (colorTransitionProgress > 0) {
         let hueIntensityFactor = glowIntensity * 40;
-        let hue = Math.floor(particle.hueOffset + count15 + beatPulse * 40 + hueIntensityFactor) % 360;
-        const saturation = Math.floor(45 + beatPulse * 25 + glowIntensity * 15);
-        const lightness = Math.floor(particle.lightnessOffset + beatPulse * 8 + glowIntensity * 10);
+        let hue = Math.floor(particle.hueOffset + count15 + currentBeatPulse * 40 + hueIntensityFactor) % 360;
+        const saturation = Math.floor(45 + currentBeatPulse * 25 + glowIntensity * 15);
+        const lightness = Math.floor(particle.lightnessOffset + currentBeatPulse * 8 + glowIntensity * 10);
         const coloredStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 
         if (colorTransitionProgress >= 1) {
           ctx.fillStyle = coloredStyle;
-          ctx.globalAlpha = alpha * (0.92 + beatPulse * 0.08);
+          ctx.globalAlpha = alpha * (0.92 + currentBeatPulse * 0.08);
           if (radius <= 2.0) ctx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
           else { ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.fill(); }
         } else {
@@ -522,7 +539,7 @@ function draw() {
   }
 
   const countInc = isPlaying
-    ? (0.008 + bassIntensity * 0.00018 + beatPulse * 0.005)
+    ? (0.008 + currentBassIntensity * 0.00018 + currentBeatPulse * 0.005)
     : 0.003;
   if (!prefersReducedMotion) {
     count += countInc;
@@ -549,6 +566,21 @@ self.onmessage = (e: MessageEvent) => {
   else if (type === 'audioFrame') {
     isPlaying = data.isPlaying;
     freqDataArray = data.freqDataArray;
+
+    const incoming = data.bands;
+    if (incoming) {
+      extActive = true;
+      extSubBass = incoming.subBass; extBass = incoming.bass;
+      extTreble = incoming.treble; extLevel = incoming.level;
+      const bn = extSubBass * 0.7 + extBass * 0.3;
+      extBeatEma = extBeatEma * 0.992 + bn * 0.008;
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const thr = Math.max(0.08, extBeatEma * 1.35);
+      if (bn > thr && now - extLastBeat > 180) { extLastBeat = now; extBeatPulse = 1; }
+      else { extBeatPulse *= 0.9; }
+    } else {
+      extActive = false;
+    }
   }
 
   else if (type === 'glow') {

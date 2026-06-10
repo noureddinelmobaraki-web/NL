@@ -28,6 +28,14 @@ declare global {
   }
 }
 
-
+declare module "react" {
+  export function useEffectEvent<T extends Function>(fn: T): T;
+  
+  export interface ActivityProps {
+    mode: "visible" | "hidden";
+    children: React.ReactNode;
+  }
+  export const Activity: React.ComponentType<ActivityProps>;
+}
 
 export {};

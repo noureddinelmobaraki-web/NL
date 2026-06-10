@@ -146,14 +146,18 @@ export function useTouchGestures(
     el.addEventListener('pointerup', handlePointerUp, { passive: true });
     el.addEventListener('pointercancel', handlePointerCancel, { passive: true });
 
+    const currentPointers = pointers.current;
+    const currentPinchDist = initialPinchDist;
+    const currentStartSnap = startSnap;
+
     return () => {
       el.removeEventListener('pointerdown', handlePointerDown);
       el.removeEventListener('pointermove', handlePointerMove);
       el.removeEventListener('pointerup', handlePointerUp);
       el.removeEventListener('pointercancel', handlePointerCancel);
-      pointers.current.clear();
-      initialPinchDist.current = null;
-      startSnap.current = null;
+      currentPointers.clear();
+      currentPinchDist.current = null;
+      currentStartSnap.current = null;
     };
   }, [
     ref, enabled, threshold, velocityThreshold, doubleTapDelay,

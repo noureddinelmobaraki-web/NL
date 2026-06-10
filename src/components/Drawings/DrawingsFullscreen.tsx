@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, Volume2, VolumeX, Heart, Info } from 'lucide-react'; // MOBILE-ONLY
+import { getGenieOrigin, genieOriginToTransformOrigin } from '../../transitions/genieOrigin';
 import { VideoData } from './types';
 import { VideoCard } from './VideoCard';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
@@ -102,33 +103,33 @@ export const DrawingsFullscreen = ({
     };
   }, [resetAutoHideTimer]);
 
+
+
   // Hook up scroll listener to trigger auto-hide timer reset
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
     const handleScroll = () => {
-      resetAutoHideTimer();
-      dismissSwipeHint();
+      onUserInteract();
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       container.removeEventListener('scroll', handleScroll);
     };
-  }, [resetAutoHideTimer]);
+  }, []);
 
   // Touch listener to show progress counter on any user interaction
   useEffect(() => {
     const handleTouch = () => {
-      resetAutoHideTimer();
-      dismissSwipeHint();
+      onUserInteract();
     };
     window.addEventListener('touchstart', handleTouch, { passive: true });
     return () => {
       window.removeEventListener('touchstart', handleTouch);
     };
-  }, [resetAutoHideTimer]);
+  }, []);
 
   // MOBILE-ONLY: Intersection observer for scroll-snap detection with threshold 0.6
   useEffect(() => {
@@ -186,6 +187,11 @@ export const DrawingsFullscreen = ({
       return prev;
     });
   }, []);
+
+  const onUserInteract = useCallback(() => {
+    resetAutoHideTimer();
+    dismissSwipeHint();
+  }, [resetAutoHideTimer, dismissSwipeHint]);
 
   // Smooth scroll wrapper that temporarily disables scroll-snap to bypass iOS/Android stiffness
   const smoothScrollTo = (targetIdx: number) => {
@@ -334,8 +340,11 @@ export const DrawingsFullscreen = ({
   return (
     <div
       id="drawings-fullscreen-overlay"
-      className={`fixed inset-0 overflow-hidden ${resolvedTheme === 'light' ? 'bg-white' : 'bg-black'}`}
+      className={`fixed inset-0 overflow-hidden genie-surface ${resolvedTheme === 'light' ? 'bg-white' : 'bg-black'}`}
+      data-genie="open"
       style={{
+        ['--genie-origin' as string]: genieOriginToTransformOrigin(getGenieOrigin()),
+        transformOrigin: 'var(--genie-origin)',
         zIndex: 9010,
         height: '100dvh',
         minHeight: '-webkit-fill-available',

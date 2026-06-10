@@ -137,6 +137,7 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
           const isPlaying = !!(audioEl && !audioEl.paused && !audioEl.ended);
           
           let freqDataArray: Uint8Array | null = null;
+          let bands: { subBass: number; bass: number; lowMid: number; mid: number; treble: number; level: number } | null = null;
           if (analyser && isPlaying) {
             const binCount = analyser.frequencyBinCount;
             if (!cachedFreqData || cachedFreqData.length !== binCount) {
@@ -144,6 +145,27 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
             }
             analyser.getByteFrequencyData(cachedFreqData);
             freqDataArray = cachedFreqData;
+
+            // حساب النطاقات بلا allocation داخل الحلقة
+            let sb = 0, bs = 0, lm = 0, md = 0, tr = 0, tot = 0;
+            const n = cachedFreqData.length;
+            for (let i = 0; i < n; i++) {
+              const v = cachedFreqData[i];
+              tot += v;
+              if (i < 8) sb += v;
+              else if (i < 30) bs += v;
+              else if (i < 80) lm += v;
+              else if (i < 200) md += v;
+              else if (i < 500) tr += v;
+            }
+            bands = {
+              subBass: sb / 8 / 255,
+              bass: bs / 22 / 255,
+              lowMid: lm / 50 / 255,
+              mid: md / 120 / 255,
+              treble: tr / Math.min(300, Math.max(1, n - 200)) / 255,
+              level: tot / n / 255,
+            };
           }
 
           worker.postMessage({
@@ -151,6 +173,7 @@ export const MoodParticles = memo(({ glowIntensity = 0, audioRef }: MoodParticle
             data: {
               isPlaying,
               freqDataArray,
+              bands,
             }
           });
         }

@@ -11,6 +11,7 @@ import { useAutoHideUI } from '../../hooks/useAutoHideUI';
 import { useOrientationListener } from '../../hooks/useOrientationListener';
 import { useFullscreenManager } from '../../hooks/useFullscreenManager';
 import { LensMobileView } from './LensMobileView';
+import { getGenieOrigin, genieOriginToTransformOrigin } from '../../transitions/genieOrigin';
 
 const PHOTOS = ASSETS.profile.lens;
 const MUSIC_URL = ASSETS.media.lensMusic;
@@ -62,7 +63,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
     if (isOpen && containerRef.current) {
       containerRef.current.focus();
     }
-  }, [isOpen]);
+  }, [isOpen, containerRef]);
 
   // Audio lifecycle management
   useEffect(() => {
@@ -79,7 +80,11 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
     };
   }, []);
 
-  const navigate = (direction: 1 | -1) => {
+  const onCloseEvent = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const navigate = useCallback((direction: 1 | -1) => {
     if (isTransitioning) return;
     gestures.resetZoom();
 
@@ -123,33 +128,32 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
       }
     };
     requestAnimationFrame(animate);
-  };
-
-
+  }, [isTransitioning, isMobile, activeIndex]);
 
   // Connect gestural interactions hook
   const gestures = useLensGestures({
     onNavigate: navigate,
-    onClose,
+    onClose: onCloseEvent,
     isMobile,
     containerRef: scrollContainerRef,
   });
 
-  useOrientationListener(useCallback(() => {
+  const handleOrientation = useCallback(() => {
     gestures.resetZoom();
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
       container.scrollLeft = activeIndex * container.clientWidth;
     }
-  }, [activeIndex, gestures.resetZoom]));
+  }, [activeIndex]);
 
+  useOrientationListener(handleOrientation);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.muted = !isMuted;
       setIsMuted(m => !m);
     }
-  };
+  }, [isMuted]);
 
   // Register Lens Custom Buttons under ButtonOrchestrator when gallery is open
   useEffect(() => {
@@ -179,7 +183,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
       slot: 'topRight',
       render: () => (
         <button
-          onClick={onClose}
+          onClick={onCloseEvent}
           className="fab-button transition-colors hover:bg-red-600/20 border-red-500/30"
           style={{ color: 'var(--accent-red, #ef4444)', touchAction: 'manipulation' }}
           aria-label="Close Lens Gallery"
@@ -193,7 +197,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
       unregisterButton('lensAudio');
       unregisterButton('lensClose');
     };
-  }, [isOpen, isMuted, isMobile, onClose, registerButton, unregisterButton]);
+  }, [isOpen, isMuted, isMobile, registerButton, unregisterButton]);
 
   // Keyboard support
   useEffect(() => {
@@ -201,11 +205,11 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') navigate(1);
       if (e.key === 'ArrowLeft') navigate(-1);
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseEvent();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, isTransitioning, activeIndex]);
+  }, [isOpen]);
 
   if (!isOpen && !isTransitioning) return null;
 
@@ -215,12 +219,16 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
 
   return (
     <div 
+      className="mid-gallery genie-surface"
+      data-genie={isOpen ? 'open' : 'close'}
       ref={containerRef}
       role="dialog"
       aria-modal="true"
       aria-label="معرض الصور"
       tabIndex={-1}
       style={{
+        ['--genie-origin' as string]: genieOriginToTransformOrigin(getGenieOrigin()),
+        transformOrigin: 'var(--genie-origin)',
         position: 'fixed',
         inset: 0,
         zIndex: 9999,

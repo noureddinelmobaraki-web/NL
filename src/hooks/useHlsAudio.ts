@@ -163,6 +163,5 @@ export function useHlsAudio(
       generationRef.current += 1;
       cleanupFn?.();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url]);
+  }, [url, audioRef]);
 }

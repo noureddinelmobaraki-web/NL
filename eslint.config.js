@@ -19,20 +19,19 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
   {
-    // Suppress legacy rules on existing files to achieve maximum-warnings=0 on lint tasks
+    // Legacy effect-heavy files: keep exhaustive-deps off to avoid risky rewrites.
+    // TODO: These remaining high-risk files need dedicated file-specific tests before removal.
     files: [
       'src/components/Drawings/DrawingsFullscreen.tsx',
       'src/components/Lens/LensGallery.tsx',
       'src/components/Loading/LoadingScreen.tsx',
-      'src/components/Loading/LoadingVideo.tsx',
       'src/components/MySongs/MySongsPage.tsx',
       'src/components/RetroWorld/RetroWorldPage.tsx',
-      'src/components/songs/LyricsDisplay.tsx',
-      'src/hooks/useAudioController.ts',
-      'src/hooks/useTouchGestures.ts'
+      'src/hooks/useAudioController.ts'
     ],
     rules: {
       'react-hooks/exhaustive-deps': 'off',

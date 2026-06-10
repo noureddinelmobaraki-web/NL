@@ -1,8 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+
 import App from './App.tsx';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import './index.css';
+import './transitions/genie.css';
 import { registerServiceWorker } from './utils/registerSW';
 import { reportWebVitals } from './utils/vitals';
 import { isAutomatedEnv } from './utils/env';

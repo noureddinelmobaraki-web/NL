@@ -59,7 +59,6 @@ export function useVirtualSongList(
         const next = new Set(prev);
         idToElementRef.current.forEach((_, id) => {
           next.add(id);
-          onCardRevealedRef.current?.(id);
         });
         return next;
       });
@@ -76,7 +75,6 @@ export function useVirtualSongList(
           if (!id) return;
           additions.push(id);
           dirty = true;
-          onCardRevealedRef.current?.(id);
           // sticky — stop observing once revealed
           observerRef.current?.unobserve(entry.target);
         });
@@ -106,7 +104,6 @@ export function useVirtualSongList(
         const next = new Set(prev);
         observeOrderRef.current.slice(0, initialVisibleCount).forEach((cid) => {
           next.add(cid);
-          onCardRevealedRef.current?.(cid);
           const el = idToElementRef.current.get(cid);
           if (el) observerRef.current?.unobserve(el);
         });
@@ -129,6 +126,17 @@ export function useVirtualSongList(
     }, 2500);
     return () => window.clearTimeout(t);
   }, []);
+
+  // Safe effect to trigger callbacks for revealed IDs asynchronously
+  const lastTriggeredRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    revealed.forEach((id) => {
+      if (!lastTriggeredRef.current.has(id)) {
+        lastTriggeredRef.current.add(id);
+        onCardRevealedRef.current?.(id);
+      }
+    });
+  }, [revealed]);
 
   const observe = useCallback((id: number | string, el: HTMLElement | null) => {
     const sid = String(id);

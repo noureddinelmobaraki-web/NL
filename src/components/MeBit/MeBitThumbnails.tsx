@@ -68,8 +68,8 @@ export const MeBitThumbnails = ({
                 e.preventDefault();
                 onSelectIndex(idx);
               }}
-              className={`relative shrink-0 rounded-lg overflow-hidden transition-all duration-300 pointer-events-auto
-                ${isActive ? 'border-2 border-white scale-100 opacity-100' : 'border-2 border-transparent opacity-45 scale-[0.92]'}`}
+              className={`mid-thumb relative shrink-0 rounded-lg overflow-hidden transition-all duration-300 pointer-events-auto
+                ${isActive ? 'is-active border-2 border-white scale-100 opacity-100' : 'border-2 border-transparent opacity-45 scale-[0.92]'}`}
               style={{
                 width: '72px',
                 height: '96px',
@@ -111,8 +111,8 @@ export const MeBitThumbnails = ({
                 e.preventDefault();
                 onSelectIndex(idx);
               }}
-              className={`relative shrink-0 rounded-lg overflow-hidden transition-all duration-300 pointer-events-auto
-                ${isActive ? 'border-2 border-white scale-100 opacity-100' : 'border-2 border-transparent opacity-45 scale-[0.92]'}`}
+              className={`mid-thumb relative shrink-0 rounded-lg overflow-hidden transition-all duration-300 pointer-events-auto
+                ${isActive ? 'is-active border-2 border-white scale-100 opacity-100' : 'border-2 border-transparent opacity-45 scale-[0.92]'}`}
               style={{
                 width: '72px',
                 height: 'calc(15dvh - 16px)', // Padding compensation
@@ -154,8 +154,8 @@ export const MeBitThumbnails = ({
                 e.preventDefault();
                 onSelectIndex(idx);
               }}
-              className={`relative shrink-0 rounded-xl overflow-hidden transition-all duration-300 pointer-events-auto
-                ${isActive ? 'border-2 border-white scale-100 opacity-100' : 'border-2 border-transparent opacity-50 scale-[0.92]'}`}
+              className={`mid-thumb relative shrink-0 rounded-xl overflow-hidden transition-all duration-300 pointer-events-auto
+                ${isActive ? 'is-active border-2 border-white scale-100 opacity-100' : 'border-2 border-transparent opacity-50 scale-[0.92]'}`}
               style={{
                 width: '90px',
                 height: 'calc(15dvh - 24px)', // Padding compensation
@@ -188,11 +188,10 @@ export const MeBitThumbnails = ({
           <button
             key={src}
             onClick={() => onSelectIndex(idx)}
-            className={`relative aspect-[3/4] rounded-xl border-2 overflow-hidden transition-all duration-300 transform
+            className={`mid-thumb relative aspect-[3/4] rounded-xl border-2 overflow-hidden transition-all duration-300 transform
               ${selectedIndex === idx
-                ? 'border-white scale-95 shadow-[0_0_20px_white/20] ring-4 ring-white/10'
+                ? 'is-active border-white scale-95 shadow-[0_0_20px_white/20] ring-4 ring-white/10'
                 : 'border-transparent hover:border-white/30 opacity-40 hover:opacity-100 hover:scale-[1.02]'}`}
-            aria-label={`Select archive moment ${idx + 1}`}
           >
             <ResponsiveImage src={src} alt={`Moment ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
             {selectedIndex === idx && (

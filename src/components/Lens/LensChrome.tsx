@@ -37,7 +37,7 @@ export const LensChrome = ({
       )}
 
       {/* TOP BAR */}
-      <div style={{
+      <div className="mid-lens-chrome" style={{
         width: '100%', 
         display: 'flex', 
         justifyContent: 'space-between',
@@ -63,16 +63,13 @@ export const LensChrome = ({
           alignItems: isMobile ? 'flex-start' : 'center',
           gap: isMobile ? '2px' : '20px'
         }}>
-          <div style={isMobile ? {
+          <div className="glass-adaptive-text" style={isMobile ? {
             fontFamily: 'inherit', 
-            color: '#fff',
             fontSize: isLandscape ? '14px' : '18px', 
             fontWeight: 700,
             letterSpacing: '-0.02em',
-            textShadow: '0 2px 4px rgba(0,0,0,0.3)',
           } : {
             fontFamily: 'var(--font-manga)', 
-            color: 'var(--text-primary)',
             fontSize: '18px', 
             fontWeight: 400,
             letterSpacing: '0.15em',
@@ -80,12 +77,12 @@ export const LensChrome = ({
             {isMobile ? 'LENS GALLERY' : 'THROUGH THE LENS'}
           </div>
           
-          <span style={{ 
-            color: 'rgba(255,255,255,0.7)', 
+          <span className="glass-adaptive-text" style={{ 
             fontSize: isMobile ? '11px' : '14px', 
             fontWeight: 600,
             fontVariantNumeric: 'tabular-nums',
-            letterSpacing: '0.05em'
+            letterSpacing: '0.05em',
+            opacity: 0.7
           }}>
             {activeIndex + 1} / {totalPhotos}
           </span>

@@ -25,27 +25,7 @@
  */
 
 import { motion } from "framer-motion";
-import React, { useEffect, Suspense, useCallback, useRef } from "react";
-
-// Runtime fallbacks for experimental/unstable React 19 features to adapt dynamically
-function useEffectEventFallback<T extends Function>(fn: T): T {
-  const ref = useRef(fn);
-  ref.current = fn;
-  const cb = useCallback((...args: any[]) => ref.current(...args), []);
-  return cb as any;
-}
-
-interface ActivityProps {
-  mode: 'visible' | 'hidden';
-  children: React.ReactNode;
-}
-
-function ActivityFallback({ mode, children }: ActivityProps) {
-  return <div style={{ display: mode === 'hidden' ? 'none' : 'block' }}>{children}</div>;
-}
-
-const useEffectEvent = (React as any).useEffectEvent || (React as any).experimental_useEffectEvent || useEffectEventFallback;
-const Activity = (React as any).Activity || (React as any).unstable_Activity || ActivityFallback;
+import { useEffect, Suspense, useCallback, useRef, Activity } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
@@ -99,8 +79,8 @@ import { getThemedImage } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
 import { FloatingControls } from "./components/layout/FloatingControls";
+import { GlassModeSwitcher } from "./components/layout/GlassModeSwitcher";
 import { IntroMusicButton } from './components/layout/IntroMusicButton';
-import { LanguageSwitcher } from "./components/layout/LanguageSwitcher";
 const GallerySection = lazyWithRetry(
   () => import('./components/layout/GallerySection').then(m => ({ default: m.GallerySection })),
   'GallerySection',
@@ -113,22 +93,25 @@ import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
 function AppInner() {
-  const { theme } = useAppContext();
+  const { theme, loaded } = useAppContext();
 
   useEffect(() => {
     applyThemeUtil(theme);
     savePrefs({ theme });
   }, [theme]);
 
-  if (theme === 'retro') {
-    return (
-      <Suspense fallback={<div style={{ background: '#000', color: '#0ff', padding: 40 }}>Loading retro world…</div>}>
-        <RetroWorldPage />
-      </Suspense>
-    );
-  }
-
-  return <MainApp />;
+  return (
+    <>
+      {loaded && <GlassModeSwitcher />}
+      {theme === 'retro' && loaded ? (
+        <Suspense fallback={<div className="retro-loading">Loading retro world…</div>}>
+          <RetroWorldPage />
+        </Suspense>
+      ) : (
+        <MainApp />
+      )}
+    </>
+  );
 }
 
 function MainApp() {
@@ -194,31 +177,38 @@ function MainApp() {
   });
 
   // Keyboard shortcuts for playback
-  const onKeyboardShortcut = useEffectEvent((e: KeyboardEvent) => {
+  const toggleAudioRef = useRef(toggleAudio);
+  const activeSongRef = useRef(activeSong);
+
+  useEffect(() => {
+    toggleAudioRef.current = toggleAudio;
+    activeSongRef.current = activeSong;
+  }, [toggleAudio, activeSong]);
+
+  const onKeyboardShortcut = useCallback((e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
     switch (e.code) {
       case 'Space':
         e.preventDefault();
-        toggleAudio();
+        toggleAudioRef.current();
         break;
       case 'ArrowRight':
         e.preventDefault();
-        activeSong?.onNext?.();
+        activeSongRef.current?.onNext?.();
         break;
       case 'ArrowLeft':
         e.preventDefault();
-        activeSong?.onPrev?.();
+        activeSongRef.current?.onPrev?.();
         break;
     }
-  });
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => onKeyboardShortcut(e);
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ← لا يحتاج dependencies لأن useEffectEvent دائماً stable
+  }, [onKeyboardShortcut]);
 
   // FIXED: Issue #1 — Shared mood trigger state
   const moodTriggerRef = useRef<(() => void) | null>(null);
@@ -338,7 +328,6 @@ function MainApp() {
             isAnyModalOpen={isAnyModalOpen}
             activeModalContext={activeModalContext}
           />
-          <LanguageSwitcher />
         </>
       )}
 

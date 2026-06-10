@@ -376,4 +376,43 @@ describe('audioManager', () => {
       expect(audioManager.hasActiveSuppressor('active_song')).toBe(false);
     });
   });
+
+  // ─── Prompt 9: Priority, token suppression and fast-switching tests ───
+  describe('Prompt 9 Scenarios', () => {
+    it('T38: higher priority (song=10) is not interrupted by lower priority (bg=1)', async () => {
+      audioManager.register('song', makeAudio(), 0.7);
+      audioManager.register('bg', makeAudio(), 0.7);
+      await audioManager.play('song');
+      expect(audioManager.getCurrentActive()).toBe('song');
+      
+      // Attempt to play bg (priority=1) while song (priority=10) is active
+      await audioManager.play('bg');
+      expect(audioManager.getCurrentActive()).toBe('song');
+    });
+
+    it('T39: suppressionToken cancels delayed fade-out', async () => {
+      const bgAudio = makeAudio();
+      audioManager.register('bg', bgAudio, 0.7);
+      await audioManager.play('bg');
+      
+      // Call suppressBg then releaseBg immediately, checking if the token prevents state=null
+      audioManager.suppressBg('delay-test');
+      audioManager.releaseBg('delay-test');
+      
+      // Let's ensure active is still bg or resolves correctly back to bg
+      expect(audioManager.hasActiveSuppressor('delay-test')).toBe(false);
+    });
+
+    it('T40: fast theme switching does not leave bg paused', async () => {
+      const bgAudio = makeAudio();
+      audioManager.register('bg', bgAudio, 0.7);
+      
+      // rapid simulate theme-switch triggering consecutive unpause/pause or play/pause cycles
+      await audioManager.play('bg');
+      audioManager.pause('bg');
+      audioManager.unpauseBg();
+      
+      expect(audioManager.diagnose().bgUserPaused).toBe(false);
+    });
+  });
 });

@@ -3,16 +3,23 @@ import { isChunkLoadError } from '../utils/lazyWithRetry';
 import { captureError } from '../utils/sentry';
 
 interface Props { children: ReactNode; sectionName?: string; }
-interface State { hasError: boolean; }
+interface State { hasError: boolean; retryKey: number; autoAttempts: number; }
+
+// أقصى عدد محاولات إعادة تركيب تلقائية لأخطاء الـ render غير الـ chunk
+const MAX_AUTO_ATTEMPTS = 2;
+const AUTO_RETRY_DELAY_MS = 250;
 
 export class SectionErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false };
-  
-  static getDerivedStateFromError(): State {
+  state: State = { hasError: false, retryKey: 0, autoAttempts: 0 };
+
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+  static getDerivedStateFromError(): Partial<State> {
     return { hasError: true };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // سجّل الخطأ الحقيقي دائمًا لتسهيل التشخيص
     if (process.env.NODE_ENV === 'development') {
       console.error(`[${this.props.sectionName || 'Section'}] crashed:`, error, info);
     } else {
@@ -21,7 +28,7 @@ export class SectionErrorBoundary extends Component<Props, State> {
 
     captureError(error, { section: this.props.sectionName });
 
-    // Auto-recover from a stale-deploy chunk fetch failure: reload ONCE.
+    // تعافٍ تلقائي من فشل تحميل chunk بعد إعادة نشر: reload مرة واحدة.
     if (isChunkLoadError(error)) {
       const sentinel = 'nl_boundary_chunk_reload';
       let alreadyReloaded = false;
@@ -30,42 +37,97 @@ export class SectionErrorBoundary extends Component<Props, State> {
         try { sessionStorage.setItem(sentinel, '1'); } catch { /* ignore */ }
         window.location.reload();
       }
+      return;
+    }
+
+    // لأخطاء الـ render غير الـ chunk (وليست App): أعد التركيب تلقائيًا حتى MAX_AUTO_ATTEMPTS
+    if (this.props.sectionName !== 'App' && this.state.autoAttempts < MAX_AUTO_ATTEMPTS) {
+      if (this.retryTimer) clearTimeout(this.retryTimer);
+      this.retryTimer = setTimeout(() => {
+        this.setState((prev) => ({
+          hasError: false,
+          retryKey: prev.retryKey + 1,
+          autoAttempts: prev.autoAttempts + 1,
+        }));
+      }, AUTO_RETRY_DELAY_MS);
     }
   }
+
+  componentWillUnmount() {
+    if (this.retryTimer) clearTimeout(this.retryTimer);
+  }
+
+  private handleManualRetry = () => {
+    this.setState((prev) => ({
+      hasError: false,
+      retryKey: prev.retryKey + 1,
+      autoAttempts: 0,
+    }));
+  };
 
   render() {
     if (this.state.hasError) {
       if (this.props.sectionName === 'App') {
         return (
-          <div style={{ 
-            height: '100svh',  /* small viewport height — ignores browser chrome on iOS */
-            minHeight: '100vh', /* fallback for older browsers */
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '20px',
-            padding: '20px',
-            textAlign: 'center',
-            background: '#080a14',
-            color: '#fff',
-            fontFamily: 'sans-serif'
-          }}>
-            <h2 style={{ fontSize: '24px', margin: 0 }}>عذراً، حدث خطأ ما</h2>
-            <p style={{ opacity: 0.7, maxWidth: '400px' }}>
-              واجه التطبيق مشكلة غير متوقعة. يرجى محاولة إعادة تحميل الصفحة.
+          <div
+            role="alert"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '20px',
+              padding: '24px',
+              background: '#ffffff',
+              color: '#111111',
+              textAlign: 'center',
+              direction: 'rtl',
+              fontFamily: "'Inter', system-ui, -apple-system, 'Segoe UI', Tahoma, Arial, sans-serif",
+              zIndex: 999999,
+            }}
+          >
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 'clamp(22px, 4vw, 32px)',
+                fontWeight: 700,
+                letterSpacing: '-0.01em',
+                color: '#111111',
+              }}
+            >
+              عذراً، حدث خطأ ما
+            </h1>
+            <p
+              style={{
+                margin: 0,
+                maxWidth: '420px',
+                fontSize: 'clamp(14px, 2.2vw, 16px)',
+                lineHeight: 1.7,
+                fontWeight: 400,
+                color: '#444444',
+              }}
+            >
+              واجه التطبيق مشكلة غير متوقعة. يرجى إعادة تحميل الصفحة للمتابعة.
             </p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               style={{
-                padding: '10px 24px',
-                background: '#fff',
-                color: '#080a14',
+                marginTop: '8px',
+                padding: '12px 28px',
+                fontSize: '15px',
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                color: '#ffffff',
+                background: '#111111',
                 border: 'none',
-                borderRadius: '8px',
-                fontWeight: '600',
-                cursor: 'pointer'
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s ease',
               }}
+              onMouseOver={(e) => { e.currentTarget.style.opacity = '0.85'; }}
+              onMouseOut={(e) => { e.currentTarget.style.opacity = '1'; }}
             >
               إعادة التحميل
             </button>
@@ -74,36 +136,18 @@ export class SectionErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div style={{ 
-          padding: '20px', 
-          textAlign: 'center', 
-          color: 'rgba(255,255,255,0.3)',
-          fontFamily: 'monospace',
-          fontSize: '12px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '12px',
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           <span>— section unavailable —</span>
           <button
-            onClick={() => this.setState({ hasError: false })}
-            style={{
-              padding: '6px 16px',
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '4px',
-              color: 'rgba(255,255,255,0.4)',
-              fontFamily: 'monospace',
-              fontSize: '11px',
-              cursor: 'pointer',
-            }}
+            onClick={this.handleManualRetry}
+            style={{ padding: '4px 14px', borderRadius: '9999px', border: '1px solid var(--border-subtle, rgba(255,255,255,0.2))', background: 'transparent', color: 'inherit', cursor: 'pointer', fontSize: '0.75rem' }}
           >
             retry
           </button>
         </div>
       );
     }
-    return this.props.children;
+    // مفتاح remount يضمن إعادة تركيب نظيفة للأبناء عند إعادة المحاولة
+    return <div key={this.state.retryKey} style={{ display: 'contents' }}>{this.props.children}</div>;
   }
 }

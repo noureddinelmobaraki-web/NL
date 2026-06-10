@@ -1,0 +1,18 @@
+/* src/transitions/genie.css — fallback CSS لكل الأوضاع (بلا framer) */
+@keyframes genieIn {
+  from { opacity: 0; transform: scale(0.06); filter: blur(6px); }
+  to   { opacity: 1; transform: scale(1);    filter: blur(0px); }
+}
+@keyframes genieOut {
+  from { opacity: 1; transform: scale(1);    filter: blur(0px); }
+  to   { opacity: 0; transform: scale(0.06); filter: blur(4px); }
+}
+.genie-surface {
+  transform-origin: var(--genie-origin, 50% 50%);
+  will-change: transform, opacity, filter;
+}
+.genie-surface[data-genie="open"]  { animation: genieIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.genie-surface[data-genie="close"] { animation: genieOut 0.30s cubic-bezier(0.55, 0, 0.68, 0.19) both; }
+@media (prefers-reduced-motion: reduce) {
+  .genie-surface[data-genie] { animation: none !important; }
+}

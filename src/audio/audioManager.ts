@@ -207,6 +207,10 @@ class AudioManager {
     element.volume = 0;
   }
 
+  isRegistered(source: AudioSource): boolean {
+    return this.registry.has(source);
+  }
+
   /**
    * يفك تسجيل مصدر صوت. عكس register().
    * آمن للاستدعاء حتى لو لم يكن مسجَّلاً.
@@ -242,9 +246,10 @@ class AudioManager {
    * إن كان source ≠ 'bg'.
    *
    * @param source — أحد 'bg' | 'song' | 'lens' | 'video' | 'mebit'
+   * @param opts — خيارات إضافية (force).
    * @returns Promise يحلّ عند انتهاء معالجة الـ step في playChain.
    */
-  async play(source: AudioSource): Promise<void> {
+  async play(source: AudioSource, opts?: { force?: boolean }): Promise<void> {
     const run = async () => {
       const entry = this.registry.get(source);
       if (!entry) return;
@@ -257,8 +262,8 @@ class AudioManager {
         const currentPriority = this.getPriority(this.active);
         const incomingPriority = this.getPriority(source);
         
-        // If incoming is lower priority, it CANNOT interrupt.
-        if (incomingPriority < currentPriority) {
+        // If incoming is lower priority, it CANNOT interrupt, unless forced.
+        if (!opts?.force && incomingPriority < currentPriority) {
           amLog.warn(`Incoming ${source} (p:${incomingPriority}) cannot interrupt ${this.active} (p:${currentPriority})`);
           return;
         }

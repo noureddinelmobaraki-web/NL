@@ -1,12 +1,13 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import type { Theme, AudioIntent } from '../utils/userPrefs';
 import { loadPrefs } from '../utils/userPrefs';
 import { ActiveSong } from '../types';
 import { isAutomatedEnv } from '../utils/env';
+import { audioManager } from '../audio/audioManager';
 
 interface AppContextType {
   theme: Theme;
-  setTheme: (theme: Theme) => void;
+  setTheme: React.Dispatch<React.SetStateAction<Theme>>;
   audioIntent: AudioIntent;
   setAudioIntent: React.Dispatch<React.SetStateAction<AudioIntent>>;
   ambientColor: string | null;
@@ -17,6 +18,7 @@ interface AppContextType {
   setLoaded: (loaded: boolean) => void;
   currentPage: string;
   setCurrentPage: (page: string) => void;
+  returnToWelcome: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -34,6 +36,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(isAutomatedCtx);
   const [currentPage, setCurrentPage] = useState('home');
 
+  const returnToWelcome = useCallback(() => {
+    try { ['bg','song','lens','mebit','video','intro'].forEach((s) => audioManager.stop(s as any)); } catch {}
+    setLoaded(false);
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -49,6 +56,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLoaded,
         currentPage,
         setCurrentPage,
+        returnToWelcome,
       }}
     >
       {children}

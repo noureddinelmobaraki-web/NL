@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useViewportMode } from '../../hooks/useViewportMode';
 
 interface LoadingVideoProps {
@@ -18,14 +18,29 @@ export const LoadingVideo = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [localFailed, setLocalFailed] = useState(false);
 
-  const triggerFail = () => { setLocalFailed(true); onFail(); };
+  const onFailRef = useRef(onFail);
+  const onCanPlayRef = useRef(onCanPlay);
+
+  useEffect(() => {
+    onFailRef.current = onFail;
+    onCanPlayRef.current = onCanPlay;
+  }, [onFail, onCanPlay]);
+
+  const triggerFail = useCallback(() => {
+    setLocalFailed(true);
+    onFailRef.current();
+  }, []);
+
+  const onCanPlayEvent = useCallback(() => {
+    onCanPlayRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (useStatic) return;
     const video = videoRef.current;
     if (!video) return;
     video.load();
-    const tryPlay = () => video.play().then(() => onCanPlay?.()).catch(e => {
+    const tryPlay = () => video.play().then(() => onCanPlayEvent()).catch(e => {
         console.warn('Video failed to play:', e);
         triggerFail();
     });
@@ -35,7 +50,7 @@ export const LoadingVideo = ({
     return () => {
       video.removeEventListener('canplay', tryPlay);
     };
-  }, [useStatic, videoUrl]);
+  }, [useStatic, videoUrl, onCanPlayEvent, triggerFail]);
 
   if (useStatic) {
     return (

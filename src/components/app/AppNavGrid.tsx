@@ -4,6 +4,7 @@ import { NavButton } from '../NavButton';
 import { audioManager } from '../../audio/audioManager';
 import { itemVariants } from './appConstants';
 import { useTranslation } from 'react-i18next';
+import { setGenieOriginFromElement } from '../../transitions/genieOrigin';
 
 interface AppNavGridProps {
   resolvedTheme: string;
@@ -26,25 +27,35 @@ export function AppNavGrid({
       <NavButton 
         icon={Camera} 
         label={t('nav.mebit').toUpperCase()} 
-        onClick={() => onScrollToSection('me-bit-gallery')} 
+        onClick={(e) => {
+          setGenieOriginFromElement(e.currentTarget);
+          onScrollToSection('me-bit-gallery');
+        }} 
         theme={resolvedTheme} 
       />
       <NavButton 
         icon={Music2} 
         label={t('nav.songs').toUpperCase()} 
-        onClick={() => onScrollToSection('my-songs-section')} 
+        onClick={(e) => {
+          setGenieOriginFromElement(e.currentTarget);
+          onScrollToSection('my-songs-section');
+        }} 
         theme={resolvedTheme} 
       />
       <NavButton 
         icon={Pencil} 
         label={t('nav.drawings').toUpperCase()} 
-        onClick={() => onScrollToSection('drawings-section')} 
+        onClick={(e) => {
+          setGenieOriginFromElement(e.currentTarget);
+          onScrollToSection('drawings-section');
+        }} 
         theme={resolvedTheme} 
       />
       <NavButton 
         icon={Aperture} 
         label={t('nav.lens').toUpperCase()} 
-        onClick={() => { 
+        onClick={(e) => { 
+          setGenieOriginFromElement(e.currentTarget);
           audioManager.play('lens'); 
           onOpenLens(); 
         }} 

@@ -76,15 +76,18 @@ export const NowPlayingBarMobile = ({
   };
 
   return (
-    <div style={{
-      position: 'relative',
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '4px',
-      padding: '6px 8px 4px',
-    }}>
+    <div 
+      className="now-playing-bar mid-player"
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+        padding: '6px 8px 4px',
+      }}
+    >
       {/* ── Row 1: cover + title + primary actions ────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
         {/* Cover */}
@@ -216,6 +219,7 @@ export const NowPlayingBarMobile = ({
             outline: 'none',
             touchAction: 'manipulation',
             cursor: 'pointer',
+            ['--seek-progress' as any]: `${progress}%`
           }}
         />
 

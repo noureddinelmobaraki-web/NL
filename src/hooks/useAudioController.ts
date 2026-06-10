@@ -6,14 +6,6 @@ import { THEME_BG_MUSIC, ASSETS } from '../constants/assets';
 import { savePrefs, needsUserGesture } from '../utils/userPrefs';
 import type { Theme, AudioIntent } from '../utils/userPrefs';
 
-const useEffectEvent = <T extends (...a: any[]) => any>(fn: T): T => {
-  const ref = useRef(fn);
-  useEffect(() => {
-    ref.current = fn;
-  });
-  return useCallback(((...a) => ref.current(...a)) as T, []);
-};
-
 export interface UseAudioControllerProps {
   isLensGalleryOpen: boolean;
   isGalleryOpen: boolean;
@@ -47,6 +39,16 @@ export function useAudioController({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMeBitPlaying, setIsMeBitPlaying] = useState(false);
 
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  const audioIntentRef = useRef(audioIntent);
+  useEffect(() => {
+    audioIntentRef.current = audioIntent;
+  }, [audioIntent]);
+
   // Audio lifecycle for persistent sources
   useEffect(() => {
     const audio = audioRef.current;
@@ -56,10 +58,11 @@ export function useAudioController({
     audioManager.register('bg', audio, 0.7);
     audioManager.setStateCallback((playing) => setIsPlaying(playing));
 
-    const initialResolved = theme === 'dark' ? 'dark'
-      : theme === 'light' ? 'light'
-      : theme === 'bit' ? 'bit'
-      : theme === 'lite' ? 'lite'
+    const initialThemeValue = theme;
+    const initialResolved = initialThemeValue === 'dark' ? 'dark'
+      : initialThemeValue === 'light' ? 'light'
+      : initialThemeValue === 'bit' ? 'bit'
+      : initialThemeValue === 'lite' ? 'lite'
       : 'midnight';
     const url = THEME_BG_MUSIC[initialResolved] ?? ASSETS.media.music;
     currentBgUrlRef.current = url;
@@ -157,12 +160,12 @@ export function useAudioController({
 
   // ── Per-theme background music swap ──────────────────────────────
   // Reads audioIntent / writes prefs WITHOUT entering the effect's deps.
-  const promoteIntentToPlaying = useEffectEvent(() => {
-    if (audioIntent !== 'user-playing') {
+  const promoteIntentToPlaying = useCallback(() => {
+    if (audioIntentRef.current !== 'user-playing') {
       setAudioIntent('user-playing');
       savePrefs({ audioIntent: 'user-playing' });
     }
-  });
+  }, [setAudioIntent]);
 
   useEffect(() => {
     const audio = audioRef.current;

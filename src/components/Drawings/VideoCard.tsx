@@ -184,7 +184,7 @@ export const VideoCard = memo(({
     return (
       <div
         ref={containerRef}
-        className="relative flex items-center justify-center bg-black video-card-wrapper" // MOBILE-ONLY: added video-card-wrapper
+        className="relative flex items-center justify-center bg-black video-card-wrapper genie-surface" // MOBILE-ONLY: added video-card-wrapper
         data-index={index} // MOBILE-ONLY
         style={{
           width: '100%',

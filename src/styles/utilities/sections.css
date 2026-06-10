@@ -10,7 +10,9 @@
   background: var(--paper-color);
   transform: var(--hero-profile-transform, rotate(2deg));
   transition: transform 0.3s ease;
-  display: var(--hero-profile-display, none);
+  display: var(--hero-profile-display, flex);
+  align-items: center;
+  justify-content: center;
 }
 
 @media (min-width: 768px) {

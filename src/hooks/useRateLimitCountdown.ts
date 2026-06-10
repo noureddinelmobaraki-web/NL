@@ -12,7 +12,7 @@
  *  - secondsLeft = 0 when not blocked or already expired.
  *  - label is pre-formatted in Arabic for direct rendering.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { CONTACT_LIMITS } from '../constants/contact';
 
 export interface RateLimitCountdown {
@@ -24,7 +24,7 @@ export function useRateLimitCountdown(
   log: string[],
   isBlocked: boolean
 ): RateLimitCountdown {
-  const computeSecondsLeft = () => {
+  const computeSecondsLeft = useCallback(() => {
     if (!isBlocked || log.length === 0) return 0;
     // The OLDEST entry inside the rolling window is the one that will
     // expire first, freeing a slot.
@@ -35,9 +35,9 @@ export function useRateLimitCountdown(
     if (!oldest) return 0;
     const expiresAt = oldest + CONTACT_LIMITS.windowMs;
     return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
-  };
+  }, [isBlocked, log]);
 
-  const [secondsLeft, setSecondsLeft] = useState<number>(computeSecondsLeft);
+  const [secondsLeft, setSecondsLeft] = useState<number>(() => computeSecondsLeft());
 
   useEffect(() => {
     if (!isBlocked) {
@@ -52,8 +52,7 @@ export function useRateLimitCountdown(
       });
     }, 1000);
     return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isBlocked, log.length]);
+  }, [isBlocked, computeSecondsLeft]);
 
   return { secondsLeft, label: formatArabicCountdown(secondsLeft) };
 }

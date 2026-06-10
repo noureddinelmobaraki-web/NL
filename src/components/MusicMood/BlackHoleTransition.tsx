@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MOOD_TRANSITION_VIDEOS } from '../../constants/assets';
+import { MOOD_TRANSITION_VIDEOS, MOOD_TRANSITION_TIMING } from '../../constants/assets';
 import { useViewportMode } from '../../hooks/useViewportMode';
 
 interface BlackHoleTransitionProps {
@@ -8,7 +8,10 @@ interface BlackHoleTransitionProps {
   onNearComplete?: () => void;
 }
 
-// Kept for backward compatibility with MySongsPage hover preload
+// انتقالة "دخول الحلم" السريعة: تموّج + ضباب فوق الفيديو. المدّة محصورة بين 1.5s و2s.
+const FAST_DURATION = 1600; // ms — داخل المدى المطلوب
+
+// محتفظ بها للتوافق مع preload عند المرور على الزر
 export const preloadBlackHoleTransition = (): void => {
   if (typeof window === 'undefined') return;
   try {
@@ -25,11 +28,12 @@ export const preloadBlackHoleTransition = (): void => {
   } catch {}
 };
 
-export const BlackHoleTransition = ({ onComplete }: BlackHoleTransitionProps) => {
+export const BlackHoleTransition = ({ onComplete, onNearComplete }: BlackHoleTransitionProps) => {
   const { isMobile, isTablet } = useViewportMode();
   const videoUrl = (isMobile || isTablet) ? MOOD_TRANSITION_VIDEOS.mobile : MOOD_TRANSITION_VIDEOS.desktop;
   const videoRef = useRef<HTMLVideoElement>(null);
   const completedRef = useRef(false);
+  const [phase, setPhase] = useState<'enter' | 'warp'>('enter');
 
   useEffect(() => {
     const prev = document.documentElement.style.overflow;
@@ -43,83 +47,83 @@ export const BlackHoleTransition = ({ onComplete }: BlackHoleTransitionProps) =>
 
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const onNearCompleteRef = useRef(onNearComplete);
+  onNearCompleteRef.current = onNearComplete;
 
   useEffect(() => {
     const v = videoRef.current;
-    let fallbackTimer: number;
-    let duration = 3000;
+    const finish = () => {
+      if (completedRef.current) return;
+      completedRef.current = true;
+      onCompleteRef.current();
+    };
 
-    // Safety net that ALWAYS fires, even if v.play() promise hangs (e.g. iOS low power mode)
-    const safetyTimer = window.setTimeout(() => {
-      if (!completedRef.current) {
-        completedRef.current = true;
-        onCompleteRef.current();
-      }
-    }, 3500);
+    // ابدأ طور التموّج فورًا تقريبًا لإحساب "الحلم"
+    const warpTimer = window.setTimeout(() => setPhase('warp'), 120);
+
+    // كشف شاشة الـ mood قُبيل النهاية بقليل
+    const nearTimer = window.setTimeout(() => {
+      onNearCompleteRef.current?.();
+    }, Math.max(0, FAST_DURATION - 250));
+
+    // سقف صارم — تكتمل دائمًا بسرعة (1.5s–2s)
+    const capTimer = window.setTimeout(finish, FAST_DURATION);
 
     if (v) {
       v.muted = true;
-      v.play().then(() => {
-         // Fallback timer slightly longer than the video to ensure it runs even if onEnded drops
-         duration = (v.duration && !isNaN(v.duration) && v.duration > 0) ? (v.duration * 1000) + 200 : 3000;
-         fallbackTimer = window.setTimeout(() => {
-            if (!completedRef.current) {
-              completedRef.current = true;
-              onCompleteRef.current();
-            }
-         }, duration);
-      }).catch(() => {
-        console.warn('[MoodTransition] video play blocked, jumping instantly');
-        if (!completedRef.current) {
-          completedRef.current = true;
-          onCompleteRef.current();
-        }
-      });
-    } else {
-        fallbackTimer = window.setTimeout(() => {
-            if (!completedRef.current) {
-              completedRef.current = true;
-              onCompleteRef.current();
-            }
-        }, duration);
+      // سرّع المقطع ليطابق التموّج السريع
+      try {
+        const total = MOOD_TRANSITION_TIMING?.total || 2000;
+        v.playbackRate = Math.min(2.5, Math.max(1, total / FAST_DURATION));
+      } catch {}
+      v.play().catch(() => {/* مُنع التشغيل التلقائي — سقف المؤقّت سيُكمل */});
     }
 
     return () => {
-      clearTimeout(fallbackTimer);
-      clearTimeout(safetyTimer);
+      clearTimeout(warpTimer);
+      clearTimeout(nearTimer);
+      clearTimeout(capTimer);
     };
   }, []);
 
   return createPortal(
-    <div
-      aria-hidden="true"
-      style={{
-        position: 'fixed', inset: 0, zIndex: 2147483647,
-        width: '100dvw', height: '100dvh',
-        pointerEvents: 'auto', overflow: 'hidden',
-        background: '#050010',
-      }}
-    >
+    <div aria-hidden="true" className={`mood-warp-root ${phase === 'warp' ? 'is-warp' : ''}`}>
       <video
         ref={videoRef}
         key={videoUrl}
         autoPlay muted playsInline preload="auto"
+        className="mood-warp-video"
         onEnded={() => {
           if (!completedRef.current) {
             completedRef.current = true;
             onCompleteRef.current();
           }
         }}
-        style={{
-          position: 'absolute', inset: 0,
-          width: '100%', height: '100%',
-          objectFit: 'cover', objectPosition: 'center',
-        }}
       >
         <source src={videoUrl.replace('.webm', '.mp4')} type="video/mp4" />
         <source src={videoUrl} type="video/webm" />
       </video>
+
+      {/* تموّج مائي */}
+      <div className="mood-warp-ripple" />
+      {/* ضباب الحلم + وميض */}
+      <div className="mood-warp-blur" />
+
+      {/* فلتر التموّج (SVG) */}
+      <svg className="mood-warp-svg" aria-hidden="true">
+        <filter id="moodWaterWarp">
+          <feTurbulence type="fractalNoise" baseFrequency="0.012 0.028" numOctaves="2" seed="7" result="noise">
+            <animate
+              attributeName="baseFrequency"
+              dur="1.6s"
+              values="0.012 0.028; 0.03 0.05; 0.012 0.028"
+              repeatCount="1"
+            />
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="36" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
     </div>,
-    document.body
+    document.body,
   );
 };

@@ -1,5 +1,6 @@
 import { X, Maximize2, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGenieTransition } from '../../transitions/useGenieTransition';
 import { useEffect, useState } from 'react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useMeBitSession } from '../../hooks/useMeBitSession';
@@ -42,6 +43,7 @@ export const MeBitGallery = ({
   useMeBitSession(isOpen);
   useMeBitPrefetch(images, selectedIndex ?? 0);
   const { onTouchStart, onTouchEnd } = useMeBitSwipe({ onNext, onPrev, onClose });
+  const genie = useGenieTransition(isOpen);
   const { setContext, registerButton, unregisterButton } = useButtonContext();
 
   useEffect(() => {
@@ -142,18 +144,23 @@ export const MeBitGallery = ({
           role="dialog"
           aria-modal="true"
           aria-label="ميبيت غاليري"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className={`fixed inset-0 z-[100] flex items-center justify-center
+          initial={genie.initial}
+          animate={genie.animate}
+          exit={genie.exit}
+          transition={genie.transition}
+          className={`fixed inset-0 z-[100] flex items-center justify-center mid-gallery
             ${isMobileView ? 'p-0' : 'p-4 sm:p-10 md:p-14'}`}
-          style={isMobileView ? {
-            // MOBILE-ONLY: dvh + webkit fallback + perf hints
-            height: '100dvh',
-            minHeight: '-webkit-fill-available',
-            overscrollBehavior: 'none',
-            contain: 'strict',
-          } : undefined}
+          style={{
+            ...(isMobileView
+              ? {
+                  height: '100dvh',
+                  minHeight: '-webkit-fill-available',
+                  overscrollBehavior: 'none' as const,
+                  contain: 'strict' as const,
+                }
+              : {}),
+            ...genie.style,
+          }}
         >
           {/* Backdrop — solid black on mobile (skip expensive backdrop-blur), glass on desktop */}
           <div

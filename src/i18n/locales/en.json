@@ -11,5 +11,14 @@
   },
   "buttons": {
     "changeLanguage": "Change Language"
+  },
+  "contact": {
+    "title": "Be honest with me",
+    "anonymous": "Anonymous",
+    "configError": "Form configuration error, contact me directly",
+    "tooShort": "Message is too short",
+    "sendFailed": "Sending failed, please try again",
+    "blocked": "Your messages arrived, thanks for your honesty",
+    "verifyHuman": "Please confirm you are not a robot"
   }
 }

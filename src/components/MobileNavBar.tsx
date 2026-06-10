@@ -3,6 +3,7 @@ import { useDeviceType } from "../hooks/useDeviceType";
 import { Home, Music2, Camera, Aperture, Pause, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from "react-i18next";
+import { setGenieOriginFromElement } from "../transitions/genieOrigin";
 
 interface MobileNavBarProps {
   currentPage: string;
@@ -56,6 +57,7 @@ export const MobileNavBar = ({
 
   return (
     <nav
+      className="mid-nav"
       lang={i18n.resolvedLanguage || i18n.language || 'en'}
       aria-label="Mobile Navigation"
       style={{
@@ -83,7 +85,10 @@ export const MobileNavBar = ({
           <button
             key={tab.id}
             type="button"
-            onClick={() => isMusic ? onToggleBg() : onNavigate(tab.id)}
+            onClick={(e) => {
+              setGenieOriginFromElement(e.currentTarget);
+              isMusic ? onToggleBg() : onNavigate(tab.id);
+            }}
             aria-current={isActive ? 'page' : undefined}
             aria-label={tab.label}
             onMouseDown={isMusic ? handleStart : undefined}

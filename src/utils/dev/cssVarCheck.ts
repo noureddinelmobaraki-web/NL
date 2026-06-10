@@ -41,6 +41,5 @@ export function checkCSSVars(vars: CSSVarList, label = 'Theme Check'): void {
 export function useDevCSSVarCheck(vars: CSSVarList, dep: unknown, label = 'Theme Check'): void {
   useEffect(() => {
     checkCSSVars(vars, label);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dep]);
+  }, [dep, vars, label]);
 }

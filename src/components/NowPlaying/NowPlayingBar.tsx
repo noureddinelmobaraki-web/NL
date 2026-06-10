@@ -64,6 +64,7 @@ export const NowPlayingBar = ({
       {activeSong && (
         <motion.div
           key="now-playing-bar"
+          className="mid-player-shell"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => {
             setIsHovered(false);
@@ -100,9 +101,11 @@ export const NowPlayingBar = ({
             width: isMobileOrTablet ? "auto" : geometry.width,
             height: isMobileOrTablet ? "72px" : undefined,
             minHeight: isHovered && !isMobileOrTablet ? "120px" : (isMobileOrTablet ? "72px" : "64px"),
-            background: isMobileOrTablet ? 'var(--bg-glass-strong)' : 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.7), rgba(var(--bg-page-rgb), 0.8))',
-            backdropFilter: isMobileOrTablet ? 'blur(20px)' : 'blur(32px) saturate(180%)',
-            WebkitBackdropFilter: isMobileOrTablet ? 'blur(20px)' : 'blur(32px) saturate(180%)',
+            background: isMobileOrTablet
+              ? 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.82), rgba(var(--bg-page-rgb), 0.92)), var(--bg-glass-strong)'
+              : 'linear-gradient(135deg, rgba(var(--bg-page-rgb), 0.7), rgba(var(--bg-page-rgb), 0.8))',
+            backdropFilter: isMobileOrTablet ? 'blur(28px) saturate(180%)' : 'blur(32px) saturate(180%)',
+            WebkitBackdropFilter: isMobileOrTablet ? 'blur(28px) saturate(180%)' : 'blur(32px) saturate(180%)',
             borderRadius: isMobileOrTablet ? "16px" : geometry.borderRadius,
             border: '1px solid var(--border-strong)',
             boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 1px 0 var(--border-subtle)',

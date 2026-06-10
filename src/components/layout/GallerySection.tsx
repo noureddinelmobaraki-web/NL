@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useMeBitPrefetch } from "../MeBit/useMeBitPrefetch";
+import { useCenterSpotlight } from "../../hooks/useCenterSpotlight";
 import { useDeviceType } from "../../hooks/useDeviceType";
 import { motion, Variants } from "framer-motion";
 import { Maximize2 } from "lucide-react";
@@ -37,6 +38,7 @@ export const GallerySection = ({
   onPrefetchMeBit,
 }: GallerySectionProps) => {
   const ctaRef = useRef<HTMLDivElement>(null);
+  const { ref: spotlightRef, isCentered } = useCenterSpotlight<HTMLDivElement>();
   const { isMobile } = useDeviceType();
 
   useMeBitPrefetch({
@@ -57,14 +59,17 @@ export const GallerySection = ({
           <h2 className="font-manga text-fluid-section font-bold text-[var(--text-primary)] text-left tracking-wider">
             ME bit
           </h2>
-          <span className="font-hand text-[var(--text-muted)] text-sm italic mb-1">Click to enter theater mode</span>
         </div>
         <div className="manga-divider" />
         
         <div 
-          ref={ctaRef}
+          ref={(node) => {
+            ctaRef.current = node;
+            spotlightRef.current = node;
+          }}
           onClick={() => onGalleryOpen()}
-          className="relative w-full border-[4px] border-[var(--ink-color)] bg-[var(--paper-color)] p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[6px_6px_0px_var(--manga-shadow-color)] sm:shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[8px_8px_0px_var(--manga-shadow-color)] sm:hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[220px] sm:h-[260px] md:h-[280px] manga-panel"
+          data-centered={isCentered ? 'true' : 'false'}
+          className="me-bit-cta relative w-full border-[4px] border-[var(--ink-color)] bg-[var(--paper-color)] p-[10px] overflow-hidden group cursor-[zoom-in] shadow-[6px_6px_0px_var(--manga-shadow-color)] sm:shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[8px_8px_0px_var(--manga-shadow-color)] sm:hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[220px] sm:h-[260px] md:h-[280px] manga-panel"
         >
           {resolvedTheme === 'bit' && (
             <img
@@ -98,17 +103,9 @@ export const GallerySection = ({
             ))}
           </div>
           
-          {/* Overlay hint */}
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-            <div className="p-4 manga-border flex items-center gap-3 scale-90 group-hover:scale-100 transition-transform shadow-[5px_5px_0_var(--ink-color)]" style={{ background: 'var(--paper-color)', color: 'var(--ink-color)', borderColor: 'var(--ink-color)' }}>
-              <Maximize2 className="w-6 h-6" aria-hidden="true" />
-              <span className="font-manga text-xl font-bold">OPEN GALLERY</span>
-            </div>
-          </div>
-
-          {/* Mobile specific hint */}
-          <div className="absolute bottom-2 right-2 md:hidden bg-black/60 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded font-mono uppercase tracking-wider z-20 pointer-events-none">
-            tap to open
+          {/* أيقونة تكبير فقط — بلا أي نص */}
+          <div className="me-bit-cta-glint absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <Maximize2 className="w-7 h-7 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.55)]" aria-hidden="true" />
           </div>
         </div>
       </motion.section>

@@ -9,8 +9,10 @@
  * Body scroll lock is delegated to useMobileLyricsBodyLock (ref-counted).
  */
 import { createPortal } from 'react-dom';
-import { useDeferredValue, useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGenieTransition } from '../../transitions/useGenieTransition';
+import { getGenieOrigin, genieOriginToTransformOrigin } from '../../transitions/genieOrigin';
 import type { Song, LyricLine } from '../../types';
 import { LyricsWindowContent } from '../LyricsEngine';
 import { formatTime } from './formatTime';
@@ -48,84 +50,49 @@ const closeMobileLyrics = () =>
 // Inline (Dark / Manga themes)
 // ───────────────────────────────────────────────
 const InlineLyrics = ({
-  karaokeMode, localLyrics, currentLineIndex, currentTime, onSeek, currentLyricLine,
+  karaokeMode, localLyrics, currentTime, onSeek, currentLyricLine,
 }: Pick<
   SongCardLyricsPanelProps,
-  'karaokeMode' | 'localLyrics' | 'currentLineIndex' | 'currentTime' | 'onSeek' | 'currentLyricLine'
+  'karaokeMode' | 'localLyrics' | 'currentTime' | 'onSeek' | 'currentLyricLine'
 >) => {
-  // Defer per-word render at high tick rates — paint stays in fast track.
-  const deferredTime = useDeferredValue(currentTime || 0);
-  const deferredIndex = useDeferredValue(currentLineIndex);
-
   if (karaokeMode) {
-    const activeLine = deferredIndex !== -1 ? localLyrics[deferredIndex] : undefined;
-    // Fallback to currentLyricLine prop if index lookup fails (e.g. lyrics
-    // not yet loaded but a global broadcast gave us the line text).
-    const fallbackText = !activeLine && currentLyricLine ? currentLyricLine : null;
-
+    if (!localLyrics || localLyrics.length === 0) {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '120px',
+            color: 'var(--lyric-inactive-color)',
+            fontFamily: 'monospace',
+            fontSize: '0.85rem',
+          }}
+        >
+          {currentLyricLine ? currentLyricLine : '♪ جاري تحميل الكلمات...'}
+        </div>
+      );
+    }
     return (
       <div
         style={{
-          marginTop: '16px',
-          minHeight: '80px',
+          width: '100%',
+          height: 'clamp(220px, 34vh, 360px)',
+          minHeight: '220px',
+          maxHeight: '360px',
+          overflow: 'hidden',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'stretch',
           justifyContent: 'center',
-          borderTop: '1px solid var(--card-border-line)',
-          paddingTop: '12px',
         }}
+        className="no-scrollbar mid-lyrics"
       >
-        <p
-          style={{
-            fontFamily: 'var(--font-manga)',
-            fontSize: 'clamp(1.2rem, 4vw, 2rem)',
-            textAlign: 'center',
-            letterSpacing: '0.05em',
-            lineHeight: 1.4,
-            padding: '0 16px',
-          }}
-        >
-          {activeLine ? (
-            activeLine.words && activeLine.words.length > 0 ? (
-              activeLine.words.map((word, wi) => {
-                const isPlayed = word.time <= deferredTime;
-                return (
-                  <span
-                    key={wi}
-                    style={{
-                      color: isPlayed
-                        ? 'var(--lyric-active-color)'
-                        : 'var(--lyric-inactive-color)',
-                      opacity: isPlayed ? 1 : 0.45,
-                      textShadow: isPlayed
-                        ? '0 0 20px var(--lyric-active-shadow)'
-                        : 'none',
-                      transition: 'color 150ms ease-out, opacity 150ms ease-out',
-                      display: 'inline-block',
-                      whiteSpace: 'pre',
-                      willChange: isPlayed ? 'auto' : 'opacity',
-                    }}
-                  >
-                    {word.text}
-                  </span>
-                );
-              })
-            ) : (
-              <span
-                style={{
-                  color: 'var(--lyric-active-color)',
-                  textShadow: '0 0 20px var(--lyric-active-shadow)',
-                }}
-              >
-                {activeLine.text}
-              </span>
-            )
-          ) : fallbackText ? (
-            <span style={{ color: 'var(--lyric-active-color)' }}>{fallbackText}</span>
-          ) : (
-            <span style={{ color: 'var(--lyric-inactive-color)' }}>♪</span>
-          )}
-        </p>
+        <LyricsWindowContent
+          currentTime={currentTime || 0}
+          onSeek={onSeek || (() => {})}
+          lyrics={localLyrics}
+          isMobilePlayer={false}
+        />
       </div>
     );
   }
@@ -176,8 +143,11 @@ const DesktopLightPopover = ({
   localLyrics, currentLineIndex, onSeek,
 }: Pick<SongCardLyricsPanelProps, 'localLyrics' | 'currentLineIndex' | 'onSeek'>) => (
   <div 
-    className="light-lyrics-card-popover absolute bg-white p-4 z-50 rounded-lg flex flex-col"
+    className="light-lyrics-card-popover absolute bg-white p-4 z-50 rounded-lg flex flex-col genie-surface"
+    data-genie="open"
     style={{
+      ['--genie-origin' as string]: genieOriginToTransformOrigin(getGenieOrigin()),
+      transformOrigin: 'var(--genie-origin)',
       top: '100%',
       right: '16px',
       width: '345px',
@@ -296,6 +266,7 @@ const MobileBottomSheet = ({
   SongCardLyricsPanelProps,
   'song' | 'isLyricsOpen' | 'localLyrics' | 'currentLineIndex' | 'onSeek'
 >) => {
+  const genie = useGenieTransition(true);
   // Ref-counted body lock — see Prompt 4.
   useMobileLyricsBodyLock(isLyricsOpen, /* enabled */ true);
 
@@ -320,12 +291,13 @@ const MobileBottomSheet = ({
           />
           <motion.div
             key="lyrics-sheet"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 32, stiffness: 350 }}
+            initial={genie.initial}
+            animate={genie.animate}
+            exit={genie.exit}
+            transition={genie.transition}
             className="lyrics-bottom-sheet fixed inset-x-0 bottom-0 flex flex-col"
             style={{
+              ...genie.style,
               height: '80vh',
               background: 'rgba(15, 15, 20, 0.98)',
               backdropFilter: 'blur(30px)',
@@ -439,7 +411,6 @@ export const SongCardLyricsPanel = ({
       <InlineLyrics
         karaokeMode={karaokeMode}
         localLyrics={localLyrics}
-        currentLineIndex={currentLineIndex}
         currentLyricLine={currentLyricLine}
         currentTime={currentTime}
         onSeek={onSeek}

@@ -1,12 +1,8 @@
 /**
  * LyricsPanelBody — scrollable list inside the mobile bottom-sheet.
- *
- * Responsibilities:
- *   1. Auto-scroll the active line to ~40% from top (via useDeferredValue
- *      to coalesce work during fast time updates).
- *   2. Render each line with RTL detection (Arabic).
- *   3. Apply `will-change: opacity` ONLY to the active line — keeps paint
- *      cost minimal on long lyrics (100+ lines).
+ * Colors are ALWAYS derived from theme CSS variables (--lyric-*),
+ * so on the light midnight sheet the words become dark automatically,
+ * and dark themes keep their own colors.
  */
 import { useDeferredValue, useEffect, useRef } from 'react';
 import type { LyricLine } from '../../types';
@@ -31,9 +27,6 @@ export const LyricsPanelBody = ({
   onSeek,
 }: LyricsPanelBodyProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  // Defer the scroll computation during high-frequency time updates.
-  // The user perceives the highlight instantly (CSS), while the expensive
-  // smoothScroll gets coalesced.
   const deferredIndex = useDeferredValue(currentLineIndex);
 
   useEffect(() => {
@@ -43,13 +36,25 @@ export const LyricsPanelBody = ({
       `#light-lyric-line-mobile-${deferredIndex}`,
     ) as HTMLElement | null;
     if (!activeEl) return;
-    const target = activeEl.offsetTop - container.clientHeight * 0.4;
-    container.scrollTo({ top: target, behavior: 'smooth' });
+    // توسيط السطر النشط عبر إحداثيات الشاشة (rect) — مناعة ضد تغيّر offsetParent
+    // الناتج عن backdrop-filter في لوح midnight.
+    const raf = window.requestAnimationFrame(() => {
+      const cRect = container.getBoundingClientRect();
+      const aRect = activeEl.getBoundingClientRect();
+      const delta =
+        (aRect.top - cRect.top) -
+        (container.clientHeight / 2 - activeEl.clientHeight / 2);
+      container.scrollTo({
+        top: Math.max(0, container.scrollTop + delta),
+        behavior: 'smooth',
+      });
+    });
+    return () => window.cancelAnimationFrame(raf);
   }, [deferredIndex, lyrics]);
 
   if (!lyrics || lyrics.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-500">
+      <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: 'var(--lyric-inactive-color)' }}>
         <div className="spinner !w-6 !h-6" />
         <span className="text-xs font-mono uppercase tracking-widest">تحميل الكلمات...</span>
       </div>
@@ -59,12 +64,7 @@ export const LyricsPanelBody = ({
   return (
     <div
       ref={scrollContainerRef}
-      className="flex-1 overflow-y-auto px-6 py-4 no-scrollbar"
-      style={{
-        scrollbarWidth: 'none',
-        WebkitOverflowScrolling: 'touch',
-        overscrollBehavior: 'contain',
-      }}
+      className="lyrics-panel-body flex-1 overflow-y-auto px-6 py-4 no-scrollbar mid-lyrics"
     >
       <div className="flex flex-col gap-4 py-8">
         {lyrics.map((line, i) => {
@@ -75,7 +75,14 @@ export const LyricsPanelBody = ({
           if (isHeader) {
             return (
               <div key={`lyric-mob-${i}`} className="flex justify-center my-6">
-                <span className="bg-white/5 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase text-white/40 border border-white/5">
+                <span
+                  className="px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase border"
+                  style={{
+                    color: 'var(--lyric-inactive-color)',
+                    borderColor: 'var(--lyric-inactive-color)',
+                    background: 'transparent',
+                  }}
+                >
                   {line.text.replace(/\[|\]/g, '')}
                 </span>
               </div>
@@ -87,27 +94,23 @@ export const LyricsPanelBody = ({
               key={`lyric-mob-${i}`}
               id={`light-lyric-line-mobile-${i}`}
               onClick={() => onSeek?.(line.time)}
-              className={`
-                relative py-3 transition-all duration-300 transform
-                ${isActive ? 'scale-105 opacity-100' : 'opacity-30 hover:opacity-50'}
-              `}
+              className={`relative py-3 transition-transform duration-300 ${isActive ? 'scale-105' : ''}`}
               style={{
                 textAlign: isArabic ? 'right' : 'left',
                 direction: isArabic ? 'rtl' : 'ltr',
-                // Apply paint hint ONLY to the active line.
-                willChange: isActive ? 'opacity, transform' : 'auto',
+                cursor: 'pointer',
               }}
             >
               <p
                 style={{
-                  fontFamily: isArabic
-                    ? 'var(--font-manga, sans-serif)'
-                    : 'var(--font-sans, sans-serif)',
-                  fontSize: 'clamp(1.4rem, 6vw, 2.2rem)',
-                  fontWeight: isActive ? 800 : 700,
-                  lineHeight: 1.3,
-                  color: isActive ? 'var(--text-primary, white)' : 'white',
-                  textShadow: isActive ? '0 0 30px rgba(255,255,255,0.3)' : 'none',
+                  margin: 0,
+                  color: isActive ? 'var(--lyric-active-color)' : 'var(--lyric-inactive-color)',
+                  fontWeight: isActive ? 700 : 400,
+                  fontSize: isActive ? 'clamp(1.25rem, 5.5vw, 1.8rem)' : 'clamp(0.95rem, 3.8vw, 1.1rem)',
+                  textShadow: isActive ? '0 0 14px var(--lyric-active-shadow)' : 'none',
+                  opacity: isActive ? 1 : 0.85,
+                  lineHeight: 1.45,
+                  transition: 'color 200ms ease, opacity 200ms ease',
                 }}
               >
                 {line.text}

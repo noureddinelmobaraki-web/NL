@@ -1,58 +1,67 @@
+import type { JSX } from 'react';
 import type { Theme } from '../../utils/userPrefs';
 
 interface Props {
   onPick: (theme: Theme) => void;
 }
 
-const THEMES: Array<{ id: Theme; label: string; icon: string; bg: string; fg: string; textShadow?: string }> = [
-  { 
-    id: 'midnight', 
-    label: 'Midnight', 
-    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/midnight%20icon.png', 
-    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/midnight%20BG.png") center/cover', 
-    fg: '#fff', 
-    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
-  },
-  { 
-    id: 'dark',     
-    label: 'Dark',     
-    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/dark%20icon.gif',     
-    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/dark%20BG.png") center/cover',     
-    fg: '#fff', 
-    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
-  },
-  { 
-    id: 'light',    
-    label: 'Light',    
-    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/light%20icon.gif',    
-    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/light%20BG.gif") center/cover',    
-    fg: '#222', 
-    textShadow: '0 2px 4px rgba(255,255,255,0.8)' 
-  },
-  { 
-    id: 'bit',      
-    label: '8-Bit',    
-    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bit%20icon.gif',      
-    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bit%20BG.gif") center/cover',      
-    fg: '#fff', 
-    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
-  },
-  { 
-    id: 'lite',     
-    label: 'Lite',     
-    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lite%20icon.gif',     
-    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lite%20BG.png") center/cover',     
-    fg: '#fff', 
-    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
-  },
-  { 
-    id: 'retro',    
-    label: 'Retro',    
-    icon: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro%20icon.gif',    
-    bg: 'url("https://noureddinelmobaraki-web.github.io/nl-audio-cdn/retro%20BG.png") center/cover',    
-    fg: '#fff', 
-    textShadow: '0 2px 4px rgba(0,0,0,0.8)' 
-  },
+type ThemeDef = {
+  id: Theme;
+  label: string;
+  bg: string;
+  fg: string;
+  radius: string;
+  icon: JSX.Element;
+};
+
+const ICON: Record<Theme, JSX.Element> = {
+  midnight: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 14.5A7.5 7.5 0 1 1 9.5 4 6 6 0 0 0 20 14.5Z" />
+      <circle cx="17" cy="5.5" r="0.7" fill="currentColor" />
+      <circle cx="14" cy="3.6" r="0.5" fill="currentColor" />
+    </svg>
+  ),
+  dark: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.8A8 8 0 1 1 11.2 3 6.2 6.2 0 0 0 21 12.8Z" fill="currentColor" />
+    </svg>
+  ),
+  light: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
+    </svg>
+  ),
+  bit: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+      <rect x="4" y="4" width="4" height="4" /><rect x="10" y="4" width="4" height="4" /><rect x="16" y="4" width="4" height="4" />
+      <rect x="4" y="10" width="4" height="4" /><rect x="16" y="10" width="4" height="4" />
+      <rect x="4" y="16" width="4" height="4" /><rect x="10" y="16" width="4" height="4" /><rect x="16" y="16" width="4" height="4" />
+    </svg>
+  ),
+  lite: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 19C5 11 11 5 19 5c0 8-6 14-14 14Z" />
+      <path d="M5 19 13 11" />
+    </svg>
+  ),
+  retro: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
+      <path d="M9 12h6" />
+    </svg>
+  ),
+};
+
+const THEMES: ThemeDef[] = [
+  { id: 'midnight', label: 'Midnight', bg: 'radial-gradient(circle at 30% 30%, #2a2160, #15103a)', fg: '#cdb4ff', radius: '50% 50% 52% 48% / 55% 50% 50% 45%', icon: ICON.midnight },
+  { id: 'dark', label: 'Dark', bg: 'radial-gradient(circle at 30% 30%, #2b2b2b, #0e0e0e)', fg: '#ffffff', radius: '54% 46% 50% 50% / 48% 52% 48% 52%', icon: ICON.dark },
+  { id: 'light', label: 'Light', bg: 'radial-gradient(circle at 30% 30%, #ffffff, #ece4d6)', fg: '#2a2a2a', radius: '48% 52% 46% 54% / 52% 46% 54% 48%', icon: ICON.light },
+  { id: 'bit', label: '8-Bit', bg: 'radial-gradient(circle at 30% 30%, #29469e, #1d2b53)', fg: '#ffd166', radius: '50% 50% 48% 52% / 50% 54% 46% 50%', icon: ICON.bit },
+  { id: 'lite', label: 'Lite', bg: 'radial-gradient(circle at 30% 30%, #3c5a45, #233528)', fg: '#d7ffe0', radius: '52% 48% 54% 46% / 46% 50% 50% 54%', icon: ICON.lite },
+  { id: 'retro', label: 'Retro', bg: 'radial-gradient(circle at 30% 30%, #5a3a22, #2f1d12)', fg: '#ffcc99', radius: '46% 54% 50% 50% / 54% 48% 52% 46%', icon: ICON.retro },
 ];
 
 export const ThemePicker = ({ onPick }: Props) => (
@@ -60,60 +69,62 @@ export const ThemePicker = ({ onPick }: Props) => (
     role="group"
     aria-label="Choose visual theme to enter the site"
     style={{
-      position: 'relative', zIndex: 5,
-      display: 'grid',
-      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-      gap: 'clamp(8px, 1.8vw, 16px)',
-      padding: 'clamp(12px, 2.5vw, 22px)',
-      background: 'rgba(8,12,32,0.55)',
-      backdropFilter: 'blur(14px) saturate(160%)',
-      WebkitBackdropFilter: 'blur(14px) saturate(160%)',
-      border: '1px solid rgba(255,255,255,0.18)',
-      borderRadius: 14,
-      maxWidth: 'min(520px, 92vw)',
-      boxShadow: '0 12px 40px rgba(0,0,0,0.55)',
-      animation: 'nl-fade-up 0.9s 0.4s ease-out both',
+      position: 'relative',
+      display: 'flex',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '4px',
+      padding: '40px 30px 30px',
+      maxWidth: '460px',
+      margin: '0 auto',
+      borderRadius: '46% 54% 58% 42% / 54% 44% 56% 46%',
+      background:
+        'linear-gradient(180deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.6) 42%, rgba(0,0,0,0.18) 76%, rgba(0,0,0,0) 100%)',
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
+      boxShadow: '0 26px 80px rgba(0,0,0,0.6)',
     }}
   >
-    {THEMES.map(t => (
+    {THEMES.map((t) => (
       <button
         key={t.id}
         type="button"
         onClick={() => onPick(t.id)}
         aria-label={`Enter site in ${t.label} theme`}
+        title={t.label}
         style={{
+          width: '96px',
+          height: '96px',
+          margin: '5px',
+          border: 'none',
+          cursor: 'pointer',
+          borderRadius: t.radius,
           background: t.bg,
           color: t.fg,
-          textShadow: t.textShadow,
-          border: '1px solid rgba(255,255,255,0.20)',
-          borderRadius: 10,
-          padding: 'clamp(10px, 2vw, 14px) clamp(6px, 1.5vw, 12px)',
-          cursor: 'pointer',
-          fontSize: 'clamp(0.72rem, 1.6vw, 0.88rem)',
-          fontFamily: 'var(--font-manga,"Impact",sans-serif)',
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          fontWeight: 700,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 6,
-          transition: 'transform 180ms ease, box-shadow 180ms ease, filter 180ms ease',
-          outline: 'none',
+          justifyContent: 'center',
+          gap: '7px',
+          boxShadow: '0 6px 18px rgba(0,0,0,0.45)',
+          transition: 'transform 0.25s ease, filter 0.25s ease, box-shadow 0.25s ease',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-3px) scale(1.04)';
-          e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)';
-          e.currentTarget.style.filter = 'brightness(1.15)';
+          e.currentTarget.style.transform = 'translateY(-3px) scale(1.1)';
+          e.currentTarget.style.filter = 'brightness(1.18)';
+          e.currentTarget.style.boxShadow = '0 12px 30px rgba(0,0,0,0.55)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = '';
-          e.currentTarget.style.boxShadow = '';
           e.currentTarget.style.filter = '';
+          e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.45)';
         }}
       >
-        <img src={t.icon} alt={`${t.label} icon`} style={{ width: '2.5em', height: '2.5em', objectFit: 'contain' }} aria-hidden="true" />
-        <span>{t.label}</span>
+        {t.icon}
+        <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          {t.label}
+        </span>
       </button>
     ))}
   </div>

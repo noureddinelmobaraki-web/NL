@@ -22,7 +22,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'ar',
+    fallbackLng: 'en',
     supportedLngs: ['ar', 'en', 'fr'],
     interpolation: {
       escapeValue: false, // react already safes from xss
@@ -39,6 +39,6 @@ i18n.on('languageChanged', (lng) => {
 });
 
 // Apply initial language direction on module load
-applyDirection(i18n.resolvedLanguage || i18n.language || 'ar');
+applyDirection(i18n.resolvedLanguage || i18n.language || 'en');
 
 export default i18n;

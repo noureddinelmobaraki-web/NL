@@ -28,6 +28,8 @@ export const HeroSection = memo(() => {
     dark: getThemedImage('profile', 'dark'),
     midnight: getThemedImage('profile', 'midnight'),
     bit: getThemedImage('profile', 'bit'),
+    lite: getThemedImage('profile', 'lite'),
+    retro: getThemedImage('profile', 'retro'),
   };
   const activeProfileImg = profileImages[resolvedTheme] || profileImages['dark'];
 

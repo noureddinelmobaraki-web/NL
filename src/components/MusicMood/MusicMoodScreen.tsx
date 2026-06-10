@@ -78,6 +78,8 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
     audioRef.current = a;
   }
 
+  const gestureCleanupRef = useRef<(() => void) | null>(null);
+
   // ── جلب وتتبع الصوت (Web Audio Setup) عبر الهوك المخصص
   const { glowIntensity, audioCtxRef } = useMoodAudioGraph({
     audioRef,
@@ -167,8 +169,7 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
     // وإلا اختر واحدة عشوائية بعد 200ms
     const t2 = setTimeout(() => pickRandomSong(), TIMING.PICK_RANDOM_DELAY);
     return () => clearTimeout(t2);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialSong, pickRandomSong]);
 
   // ── ربط HLS
   useHlsAudio(audioRef, activeSong?.url ?? null, () => {
@@ -176,17 +177,41 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
     // استئناف AudioContext قبل play — ضروري لـ Chrome policy
     const ctx = audioCtxRef.current;
     const tryPlay = async () => {
+      if (gestureCleanupRef.current) {
+        gestureCleanupRef.current();
+        gestureCleanupRef.current = null;
+      }
       try {
         if (ctx && ctx.state === 'suspended') await ctx.resume();
         if (!audioRef.current) return;
         audioManager.register('song', audioRef.current, AUDIO.DEFAULT_VOLUME);
         await audioManager.play('song');
         setAudioStatus('playing');
+        setNeedsUserTap(false);
       } catch (err) {
         console.warn('Play blocked — waiting for user tap:', err);
         // المتصفح يمنع التشغيل التلقائي — المستخدم يحتاج للضغط
         setAudioStatus('paused');
         setNeedsUserTap(true);
+
+        const events = ['pointerdown', 'touchstart', 'keydown'] as const;
+        const onGesture = () => {
+          if (gestureCleanupRef.current) {
+            gestureCleanupRef.current();
+            gestureCleanupRef.current = null;
+          }
+          tryPlay();
+        };
+
+        events.forEach(e => {
+          window.addEventListener(e, onGesture, { capture: true, once: true });
+        });
+
+        gestureCleanupRef.current = () => {
+          events.forEach(e => {
+            window.removeEventListener(e, onGesture, true);
+          });
+        };
       }
     };
     tryPlay();
@@ -235,6 +260,10 @@ export const MusicMoodScreen = ({ songs, initialSong, onExit, existingAudioCtx }
         try { audioManager.stop('song'); } catch {}
         try { audio.pause(); } catch {}
         try { audio.removeAttribute('src'); audio.load(); } catch {}
+      }
+      if (gestureCleanupRef.current) {
+        gestureCleanupRef.current();
+        gestureCleanupRef.current = null;
       }
       // ❌ تم حذف audioCtxRef.current?.close() — useMoodAudioGraph يتكفل بهذا
     };

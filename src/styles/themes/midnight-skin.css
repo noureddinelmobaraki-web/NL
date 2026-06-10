@@ -1,0 +1,345 @@
+/* =====================================================================
+   MIDNIGHT SKIN v12 — Neumorphism + Glassmorphism (iOS 26 Liquid Glass)
+   Layer: midnight (آخر طبقة). Scope: [data-theme="midnight"] فقط.
+   ===================================================================== */
+
+[data-theme="midnight"] {
+  /* خلفيات زجاجية */
+  --m-surface:      rgba(34, 42, 78, 0.45);
+  --m-surface-2:    rgba(46, 56, 100, 0.55);
+  --m-surface-soft: rgba(28, 36, 66, 0.35);
+  --m-shell:        linear-gradient(135deg, rgba(48,58,104,0.45), rgba(18,24,50,0.55));
+
+  /* حواف ولمعان */
+  --glass-border:        rgba(180, 196, 255, 0.16);
+  --glass-border-strong: rgba(198, 210, 255, 0.30);
+  --glass-hi: linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.05) 32%, rgba(255,255,255,0) 60%);
+
+  /* نيومورفيزم (مصدر ضوء مزدوج) */
+  --neu-dark: rgba(0,0,0,0.50);
+  --neu-light: rgba(120,140,220,0.10);
+  --neu:    6px 6px 16px var(--neu-dark), -5px -5px 14px var(--neu-light);
+  --neu-sm: 3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light);
+  --neu-inset: inset 4px 4px 10px var(--neu-dark), inset -3px -3px 8px var(--neu-light);
+
+  /* أنصاف أقطار بنمط iOS */
+  --r-xl: 30px; --r-lg: 24px; --r-md: 18px; --r-sm: 13px; --r-pill: 999px;
+
+  /* ألوان */
+  --m-accent: #FF8C42; --m-accent-rgb: 255,140,66;
+  --m-accent-soft: #FFB066; --m-accent-2: #8b94ff;
+  --m-text: #eef1ff;
+  --m-text-2: rgba(208,216,248,0.72);
+  --m-text-3: rgba(172,184,226,0.45);
+
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+}
+
+/* ---------- 0) تطهير شامل: إزالة شكل المانغا تحت الميدنايت ---------- */
+[data-theme="midnight"] .manga-border,
+[data-theme="midnight"] .manga-card,
+[data-theme="midnight"] .manga-button,
+[data-theme="midnight"] .manga-panel,
+[data-theme="midnight"] .manga-card-hover {
+  font-family: var(--font-ui);
+  text-transform: none;
+  letter-spacing: normal;
+  border-radius: var(--r-lg);
+}
+
+/* ---------- 1) البطاقات والألواح الزجاجية ---------- */
+[data-theme="midnight"] .manga-card,
+[data-theme="midnight"] .manga-panel,
+[data-theme="midnight"] .manga-border {
+  background: var(--m-surface);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 34px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.14);
+}
+[data-theme="midnight"] .manga-panel::after { display: none; }
+[data-theme="midnight"] .manga-card { transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s; }
+[data-theme="midnight"] .manga-card:hover {
+  transform: translateY(-3px);
+  border-radius: var(--r-lg);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+/* ---------- 2) الأزرار الزجاجية (الستريمينغ/السوشيال) ---------- */
+[data-theme="midnight"] .manga-button {
+  background: var(--m-surface-soft);
+  -webkit-backdrop-filter: blur(16px) saturate(165%);
+  backdrop-filter: blur(16px) saturate(165%);
+  border: 1px solid var(--glass-border);
+  color: var(--m-text);
+  border-radius: var(--r-md);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.10);
+  transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, background .25s, border-color .25s;
+}
+[data-theme="midnight"] .manga-button:hover {
+  transform: translateY(-2px);
+  background: var(--m-surface);
+  border-color: var(--glass-border-strong);
+  border-radius: var(--r-md);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.16);
+}
+[data-theme="midnight"] .stream-link-refactored,
+[data-theme="midnight"] .social-link-refactored { border-radius: var(--r-lg); }
+
+/* ---------- 3) أزرار التنقّل العلوية (mid-nav-tab) ---------- */
+[data-theme="midnight"] .mid-nav-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; min-height: 44px;
+  font-family: var(--font-ui); font-size: 0.9rem; font-weight: 600;
+  letter-spacing: 0.01em; text-transform: none; white-space: nowrap;
+  color: var(--m-text);
+  background: var(--m-surface-soft);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-pill);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+  cursor: pointer; user-select: none;
+  transition: transform .2s, background .2s, box-shadow .2s, border-color .2s;
+}
+[data-theme="midnight"] .mid-nav-tab:hover {
+  transform: translateY(-2px);
+  background: var(--m-surface);
+  border-color: var(--glass-border-strong);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+[data-theme="midnight"] .mid-nav-tab:active { transform: translateY(0) scale(0.98); }
+[data-theme="midnight"] .mid-nav-tab.is-active,
+[data-theme="midnight"] .gs-cell.is-active{
+  box-shadow:0 6px 18px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.25),
+             0 0 0 1px rgba(255,255,255,0.18);
+}
+
+@supports (mix-blend-mode: difference){
+  [data-theme="midnight"] .glass-adaptive-text{
+    color:#fff; mix-blend-mode:difference; isolation:isolate;
+  }
+}
+@supports not (mix-blend-mode: difference){
+  [data-theme="midnight"] .glass-adaptive-text{
+    color:var(--m-text); text-shadow:0 1px 2px rgba(0,0,0,0.5);
+  }
+}
+
+/* ---------- 4) عناوين الأقسام + الفواصل ---------- */
+[data-theme="midnight"] .streaming-h2-refactored,
+[data-theme="midnight"] .social-h2-refactored {
+  font-family: var(--font-ui);
+  text-transform: none; letter-spacing: -0.01em; font-weight: 700;
+  color: var(--m-text); background: transparent; border: none; box-shadow: none;
+}
+[data-theme="midnight"] .manga-divider,
+[data-theme="midnight"] .streaming-divider-refactored {
+  background: linear-gradient(90deg, transparent, var(--glass-border-strong), transparent);
+  height: 1px; border: none;
+}
+
+/* ---------- 5) الأزرار العائمة FAB ---------- */
+[data-theme="midnight"] .fab-button {
+  background: var(--m-surface);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  color: var(--m-text);
+  border-radius: var(--r-pill);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.14);
+}
+[data-theme="midnight"] .fab-button:hover {
+  border-color: var(--glass-border-strong);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+/* ---------- 6) المشغّل: الحاوية الزجاجية (Euphoria) ---------- */
+[data-theme="midnight"] .mid-player-shell {
+  background: var(--m-shell) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(190%) !important;
+  backdrop-filter: blur(36px) saturate(190%) !important;
+  border: 1px solid var(--glass-border-strong) !important;
+  border-radius: 26px !important;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 0 0 1px rgba(255,255,255,0.03) !important;
+}
+[data-theme="midnight"] .mid-player-shell::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: var(--glass-hi); pointer-events: none; z-index: 0;
+}
+[data-theme="midnight"] .now-playing-bar.mid-player { background: transparent; position: relative; z-index: 1; }
+
+/* زر التشغيل البرتقالي (Euphoria) — يغطي ديسكتوب وموبايل */
+[data-theme="midnight"] .mid-player button[aria-label="Play"],
+[data-theme="midnight"] .mid-player button[aria-label="Pause"],
+[data-theme="midnight"] .mid-player button[aria-label="تشغيل"],
+[data-theme="midnight"] .mid-player button[aria-label="إيقاف"] {
+  background: linear-gradient(135deg, var(--m-accent-soft), var(--m-accent)) !important;
+  color: #1a1004 !important;
+  box-shadow: 0 6px 18px rgba(var(--m-accent-rgb), 0.5) !important;
+}
+
+/* أشرطة التقدم/الصوت — مقبض برتقالي */
+[data-theme="midnight"] .seek-bar::-webkit-slider-thumb,
+[data-theme="midnight"] .np-mobile-seek::-webkit-slider-thumb,
+[data-theme="midnight"] .volume-slider::-webkit-slider-thumb {
+  background: var(--m-accent) !important;
+  box-shadow: 0 0 10px rgba(var(--m-accent-rgb), 0.6) !important;
+}
+[data-theme="midnight"] .seek-bar::-moz-range-thumb,
+[data-theme="midnight"] .np-mobile-seek::-moz-range-thumb,
+[data-theme="midnight"] .volume-slider::-moz-range-thumb {
+  background: var(--m-accent) !important;
+}
+
+/* ---------- 7) الكلمات: لوح زجاجي فاتح + نص أسود كظل (الهاتف) ---------- */
+/* اللوح السفلي للهاتف */
+[data-theme="midnight"] .lyrics-bottom-sheet{
+  background:rgba(255,255,255,0.72) !important;
+  -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+  border-top:1px solid rgba(255,255,255,0.55) !important;
+  box-shadow:0 -12px 40px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.7) !important;
+  color:#0d1018 !important;
+}
+/* داخل اللوح: نص أساسي أسود كظل، والسطر الفعّال أغمق وأوضح */
+[data-theme="midnight"] .lyrics-bottom-sheet,
+[data-theme="midnight"] .mid-lyrics{
+  --lyric-inactive-color: rgba(15,18,28,0.40);
+  --lyric-played-color: rgba(15,18,28,0.62);
+  --lyric-active-color: #0a0d16;
+  --lyric-active-shadow: rgba(0,0,0,0.18);
+}
+[data-theme="midnight"] .mid-lyrics{ background:transparent; font-family: var(--font-ui); }
+[data-theme="midnight"] .lyrics-bottom-sheet .lyric-word{ color:rgba(15,18,28,0.40); }
+[data-theme="midnight"] .lyrics-bottom-sheet .lyric-word--played{ color:rgba(15,18,28,0.62); }
+[data-theme="midnight"] .lyrics-bottom-sheet .lyric-word--current{
+  color:#0a0d16; text-shadow:0 1px 1px rgba(255,255,255,0.6); }
+
+/* خلفيات صور الأغاني: خفِّف الضباب الداكن حتى تظهر الصورة */
+[data-theme="midnight"] .song-card{
+  background:rgba(20,26,52,0.30) !important;     /* بدل 0.55 المعتم */
+  -webkit-backdrop-filter:blur(18px) saturate(170%); backdrop-filter:blur(18px) saturate(170%);
+}
+[data-theme="midnight"] .song-card img,
+[data-theme="midnight"] .song-card [class*="cover"],
+[data-theme="midnight"] .song-card [class*="bg"]{ filter:none !important; opacity:1 !important; }
+[data-theme="midnight"] .song-card .absolute.inset-0.z-10 {
+  background: rgba(0,0,0,0.25) !important;
+}
+
+/* ---------- 8) المعارض (MeBit / Lens) — midnight: ملء شاشة بلا ضباب فوق الصور ---------- */
+[data-theme="midnight"] .mid-gallery{
+  position:relative;
+  isolation:isolate;
+  background:transparent !important;
+  -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
+  border:none !important;
+  border-radius:0 !important;
+}
+/* أزِل طبقة الضباب التي كانت تُرسم على المعرض */
+[data-theme="midnight"] .mid-gallery::before{
+  content:none !important;
+  display:none !important;
+}
+/* الصور نظيفة وفوق أي خلفية */
+[data-theme="midnight"] .mid-gallery img{
+  position:relative; z-index:2;
+  background:transparent !important; filter:none !important; opacity:1 !important;
+  -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
+}
+/* وضع المعرض الغامر على الهاتف = طبقة ملء شاشة عمودية */
+[data-theme="midnight"] body.gallery-immersive .mid-gallery{
+  position:fixed; inset:0;
+  height:100vh;        /* احتياطي */
+  height:100dvh;       /* الأدق على المتصفحات الحديثة */
+  display:flex; flex-direction:column; overflow:hidden;
+}
+/* المنطقة القابلة للتمرير داخل شبكة الصور */
+[data-theme="midnight"] .mid-gallery-scroll{
+  flex:1; min-height:0; overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+/* شريط Lens العلوي = زجاج رفيع فقط */
+[data-theme="midnight"] .mid-lens-chrome{
+  background:rgba(10,14,28,0.45) !important;
+  -webkit-backdrop-filter:blur(22px) saturate(160%); backdrop-filter:blur(22px) saturate(160%);
+  border-color:var(--glass-border) !important;
+}
+
+/* ---------- 9) بطاقات الأغاني + قائمة التنقّل السفلية + بلاطة الثيم ---------- */
+[data-theme="midnight"] .song-card {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+[data-theme="midnight"] .mid-nav {
+  background: rgba(10, 14, 28, 0.6) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border-top: 1px solid var(--glass-border) !important;
+}
+[data-theme="midnight"] .mid-theme-tile {
+  background: var(--m-surface-soft);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+}
+
+/* ---------- 10) الهيرو ---------- */
+[data-theme="midnight"] .hero-header-card { background: transparent; border: none; box-shadow: none; }
+[data-theme="midnight"] .hero-title { font-family: var(--font-ui); text-transform: none; text-shadow: none; }
+[data-theme="midnight"] .hero-bio { font-family: var(--font-ui); text-shadow: none; filter: none; }
+
+/* ---------- 11) نافذة الاتصال "صارحني" (manga-panel) مغطّاة في القسم 1 ---------- */
+[data-theme="midnight"] .manga-panel { border-radius: var(--r-lg); }
+
+/* ---------- 12) fallback للمتصفحات بلا backdrop-filter ---------- */
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  [data-theme="midnight"] .manga-card,
+  [data-theme="midnight"] .manga-panel,
+  [data-theme="midnight"] .manga-button,
+  [data-theme="midnight"] .mid-nav-tab,
+  [data-theme="midnight"] .song-card,
+  [data-theme="midnight"] .mid-gallery,
+  [data-theme="midnight"] .mid-player-shell {
+    background: rgba(20, 26, 52, 0.94) !important;
+  }
+}
+
+/* ---------- 13) نظام كلمة-بكلمة موحّد (midnight) ---------- */
+[data-theme="midnight"] .lyric-word{
+  display:inline-block; white-space:pre;
+  color:var(--lyric-inactive-color);
+  opacity:0.45;
+  transition:opacity 200ms ease, color 200ms ease;
+}
+[data-theme="midnight"] .lyric-word--played{
+  color:var(--lyric-played-color, var(--lyric-active-color));
+  opacity:1;
+}
+/* الكلمة الحالية: تعبئة متدرّجة تتقدّم مع --word-progress */
+[data-theme="midnight"] .lyric-word--current{
+  opacity:1;
+  background-image:linear-gradient(
+    to right,
+    var(--lyric-active-color) var(--word-progress, 0%),
+    var(--lyric-inactive-color) var(--word-progress, 0%)
+  );
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent;
+  text-shadow:0 0 14px var(--lyric-active-shadow);
+}
+/* اتجاه التعبئة للعربية (RTL) */
+[data-theme="midnight"] .lyric-word--current[dir="rtl"]{
+  background-image:linear-gradient(
+    to left,
+    var(--lyric-active-color) var(--word-progress, 0%),
+    var(--lyric-inactive-color) var(--word-progress, 0%)
+  );
+}
+/* سطر الترجمة: أصغر وأخف، بنفس قواعد الكلمة-بكلمة */
+[data-theme="midnight"] .lyric-translation{
+  display:block; margin-top:4px;
+  font-size:0.82em; opacity:0.9;
+}

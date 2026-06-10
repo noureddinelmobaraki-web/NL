@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
         compress: {
           pure_funcs: [
             'console.log', 'console.info', 'console.debug', 'console.trace',
-            'console.warn', 'console.error', 'console.group', 'console.groupEnd',
+            'console.group', 'console.groupEnd',
           ],
           drop_debugger: true,
           passes: 2,
@@ -81,12 +81,13 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       environment: 'jsdom',
+      exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', '**/e2e/**'],
       coverage: {
         provider: 'v8',
         reporter: ['text', 'html', 'lcov'],
         reportsDirectory: './coverage',
         exclude: ['**/*.config.*', '**/dist/**', '**/e2e/**', '**/*.d.ts', 'scripts/**', 'server.ts', '**/*.test.*'],
-        thresholds: { lines: 35, functions: 35, statements: 35, branches: 35 },
+        thresholds: { lines: 70, functions: 70, statements: 70, branches: 60 },
       }
     }
   };
