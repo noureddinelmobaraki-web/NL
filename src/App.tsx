@@ -80,7 +80,6 @@ import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
 import { FloatingControls } from "./components/layout/FloatingControls";
 import { GlassModeSwitcher } from "./components/layout/GlassModeSwitcher";
-import { IntroMusicButton } from './components/layout/IntroMusicButton';
 const GallerySection = lazyWithRetry(
   () => import('./components/layout/GallerySection').then(m => ({ default: m.GallerySection })),
   'GallerySection',
@@ -330,8 +329,6 @@ function MainApp() {
           />
         </>
       )}
-
-      {loaded && <IntroMusicButton />}
 
       {!loaded && (
         <LoadingScreen 
