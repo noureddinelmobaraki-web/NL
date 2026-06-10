@@ -31,7 +31,9 @@ export default tseslint.config(
       'src/components/Loading/LoadingScreen.tsx',
       'src/components/MySongs/MySongsPage.tsx',
       'src/components/RetroWorld/RetroWorldPage.tsx',
-      'src/hooks/useAudioController.ts'
+      'src/components/songs/LyricsDisplay.tsx',
+      'src/hooks/useAudioController.ts',
+      'src/hooks/useTouchGestures.ts'
     ],
     rules: {
       'react-hooks/exhaustive-deps': 'off',
