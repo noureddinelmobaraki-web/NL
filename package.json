@@ -68,7 +68,7 @@
     "autoprefixer": "^10.4.21",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9.18.0",
-    "eslint-plugin-react-hooks": "^6.0.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "29.1.1",
     "p-limit": "^7.3.0",
     "rollup-plugin-visualizer": "^7.0.1",
