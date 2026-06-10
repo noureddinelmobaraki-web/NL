@@ -32,11 +32,9 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
 
       - name: Install Dependencies
-        run: npm ci --prefer-offline --no-audit
+        run: npm install --no-audit --no-fund
 
       - name: Run Linter
         run: npm run lint
