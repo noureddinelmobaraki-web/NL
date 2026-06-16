@@ -5,9 +5,22 @@
     "mebit": "صوري",
     "drawings": "رسوماتي",
     "lens": "LENS",
+    "games": "الألعاب",
     "play": "موسيقى",
     "pause": "إيقاف",
     "language": "العربية"
+  },
+  "games": {
+    "title": "ألعاب",
+    "subtitle": "أرشيف فلاش",
+    "idle": "اختر لعبة من القائمة لتشغيلها هنا",
+    "loading": "جارٍ التحميل…",
+    "error": "تعذّر تشغيل اللعبة",
+    "errorRetry": "إعادة المحاولة",
+    "fullscreen": "ملء الشاشة",
+    "back": "رجوع",
+    "controls": "أزرار التحكم",
+    "desktopNotice": "التجربة أفضل على الحاسوب 💻"
   },
   "buttons": {
     "changeLanguage": "تغيير اللغة"

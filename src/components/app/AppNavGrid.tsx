@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
-import { Camera, Music2, Pencil, Aperture } from 'lucide-react';
+import { Camera, Music2, Pencil, Aperture, Gamepad2 } from 'lucide-react';
 import { NavButton } from '../NavButton';
 import { audioManager } from '../../audio/audioManager';
 import { itemVariants } from './appConstants';
 import { useTranslation } from 'react-i18next';
 import { setGenieOriginFromElement } from '../../transitions/genieOrigin';
+import { useAppContext } from '../../context/AppContext';
 
 interface AppNavGridProps {
   resolvedTheme: string;
@@ -18,6 +19,7 @@ export function AppNavGrid({
   onOpenLens,
 }: AppNavGridProps) {
   const { t } = useTranslation();
+  const { openGames } = useAppContext();
 
   return (
     <motion.div 
@@ -58,6 +60,15 @@ export function AppNavGrid({
           setGenieOriginFromElement(e.currentTarget);
           audioManager.play('lens'); 
           onOpenLens(); 
+        }} 
+        theme={resolvedTheme} 
+      />
+      <NavButton 
+        icon={Gamepad2} 
+        label={t('nav.games').toUpperCase()} 
+        onClick={(e) => {
+          setGenieOriginFromElement(e.currentTarget);
+          openGames();
         }} 
         theme={resolvedTheme} 
       />

@@ -58,6 +58,10 @@ const RetroWorldPage = lazyWithRetry(
   () => import('./components/RetroWorld/RetroWorldPage').then(m => ({ default: m.RetroWorldPage })),
   'RetroWorldPage',
 );
+const GamesPage = lazyWithRetry(
+  () => import('./components/Games/GamesPage').then(m => ({ default: m.GamesPage })),
+  'GamesPage',
+);
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
 import { useParallax } from "./hooks/useParallax";
@@ -92,7 +96,7 @@ import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
 function AppInner() {
-  const { theme, loaded } = useAppContext();
+  const { theme, loaded, isGamesOpen, closeGames } = useAppContext();
 
   useEffect(() => {
     applyThemeUtil(theme);
@@ -102,7 +106,12 @@ function AppInner() {
   return (
     <>
       {loaded && <GlassModeSwitcher />}
-      {theme === 'retro' && loaded ? (
+      {loaded && isGamesOpen ? (
+        // ▶ GAMES صفحة مستقلة تماماً مثل retro — يُفصل MainApp وكل صوته
+        <Suspense fallback={<div className="retro-loading">Loading games…</div>}>
+          <GamesPage onClose={closeGames} />
+        </Suspense>
+      ) : theme === 'retro' && loaded ? (
         <Suspense fallback={<div className="retro-loading">Loading retro world…</div>}>
           <RetroWorldPage />
         </Suspense>
@@ -123,7 +132,8 @@ function MainApp() {
     currentPage,
     ambientColor, setAmbientColor,
     audioIntent, setAudioIntent,
-    theme, setTheme
+    theme, setTheme,
+    openGames
   } = useAppContext();
 
   const navigateSection = useNavigateSection();
@@ -338,6 +348,12 @@ function MainApp() {
               setAudioIntent('user-playing');
             }
             setLoaded(true);
+          }}
+          onEnterGames={(chosenTheme, musicConsent) => {
+            setTheme(chosenTheme);
+            if (musicConsent) setAudioIntent('user-playing');
+            setLoaded(true);
+            openGames();
           }}
         />
       )}

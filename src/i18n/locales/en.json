@@ -5,9 +5,22 @@
     "mebit": "My Bit",
     "drawings": "My Drawings",
     "lens": "LENS",
+    "games": "Games",
     "play": "Music",
     "pause": "Pause",
     "language": "English"
+  },
+  "games": {
+    "title": "GAMES",
+    "subtitle": "Flash Arcade",
+    "idle": "Pick a game from the list to play it here",
+    "loading": "Loading…",
+    "error": "Could not run this game",
+    "errorRetry": "Retry",
+    "fullscreen": "Fullscreen",
+    "back": "Back",
+    "controls": "On-screen controls",
+    "desktopNotice": "Best experienced on desktop 💻"
   },
   "buttons": {
     "changeLanguage": "Change Language"

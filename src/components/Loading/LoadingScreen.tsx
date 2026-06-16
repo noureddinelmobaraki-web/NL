@@ -8,14 +8,16 @@ import { ThemePicker } from './ThemePicker';
 import { LOADING_TIMINGS } from '../../constants/loading';
 import { isAutomatedEnv } from '../../utils/env';
 import type { Theme } from '../../utils/userPrefs';
+import { Gamepad2 } from 'lucide-react';
 
 const POSTER_IMAGE_URL = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp';
 
 export interface LoadingScreenProps {
   onComplete: (chosenTheme: Theme, musicConsent: boolean) => void;
+  onEnterGames?: (chosenTheme: Theme, musicConsent: boolean) => void;
 }
 
-export const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
+export const LoadingScreen = ({ onComplete, onEnterGames }: LoadingScreenProps) => {
   const isAutomated = isAutomatedEnv();
   const { phase, setPhase, useStatic, triggerVideoFailed } = useLoadingPhase();
   const doneRef = useRef(false);
@@ -62,6 +64,17 @@ export const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
       onComplete(theme, musicConsent);
     }, LOADING_TIMINGS.zoomOut);
   }, [musicConsent, onComplete, setPhase, introAudio]);
+
+  const finishToGames = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setPhase('zooming');
+    if (musicConsent) introAudio.fadeOut(800);
+    setTimeout(() => {
+      setPhase('hidden');
+      onEnterGames?.('midnight', musicConsent);
+    }, LOADING_TIMINGS.zoomOut);
+  }, [musicConsent, onEnterGames, setPhase, introAudio]);
 
   if (phase === 'hidden') return null;
 
@@ -113,6 +126,28 @@ export const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
           animation: 'nl-fade-up 0.8s ease-out both',
         }}>NL</div>
         <ThemePicker onPick={finishWithTheme} />
+        <button
+          type="button"
+          onClick={finishToGames}
+          aria-label="Games"
+          style={{
+            marginTop: 14,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 16px',
+            borderRadius: 999,
+            background: 'rgba(255,255,255,0.1)',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            color: '#fff',
+            fontSize: '0.85rem',
+            backdropFilter: 'blur(8px)',
+            animation: 'nl-fade-up 0.6s ease both',
+          }}
+        >
+          <Gamepad2 size={16} aria-hidden="true" />
+          <span>Games</span>
+        </button>
         <div style={{
           position: 'absolute', bottom: 'clamp(14px,2vh,24px)',
           color: 'rgba(255,255,255,0.55)',

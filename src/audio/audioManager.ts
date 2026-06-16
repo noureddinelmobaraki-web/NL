@@ -1,4 +1,4 @@
-type AudioSource = 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro';
+type AudioSource = 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro' | 'games';
 
 /** Metadata لكل suppressor مسجَّل في bgSuppressors. */
 interface SuppressorMeta {
@@ -313,6 +313,7 @@ class AudioManager {
       'intro': 4,
       'lens': 8,
       'mebit': 8,
+      'games': 6,
       'video': 5,
       'bg': 1
     };

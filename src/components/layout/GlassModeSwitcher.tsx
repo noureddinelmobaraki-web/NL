@@ -1,7 +1,10 @@
-import { Component, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import {
+  Component, useCallback, useEffect, useRef, useState,
+  useSyncExternalStore, type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Volume2, VolumeX, LogOut } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { audioManager } from '../../audio/audioManager';
@@ -9,36 +12,31 @@ import type { Theme } from '../../utils/userPrefs';
 import '../../styles/components/glass-switcher.css';
 
 const MODES: { id: Theme; label: string }[] = [
-  { id: 'dark', label: 'Dark' }, { id: 'light', label: 'Light' },
-  { id: 'midnight', label: 'Midnight' }, { id: 'bit', label: 'Bit' },
-  { id: 'lite', label: 'Lite' }, { id: 'retro', label: 'Retro' },
+  { id: 'dark',     label: 'Dark'     },
+  { id: 'light',    label: 'Light'    },
+  { id: 'midnight', label: 'Midnight' },
+  { id: 'bit',      label: 'Bit'      },
+  { id: 'lite',     label: 'Lite'     },
+  { id: 'retro',    label: 'Retro'    },
 ];
 
-const SOURCES = ['bg', 'song', 'lens', 'mebit', 'video', 'intro'] as const;
+const SOURCES = ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games'] as const;
 
-// عناصر يجب ألّا تغطّيها الفقاعة (أزرار الإغلاق/الخروج). أضف data-glass-avoid لأي زر تريد تجنّبه.
 const AVOID_SELECTOR =
   '[data-glass-avoid],[aria-label="Close"],[aria-label="إغلاق"],.modal-close-btn,.gallery-close-btn';
 
-// يبقي الفقاعة داخل حدود الشاشة بعد حساب الإزاحة (dx لليسار، dy للأسفل). نقية وقابلة للاختبار.
 export function clampOffset(
   base: { left: number; right: number; top: number; bottom: number },
-  dx: number,
-  dy: number,
-  vw: number,
-  vh: number,
-  margin = 8,
+  dx: number, dy: number, vw: number, vh: number, margin = 8,
 ): { x: number; y: number } {
-  let nx = dx;
-  let ny = dy;
-  if (base.left + nx < margin) nx += margin - (base.left + nx);
-  if (base.right + nx > vw - margin) nx -= base.right + nx - (vw - margin);
-  if (base.top + ny < margin) ny += margin - (base.top + ny);
-  if (base.bottom + ny > vh - margin) ny -= base.bottom + ny - (vh - margin);
+  let nx = dx, ny = dy;
+  if (base.left   + nx < margin)       nx += margin - (base.left   + nx);
+  if (base.right  + nx > vw - margin)  nx -= base.right  + nx - (vw - margin);
+  if (base.top    + ny < margin)       ny += margin - (base.top    + ny);
+  if (base.bottom + ny > vh - margin)  ny -= base.bottom + ny - (vh - margin);
   return { x: nx, y: ny };
 }
 
-/** هل توجد طبقة علوية نشطة (معرض/كلمات/Music Mood/أي modal)؟ */
 function useOverlayActive(): boolean {
   const subscribe = useCallback((cb: () => void) => {
     const obs = new MutationObserver(cb);
@@ -60,37 +58,55 @@ function useOverlayActive(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }
 
-// حدّ أمان: إذا انهار مبدّل الأوضاع، يُخفى بهدوء ولا يكسر بقية الصفحة
-class GlassSwitcherBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+class GlassSwitcherBoundary extends Component<
+  { children: ReactNode }, { hasError: boolean }
+> {
   state = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(err: unknown) { console.warn('[GlassModeSwitcher] crashed, hidden:', err); }
-  render() { return this.state.hasError ? null : this.props.children; }
+  componentDidCatch(err: unknown) {
+    console.warn('[GlassModeSwitcher] crashed, hidden:', err);
+  }
+  render() {
+    return this.state.hasError ? null : this.props.children;
+  }
 }
 
 function GlassModeSwitcherInner() {
   const { isDesktop } = useDeviceType();
-  const { theme, setTheme, returnToWelcome } = useAppContext();
-  const reduceMotion = useReducedMotion();
+  const {
+    theme, setTheme, returnToWelcome,
+    openGames, closeGames, isGamesOpen,
+    isGameActive, callGameBack,
+  } = useAppContext();
+  const reduceMotion  = useReducedMotion();
   const overlayActive = useOverlayActive();
 
-  const [open, setOpen] = useState(false);
-  const [peek, setPeek] = useState(false);
+  const [open, setOpen]     = useState(false);
+  const [peek, setPeek]     = useState(false);
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const anchorRef = useRef<HTMLDivElement | null>(null);
+  const anchorRef  = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const idleTimerRef = useRef<number | null>(null);
 
-  // يعيد ضبط مؤقّت 5ث: عند انتهائه تعود الفقاعة للحالة الصغيرة
   const scheduleIdleCollapse = useCallback(() => {
     if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
+    // الهاتف 5 ثوانٍ ثم يغلق، الحاسوب ثانية واحدة بعد المغادرة
+    const delay = isDesktop ? 1000 : 5000;
     idleTimerRef.current = window.setTimeout(() => {
       setOpen(false);
       setPeek(false);
-    }, 5000);
+    }, delay);
+  }, [isDesktop]);
+
+  const keepAlive = useCallback(() => {
+    if (idleTimerRef.current) {
+      window.clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
   }, []);
 
+  // ── مؤشر تشغيل الصوت: يشمل 'games' لعكس حالة موسيقى الألعاب
   const isPlaying = useSyncExternalStore(
     (cb) => {
       const unsubs = SOURCES.map((s) => audioManager.subscribeState(s, cb));
@@ -100,41 +116,36 @@ function GlassModeSwitcherInner() {
     () => false,
   );
 
-  // صفر peek عند اختفاء الطبقة العلوية
   useEffect(() => {
     if (!overlayActive) setPeek(false);
   }, [overlayActive]);
 
-  // إزاحة ذكية: نقيس صندوق الـ anchor الثابت (غير متحوّل) ونزيح السطح بـtranslate فقط
-  // بما يكفي لعدم تغطية أزرار الإغلاق، مع البقاء أعلى-اليمين. لا تبديل left/right.
+  // إزاحة ذكية لتجنّب أزرار الإغلاق
   useEffect(() => {
     const measure = () => {
       const el = anchorRef.current;
       if (!el) return;
       const base = el.getBoundingClientRect();
-      let dx = 0;
-      let dy = 0;
-      const avoids = document.querySelectorAll<HTMLElement>(AVOID_SELECTOR);
-      avoids.forEach((a) => {
+      let dx = 0, dy = 0;
+      document.querySelectorAll<HTMLElement>(AVOID_SELECTOR).forEach((a) => {
         const r = a.getBoundingClientRect();
         if (r.width === 0 || r.height === 0) return;
-        const ox = Math.min(base.right, r.right) - Math.max(base.left, r.left);
-        const oy = Math.min(base.bottom, r.bottom) - Math.max(base.top, r.top);
+        const ox = Math.min(base.right, r.right)   - Math.max(base.left, r.left);
+        const oy = Math.min(base.bottom, r.bottom) - Math.max(base.top,  r.top);
         if (ox > 0 && oy > 0) {
-          dx = Math.min(dx, -(ox + 14)); // إزاحة لليسار
-          dy = Math.max(dy, oy + 14);    // وإلى الأسفل
+          dx = Math.min(dx, -(ox + 14));
+          dy = Math.max(dy, oy + 14);
         }
       });
       const clamped = clampOffset(base, dx, dy, window.innerWidth, window.innerHeight);
-      setOffset((prev) => (prev.x === clamped.x && prev.y === clamped.y ? prev : clamped));
+      setOffset((prev) =>
+        prev.x === clamped.x && prev.y === clamped.y ? prev : clamped
+      );
     };
-
     measure();
     const obs = new MutationObserver(measure);
     obs.observe(document.body, {
-      attributes: true,
-      childList: true,
-      subtree: true,
+      attributes: true, childList: true, subtree: true,
       attributeFilter: ['class', 'data-modal-context', 'style'],
     });
     window.addEventListener('resize', measure);
@@ -146,43 +157,51 @@ function GlassModeSwitcherInner() {
     };
   }, [open, overlayActive]);
 
-  // الإغلاق عند النقر خارجها (هاتف فقط)
+  // المؤقت الذكي: مخصص للهاتف، وتوقيفه على الحاسوب إلا عند المغادرة
+  useEffect(() => {
+    if (!open && !peek) {
+      keepAlive();
+    } else if (!isDesktop) {
+      scheduleIdleCollapse();
+    }
+  }, [open, peek, isDesktop, keepAlive, scheduleIdleCollapse]);
+
+  // إغلاق عند النقر خارجها (هاتف)
   useEffect(() => {
     if (!open || isDesktop) return;
     const onDown = (e: PointerEvent) => {
       if (surfaceRef.current && !surfaceRef.current.contains(e.target as Node)) {
         setOpen(false);
+        setPeek(false);
       }
     };
     document.addEventListener('pointerdown', onDown, true);
     return () => document.removeEventListener('pointerdown', onDown, true);
   }, [open, isDesktop]);
 
-  // مؤقّت العودة التلقائية للحجم الصغير بعد 5ث خمول
-  useEffect(() => {
-    if (open || peek) {
-      scheduleIdleCollapse();
-    } else if (idleTimerRef.current) {
-      window.clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = null;
-    }
-    return () => {
-      if (idleTimerRef.current) {
-        window.clearTimeout(idleTimerRef.current);
-        idleTimerRef.current = null;
-      }
-    };
-  }, [open, peek, scheduleIdleCollapse]);
-
+  // ── تبديل الصوت: يتحكم بموسيقى الألعاب حين isGamesOpen ─────────
   const toggleAudio = useCallback(() => {
     const active = SOURCES.find((s) => audioManager.isSourceActive(s));
-    if (active) audioManager.pause(active);
-    else audioManager.play('bg').catch(() => audioManager.armUserGestureResume());
-  }, []);
+    if (active) {
+      audioManager.pause(active);
+      return;
+    }
+    const src = isGamesOpen ? 'games' : 'bg';
+    (audioManager.play as any)(src).catch(() => {
+      try { audioManager.armUserGestureResume(); } catch {}
+    });
+  }, [isGamesOpen]);
 
   if (typeof window === 'undefined') return null;
+  // ▶ تمت إزالة: if (isGamesOpen) return null;
+  // الفقاعة تظهر في كل الأوضاع بما فيها الألعاب
 
-  const state: 'dot' | 'orb' | 'open' = open ? 'open' : overlayActive && !peek ? 'dot' : 'orb';
+  // ── حالة الفقاعة:
+  // - dot  : حين يوجد modal نشط أو لعبة تعمل (isGameActive)
+  // - open : حين يكون المستخدم قد فتحها
+  // - orb  : الحالة الافتراضية (دائرة صغيرة)
+  const shouldShrink = (overlayActive || isGameActive) && !peek;
+  const state: 'dot' | 'orb' | 'open' = open ? 'open' : shouldShrink ? 'dot' : 'orb';
 
   const spring = reduceMotion
     ? { duration: 0 }
@@ -197,10 +216,35 @@ function GlassModeSwitcherInner() {
         className={`glass-switcher ${isDesktop ? 'is-desktop' : 'is-mobile'}`}
         animate={{ x: offset.x, y: offset.y }}
         transition={spring}
-        onMouseEnter={() => { if (isDesktop) { if (overlayActive && !peek) setPeek(true); else setOpen(true); scheduleIdleCollapse(); } }}
-        onMouseLeave={() => { if (isDesktop) { setOpen(false); setPeek(false); } }}
-        onPointerMove={() => { if (open || peek) scheduleIdleCollapse(); }}
-        onClick={() => { if (!isDesktop) { if (overlayActive && !peek) setPeek(true); else setOpen((v) => !v); } scheduleIdleCollapse(); }}
+        onMouseEnter={() => {
+          if (isDesktop) {
+            keepAlive();
+            setOpen(true);
+            setPeek(false);
+          }
+        }}
+        onMouseLeave={() => {
+          if (isDesktop) {
+             scheduleIdleCollapse();
+          }
+        }}
+        onPointerMove={() => { 
+          if (isDesktop) {
+             keepAlive();
+             // Just in case it closed but we're still moving inside
+             if (!open) { setOpen(true); setPeek(false); }
+          }
+          else if (open || peek) scheduleIdleCollapse(); 
+        }}
+        onClick={() => {
+          if (!isDesktop) {
+            if (shouldShrink && !peek) setPeek(true);
+            else setOpen((v) => !v);
+            scheduleIdleCollapse();
+          } else {
+            keepAlive();
+          }
+        }}
         role="group"
         aria-label="Mode switcher"
       >
@@ -214,22 +258,62 @@ function GlassModeSwitcherInner() {
               className="glass-switcher__grid"
               role="menu"
               initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+              exit={reduceMotion   ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
               transition={reduceMotion ? { duration: 0 } : { duration: 0.18 }}
             >
+              {/* أزرار الأوضاع — تُغلق الألعاب أولاً إن كانت مفتوحة */}
               {MODES.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   role="menuitemradio"
-                  aria-checked={theme === m.id}
-                  className={`gs-cell ${theme === m.id ? 'is-active' : ''}`}
-                  onClick={(e) => { e.stopPropagation(); setTheme(m.id); setOpen(false); }}
+                  aria-checked={!isGamesOpen && theme === m.id}
+                  className={`gs-cell ${!isGamesOpen && theme === m.id ? 'is-active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isGamesOpen) closeGames();
+                    setTheme(m.id);
+                    setOpen(false);
+                  }}
                 >
                   {m.label}
                 </button>
               ))}
+
+              {/* زر الألعاب: يفتح أو يغلق الصفحة */}
+              <button
+                type="button"
+                className={`gs-cell gs-icon${isGamesOpen ? ' is-active' : ''}`}
+                role="menuitem"
+                aria-label={isGamesOpen ? 'Close games' : 'Games'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isGamesOpen) closeGames();
+                  else { openGames(); setOpen(false); }
+                }}
+              >
+                <Gamepad2 size={16} />
+              </button>
+
+              {/* زر إغلاق اللعبة (← العودة للقائمة) — يظهر فقط حين لعبة نشطة */}
+              {isGameActive && (
+                <button
+                  type="button"
+                  className="gs-cell gs-icon"
+                  role="menuitem"
+                  aria-label="Back to game list"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    callGameBack();
+                    setOpen(false);
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+              )}
+
+              {/* زر الصوت */}
               <button
                 type="button"
                 className="gs-cell gs-icon"
@@ -238,6 +322,8 @@ function GlassModeSwitcherInner() {
               >
                 {isPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
               </button>
+
+              {/* زر الخروج */}
               <button
                 type="button"
                 className="gs-cell gs-icon gs-exit"

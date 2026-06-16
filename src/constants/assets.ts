@@ -51,6 +51,12 @@ export const THEME_BG_MUSIC: Record<string, string> = {
   'lite':        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Lumiere_HLS/Lumiere.m3u8',
 };
 
+// موسيقى وضع الألعاب (HLS) — تُدار عبر AudioManager بنفس قواعد بقية الأصوات
+export const GAMES_BG_MUSIC = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/games_hls/index.m3u8';
+
+// فيديو خلفية حائط صفحة الألعاب
+export const GAMES_BG_VIDEO = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/gameBG_web.webm';
+
 // Intro screen assets (responsive)
 export const INTRO_VIDEOS = {
   desktop: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/opening_web_12fps.webm',

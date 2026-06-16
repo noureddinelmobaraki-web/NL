@@ -5,9 +5,22 @@
     "mebit": "Moi",
     "drawings": "Mes Dessins",
     "lens": "LENS",
+    "games": "Jeux",
     "play": "Musique",
     "pause": "Pause",
     "language": "Français"
+  },
+  "games": {
+    "title": "JEUX",
+    "subtitle": "Arcade Flash",
+    "idle": "Choisissez un jeu dans la liste pour y jouer ici",
+    "loading": "Chargement…",
+    "error": "Impossible de lancer ce jeu",
+    "errorRetry": "Réessayer",
+    "fullscreen": "Plein écran",
+    "back": "Retour",
+    "controls": "Commandes tactiles",
+    "desktopNotice": "Meilleure expérience sur ordinateur 💻"
   },
   "buttons": {
     "changeLanguage": "Changer la langue"

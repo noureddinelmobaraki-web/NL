@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
-export type ActiveButtonContext = 'page' | 'lens' | 'mebit' | 'songs-modal';
+export type ActiveButtonContext = 'page' | 'lens' | 'mebit' | 'songs-modal' | 'games';
 
 export interface RegisteredButton {
   id: string;
@@ -72,7 +72,7 @@ export const ButtonProvider: React.FC<ButtonProviderProps> = ({ children }) => {
       document.body.setAttribute('data-has-active-modal', 'false');
     }
 
-    const contexts: ActiveButtonContext[] = ['page', 'lens', 'mebit', 'songs-modal'];
+    const contexts: ActiveButtonContext[] = ['page', 'lens', 'mebit', 'songs-modal', 'games'];
     contexts.forEach(name => {
       document.body.classList.remove(`modal-context-${name}`);
     });
