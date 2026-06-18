@@ -408,6 +408,20 @@ function MainApp() {
             className="relative z-10 w-full max-w-7xl flex flex-col gap-14"
             style={{ paddingBottom: (isMobile || isTablet) ? '80px' : undefined }}
           >
+            {/* Subtle top banner message */}
+            <div 
+              id="top-memorial-banner"
+              className="w-full text-center py-2 px-4 rounded-lg text-[11px] sm:text-xs font-mono tracking-tight leading-relaxed transition-all duration-300"
+              style={{
+                background: resolvedTheme === 'light' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.03)',
+                border: resolvedTheme === 'light' ? '1px dashed rgba(0, 0, 0, 0.15)' : '1px dashed rgba(255, 255, 255, 0.1)',
+                color: resolvedTheme === 'light' ? '#4b5563' : '#a1a1aa',
+                marginBottom: '-28px'
+              }}
+            >
+              "If you entered to check this website, it means I have died haha"
+            </div>
+
             <AppNavGrid
               resolvedTheme={resolvedTheme}
               onScrollToSection={scrollToSection}
