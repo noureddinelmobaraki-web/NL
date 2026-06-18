@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Camera, Music2, Pencil, Aperture, Gamepad2 } from 'lucide-react';
+import { Camera, Music2, Pencil, Aperture, Gamepad2, Clapperboard } from 'lucide-react';
 import { NavButton } from '../NavButton';
 import { audioManager } from '../../audio/audioManager';
 import { itemVariants } from './appConstants';
@@ -19,7 +19,12 @@ export function AppNavGrid({
   onOpenLens,
 }: AppNavGridProps) {
   const { t } = useTranslation();
-  const { openGames } = useAppContext();
+  const { openGames, openMovies } = useAppContext();
+
+  const moviesSeriesLabel = t('nav.movies_and_series') || 
+    (t('nav.movies') && t('nav.series') 
+      ? `${t('nav.movies')} & ${t('nav.series')}` 
+      : "Movies & Series");
 
   return (
     <motion.div 
@@ -69,6 +74,15 @@ export function AppNavGrid({
         onClick={(e) => {
           setGenieOriginFromElement(e.currentTarget);
           openGames();
+        }} 
+        theme={resolvedTheme} 
+      />
+      <NavButton 
+        icon={Clapperboard} 
+        label={moviesSeriesLabel.toUpperCase()} 
+        onClick={(e) => {
+          setGenieOriginFromElement(e.currentTarget);
+          openMovies();
         }} 
         theme={resolvedTheme} 
       />

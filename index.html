@@ -6,17 +6,19 @@
   default-src 'self';
   object-src 'none';
   script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-kwOTmlDcJErA+Ke+b7qQhRE5zYpCBEZcekVyFNpQhW0=' https://cdn.emailjs.com https://plausible.io https://www.google.com https://www.gstatic.com;
-  frame-src 'self' https://www.google.com https://recaptcha.google.com;
+  frame-src 'self' https://www.google.com https://recaptcha.google.com https://www.youtube.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com;
   style-src-attr 'unsafe-inline';
   img-src 'self' data: blob:
     https://noureddinelmobaraki-web.github.io
     https://raw.githubusercontent.com
-    https://i.ytimg.com;
+    https://i.ytimg.com
+    https://image.tmdb.org
+    https://m.media-amazon.com;
   media-src 'self' blob: https://noureddinelmobaraki-web.github.io;
   font-src 'self' data: https://fonts.gstatic.com;
-  connect-src 'self' https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io;
+  connect-src 'self' https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com;
   worker-src 'self' blob:;
   manifest-src 'self';
   frame-ancestors 'none';

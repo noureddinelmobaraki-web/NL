@@ -10,7 +10,7 @@ function getGitHash() {
   }
 }
 
-const hash = getGitHash();
+const hash = `${getGitHash()}-${Date.now().toString(36)}`;
 
 const template = readFileSync('public/sw.template.js', 'utf-8');
 const output = template.replace(/__BUILD_HASH__/g, hash);

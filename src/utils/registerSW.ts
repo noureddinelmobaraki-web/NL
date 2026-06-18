@@ -93,6 +93,9 @@ export function registerServiceWorker(): () => void {
         updateViaCache: 'none',
       });
 
+      // Force immediate update check on load to bypass old versions
+      reg.update().catch(() => {});
+
       const onVisibility = () => {
         if (document.visibilityState === 'visible') {
           const now = Date.now();

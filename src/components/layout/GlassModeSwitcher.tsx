@@ -4,7 +4,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { audioManager } from '../../audio/audioManager';
@@ -20,7 +20,7 @@ const MODES: { id: Theme; label: string }[] = [
   { id: 'retro',    label: 'Retro'    },
 ];
 
-const SOURCES = ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games'] as const;
+const SOURCES = ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games', 'movies', 'series'] as const;
 
 const AVOID_SELECTOR =
   '[data-glass-avoid],[aria-label="Close"],[aria-label="إغلاق"],.modal-close-btn,.gallery-close-btn';
@@ -77,6 +77,8 @@ function GlassModeSwitcherInner() {
     theme, setTheme, returnToWelcome,
     openGames, closeGames, isGamesOpen,
     isGameActive, callGameBack,
+    openMovies, closeMovies, isMoviesOpen,
+    isMovieActive, callMovieBack,
   } = useAppContext();
   const reduceMotion  = useReducedMotion();
   const overlayActive = useOverlayActive();
@@ -179,18 +181,18 @@ function GlassModeSwitcherInner() {
     return () => document.removeEventListener('pointerdown', onDown, true);
   }, [open, isDesktop]);
 
-  // ── تبديل الصوت: يتحكم بموسيقى الألعاب حين isGamesOpen ─────────
+  // ── تبديل الصوت: يتحكم بموسيقى الألعاب أو الأفلام أو المسلسلات حين الفتح ─────────
   const toggleAudio = useCallback(() => {
     const active = SOURCES.find((s) => audioManager.isSourceActive(s));
     if (active) {
       audioManager.pause(active);
       return;
     }
-    const src = isGamesOpen ? 'games' : 'bg';
+    const src = isGamesOpen ? 'games' : isMoviesOpen ? 'movies' : 'bg';
     (audioManager.play as any)(src).catch(() => {
       try { audioManager.armUserGestureResume(); } catch {}
     });
-  }, [isGamesOpen]);
+  }, [isGamesOpen, isMoviesOpen]);
 
   if (typeof window === 'undefined') return null;
   // ▶ تمت إزالة: if (isGamesOpen) return null;
@@ -200,7 +202,7 @@ function GlassModeSwitcherInner() {
   // - dot  : حين يوجد modal نشط أو لعبة تعمل (isGameActive)
   // - open : حين يكون المستخدم قد فتحها
   // - orb  : الحالة الافتراضية (دائرة صغيرة)
-  const shouldShrink = (overlayActive || isGameActive) && !peek;
+  const shouldShrink = (overlayActive || isGameActive || isMovieActive) && !peek;
   const state: 'dot' | 'orb' | 'open' = open ? 'open' : shouldShrink ? 'dot' : 'orb';
 
   const spring = reduceMotion
@@ -273,6 +275,7 @@ function GlassModeSwitcherInner() {
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isGamesOpen) closeGames();
+                    if (isMoviesOpen) closeMovies();
                     setTheme(m.id);
                     setOpen(false);
                   }}
@@ -289,6 +292,7 @@ function GlassModeSwitcherInner() {
                 aria-label={isGamesOpen ? 'Close games' : 'Games'}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (isMoviesOpen) closeMovies();
                   if (isGamesOpen) closeGames();
                   else { openGames(); setOpen(false); }
                 }}
@@ -296,7 +300,23 @@ function GlassModeSwitcherInner() {
                 <Gamepad2 size={16} />
               </button>
 
-              {/* زر إغلاق اللعبة (← العودة للقائمة) — يظهر فقط حين لعبة نشطة */}
+              {/* زر الأفلام والمسلسلات: يفتح أو يغلق الصفحة */}
+              <button
+                type="button"
+                className={`gs-cell gs-icon${isMoviesOpen ? ' is-active' : ''}`}
+                role="menuitem"
+                aria-label={isMoviesOpen ? 'Close Cinema' : 'Cinema'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isGamesOpen) closeGames();
+                  if (isMoviesOpen) closeMovies();
+                  else { openMovies(); setOpen(false); }
+                }}
+              >
+                <Film size={16} />
+              </button>
+
+              {/* زر إغلاق اللعبة (← العودة للقائمة) — يظهر فقط حين لعبة نشطة أو فيلم نشط */}
               {isGameActive && (
                 <button
                   type="button"
@@ -306,6 +326,22 @@ function GlassModeSwitcherInner() {
                   onClick={(e) => {
                     e.stopPropagation();
                     callGameBack();
+                    setOpen(false);
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+              )}
+
+              {isMovieActive && (
+                <button
+                  type="button"
+                  className="gs-cell gs-icon"
+                  role="menuitem"
+                  aria-label="Back to movie list"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    callMovieBack();
                     setOpen(false);
                   }}
                 >

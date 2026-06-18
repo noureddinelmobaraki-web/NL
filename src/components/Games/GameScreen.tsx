@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Maximize, Gamepad2, RotateCcw, ChevronLeft, X } from 'lucide-react';
+import { Maximize, Gamepad2, RotateCcw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useRuffle } from './useRuffle';
 import { TouchControls } from './TouchControls';
@@ -18,7 +18,7 @@ interface GameScreenProps {
 const BAR_HIDE_MS = 7000;
 
 export function GameScreen({
-  swfUrl, posterUrl, title, isTouch, onBack, onClose,
+  swfUrl, posterUrl, title, isTouch, onBack, onClose: _onClose,
 }: GameScreenProps) {
   const { t } = useTranslation();
   const screenRef    = useRef<HTMLDivElement>(null);

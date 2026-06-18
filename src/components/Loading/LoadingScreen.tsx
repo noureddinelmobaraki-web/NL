@@ -8,16 +8,17 @@ import { ThemePicker } from './ThemePicker';
 import { LOADING_TIMINGS } from '../../constants/loading';
 import { isAutomatedEnv } from '../../utils/env';
 import type { Theme } from '../../utils/userPrefs';
-import { Gamepad2 } from 'lucide-react';
+import { Gamepad2, Film } from 'lucide-react';
 
 const POSTER_IMAGE_URL = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp';
 
 export interface LoadingScreenProps {
   onComplete: (chosenTheme: Theme, musicConsent: boolean) => void;
   onEnterGames?: (chosenTheme: Theme, musicConsent: boolean) => void;
+  onEnterCinema?: (chosenTheme: Theme, musicConsent: boolean) => void;
 }
 
-export const LoadingScreen = ({ onComplete, onEnterGames }: LoadingScreenProps) => {
+export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema }: LoadingScreenProps) => {
   const isAutomated = isAutomatedEnv();
   const { phase, setPhase, useStatic, triggerVideoFailed } = useLoadingPhase();
   const doneRef = useRef(false);
@@ -76,6 +77,17 @@ export const LoadingScreen = ({ onComplete, onEnterGames }: LoadingScreenProps) 
     }, LOADING_TIMINGS.zoomOut);
   }, [musicConsent, onEnterGames, setPhase, introAudio]);
 
+  const finishToCinema = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setPhase('zooming');
+    if (musicConsent) introAudio.fadeOut(800);
+    setTimeout(() => {
+      setPhase('hidden');
+      onEnterCinema?.('midnight', musicConsent);
+    }, LOADING_TIMINGS.zoomOut);
+  }, [musicConsent, onEnterCinema, setPhase, introAudio]);
+
   if (phase === 'hidden') return null;
 
   const zoomStyle = phase === 'zooming'
@@ -125,29 +137,56 @@ export const LoadingScreen = ({ onComplete, onEnterGames }: LoadingScreenProps) 
           marginBottom: 'clamp(18px,3vw,30px)',
           animation: 'nl-fade-up 0.8s ease-out both',
         }}>NL</div>
-        <ThemePicker onPick={finishWithTheme} />
-        <button
-          type="button"
-          onClick={finishToGames}
-          aria-label="Games"
-          style={{
-            marginTop: 14,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 16px',
-            borderRadius: 999,
-            background: 'rgba(255,255,255,0.1)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            color: '#fff',
-            fontSize: '0.85rem',
-            backdropFilter: 'blur(8px)',
-            animation: 'nl-fade-up 0.6s ease both',
-          }}
-        >
-          <Gamepad2 size={16} aria-hidden="true" />
-          <span>Games</span>
-        </button>
+         <ThemePicker onPick={finishWithTheme} />
+        <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
+          <button
+            type="button"
+            onClick={finishToGames}
+            aria-label="Games"
+            className="hover:scale-105 active:scale-95 transition"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              borderRadius: 999,
+              background: 'rgba(255,255,255,0.1)',
+              border: '0.5px solid rgba(255,255,255,0.2)',
+              color: '#fff',
+              fontSize: '0.85rem',
+              backdropFilter: 'blur(8px)',
+              animation: 'nl-fade-up 0.6s ease both',
+              cursor: 'pointer',
+            }}
+          >
+            <Gamepad2 size={16} aria-hidden="true" />
+            <span>Games</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={finishToCinema}
+            aria-label="Movies & Series"
+            className="hover:scale-105 active:scale-95 transition"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              borderRadius: 999,
+              background: 'rgba(255,255,255,0.1)',
+              border: '0.5px solid rgba(255,255,255,0.2)',
+              color: '#fff',
+              fontSize: '0.85rem',
+              backdropFilter: 'blur(8px)',
+              animation: 'nl-fade-up 0.6s ease both',
+              cursor: 'pointer',
+            }}
+          >
+            <Film size={16} aria-hidden="true" />
+            <span>Movies & Series</span>
+          </button>
+        </div>
         <div style={{
           position: 'absolute', bottom: 'clamp(14px,2vh,24px)',
           color: 'rgba(255,255,255,0.55)',

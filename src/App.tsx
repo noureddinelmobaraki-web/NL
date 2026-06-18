@@ -62,6 +62,10 @@ const GamesPage = lazyWithRetry(
   () => import('./components/Games/GamesPage').then(m => ({ default: m.GamesPage })),
   'GamesPage',
 );
+const MoviesPage = lazyWithRetry(
+  () => import('./components/Movies/MoviesPage').then(m => ({ default: m.MoviesPage })),
+  'MoviesPage',
+);
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
 import { useParallax } from "./hooks/useParallax";
@@ -96,7 +100,7 @@ import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
 function AppInner() {
-  const { theme, loaded, isGamesOpen, closeGames } = useAppContext();
+  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries } = useAppContext();
 
   useEffect(() => {
     applyThemeUtil(theme);
@@ -110,6 +114,14 @@ function AppInner() {
         // ▶ GAMES صفحة مستقلة تماماً مثل retro — يُفصل MainApp وكل صوته
         <Suspense fallback={<div className="retro-loading">Loading games…</div>}>
           <GamesPage onClose={closeGames} />
+        </Suspense>
+      ) : loaded && (isMoviesOpen || isSeriesOpen) ? (
+        // ▶ MOVIES & SERIES صفحة مستقلة — يُفصل MainApp
+        <Suspense fallback={<div className="retro-loading">Loading cinema…</div>}>
+          <MoviesPage
+            onClose={isSeriesOpen ? closeSeries : closeMovies}
+            initialTab={isSeriesOpen ? 'series' : 'movies'}
+          />
         </Suspense>
       ) : theme === 'retro' && loaded ? (
         <Suspense fallback={<div className="retro-loading">Loading retro world…</div>}>
@@ -133,7 +145,7 @@ function MainApp() {
     ambientColor, setAmbientColor,
     audioIntent, setAudioIntent,
     theme, setTheme,
-    openGames
+    openGames, openMovies
   } = useAppContext();
 
   const navigateSection = useNavigateSection();
@@ -354,6 +366,12 @@ function MainApp() {
             if (musicConsent) setAudioIntent('user-playing');
             setLoaded(true);
             openGames();
+          }}
+          onEnterCinema={(chosenTheme, musicConsent) => {
+            setTheme(chosenTheme);
+            if (musicConsent) setAudioIntent('user-playing');
+            setLoaded(true);
+            openMovies();
           }}
         />
       )}
