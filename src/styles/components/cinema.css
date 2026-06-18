@@ -1,0 +1,59 @@
+/* src/styles/components/cinema.css */
+
+.nl-cinema-root {
+  height: 100vh;
+  height: 100dvh;
+}
+
+@supports (height: 100svh) {
+  .nl-cinema-root {
+    height: 100svh;
+  }
+}
+
+.nl-cinema-header {
+  padding-top: max(0.875rem, env(safe-area-inset-top));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+.nl-cinema-scroll {
+  padding-bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4rem));
+}
+
+.nl-cinema-hero {
+  min-height: 56svh;
+}
+
+@media (min-width: 768px) {
+  .nl-cinema-hero {
+    min-height: min(70vh, 760px);
+  }
+}
+
+.nl-cinema-hero h2 {
+  font-size: clamp(1.25rem, 5vw, 2.25rem);
+  line-height: 1.1;
+}
+
+.nl-row-scroller {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 1rem;
+}
+
+.nl-poster-card {
+  width: clamp(96px, 30vw, 170px);
+}
+
+@media (max-width: 640px) {
+  .nl-cinema-modal {
+    position: fixed;
+    inset: 0;
+    max-width: none !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+    overflow-y: auto;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+}

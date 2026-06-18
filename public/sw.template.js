@@ -113,7 +113,7 @@ async function handleRangeRequest(request, responseOverride = null) {
 }
 
 const LIMITS = {
-  'nl-images': { max: 80 },
+  'nl-images': { max: 160 },
   'nl-hls': { max: 30 },
   'nl-audio': { max: 15 },
 };
@@ -147,6 +147,26 @@ self.addEventListener('fetch', (event) => {
     }
   }
 
+  const url = new URL(event.request.url);
+
+  // TMDB / Amazon / YouTube images caching rule (Stale-While-Revalidate)
+  const IMG_CDNS = ['image.tmdb.org', 'm.media-amazon.com', 'i.ytimg.com'];
+  if (IMG_CDNS.includes(url.hostname)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_IMAGES);
+      const cached = await cache.match(event.request);
+      const network = fetch(event.request).then((resp) => {
+        if (resp && resp.ok) {
+          cache.put(event.request, resp.clone());
+          event.waitUntil(trimCache(CACHE_IMAGES));
+        }
+        return resp;
+      }).catch(() => cached);
+      return cached || network;
+    })());
+    return;
+  }
+
   // Navigation requests: serve cached shell as fallback
   if (request.mode === 'navigate') {
     event.respondWith(
@@ -164,7 +184,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const url = new URL(event.request.url);
   const sameOrigin = url.origin === self.location.origin;
 
   // 0. CDN images and media (non-HLS)

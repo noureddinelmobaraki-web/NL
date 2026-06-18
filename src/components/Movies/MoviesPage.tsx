@@ -8,41 +8,13 @@ import { useDeviceType } from "../../hooks/useDeviceType";
 import { useMoviesMusic } from "./useMoviesMusic";
 import { FALLBACK_MOVIES, FALLBACK_GENRES } from "./CuratedFallback";
 import { FALLBACK_SERIES, FALLBACK_SERIES_GENRES } from "../Series/CuratedFallback";
+import { CinemaBackButton } from "./CinemaBackButton";
+import { fetchWithCache } from "./tmdbCache";
+import "../../styles/components/cinema.css";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
-
-interface CacheEntry {
-  data: any;
-  timestamp: number;
-}
-const MEMORY_CACHE: Record<string, CacheEntry> = {};
-const CACHE_STALE_MS = 3600_000;
-
-async function fetchWithCache(url: string): Promise<any> {
-  const now = Date.now();
-  if (MEMORY_CACHE[url] && (now - MEMORY_CACHE[url].timestamp < CACHE_STALE_MS)) {
-    return MEMORY_CACHE[url].data;
-  }
-  try {
-    const local = localStorage.getItem(`cache_${url}`);
-    if (local) {
-      const parsed = JSON.parse(local) as CacheEntry;
-      if (now - parsed.timestamp < CACHE_STALE_MS) {
-        MEMORY_CACHE[url] = parsed;
-        return parsed.data;
-      }
-    }
-  } catch {}
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error("TMDB network response failed");
-  const data = await response.json();
-  const entry = { data, timestamp: now };
-  MEMORY_CACHE[url] = entry;
-  try { localStorage.setItem(`cache_${url}`, JSON.stringify(entry)); } catch {}
-  return data;
-}
+const PLAYBACK_BASE = import.meta.env.VITE_PLAYBACK_BASE_URL || "";
 
 type Media = 'movie' | 'tv';
 
@@ -102,6 +74,221 @@ export function normalizeItem(raw: any, mediaType: Media, lang: string): CinemaI
   };
 }
 
+// ===== MODULE SCOPE COMPONENTS (React.memo) =====
+
+type CardProps = {
+  item: CinemaItem;
+  isTouch: boolean;
+  isActiveHover: boolean;
+  onHover: (id: number | null) => void;
+  onSelect: (id: number) => void;
+  getPosterSrc: (p?: string | null) => string;
+  getBackdropSrc: (p?: string | null) => string;
+  moreLabel: string;
+};
+
+const MoviePosterCard = React.memo(function MoviePosterCard({
+  item, isTouch, isActiveHover, onHover, onSelect, getPosterSrc, getBackdropSrc, moreLabel,
+}: CardProps) {
+  const [hovered, setHovered] = useState(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!isActiveHover) {
+      setHovered(false);
+    }
+  }, [isActiveHover]);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    };
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (isTouch) return;
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    setHovered(true);
+    onHover(item.id);
+  };
+
+  const handleMouseLeave = () => {
+    if (isTouch) return;
+    hoverTimer.current = setTimeout(() => {
+      setHovered(false);
+      onHover(null);
+    }, 350);
+  };
+
+  const fallbackGenText = item.genreNames.slice(0, 2).join(" · ") || "Drama";
+
+  return (
+    <div
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={() => onSelect(item.id)}
+      className="relative aspect-[2/3] rounded-md overflow-hidden bg-neutral-900 border border-zinc-800 hover:border-red-600 cursor-pointer select-none transition shadow hover:shadow-red-900/50 hover:shadow-lg active:scale-95 flex-shrink-0 snap-start nl-poster-card"
+    >
+      <img
+        src={getPosterSrc(item.posterPath)}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={(e) => {
+          const el = e.currentTarget;
+          if (item.trailerKey && !el.dataset.fb) {
+            el.dataset.fb = '1';
+            el.src = `https://i.ytimg.com/vi/${item.trailerKey}/hqdefault.jpg`;
+          }
+        }}
+        className="w-full h-full object-cover select-none pointer-events-none"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-0 hover:opacity-100 transition-opacity flex flex-col justify-end p-2.5">
+        <p className="text-[10px] sm:text-xs font-black text-zinc-100 truncate">{item.title}</p>
+        <div className="flex items-center gap-2 text-[8px] sm:text-[9px] text-zinc-300 font-medium">
+          <span className="flex items-center gap-0.5 text-amber-500 font-bold">
+            <Star size={8} className="fill-current" />
+            {item.rating?.toFixed(1) || "8.1"}
+          </span>
+          <span>{item.year || "2024"}</span>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {hovered && isActiveHover && !isTouch && (
+          <motion.div
+            layoutId={`cinema-hover-${item.id}`}
+            initial={{ opacity: 0, scale: 0.94, y: 10 }}
+            animate={{ opacity: 1, scale: 1.05, y: -6 }}
+            exit={{ opacity: 0, scale: 0.94, y: 5 }}
+            transition={{ type: "spring", stiffness: 350, damping: 24 }}
+            className="absolute z-50 bottom-[30px] -left-6 w-[200px] sm:w-[230px] rounded-xl overflow-hidden bg-neutral-950 border border-zinc-700 shadow-2xl pointer-events-auto"
+          >
+            <div className="relative aspect-video w-full bg-black">
+              <img src={getBackdropSrc(item.backdropPath)} alt="" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 to-transparent" />
+            </div>
+            <div className="p-3 flex flex-col gap-1.5 bg-neutral-950">
+              <h4 className="text-xs font-black text-zinc-100 line-clamp-1">{item.title}</h4>
+              <div className="flex items-center gap-2 text-[9px] text-zinc-400 font-mono">
+                <span className="flex items-center gap-0.5 text-amber-500 font-bold">
+                  <Star size={10} className="fill-current" />
+                  {item.rating?.toFixed(1) || "8.1"}
+                </span>
+                <span>{item.year || "2024"}</span>
+                <span className="border border-zinc-700 px-1 rounded text-[8px] text-zinc-300">
+                  {item.mediaType === 'movie' ? "PG-13" : "TV-14"}
+                </span>
+              </div>
+              <p className="text-[10px] text-zinc-300 line-clamp-2 leading-relaxed">{item.overview}</p>
+              <div className="flex items-center justify-between gap-2 mt-1">
+                <span className="text-[8px] font-extrabold text-zinc-500 tracking-wider truncate">{fallbackGenText}</span>
+                <span 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(item.id);
+                  }}
+                  className="text-[9px] font-black text-red-500 hover:text-red-400 flex items-center gap-0.5"
+                >
+                  {moreLabel} →
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+type RowProps = {
+  title: string;
+  items: CinemaItem[];
+  isTouch: boolean;
+  isRTL: boolean;
+  card: (item: CinemaItem) => React.ReactNode;
+};
+
+const MovieRow = React.memo(function MovieRow({ title, items, isTouch, isRTL, card }: RowProps) {
+  const sliderRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+
+  const updateScrollState = () => {
+    if (!sliderRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
+    if (isRTL) {
+      const absScroll = Math.abs(scrollLeft);
+      setCanScrollLeft(absScroll > 6);
+      setCanScrollRight(absScroll + clientWidth < scrollWidth - 6);
+    } else {
+      setCanScrollLeft(scrollLeft > 6);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
+    }
+  };
+
+  const handleScrollClick = (direction: "left" | "right") => {
+    if (!sliderRef.current) return;
+    const { clientWidth } = sliderRef.current;
+    const scrollAmt = direction === "left" ? -clientWidth * 0.75 : clientWidth * 0.75;
+    const adjustedAmt = isRTL ? -scrollAmt : scrollAmt;
+    sliderRef.current.scrollBy({ left: adjustedAmt, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "200px" });
+    if (rowRef.current) observer.observe(rowRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div ref={rowRef} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
+      <h2 className="text-sm sm:text-lg font-bold text-zinc-100 tracking-wide uppercase px-2">{title}</h2>
+      <div className="group/row relative w-full overflow-hidden">
+        {canScrollLeft && !isTouch && (
+          <button 
+            onClick={() => handleScrollClick("left")} 
+            className="absolute left-0 top-0 bottom-0 z-30 w-10 flex items-center justify-center bg-black/60 opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer animate-fade-in"
+          >
+            <ChevronLeft size={28} />
+          </button>
+        )}
+        <div
+          ref={sliderRef}
+          onScroll={updateScrollState}
+          className="flex gap-4 overflow-x-auto select-none py-4 px-2 scroll-smooth scrollbar-none snap-x snap-mandatory nl-row-scroller"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none", scrollSnapType: "x mandatory" }}
+        >
+          {isVisible && items.map((item) => (
+            <React.Fragment key={item.id}>
+              {card(item)}
+            </React.Fragment>
+          ))}
+        </div>
+        {canScrollRight && !isTouch && (
+          <button 
+            onClick={() => handleScrollClick("right")} 
+            className="absolute right-0 top-0 bottom-0 z-30 w-10 flex items-center justify-center bg-black/60 opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer animate-fade-in"
+          >
+            <ChevronRight size={28} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+});
+
+// ===== MAIN PAGE ENTRY =====
+
 export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => void; initialTab?: 'movies' | 'series' }) {
   const { t, i18n } = useTranslation();
   const { isMobile, isTablet } = useDeviceType();
@@ -143,7 +330,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isOpenForAudio = Boolean(detailedItem || selectedItemId);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
@@ -153,10 +339,76 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const [scrolled, setScrolled] = useState(false);
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
 
   const handleScrollEvent = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     setScrolled(e.currentTarget.scrollTop > 50);
   }, []);
+
+  // Measure Header Height for mobile spacing
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      document.documentElement.style.setProperty('--cinema-header-h', el.offsetHeight + 'px');
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Accessibility Focus Trap and Escape listener
+  const lastActiveElement = useRef<HTMLElement | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (selectedItemId === null || !detailedItem) return;
+
+    lastActiveElement.current = document.activeElement as HTMLElement;
+    setTimeout(() => {
+      const focusable = modalRef.current?.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex="0"]');
+      if (focusable && focusable.length > 0) {
+        focusable[0].focus();
+      }
+    }, 50);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedItemId(null);
+        setDetailedItem(null);
+        return;
+      }
+
+      if (e.key === "Tab") {
+        if (!modalRef.current) return;
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex="0"]'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            last.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === last) {
+            first.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (lastActiveElement.current) {
+        lastActiveElement.current.focus();
+      }
+    };
+  }, [selectedItemId, detailedItem]);
 
   useEffect(() => {
     setMovieActive(Boolean(detailedItem));
@@ -188,109 +440,109 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setHeroIndex(0);
   }, [activeTab]);
 
-  // Load Movies
+  // Load Movies with AbortController
   useEffect(() => {
-    let cancelled = false;
+    const ac = new AbortController();
     if (!tmdbKey) {
-      if (!cancelled) {
-        setTrendingMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
-        setTopRatedMovies([...FALLBACK_MOVIES].reverse().map(r => normalizeItem(r, 'movie', currentLang)));
-        setPopularMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
-        setActionMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Action")).map(r => normalizeItem(r, 'movie', currentLang)));
-        setHorrorMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Horror")).map(r => normalizeItem(r, 'movie', currentLang)));
-        setDramaMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Drama")).map(r => normalizeItem(r, 'movie', currentLang)));
-        setSciFiMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'movie', currentLang)));
-        setMovieGenres(FALLBACK_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
-      }
+      setTrendingMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
+      setTopRatedMovies([...FALLBACK_MOVIES].reverse().map(r => normalizeItem(r, 'movie', currentLang)));
+      setPopularMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
+      setActionMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Action")).map(r => normalizeItem(r, 'movie', currentLang)));
+      setHorrorMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Horror")).map(r => normalizeItem(r, 'movie', currentLang)));
+      setDramaMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Drama")).map(r => normalizeItem(r, 'movie', currentLang)));
+      setSciFiMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'movie', currentLang)));
+      setMovieGenres(FALLBACK_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
       return;
     }
 
     const loadMovies = async () => {
       try {
         const langParam = `&language=${currentLang}`;
-        const genresRes = await fetchWithCache(`${TMDB_BASE_URL}/genre/movie/list?api_key=${tmdbKey}${langParam}`);
-        if (!cancelled && genresRes?.genres) setMovieGenres(genresRes.genres);
+        const genresRes = await fetchWithCache(`${TMDB_BASE_URL}/genre/movie/list?api_key=${tmdbKey}${langParam}`, ac.signal);
+        if (genresRes?.genres) setMovieGenres(genresRes.genres);
 
-        const trendingRes = await fetchWithCache(`${TMDB_BASE_URL}/trending/movie/week?api_key=${tmdbKey}${langParam}`);
-        if (!cancelled && trendingRes?.results) setTrendingMovies(trendingRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        const trendingRes = await fetchWithCache(`${TMDB_BASE_URL}/trending/movie/week?api_key=${tmdbKey}${langParam}`, ac.signal);
+        if (trendingRes?.results) setTrendingMovies(trendingRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
 
-        const ratedRes = await fetchWithCache(`${TMDB_BASE_URL}/movie/top_rated?api_key=${tmdbKey}${langParam}`);
-        if (!cancelled && ratedRes?.results) setTopRatedMovies(ratedRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        const ratedRes = await fetchWithCache(`${TMDB_BASE_URL}/movie/top_rated?api_key=${tmdbKey}${langParam}`, ac.signal);
+        if (ratedRes?.results) setTopRatedMovies(ratedRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
 
-        const popRes = await fetchWithCache(`${TMDB_BASE_URL}/movie/popular?api_key=${tmdbKey}${langParam}`);
-        if (!cancelled && popRes?.results) setPopularMovies(popRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        const popRes = await fetchWithCache(`${TMDB_BASE_URL}/movie/popular?api_key=${tmdbKey}${langParam}`, ac.signal);
+        if (popRes?.results) setPopularMovies(popRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
 
-        const actionRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=28`);
-        if (!cancelled && actionRes?.results) setActionMovies(actionRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        const actionRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=28`, ac.signal);
+        if (actionRes?.results) setActionMovies(actionRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
 
-        const horrorRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=27`);
-        if (!cancelled && horrorRes?.results) setHorrorMovies(horrorRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        const horrorRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=27`, ac.signal);
+        if (horrorRes?.results) setHorrorMovies(horrorRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
 
-        const dramaRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=18`);
-        if (!cancelled && dramaRes?.results) setDramaMovies(dramaRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        const dramaRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=18`, ac.signal);
+        if (dramaRes?.results) setDramaMovies(dramaRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
 
-        const scifiRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=878`);
-        if (!cancelled && scifiRes?.results) setSciFiMovies(scifiRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-      } catch (err) {
-        console.error("Failed to fetch TMDB Live movies:", err);
+        const scifiRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=878`, ac.signal);
+        if (scifiRes?.results) setSciFiMovies(scifiRes.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to fetch TMDB Live movies:", err);
+        }
       }
     };
     loadMovies();
-    return () => { cancelled = true; };
+    return () => { ac.abort(); };
   }, [tmdbKey, currentLang]);
 
-  // Load Series
+  // Load Series with AbortController
   useEffect(() => {
-    let cancelled = false;
+    const ac = new AbortController();
     if (!tmdbKey) {
-      if (!cancelled) {
-        setTrendingSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
-        setTopRatedSeries([...FALLBACK_SERIES].reverse().map(r => normalizeItem(r, 'tv', currentLang)));
-        setPopularSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
-        setActionSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Action") || s.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'tv', currentLang)));
-        setMysterySeries(FALLBACK_SERIES.filter(s => s.genres.includes("Mystery")).map(r => normalizeItem(r, 'tv', currentLang)));
-        setDramaSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Drama")).map(r => normalizeItem(r, 'tv', currentLang)));
-        setAnimationSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Animation")).map(r => normalizeItem(r, 'tv', currentLang)));
-        setSeriesGenres(FALLBACK_SERIES_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
-      }
+      setTrendingSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
+      setTopRatedSeries([...FALLBACK_SERIES].reverse().map(r => normalizeItem(r, 'tv', currentLang)));
+      setPopularSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
+      setActionSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Action") || s.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'tv', currentLang)));
+      setMysterySeries(FALLBACK_SERIES.filter(s => s.genres.includes("Mystery")).map(r => normalizeItem(r, 'tv', currentLang)));
+      setDramaSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Drama")).map(r => normalizeItem(r, 'tv', currentLang)));
+      setAnimationSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Animation")).map(r => normalizeItem(r, 'tv', currentLang)));
+      setSeriesGenres(FALLBACK_SERIES_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
       return;
     }
 
     const loadSeries = async () => {
       try {
         const langParam = `&language=${currentLang}`;
-        const genresRes = await fetchWithCache(`${TMDB_BASE_URL}/genre/tv/list?api_key=${tmdbKey}${langParam}`);
-        if (!cancelled && genresRes?.genres) setSeriesGenres(genresRes.genres);
+        const genresRes = await fetchWithCache(`${TMDB_BASE_URL}/genre/tv/list?api_key=${tmdbKey}${langParam}`, ac.signal);
+        if (genresRes?.genres) setSeriesGenres(genresRes.genres);
 
-        const trendingRes = await fetchWithCache(`${TMDB_BASE_URL}/trending/tv/week?api_key=${tmdbKey}${langParam}`);
-        if (!cancelled && trendingRes?.results) setTrendingSeries(trendingRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        const trendingRes = await fetchWithCache(`${TMDB_BASE_URL}/trending/tv/week?api_key=${tmdbKey}${langParam}`, ac.signal);
+        if (trendingRes?.results) setTrendingSeries(trendingRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
 
-        const ratedRes = await fetchWithCache(`${TMDB_BASE_URL}/tv/top_rated?api_key=${tmdbKey}${langParam}`);
-        if (!cancelled && ratedRes?.results) setTopRatedSeries(ratedRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        const ratedRes = await fetchWithCache(`${TMDB_BASE_URL}/tv/top_rated?api_key=${tmdbKey}${langParam}`, ac.signal);
+        if (ratedRes?.results) setTopRatedSeries(ratedRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
 
-        const popRes = await fetchWithCache(`${TMDB_BASE_URL}/tv/popular?api_key=${tmdbKey}${langParam}`);
-        if (!cancelled && popRes?.results) setPopularSeries(popRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        const popRes = await fetchWithCache(`${TMDB_BASE_URL}/tv/popular?api_key=${tmdbKey}${langParam}`, ac.signal);
+        if (popRes?.results) setPopularSeries(popRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
 
-        const actionRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=10759`);
-        if (!cancelled && actionRes?.results) setActionSeries(actionRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        const actionRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=10759`, ac.signal);
+        if (actionRes?.results) setActionSeries(actionRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
 
-        const mysteryRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=9648`);
-        if (!cancelled && mysteryRes?.results) setMysterySeries(mysteryRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        const mysteryRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=9648`, ac.signal);
+        if (mysteryRes?.results) setMysterySeries(mysteryRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
 
-        const dramaRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=18`);
-        if (!cancelled && dramaRes?.results) setDramaSeries(dramaRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        const dramaRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=18`, ac.signal);
+        if (dramaRes?.results) setDramaSeries(dramaRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
 
-        const animeRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=16`);
-        if (!cancelled && animeRes?.results) setAnimationSeries(animeRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-      } catch (err) {
-        console.error("Failed to fetch TMDB Live series:", err);
+        const animeRes = await fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=16`, ac.signal);
+        if (animeRes?.results) setAnimationSeries(animeRes.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to fetch TMDB Live series:", err);
+        }
       }
     };
     loadSeries();
-    return () => { cancelled = true; };
+    return () => { ac.abort(); };
   }, [tmdbKey, currentLang]);
 
-  // Search Debounce
+  // Search Debounce with AbortController
   useEffect(() => {
     if (!searchQuery.trim()) {
       setIsSearching(false);
@@ -298,6 +550,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       return;
     }
 
+    const ac = new AbortController();
     const delayDebounce = setTimeout(async () => {
       setIsSearching(true);
       try {
@@ -318,24 +571,30 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
         const endpoint = isTv ? 'search/tv' : 'search/movie';
         const searchData = await fetchWithCache(
-          `${TMDB_BASE_URL}/${endpoint}?api_key=${tmdbKey}&language=${currentLang}&query=${encodeURIComponent(searchQuery)}`
+          `${TMDB_BASE_URL}/${endpoint}?api_key=${tmdbKey}&language=${currentLang}&query=${encodeURIComponent(searchQuery)}`,
+          ac.signal
         );
         const results = (searchData?.results || []).map((r: any) => normalizeItem(r, mediaType, currentLang));
         setSearchResults(results);
-      } catch (err) {
-        console.error("Failed search operation:", err);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed search operation:", err);
+        }
       } finally {
         setIsSearching(false);
       }
     }, 400);
 
-    return () => clearTimeout(delayDebounce);
+    return () => {
+      clearTimeout(delayDebounce);
+      ac.abort();
+    };
   }, [searchQuery, activeTab, tmdbKey, currentLang]);
 
-  // Details Modal Loader
+  // Details Modal Loader with AbortController
   useEffect(() => {
     if (selectedItemId === null) return;
-    let cancelled = false;
+    const ac = new AbortController();
     setIsLoadingDetails(true);
 
     const isTv = activeTab === 'series';
@@ -344,7 +603,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     if (!tmdbKey) {
       const list = isTv ? FALLBACK_SERIES : FALLBACK_MOVIES;
       const match = list.find(m => m.id === selectedItemId);
-      if (!cancelled && match) {
+      if (match) {
         setDetailedItem(normalizeItem(match, mediaType, currentLang));
         setIsLoadingDetails(false);
       }
@@ -358,7 +617,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         const detailsAppend = isTv ? 'videos,credits,similar,external_ids' : 'videos,credits,similar,release_dates';
 
         const detail = await fetchWithCache(
-          `${TMDB_BASE_URL}/${detailType}/${selectedItemId}?api_key=${tmdbKey}${langParam}&append_to_response=${detailsAppend}`
+          `${TMDB_BASE_URL}/${detailType}/${selectedItemId}?api_key=${tmdbKey}${langParam}&append_to_response=${detailsAppend}`,
+          ac.signal
         );
 
         let imdbRating = "N/A";
@@ -366,7 +626,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
         if (imdbId && omdbKey) {
           try {
-            const omdb = await fetch(`${window.location.protocol}//www.omdbapi.com/?i=${imdbId}&apikey=${omdbKey}`).then(r => r.json());
+            const omdb = await fetch(`${window.location.protocol}//www.omdbapi.com/?i=${imdbId}&apikey=${omdbKey}`, { signal: ac.signal }).then(r => r.json());
             if (omdb && omdb.imdbRating && omdb.imdbRating !== "N/A") {
               imdbRating = omdb.imdbRating;
             }
@@ -375,22 +635,22 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           }
         }
 
-        if (!cancelled) {
-          const normalized = normalizeItem(detail, mediaType, currentLang);
-          setDetailedItem({
-            ...normalized,
-            rating: imdbRating !== "N/A" ? parseFloat(imdbRating) : normalized.rating || 8.1
-          });
+        const normalized = normalizeItem(detail, mediaType, currentLang);
+        setDetailedItem({
+          ...normalized,
+          rating: imdbRating !== "N/A" ? parseFloat(imdbRating) : normalized.rating || 8.1
+        });
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed loading exact item details:", err);
         }
-      } catch (err) {
-        console.error("Failed loading exact item details:", err);
       } finally {
-        if (!cancelled) setIsLoadingDetails(false);
+        setIsLoadingDetails(false);
       }
     };
 
     loadDetails();
-    return () => { cancelled = true; };
+    return () => { ac.abort(); };
   }, [selectedItemId, activeTab, tmdbKey, currentLang, omdbKey]);
 
   const activeGenres = activeTab === 'movies' ? movieGenres : seriesGenres;
@@ -452,186 +712,51 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return `${TMDB_IMAGE_BASE}/w342${path}`;
   }, []);
 
-  const MoviePosterCard = ({ item }: { item: CinemaItem }) => {
-    const cardRef = useRef<HTMLDivElement | null>(null);
-    const [hovered, setHovered] = useState(false);
+  const renderCard = useCallback((item: CinemaItem) => (
+    <MoviePosterCard
+      item={item}
+      isTouch={isTouch}
+      isActiveHover={activeHoverId === item.id}
+      onHover={setActiveHoverId}
+      onSelect={setSelectedItemId}
+      getPosterSrc={getPosterSrc}
+      getBackdropSrc={getBackdropSrc}
+      moreLabel={t("movies.more") || "More Details"}
+    />
+  ), [isTouch, activeHoverId, getPosterSrc, getBackdropSrc, t]);
 
-    const handleMouseEnter = () => {
-      if (isTouch) return;
-      if (hoverTimer.current) clearTimeout(hoverTimer.current);
-      setHovered(true);
-      setActiveHoverId(item.id);
-    };
+  const handlePlay = useCallback((item: CinemaItem) => {
+    if (!PLAYBACK_BASE) return;
+    const url = `${PLAYBACK_BASE}?type=${item.mediaType}&id=${item.id}&imdb=${item.imdbId || ""}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, []);
 
-    const handleMouseLeave = () => {
-      if (isTouch) return;
-      hoverTimer.current = setTimeout(() => {
-        setHovered(false);
-        setActiveHoverId(null);
-      }, 350);
-    };
-
-    useEffect(() => {
-      if (activeHoverId !== item.id) { setHovered(false); }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeHoverId, item.id]);
-
-    const fallbackGenText = item.genreNames.slice(0, 2).join(" · ") || "Drama";
-
-    return (
-      <div
-        ref={cardRef}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={() => setSelectedItemId(item.id)}
-        className="relative w-[110px] sm:w-[150px] md:w-[170px] aspect-[2/3] rounded-md overflow-hidden bg-neutral-900 border border-zinc-800 hover:border-red-600 cursor-pointer select-none transition shadow hover:shadow-red-900/50 hover:shadow-lg active:scale-95 flex-shrink-0 snap-start"
-      >
-        <img
-          src={getPosterSrc(item.posterPath)}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onError={(e) => {
-            const el = e.currentTarget;
-            if (item.trailerKey && !el.dataset.fb) {
-              el.dataset.fb = '1';
-              el.src = `https://i.ytimg.com/vi/${item.trailerKey}/hqdefault.jpg`;
-            }
-          }}
-          className="w-full h-full object-cover select-none pointer-events-none"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-0 hover:opacity-100 transition-opacity flex flex-col justify-end p-2.5">
-          <p className="text-[10px] sm:text-xs font-black text-zinc-100 truncate">{item.title}</p>
-          <div className="flex items-center gap-2 text-[8px] sm:text-[9px] text-zinc-300 font-medium">
-            <span className="flex items-center gap-0.5 text-amber-500 font-bold">
-              <Star size={8} className="fill-current" />
-              {item.rating?.toFixed(1) || "8.1"}
-            </span>
-            <span>{item.year || "2024"}</span>
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {hovered && activeHoverId === item.id && !isTouch && (
-            <motion.div
-              layoutId={`cinema-hover-${item.id}`}
-              initial={{ opacity: 0, scale: 0.94, y: 10 }}
-              animate={{ opacity: 1, scale: 1.05, y: -6 }}
-              exit={{ opacity: 0, scale: 0.94, y: 5 }}
-              transition={{ type: "spring", stiffness: 350, damping: 24 }}
-              className="absolute z-50 bottom-[30px] -left-6 w-[200px] sm:w-[230px] rounded-xl overflow-hidden bg-neutral-950 border border-zinc-700 shadow-2xl pointer-events-auto"
-            >
-              <div className="relative aspect-video w-full bg-black">
-                <img src={getBackdropSrc(item.backdropPath)} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 to-transparent" />
-              </div>
-              <div className="p-3 flex flex-col gap-1.5 bg-neutral-950">
-                <h4 className="text-xs font-black text-zinc-100 line-clamp-1">{item.title}</h4>
-                <div className="flex items-center gap-2 text-[9px] text-zinc-400 font-mono">
-                  <span className="flex items-center gap-0.5 text-amber-500 font-bold">
-                    <Star size={10} className="fill-current" />
-                    {item.rating?.toFixed(1) || "8.1"}
-                  </span>
-                  <span>{item.year || "2024"}</span>
-                  <span className="border border-zinc-700 px-1 rounded text-[8px] text-zinc-300">
-                    {item.mediaType === 'movie' ? "PG-13" : "TV-14"}
-                  </span>
-                </div>
-                <p className="text-[10px] text-zinc-300 line-clamp-2 leading-relaxed">{item.overview}</p>
-                <div className="flex items-center justify-between gap-2 mt-1">
-                  <span className="text-[8px] font-extrabold text-zinc-500 tracking-wider truncate">{fallbackGenText}</span>
-                  <span className="text-[9px] font-black text-red-500 hover:text-red-400 flex items-center gap-0.5">
-                    {t("movies.more") || "More Details"} →
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  };
-
-  const MovieRow = ({ title, items }: { title: string; items: CinemaItem[] }) => {
-    const sliderRef = useRef<HTMLDivElement | null>(null);
-    const [canScrollLeft, setCanScrollLeft] = useState(false);
-    const [canScrollRight, setCanScrollRight] = useState(true);
-
-    const updateScrollState = () => {
-      if (!sliderRef.current) return;
-      const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
-      setCanScrollLeft(scrollLeft > 6);
-      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
-    };
-
-    const handleScrollClick = (direction: "left" | "right") => {
-      if (!sliderRef.current) return;
-      const { clientWidth } = sliderRef.current;
-      const scrollAmt = direction === "left" ? -clientWidth * 0.75 : clientWidth * 0.75;
-      sliderRef.current.scrollBy({ left: scrollAmt, behavior: "smooth" });
-    };
-
-    const [isVisible, setIsVisible] = useState(false);
-    const rowRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-      const observer = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      }, { rootMargin: "200px" });
-      if (rowRef.current) observer.observe(rowRef.current);
-      return () => observer.disconnect();
-    }, []);
-
-    if (items.length === 0) return null;
-
-    return (
-      <div ref={rowRef} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
-        <h2 className="text-sm sm:text-lg font-bold text-zinc-100 tracking-wide uppercase px-2">{title}</h2>
-        <div className="group/row relative w-full overflow-hidden">
-          {canScrollLeft && !isTouch && (
-            <button onClick={() => handleScrollClick("left")} className="absolute left-0 top-0 bottom-0 z-30 w-10 flex items-center justify-center bg-black/60 opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer">
-              <ChevronLeft size={28} />
-            </button>
-          )}
-          <div
-            ref={sliderRef}
-            onScroll={updateScrollState}
-            className="flex gap-4 overflow-x-auto select-none py-4 px-2 scroll-smooth scrollbar-none snap-x snap-mandatory"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none", scrollSnapType: "x mandatory" }}
-          >
-            {isVisible && items.map((item, index) => {
-              const isFirst = index === 0;
-              const isLast = index === items.length - 1;
-              return (
-                <div key={item.id} className="flex-shrink-0 snap-start" style={{ transformOrigin: isFirst ? "left" : isLast ? "right" : "center" }}>
-                  <MoviePosterCard item={item} />
-                </div>
-              );
-            })}
-          </div>
-          {canScrollRight && !isTouch && (
-            <button onClick={() => handleScrollClick("right")} className="absolute right-0 top-0 bottom-0 z-30 w-10 flex items-center justify-center bg-black/60 opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer">
-              <ChevronRight size={28} />
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
+  const handleBack = useCallback(() => {
+    if (selectedItemId !== null) {
+      setSelectedItemId(null);
+      setDetailedItem(null);
+      return;
+    }
+    if (searchQuery.trim() || selectedGenreId !== null) {
+      setSearchQuery("");
+      setSelectedGenreId(null);
+      return;
+    }
+    onClose();
+  }, [selectedItemId, searchQuery, selectedGenreId, onClose]);
 
   const localizedHeroTitle = activeHeroItem ? activeHeroItem.title : "";
 
   return createPortal(
-    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="fixed inset-0 z-[6000] w-full h-[100dvh] bg-[#141414] text-zinc-100 font-sans overflow-hidden select-none">
+    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="fixed inset-0 z-[6000] w-full bg-[#141414] text-zinc-100 font-sans overflow-hidden select-none nl-cinema-root">
       <video className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0" src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/MOVIESBG_web.webm" autoPlay loop muted playsInline preload="auto" style={{ filter: "brightness(0.28)" }} />
       <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(20,20,20,1) 0%, rgba(20,20,20,0.68) 45%, rgba(20,20,20,0.88) 100%)" }} />
 
-      <div ref={mainScrollRef} onScroll={handleScrollEvent} className="absolute inset-0 z-20 overflow-y-auto h-full w-full scrollbar-none" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-        <header className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 sm:px-8 py-3.5 transition-all duration-300 ${scrolled ? "bg-[#141414]/92 backdrop-blur-xl border-b border-zinc-800/40 shadow-xl" : "bg-transparent"}`}>
-          <div className="flex items-center gap-4 sm:gap-8">
+      {isTouch && <CinemaBackButton isRTL={currentLang === "ar"} onBack={handleBack} />}
+
+      <div ref={mainScrollRef} onScroll={handleScrollEvent} className="absolute inset-0 z-20 overflow-y-auto h-full w-full scrollbar-none nl-cinema-scroll" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+        <header ref={headerRef} className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between transition-all duration-300 nl-cinema-header ${scrolled ? "bg-[#141414]/92 backdrop-blur-xl border-b border-zinc-800/40 shadow-xl" : "bg-transparent"}`}>
+          <div className="flex items-center gap-4 sm:gap-8 animate-fade-in">
             <h1 className="text-lg sm:text-2xl font-black tracking-tighter text-red-600 bg-gradient-to-r from-red-600 via-rose-500 to-red-700 bg-clip-text text-transparent select-none">
               {t("movies.title") || (currentLang === "ar" ? "سينما NL" : "CINEMA")}
             </h1>
@@ -663,15 +788,23 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           <div className="flex items-center gap-3">
             <div className="relative flex items-center">
               {isTouch ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 relative">
                   <input
                     type="search"
                     placeholder={activeTab === 'movies' ? t("movies.search") || "Search..." : t("series.search") || "Search series..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     dir="auto"
-                    className="w-28 sm:w-44 px-3 py-1 bg-zinc-900/95 border border-zinc-700/80 text-white rounded text-xs focus:outline-none focus:border-red-600 transition"
+                    className="w-28 sm:w-44 focus:w-40 sm:focus:w-60 px-3 py-1 bg-zinc-900/95 border border-zinc-700/80 text-white rounded text-xs focus:outline-none focus:border-red-600 transition-all duration-300"
                   />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center">
@@ -702,7 +835,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         </header>
 
         {isMobile && activeGenres.length > 0 && (
-          <div className="mt-[74px] px-4 overflow-x-auto select-none overflow-y-hidden flex gap-2 scrollbar-none py-1">
+          <div className="px-4 overflow-x-auto select-none overflow-y-hidden flex gap-2 scrollbar-none py-1" style={{ marginTop: 'calc(var(--cinema-header-h, 74px) + 8px)' }}>
             <button onClick={() => setSelectedGenreId(null)} className={`text-[10px] font-bold px-3 py-1 flex-shrink-0 rounded-full transition-colors cursor-pointer ${selectedGenreId === null ? "text-white bg-red-600" : "text-zinc-400 bg-zinc-900/80 border border-zinc-800"}`}>
               {t("movies.all") || "All"}
             </button>
@@ -715,7 +848,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         )}
 
         {searchQuery.trim() !== "" || selectedGenreId !== null ? (
-          <main className="pt-24 px-4 sm:px-10 pb-20">
+          <main className="pt-24 px-4 sm:px-10 pb-20 animate-fade-in">
             <div className="flex items-center gap-3 mb-6">
               <button onClick={() => { setSearchQuery(""); setSelectedGenreId(null); }} className="p-1 px-3 bg-zinc-800/80 border border-zinc-700 text-xs rounded hover:bg-zinc-700 cursor-pointer">
                 ← {t("movies.back") || "Back"}
@@ -730,7 +863,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-6">
               {(searchQuery ? searchResults : filteredList).map((item) => (
                 <div key={item.id} className="flex justify-center">
-                  <MoviePosterCard item={item} />
+                  <MoviePosterCard 
+                    item={item} 
+                    isTouch={isTouch} 
+                    isActiveHover={activeHoverId === item.id} 
+                    onHover={setActiveHoverId} 
+                    onSelect={setSelectedItemId} 
+                    getPosterSrc={getPosterSrc} 
+                    getBackdropSrc={getBackdropSrc} 
+                    moreLabel={t("movies.more") || "More Details"} 
+                  />
                 </div>
               ))}
             </div>
@@ -744,7 +886,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         ) : (
           <>
             {activeHeroItem && (
-              <section className="relative flex flex-col justify-end w-full pb-8 sm:pb-16 px-6 sm:px-16" style={{ height: isMobile ? "52vh" : "78vh" }}>
+              <section className="relative flex flex-col justify-end w-full pb-8 sm:pb-16 px-6 sm:px-16 nl-cinema-hero animate-fade-in">
                 <div className="absolute inset-0 z-0">
                   <img src={getBackdropSrc(activeHeroItem.backdropPath)} alt="" className="w-full h-full object-cover select-none pointer-events-none" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/30 to-black/35" />
@@ -770,7 +912,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   </div>
                   <p className="text-xs sm:text-sm text-neutral-303 tracking-wide leading-relaxed line-clamp-2 select-text max-h-[3.6rem] overflow-hidden">{activeHeroItem.overview}</p>
                   <div className="flex items-center gap-3 mt-2">
-                    <button onClick={() => setSelectedItemId(activeHeroItem.id)} className="py-2 px-5 bg-white text-zinc-950 font-black rounded-md flex items-center gap-1.5 hover:bg-neutral-200 transition text-xs sm:text-sm cursor-pointer shadow hover:scale-105">
+                    <button 
+                      onClick={() => handlePlay(activeHeroItem)} 
+                      disabled={!PLAYBACK_BASE}
+                      title={!PLAYBACK_BASE ? (currentLang === "ar" ? "التشغيل قيد الإعداد" : "Playback coming soon") : ""}
+                      className={`py-2 px-5 font-black rounded-md flex items-center gap-1.5 transition text-xs sm:text-sm cursor-pointer shadow hover:scale-105 ${
+                        !PLAYBACK_BASE 
+                          ? "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700/80" 
+                          : "bg-white text-zinc-950 hover:bg-neutral-200"
+                      }`}
+                    >
                       <Play size={14} className="fill-current" />
                       <span>{t("movies.play") || (currentLang === "ar" ? "تشغيل" : "Watch Now")}</span>
                     </button>
@@ -785,23 +936,23 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
             {activeTab === 'movies' ? (
               <div className="relative pb-24 -mt-4 bg-[#141414]">
-                <MovieRow title={currentLang === "ar" ? "الأفلام الرائجة" : "Trending Movies"} items={trendingMovies} />
-                <MovieRow title={currentLang === "ar" ? "الأعلى تقييماً" : "Top Rated Movies"} items={topRatedMovies} />
-                <MovieRow title={currentLang === "ar" ? "أفلام الأكشن والإثارة" : "Action & Thriller"} items={actionMovies} />
-                <MovieRow title={currentLang === "ar" ? "سينما الرعب والإثارة" : "Horror & Suspense"} items={horrorMovies} />
-                <MovieRow title={currentLang === "ar" ? "الأفلام الأكثر شعبية" : "Most Popular"} items={popularMovies} />
-                <MovieRow title={currentLang === "ar" ? "أفلام الدراما" : "Drama Movies"} items={dramaMovies} />
-                <MovieRow title={currentLang === "ar" ? "الخيال العلمي والفنتازيا" : "Sci-Fi & Fantasy"} items={sciFiMovies} />
+                <MovieRow title={currentLang === "ar" ? "الأفلام الرائجة" : "Trending Movies"} items={trendingMovies} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "الأعلى تقييماً" : "Top Rated Movies"} items={topRatedMovies} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "أفلام الأكشن والإثارة" : "Action & Thriller"} items={actionMovies} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "سينما الرعب والإثارة" : "Horror & Suspense"} items={horrorMovies} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "الأفلام الأكثر شعبية" : "Most Popular"} items={popularMovies} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "أفلام الدراما" : "Drama Movies"} items={dramaMovies} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "الخيال العلمي والفنتازيا" : "Sci-Fi & Fantasy"} items={sciFiMovies} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
               </div>
             ) : (
               <div className="relative pb-24 -mt-4 bg-[#141414]">
-                <MovieRow title={currentLang === "ar" ? "المسلسلات الرائجة" : "Trending Series"} items={trendingSeries} />
-                <MovieRow title={currentLang === "ar" ? "الأعلى تقييماً" : "Top Rated Shows"} items={topRatedSeries} />
-                <MovieRow title={currentLang === "ar" ? "المسلسلات الأكثر شعبية" : "Most Popular Shows"} items={popularSeries} />
-                <MovieRow title={currentLang === "ar" ? "الحركة والمغامرة" : "Action & Adventure"} items={actionSeries} />
-                <MovieRow title={currentLang === "ar" ? "الألغاز والغموض" : "Mystery & Thriller"} items={mysterySeries} />
-                <MovieRow title={currentLang === "ar" ? "مسلسلات الدراما الراقية" : "Drama Shows"} items={dramaSeries} />
-                <MovieRow title={currentLang === "ar" ? "أفضل مسلسلات الأنميشن" : "Animation & Anime"} items={animationSeries} />
+                <MovieRow title={currentLang === "ar" ? "المسلسلات الرائجة" : "Trending Series"} items={trendingSeries} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "الأعلاء تقييماً" : "Top Rated Shows"} items={topRatedSeries} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "المسلسلات الأكثر شعبية" : "Most Popular Shows"} items={popularSeries} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "الحركة والمغامرة" : "Action & Adventure"} items={actionSeries} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "الألغاز والغموض" : "Mystery & Thriller"} items={mysterySeries} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "مسلسلات الدراما الراقية" : "Drama Shows"} items={dramaSeries} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
+                <MovieRow title={currentLang === "ar" ? "أفضل مسلسلات الأنميشن" : "Animation & Anime"} items={animationSeries} isTouch={isTouch} isRTL={currentLang === "ar"} card={renderCard} />
               </div>
             )}
           </>
@@ -811,31 +962,45 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       <AnimatePresence>
         {selectedItemId !== null && detailedItem && (
           <div className="fixed inset-0 z-[7000] flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/85 backdrop-blur-sm">
-            <div onClick={() => setSelectedItemId(null)} className="absolute inset-0 z-0 cursor-zoom-out" />
+            <div onClick={() => { setSelectedItemId(null); setDetailedItem(null); }} className="absolute inset-0 z-0 cursor-zoom-out" />
             {isLoadingDetails ? (
               <div className="relative z-10 flex flex-col items-center gap-3 text-red-600">
                 <div className="w-12 h-12 border-4 border-t-red-600 border-zinc-800 rounded-full animate-spin" />
                 <p className="text-zinc-400 text-xs font-mono">Resolving details...</p>
               </div>
             ) : (
-              <motion.div initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }} transition={{ duration: 0.25 }} className="relative bg-neutral-950 w-full max-w-3xl rounded-xl shadow-2xl border border-zinc-805 overflow-hidden z-10">
+              <motion.div 
+                ref={modalRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="detailed-modal-title"
+                initial={{ opacity: 0, scale: 0.95, y: 15 }} 
+                animate={{ opacity: 1, scale: 1, y: 0 }} 
+                exit={{ opacity: 0, scale: 0.95, y: 15 }} 
+                transition={{ duration: 0.25 }} 
+                className="relative bg-neutral-950 w-full max-w-3xl rounded-xl shadow-2xl border border-zinc-800 overflow-hidden z-10 nl-cinema-modal"
+              >
                 <div className="relative aspect-video w-full bg-black">
                   <img src={getBackdropSrc(detailedItem.backdropPath)} alt="" className="w-full h-full object-cover opacity-85" />
                   <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-black/30" />
-                  <button onClick={() => setSelectedItemId(null)} className="absolute top-4 right-4 p-2 bg-neutral-900/80 hover:bg-red-600 transition rounded-full text-white cursor-pointer">
+                  <button onClick={() => { setSelectedItemId(null); setDetailedItem(null); }} className="absolute top-4 right-4 p-2 bg-neutral-900/80 hover:bg-red-600 transition rounded-full text-white cursor-pointer z-50">
                     <X size={16} />
                   </button>
                 </div>
 
                 <div className="p-6 md:p-8 flex flex-col gap-4">
                   <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-xl sm:text-2xl font-black text-zinc-100 select-text">{detailedItem.title}</h3>
+                    <h3 id="detailed-modal-title" className="text-xl sm:text-2xl font-black text-zinc-100 select-text">{detailedItem.title}</h3>
+                    
                     <button
-                      onClick={() => {
-                        const id = detailedItem.imdbId || "tt15239678";
-                        window.open(`https://www.playimdb.com/title/${id}/`, "_blank");
-                      }}
-                      className="py-1.5 px-5 sm:py-2 sm:px-6 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black rounded-md flex items-center gap-1.5 border border-red-500 shadow-lg cursor-pointer transition text-xs sm:text-sm"
+                      onClick={() => handlePlay(detailedItem)}
+                      disabled={!PLAYBACK_BASE}
+                      title={!PLAYBACK_BASE ? (currentLang === "ar" ? "التشغيل قيد الإعداد" : "Playback coming soon") : ""}
+                      className={`py-1.5 px-5 sm:py-2 sm:px-6 text-white font-black rounded-md flex items-center gap-1.5 border shadow-lg cursor-pointer transition text-xs sm:text-sm ${
+                        !PLAYBACK_BASE 
+                          ? 'opacity-40 bg-zinc-800 border-zinc-700 cursor-not-allowed' 
+                          : 'bg-red-600 hover:bg-red-700 active:scale-95 border-red-500'
+                      }`}
                     >
                       <Play size={14} className="fill-current" />
                       <span>{t("movies.play") || (currentLang === "ar" ? "مشاهدة الآن" : "Watch Now")}</span>
