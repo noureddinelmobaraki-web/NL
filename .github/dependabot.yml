@@ -12,9 +12,6 @@ updates:
       time: "06:00"
       timezone: "Africa/Casablanca"
     open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "automated"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
@@ -33,6 +30,5 @@ updates:
       interval: "monthly"
     labels:
       - "ci"
-      - "automated"
     commit-message:
       prefix: "ci"

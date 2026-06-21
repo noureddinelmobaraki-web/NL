@@ -1,0 +1,725 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "MusicRecording",
+      "name": "TRI9 TBAWE9",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-1",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/TRI9.TBAWE9/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "VETO",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-2",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/VETO/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "TOTAL",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-3",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/TOTAL/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "7CHAYCHI DIMO9RATI",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-4",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/7CHAYCHI.DIMO9RATI/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "A Lot",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-5",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/A.Lot/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "BEAUTIFUL",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-6",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/BEAUTIFUL/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Bouh",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-7",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Bouh/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Brain Damage",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-8",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Brain.Damage/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Deal With The Devil",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-9",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Deal.With.The.Devil/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Dokhana V2",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-10",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Dokhana.V2/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "GOUROU",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-11",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/GOUROU/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "ITCHY W SCRATCHY",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-12",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/ITCHY.W.SCRATCHY/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "KOUN NADI",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-13",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/KOUN.NADI/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "L'AI Could Never",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-14",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/L.AI.Could.Never/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "L'bayda Mon Amour",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-15",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/L.bayda.Mon.Amour/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Let The Rhythm Hit 'em",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-16",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Let.The.Rhythm.Hit.em/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "LMORPHINIYA 31",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-17",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/LMORPHINIYA.31/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "LMORPHINIYA 33",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-18",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/LMORPHINIYA.33/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "LMORPHINIYA 1013",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-19",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/LMORPHINIYA.1013/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Lmorphinya 19 V2",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-20",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Lmorphinya.19.V2/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "MAGNETO",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-21",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/MAGNETO/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "None Shall Pass",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-22",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/None.Shall.Pass/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Ohio",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-23",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Ohio/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Ostora",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-24",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Ostora/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Tromso",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-25",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Tromso/index.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "2 Salopards",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-26",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/2_Salopards/2_Salopards.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "AL RIHLA",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-27",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/AL_RIHLA/AL_RIHLA.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Ay9ona 2",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-28",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Ay9ona_2/Ay9ona_2.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Bad Guy",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-29",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Bad_Guy/Bad_Guy.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "CAPTCHA",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-30",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/CAPTCHA/CAPTCHA.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Couteau Suisse",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-31",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Couteau_Suisse/Couteau_Suisse.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "euphoria",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-32",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/euphoria/euphoria.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Groundhog Day 112",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-33",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Groundhog_Day_112/Groundhog_Day_112.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "ink",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-34",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/ink/ink.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Lmorphiniya 25",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-35",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Lmorphiniya_25/Lmorphiniya_25.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Luis Clos",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-36",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Luis_Clos/Luis_Clos.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "LYAM",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-37",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/LYAM/LYAM.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Mural",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-38",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Mural/Mural.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Nirvana",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-39",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Nirvana/Nirvana.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "None Shall Pass",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-40",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/None_Shall_Pass/None_Shall_Pass.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Nordine GB - Couteau Suisse",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-41",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Nordine__GB___Couteau_SuisseMP3320K/Nordine__GB___Couteau_SuisseMP3320K.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Nordine GB - Lucky You!",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-42",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Nordine__GB___Lucky_YouMP3320K/Nordine__GB___Lucky_YouMP3320K.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "OUROBOROS",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-43",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/OUROBOROS/OUROBOROS.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Sparadra",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-44",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Sparadra/Sparadra.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "Supernova",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-45",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Supernova/Supernova.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "The Way I Am",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-46",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/The_Way_I_Am/The_Way_I_Am.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "VVS",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-47",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/VVS/VVS.m3u8"
+    },
+    {
+      "@type": "MusicRecording",
+      "name": "عبلة",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "NL"
+      },
+      "duration": "PT3M00S",
+      "inAlbum": {
+        "@type": "MusicAlbum",
+        "name": "NL Singles"
+      },
+      "url": "https://noureddinelmobaraki-web.github.io/NL/#song-48",
+      "audio": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/%D8%B9%D8%A8%D9%84%D8%A9/%D8%B9%D8%A8%D9%84%D8%A9.m3u8"
+    }
+  ]
+}
