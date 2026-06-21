@@ -18,11 +18,11 @@ export function AppNavGrid({
   onScrollToSection,
   onOpenLens,
 }: AppNavGridProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { openGames, openMovies } = useAppContext();
 
-  const moviesSeriesLabel = t('nav.movies_and_series') || 
-    (t('nav.movies') && t('nav.series') 
+  const moviesSeriesLabel = i18n.exists('nav.movies_and_series') ? t('nav.movies_and_series') : 
+    (i18n.exists('nav.movies') && i18n.exists('nav.series') 
       ? `${t('nav.movies')} & ${t('nav.series')}` 
       : "Movies & Series");
 

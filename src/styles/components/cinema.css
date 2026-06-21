@@ -1,59 +1,76 @@
-/* src/styles/components/cinema.css */
+/* صفحة السينما — تخطيط 2026 للهاتف والحاسوب */
+:root { --cinema-header-h: 60px; }
 
-.nl-cinema-root {
-  height: 100vh;
-  height: 100dvh;
+/* الجذر: ارتفاع آمن مستقر للهاتف مع دعم النوتش */
+.nl-cinema-root{
+  height:100svh;       /* أساس مستقر لا يقفز أثناء التمرير */
+  height:100dvh;       /* ديناميكي للمتصفحات الداعمة */
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+  overscroll-behavior:none;   /* منع pull-to-refresh */
 }
 
-@supports (height: 100svh) {
-  .nl-cinema-root {
-    height: 100svh;
+/* الهيدر يحترم النوتش */
+.nl-cinema-header{
+  padding-top:calc(0.875rem + env(safe-area-inset-top));
+  padding-inline-start:max(1rem, env(safe-area-inset-left));
+  padding-inline-end:max(1rem, env(safe-area-inset-right));
+}
+
+/* حاوية التمرير تبدأ تحت الهيدر بشكل سليم */
+.nl-cinema-scroll{ scroll-padding-top:var(--cinema-header-h); }
+
+/* منع سحب الصور و long-press على الهاتف (إحساس أصلي) */
+.nl-cinema-root img{ -webkit-user-drag:none; -webkit-touch-callout:none; }
+
+/* بوسترات أدق على الهاتف الصغير جداً */
+@media (max-width:479px){
+  .nl-cinema-root .nl-poster{ width:clamp(96px, 30vw, 130px) !important; }
+}
+
+/* زر رجوع الهاتف */
+.nl-cinema-back{
+  position:fixed;
+  top:calc(env(safe-area-inset-top) + 10px);
+  inset-inline-start:calc(env(safe-area-inset-left) + 12px);
+  z-index:7500;                 /* فوق نافذة التفاصيل (7000) */
+  display:flex; align-items:center; justify-content:center;
+  width:42px; height:42px; border-radius:9999px;
+  background:#E50914; color:#fff;
+  border:1px solid rgba(255,255,255,.25);
+  box-shadow:0 6px 18px rgba(229,9,20,.45);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  cursor:pointer; transition:transform .15s ease;
+}
+.nl-cinema-back:active{ transform:scale(.9); }
+/* في العربية يتجه السهم لليمين */
+[dir="rtl"] .nl-cinema-back svg{ transform:scaleX(-1); }
+
+/* كاروسيل مرن على الهاتف */
+@media (max-width:639px){
+  .nl-cinema-row{ scroll-snap-type:x proximity !important; }
+}
+.nl-cinema-row{ -webkit-overflow-scrolling:touch; }
+
+/* ملء الشاشة للتفاصيل على الهاتف */
+@media (max-width:639px){
+  .nl-detail-wrap{ padding:0 !important; }
+  .nl-detail-card{
+    max-width:100% !important;
+    height:100svh; height:100dvh;
+    border-radius:0 !important;
+    overflow-y:auto;
+    padding-bottom:env(safe-area-inset-bottom);
   }
 }
 
-.nl-cinema-header {
-  padding-top: max(0.875rem, env(safe-area-inset-top));
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
-}
-
-.nl-cinema-scroll {
-  padding-bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4rem));
-}
-
-.nl-cinema-hero {
-  min-height: 56svh;
-}
-
-@media (min-width: 768px) {
-  .nl-cinema-hero {
-    min-height: min(70vh, 760px);
-  }
-}
-
-.nl-cinema-hero h2 {
-  font-size: clamp(1.25rem, 5vw, 2.25rem);
-  line-height: 1.1;
-}
-
-.nl-row-scroller {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scroll-padding-inline: 1rem;
-}
-
-.nl-poster-card {
-  width: clamp(96px, 30vw, 170px);
-}
-
-@media (max-width: 640px) {
-  .nl-cinema-modal {
-    position: fixed;
-    inset: 0;
-    max-width: none !important;
-    height: 100dvh !important;
-    border-radius: 0 !important;
-    overflow-y: auto;
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-  }
+/* لوقو NL */
+.nl-logo{
+  display:inline-block;
+  font:900 clamp(20px, 5.5vw, 30px)/1 "Arial Black", system-ui, sans-serif;
+  letter-spacing:-0.05em;
+  color:#E50914;                       /* أحمر نيتفلكس */
+  text-shadow:0 2px 12px rgba(229,9,20,.5);
+  filter:drop-shadow(0 0 6px rgba(229,9,20,.4));
+  -webkit-text-stroke:0.5px rgba(255,255,255,.08);
 }

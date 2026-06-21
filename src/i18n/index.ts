@@ -6,9 +6,10 @@ import enLocales from './locales/en.json';
 import frLocales from './locales/fr.json';
 
 export function applyDirection(lng: string): void {
-  const dir = lng === 'ar' ? 'rtl' : 'ltr';
+  const base = (lng || 'en').split('-')[0];
+  const dir = base === 'ar' ? 'rtl' : 'ltr';
   document.documentElement.setAttribute('dir', dir);
-  document.documentElement.setAttribute('lang', lng);
+  document.documentElement.setAttribute('lang', base);
 }
 
 const resources = {
@@ -24,6 +25,9 @@ i18n
     resources,
     fallbackLng: 'en',
     supportedLngs: ['ar', 'en', 'fr'],
+    load: 'languageOnly',
+    nonExplicitSupportedLngs: true,
+    lowerCaseLng: true,
     interpolation: {
       escapeValue: false, // react already safes from xss
     },

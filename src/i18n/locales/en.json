@@ -13,7 +13,8 @@
     "language": "English"
   },
   "movies": {
-    "title": "MOVIES",
+    "title": "Cinema NL",
+    "description": "Explore the best HD Movies & TV Series from the NL Archive",
     "soundOn": "Sound On",
     "soundOff": "Sound Off",
     "search": "Search movies...",
@@ -26,7 +27,31 @@
     "close": "Close",
     "back": "Back",
     "vote": "Rating",
-    "genres": "Genres"
+    "genres": "Genres",
+    "rows": {
+      "trending": "Trending Now",
+      "topRated": "Top Rated",
+      "popular": "Most Popular",
+      "action": "Action & Thriller",
+      "horror": "Horror & Suspense",
+      "drama": "Drama",
+      "scifi": "Sci-Fi & Fantasy",
+      "mystery": "Mystery & Thriller",
+      "animation": "Animation & Anime",
+      "adventure": "Action & Adventure"
+    },
+    "meta": {
+      "seasons": "Seasons",
+      "episodes": "Episodes",
+      "minutes": "min",
+      "watchNow": "Watch Now",
+      "moreInfo": "More Info",
+      "comingSoon": "Playback coming soon",
+      "noTrailer": "No Trailer Available",
+      "resolving": "Resolving details…",
+      "loading": "Loading…",
+      "errorLoad": "Couldn't load content, try again"
+    }
   },
   "series": {
     "title": "SERIES",

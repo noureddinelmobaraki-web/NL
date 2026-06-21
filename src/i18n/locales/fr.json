@@ -13,7 +13,8 @@
     "language": "Français"
   },
   "movies": {
-    "title": "FILMS",
+    "title": "Cinéma NL",
+    "description": "Découvrez les meilleurs films et séries en haute qualité depuis l'archive NL",
     "soundOn": "Activer le Son",
     "soundOff": "Couper le Son",
     "search": "Rechercher des films...",
@@ -26,7 +27,31 @@
     "close": "Fermer",
     "back": "Retour",
     "vote": "Note",
-    "genres": "Genres"
+    "genres": "Genres",
+    "rows": {
+      "trending": "Tendances",
+      "topRated": "Les mieux notés",
+      "popular": "Les plus populaires",
+      "action": "Action et Thriller",
+      "horror": "Horreur et Suspense",
+      "drama": "Drame",
+      "scifi": "Science-fiction et Fantastique",
+      "mystery": "Mystère et Thriller",
+      "animation": "Animation et Anime",
+      "adventure": "Action et Aventure"
+    },
+    "meta": {
+      "seasons": "Saisons",
+      "episodes": "Épisodes",
+      "minutes": "min",
+      "watchNow": "Regarder",
+      "moreInfo": "Plus d'infos",
+      "comingSoon": "Lecture bientôt disponible",
+      "noTrailer": "Bande-annonce indisponible",
+      "resolving": "Chargement des détails…",
+      "loading": "Chargement…",
+      "errorLoad": "Échec du chargement, réessayez"
+    }
   },
   "series": {
     "title": "SÉRIES",

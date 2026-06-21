@@ -4,7 +4,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Clapperboard } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { audioManager } from '../../audio/audioManager';
@@ -82,6 +82,7 @@ function GlassModeSwitcherInner() {
   } = useAppContext();
   const reduceMotion  = useReducedMotion();
   const overlayActive = useOverlayActive();
+  const isCinema = isMoviesOpen;
 
   const [open, setOpen]     = useState(false);
   const [peek, setPeek]     = useState(false);
@@ -124,9 +125,6 @@ function GlassModeSwitcherInner() {
 
   // إزاحة ذكية لتجنّب أزرار الإغلاق
   useEffect(() => {
-    let lastRun = 0;
-    let raftId: number | null = null;
-
     const measure = () => {
       const el = anchorRef.current;
       if (!el) return;
@@ -147,32 +145,18 @@ function GlassModeSwitcherInner() {
         prev.x === clamped.x && prev.y === clamped.y ? prev : clamped
       );
     };
-
-    const throttledMeasure = () => {
-      const now = Date.now();
-      if (now - lastRun >= 250) {
-        lastRun = now;
-        if (raftId) cancelAnimationFrame(raftId);
-        raftId = requestAnimationFrame(measure);
-      }
-    };
-
     measure();
-
-    const obs = new MutationObserver(throttledMeasure);
+    const obs = new MutationObserver(measure);
     obs.observe(document.body, {
-      attributes: true,
-      childList: false,
-      subtree: false,
+      attributes: true, childList: true, subtree: true,
       attributeFilter: ['class', 'data-modal-context', 'style'],
     });
-
-    window.addEventListener('resize', throttledMeasure);
-
+    window.addEventListener('resize', measure);
+    const id = window.setInterval(measure, 600);
     return () => {
-      if (raftId) cancelAnimationFrame(raftId);
       obs.disconnect();
-      window.removeEventListener('resize', throttledMeasure);
+      window.removeEventListener('resize', measure);
+      window.clearInterval(id);
     };
   }, [open, overlayActive]);
 
@@ -226,8 +210,6 @@ function GlassModeSwitcherInner() {
     ? { duration: 0 }
     : { type: 'spring' as const, stiffness: 320, damping: 30, mass: 0.9 };
 
-  const isCinema = isMoviesOpen;
-
   return createPortal(
     <div ref={anchorRef} className="glass-switcher-anchor">
       <motion.div
@@ -272,8 +254,8 @@ function GlassModeSwitcherInner() {
         <span className="glass-switcher__smoke" aria-hidden="true" />
         <span className="glass-switcher__sheen" aria-hidden="true" />
 
-        {state !== 'open' && isCinema && (
-          <Clapperboard className="glass-switcher__cine" size={state === 'dot' ? 11 : 24} aria-hidden="true" />
+        {isCinema && state !== 'open' && (
+          <Film className="glass-switcher__cine-icon" size={state === 'dot' ? 11 : 22} aria-hidden="true" />
         )}
 
         <AnimatePresence>

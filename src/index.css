@@ -94,6 +94,24 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) {
   margin-top: -23px;
 }
 
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(6) {
+  grid-column: span 2 / span 2;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.1;
+  font-size: 0.65rem;
+}
+
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(6) > svg {
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(6) {
+    grid-column: auto;
+  }
+}
+
 /* ── Karaoke per-word highlighting (used by SongCardLyricsPanel inline) ── */
 :root {
   --lyric-active-color:    #ffffff;
@@ -135,6 +153,16 @@ button, a, [role="button"], input, select, textarea, label {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+.nl-skeleton-card {
+  background-image: linear-gradient(90deg, #18181b 0px, #27272a 40px, #18181b 80px);
+  background-size: 200% 100%;
+  animation: nl-skeleton-loading 1.5s infinite ease-in-out;
+}
+@keyframes nl-skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 

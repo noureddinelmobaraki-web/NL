@@ -53,8 +53,8 @@ export const MobileNavBar = ({
     {
       id: 'movies',
       Icon: Film,
-      label: t('nav.movies_and_series') || 
-        (t('nav.movies') && t('nav.series') 
+      label: i18n.exists('nav.movies_and_series') ? t('nav.movies_and_series') : 
+        (i18n.exists('nav.movies') && i18n.exists('nav.series') 
           ? `${t('nav.movies')} & ${t('nav.series')}` 
           : "Movies & Series"),
       isMovies: true
