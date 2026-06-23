@@ -7,9 +7,11 @@ import { useAppContext } from "../../context/AppContext";
 import { useDeviceType } from "../../hooks/useDeviceType";
 import { useMoviesMusic } from "./useMoviesMusic";
 import { useDocumentMeta } from "../../hooks/useDocumentMeta";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { FALLBACK_MOVIES, FALLBACK_GENRES } from "./CuratedFallback";
 import { FALLBACK_SERIES, FALLBACK_SERIES_GENRES } from "../Series/CuratedFallback";
 import { normLang, tmdbLang } from "../../utils/lang";
+import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
 import "../../styles/components/cinema.css";
 
 function NLLogo() {
@@ -26,7 +28,8 @@ interface CacheEntry {
 const MEMORY_CACHE: Record<string, CacheEntry> = {};
 
 export async function fetchWithCache(url: string, signal?: AbortSignal, ttlMs = 3600_000 * 24): Promise<any> {
-  const key = `cache_v2_${url}`;
+  // لا تُضمّن api_key في مفتاح التخزين
+  const key = `cache_v2_${url.replace(/([?&])api_key=[^&]*/i, '$1api_key=_')}`;
   const now = Date.now();
   const fresh = (t: number) => now - t < ttlMs;
 
@@ -176,14 +179,23 @@ const MoviePosterCard = React.memo(({
   return (
     <div
       ref={cardRef}
+      role="button"
+      tabIndex={0}
+      aria-label={item.title}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={() => setSelectedItemId(item.id)}
-      className="nl-poster relative w-[110px] sm:w-[150px] md:w-[170px] aspect-[2/3] rounded-md overflow-hidden bg-neutral-900 border border-zinc-800 hover:border-red-600 cursor-pointer select-none transition shadow hover:shadow-red-900/50 hover:shadow-lg active:scale-95 flex-shrink-0 snap-start"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setSelectedItemId(item.id);
+        }
+      }}
+      className="nl-poster relative w-[110px] sm:w-[150px] md:w-[170px] aspect-[2/3] rounded-md overflow-hidden bg-neutral-900 border border-zinc-800 hover:border-red-600 focus-visible:outline-none focus-visible:border-red-500 focus-visible:ring-2 focus-visible:ring-red-500 cursor-pointer select-none transition shadow hover:shadow-red-900/50 hover:shadow-lg active:scale-95 flex-shrink-0 snap-start"
     >
       <img
         src={getPosterSrc_static(item.posterPath)}
-        alt=""
+        alt={item.title}
         loading="lazy"
         decoding="async"
         onError={(e) => {
@@ -327,6 +339,7 @@ const MovieRow = React.memo(({ title, items, isTouch, activeHoverId, setActiveHo
 
 export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => void; initialTab?: 'movies' | 'series' }) {
   const { t, i18n } = useTranslation();
+  const ENABLE_BG_VIDEO = false;
   const { isMobile, isTablet } = useDeviceType();
   const { setMovieActive, registerMovieBack } = useAppContext();
   const isTouch = isMobile || isTablet;
@@ -373,6 +386,22 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const detailDialogRef = useFocusTrap(selectedItemId !== null && !!detailedItem);
+
+  useEffect(() => {
+    if (selectedItemId === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedItemId(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedItemId]);
+
+  const openWatch = useCallback((imdbId: string) => {
+    const url = `https://www.playimdb.com/title/${imdbId}/`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, []);
+
   const rowProps = useMemo(() => ({
     isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t
   }), [isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t]);
@@ -380,8 +409,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const isOpenForAudio = Boolean(detailedItem || selectedItemId);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
 
-  const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || "";
-  const omdbKey = import.meta.env.VITE_OMDB_API_KEY || "";
+  const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || PUBLIC_TMDB_KEY;
+  const omdbKey = import.meta.env.VITE_OMDB_API_KEY || PUBLIC_OMDB_KEY;
 
   const [scrolled, setScrolled] = useState(false);
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
@@ -420,11 +449,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setHeroIndex(0);
   }, [activeTab]);
 
+  const lastHeaderHeightRef = useRef<number>(0);
   useEffect(() => {
     const header = document.querySelector(".nl-cinema-header") as HTMLElement | null;
     if (!header) return;
     const ro = new ResizeObserver(() => {
-      document.documentElement.style.setProperty("--cinema-header-h", `${header.offsetHeight}px`);
+      const h = header.offsetHeight;
+      if (h !== lastHeaderHeightRef.current) {
+        lastHeaderHeightRef.current = h;
+        requestAnimationFrame(() => {
+          document.documentElement.style.setProperty("--cinema-header-h", `${h}px`);
+        });
+      }
     });
     ro.observe(header);
     return () => ro.disconnect();
@@ -467,16 +503,55 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
         if (cancelled) return;
 
-        if (results[0].status === 'fulfilled' && results[0].value?.genres) setMovieGenres(results[0].value.genres);
-        if (results[1].status === 'fulfilled' && results[1].value?.results) setTrendingMovies(results[1].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        if (results[2].status === 'fulfilled' && results[2].value?.results) setTopRatedMovies(results[2].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        if (results[3].status === 'fulfilled' && results[3].value?.results) setPopularMovies(results[3].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        if (results[4].status === 'fulfilled' && results[4].value?.results) setActionMovies(results[4].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        if (results[5].status === 'fulfilled' && results[5].value?.results) setHorrorMovies(results[5].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        if (results[6].status === 'fulfilled' && results[6].value?.results) setDramaMovies(results[6].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        if (results[7].status === 'fulfilled' && results[7].value?.results) setSciFiMovies(results[7].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        if (results[0].status === 'fulfilled' && results[0].value?.genres) {
+          setMovieGenres(results[0].value.genres);
+        } else {
+          setMovieGenres(FALLBACK_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
+        }
+
+        if (results[1].status === 'fulfilled' && results[1].value?.results?.length) {
+          setTrendingMovies(results[1].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        } else {
+          setTrendingMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
+        }
+
+        if (results[2].status === 'fulfilled' && results[2].value?.results?.length) {
+          setTopRatedMovies(results[2].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        } else {
+          setTopRatedMovies([...FALLBACK_MOVIES].reverse().map(r => normalizeItem(r, 'movie', currentLang)));
+        }
+
+        if (results[3].status === 'fulfilled' && results[3].value?.results?.length) {
+          setPopularMovies(results[3].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        } else {
+          setPopularMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
+        }
+
+        if (results[4].status === 'fulfilled' && results[4].value?.results?.length) {
+          setActionMovies(results[4].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        } else {
+          setActionMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Action")).map(r => normalizeItem(r, 'movie', currentLang)));
+        }
+
+        if (results[5].status === 'fulfilled' && results[5].value?.results?.length) {
+          setHorrorMovies(results[5].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        } else {
+          setHorrorMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Horror")).map(r => normalizeItem(r, 'movie', currentLang)));
+        }
+
+        if (results[6].status === 'fulfilled' && results[6].value?.results?.length) {
+          setDramaMovies(results[6].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        } else {
+          setDramaMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Drama")).map(r => normalizeItem(r, 'movie', currentLang)));
+        }
+
+        if (results[7].status === 'fulfilled' && results[7].value?.results?.length) {
+          setSciFiMovies(results[7].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
+        } else {
+          setSciFiMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'movie', currentLang)));
+        }
       } catch (err) {
-        console.error("Failed to fetch TMDB Live movies:", err);
+        console.error("Failed to fetch TMDB Live movies, using fallbacks:", err);
         setGlobalError(true);
       } finally {
         if (!cancelled) setMoviesLoading(false);
@@ -523,16 +598,55 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
         if (cancelled) return;
 
-        if (results[0].status === 'fulfilled' && results[0].value?.genres) setSeriesGenres(results[0].value.genres);
-        if (results[1].status === 'fulfilled' && results[1].value?.results) setTrendingSeries(results[1].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        if (results[2].status === 'fulfilled' && results[2].value?.results) setTopRatedSeries(results[2].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        if (results[3].status === 'fulfilled' && results[3].value?.results) setPopularSeries(results[3].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        if (results[4].status === 'fulfilled' && results[4].value?.results) setActionSeries(results[4].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        if (results[5].status === 'fulfilled' && results[5].value?.results) setMysterySeries(results[5].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        if (results[6].status === 'fulfilled' && results[6].value?.results) setDramaSeries(results[6].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        if (results[7].status === 'fulfilled' && results[7].value?.results) setAnimationSeries(results[7].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        if (results[0].status === 'fulfilled' && results[0].value?.genres) {
+          setSeriesGenres(results[0].value.genres);
+        } else {
+          setSeriesGenres(FALLBACK_SERIES_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
+        }
+
+        if (results[1].status === 'fulfilled' && results[1].value?.results?.length) {
+          setTrendingSeries(results[1].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        } else {
+          setTrendingSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
+        }
+
+        if (results[2].status === 'fulfilled' && results[2].value?.results?.length) {
+          setTopRatedSeries(results[2].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        } else {
+          setTopRatedSeries([...FALLBACK_SERIES].reverse().map(r => normalizeItem(r, 'tv', currentLang)));
+        }
+
+        if (results[3].status === 'fulfilled' && results[3].value?.results?.length) {
+          setPopularSeries(results[3].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        } else {
+          setPopularSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
+        }
+
+        if (results[4].status === 'fulfilled' && results[4].value?.results?.length) {
+          setActionSeries(results[4].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        } else {
+          setActionSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Action") || s.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'tv', currentLang)));
+        }
+
+        if (results[5].status === 'fulfilled' && results[5].value?.results?.length) {
+          setMysterySeries(results[5].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        } else {
+          setMysterySeries(FALLBACK_SERIES.filter(s => s.genres.includes("Mystery")).map(r => normalizeItem(r, 'tv', currentLang)));
+        }
+
+        if (results[6].status === 'fulfilled' && results[6].value?.results?.length) {
+          setDramaSeries(results[6].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        } else {
+          setDramaSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Drama")).map(r => normalizeItem(r, 'tv', currentLang)));
+        }
+
+        if (results[7].status === 'fulfilled' && results[7].value?.results?.length) {
+          setAnimationSeries(results[7].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
+        } else {
+          setAnimationSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Animation")).map(r => normalizeItem(r, 'tv', currentLang)));
+        }
       } catch (err) {
-        console.error("Failed to fetch TMDB Live series:", err);
+        console.error("Failed to fetch TMDB Live series, using fallbacks:", err);
         setGlobalError(true);
       } finally {
         if (!cancelled) setSeriesLoading(false);
@@ -699,8 +813,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const localizedHeroTitle = activeHeroItem ? activeHeroItem.title : "";
 
   return createPortal(
-    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[6000] w-full h-[100dvh] bg-[#141414] text-zinc-100 font-sans overflow-hidden select-none">
-      <video className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0" src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/MOVIESBG_web.webm" autoPlay loop muted playsInline preload="auto" style={{ filter: "brightness(0.28)" }} />
+    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[9500] w-full h-[100dvh] bg-gradient-to-b from-[#141414] via-[#101010] to-[#0a0a0a] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto">
+      {ENABLE_BG_VIDEO && (
+        <video className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0" src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/MOVIESBG_web.webm" autoPlay loop muted playsInline preload="auto" style={{ filter: "brightness(0.28)" }} />
+      )}
       <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(20,20,20,1) 0%, rgba(20,20,20,0.68) 45%, rgba(20,20,20,0.88) 100%)" }} />
 
       {isTouch && (
@@ -714,12 +830,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       )}
 
       <div ref={mainScrollRef} onScroll={handleScrollEvent} className="nl-cinema-scroll absolute inset-0 z-20 overflow-y-auto h-full w-full scrollbar-none" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-        <header className={`nl-cinema-header fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 sm:px-8 py-3.5 transition-all duration-300 ${scrolled ? "bg-[#141414]/92 backdrop-blur-xl border-b border-zinc-800/40 shadow-xl" : "bg-transparent"}`}>
+        <header className={`nl-cinema-header fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 sm:px-8 py-3.5 transition-all duration-300 ${scrolled ? "aero-glass-style" : "bg-transparent"}`}>
           <div className="flex items-center gap-4 sm:gap-8">
             <h1 className="text-lg sm:text-2xl font-black tracking-tighter text-red-600 bg-gradient-to-r from-red-600 via-rose-500 to-red-700 bg-clip-text text-transparent select-none">
               <NLLogo />
             </h1>
-            <div className="flex bg-zinc-950/90 rounded-full p-1 border border-zinc-800/60 shadow-inner scale-90 sm:scale-100">
+            <div className="flex bg-zinc-950/45 rounded-full p-1 border border-white/10 backdrop-blur-md shadow-inner scale-90 sm:scale-100">
               <button onClick={() => setActiveTab('movies')} className={`px-3 py-1 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'movies' ? 'bg-red-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
                 <Film size={12} />
                 <span>{currentLang === "ar" ? "أفلام" : "Movies"}</span>
@@ -775,11 +891,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               )}
             </div>
 
-            <button onClick={toggleMute} className="p-2 rounded bg-neutral-900/80 border border-zinc-850 hover:bg-neutral-800 transition text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer" style={{ width: "34px", height: "34px" }}>
+            <button onClick={toggleMute} className="p-2 rounded bg-neutral-900/80 border border-zinc-800 hover:bg-neutral-800 transition text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer" style={{ width: "34px", height: "34px" }}>
               {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
             </button>
 
-            <button onClick={onClose} className="p-2 rounded-full bg-neutral-900 hover:bg-red-600 transition text-zinc-300 hover:text-white flex items-center justify-center border border-zinc-850 hover:border-red-600 cursor-pointer" style={{ width: "34px", height: "34px" }}>
+            <button onClick={onClose} className="p-2 rounded-full bg-neutral-900 hover:bg-red-600 transition text-zinc-300 hover:text-white flex items-center justify-center border border-zinc-800 hover:border-red-600 cursor-pointer" style={{ width: "34px", height: "34px" }}>
               <X size={16} />
             </button>
           </div>
@@ -852,13 +968,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         : activeHeroItem.seasons ? `${activeHeroItem.seasons} ${t("movies.meta.seasons")}` : `5 ${t("movies.meta.seasons")}`}
                     </span>
                   </div>
-                  <p className="text-xs sm:text-sm text-neutral-303 tracking-wide leading-relaxed line-clamp-2 select-text max-h-[3.6rem] overflow-hidden">{activeHeroItem.overview}</p>
+                  <p className="text-xs sm:text-sm text-neutral-300 tracking-wide leading-relaxed line-clamp-2 select-text max-h-[3.6rem] overflow-hidden">{activeHeroItem.overview}</p>
                   <div className="flex items-center gap-3 mt-2">
                     <button onClick={() => setSelectedItemId(activeHeroItem.id)} className="py-2 px-5 bg-white text-zinc-950 font-black rounded-md flex items-center gap-1.5 hover:bg-neutral-200 transition text-xs sm:text-sm cursor-pointer shadow hover:scale-105">
                       <Play size={14} className="fill-current" />
                       <span>{t("movies.meta.watchNow")}</span>
                     </button>
-                    <button onClick={() => setSelectedItemId(activeHeroItem.id)} className="py-2 px-4 bg-zinc-700/60 text-zinc-100 font-bold rounded-md flex items-center gap-1.5 hover:bg-zinc-650 transition text-xs sm:text-sm cursor-pointer">
+                    <button onClick={() => setSelectedItemId(activeHeroItem.id)} className="py-2 px-4 bg-zinc-700/60 text-zinc-100 font-bold rounded-md flex items-center gap-1.5 hover:bg-zinc-600 transition text-xs sm:text-sm cursor-pointer">
                       <Info size={14} />
                       <span>{t("movies.meta.moreInfo")}</span>
                     </button>
@@ -946,7 +1062,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 <p className="text-zinc-400 text-xs font-mono">{t("movies.meta.resolving")}</p>
               </div>
             ) : (
-              <motion.div initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }} transition={{ duration: 0.25 }} className="nl-detail-card relative bg-neutral-950 w-full max-w-3xl rounded-xl shadow-2xl border border-zinc-805 overflow-hidden z-10">
+              <motion.div
+                ref={detailDialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label={detailedItem.title}
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ duration: 0.25 }}
+                className="nl-detail-card relative aero-glass-style w-full max-w-3xl rounded-2xl z-10"
+              >
                 <div className="relative aspect-video w-full bg-black">
                   <img src={getBackdropSrc_static(detailedItem.backdropPath)} alt="" className="w-full h-full object-cover opacity-85" />
                   <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-black/30" />
@@ -959,10 +1085,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="text-xl sm:text-2xl font-black text-zinc-100 select-text">{detailedItem.title}</h3>
                     <button
-                      onClick={() => {
-                        const id = detailedItem.imdbId || "tt15239678";
-                        window.open(`https://www.playimdb.com/title/${id}/`, "_blank");
-                      }}
+                      onClick={() => openWatch(detailedItem.imdbId || "tt15239678")}
                       className="py-1.5 px-5 sm:py-2 sm:px-6 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black rounded-md flex items-center gap-1.5 border border-red-500 shadow-lg cursor-pointer transition text-xs sm:text-sm"
                     >
                       <Play size={14} className="fill-current" />

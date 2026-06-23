@@ -4,7 +4,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { audioManager } from '../../audio/audioManager';
@@ -17,7 +17,6 @@ const MODES: { id: Theme; label: string }[] = [
   { id: 'midnight', label: 'Midnight' },
   { id: 'bit',      label: 'Bit'      },
   { id: 'lite',     label: 'Lite'     },
-  { id: 'retro',    label: 'Retro'    },
 ];
 
 const SOURCES = ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games', 'movies', 'series'] as const;
@@ -79,6 +78,9 @@ function GlassModeSwitcherInner() {
     isGameActive, callGameBack,
     openMovies, closeMovies, isMoviesOpen,
     isMovieActive, callMovieBack,
+    openTv, closeTv, isTvOpen,
+    isTvActive, callTvBack,
+    isRetroOpen, openRetro, closeRetro,
   } = useAppContext();
   const reduceMotion  = useReducedMotion();
   const overlayActive = useOverlayActive();
@@ -203,7 +205,7 @@ function GlassModeSwitcherInner() {
   // - dot  : حين يوجد modal نشط أو لعبة تعمل (isGameActive)
   // - open : حين يكون المستخدم قد فتحها
   // - orb  : الحالة الافتراضية (دائرة صغيرة)
-  const shouldShrink = (overlayActive || isGameActive || isMovieActive) && !peek;
+  const shouldShrink = (overlayActive || isGameActive || isMovieActive || isTvActive) && !peek;
   const state: 'dot' | 'orb' | 'open' = open ? 'open' : shouldShrink ? 'dot' : 'orb';
 
   const spring = reduceMotion
@@ -269,18 +271,19 @@ function GlassModeSwitcherInner() {
               exit={reduceMotion   ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
               transition={reduceMotion ? { duration: 0 } : { duration: 0.18 }}
             >
-              {/* أزرار الأوضاع — تُغلق الألعاب أولاً إن كانت مفتوحة */}
+              {/* أزرار الأوضاع — تُغلق الألعاب والتلفزيون أولاً إن كانت مفتوحة */}
               {MODES.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   role="menuitemradio"
-                  aria-checked={!isGamesOpen && theme === m.id}
-                  className={`gs-cell ${!isGamesOpen && theme === m.id ? 'is-active' : ''}`}
+                  aria-checked={!isGamesOpen && !isTvOpen && theme === m.id}
+                  className={`gs-cell ${!isGamesOpen && !isTvOpen && theme === m.id ? 'is-active' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isGamesOpen) closeGames();
                     if (isMoviesOpen) closeMovies();
+                    if (isTvOpen) closeTv();
                     setTheme(m.id);
                     setOpen(false);
                   }}
@@ -289,37 +292,77 @@ function GlassModeSwitcherInner() {
                 </button>
               ))}
 
-              {/* زر الألعاب: يفتح أو يغلق الصفحة */}
-              <button
-                type="button"
-                className={`gs-cell gs-icon${isGamesOpen ? ' is-active' : ''}`}
-                role="menuitem"
-                aria-label={isGamesOpen ? 'Close games' : 'Games'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isMoviesOpen) closeMovies();
-                  if (isGamesOpen) closeGames();
-                  else { openGames(); setOpen(false); }
-                }}
-              >
-                <Gamepad2 size={16} />
-              </button>
+              <div className="glass-switcher__features-grid">
+                {/* زر الألعاب: يفتح أو يغلق الصفحة */}
+                <button
+                  type="button"
+                  className={`gs-cell gs-icon${isGamesOpen ? ' is-active' : ''}`}
+                  role="menuitem"
+                  aria-label={isGamesOpen ? 'Close games' : 'Games'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isMoviesOpen) closeMovies();
+                    if (isTvOpen) closeTv();
+                    if (isGamesOpen) closeGames();
+                    else { openGames(); setOpen(false); }
+                  }}
+                >
+                  <Gamepad2 size={16} />
+                </button>
 
-              {/* زر الأفلام والمسلسلات: يفتح أو يغلق الصفحة */}
-              <button
-                type="button"
-                className={`gs-cell gs-icon${isMoviesOpen ? ' is-active' : ''}`}
-                role="menuitem"
-                aria-label={isMoviesOpen ? 'Close Cinema' : 'Cinema'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isGamesOpen) closeGames();
-                  if (isMoviesOpen) closeMovies();
-                  else { openMovies(); setOpen(false); }
-                }}
-              >
-                <Film size={16} />
-              </button>
+                {/* زر الأفلام والمسلسلات: يفتح أو يغلق الصفحة */}
+                <button
+                  type="button"
+                  className={`gs-cell gs-icon${isMoviesOpen ? ' is-active' : ''}`}
+                  role="menuitem"
+                  aria-label={isMoviesOpen ? 'Close Cinema' : 'Cinema'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isGamesOpen) closeGames();
+                    if (isTvOpen) closeTv();
+                    if (isMoviesOpen) closeMovies();
+                    else { openMovies(); setOpen(false); }
+                  }}
+                >
+                  <Film size={16} />
+                </button>
+
+                {/* زر التلفزيون: يفتح أو يغلق الصفحة */}
+                <button
+                  type="button"
+                  className={`gs-cell gs-icon${isTvOpen ? ' is-active' : ''}`}
+                  role="menuitem"
+                  aria-label={isTvOpen ? 'Close TV' : 'TV'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isGamesOpen) closeGames();
+                    if (isMoviesOpen) closeMovies();
+                    if (isTvOpen) closeTv();
+                    if (isRetroOpen) closeRetro();
+                    else { openTv(); setOpen(false); }
+                  }}
+                >
+                  <Tv size={16} />
+                </button>
+
+                {/* زر ريترو: يفتح أو يغلق الصفحة */}
+                <button
+                  type="button"
+                  className={`gs-cell gs-icon${isRetroOpen ? ' is-active' : ''}`}
+                  role="menuitem"
+                  aria-label={isRetroOpen ? 'Close Retro' : 'Retro'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isGamesOpen) closeGames();
+                    if (isMoviesOpen) closeMovies();
+                    if (isTvOpen) closeTv();
+                    if (isRetroOpen) closeRetro();
+                    else { openRetro(); setOpen(false); }
+                  }}
+                >
+                  <Joystick size={16} />
+                </button>
+              </div>
 
               {/* زر إغلاق اللعبة (← العودة للقائمة) — يظهر فقط حين لعبة نشطة أو فيلم نشط */}
               {isGameActive && (
@@ -347,6 +390,22 @@ function GlassModeSwitcherInner() {
                   onClick={(e) => {
                     e.stopPropagation();
                     callMovieBack();
+                    setOpen(false);
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+              )}
+
+              {isTvActive && (
+                <button
+                  type="button"
+                  className="gs-cell gs-icon"
+                  role="menuitem"
+                  aria-label="Back to TV list"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    callTvBack();
                     setOpen(false);
                   }}
                 >

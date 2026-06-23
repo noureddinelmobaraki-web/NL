@@ -1,5 +1,47 @@
 /* صفحة السينما — تخطيط 2026 للهاتف والحاسوب */
-:root { --cinema-header-h: 60px; }
+:root {
+  --cinema-header-h: 60px;
+  --aero-glass-bg: rgba(20, 20, 20, 0.55);
+  --aero-glass-blur: 24px;
+  --aero-hi: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.02) 40%, transparent 100%);
+  --aero-border: 1px dashed rgba(255, 255, 255, 0.14);
+  --aero-shadow: 0 16px 45px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.aero-glass-style {
+  background: var(--aero-glass-bg);
+  -webkit-backdrop-filter: blur(var(--aero-glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--aero-glass-blur)) saturate(160%);
+  border: var(--aero-border);
+  box-shadow: var(--aero-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.aero-glass-style::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 35%;
+  background: var(--aero-hi);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Fallback for browsers that don't support backdrop-filter */
+@supports not (backdrop-filter: blur(2px)) {
+  .aero-glass-style {
+    background: rgba(20, 20, 20, 0.95) !important;
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .aero-glass-style, .nl-cinema-root, .nl-cinema-back {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}
 
 /* الجذر: ارتفاع آمن مستقر للهاتف مع دعم النوتش */
 .nl-cinema-root{

@@ -49,6 +49,18 @@ interface AppContextType {
   setSeriesActive: (v: boolean) => void;
   registerSeriesBack: (fn: () => void) => void;
   callSeriesBack: () => void;
+  // ── التلفزيون NL TV ──────────────────────────────────────────────
+  isTvOpen: boolean;
+  openTv: () => void;
+  closeTv: () => void;
+  isTvActive: boolean;
+  setTvActive: (v: boolean) => void;
+  registerTvBack: (fn: () => void) => void;
+  callTvBack: () => void;
+  // ── ريترو ────────────────────────────────────────────────────────
+  isRetroOpen: boolean;
+  openRetro: () => void;
+  closeRetro: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -75,6 +87,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isSeriesActive, setSeriesActive] = useState(false);
   const seriesBackRef = useRef<(() => void) | null>(null);
 
+  const [isTvOpen, setIsTvOpen] = useState(false);
+  const [isTvActive, setTvActive] = useState(false);
+  const tvBackRef = useRef<(() => void) | null>(null);
+
+  const [isRetroOpen, setIsRetroOpen] = useState(false);
+
   const registerGameBack = useCallback((fn: () => void) => {
     gameBackRef.current = fn;
   }, []);
@@ -97,6 +115,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const callSeriesBack = useCallback(() => {
     seriesBackRef.current?.();
+  }, []);
+
+  const registerTvBack = useCallback((fn: () => void) => {
+    tvBackRef.current = fn;
+  }, []);
+
+  const callTvBack = useCallback(() => {
+    tvBackRef.current?.();
   }, []);
 
   const openGames = useCallback(() => {
@@ -141,6 +167,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsSeriesOpen(false);
   }, []);
 
+  const openTv = useCallback(() => {
+    try { audioManager.stop('bg'); } catch {}
+    try { audioManager.suppressBg('tv_mode'); } catch {}
+    setIsTvOpen(true);
+  }, []);
+
+  const closeTv = useCallback(() => {
+    tvBackRef.current = null;
+    setTvActive(false);
+    try { audioManager.releaseBg('tv_mode'); } catch {}
+    setIsTvOpen(false);
+  }, []);
+
+  const openRetro = useCallback(() => {
+    try { audioManager.stop('bg'); } catch {}
+    try { audioManager.suppressBg('retro_mode'); } catch {}
+    setIsRetroOpen(true);
+  }, []);
+
+  const closeRetro = useCallback(() => {
+    try { audioManager.releaseBg('retro_mode'); } catch {}
+    setIsRetroOpen(false);
+  }, []);
+
   const returnToWelcome = useCallback(() => {
     gameBackRef.current = null;
     setGameActive(false);
@@ -148,8 +198,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMovieActive(false);
     seriesBackRef.current = null;
     setSeriesActive(false);
+    tvBackRef.current = null;
+    setTvActive(false);
+    setIsRetroOpen(false);
     try {
-      ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games', 'movies', 'series'].forEach(
+      ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games', 'movies', 'series', 'tv'].forEach(
         (s) => audioManager.stop(s as any),
       );
     } catch {}
@@ -175,6 +228,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isSeriesOpen, openSeries, closeSeries,
         isSeriesActive, setSeriesActive,
         registerSeriesBack, callSeriesBack,
+        isTvOpen, openTv, closeTv,
+        isTvActive, setTvActive,
+        registerTvBack, callTvBack,
+        isRetroOpen, openRetro, closeRetro,
       }}
     >
       {children}

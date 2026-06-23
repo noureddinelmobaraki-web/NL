@@ -1,28 +1,42 @@
 // Fix read-only window.fetch in sandboxed iframe environments (e.g. AI Studio preview)
 try {
   if (typeof window !== 'undefined' && 'fetch' in window) {
-    let target = window as any;
-    let descriptor;
-    while (target && !descriptor) {
-      descriptor = Object.getOwnPropertyDescriptor(target, 'fetch');
-      target = Object.getPrototypeOf(target);
+    let currentFetch = window.fetch;
+    const patchDescriptor = {
+      configurable: true,
+      enumerable: true,
+      get() {
+        return currentFetch;
+      },
+      set(v: any) {
+        currentFetch = v;
+      }
+    };
+    let patched = false;
+    if (typeof Window !== 'undefined' && Window.prototype) {
+      try {
+        Object.defineProperty(Window.prototype, 'fetch', patchDescriptor);
+        patched = true;
+      } catch (e) {}
     }
-    const isReadOnly = descriptor && (
-      (descriptor.writable === false) ||
-      (descriptor.set === undefined && descriptor.get !== undefined)
-    );
-    if (isReadOnly || !descriptor) {
-      let currentFetch = window.fetch;
-      Object.defineProperty(window, 'fetch', {
-        configurable: true,
-        enumerable: true,
-        get() {
-          return currentFetch;
-        },
-        set(v) {
-          currentFetch = v;
-        },
-      });
+    if (!patched) {
+      let target = window as any;
+      while (target) {
+        try {
+          const desc = Object.getOwnPropertyDescriptor(target, 'fetch');
+          if (desc && desc.configurable) {
+            Object.defineProperty(target, 'fetch', patchDescriptor);
+            patched = true;
+            break;
+          }
+        } catch (e) {}
+        target = Object.getPrototypeOf(target);
+      }
+    }
+    if (!patched) {
+      try {
+        Object.defineProperty(window, 'fetch', patchDescriptor);
+      } catch (e) {}
     }
   }
 } catch (err) {

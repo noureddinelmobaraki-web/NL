@@ -24,13 +24,14 @@
  * [ ] No hover-stuck states on touch
  */
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, Suspense, useCallback, useRef, Activity } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { LoadingScreen } from "./components/Loading/LoadingScreen";
 import { SkeletonSection } from './components/SkeletonSection';
+import { PageLoader } from "./components/layout/PageLoader";
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
 import { 
@@ -66,6 +67,10 @@ const MoviesPage = lazyWithRetry(
   () => import('./components/Movies/MoviesPage').then(m => ({ default: m.MoviesPage })),
   'MoviesPage',
 );
+const NlTvPage = lazyWithRetry(
+  () => import('./components/NlTv/NlTvPage').then(m => ({ default: m.default })),
+  'NlTvPage',
+);
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
 import { useParallax } from "./hooks/useParallax";
@@ -100,36 +105,102 @@ import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
 function AppInner() {
-  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries } = useAppContext();
+  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro } = useAppContext();
 
   useEffect(() => {
     applyThemeUtil(theme);
     savePrefs({ theme });
   }, [theme]);
 
+  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen;
+
+  useEffect(() => {
+    if (isAnyPageActive) {
+      document.documentElement.setAttribute('data-page-active', 'true');
+    } else {
+      document.documentElement.removeAttribute('data-page-active');
+    }
+  }, [isAnyPageActive]);
+
   return (
     <>
       {loaded && <GlassModeSwitcher />}
-      {loaded && isGamesOpen ? (
-        // ▶ GAMES صفحة مستقلة تماماً مثل retro — يُفصل MainApp وكل صوته
-        <Suspense fallback={<div className="retro-loading">Loading games…</div>}>
-          <GamesPage onClose={closeGames} />
-        </Suspense>
-      ) : loaded && (isMoviesOpen || isSeriesOpen) ? (
-        // ▶ MOVIES & SERIES صفحة مستقلة — يُفصل MainApp
-        <Suspense fallback={<div className="retro-loading">Loading cinema…</div>}>
-          <MoviesPage
-            onClose={isSeriesOpen ? closeSeries : closeMovies}
-            initialTab={isSeriesOpen ? 'series' : 'movies'}
-          />
-        </Suspense>
-      ) : theme === 'retro' && loaded ? (
-        <Suspense fallback={<div className="retro-loading">Loading retro world…</div>}>
-          <RetroWorldPage />
-        </Suspense>
-      ) : (
-        <MainApp />
-      )}
+      <AnimatePresence mode="wait">
+        {loaded && isGamesOpen ? (
+          <motion.div
+            key="games-screen"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="fixed inset-0 w-full h-full z-[8500] pointer-events-none"
+          >
+            <SectionErrorBoundary sectionName="games">
+              <Suspense fallback={<PageLoader pageType="games" />}>
+                <GamesPage onClose={closeGames} />
+              </Suspense>
+            </SectionErrorBoundary>
+          </motion.div>
+        ) : loaded && isTvOpen ? (
+          <motion.div
+            key="tv-screen"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="fixed inset-0 w-full h-full z-[8500]"
+          >
+            <SectionErrorBoundary sectionName="tv">
+              <Suspense fallback={<PageLoader pageType="tv" />}>
+                <NlTvPage onClose={closeTv} />
+              </Suspense>
+            </SectionErrorBoundary>
+          </motion.div>
+        ) : loaded && (isMoviesOpen || isSeriesOpen) ? (
+          <motion.div
+            key="cinema-screen"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="fixed inset-0 w-full h-full z-[8500] pointer-events-none"
+          >
+            <SectionErrorBoundary sectionName="cinema">
+              <Suspense fallback={<PageLoader pageType="cinema" />}>
+                <MoviesPage
+                  onClose={isSeriesOpen ? closeSeries : closeMovies}
+                  initialTab={isSeriesOpen ? 'series' : 'movies'}
+                />
+              </Suspense>
+            </SectionErrorBoundary>
+          </motion.div>
+        ) : loaded && isRetroOpen ? (
+          <motion.div
+            key="retro-screen"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="fixed inset-0 w-full h-full z-[8500]"
+          >
+            <SectionErrorBoundary sectionName="retro">
+              <Suspense fallback={<PageLoader pageType="retro" />}>
+                <RetroWorldPage onClose={closeRetro} />
+              </Suspense>
+            </SectionErrorBoundary>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="main-app-screen"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+          >
+            <MainApp />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -145,7 +216,7 @@ function MainApp() {
     ambientColor, setAmbientColor,
     audioIntent, setAudioIntent,
     theme, setTheme,
-    openGames, openMovies
+    openGames, openMovies, openTv, openRetro
   } = useAppContext();
 
   const navigateSection = useNavigateSection();
@@ -373,6 +444,18 @@ function MainApp() {
             setLoaded(true);
             openMovies();
           }}
+          onEnterTv={(chosenTheme, musicConsent) => {
+            setTheme(chosenTheme);
+            if (musicConsent) setAudioIntent('user-playing');
+            setLoaded(true);
+            openTv();
+          }}
+          onEnterRetro={(chosenTheme, musicConsent) => {
+            setTheme(chosenTheme);
+            if (musicConsent) setAudioIntent('user-playing');
+            setLoaded(true);
+            openRetro();
+          }}
         />
       )}
 
@@ -403,8 +486,6 @@ function MainApp() {
             variants={containerVariants}
             initial={isAutomated ? "visible" : "hidden"}
             animate="visible"
-            lang="en"
-            dir="ltr"
             className="relative z-10 w-full max-w-7xl flex flex-col gap-14"
             style={{ paddingBottom: (isMobile || isTablet) ? '80px' : undefined }}
           >

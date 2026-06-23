@@ -32,7 +32,9 @@ i18n
       escapeValue: false, // react already safes from xss
     },
     detection: {
-      order: ['querystring', 'localStorage', 'navigator'],
+      // لا تتبع لغة الجهاز إطلاقاً ← الإنجليزية هي الافتراضية دائماً.
+      // يبقى الاختيار الصريح للمستخدم (querystring أو المبدّل) محفوظاً.
+      order: ['querystring', 'localStorage'],
       caches: ['localStorage'],
     },
   });

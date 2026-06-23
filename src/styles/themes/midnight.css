@@ -161,7 +161,7 @@
   --highlights-yt-radius: 22px;
 }
 
-[data-theme="midnight"] body::before{
+:root:not([data-page-active="true"]) [data-theme="midnight"] body::before{
   content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
   background:
     radial-gradient(60% 40% at 18% 12%, rgba(139,148,255,0.22), transparent 60%),

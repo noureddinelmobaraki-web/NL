@@ -8,6 +8,7 @@
     "games": "Games",
     "movies": "Movies",
     "series": "Series",
+    "nltv": "NL TV",
     "play": "Music",
     "pause": "Pause",
     "language": "English"
@@ -94,5 +95,24 @@
     "sendFailed": "Sending failed, please try again",
     "blocked": "Your messages arrived, thanks for your honesty",
     "verifyHuman": "Please confirm you are not a robot"
+  },
+  "nltv": {
+    "title": "NL TV",
+    "description": "Global Live Television Stream Player",
+    "searchCountry": "Search countries...",
+    "searchChannel": "Search channels...",
+    "back": "Back",
+    "record": "Record",
+    "recording": "Recording...",
+    "noChannels": "No channels found for this country",
+    "channelError": "This channel has source restrictions or is currently offline. Please try another channel.",
+    "recordBlocked": "This channel has source restrictions that block direct recording. Try our screen recording option.",
+    "publicNotice": "Streams are gathered from public-domain sources via iptv-org.",
+    "recordScreen": "Screen Recording",
+    "channelsCount": "channels",
+    "prevChannel": "Prev",
+    "nextChannel": "Next",
+    "cancel": "Cancel",
+    "close": "Close"
   }
 }

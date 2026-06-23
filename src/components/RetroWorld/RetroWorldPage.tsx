@@ -5,9 +5,14 @@ import { PersonalPhotoFloater } from './PersonalPhotoFloater';
 import { audioManager } from '../../audio/audioManager';
 import { ensureAutoplay } from '../../audio/ensureAutoplay';
 import { RetroViewportProvider } from '../RetroViewportProvider';
+import { X } from 'lucide-react';
 
-export const RetroWorldPage: React.FC = () => {
-  const { theme } = useAppContext();
+interface RetroWorldPageProps {
+  onClose?: () => void;
+}
+
+export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
+  const { isRetroOpen, closeRetro } = useAppContext();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -22,7 +27,7 @@ export const RetroWorldPage: React.FC = () => {
   }, [isAudioMuted]);
 
   useEffect(() => {
-    if (theme === 'retro') {
+    if (isRetroOpen) {
       document.body.classList.add('retro-active');
     }
     const currentIframe = iframeRef.current;
@@ -37,7 +42,7 @@ export const RetroWorldPage: React.FC = () => {
       }
       handleScrollRef.current = null;
     };
-  }, [theme]);
+  }, [isRetroOpen]);
 
   // Effect 1: إنشاء وتدمير HLS و Audio — مرة واحدة فقط عند دخول/خروج retro
   useEffect(() => {
@@ -47,7 +52,7 @@ export const RetroWorldPage: React.FC = () => {
       try { a.removeAttribute('src'); a.load(); } catch {}
     };
 
-    if (theme !== 'retro') {
+    if (!isRetroOpen) {
       if (hlsRef.current) {
         try { hlsRef.current.destroy(); } catch {}
         hlsRef.current = null;
@@ -73,7 +78,7 @@ export const RetroWorldPage: React.FC = () => {
     audio.addEventListener('error', onAudioError);
 
     const tryPlay = () => {
-      if (theme === 'retro') {
+      if (isRetroOpen) {
         audioManager.play('bg').catch((err) => {
           console.log('[RetroWorld] Autoplay prevented, waiting user gesture.', err);
         });
@@ -115,7 +120,7 @@ export const RetroWorldPage: React.FC = () => {
       purge(audioRef.current);
       audioRef.current = null;
     };
-  }, [theme]);  // ⚠️ فقط theme
+  }, [isRetroOpen]);  // ⚠️ فقط isRetroOpen
 
   // Effect 2: تطبيق mute بدون إعادة إنشاء
   useEffect(() => {
@@ -173,7 +178,7 @@ export const RetroWorldPage: React.FC = () => {
     }
   };
 
-  if (theme !== 'retro') return null;
+  if (!isRetroOpen) return null;
 
   return (
     <RetroViewportProvider desktopWidth={1024}>
@@ -187,6 +192,33 @@ export const RetroWorldPage: React.FC = () => {
           outline-offset: 3px;
         }
       `}</style>
+
+      {/* زر الخروج العائم المصمم بأسلوب زجاجي كلاسيكي ليتناسب مع ريترو */}
+      <button
+        onClick={() => onClose?.() || closeRetro()}
+        className="retro-control-btn hover:scale-105 active:scale-95 transition-transform"
+        aria-label="إغلاق ريترو"
+        style={{
+          position: 'fixed',
+          top: '20px',
+          left: '20px',
+          zIndex: 99999,
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: 'rgba(0, 0, 0, 0.65)',
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          backdropFilter: 'blur(8px)',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+        }}
+      >
+        <X size={18} />
+      </button>
 
       {/* الصور الشخصية: نمرر لها الـ ref للتحديث المباشر للـ DOM */}
       <PersonalPhotoFloater wrapperRef={floaterRef} />

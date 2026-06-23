@@ -1,7 +1,7 @@
 const PREFS_KEY = 'nl-prefs-v1';
 
 export type RepeatMode = 'off' | 'all' | 'one';
-export type Theme = 'dark' | 'light' | 'bit' | 'midnight' | 'lite' | 'retro';
+export type Theme = 'dark' | 'light' | 'bit' | 'midnight' | 'lite';
 export type AudioIntent = 'user-paused' | 'user-playing' | 'initial';
 
 interface NLPrefs {
@@ -35,7 +35,7 @@ export function loadPrefs(): NLPrefs {
     const raw = localStorage.getItem(PREFS_KEY);
     if (!raw) return { ...DEFAULTS };
     const saved = JSON.parse(raw) as Partial<NLPrefs>;
-    if (saved && (saved.theme === ('system' as any) || !['dark', 'light', 'bit', 'midnight', 'lite', 'retro'].includes(saved.theme as any))) {
+    if (saved && (saved.theme === ('system' as any) || saved.theme === ('retro' as any) || !['dark', 'light', 'bit', 'midnight', 'lite'].includes(saved.theme as any))) {
       saved.theme = 'midnight';
     }
     return { 

@@ -8,7 +8,7 @@ import { ThemePicker } from './ThemePicker';
 import { LOADING_TIMINGS } from '../../constants/loading';
 import { isAutomatedEnv } from '../../utils/env';
 import type { Theme } from '../../utils/userPrefs';
-import { Gamepad2, Film } from 'lucide-react';
+import { Gamepad2, Film, Tv, Joystick } from 'lucide-react';
 
 const POSTER_IMAGE_URL = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp';
 
@@ -16,9 +16,11 @@ export interface LoadingScreenProps {
   onComplete: (chosenTheme: Theme, musicConsent: boolean) => void;
   onEnterGames?: (chosenTheme: Theme, musicConsent: boolean) => void;
   onEnterCinema?: (chosenTheme: Theme, musicConsent: boolean) => void;
+  onEnterTv?: (chosenTheme: Theme, musicConsent: boolean) => void;
+  onEnterRetro?: (chosenTheme: Theme, musicConsent: boolean) => void;
 }
 
-export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema }: LoadingScreenProps) => {
+export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnterTv, onEnterRetro }: LoadingScreenProps) => {
   const isAutomated = isAutomatedEnv();
   const { phase, setPhase, useStatic, triggerVideoFailed } = useLoadingPhase();
   const doneRef = useRef(false);
@@ -88,6 +90,28 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema }: Loadi
     }, LOADING_TIMINGS.zoomOut);
   }, [musicConsent, onEnterCinema, setPhase, introAudio]);
 
+  const finishToTv = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setPhase('zooming');
+    if (musicConsent) introAudio.fadeOut(800);
+    setTimeout(() => {
+      setPhase('hidden');
+      onEnterTv?.('midnight', musicConsent);
+    }, LOADING_TIMINGS.zoomOut);
+  }, [musicConsent, onEnterTv, setPhase, introAudio]);
+
+  const finishToRetro = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setPhase('zooming');
+    if (musicConsent) introAudio.fadeOut(800);
+    setTimeout(() => {
+      setPhase('hidden');
+      onEnterRetro?.('midnight', musicConsent);
+    }, LOADING_TIMINGS.zoomOut);
+  }, [musicConsent, onEnterRetro, setPhase, introAudio]);
+
   if (phase === 'hidden') return null;
 
   const zoomStyle = phase === 'zooming'
@@ -105,6 +129,90 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema }: Loadi
         @keyframes nl-fade-up {
           from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── شبكة أزرار شاشة التحميل المتجاوبة ── */
+        .loading-buttons-container {
+          display: grid;
+          gap: 10px;
+          width: 100%;
+          max-width: 580px;
+          margin-top: 14px;
+          padding: 0 16px;
+          box-sizing: border-box;
+          justify-content: center;
+        }
+
+        .loading-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 8px 16px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.1);
+          border: 0.5px solid rgba(255,255,255,0.2);
+          color: #fff;
+          font-size: 0.85rem;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          animation: nl-fade-up 0.6s ease both;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .loading-btn:hover {
+          transform: scale(1.05);
+          background: rgba(255,255,255,0.18);
+          border-color: rgba(255,255,255,0.35);
+        }
+
+        .loading-btn:active {
+          transform: scale(0.95);
+        }
+
+        /* 1. الشاشات الكبيرة (حاسوب ولوحي) -> 4 أزرار بجانب بعضها */
+        @media (min-width: 581px) {
+          .loading-buttons-container {
+            grid-template-columns: repeat(4, auto);
+          }
+        }
+
+        /* 2. الشاشات المتوسطة والصغيرة (من 401px إلى 580px) -> تترتب 3 أزرار بجانب بعض والرابع يلتف ليكون بالأسفل ممركزاً */
+        @media (max-width: 580px) and (min-width: 401px) {
+          .loading-buttons-container {
+            grid-template-columns: repeat(3, 1fr);
+            max-width: 460px;
+          }
+          .loading-buttons-container > button:last-child {
+            grid-column: span 3;
+            justify-self: center;
+            width: auto;
+            min-width: 120px;
+          }
+          .loading-btn {
+            font-size: 0.8rem;
+            padding: 7px 14px;
+          }
+        }
+
+        /* 3. الهواتف الصغيرة جداً (أقل من 400px) -> تترتب 2 فوق و 2 تحت مع تصغير الحجم */
+        @media (max-width: 400px) {
+          .loading-buttons-container {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            max-width: 340px;
+          }
+          .loading-btn {
+            font-size: 0.75rem;
+            padding: 6px 10px;
+            gap: 5px;
+          }
+          .loading-btn svg {
+            width: 14px !important;
+            height: 14px !important;
+          }
         }
       `}</style>
       <div
@@ -138,26 +246,12 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema }: Loadi
           animation: 'nl-fade-up 0.8s ease-out both',
         }}>NL</div>
          <ThemePicker onPick={finishWithTheme} />
-        <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
+        <div className="loading-buttons-container">
           <button
             type="button"
             onClick={finishToGames}
             aria-label="Games"
-            className="hover:scale-105 active:scale-95 transition"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              borderRadius: 999,
-              background: 'rgba(255,255,255,0.1)',
-              border: '0.5px solid rgba(255,255,255,0.2)',
-              color: '#fff',
-              fontSize: '0.85rem',
-              backdropFilter: 'blur(8px)',
-              animation: 'nl-fade-up 0.6s ease both',
-              cursor: 'pointer',
-            }}
+            className="loading-btn"
           >
             <Gamepad2 size={16} aria-hidden="true" />
             <span>Games</span>
@@ -167,24 +261,30 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema }: Loadi
             type="button"
             onClick={finishToCinema}
             aria-label="Movies & Series"
-            className="hover:scale-105 active:scale-95 transition"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              borderRadius: 999,
-              background: 'rgba(255,255,255,0.1)',
-              border: '0.5px solid rgba(255,255,255,0.2)',
-              color: '#fff',
-              fontSize: '0.85rem',
-              backdropFilter: 'blur(8px)',
-              animation: 'nl-fade-up 0.6s ease both',
-              cursor: 'pointer',
-            }}
+            className="loading-btn"
           >
             <Film size={16} aria-hidden="true" />
             <span>Movies & Series</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={finishToTv}
+            aria-label="NL TV"
+            className="loading-btn"
+          >
+            <Tv size={16} aria-hidden="true" />
+            <span>NL TV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={finishToRetro}
+            aria-label="Retro"
+            className="loading-btn"
+          >
+            <Joystick size={16} aria-hidden="true" />
+            <span>Retro</span>
           </button>
         </div>
         <div style={{

@@ -116,7 +116,7 @@ export function GamesPage({ onClose }: GamesPageProps) {
   // ── هاتف: قائمة كاملة → لعبة كاملة ─────────────────────────────
   if (isTouch) {
     return createPortal(
-      <div className="nl-games-root is-touch" dir="ltr" role="dialog" aria-modal="true" aria-label={t('games.title')}>
+      <div className="nl-games-root is-touch pointer-events-auto" dir="ltr" role="dialog" aria-modal="true" aria-label={t('games.title')}>
         {bgVideo}
         <div className="nl-games-backdrop" aria-hidden="true" />
         <div className="nl-games-window">
@@ -152,7 +152,7 @@ export function GamesPage({ onClose }: GamesPageProps) {
 
   // ── حاسوب: قائمة جانبية + شاشة دائمة ───────────────────────────
   return createPortal(
-    <div className="nl-games-root" dir="ltr" role="dialog" aria-modal="true" aria-label={t('games.title')}>
+    <div className="nl-games-root pointer-events-auto" dir="ltr" role="dialog" aria-modal="true" aria-label={t('games.title')}>
       {bgVideo}
       <div className="nl-games-backdrop" aria-hidden="true" />
       <div className="nl-games-window">

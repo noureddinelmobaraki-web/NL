@@ -167,17 +167,17 @@
 }
 
 /* Kill all animations and transitions in lite mode */
-[data-theme="lite"] *,
-[data-theme="lite"] *::before,
-[data-theme="lite"] *::after {
+:root:not([data-page-active="true"]) [data-theme="lite"] *,
+:root:not([data-page-active="true"]) [data-theme="lite"] *::before,
+:root:not([data-page-active="true"]) [data-theme="lite"] *::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.15s !important;
 }
 
 /* Grayscale globally except Me-Bit and Lens galleries */
-[data-theme="lite"] img:not(#me-bit-gallery img):not(#lens-section img):not([aria-label="معرض الصور"] img),
-[data-theme="lite"] video:not([aria-label="معرض الصور"] video) {
+:root:not([data-page-active="true"]) [data-theme="lite"] img:not(#me-bit-gallery img):not(#lens-section img):not([aria-label="معرض الصور"] img),
+:root:not([data-page-active="true"]) [data-theme="lite"] video:not([aria-label="معرض الصور"] video) {
   filter: grayscale(100%) !important;
 }
 

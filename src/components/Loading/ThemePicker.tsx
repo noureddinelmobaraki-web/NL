@@ -46,13 +46,6 @@ const ICON: Record<Theme, JSX.Element> = {
       <path d="M5 19 13 11" />
     </svg>
   ),
-  retro: (
-    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="6" width="18" height="12" rx="2" />
-      <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
-      <path d="M9 12h6" />
-    </svg>
-  ),
 };
 
 const THEMES: ThemeDef[] = [
@@ -61,7 +54,6 @@ const THEMES: ThemeDef[] = [
   { id: 'light', label: 'Light', bg: 'radial-gradient(circle at 30% 30%, #ffffff, #ece4d6)', fg: '#2a2a2a', radius: '48% 52% 46% 54% / 52% 46% 54% 48%', icon: ICON.light },
   { id: 'bit', label: '8-Bit', bg: 'radial-gradient(circle at 30% 30%, #29469e, #1d2b53)', fg: '#ffd166', radius: '50% 50% 48% 52% / 50% 54% 46% 50%', icon: ICON.bit },
   { id: 'lite', label: 'Lite', bg: 'radial-gradient(circle at 30% 30%, #3c5a45, #233528)', fg: '#d7ffe0', radius: '52% 48% 54% 46% / 46% 50% 50% 54%', icon: ICON.lite },
-  { id: 'retro', label: 'Retro', bg: 'radial-gradient(circle at 30% 30%, #5a3a22, #2f1d12)', fg: '#ffcc99', radius: '46% 54% 50% 50% / 54% 48% 52% 46%', icon: ICON.retro },
 ];
 
 export const ThemePicker = ({ onPick }: Props) => (

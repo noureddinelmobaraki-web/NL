@@ -116,6 +116,8 @@ export function useAudioController({
     return () => {
       audioManager.pause('lens');
       audioManager.pause('mebit');
+      audioManager.stop('bg');
+      try { audioManager.unregister('bg'); } catch {}
     };
   }, []); // runs once on mount
 

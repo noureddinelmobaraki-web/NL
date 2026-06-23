@@ -8,6 +8,7 @@
     "games": "Jeux",
     "movies": "Films",
     "series": "Séries",
+    "nltv": "NL TV",
     "play": "Musique",
     "pause": "Pause",
     "language": "Français"
@@ -94,5 +95,24 @@
     "sendFailed": "Échec de l'envoi, réessayez",
     "blocked": "Vos messages sont bien arrivés, merci pour votre honnêteté",
     "verifyHuman": "Veuillez confirmer que vous n'êtes pas un robot"
+  },
+  "nltv": {
+    "title": "NL TV",
+    "description": "Lecteur international de chaînes de télévision en direct",
+    "searchCountry": "Rechercher des pays...",
+    "searchChannel": "Rechercher des chaînes...",
+    "back": "Retour",
+    "record": "Enregistrer",
+    "recording": "Enregistrement...",
+    "noChannels": "Aucune chaîne trouvée pour ce pays",
+    "channelError": "Cette chaîne a des restrictions de diffusion ou est hors ligne. Essayez une autre chaîne.",
+    "recordBlocked": "Cette chaîne a des restrictions de source empêchant l'enregistrement direct. Essayez notre option d'enregistrement d'écran.",
+    "publicNotice": "Les flux sont collectés auprès de sources du domaine public via iptv-org.",
+    "recordScreen": "Enregistrer l'écran",
+    "channelsCount": "chaînes",
+    "prevChannel": "Précédente",
+    "nextChannel": "Suivante",
+    "cancel": "Annuler",
+    "close": "Fermer"
   }
 }

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Camera, Music2, Pencil, Aperture, Gamepad2, Clapperboard } from 'lucide-react';
+import { Camera, Music2, Pencil, Aperture, Gamepad2, Clapperboard, Tv } from 'lucide-react';
 import { NavButton } from '../NavButton';
 import { audioManager } from '../../audio/audioManager';
 import { itemVariants } from './appConstants';
@@ -19,7 +19,7 @@ export function AppNavGrid({
   onOpenLens,
 }: AppNavGridProps) {
   const { t, i18n } = useTranslation();
-  const { openGames, openMovies } = useAppContext();
+  const { openGames, openMovies, openTv } = useAppContext();
 
   const moviesSeriesLabel = i18n.exists('nav.movies_and_series') ? t('nav.movies_and_series') : 
     (i18n.exists('nav.movies') && i18n.exists('nav.series') 
@@ -75,6 +75,12 @@ export function AppNavGrid({
           setGenieOriginFromElement(e.currentTarget);
           openGames();
         }} 
+        onMouseEnter={() => {
+          import('../Games/GamesPage').catch(() => {});
+        }}
+        onPointerDown={() => {
+          import('../Games/GamesPage').catch(() => {});
+        }}
         theme={resolvedTheme} 
       />
       <NavButton 
@@ -84,6 +90,27 @@ export function AppNavGrid({
           setGenieOriginFromElement(e.currentTarget);
           openMovies();
         }} 
+        onMouseEnter={() => {
+          import('../Movies/MoviesPage').catch(() => {});
+        }}
+        onPointerDown={() => {
+          import('../Movies/MoviesPage').catch(() => {});
+        }}
+        theme={resolvedTheme} 
+      />
+      <NavButton 
+        icon={Tv} 
+        label={t('nav.nltv').toUpperCase()} 
+        onClick={(e) => {
+          setGenieOriginFromElement(e.currentTarget);
+          openTv();
+        }} 
+        onMouseEnter={() => {
+          import('../NlTv/NlTvPage').catch(() => {});
+        }}
+        onPointerDown={() => {
+          import('../NlTv/NlTvPage').catch(() => {});
+        }}
         theme={resolvedTheme} 
       />
     </motion.div>

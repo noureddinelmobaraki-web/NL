@@ -6,6 +6,8 @@ interface NavButtonProps {
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   theme: string;
   fullWidthOnMobile?: boolean;
+  onMouseEnter?: () => void;
+  onPointerDown?: () => void;
 }
 
 const THEME_STYLES: Record<string, string> = {
@@ -25,11 +27,15 @@ export const NavButton = ({
   onClick,
   theme,
   fullWidthOnMobile = false,
+  onMouseEnter,
+  onPointerDown,
 }: NavButtonProps) => {
   const useRoughFilter = theme !== 'dark' && theme !== 'light' && theme !== 'midnight';
   return (
     <button
       onClick={(e) => onClick(e)}
+      onMouseEnter={onMouseEnter}
+      onPointerDown={onPointerDown}
       className={`${THEME_STYLES[theme] ?? THEME_STYLES.dark} ${fullWidthOnMobile ? 'col-span-2 sm:col-span-auto' : ''}`}
       style={THEME_STYLES_INLINE[theme]}
       type="button"

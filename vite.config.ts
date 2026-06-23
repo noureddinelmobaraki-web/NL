@@ -66,7 +66,6 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules/react'))          return 'react-core';
             if (id.includes('node_modules/framer-motion'))  return 'framer';
             if (id.includes('node_modules/hls.js'))         return 'hls';
-            if (id.includes('node_modules/three'))          return 'three';
             if (id.includes('src/components/Drawings/'))    return 'drawings';
             if (id.includes('src/components/lyrics/'))      return 'lyrics';
             if (id.includes('src/components/MusicMood/'))   return 'music-mood';

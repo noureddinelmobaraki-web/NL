@@ -86,6 +86,39 @@
   gap:8px; width:100%;
 }
 .glass-switcher.is-mobile .glass-switcher__grid{ grid-template-columns:repeat(2, 1fr); }
+ 
+/* ── شبكة أزرار الميزات الأربعة (الألعاب، الأفلام، التلفاز، ريترو) ── */
+.glass-switcher__features-grid {
+  grid-column: span 4;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.glass-switcher.is-mobile .glass-switcher__features-grid {
+  grid-column: span 2;
+}
+
+/* 1. عند توسيع الشاشة (حاسوب وشاشات عريضة) → واحدة بجانب واحدة (4 في الصف) */
+@media (min-width: 481px) {
+  .glass-switcher__features-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 2. عندما تصغر الشاشة قليلاً (حجم متوسط للهاتف) → تترتب 3 في الصف وتلتف الرابعة صفاً آخر */
+@media (max-width: 480px) and (min-width: 361px) {
+  .glass-switcher__features-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 3. عندما تصغر الشاشة أكثر (حجم صغير جداً للهاتف) → تترتب 2 في الأعلى و 2 في الأسفل (2x2) */
+@media (max-width: 360px) {
+  .glass-switcher__features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 
 .gs-cell{
   display:flex; align-items:center; justify-content:center;

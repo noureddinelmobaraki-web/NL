@@ -250,6 +250,9 @@ class AudioManager {
    * @returns Promise يحلّ عند انتهاء معالجة الـ step في playChain.
    */
   async play(source: AudioSource, opts?: { force?: boolean }): Promise<void> {
+    if (source === 'bg' && typeof document !== 'undefined' && document.documentElement.hasAttribute('data-page-active')) {
+      return;
+    }
     const run = async () => {
       const entry = this.registry.get(source);
       if (!entry) return;
@@ -540,12 +543,14 @@ class AudioManager {
   }
 
   private checkResumeBg() {
+    if (typeof document !== 'undefined' && document.documentElement.hasAttribute('data-page-active')) return;
     if (this.bgSuppressors.size === 0 && !this.bgUserPaused && !this.active) {
       this.resumeBg();
     }
   }
 
   private async resumeBg() {
+    if (typeof document !== 'undefined' && document.documentElement.hasAttribute('data-page-active')) return;
     const bg = this.registry.get('bg');
     if (!bg || this.bgUserPaused || this.bgSuppressors.size > 0 || this.active) return;
     
@@ -665,6 +670,7 @@ class AudioManager {
    * Used to fix lingering suppressors after navigation.
    */
   recoverAudio(): void {
+    if (typeof document !== 'undefined' && document.documentElement.hasAttribute('data-page-active')) return;
     const now = Date.now();
     if (now - this.lastRecoverAt < 400) return; // dedupe rapid double-calls
     this.lastRecoverAt = now;
@@ -749,6 +755,7 @@ class AudioManager {
 
   /** يُستدعى عند visibility/pageshow. إن لزم gesture يسلّحه. */
   private handleVisibilityResume(source: string): void {
+    if (typeof document !== 'undefined' && document.documentElement.hasAttribute('data-page-active')) return;
     amLog.info(`visibility resume trigger: ${source}`);
     const bg = this.registry.get('bg');
     if (!bg) return;
