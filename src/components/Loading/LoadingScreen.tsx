@@ -34,6 +34,12 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
   });
 
   useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('nl-loading-lock');
+    return () => { root.classList.remove('nl-loading-lock'); };
+  }, []);
+
+  useEffect(() => {
     if (isAutomated && !doneRef.current) {
       doneRef.current = true;
       setPhase('hidden');

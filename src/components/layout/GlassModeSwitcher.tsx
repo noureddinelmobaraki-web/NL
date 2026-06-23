@@ -19,7 +19,7 @@ const MODES: { id: Theme; label: string }[] = [
   { id: 'lite',     label: 'Lite'     },
 ];
 
-const SOURCES = ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games', 'movies', 'series'] as const;
+const SOURCES = ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games', 'movies', 'series', 'tv', 'retro'] as const;
 
 const AVOID_SELECTOR =
   '[data-glass-avoid],[aria-label="Close"],[aria-label="إغلاق"],.modal-close-btn,.gallery-close-btn';
@@ -191,11 +191,11 @@ function GlassModeSwitcherInner() {
       audioManager.pause(active);
       return;
     }
-    const src = isGamesOpen ? 'games' : isMoviesOpen ? 'movies' : 'bg';
+    const src = isGamesOpen ? 'games' : isMoviesOpen ? 'movies' : isTvOpen ? 'tv' : isRetroOpen ? 'retro' : 'bg';
     (audioManager.play as any)(src).catch(() => {
       try { audioManager.armUserGestureResume(); } catch {}
     });
-  }, [isGamesOpen, isMoviesOpen]);
+  }, [isGamesOpen, isMoviesOpen, isTvOpen, isRetroOpen]);
 
   if (typeof window === 'undefined') return null;
   // ▶ تمت إزالة: if (isGamesOpen) return null;
@@ -277,13 +277,10 @@ function GlassModeSwitcherInner() {
                   key={m.id}
                   type="button"
                   role="menuitemradio"
-                  aria-checked={!isGamesOpen && !isTvOpen && theme === m.id}
-                  className={`gs-cell ${!isGamesOpen && !isTvOpen && theme === m.id ? 'is-active' : ''}`}
+                  aria-checked={theme === m.id}
+                  className={`gs-cell ${theme === m.id ? 'is-active' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (isGamesOpen) closeGames();
-                    if (isMoviesOpen) closeMovies();
-                    if (isTvOpen) closeTv();
                     setTheme(m.id);
                     setOpen(false);
                   }}

@@ -1,0 +1,7 @@
+/* فلتر خفيف جداً للصفحة حسب الوضع — بلا blur ولا blend على مساحات كبيرة (حفاظاً على الأداء) */
+[data-mode="midnight"] { filter: none; }                 /* الافتراضي: محايد */
+[data-mode="dark"]     { filter: grayscale(0.15) contrast(1.04) brightness(0.96); }
+[data-mode="light"]    { filter: brightness(1.05) saturate(1.03); }
+[data-mode="bit"]      { filter: saturate(1.25) contrast(1.08); }
+[data-mode="lite"]     { filter: saturate(0.9) brightness(1.02); }
+@media (prefers-reduced-motion: reduce) { [data-mode] { filter: none; } }

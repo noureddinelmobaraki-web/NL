@@ -19,6 +19,7 @@ import { CountryGrid } from "./CountryGrid";
 import { ChannelGrid } from "./ChannelGrid";
 import { Country, TvChannel, fetchCountries, fetchCountryChannels } from "./iptvHelper";
 import { useTvSearchIndex } from "./useTvSearchIndex";
+import { useTvMusic } from "./useTvMusic";
 
 interface NlTvPageProps {
   onClose: () => void;
@@ -106,6 +107,8 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
 
   // Media live recording hook
   const { isRecording, errorMsg: recordErr, startRecording, stopRecording } = useTvRecorder();
+
+  useTvMusic(Boolean(selectedChannel && isPlaying && !isVideoError));
 
   // Load countries on page load
   useEffect(() => {

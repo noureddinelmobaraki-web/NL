@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useRef, useEffect, useReducer } from 'react';
 import type { Theme, AudioIntent } from '../utils/userPrefs';
 import { loadPrefs } from '../utils/userPrefs';
 import { ActiveSong } from '../types';
 import { isAutomatedEnv } from '../utils/env';
 import { audioManager } from '../audio/audioManager';
+import { navReducer, initialNavState, type PageId, type CinemaTab } from './navigationController';
 
 interface AppContextType {
   theme: Theme;
@@ -19,6 +20,9 @@ interface AppContextType {
   currentPage: string;
   setCurrentPage: (page: string) => void;
   returnToWelcome: () => void;
+  navigateTo: (page: PageId, cinemaTab?: CinemaTab) => void;
+  endTransition: () => void;
+  isTransitioning: boolean;
   // ── الألعاب ──────────────────────────────────────────────────────
   isGamesOpen: boolean;
   openGames: () => void;
@@ -75,23 +79,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isAutomatedCtx = isAutomatedEnv();
   const [loaded, setLoaded] = useState(isAutomatedCtx);
   const [currentPage, setCurrentPage] = useState('home');
-  const [isGamesOpen, setIsGamesOpen] = useState(false);
+
+  const [nav, dispatch] = useReducer(navReducer, initialNavState);
+
+  const isGamesOpen  = nav.activePage === 'games';
+  const isMoviesOpen = nav.activePage === 'cinema' && nav.cinemaTab === 'movies';
+  const isSeriesOpen = nav.activePage === 'cinema' && nav.cinemaTab === 'series';
+  const isTvOpen     = nav.activePage === 'tv';
+  const isRetroOpen  = nav.activePage === 'retro';
+
   const [isGameActive, setGameActive] = useState(false);
   const gameBackRef = useRef<(() => void) | null>(null);
 
-  const [isMoviesOpen, setIsMoviesOpen] = useState(false);
   const [isMovieActive, setMovieActive] = useState(false);
   const movieBackRef = useRef<(() => void) | null>(null);
 
-  const [isSeriesOpen, setIsSeriesOpen] = useState(false);
   const [isSeriesActive, setSeriesActive] = useState(false);
   const seriesBackRef = useRef<(() => void) | null>(null);
 
-  const [isTvOpen, setIsTvOpen] = useState(false);
   const [isTvActive, setTvActive] = useState(false);
   const tvBackRef = useRef<(() => void) | null>(null);
-
-  const [isRetroOpen, setIsRetroOpen] = useState(false);
 
   const registerGameBack = useCallback((fn: () => void) => {
     gameBackRef.current = fn;
@@ -125,84 +132,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
     tvBackRef.current?.();
   }, []);
 
-  const openGames = useCallback(() => {
-    // إيقاف bg فوراً لمنع تسرّب صوت midnight وغيرها
-    try { audioManager.stop('bg'); } catch {}
-    // طبقة أمان إضافية لمنع الاستئناف التلقائي
-    try { audioManager.suppressBg('games_mode'); } catch {}
-    
-    setIsGamesOpen(true);
+  const prevPageRef = useRef<PageId>('home');
+
+  const navigateTo = useCallback((page: PageId, cinemaTab?: CinemaTab) => {
+    dispatch({ type: 'NAVIGATE', page, cinemaTab });
   }, []);
 
-  const closeGames = useCallback(() => {
-    gameBackRef.current = null;
-    setGameActive(false);
-    try { audioManager.releaseBg('games_mode'); } catch {}
-    setIsGamesOpen(false);
-  }, []);
+  useEffect(() => {
+    const page = nav.activePage;
+    const prev = prevPageRef.current;
+    if (page === prev) return;
 
-  const openMovies = useCallback(() => {
-    try { audioManager.stop('bg'); } catch {}
-    try { audioManager.suppressBg('movies_mode'); } catch {}
-    setIsMoviesOpen(true);
-  }, []);
+    // مغادرة الصفحة السابقة: حرّر الـ suppressor + أوقف قناتها + صفّر مراجع back
+    if (prev === 'games')  { gameBackRef.current = null; setGameActive(false); try { audioManager.releaseBg('games_mode'); } catch {} }
+    if (prev === 'cinema') { movieBackRef.current = null; setMovieActive(false); seriesBackRef.current = null; setSeriesActive(false); try { audioManager.releaseBg('movies_mode'); audioManager.releaseBg('series_mode'); } catch {} }
+    if (prev === 'tv')     { tvBackRef.current = null; setTvActive(false); try { audioManager.releaseBg('tv_mode'); audioManager.stop('tv'); } catch {} }
+    if (prev === 'retro')  { try { audioManager.releaseBg('retro_mode'); audioManager.stop('retro'); } catch {} }
 
-  const closeMovies = useCallback(() => {
-    movieBackRef.current = null;
-    setMovieActive(false);
-    try { audioManager.releaseBg('movies_mode'); } catch {}
-    setIsMoviesOpen(false);
-  }, []);
+    // دخول صفحة جديدة: أوقف موسيقى الثيم (bg) + علّقها
+    if (page !== 'home') {
+      try { audioManager.stop('bg'); } catch {}
+      const reason = page === 'cinema'
+        ? (nav.cinemaTab === 'series' ? 'series_mode' : 'movies_mode')
+        : `${page}_mode`;
+      try { audioManager.suppressBg(reason); } catch {}
+    }
 
-  const openSeries = useCallback(() => {
-    try { audioManager.stop('bg'); } catch {}
-    try { audioManager.suppressBg('series_mode'); } catch {}
-    setIsSeriesOpen(true);
-  }, []);
+    prevPageRef.current = page;
+  }, [nav.activePage, nav.cinemaTab]);
 
-  const closeSeries = useCallback(() => {
-    seriesBackRef.current = null;
-    setSeriesActive(false);
-    try { audioManager.releaseBg('series_mode'); } catch {}
-    setIsSeriesOpen(false);
-  }, []);
+  const endTransition = useCallback(() => dispatch({ type: 'TRANSITION_END' }), []);
 
-  const openTv = useCallback(() => {
-    try { audioManager.stop('bg'); } catch {}
-    try { audioManager.suppressBg('tv_mode'); } catch {}
-    setIsTvOpen(true);
-  }, []);
+  useEffect(() => {
+    if (!nav.transitioning) return;
+    const t = setTimeout(() => dispatch({ type: 'TRANSITION_END' }), 500); // fallback أمان
+    return () => clearTimeout(t);
+  }, [nav.transitioning]);
 
-  const closeTv = useCallback(() => {
-    tvBackRef.current = null;
-    setTvActive(false);
-    try { audioManager.releaseBg('tv_mode'); } catch {}
-    setIsTvOpen(false);
-  }, []);
-
-  const openRetro = useCallback(() => {
-    try { audioManager.stop('bg'); } catch {}
-    try { audioManager.suppressBg('retro_mode'); } catch {}
-    setIsRetroOpen(true);
-  }, []);
-
-  const closeRetro = useCallback(() => {
-    try { audioManager.releaseBg('retro_mode'); } catch {}
-    setIsRetroOpen(false);
-  }, []);
+  const openGames   = useCallback(() => navigateTo('games'), [navigateTo]);
+  const closeGames  = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openMovies  = useCallback(() => navigateTo('cinema', 'movies'), [navigateTo]);
+  const closeMovies = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openSeries  = useCallback(() => navigateTo('cinema', 'series'), [navigateTo]);
+  const closeSeries = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openTv      = useCallback(() => navigateTo('tv'), [navigateTo]);
+  const closeTv     = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openRetro   = useCallback(() => navigateTo('retro'), [navigateTo]);
+  const closeRetro  = useCallback(() => navigateTo('home'), [navigateTo]);
 
   const returnToWelcome = useCallback(() => {
-    gameBackRef.current = null;
-    setGameActive(false);
-    movieBackRef.current = null;
-    setMovieActive(false);
-    seriesBackRef.current = null;
-    setSeriesActive(false);
-    tvBackRef.current = null;
-    setTvActive(false);
-    setIsRetroOpen(false);
+    gameBackRef.current = null;  setGameActive(false);
+    movieBackRef.current = null; setMovieActive(false);
+    seriesBackRef.current = null; setSeriesActive(false);
+    tvBackRef.current = null;    setTvActive(false);
+    dispatch({ type: 'RESET' });
+    prevPageRef.current = 'home';
     try {
-      ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games', 'movies', 'series', 'tv'].forEach(
+      ['bg','song','lens','mebit','video','intro','games','movies','series','tv','retro'].forEach(
         (s) => audioManager.stop(s as any),
       );
     } catch {}
@@ -219,6 +205,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loaded, setLoaded,
         currentPage, setCurrentPage,
         returnToWelcome,
+        navigateTo, endTransition, isTransitioning: nav.transitioning,
         isGamesOpen, openGames, closeGames,
         isGameActive, setGameActive,
         registerGameBack, callGameBack,
@@ -246,3 +233,4 @@ export function useAppContext() {
   }
   return context;
 }
+

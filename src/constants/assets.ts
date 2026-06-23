@@ -53,6 +53,7 @@ export const THEME_BG_MUSIC: Record<string, string> = {
 
 // موسيقى وضع الألعاب (HLS) — تُدار عبر AudioManager بنفس قواعد بقية الأصوات
 export const GAMES_BG_MUSIC = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/games_hls/index.m3u8';
+export const TV_BG_MUSIC = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nl_tv_bg_hls/index.m3u8';
 
 // فيديو خلفية حائط صفحة الألعاب
 export const GAMES_BG_VIDEO = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/gameBG_web.webm';

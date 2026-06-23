@@ -175,4 +175,13 @@ button, [role="button"], nav, .fab-button, .manga-button {
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
 }
+
+/* قفل تمرير صفحة البداية: يمنع الشريط الوهمي الناتج عن محتوى MainApp المخفي خلفها */
+html.nl-loading-lock,
+html.nl-loading-lock body {
+  overflow: hidden !important;
+  height: 100%;
+  overscroll-behavior: none;
 }
+}
+

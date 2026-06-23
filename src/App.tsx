@@ -105,7 +105,7 @@ import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
 function AppInner() {
-  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro } = useAppContext();
+  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, endTransition } = useAppContext();
 
   useEffect(() => {
     applyThemeUtil(theme);
@@ -125,10 +125,11 @@ function AppInner() {
   return (
     <>
       {loaded && <GlassModeSwitcher />}
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" onExitComplete={endTransition}>
         {loaded && isGamesOpen ? (
           <motion.div
             key="games-screen"
+            data-mode={theme}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -144,6 +145,7 @@ function AppInner() {
         ) : loaded && isTvOpen ? (
           <motion.div
             key="tv-screen"
+            data-mode={theme}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -159,6 +161,7 @@ function AppInner() {
         ) : loaded && (isMoviesOpen || isSeriesOpen) ? (
           <motion.div
             key="cinema-screen"
+            data-mode={theme}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -177,6 +180,7 @@ function AppInner() {
         ) : loaded && isRetroOpen ? (
           <motion.div
             key="retro-screen"
+            data-mode={theme}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

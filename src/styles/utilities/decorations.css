@@ -17,15 +17,13 @@
 body::before {
   content: '';
   position: fixed;
-  inset: -100%;
+  inset: 0;
   background-image: var(--grain-url);
+  background-size: 256px 256px;
   opacity: var(--grain-opacity, 0);
   pointer-events: none;
   z-index: var(--z-loading-screen);
-  mix-blend-mode: overlay;
-  animation: sw-noise 0.2s steps(2) infinite;
   transform: translateZ(0);
-  will-change: transform;
   contain: strict;
 }
 
@@ -43,7 +41,7 @@ body.low-perf::before {
 
 /*Theme specific grain details*/
 [data-theme="dark"] body::before {
-  --grain-opacity: 0.18;
+  --grain-opacity: 0.08;
 }
 
 [data-theme="midnight"] body::before {
@@ -58,13 +56,10 @@ body.low-perf::before {
   z-index: var(--z-bg-effects);
   pointer-events: none;
   background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.08) 2px,
-    rgba(0, 0, 0, 0.08) 4px
+    0deg, transparent, transparent 3px,
+    rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 5px
   );
-  mix-blend-mode: multiply;
+  contain: strict;
 }
 
 [data-theme="dark"] .main-vignette {
@@ -180,7 +175,7 @@ body.low-perf::before {
 
 @media (max-width: 767px) {
   [data-theme="dark"] body::before {
-    --grain-opacity: 0.12;
+    --grain-opacity: 0.06;
   }
 }
 
@@ -193,7 +188,7 @@ body.low-perf::before {
 
   /* DARK theme — تقليل animation */
   [data-theme="dark"] body::after { animation: none !important; }
-  [data-theme="dark"] body::before { --grain-opacity: 0.10; }
+  [data-theme="dark"] body::before { --grain-opacity: 0.06; }
 
   /* Scroll to top فوق MobileNavBar */
   .scroll-to-top {

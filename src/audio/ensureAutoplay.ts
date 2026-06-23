@@ -1,6 +1,6 @@
 import { audioManager } from './audioManager';
 
-type Src = 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro' | 'games' | 'movies' | 'series';
+type Src = 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro' | 'games' | 'movies' | 'series' | 'tv' | 'retro';
 
 /**
  * يحاول التشغيل فوراً (ينجح إن كنا داخل نافذة إيماءة المستخدم),

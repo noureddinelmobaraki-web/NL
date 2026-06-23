@@ -58,7 +58,7 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
         hlsRef.current = null;
       }
       if (audioRef.current) {
-        audioManager.stop('bg');
+        audioManager.stop('retro');
         purge(audioRef.current);
         audioRef.current = null;
       }
@@ -70,7 +70,7 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
     audio.loop = true;
     audio.crossOrigin = 'anonymous';
     audio.muted = isAudioMutedRef.current;
-    audioManager.register('bg', audio, 0.7);
+    audioManager.register('retro', audio, 0.7);
 
     const source = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Kid_Cudi_By_Design/Kid_Cudi_By_Design.m3u8';
 
@@ -79,7 +79,7 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
 
     const tryPlay = () => {
       if (isRetroOpen) {
-        audioManager.play('bg').catch((err) => {
+        audioManager.play('retro').catch((err) => {
           console.log('[RetroWorld] Autoplay prevented, waiting user gesture.', err);
         });
       }
@@ -100,7 +100,7 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
       audio.src = source;
     }
 
-    const cleanupAutoplay = ensureAutoplay('bg');
+    const cleanupAutoplay = ensureAutoplay('retro');
     setIsAudioMuted(false);
     // محاولة تشغيل فورية أيضاً كدفعة أولى
     tryPlay();
@@ -116,7 +116,8 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
         hlsRef.current = null;
       }
       cleanupAutoplay();
-      audioManager.stop('bg');
+      audioManager.stop('retro');
+      try { audioManager.unregister('retro'); } catch {}
       purge(audioRef.current);
       audioRef.current = null;
     };
