@@ -29,7 +29,11 @@ body::before {
   contain: strict;
 }
 
-body.low-perf::before,
+body.low-perf::before {
+  background-image: none !important;
+  animation: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   body::before {
     background-image: none !important;
