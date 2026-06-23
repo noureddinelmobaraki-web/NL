@@ -3,15 +3,14 @@ import { test, expect } from '@playwright/test';
 test.describe('Retro world smoke test', () => {
   test.slow();
 
-  test('Retro theme renders the Retro World iframe', async ({ page }) => {
-    // Force the retro theme before first paint via persisted prefs.
-    await page.addInitScript(() => {
-      localStorage.setItem('nl-prefs-v1', JSON.stringify({ theme: 'retro' }));
-    });
-
+  test('Entering the Retro page renders the Retro World iframe', async ({ page }) => {
     await page.goto('./');
 
-    // In the retro theme the app renders RetroWorldPage (there is no #main-content).
+    // ريترو الآن صفحة مستقلة تُفتح من زر شاشة التحميل (وليست theme).
+    const retroBtn = page.getByRole('button', { name: 'Retro', exact: true });
+    await expect(retroBtn).toBeVisible({ timeout: 30000 });
+    await retroBtn.click();
+
     const retroIframe = page.locator('iframe[title="Retro World"]');
     await expect(retroIframe).toBeVisible({ timeout: 30000 });
 

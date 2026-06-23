@@ -63,6 +63,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vite-
 
+      - name: Delete stale github-pages artifacts
+        if: github.ref == 'refs/heads/main'
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: github-pages
+          failOnError: false
+
       - name: Upload Pages Artifact
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
