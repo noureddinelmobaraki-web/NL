@@ -13,6 +13,7 @@ import { FALLBACK_SERIES, FALLBACK_SERIES_GENRES } from "../Series/CuratedFallba
 import { normLang, tmdbLang } from "../../utils/lang";
 import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
 import "../../styles/components/cinema.css";
+import { MovieSourcesModal } from "./MovieSourcesModal";
 
 function NLLogo() {
   return <span className="nl-logo" aria-label="NL" role="img">NL</span>;
@@ -383,6 +384,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [selectedWatchItem, setSelectedWatchItem] = useState<CinemaItem | null>(null);
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -396,11 +398,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedItemId]);
-
-  const openWatch = useCallback((imdbId: string) => {
-    const url = `https://www.playimdb.com/title/${imdbId}/`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }, []);
 
   const rowProps = useMemo(() => ({
     isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t
@@ -1085,7 +1082,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="text-xl sm:text-2xl font-black text-zinc-100 select-text">{detailedItem.title}</h3>
                     <button
-                      onClick={() => openWatch(detailedItem.imdbId || "tt15239678")}
+                      onClick={() => setSelectedWatchItem(detailedItem)}
                       className="py-1.5 px-5 sm:py-2 sm:px-6 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black rounded-md flex items-center gap-1.5 border border-red-500 shadow-lg cursor-pointer transition text-xs sm:text-sm"
                     >
                       <Play size={14} className="fill-current" />
@@ -1160,6 +1157,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           </div>
         )}
       </AnimatePresence>
+
+      <MovieSourcesModal
+        isOpen={selectedWatchItem !== null}
+        onClose={() => setSelectedWatchItem(null)}
+        item={selectedWatchItem}
+      />
     </div>,
     document.body
   );
