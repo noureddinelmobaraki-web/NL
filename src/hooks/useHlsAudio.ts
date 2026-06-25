@@ -4,11 +4,21 @@ import type { ErrorData, Events } from 'hls.js';
 import { getOrCreateHls, getHlsClass } from '../audio/hlsPool';
 
 // ─── Preload exports (unchanged behavior) ─────────────────────────────────
+const MAX_PRELOADED_URLS = 12;
 const preloadedUrls = new Set<string>();
+const preloadedQueue: string[] = [];
 
 async function preloadFirstSegments(m3u8Url: string, targetSeconds = 4): Promise<void> {
   if (preloadedUrls.has(m3u8Url)) return;
+
+  if (preloadedUrls.size >= MAX_PRELOADED_URLS) {
+    const oldest = preloadedQueue.shift();
+    if (oldest) {
+      preloadedUrls.delete(oldest);
+    }
+  }
   preloadedUrls.add(m3u8Url);
+  preloadedQueue.push(m3u8Url);
   try {
     const res = await fetch(m3u8Url, { cache: 'force-cache' });
     if (!res.ok) return;

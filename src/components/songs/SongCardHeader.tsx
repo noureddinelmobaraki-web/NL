@@ -1,4 +1,5 @@
-import { Play, Pause, Share2 as ShareIcon } from 'lucide-react';
+import { useState } from 'react';
+import { Play, Pause, Share2 as ShareIcon, Check } from 'lucide-react';
 import type { Song } from '../../types';
 
 interface SongCardHeaderProps {
@@ -35,6 +36,33 @@ export const SongCardHeader = ({
   onToggleLyrics,
 }: SongCardHeaderProps) => {
   const isTouch = isMobile || isTablet;
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}${window.location.pathname}?song=${song.id}`;
+    
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: song.title,
+          text: `استمع لـ "${song.title}" — NL`,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        console.log('navigator.share failed or aborted, falling back to clipboard copy:', err);
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link: ', err);
+    }
+  };
 
   // FIXED: Lyrics button — visible on ALL themes via solid purple bg + border.
   //   - 44x44px on mobile/tablet (iOS HIG minimum)
@@ -223,43 +251,39 @@ export const SongCardHeader = ({
             </button>
           )}
 
-          {typeof navigator !== 'undefined' && 'share' in navigator && (
-            <button
-              type="button"
-              aria-label="مشاركة الأغنية"
-              onClick={async (e) => {
-                e.stopPropagation();
-                try {
-                  await navigator.share({
-                    title: song.title,
-                    text: `استمع لـ "${song.title}" — NL`,
-                    url: `${window.location.origin}${window.location.pathname}?song=${song.id}`,
-                  });
-                } catch {
-                  // المستخدم أغلق الـshare sheet — تجاهل
-                }
-              }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: resolvedTheme === 'light' ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 255, 255, 0.65)',
-                padding: '8px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '44px',
-                minHeight: '44px',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent',
-                flexShrink: 0,
-              }}
-              className="hover:scale-105 active:scale-95 transition-transform"
-            >
-              <ShareIcon size={18} />
-            </button>
-          )}
+          <button
+            type="button"
+            aria-label="مشاركة الأغنية"
+            onClick={handleShare}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: copied 
+                ? '#10B981'
+                : (resolvedTheme === 'light' ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 255, 255, 0.65)'),
+              padding: '8px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '44px',
+              minHeight: '44px',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              flexShrink: 0,
+              position: 'relative',
+            }}
+            className="hover:scale-105 active:scale-95 transition-transform"
+            title={copied ? 'تم نسخ الرابط!' : 'مشاركة الأغنية'}
+          >
+            {copied ? <Check size={18} className="text-emerald-500" /> : <ShareIcon size={18} />}
+            {copied && (
+              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] px-2 py-1 rounded shadow-md whitespace-nowrap animate-bounce font-sans">
+                تم نسخ الرابط!
+              </span>
+            )}
+          </button>
 
           {!isActiveInBar && (
             <button

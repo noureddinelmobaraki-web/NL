@@ -214,9 +214,13 @@ export function useMySongsPlayback({
 
   // Share URL param parameter routing
   useEffect(() => {
-    const songId = new URLSearchParams(window.location.search).get('s');
+    const params = new URLSearchParams(window.location.search);
+    // نقرأ المعامل القانوني ?song= أولًا، مع دعم ?s= القديم للتوافق الخلفي
+    const songId = params.get('song') ?? params.get('s');
     if (!songId || !songs.length) return;
-    const s = songs.find((x) => x.id === parseInt(songId));
+    const parsedId = parseInt(songId, 10);
+    if (Number.isNaN(parsedId)) return;
+    const s = songs.find((x) => x.id === parsedId);
     if (!s) return;
     const t = setTimeout(() => {
       handlePlayToggle(s);

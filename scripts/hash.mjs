@@ -23,7 +23,7 @@ console.log('Inline script hashes:', hashes.join(' '));
 if (process.argv.includes('--write')) {
   // استبدل كتلة هاشات sha256 الموجودة في script-src بالقائمة الكاملة الجديدة.
   // يطابق هاشاً واحداً أو أكثر متتالياً (مفصولة بمسافات) ويستبدلها كلها مرة واحدة.
-  const cspHashBlock = /(?:'sha255-[A-Za-z0-9+/=]+'\s*|'sha256-[A-Za-z0-9+/=]+'\s*)+/;
+  const cspHashBlock = /(?:'sha256-[A-Za-z0-9+/=]+'\s*)+/;
   const replacement = hashes.map((h) => `'${h}'`).join(' ') + ' ';
   const updated = html.replace(cspHashBlock, replacement);
   if (html !== updated) {

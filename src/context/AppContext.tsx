@@ -65,6 +65,10 @@ interface AppContextType {
   isRetroOpen: boolean;
   openRetro: () => void;
   closeRetro: () => void;
+  // ── ويندوز XP ────────────────────────────────────────────────────
+  isXpOpen: boolean;
+  openXp: () => void;
+  closeXp: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -87,6 +91,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isSeriesOpen = nav.activePage === 'cinema' && nav.cinemaTab === 'series';
   const isTvOpen     = nav.activePage === 'tv';
   const isRetroOpen  = nav.activePage === 'retro';
+  const isXpOpen     = nav.activePage === 'xp';
 
   const [isGameActive, setGameActive] = useState(false);
   const gameBackRef = useRef<(() => void) | null>(null);
@@ -148,6 +153,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (prev === 'cinema') { movieBackRef.current = null; setMovieActive(false); seriesBackRef.current = null; setSeriesActive(false); try { audioManager.releaseBg('movies_mode'); audioManager.releaseBg('series_mode'); } catch {} }
     if (prev === 'tv')     { tvBackRef.current = null; setTvActive(false); try { audioManager.releaseBg('tv_mode'); audioManager.stop('tv'); } catch {} }
     if (prev === 'retro')  { try { audioManager.releaseBg('retro_mode'); audioManager.stop('retro'); } catch {} }
+    if (prev === 'xp')     { try { audioManager.releaseBg('xp_mode'); audioManager.stop('xp'); } catch {} }
 
     // دخول صفحة جديدة: أوقف موسيقى الثيم (bg) + علّقها
     if (page !== 'home') {
@@ -179,6 +185,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeTv     = useCallback(() => navigateTo('home'), [navigateTo]);
   const openRetro   = useCallback(() => navigateTo('retro'), [navigateTo]);
   const closeRetro  = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openXp      = useCallback(() => navigateTo('xp'), [navigateTo]);
+  const closeXp     = useCallback(() => navigateTo('home'), [navigateTo]);
 
   const returnToWelcome = useCallback(() => {
     gameBackRef.current = null;  setGameActive(false);
@@ -188,7 +196,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'RESET' });
     prevPageRef.current = 'home';
     try {
-      ['bg','song','lens','mebit','video','intro','games','movies','series','tv','retro'].forEach(
+      ['bg','song','lens','mebit','video','intro','games','movies','series','tv','retro','xp'].forEach(
         (s) => audioManager.stop(s as any),
       );
     } catch {}
@@ -219,6 +227,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isTvActive, setTvActive,
         registerTvBack, callTvBack,
         isRetroOpen, openRetro, closeRetro,
+        isXpOpen, openXp, closeXp,
       }}
     >
       {children}

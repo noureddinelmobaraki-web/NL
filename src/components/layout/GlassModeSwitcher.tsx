@@ -4,7 +4,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick, Monitor } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { audioManager } from '../../audio/audioManager';
@@ -81,6 +81,7 @@ function GlassModeSwitcherInner() {
     openTv, closeTv, isTvOpen,
     isTvActive, callTvBack,
     isRetroOpen, openRetro, closeRetro,
+    isXpOpen, openXp, closeXp,
   } = useAppContext();
   const reduceMotion  = useReducedMotion();
   const overlayActive = useOverlayActive();
@@ -358,6 +359,25 @@ function GlassModeSwitcherInner() {
                   }}
                 >
                   <Joystick size={16} />
+                </button>
+
+                {/* زر ويندوز XP: يفتح أو يغلق الصفحة */}
+                <button
+                  type="button"
+                  className={`gs-cell gs-icon${isXpOpen ? ' is-active' : ''}`}
+                  role="menuitem"
+                  aria-label={isXpOpen ? 'Close Windows XP' : 'Windows XP'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isGamesOpen) closeGames();
+                    if (isMoviesOpen) closeMovies();
+                    if (isTvOpen) closeTv();
+                    if (isRetroOpen) closeRetro();
+                    if (isXpOpen) closeXp();
+                    else { openXp(); setOpen(false); }
+                  }}
+                >
+                  <Monitor size={16} />
                 </button>
               </div>
 

@@ -58,7 +58,16 @@ export function GamesPage({ onClose }: GamesPageProps) {
     let cancelled = false;
     fetch(`${import.meta.env.BASE_URL}data/games.json`)
       .then((r) => r.json())
-      .then((d) => { if (!cancelled) setGames(Array.isArray(d?.games) ? d.games : []); })
+      .then((d) => {
+        if (cancelled) return;
+        const parsedGames = Array.isArray(d?.games)
+          ? d.games.filter((g: any) => g && g.id && g.title && g.dir && g.swf && g.poster)
+          : [];
+        if (!parsedGames.length) {
+          console.warn('[games] بيانات غير صالحة أو فارغة');
+        }
+        setGames(parsedGames);
+      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);

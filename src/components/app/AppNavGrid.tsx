@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Camera, Music2, Pencil, Aperture, Gamepad2, Clapperboard, Tv } from 'lucide-react';
+import { Camera, Music2, Pencil, Aperture, Gamepad2, Clapperboard, Tv, Monitor } from 'lucide-react';
 import { NavButton } from '../NavButton';
 import { audioManager } from '../../audio/audioManager';
 import { itemVariants } from './appConstants';
@@ -19,7 +19,7 @@ export function AppNavGrid({
   onOpenLens,
 }: AppNavGridProps) {
   const { t, i18n } = useTranslation();
-  const { openGames, openMovies, openTv } = useAppContext();
+  const { openGames, openMovies, openTv, openXp } = useAppContext();
 
   const moviesSeriesLabel = i18n.exists('nav.movies_and_series') ? t('nav.movies_and_series') : 
     (i18n.exists('nav.movies') && i18n.exists('nav.series') 
@@ -110,6 +110,21 @@ export function AppNavGrid({
         }}
         onPointerDown={() => {
           import('../NlTv/NlTvPage').catch(() => {});
+        }}
+        theme={resolvedTheme} 
+      />
+      <NavButton 
+        icon={Monitor} 
+        label={t('xp.nav').toUpperCase()} 
+        onClick={(e) => {
+          setGenieOriginFromElement(e.currentTarget);
+          openXp();
+        }} 
+        onMouseEnter={() => {
+          import('../WindowsXp/WindowsXpPage').catch(() => {});
+        }}
+        onPointerDown={() => {
+          import('../WindowsXp/WindowsXpPage').catch(() => {});
         }}
         theme={resolvedTheme} 
       />

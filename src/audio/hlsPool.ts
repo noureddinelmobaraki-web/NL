@@ -17,9 +17,10 @@ const HLS_CONFIG: Partial<HlsConfig> = {
   liveMaxLatencyDurationCount: 10,
 };
 
-// ─── Persistent Instance Pool ─────────────────────────────────────────────
-// Stores Hls instances indexed by m3u8 URL.
+// ─── Persistent Instance Pool (LRU implementation) ──────────────────────
+const MAX_POOL_SIZE = 4;
 const pool = new Map<string, Hls>();
+const lruOrder: string[] = [];
 
 let HlsModule: typeof import('hls.js') | null = null;
 
@@ -32,16 +33,42 @@ export async function getHlsClass() {
 
 /**
  * Returns the existing Hls instance for this URL, or creates a new one.
- * The new instance immediately starts fetching the manifest and, without needing an audio element.
+ * The new instance immediately starts fetching the manifest, without needing an audio element.
+ * Enforces a strict LRU limit on the pool size to prevent memory leaks.
  */
 export async function getOrCreateHls(url: string): Promise<Hls> {
   const existing = pool.get(url);
-  if (existing) return existing;
+  if (existing) {
+    // Move to end of LRU order (most recently used)
+    const idx = lruOrder.indexOf(url);
+    if (idx !== -1) {
+      lruOrder.splice(idx, 1);
+    }
+    lruOrder.push(url);
+    return existing;
+  }
+
+  // Enforce pool size limit by destroying and purging the oldest instance
+  if (pool.size >= MAX_POOL_SIZE) {
+    const oldestUrl = lruOrder.shift();
+    if (oldestUrl) {
+      const oldestHls = pool.get(oldestUrl);
+      if (oldestHls) {
+        try {
+          oldestHls.destroy();
+        } catch (e) {
+          console.error('[hlsPool] Failed to destroy oldest HLS instance:', e);
+        }
+        pool.delete(oldestUrl);
+      }
+    }
+  }
 
   const HlsConstructor = await getHlsClass();
   const hls = new HlsConstructor(HLS_CONFIG);
   hls.loadSource(url);
   pool.set(url, hls);
+  lruOrder.push(url);
   return hls;
 }
 
@@ -52,8 +79,14 @@ export async function getOrCreateHls(url: string): Promise<Hls> {
 export function destroyHls(url: string): void {
   const hls = pool.get(url);
   if (hls) {
-    hls.destroy();
+    try {
+      hls.destroy();
+    } catch {}
     pool.delete(url);
+    const idx = lruOrder.indexOf(url);
+    if (idx !== -1) {
+      lruOrder.splice(idx, 1);
+    }
   }
 }
 
@@ -62,8 +95,13 @@ export function destroyHls(url: string): void {
  * Call on app unmount / page unload if needed.
  */
 export function destroyAllHls(): void {
-  pool.forEach(hls => hls.destroy());
+  pool.forEach(hls => {
+    try {
+      hls.destroy();
+    } catch {}
+  });
   pool.clear();
+  lruOrder.length = 0;
 }
 
 /**

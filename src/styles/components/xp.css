@@ -1,0 +1,59 @@
+.xp-page-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600; /* فوق كل شيء مثل ريترو */
+  background: #000;
+}
+.xp-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.xp-exit-btn {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 2147483601;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+.xp-exit-btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+.xp-desktop-notice {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483601;
+  max-width: min(92vw, 460px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.18);
+  animation: xpNoticeIn 0.35s ease, xpNoticeOut 0.5s ease 4.5s forwards;
+  pointer-events: none;
+}
+@keyframes xpNoticeIn  { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes xpNoticeOut { to { opacity: 0; transform: translate(-50%, -12px); } }
+
+body.xp-active {
+  overflow: hidden;
+  overscroll-behavior: none;
+}

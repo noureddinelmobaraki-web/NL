@@ -71,6 +71,10 @@ const NlTvPage = lazyWithRetry(
   () => import('./components/NlTv/NlTvPage').then(m => ({ default: m.default })),
   'NlTvPage',
 );
+const WindowsXpPage = lazyWithRetry(
+  () => import('./components/WindowsXp/WindowsXpPage').then(m => ({ default: m.WindowsXpPage })),
+  'WindowsXpPage',
+);
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
 import { useParallax } from "./hooks/useParallax";
@@ -105,14 +109,14 @@ import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
 function AppInner() {
-  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, endTransition } = useAppContext();
+  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, endTransition } = useAppContext();
 
   useEffect(() => {
     applyThemeUtil(theme);
     savePrefs({ theme });
   }, [theme]);
 
-  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen;
+  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen || isXpOpen;
 
   useEffect(() => {
     if (isAnyPageActive) {
@@ -193,6 +197,22 @@ function AppInner() {
               </Suspense>
             </SectionErrorBoundary>
           </motion.div>
+        ) : loaded && isXpOpen ? (
+          <motion.div
+            key="xp-screen"
+            data-mode={theme}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="fixed inset-0 w-full h-full z-[8500]"
+          >
+            <SectionErrorBoundary sectionName="xp">
+              <Suspense fallback={<PageLoader pageType="retro" />}>
+                <WindowsXpPage onClose={closeXp} />
+              </Suspense>
+            </SectionErrorBoundary>
+          </motion.div>
         ) : (
           <motion.div
             key="main-app-screen"
@@ -220,7 +240,7 @@ function MainApp() {
     ambientColor, setAmbientColor,
     audioIntent, setAudioIntent,
     theme, setTheme,
-    openGames, openMovies, openTv, openRetro
+    openGames, openMovies, openTv, openRetro, openXp
   } = useAppContext();
 
   const navigateSection = useNavigateSection();
@@ -459,6 +479,12 @@ function MainApp() {
             if (musicConsent) setAudioIntent('user-playing');
             setLoaded(true);
             openRetro();
+          }}
+          onEnterXp={(chosenTheme, musicConsent) => {
+            setTheme(chosenTheme);
+            if (musicConsent) setAudioIntent('user-playing');
+            setLoaded(true);
+            openXp();
           }}
         />
       )}

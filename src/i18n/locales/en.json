@@ -114,5 +114,10 @@
     "nextChannel": "Next",
     "cancel": "Cancel",
     "close": "Close"
+  },
+  "xp": {
+    "nav": "Windows XP",
+    "exit": "Close simulator and return",
+    "desktopNotice": "💻 Best experienced on desktop — for nostalgia vibes only ✨"
   }
 }

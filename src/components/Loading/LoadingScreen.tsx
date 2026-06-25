@@ -8,7 +8,7 @@ import { ThemePicker } from './ThemePicker';
 import { LOADING_TIMINGS } from '../../constants/loading';
 import { isAutomatedEnv } from '../../utils/env';
 import type { Theme } from '../../utils/userPrefs';
-import { Gamepad2, Film, Tv, Joystick } from 'lucide-react';
+import { Gamepad2, Film, Tv, Joystick, Monitor } from 'lucide-react';
 
 const POSTER_IMAGE_URL = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp';
 
@@ -18,9 +18,10 @@ export interface LoadingScreenProps {
   onEnterCinema?: (chosenTheme: Theme, musicConsent: boolean) => void;
   onEnterTv?: (chosenTheme: Theme, musicConsent: boolean) => void;
   onEnterRetro?: (chosenTheme: Theme, musicConsent: boolean) => void;
+  onEnterXp?: (chosenTheme: Theme, musicConsent: boolean) => void;
 }
 
-export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnterTv, onEnterRetro }: LoadingScreenProps) => {
+export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnterTv, onEnterRetro, onEnterXp }: LoadingScreenProps) => {
   const isAutomated = isAutomatedEnv();
   const { phase, setPhase, useStatic, triggerVideoFailed } = useLoadingPhase();
   const doneRef = useRef(false);
@@ -118,6 +119,17 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
     }, LOADING_TIMINGS.zoomOut);
   }, [musicConsent, onEnterRetro, setPhase, introAudio]);
 
+  const finishToXp = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setPhase('zooming');
+    if (musicConsent) introAudio.fadeOut(800);
+    setTimeout(() => {
+      setPhase('hidden');
+      onEnterXp?.('midnight', musicConsent);
+    }, LOADING_TIMINGS.zoomOut);
+  }, [musicConsent, onEnterXp, setPhase, introAudio]);
+
   if (phase === 'hidden') return null;
 
   const zoomStyle = phase === 'zooming'
@@ -178,10 +190,10 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
           transform: scale(0.95);
         }
 
-        /* 1. الشاشات الكبيرة (حاسوب ولوحي) -> 4 أزرار بجانب بعضها */
+        /* 1. الشاشات الكبيرة (حاسوب ولوحي) -> 5 أزرار بجانب بعضها */
         @media (min-width: 581px) {
           .loading-buttons-container {
-            grid-template-columns: repeat(4, auto);
+            grid-template-columns: repeat(5, auto);
           }
         }
 
@@ -291,6 +303,16 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
           >
             <Joystick size={16} aria-hidden="true" />
             <span>Retro</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={finishToXp}
+            aria-label="Windows XP"
+            className="loading-btn"
+          >
+            <Monitor size={16} aria-hidden="true" />
+            <span>Windows XP</span>
           </button>
         </div>
         <div style={{

@@ -114,5 +114,10 @@
     "nextChannel": "Suivante",
     "cancel": "Annuler",
     "close": "Fermer"
+  },
+  "xp": {
+    "nav": "Windows XP",
+    "exit": "Fermer le simulateur",
+    "desktopNotice": "💻 Meilleure expérience sur ordinateur — pour la nostalgie seulement ✨"
   }
 }
