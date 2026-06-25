@@ -33,7 +33,7 @@
 }
 .xp-desktop-notice {
   position: fixed;
-  top: 14px;
+  top: 6px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 2147483601;

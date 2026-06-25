@@ -232,6 +232,30 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
             height: 14px !important;
           }
         }
+
+        .loading-instructions {
+          position: absolute;
+          bottom: clamp(14px, 2vh, 24px);
+          left: 0;
+          right: 0;
+          color: rgba(255, 255, 255, 0.55);
+          font-size: clamp(0.62rem, 1.4vw, 0.74rem);
+          letter-spacing: 0.25em;
+          text-transform: uppercase;
+          font-family: var(--font-mono, monospace);
+          text-align: center;
+          padding: 0 16px;
+          animation: nl-fade-up 0.8s 0.6s ease-out both;
+          z-index: 10;
+          pointer-events: none;
+        }
+
+        @media (max-width: 580px) {
+          .loading-instructions {
+            bottom: auto;
+            top: 76px;
+          }
+        }
       `}</style>
       <div
         style={{
@@ -315,15 +339,7 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
             <span>Windows XP</span>
           </button>
         </div>
-        <div style={{
-          position: 'absolute', bottom: 'clamp(14px,2vh,24px)',
-          color: 'rgba(255,255,255,0.55)',
-          fontSize: 'clamp(0.62rem,1.4vw,0.74rem)',
-          letterSpacing: '0.25em', textTransform: 'uppercase',
-          fontFamily: 'var(--font-mono, monospace)',
-          textAlign: 'center', padding: '0 16px',
-          animation: 'nl-fade-up 0.8s 0.6s ease-out both',
-        }}>
+        <div className="loading-instructions">
           Pick a theme to enter · Tap the speaker to enable sound
         </div>
       </div>
