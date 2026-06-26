@@ -75,6 +75,10 @@ const WindowsXpPage = lazyWithRetry(
   () => import('./components/WindowsXp/WindowsXpPage').then(m => ({ default: m.WindowsXpPage })),
   'WindowsXpPage',
 );
+const MusicPage = lazyWithRetry(
+  () => import('./features/music/MusicPage').then(m => ({ default: m.default })),
+  'MusicPage',
+);
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
 import { useParallax } from "./hooks/useParallax";
@@ -109,14 +113,14 @@ import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
 function AppInner() {
-  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, endTransition } = useAppContext();
+  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, endTransition } = useAppContext();
 
   useEffect(() => {
     applyThemeUtil(theme);
     savePrefs({ theme });
   }, [theme]);
 
-  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen || isXpOpen;
+  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen || isXpOpen || isMusicOpen;
 
   useEffect(() => {
     if (isAnyPageActive) {
@@ -213,6 +217,22 @@ function AppInner() {
               </Suspense>
             </SectionErrorBoundary>
           </motion.div>
+        ) : loaded && isMusicOpen ? (
+          <motion.div
+            key="music-screen"
+            data-mode={theme}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="fixed inset-0 w-full h-full z-[8500]"
+          >
+            <SectionErrorBoundary sectionName="music">
+              <Suspense fallback={<PageLoader pageType="retro" />}>
+                <MusicPage />
+              </Suspense>
+            </SectionErrorBoundary>
+          </motion.div>
         ) : (
           <motion.div
             key="main-app-screen"
@@ -240,7 +260,7 @@ function MainApp() {
     ambientColor, setAmbientColor,
     audioIntent, setAudioIntent,
     theme, setTheme,
-    openGames, openMovies, openTv, openRetro, openXp
+    openGames, openMovies, openTv, openRetro, openXp, openMusic
   } = useAppContext();
 
   const navigateSection = useNavigateSection();
@@ -485,6 +505,12 @@ function MainApp() {
             if (musicConsent) setAudioIntent('user-playing');
             setLoaded(true);
             openXp();
+          }}
+          onEnterMusic={(chosenTheme, musicConsent) => {
+            setTheme(chosenTheme);
+            if (musicConsent) setAudioIntent('user-playing');
+            setLoaded(true);
+            openMusic();
           }}
         />
       )}

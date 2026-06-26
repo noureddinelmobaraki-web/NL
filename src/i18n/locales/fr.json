@@ -9,6 +9,7 @@
     "movies": "Films",
     "series": "Séries",
     "nltv": "NL TV",
+    "music": "Musique",
     "play": "Musique",
     "pause": "Pause",
     "language": "Français"
@@ -119,5 +120,23 @@
     "nav": "Windows XP",
     "exit": "Fermer le simulateur",
     "desktopNotice": "💻 Meilleure expérience sur ordinateur — pour la nostalgie seulement ✨"
+  },
+  "music": {
+    "title": "NL Musique",
+    "subtitle": "Expérience audio web autonome et professionnelle avec EQ et visuels",
+    "search": "Rechercher des morceaux...",
+    "library": "Bibliothèque",
+    "playlists": "Playlists",
+    "queue": "File d'attente",
+    "recent": "Récemment lus",
+    "mostPlayed": "Plus écoutés",
+    "lyrics": "Paroles",
+    "nowPlaying": "Lecture en cours",
+    "shuffle": "Aléatoire",
+    "repeat": "Répéter",
+    "sleepTimer": "Mise en veille",
+    "equalizer": "Égaliseur (EQ)",
+    "resume": "Reprendre",
+    "close": "Fermer"
   }
 }

@@ -1,0 +1,355 @@
+/* music.module.css */
+.nlp-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 64px;
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+}
+.nlp-row:last-child {
+  border-bottom: none;
+}
+
+.nlp-cover {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; position: relative;
+  font: 700 15px/1 -apple-system, system-ui, sans-serif; letter-spacing: .5px;
+  color: #fff;
+  background-image: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/NL%20MUSIC%20PLAYER%20BG%20520Px.jpg');
+  background-size: cover; background-position: center;
+  border: 1px solid rgba(255,255,255,0.25);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.6);
+  flex-shrink: 0; overflow: hidden;
+}
+/* طبقة تعتيم خفيفة لإبراز الحرفين */
+.nlp-cover::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.45));
+}
+.nlp-cover > * { position: relative; z-index: 1; }
+
+.nlp-cover-hero {
+  background-image: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/NL%20MUSIC%20PLAYER%20BG%201080px.jpg');
+  background-size: cover; background-position: center;
+}
+
+.nlp-vol { position: relative; flex: 1; height: 18px; display: flex; align-items: center; }
+.nlp-vol::before { content: ""; position: absolute; left: 0; right: 0; height: 7px; border-radius: 999px;
+  background: rgba(255,255,255,0.20);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.4);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.5); }
+.nlp-vol__fill { position: absolute; left: 0; height: 7px; border-radius: 999px;
+  background: linear-gradient(90deg,#FF7A1A,#34E89E); box-shadow: 0 0 8px rgba(52,232,158,.5); }
+.nlp-vol__bubble { position: absolute; top: 50%; width: 15px; height: 15px; border-radius: 50%;
+  transform: translate(-50%,-50%);
+  background: radial-gradient(circle at 30% 25%, #fff, rgba(255,255,255,0.4) 45%, rgba(255,255,255,0.05) 70%);
+  border: 1px solid rgba(255,255,255,0.7);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.9), 0 0 8px rgba(255,122,26,.5);
+  pointer-events: none; transition: left .08s linear; }
+.nlp-vol__input { position: absolute; left: 0; right: 0; width: 100%; height: 18px; margin: 0; opacity: 0; cursor: pointer; }
+
+.nlp-shuffle-bubble {
+  position: relative; width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; color: #fff; overflow: hidden;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,0.55), rgba(255,255,255,0.05) 55%),
+    linear-gradient(135deg, #FF7A1A 0%, #FFB36B 45%, #34E89E 100%);
+  border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 8px 24px rgba(255,122,26,0.35), inset 0 2px 6px rgba(255,255,255,0.6), inset 0 -4px 10px rgba(0,0,0,0.15);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+.nlp-shuffle-bubble__sheen {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.85), transparent 45%);
+  mix-blend-mode: screen; opacity: .8;
+  animation: nlp-bubble-glow 4s ease-in-out infinite;
+}
+@keyframes nlp-bubble-glow { 0%,100% { opacity: .5; transform: scale(1);} 50% { opacity: .95; transform: scale(1.05);} }
+@media (prefers-reduced-motion: reduce) { .nlp-shuffle-bubble__sheen { animation: none; } }
+
+.nlp-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.nlp-no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+.nlp-mini {
+  box-shadow: 0 -8px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.72);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid rgba(255,255,255,0.6);
+  cursor: pointer;
+}
+
+.nlp-mini__progress {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px; background: rgba(0,0,0,0.10);
+}
+
+.nlp-mini__progress > i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, #FF7A1A, #34E89E);
+  box-shadow: 0 0 6px rgba(255,122,26,.6);
+}
+
+.nlp-seek { position: relative; padding: 6px 0; }
+.nlp-seek__track {
+  position: relative; height: 8px; border-radius: 999px;
+  background: rgba(255,255,255,0.18);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.35);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.4);
+}
+.nlp-seek__fill {
+  position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px;
+  background: linear-gradient(90deg, #FF7A1A, #FFB36B 40%, #34E89E);
+  box-shadow: 0 0 10px rgba(255,122,26,.45);
+}
+.nlp-seek__bubble {
+  position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.95), rgba(255,255,255,0.35) 45%, rgba(255,255,255,0.05) 70%);
+  border: 1px solid rgba(255,255,255,0.7);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.9), 0 0 8px rgba(52,232,158,.5);
+  pointer-events: none; transition: left .08s linear;
+}
+.nlp-seek__input {
+  position: absolute; left: 0; right: 0; top: 0; height: 20px; width: 100%;
+  margin: 0; opacity: 0; cursor: pointer;
+}
+
+.nlp-mobile-root {
+  position: fixed; inset: 0; width: 100vw; height: 100dvh;
+  overflow: hidden; box-sizing: border-box;
+}
+
+.nlp-mobile-list {
+  height: 100%; overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; padding-bottom: 96px;
+}
+
+.nlp-mobile-root * {
+  min-width: 0;
+}
+
+.aeroWindow {
+  border-radius: 8px;
+  border: 0.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 6px rgba(77, 147, 232, 0.5), 0 8px 40px rgba(0, 0, 0, 0.6);
+  background: rgba(14, 22, 46, 0.55);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .aeroWindow {
+    transform: translate(-3%, 4%);
+  }
+}
+
+.titleBar {
+  background: linear-gradient(90deg, #0a246a 0%, #2166c8 55%, #4d93e8 100%);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 0 8px;
+  height: 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.titleBar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), transparent);
+  pointer-events: none;
+}
+
+.titleBarTitle {
+  font-family: Tahoma, sans-serif;
+  color: white;
+  text-shadow: 1px 1px 0px black;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+}
+
+.titleBarButtons {
+  display: flex;
+  gap: 2px;
+  z-index: 1;
+}
+
+.xpButton {
+  width: 21px;
+  height: 21px;
+  background: linear-gradient(to bottom, #f0f0f0, #c0c0c0);
+  border: 1px solid #707070;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: inset 1px 1px 0px rgba(255,255,255,0.8);
+  color: black;
+  font-size: 12px;
+  font-family: Arial, sans-serif;
+  line-height: 1;
+  padding: 0;
+}
+
+.xpButton:hover {
+  background: linear-gradient(to bottom, #fff, #d0d0d0);
+}
+
+.xpButton:active {
+  background: linear-gradient(to bottom, #a0a0a0, #c0c0c0);
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.3);
+}
+
+.xpButtonClose:hover {
+  background: linear-gradient(to bottom, #f8b090, #e05030);
+  color: white;
+  border-color: #802010;
+}
+
+.xpButtonClose:active {
+  background: linear-gradient(to bottom, #c04020, #a03010);
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4);
+}
+
+.panelDarkGlass {
+  background: rgba(10, 15, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.trackRow {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+
+.trackRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.trackRowActive {
+  background: linear-gradient(90deg, rgba(33, 102, 200, 0.8), rgba(77, 147, 232, 0.8));
+  border-right: 3px solid #8ec1ff;
+  color: white;
+}
+
+.scrollArea {
+  scrollbar-width: thin;
+  scrollbar-color: #FF7A1A rgba(255,255,255,0.2);
+}
+
+.scrollArea::-webkit-scrollbar {
+  width: 12px;
+}
+.scrollArea::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.2);
+}
+.scrollArea::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #FFB36B, #FF7A1A);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 6px;
+}
+.scrollArea::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #34E89E, #6FF5B8);
+}
+
+.reflection {
+  transform: scaleY(-1);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 40%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 40%);
+  opacity: 0.6;
+}
+
+.controlBar {
+  background: rgba(8, 12, 24, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.xpIconButton {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(to bottom, #e5e5e5, #b3b3b3);
+  border: 1px solid #666;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.7), 0 1px 2px rgba(0,0,0,0.3);
+  transition: all 0.1s;
+  cursor: pointer;
+  color: #333;
+}
+
+.xpIconButton:hover {
+  background: linear-gradient(to bottom, #f0f0f0, #c0c0c0);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.9), 0 0 4px rgba(77, 147, 232, 0.6);
+}
+
+.xpIconButton:active {
+  background: linear-gradient(to bottom, #a6a6a6, #cccccc);
+  box-shadow: inset 1px 1px 4px rgba(0,0,0,0.4);
+}
+
+.sliderThumb {
+  background: linear-gradient(to bottom, #f0f0f0, #b0b0b0);
+  border: 1px solid #555;
+  border-radius: 50%;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.8), 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.tooltipXp {
+  background: #ffffe1;
+  border: 1px solid #000;
+  color: #000;
+  font-family: Tahoma, sans-serif;
+  font-size: 11px;
+  padding: 2px 4px;
+  box-shadow: 2px 2px 3px rgba(0,0,0,0.2);
+}
+
+.ledCounter {
+  font-family: monospace;
+  background: #000;
+  color: #0f0;
+  border: 1px inset #333;
+  padding: 2px 4px;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.lyricsCurrent {
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+}
+.lyricsNeighbor {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+}
+.lyricsFar {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+}
+
+.pixelIcon {
+  image-rendering: pixelated;
+}

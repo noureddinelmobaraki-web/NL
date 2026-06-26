@@ -4,7 +4,7 @@
   position:fixed;
   top:max(16px, env(safe-area-inset-top));
   right:max(16px, env(safe-area-inset-right));
-  z-index:2147483600;            /* فوق كل الطبقات والمعارض */
+  z-index:8500;            /* تحت الـ mini-player 8600 وفوق المعارض 8000 */
   pointer-events:none;            /* التفاعل على السطح الداخلي فقط */
 }
 
@@ -33,7 +33,26 @@
 
 /* ── الحالات الثلاث ── */
 .glass-switcher[data-state="dot"]{ width:18px; height:18px; border-radius:50%; }
-.glass-switcher[data-state="orb"]{ width:58px; height:58px; border-radius:50%; }
+.glass-switcher[data-state="orb"]{
+  width:40px; height:40px; border-radius:50%;
+  /* أشفّ وأزجّ: خلفية أخفت + تشبّع أعلى */
+  background:linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+  border:1px solid rgba(255,255,255,0.28);
+  -webkit-backdrop-filter:blur(16px) saturate(190%);
+  backdrop-filter:blur(16px) saturate(190%);
+  box-shadow:
+    0 6px 22px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.65),
+    inset 0 -6px 14px rgba(255,255,255,0.05),
+    0 0 var(--gs-glow,12px) rgba(139,148,255,0.50),
+    0 0 calc(var(--gs-glow,12px) * 2) rgba(255,140,66,0.30);
+  /* تنفّس بسيط (تمدد/تقلص بطيء ~±4%) + توهج */
+  animation:gs-breathe 3.6s ease-in-out infinite, gs-orb-pulse 5.5s ease-in-out infinite;
+}
+@keyframes gs-orb-pulse{
+  0%,100%{ transform:scale(1); }
+  50%{ transform:scale(1.06); }
+}
 .glass-switcher[data-state="open"]{
   width:min(86vw, 360px); border-radius:26px; padding:10px; cursor:default;
 }
@@ -58,18 +77,43 @@
   100%{ transform:translate3d(-4%,6%,0) rotate(360deg) scale(1.08); }
 }
 
+/* ── طبقة رخام زجاجي داخلية (جديد) ── */
+.glass-switcher__marble{
+  position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none;
+  background:
+    radial-gradient(60% 60% at 32% 28%, rgba(255,170,90,0.55), transparent 60%),
+    radial-gradient(55% 55% at 70% 38%, rgba(120,160,255,0.55), transparent 62%),
+    radial-gradient(60% 60% at 55% 75%, rgba(80,230,190,0.50), transparent 65%),
+    conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0.05), rgba(255,255,255,0.18), rgba(255,255,255,0.05));
+  filter:blur(2px) saturate(170%);
+  mix-blend-mode:screen;
+  opacity:.85;
+  animation:gs-marble-spin 9s linear infinite, gs-orb-pulse 5.5s ease-in-out infinite;
+}
+@keyframes gs-marble-spin{
+  to{ transform:rotate(360deg); }
+}
+.glass-switcher[data-state="open"] .glass-switcher__marble{ opacity:0; }
+
 /* ── لمعة علوية زجاجية ── */
 .glass-switcher__sheen{
   position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none;
-  background:linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0) 45%);
-  opacity:.7;
+  background:
+    radial-gradient(35% 25% at 30% 22%, rgba(255,255,255,0.85), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0) 50%);
+  opacity:.8;
+  animation:gs-glint 6s ease-in-out infinite;
+}
+@keyframes gs-glint{
+  0%,100%{ transform:translate3d(0,0,0); opacity:.7; }
+  50%{ transform:translate3d(8%,6%,0); opacity:.95; }
 }
 
 @keyframes gs-breathe{
-  0%,100%{ --gs-glow:14px; }
-  50%{ --gs-glow:30px; }
+  0%,100%{ --gs-glow:10px; }
+  50%{ --gs-glow:22px; }
 }
-@property --gs-glow{ syntax:"<length>"; inherits:false; initial-value:18px; }
+@property --gs-glow{ syntax:"<length>"; inherits:false; initial-value:12px; }
 
 .glass-switcher[data-state="dot"]{
   animation:gs-breathe 2.4s ease-in-out infinite;
@@ -157,7 +201,10 @@ body.retro-active .glass-switcher-anchor{ z-index:2147483600 !important; }
 @media (prefers-reduced-motion: reduce){
   .glass-switcher,
   .glass-switcher[data-state="dot"],
-  .glass-switcher__smoke{ animation:none; }
+  .glass-switcher[data-state="orb"],
+  .glass-switcher__smoke,
+  .glass-switcher__marble,
+  .glass-switcher__sheen{ animation:none; }
 }
 
 /* ===== وضع السينما: زجاجي أصفر + أيقونة فيلم (كل الخصائص محفوظة) ===== */
@@ -177,7 +224,7 @@ body.retro-active .glass-switcher-anchor{ z-index:2147483600 !important; }
     radial-gradient(50% 50% at 50% 75%, rgba(255,225,120,0.50), transparent 70%);
 }
 /* تصغير الفقاعة في وضع السينما لتبدو كأيقونة */
-.glass-switcher.is-cinema[data-state="orb"]{ width:50px; height:50px; }
+.glass-switcher.is-cinema[data-state="orb"]{ width:35px; height:35px; }
 /* الأيقونة تتوسّط وتظهر في orb/dot فقط (حالة open تبقى شبكة الأزرار كاملة) */
 .glass-switcher__cine-icon{
   position:absolute; inset:0; margin:auto;

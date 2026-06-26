@@ -9,6 +9,7 @@
     "movies": "Movies",
     "series": "Series",
     "nltv": "NL TV",
+    "music": "Music",
     "play": "Music",
     "pause": "Pause",
     "language": "English"
@@ -119,5 +120,23 @@
     "nav": "Windows XP",
     "exit": "Close simulator and return",
     "desktopNotice": "💻 Best experienced on desktop — for nostalgia vibes only ✨"
+  },
+  "music": {
+    "title": "NL Music",
+    "subtitle": "Professional standalone web audio experience with EQ and visuals",
+    "search": "Search songs...",
+    "library": "Library",
+    "playlists": "Playlists",
+    "queue": "Queue",
+    "recent": "Recently Played",
+    "mostPlayed": "Most Played",
+    "lyrics": "Lyrics",
+    "nowPlaying": "Now Playing",
+    "shuffle": "Shuffle",
+    "repeat": "Repeat",
+    "sleepTimer": "Sleep Timer",
+    "equalizer": "Equalizer",
+    "resume": "Resume",
+    "close": "Close"
   }
 }

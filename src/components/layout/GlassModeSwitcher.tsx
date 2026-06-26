@@ -4,7 +4,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick, Monitor } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick, Monitor, AudioLines } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { audioManager } from '../../audio/audioManager';
@@ -82,6 +82,7 @@ function GlassModeSwitcherInner() {
     isTvActive, callTvBack,
     isRetroOpen, openRetro, closeRetro,
     isXpOpen, openXp, closeXp,
+    isMusicOpen, openMusic, closeMusic,
   } = useAppContext();
   const reduceMotion  = useReducedMotion();
   const overlayActive = useOverlayActive();
@@ -255,6 +256,7 @@ function GlassModeSwitcherInner() {
         aria-label="Mode switcher"
       >
         <span className="glass-switcher__smoke" aria-hidden="true" />
+        <span className="glass-switcher__marble" aria-hidden="true" />
         <span className="glass-switcher__sheen" aria-hidden="true" />
 
         {isCinema && state !== 'open' && (
@@ -378,6 +380,26 @@ function GlassModeSwitcherInner() {
                   }}
                 >
                   <Monitor size={16} />
+                </button>
+
+                {/* زر صفحة الموسيقى NL Music */}
+                <button
+                  type="button"
+                  className={`gs-cell gs-icon${isMusicOpen ? ' is-active' : ''}`}
+                  role="menuitem"
+                  aria-label={isMusicOpen ? 'Close Music' : 'Music'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isGamesOpen) closeGames();
+                    if (isMoviesOpen) closeMovies();
+                    if (isTvOpen) closeTv();
+                    if (isRetroOpen) closeRetro();
+                    if (isXpOpen) closeXp();
+                    if (isMusicOpen) closeMusic();
+                    else { openMusic(); setOpen(false); }
+                  }}
+                >
+                  <AudioLines size={16} />
                 </button>
               </div>
 

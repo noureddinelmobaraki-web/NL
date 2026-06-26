@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useDeviceType } from "../hooks/useDeviceType";
-import { Home, Music2, Camera, Aperture, Pause, Play, Gamepad2, Film, Monitor } from 'lucide-react';
+import { Home, Music2, Camera, Aperture, Pause, Play, Gamepad2, Film, Monitor, AudioLines } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from "react-i18next";
 import { setGenieOriginFromElement } from "../transitions/genieOrigin";
@@ -23,7 +23,7 @@ export const MobileNavBar = ({
 }: MobileNavBarProps) => {
   const { isMobile, isTablet } = useDeviceType();
   const { t, i18n } = useTranslation();
-  const { openGames, openMovies, openXp } = useAppContext();
+  const { openGames, openMovies, openXp, openMusic } = useAppContext();
   const longPressTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (!isMobile && !isTablet) return null;
@@ -60,6 +60,7 @@ export const MobileNavBar = ({
       isMovies: true
     },
     { id: 'xp',           Icon: Monitor,   label: t('xp.nav'), isXp: true },
+    { id: 'music',        Icon: AudioLines,label: t('nav.music'), isMusic: true },
     {
       id: 'music-toggle',
       Icon: MusicIcon,
@@ -104,6 +105,7 @@ export const MobileNavBar = ({
               else if (tab.isGames) { openGames(); }
               else if (tab.isMovies) { openMovies(); }
               else if (tab.isXp) { openXp(); }
+              else if (tab.isMusic) { openMusic(); }
               else { onNavigate(tab.id); }
             }}
             aria-current={isActive ? 'page' : undefined}

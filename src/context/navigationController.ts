@@ -1,4 +1,4 @@
-export type PageId = 'home' | 'games' | 'cinema' | 'tv' | 'retro' | 'xp';
+export type PageId = 'home' | 'games' | 'cinema' | 'tv' | 'retro' | 'xp' | 'music';
 export type CinemaTab = 'movies' | 'series';
 
 export interface NavState {

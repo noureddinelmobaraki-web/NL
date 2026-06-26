@@ -1,0 +1,1162 @@
+[
+  {
+    "id": 1,
+    "file": "song_001.m4a",
+    "title": "Mi Amore (V2)",
+    "artist": "7liwa",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_001.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_001.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 2,
+    "file": "song_002.m4a",
+    "title": "Fataat Al Khair",
+    "artist": "Abbu Alli",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_002.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_002.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 3,
+    "file": "song_003.m4a",
+    "title": "U.Z.I",
+    "artist": "A.L.A",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_003.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_003.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 4,
+    "file": "song_004.m4a",
+    "title": "A Horse with No Name",
+    "artist": "America",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_004.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_004.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 5,
+    "file": "song_005.m4a",
+    "title": "Rhyme Serve Me",
+    "artist": "Art-Smoke",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_005.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_005.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 6,
+    "file": "song_006.m4a",
+    "title": "Blessings (Extended Version)",
+    "artist": "Big Sean",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_006.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_006.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 7,
+    "file": "song_007.m4a",
+    "title": "Duvet",
+    "artist": "bôa",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_007.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_007.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 8,
+    "file": "song_008.m4a",
+    "title": "Rak chayaa bel khlayaa",
+    "artist": "Cheb Bilal",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_008.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_008.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 9,
+    "file": "song_009.m4a",
+    "title": "Bullet and a Target",
+    "artist": "Citizen Cope",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_009.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_009.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 10,
+    "file": "song_010.m4a",
+    "title": "Back Up (feat. Big Sean)",
+    "artist": "Dej Loaf",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_010.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_010.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 11,
+    "file": "song_011.m4a",
+    "title": "Back To Back",
+    "artist": "Drake",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_011.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_011.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 12,
+    "file": "song_012.m4a",
+    "title": "Pop Style",
+    "artist": "Drake",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_012.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_012.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 13,
+    "file": "song_013.m4a",
+    "title": "Trust Nobody",
+    "artist": "Hippie Sabotage",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_013.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_013.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 14,
+    "file": "song_014.m4a",
+    "title": "Vienen A Verme (Theme from El Chapo)",
+    "artist": "iLe",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_014.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_014.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 15,
+    "file": "song_015.m4a",
+    "title": "The Last Kingdom Blood Will Prevail",
+    "artist": "John Lunn",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_015.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_015.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 16,
+    "file": "song_016.m4a",
+    "title": "All Time Low",
+    "artist": "Jon Bellion",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_016.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_016.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 17,
+    "file": "song_017.m4a",
+    "title": "L'morphiniya 12",
+    "artist": "L'morphine",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_017.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_017.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 18,
+    "file": "song_018.m4a",
+    "title": "Aniki",
+    "artist": "Lquinze",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_018.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_018.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 19,
+    "file": "song_019.m4a",
+    "title": "Hashrab Hashish",
+    "artist": "Luka Salam",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_019.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_019.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 20,
+    "file": "song_020.m4a",
+    "title": "غصن رمان",
+    "artist": "maryam shehab",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_020.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_020.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 21,
+    "file": "song_021.m4a",
+    "title": "24",
+    "artist": "Money Man",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_021.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_021.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 22,
+    "file": "song_022.m4a",
+    "title": "Eva (feat. Kira7)",
+    "artist": "NAB FAKE",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_022.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_022.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 23,
+    "file": "song_023.m4a",
+    "title": "Too Late",
+    "artist": "nixy",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_023.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_023.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 24,
+    "file": "song_024.m4a",
+    "title": "Man O To",
+    "artist": "Nu",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_024.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_024.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 25,
+    "file": "song_025.m4a",
+    "title": "Dizeres",
+    "artist": "Orgânico",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_025.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_025.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 26,
+    "file": "song_026.m4a",
+    "title": "Hal 2",
+    "artist": "Oum, M-Carlos",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_026.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_026.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 27,
+    "file": "song_027.m4a",
+    "title": "Peter, Paul And Mary Early in the Morning 2004 Remaster",
+    "artist": "",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_027.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_027.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 28,
+    "file": "song_028.m4a",
+    "title": "Show Must Go On",
+    "artist": "Rilès",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_028.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_028.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 29,
+    "file": "song_029.m4a",
+    "title": "Smooth Operator",
+    "artist": "Sade",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_029.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_029.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 30,
+    "file": "song_030.m4a",
+    "title": "Selena Gomez & The Scene Love You Like A Love Song",
+    "artist": "",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_030.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_030.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 31,
+    "file": "song_031.m4a",
+    "title": "ميل على بلدي",
+    "artist": "Shalby Younis",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_031.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_031.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 32,
+    "file": "song_032.m4a",
+    "title": "Bullet From A Gun",
+    "artist": "Skepta",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_032.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_032.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 33,
+    "file": "song_033.m4a",
+    "title": "Dark Red",
+    "artist": "Steve Lacy",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_033.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_033.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 34,
+    "file": "song_034.m4a",
+    "title": "No Mediocre (feat. Iggy Azalea)",
+    "artist": "T.I.",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_034.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_034.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 35,
+    "file": "song_035.m4a",
+    "title": "L'ITALIANO",
+    "artist": "Toto Cutugno",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_035.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_035.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 36,
+    "file": "song_036.m4a",
+    "title": "دايس",
+    "artist": "طارق العربي طرقان",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_036.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_036.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 37,
+    "file": "song_037.m4a",
+    "title": "هزتني",
+    "artist": "محمد الوهيبي",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_037.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_037.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 38,
+    "file": "song_038.m4a",
+    "title": "Thank You",
+    "artist": "Dido",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_038.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_038.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 39,
+    "file": "song_039.m4a",
+    "title": "'Bout It",
+    "artist": "JMSN",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_039.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_039.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 40,
+    "file": "song_040.m4a",
+    "title": "Fade Away",
+    "artist": "Logic",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_040.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_040.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 41,
+    "file": "song_041.m4a",
+    "title": "N.Y. State Of Mind (Explicit Album Version)",
+    "artist": "Nas",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_041.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_041.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 42,
+    "file": "song_042.m4a",
+    "title": "Unwritten",
+    "artist": "Natasha Bedingfield",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_042.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_042.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 43,
+    "file": "song_043.m4a",
+    "title": "500 Miles (2004 Remaster)",
+    "artist": "Peter, Paul And Mary",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_043.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_043.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 44,
+    "file": "song_044.m4a",
+    "title": "Quatrehuit l'Mkhokha II La suite feat l'Morphine",
+    "artist": "",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_044.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_044.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 45,
+    "file": "song_045.m4a",
+    "title": "Won't Forget You (Edit)",
+    "artist": "Shouse",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_045.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_045.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 46,
+    "file": "song_046.m4a",
+    "title": "Maybe Tomorrow",
+    "artist": "Stereophonics",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_046.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_046.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 47,
+    "file": "song_047.m4a",
+    "title": "Selfish",
+    "artist": "TWENTY88",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_047.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_047.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 48,
+    "file": "song_048.m4a",
+    "title": "Thuggish Ruggish Bone",
+    "artist": "Bone Thugs-N-Harmony",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_048.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_048.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 49,
+    "file": "song_049.m4a",
+    "title": "Bonfire",
+    "artist": "Childish Gambino",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_049.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_049.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 50,
+    "file": "song_050.m4a",
+    "title": "10 Bands",
+    "artist": "Drake",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_050.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_050.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 51,
+    "file": "song_051.m4a",
+    "title": "Only Time",
+    "artist": "Enya",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_051.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_051.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 52,
+    "file": "song_052.m4a",
+    "title": "Ready or Not",
+    "artist": "Fugees",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_052.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_052.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 53,
+    "file": "song_053.m4a",
+    "title": "Where Ya At (feat. Drake)",
+    "artist": "Future",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_053.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_053.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 54,
+    "file": "song_054.m4a",
+    "title": "All Mine",
+    "artist": "Kanye West",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_054.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_054.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 55,
+    "file": "song_055.m4a",
+    "title": "Couteau Suisse",
+    "artist": "L'morphine",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_055.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_055.m4a",
+    "lrcFile": "Couteau Suisse.sbv",
+    "hasLrc": true
+  },
+  {
+    "id": 56,
+    "file": "song_056.m4a",
+    "title": "Breathe Me",
+    "artist": "Sia",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_056.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_056.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 57,
+    "file": "song_057.m4a",
+    "title": "Byeb’a Nas",
+    "artist": "Abeer Nehme",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_057.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_057.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 58,
+    "file": "song_058.m4a",
+    "title": "Let The Drummer Kick (Album Version)",
+    "artist": "Citizen Cope",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_058.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_058.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 59,
+    "file": "song_059.m4a",
+    "title": "Snake Eater",
+    "artist": "Cynthia Harrell",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_059.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_059.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 60,
+    "file": "song_060.m4a",
+    "title": "Cleanin' Out My Closet",
+    "artist": "Eminem",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_060.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_060.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 61,
+    "file": "song_061.m4a",
+    "title": "My Immortal",
+    "artist": "Evanescence",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_061.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_061.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 62,
+    "file": "song_062.m4a",
+    "title": "Rai Machi Punk",
+    "artist": "ISSAM",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_062.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_062.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 63,
+    "file": "song_063.m4a",
+    "title": "By Design",
+    "artist": "Kid Cudi",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_063.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_063.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 64,
+    "file": "song_064.m4a",
+    "title": "Gang Related",
+    "artist": "Logic",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_064.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_064.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 65,
+    "file": "song_065.m4a",
+    "title": "See You Again (feat. Kali Uchis)",
+    "artist": "Tyler, The Creator",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_065.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_065.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 66,
+    "file": "song_066.m4a",
+    "title": "Future Swag",
+    "artist": "Young Thug",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_066.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_066.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 67,
+    "file": "song_067.m4a",
+    "title": "The Tide Is High (Remastered 2001)",
+    "artist": "Blondie",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_067.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_067.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 68,
+    "file": "song_068.m4a",
+    "title": "Gotta Have It",
+    "artist": "JAY-Z",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_068.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_068.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 69,
+    "file": "song_069.m4a",
+    "title": "No Mistakes",
+    "artist": "Kanye West",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_069.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_069.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 70,
+    "file": "song_070.m4a",
+    "title": "Favor for a Favor (feat. Scarface)",
+    "artist": "Nas",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_070.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_070.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 71,
+    "file": "song_071.m4a",
+    "title": "Galbi 3achakli fiha sif",
+    "artist": "Cheb Akil",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_071.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_071.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 72,
+    "file": "song_072.m4a",
+    "title": "Eurythmics Sweet Dreams Are Made of This Remastered",
+    "artist": "",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_072.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_072.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 73,
+    "file": "song_073.m4a",
+    "title": "fukumean",
+    "artist": "Gunna",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_073.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_073.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 74,
+    "file": "song_074.m4a",
+    "title": "Fire Squad",
+    "artist": "J. Cole",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_074.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_074.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 75,
+    "file": "song_075.m4a",
+    "title": "Maybe IDK",
+    "artist": "Jon Bellion",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_075.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_075.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 76,
+    "file": "song_076.m4a",
+    "title": "L'exorciste",
+    "artist": "L'morphine",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_076.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_076.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 77,
+    "file": "song_077.m4a",
+    "title": "Bounce",
+    "artist": "Logic",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_077.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_077.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 78,
+    "file": "song_078.m4a",
+    "title": "El-Kaoui",
+    "artist": "Nabyla Maan",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_078.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_078.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 79,
+    "file": "song_079.m4a",
+    "title": "Freed From Desire (prod. Molella, Phil Jay)",
+    "artist": "Gala",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_079.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_079.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 80,
+    "file": "song_080.m4a",
+    "title": "St. Tropez",
+    "artist": "J. Cole",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_080.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_080.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 81,
+    "file": "song_081.m4a",
+    "title": "Violent Crimes",
+    "artist": "Kanye West",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_081.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_081.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 82,
+    "file": "song_082.m4a",
+    "title": "Alright",
+    "artist": "Kendrick Lamar",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_082.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_082.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 83,
+    "file": "song_083.m4a",
+    "title": "Skit",
+    "artist": "L'morphine",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_083.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_083.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 84,
+    "file": "song_084.m4a",
+    "title": "Nsak",
+    "artist": "ONZY",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_084.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_084.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 85,
+    "file": "song_085.m4a",
+    "title": "Big Amount",
+    "artist": "2 Chainz",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_085.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_085.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 86,
+    "file": "song_086.m4a",
+    "title": "Massive",
+    "artist": "Drake",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_086.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_086.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 87,
+    "file": "song_087.m4a",
+    "title": "G.O.M.D",
+    "artist": "J. Cole",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_087.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_087.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 88,
+    "file": "song_088.m4a",
+    "title": "I Am The Greatest",
+    "artist": "Logic",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_088.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_088.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 89,
+    "file": "song_089.m4a",
+    "title": "Heart To Heart",
+    "artist": "Mac DeMarco",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_089.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_089.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 90,
+    "file": "song_090.m4a",
+    "title": "Nothing Else Matters (Remastered 2021)",
+    "artist": "Metallica",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_090.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_090.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 91,
+    "file": "song_091.m4a",
+    "title": "Purnamadah",
+    "artist": "Shantala",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_091.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_091.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 92,
+    "file": "song_092.m4a",
+    "title": "Tech N9ne feat Kendrick Lamar, ¡Mayday!, Kendall Morgan Fragile",
+    "artist": "",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_092.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_092.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 93,
+    "file": "song_093.m4a",
+    "title": "Halftime",
+    "artist": "Young Thug",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_093.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_093.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 94,
+    "file": "song_094.m4a",
+    "title": "No Role Modelz",
+    "artist": "J. Cole",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_094.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_094.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 95,
+    "file": "song_095.m4a",
+    "title": "Take What You Want",
+    "artist": "Post Malone",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_095.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_095.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 96,
+    "file": "song_096.m4a",
+    "title": "Lord Willin'",
+    "artist": "Logic",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_096.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_096.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 97,
+    "file": "song_097.m4a",
+    "title": "Already Home",
+    "artist": "JAY-Z",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_097.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_097.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 98,
+    "file": "song_098.m4a",
+    "title": "The Glory",
+    "artist": "Kanye West",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_098.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_098.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 99,
+    "file": "song_099.m4a",
+    "title": "Ceux qui rêvent",
+    "artist": "Pomme",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_099.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_099.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 100,
+    "file": "song_100.m4a",
+    "title": "Outro",
+    "artist": "Big Sean",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_100.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_100.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 101,
+    "file": "song_101.m4a",
+    "title": "6 Man",
+    "artist": "Drake",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_101.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_101.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 102,
+    "file": "song_102.m4a",
+    "title": "Boadicea (2009 Remaster)",
+    "artist": "Enya",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_102.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_102.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 103,
+    "file": "song_103.m4a",
+    "title": "I Will Survive",
+    "artist": "Gloria Gaynor",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_103.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_103.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 104,
+    "file": "song_104.m4a",
+    "title": "Ain't That Some Shit (Interlude)",
+    "artist": "J. Cole",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_104.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_104.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 105,
+    "file": "song_105.m4a",
+    "title": "Guillotine",
+    "artist": "Jon Bellion, Travis Mendes",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_105.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_105.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 106,
+    "file": "song_106.m4a",
+    "title": "Trap Niggas",
+    "artist": "Future",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_106.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_106.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 107,
+    "file": "song_107.m4a",
+    "title": "Captcha",
+    "artist": "L'morphine",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_107.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_107.m4a",
+    "lrcFile": "CAPTCHA.lrc",
+    "hasLrc": true
+  },
+  {
+    "id": 108,
+    "file": "song_108.m4a",
+    "title": "Botola",
+    "artist": "Stormy",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_108.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_108.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 109,
+    "file": "song_109.m4a",
+    "title": "Bre Petrunko",
+    "artist": "Baklava",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_109.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_109.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 110,
+    "file": "song_110.m4a",
+    "title": "What You Know Bout Love",
+    "artist": "Pop Smoke",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_110.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_110.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 111,
+    "file": "song_111.m4a",
+    "title": "Switch Up",
+    "artist": "Big Sean, Common",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_111.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_111.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 112,
+    "file": "song_112.m4a",
+    "title": "مولاى انى ببابك",
+    "artist": "El Sheikh Al Naqshabandy",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_112.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_112.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 113,
+    "file": "song_113.m4a",
+    "title": "Fly Me To The Moon (In Other Words)",
+    "artist": "Julie London",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_113.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_113.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 114,
+    "file": "song_114.m4a",
+    "title": "Saint Pablo",
+    "artist": "Kanye West",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_114.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_114.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 115,
+    "file": "song_115.m4a",
+    "title": "True",
+    "artist": "Akira Yamaoka",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_115.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_115.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  },
+  {
+    "id": 116,
+    "file": "song_116.m4a",
+    "title": "Shahdaroba",
+    "artist": "Roy Orbison",
+    "url": "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_116.m4a",
+    "urlJsdelivr": "https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/xp/media/nl-fv-songs/song_116.m4a",
+    "lrcFile": null,
+    "hasLrc": false
+  }
+]

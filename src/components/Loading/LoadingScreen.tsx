@@ -8,7 +8,7 @@ import { ThemePicker } from './ThemePicker';
 import { LOADING_TIMINGS } from '../../constants/loading';
 import { isAutomatedEnv } from '../../utils/env';
 import type { Theme } from '../../utils/userPrefs';
-import { Gamepad2, Film, Tv, Joystick, Monitor } from 'lucide-react';
+import { Gamepad2, Film, Tv, Joystick, Monitor, AudioLines } from 'lucide-react';
 
 const POSTER_IMAGE_URL = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp';
 
@@ -19,9 +19,10 @@ export interface LoadingScreenProps {
   onEnterTv?: (chosenTheme: Theme, musicConsent: boolean) => void;
   onEnterRetro?: (chosenTheme: Theme, musicConsent: boolean) => void;
   onEnterXp?: (chosenTheme: Theme, musicConsent: boolean) => void;
+  onEnterMusic?: (chosenTheme: Theme, musicConsent: boolean) => void;
 }
 
-export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnterTv, onEnterRetro, onEnterXp }: LoadingScreenProps) => {
+export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnterTv, onEnterRetro, onEnterXp, onEnterMusic }: LoadingScreenProps) => {
   const isAutomated = isAutomatedEnv();
   const { phase, setPhase, useStatic, triggerVideoFailed } = useLoadingPhase();
   const doneRef = useRef(false);
@@ -130,6 +131,17 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
     }, LOADING_TIMINGS.zoomOut);
   }, [musicConsent, onEnterXp, setPhase, introAudio]);
 
+  const finishToMusic = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setPhase('zooming');
+    if (musicConsent) introAudio.fadeOut(800);
+    setTimeout(() => {
+      setPhase('hidden');
+      onEnterMusic?.('midnight', musicConsent);
+    }, LOADING_TIMINGS.zoomOut);
+  }, [musicConsent, onEnterMusic, setPhase, introAudio]);
+
   if (phase === 'hidden') return null;
 
   const zoomStyle = phase === 'zooming'
@@ -190,24 +202,18 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
           transform: scale(0.95);
         }
 
-        /* 1. الشاشات الكبيرة (حاسوب ولوحي) -> 5 أزرار بجانب بعضها */
+        /* 1. الشاشات الكبيرة (حاسوب ولوحي) -> 6 أزرار بجانب بعضها */
         @media (min-width: 581px) {
           .loading-buttons-container {
-            grid-template-columns: repeat(5, auto);
+            grid-template-columns: repeat(6, auto);
           }
         }
 
-        /* 2. الشاشات المتوسطة والصغيرة (من 401px إلى 580px) -> تترتب 3 أزرار بجانب بعض والرابع يلتف ليكون بالأسفل ممركزاً */
+        /* 2. الشاشات المتوسطة والصغيرة (من 401px إلى 580px) -> تترتب 3 أزرار بجانب بعض */
         @media (max-width: 580px) and (min-width: 401px) {
           .loading-buttons-container {
             grid-template-columns: repeat(3, 1fr);
             max-width: 460px;
-          }
-          .loading-buttons-container > button:last-child {
-            grid-column: span 3;
-            justify-self: center;
-            width: auto;
-            min-width: 120px;
           }
           .loading-btn {
             font-size: 0.8rem;
@@ -215,7 +221,7 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
           }
         }
 
-        /* 3. الهواتف الصغيرة جداً (أقل من 400px) -> تترتب 2 فوق و 2 تحت مع تصغير الحجم */
+        /* 3. الهواتف الصغيرة جداً (أقل من 400px) -> تترتب 2 بجانب بعض */
         @media (max-width: 400px) {
           .loading-buttons-container {
             grid-template-columns: repeat(2, 1fr);
@@ -337,6 +343,16 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
           >
             <Monitor size={16} aria-hidden="true" />
             <span>Windows XP</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={finishToMusic}
+            aria-label="NL Music"
+            className="loading-btn"
+          >
+            <AudioLines size={16} aria-hidden="true" />
+            <span>NL Music</span>
           </button>
         </div>
         <div className="loading-instructions">

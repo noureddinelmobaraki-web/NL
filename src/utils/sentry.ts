@@ -4,6 +4,10 @@ const isProd = import.meta.env.PROD === true;
 const dsn = import.meta.env.VITE_SENTRY_DSN;
 
 export function initSentry(): void {
+  // Do not initialize Sentry in iframe previews (e.g. AI Studio)
+  const isIframe = window !== window.top;
+  if (isIframe) return;
+
   if (isProd && dsn) {
     Sentry.init({
       dsn,
@@ -16,7 +20,8 @@ export function initSentry(): void {
 }
 
 export function captureError(error: unknown, context?: Record<string, unknown>): void {
-  if (isProd && dsn) {
+  const isIframe = window !== window.top;
+  if (isProd && dsn && !isIframe) {
     Sentry.captureException(error, {
       extra: context,
     });
