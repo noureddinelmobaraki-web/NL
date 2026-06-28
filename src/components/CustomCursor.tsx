@@ -136,6 +136,7 @@ export const CustomCursor = () => {
 
     return () => {
       document.body.style.cursor = '';
+      window.removeEventListener('resize', handleResize);
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseover', onMouseOver);
       document.removeEventListener('mouseout', onMouseOut);

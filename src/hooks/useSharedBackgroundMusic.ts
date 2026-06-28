@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioManager } from '../audio/audioManager';
 import { ensureAutoplay } from '../audio/ensureAutoplay';
-import Hls from 'hls.js';
 
 type MusicKey = 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro' | 'games' | 'movies' | 'series' | 'tv' | 'retro' | 'xp';
 
@@ -15,7 +14,7 @@ export function useSharedBackgroundMusic(isActive: boolean, options: SharedMusic
   const { key, url, volume = 0.6 } = options;
   const readyRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const hlsRef = useRef<Hls | null>(null);
+  const hlsRef = useRef<any | null>(null);
   const [isMuted, setIsMuted] = useState(false);
 
   // Keep a ref of isActive to avoid re-triggering audio initialization on state changes
@@ -36,6 +35,9 @@ export function useSharedBackgroundMusic(isActive: boolean, options: SharedMusic
 
   // Audio setup and HLS binding - runs only when stream source (key/url) changes
   useEffect(() => {
+    let cancelled = false;
+    let eventsClass: any = null;
+
     const purge = (a: HTMLAudioElement | null) => {
       if (!a) return;
       try { a.pause(); } catch {}
@@ -63,29 +65,39 @@ export function useSharedBackgroundMusic(isActive: boolean, options: SharedMusic
 
     audio.addEventListener('canplay', tryPlay);
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({ startPosition: -1 });
-      hlsRef.current = hls;
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        console.error(`[SharedBackgroundMusic:${key}] HLS error:`, data.type, data.details);
-      });
-      hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
-      hls.loadSource(url);
-      hls.attachMedia(audio);
-    } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-      audio.src = url;
-    }
+    (async () => {
+      const { default: Hls } = await import('hls.js');
+      if (cancelled) return;
+      eventsClass = Hls.Events;
+      if (Hls.isSupported()) {
+        const hls = new Hls({ startPosition: -1 });
+        hlsRef.current = hls;
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          console.error(`[SharedBackgroundMusic:${key}] HLS error:`, data.type, data.details);
+        });
+        hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
+        hls.loadSource(url);
+        hls.attachMedia(audio);
+      } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+        audio.src = url;
+      }
+    })();
 
     const cleanupAutoplay = ensureAutoplay(key);
     readyRef.current = true;
     tryPlay();
 
     return () => {
+      cancelled = true;
       audio.removeEventListener('error', onAudioError);
       audio.removeEventListener('canplay', tryPlay);
       if (hlsRef.current) {
         try {
-          hlsRef.current.off(Hls.Events.MANIFEST_PARSED, tryPlay);
+          if (eventsClass) {
+            hlsRef.current.off(eventsClass.MANIFEST_PARSED, tryPlay);
+          } else {
+            hlsRef.current.off('hlsManifestParsed', tryPlay);
+          }
           hlsRef.current.destroy();
         } catch {}
         hlsRef.current = null;

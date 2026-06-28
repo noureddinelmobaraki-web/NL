@@ -10,6 +10,11 @@ export default defineConfig(({ mode }) => {
     // and the service worker scope (/NL/). CI still overrides via VITE_BASE_PATH.
     base: process.env.VITE_BASE_PATH ?? '/NL/',
     assetsInclude: ['**/*.xml'],
+    esbuild: {
+      pure: mode === 'analyze' || process.env.NODE_ENV !== 'production'
+        ? []
+        : ['console.log', 'console.info', 'console.debug'],
+    },
     plugins: [
       react({
         babel: { plugins: [['babel-plugin-react-compiler', { target: '19' }]] }
