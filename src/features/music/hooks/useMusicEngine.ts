@@ -1,26 +1,10 @@
 import { useEffect } from 'react';
 import { useMusicStore } from '../store/musicStore';
 import { audioEngine } from '../engine/audioEngine';
-import { loadFvTracks } from '../data/loadSongs';
+import { fetchLyrics, prefetchLyrics } from '../data/lyrics';
 
 export function useMusicEngine() {
-  const status = useMusicStore((s) => s.status);
   const actions = useMusicStore((s) => s.actions);
-
-  // 1. Initial songs fetch from nl-music-fv.json
-  useEffect(() => {
-    if (status === 'idle') {
-      actions.setStatus('loading');
-      loadFvTracks()
-        .then((loadedTracks) => {
-          actions.setTracks(loadedTracks);
-          actions.setStatus('ready');
-        })
-        .catch((err) => {
-          actions.setStatus('error', err instanceof Error ? err.message : String(err));
-        });
-    }
-  }, [status, actions]);
 
   // 2. Synchronize store preferences down to the engine on initial load
   useEffect(() => {
@@ -66,6 +50,16 @@ export function useMusicEngine() {
 
     audioEngine.onTrackChange = (track) => {
       actions.setCurrentTrackId(track.id);
+      // Layer 1: fetch THIS track's lyrics immediately (high priority) so they're
+      // ready the moment the user opens the Lyrics panel.
+      fetchLyrics(track);
+      // Warm up the next track in the queue for an instant skip.
+      const s = useMusicStore.getState();
+      const activeQueue = s.shuffle ? s.shuffleQueue : s.queue;
+      const i = activeQueue.indexOf(track.id);
+      const nextId = i >= 0 ? activeQueue[i + 1] : undefined;
+      const nextTrack = nextId ? s.tracks.find((t) => t.id === nextId) : undefined;
+      if (nextTrack) prefetchLyrics(nextTrack);
     };
 
     return () => {

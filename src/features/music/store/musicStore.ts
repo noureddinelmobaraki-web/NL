@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { Track } from '../engine/types';
 import { audioEngine } from '../engine/audioEngine';
 import { EQ_PRESETS } from '../engine/eqPresets';
+import { getFvTracks, getFvInitialOrder } from '../data/loadSongs';
 
 let sleepTimerInterval: any = null;
 
@@ -15,6 +16,7 @@ export interface Playlist {
 
 export interface MusicState {
   tracks: Track[];
+  displayOrder: string[]; // Random presentation order of all track IDs
   status: 'idle' | 'loading' | 'ready' | 'error';
   error?: string;
   currentId?: string;
@@ -106,8 +108,9 @@ const DEFAULT_EQ = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 export const useMusicStore = create<MusicState>()(
   persist(
     (set, get) => ({
-      tracks: [],
-      status: 'idle',
+      tracks: getFvTracks(),
+      displayOrder: getFvInitialOrder(),
+      status: 'ready',
       isPlaying: false,
       currentTime: 0,
       duration: 0,
@@ -141,7 +144,15 @@ export const useMusicStore = create<MusicState>()(
       sleepTimer: null,
 
       actions: {
-        setTracks: (tracks) => set({ tracks }),
+        setTracks: (tracks) => set((s) => {
+          const ids = tracks.map(t => t.id);
+          const order = [...ids];
+          for (let i = order.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [order[i], order[j]] = [order[j], order[i]];
+          }
+          return { ...s, tracks, displayOrder: order, status: 'ready' };
+        }),
         setStatus: (status, error) => set({ status, error }),
 
         playTrack: async (id, startAutoplay = true) => {

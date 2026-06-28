@@ -13,6 +13,7 @@
  */
 import { memo, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
+import './lyricsReveal.css';
 import { Song, LyricLine } from '../../types';
 import { SONG_BG_FALLBACK } from '../../constants/assets';
 import { useDeviceType } from '../../hooks/useDeviceType';
@@ -126,6 +127,11 @@ export const SongCard = memo(({
       id={`song-card-${song.id}`}
       layout
       layoutId={`song-${song.id}`}
+      transition={
+        (isMobile || isTablet)
+          ? undefined
+          : { layout: { duration: 0.30, ease: [0.22, 1, 0.36, 1] } }
+      }
       onClick={onPlay}
       onKeyDown={(e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -151,7 +157,7 @@ export const SongCard = memo(({
           ((isMobile || isTablet) && isLyricsOpen)
             ? 'overflow-visible'
             : 'overflow-hidden'
-        } flex flex-col transition-all cursor-pointer
+        } flex flex-col ${(isMobile || isTablet) ? 'transition-all' : ''} cursor-pointer
         ${
           isMobile || isTablet
             ? `song-card-mobile justify-center ${isActive ? 'song-card-mobile-active' : ''}`
@@ -177,7 +183,7 @@ export const SongCard = memo(({
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         gridColumn: isActive && !isMobile ? 'span 2' : 'span 1',
-        transitionDuration: resolvedTheme === 'dark' ? '500ms' : '700ms',
+        ...(!(isMobile || isTablet) ? {} : { transitionDuration: resolvedTheme === 'dark' ? '500ms' : '700ms' }),
         ...((isMobile || isTablet)
           ? {
               minHeight: '80px',
@@ -208,6 +214,8 @@ export const SongCard = memo(({
             animation: isActive && !isMobile
               ? 'slow-zoom 8s ease-in-out infinite alternate'
               : 'none',
+            willChange: 'transform',
+            transform: 'translateZ(0)',
           }}
         />
       )}
@@ -245,7 +253,7 @@ export const SongCard = memo(({
         />
 
         {isActive && !isMobile && !isTablet && (
-          <div className="mt-2 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="mt-2 space-y-3 nl-lyrics-reveal">
             <SongCardControls
               isMobile={isMobile}
               resolvedTheme={resolvedTheme}

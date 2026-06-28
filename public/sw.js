@@ -1,4 +1,4 @@
-const VERSION = 'nogit-mq8dap79';
+const VERSION = 'nogit-mqwxhu8b-mqwxhu8b';
 const CACHE_SHELL = `nl-shell-${VERSION}`;
 const CACHE_IMAGES = `nl-images-${VERSION}`;
 const CACHE_HLS = `nl-hls-${VERSION}`;

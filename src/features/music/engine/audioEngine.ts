@@ -6,12 +6,13 @@ import { EQ_PRESETS } from './eqPresets';
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private graph: AudioGraph | null = null;
+  private inited: boolean = false;
 
   // Single audio element for simplicity
   private audio!: HTMLAudioElement;
-  private sourceNode: MediaElementAudioSourceNode | null = null;
 
   private currentTrack: Track | null = null;
+  private triedFallback: boolean = false;
 
   // Preferences / States
   private volume: number = 0.8;
@@ -38,7 +39,7 @@ export class AudioEngine {
   constructor() {
     if (typeof window !== 'undefined') {
       this.audio = new Audio();
-      this.audio.crossOrigin = 'anonymous';
+      this.audio.preload = 'metadata';
 
       // Setup ended handlers
       this.audio.addEventListener('ended', () => this.handleEnded());
@@ -49,24 +50,16 @@ export class AudioEngine {
   }
 
   public init() {
-    if (this.ctx) return;
+    if (this.inited) return;
+    this.inited = true;
 
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      this.ctx = new AudioContextClass();
-      this.graph = new AudioGraph(this.ctx);
+      // يُشغَّل عنصر الصوت مباشرةً (بلا Web Audio وبلا crossOrigin) لضمان
+      // التشغيل من أي مصدر (R2 / GitHub) لأن التشغيل العادي لا يتطلب CORS.
+      this.ctx = null;
+      this.graph = null;
 
-      // Attempt to create media element sources.
-      // Gracefully fall back to playing standard audio if browser sandbox blocks Web Audio routing
-      try {
-        this.sourceNode = this.ctx.createMediaElementSource(this.audio);
-        this.sourceNode.connect(this.graph.inputNode);
-      } catch (err) {
-        console.warn('[AudioEngine] Failed to create MediaElementSource. Running in legacy mode.', err);
-        this.sourceNode = null;
-      }
-
-      // Initial volume application
+      // Initial volume application (directly on the element)
       this.applyVolume();
 
       // Register OS MediaSession keys
@@ -75,7 +68,8 @@ export class AudioEngine {
         onPause: () => this.pause(),
         onPrev: () => { if (this.onRequestPrev) this.onRequestPrev(); },
         onNext: () => { if (this.onRequestNext) this.onRequestNext(); },
-        onSeek: (offset) => this.seek(offset)
+        onSeekTo: (time) => this.seek(time),
+        onSeekRelative: (offset) => this.seek(this.audio.currentTime + offset)
       });
       // Override MediaSession seek details explicitly
       if ('mediaSession' in navigator) {
@@ -129,6 +123,7 @@ export class AudioEngine {
     await this.resumeContext();
 
     this.currentTrack = track;
+    this.triedFallback = false;
 
     // Direct assignment and loading
     this.audio.src = track.src;
@@ -269,19 +264,24 @@ export class AudioEngine {
   private handleError() {
     if (!this.audio.src) return;
 
-    if (this.currentTrack && this.audio.src === this.currentTrack.src && this.currentTrack.srcFallback) {
-      console.warn(`[AudioEngine] Primay source failed for track ${this.currentTrack.title}. Falling back to jsDelivr...`);
-      this.audio.src = this.currentTrack.srcFallback;
+    const fb = this.currentTrack?.srcFallback;
+    const canFallback = !!fb && fb !== this.currentTrack?.src && !this.triedFallback;
+
+    if (canFallback) {
+      console.warn(`[AudioEngine] Primary source failed for "${this.currentTrack?.title}". Trying fallback...`);
+      this.triedFallback = true;
+      this.audio.src = fb as string;
       this.audio.load();
       if (this.isPlayingState) {
         this.audio.play().catch(() => {});
       }
-    } else {
-      const errMsg = this.audio.error ? this.audio.error.message : 'Network/Source Error';
-      console.error(`[AudioEngine] Audio channel failed to load source`, errMsg);
-      if (this.onTrackError) {
-        this.onTrackError(errMsg);
-      }
+      return;
+    }
+
+    const errMsg = this.audio.error ? this.audio.error.message : 'Network/Source/CORS Error';
+    console.error('[AudioEngine] Track failed to load, skipping:', errMsg);
+    if (this.onTrackError) {
+      this.onTrackError(errMsg);
     }
   }
 
@@ -306,19 +306,22 @@ export class AudioEngine {
 
   private startTimeReporting() {
     this.stopTimeReporting();
-    const update = () => {
-      if (this.audio && this.onTimeUpdate) {
-        const buffered = this.audio.buffered.length > 0 ? this.audio.buffered.end(this.audio.buffered.length - 1) : 0;
-        
-        // Check A-B loop
-        if (this.loopStart !== null && this.loopEnd !== null) {
-          if (this.audio.currentTime >= this.loopEnd) {
-            this.audio.currentTime = this.loopStart;
+    let lastUpdate = 0;
+    const update = (now: number) => {
+      if (now - lastUpdate > 200) {
+        if (this.audio && this.onTimeUpdate) {
+          const buffered = this.audio.buffered.length > 0 ? this.audio.buffered.end(this.audio.buffered.length - 1) : 0;
+          
+          if (this.loopStart !== null && this.loopEnd !== null) {
+            if (this.audio.currentTime >= this.loopEnd) {
+              this.audio.currentTime = this.loopStart;
+            }
           }
-        }
 
-        this.onTimeUpdate(this.audio.currentTime, this.audio.duration || 0, buffered);
-        setMediaSessionPlaybackPosition(this.audio.currentTime, this.audio.duration || 0);
+          this.onTimeUpdate(this.audio.currentTime, this.audio.duration || 0, buffered);
+          setMediaSessionPlaybackPosition(this.audio.currentTime, this.audio.duration || 0);
+        }
+        lastUpdate = now;
       }
       this.rafId = requestAnimationFrame(update);
     };
@@ -333,9 +336,13 @@ export class AudioEngine {
   }
 
   private applyVolume() {
-    if (!this.graph) return;
     const computedVolume = this.muted ? 0 : Math.pow(this.volume, 2); // Logarithmic feel
-    this.graph.masterGain.gain.setValueAtTime(computedVolume, this.ctx ? this.ctx.currentTime : 0);
+    if (this.audio) {
+      this.audio.volume = computedVolume;
+    }
+    if (this.graph) {
+      this.graph.masterGain.gain.setValueAtTime(computedVolume, this.ctx ? this.ctx.currentTime : 0);
+    }
   }
 }
 

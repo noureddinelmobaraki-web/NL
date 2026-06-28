@@ -1,0 +1,105 @@
+/* DesktopLyricsViewport styles — DESKTOP ONLY, namespaced. Mobile unaffected. */
+
+:root {
+  /* Professional, simple, Arabic + Latin. */
+  --nl-lyrics-font: 'Readex Pro', 'Cairo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Two-tone legibility knobs (tweak in one place). */
+  --nl-lyric-fill:          #f5f7fc;          /* inactive text fill (over images) */
+  --nl-lyric-stroke:        rgba(0, 0, 0, 0.55); /* dark outline -> readable on bright bg */
+  --nl-lyric-active-pill:   rgba(0, 0, 0, 0.30); /* backing behind active line (no blur) */
+}
+
+.nl-desktop-lyrics {
+  height: clamp(260px, 40vh, 440px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 14px;
+  font-family: var(--nl-lyrics-font);
+  /* Soft fade at top & bottom so lines enter/leave gracefully. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+}
+
+.nl-desktop-lyrics__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* modest top/bottom breathing room (same idea as the mobile py-8) */
+  padding: 1.5rem 0;
+}
+
+.nl-desktop-lyric-line {
+  margin: 0;
+  text-align: center;
+  cursor: pointer;
+  line-height: 1.5;
+  font-size: 1.02rem;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  color: var(--nl-lyric-fill);
+  opacity: 0.5;
+  border-radius: 12px;
+  padding: 6px 14px;
+  transition: opacity .26s ease, transform .26s ease, color .26s ease, background-color .26s ease;
+  /* TWO-TONE: bright fill + dark outline => legible over any image / bright bubbles */
+  -webkit-text-stroke: 0.45px var(--nl-lyric-stroke);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 0 3px rgba(0,0,0,0.40);
+  will-change: opacity, transform;
+}
+
+.nl-desktop-lyric-line.is-active {
+  opacity: 1;
+  font-weight: 700;
+  font-size: 1.3rem;
+  transform: scale(1.015);
+  color: var(--lyric-active-color, #ffffff);
+  background: var(--nl-lyric-active-pill);  /* solid-ish pill, NO blur => light */
+  -webkit-text-stroke: 0.7px rgba(0,0,0,0.62);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 14px var(--lyric-active-shadow, rgba(0,0,0,0.4));
+}
+
+.nl-desktop-lyric-line .nl-lyric-text { display: inline; }
+
+.nl-desktop-lyric-line .nl-lyric-translation {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.78em;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.nl-desktop-lyric-header { display: flex; justify-content: center; margin: 10px 0 2px; }
+.nl-desktop-lyric-header span {
+  font-family: var(--nl-lyrics-font);
+  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 3px 12px; border-radius: 999px;
+  color: #fff; opacity: 0.8;
+  border: 1px solid rgba(255,255,255,0.35);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.nl-desktop-lyrics--empty {
+  display: flex; align-items: center; justify-content: center;
+  color: #cbd2e0; font-family: var(--nl-lyrics-font); font-size: 0.9rem;
+}
+
+/* LIGHT theme popover sits on a WHITE surface (not an image): flip the two-tone. */
+.nl-desktop-lyrics--light { height: 100%; min-height: 0; flex: 1; -webkit-mask-image: none; mask-image: none; }
+.nl-desktop-lyrics--light .nl-desktop-lyric-line {
+  color: #3a3f4b;
+  -webkit-text-stroke: 0 transparent;
+  text-shadow: none;
+}
+.nl-desktop-lyrics--light .nl-desktop-lyric-line.is-active {
+  color: var(--lyric-active-color, #0000CC);
+  background: rgba(0,0,0,0.05);
+  -webkit-text-stroke: 0 transparent;
+  text-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-desktop-lyrics { scroll-behavior: auto; }
+  .nl-desktop-lyric-line { transition: none; }
+}

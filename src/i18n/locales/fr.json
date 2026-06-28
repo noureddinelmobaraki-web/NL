@@ -137,6 +137,17 @@
     "sleepTimer": "Mise en veille",
     "equalizer": "Égaliseur (EQ)",
     "resume": "Reprendre",
-    "close": "Fermer"
+    "close": "Fermer",
+    "artists": "Artistes",
+    "albums": "Albums",
+    "genres": "Genres",
+    "favorites": "Favoris",
+    "playAll": "Tout Lire",
+    "addToPlaylist": "Ajouter à la liste",
+    "newPlaylist": "Nouvelle liste",
+    "moreFromArtist": "Plus de l'artiste",
+    "sameAlbum": "Même album",
+    "all": "Tout",
+    "lyricsTab": "Paroles"
   }
 }

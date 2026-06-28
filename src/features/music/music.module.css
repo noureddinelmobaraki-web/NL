@@ -68,27 +68,87 @@
 @keyframes nlp-bubble-glow { 0%,100% { opacity: .5; transform: scale(1);} 50% { opacity: .95; transform: scale(1.05);} }
 @media (prefers-reduced-motion: reduce) { .nlp-shuffle-bubble__sheen { animation: none; } }
 
-.nlp-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-.nlp-no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
+/* جذر الصفحة */
+.nlp-root {
+  -webkit-tap-highlight-color: transparent;
+}
 
-.nlp-mini {
-  box-shadow: 0 -8px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.5);
-  background: rgba(255,255,255,0.72);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
-  border-top: 1px solid rgba(255,255,255,0.6);
+/* إخفاء شريط التمرير */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* منطقة التمرير للقائمة — تسريع بـ content-visibility */
+.scrollArea {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.scrollArea::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.scrollArea::-webkit-scrollbar-track,
+.scrollArea::-webkit-scrollbar-thumb {
+  display: none !important;
+  background: transparent !important;
+}
+
+/* إخفاء السكرول في شاشة NOW PLAYING أيضاً */
+.nlp-noscroll { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+.nlp-noscroll::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+
+/* شريط تمرير زجاجي */
+.glassSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+}
+.glassSlider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: inherit;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.4);
+}
+.glassSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF7A1A, #00E676);
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  margin-top: -6px;
   cursor: pointer;
+  transition: transform 0.2s;
 }
-
-.nlp-mini__progress {
-  position: absolute; top: 0; left: 0; right: 0;
-  height: 3px; background: rgba(0,0,0,0.10);
+.glassSlider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
 }
-
-.nlp-mini__progress > i {
-  display: block; height: 100%;
-  background: linear-gradient(90deg, #FF7A1A, #34E89E);
-  box-shadow: 0 0 6px rgba(255,122,26,.6);
+.glassSlider::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: inherit;
+  border: 1px solid rgba(255,255,255,0.4);
+}
+.glassSlider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF7A1A, #00E676);
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.glassSlider::-moz-range-thumb:hover {
+  transform: scale(1.2);
 }
 
 .nlp-seek { position: relative; padding: 6px 0; }
@@ -252,11 +312,6 @@
   color: white;
 }
 
-.scrollArea {
-  scrollbar-width: thin;
-  scrollbar-color: #FF7A1A rgba(255,255,255,0.2);
-}
-
 .scrollArea::-webkit-scrollbar {
   width: 12px;
 }
@@ -350,6 +405,49 @@
   font-size: 14px;
 }
 
-.pixelIcon {
-  image-rendering: pixelated;
+/* شريط التشغيل المصغّر */
+.nlp-mini {
+  position: relative;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 18px;
+  box-shadow: 0 6px 24px rgba(255, 122, 26, 0.18);
+  cursor: pointer;
+  overflow: hidden;
 }
+.nlp-mini__progress {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.nlp-mini__progress > i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #FF7A1A, #34E89E);
+  transition: width 0.2s linear;
+}
+
+/* حركة صعود طبقة التشغيل */
+@keyframes nlpUp {
+  from { transform: translateY(100%); opacity: 0.6; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* —— إزالة شريط التمرير البرتقالي نهائياً —— */
+.scrollArea {
+  scrollbar-width: none !important;        /* Firefox */
+  -ms-overflow-style: none !important;      /* IE/Edge */
+}
+.scrollArea::-webkit-scrollbar {
+  display: none !important;                  /* Chrome/Safari */
+  width: 0 !important;
+  height: 0 !important;
+}
+.scrollArea::-webkit-scrollbar-track,
+.scrollArea::-webkit-scrollbar-thumb {
+  display: none !important;
+  background: transparent !important;
+}
+

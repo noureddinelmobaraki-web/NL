@@ -137,6 +137,17 @@
     "sleepTimer": "Sleep Timer",
     "equalizer": "Equalizer",
     "resume": "Resume",
-    "close": "Close"
+    "close": "Close",
+    "artists": "Artists",
+    "albums": "Albums",
+    "genres": "Genres",
+    "favorites": "Favorites",
+    "playAll": "Play All",
+    "addToPlaylist": "Add to Playlist",
+    "newPlaylist": "New Playlist",
+    "moreFromArtist": "More from Artist",
+    "sameAlbum": "Same Album",
+    "all": "All",
+    "lyricsTab": "Lyrics"
   }
 }

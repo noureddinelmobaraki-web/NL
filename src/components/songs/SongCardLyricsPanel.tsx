@@ -9,17 +9,16 @@
  * Body scroll lock is delegated to useMobileLyricsBodyLock (ref-counted).
  */
 import { createPortal } from 'react-dom';
-import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import './lyricsReveal.css';
 import { useGenieTransition } from '../../transitions/useGenieTransition';
 import { getGenieOrigin, genieOriginToTransformOrigin } from '../../transitions/genieOrigin';
 import type { Song, LyricLine } from '../../types';
-import { LyricsWindowContent } from '../LyricsEngine';
-import { formatTime } from './formatTime';
 import { LyricsPanelHeader } from './LyricsPanelHeader';
 import { LyricsPanelBody } from './LyricsPanelBody';
 import { LyricsPanelDragHandle } from './LyricsPanelDragHandle';
 import { useMobileLyricsBodyLock } from '../../hooks/useMobileLyricsBodyLock';
+import { DesktopLyricsViewport } from './DesktopLyricsViewport';
 
 interface SongCardLyricsPanelProps {
   layoutType: 'inline' | 'popover';
@@ -37,12 +36,6 @@ interface SongCardLyricsPanelProps {
   isTablet?: boolean;
 }
 
-const isHeaderLineHelper = (text: string): boolean => {
-  const t = text.trim().toLowerCase();
-  return ['intro','chorus','verse','hook','bridge','outro','solo','instrumental']
-    .some((kw) => t.includes(kw));
-};
-
 const closeMobileLyrics = () =>
   document.dispatchEvent(new CustomEvent('close-mobile-lyrics'));
 
@@ -50,101 +43,27 @@ const closeMobileLyrics = () =>
 // Inline (Dark / Manga themes)
 // ───────────────────────────────────────────────
 const InlineLyrics = ({
-  karaokeMode, localLyrics, currentTime, onSeek, currentLyricLine,
+  localLyrics, currentTime, onSeek,
 }: Pick<
   SongCardLyricsPanelProps,
-  'karaokeMode' | 'localLyrics' | 'currentTime' | 'onSeek' | 'currentLyricLine'
->) => {
-  if (karaokeMode) {
-    if (!localLyrics || localLyrics.length === 0) {
-      return (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '120px',
-            color: 'var(--lyric-inactive-color)',
-            fontFamily: 'monospace',
-            fontSize: '0.85rem',
-          }}
-        >
-          {currentLyricLine ? currentLyricLine : '♪ جاري تحميل الكلمات...'}
-        </div>
-      );
-    }
-    return (
-      <div
-        style={{
-          width: '100%',
-          height: 'clamp(220px, 34vh, 360px)',
-          minHeight: '220px',
-          maxHeight: '360px',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'stretch',
-          justifyContent: 'center',
-        }}
-        className="no-scrollbar mid-lyrics"
-      >
-        <LyricsWindowContent
-          currentTime={currentTime || 0}
-          onSeek={onSeek || (() => {})}
-          lyrics={localLyrics}
-          isMobilePlayer={false}
-        />
-      </div>
-    );
-  }
-
-  // Scroll-list mode
-  return (
-    <div
-      style={{
-        marginTop: '16px',
-        borderTop: '1px solid var(--card-border-line)',
-        paddingTop: '12px',
-        maxHeight: '220px',
-        overflowY: 'auto',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
-      }}
-      className="no-scrollbar"
-    >
-      {!localLyrics || localLyrics.length === 0 ? (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '24px',
-            color: 'var(--text-muted)',
-            fontSize: '13px',
-            fontFamily: 'monospace',
-            opacity: 0.6,
-          }}
-        >
-          ♪ جاري تحميل الكلمات...
-        </div>
-      ) : (
-        <LyricsWindowContent
-          currentTime={currentTime || 0}
-          onSeek={onSeek || (() => {})}
-          lyrics={localLyrics}
-          isMobilePlayer={true}
-        />
-      )}
-    </div>
-  );
-};
+  'localLyrics' | 'currentTime' | 'onSeek'
+>) => (
+  <DesktopLyricsViewport
+    lyrics={localLyrics}
+    currentTime={currentTime || 0}
+    onSeek={onSeek || (() => {})}
+    variant="inline"
+  />
+);
 
 // ───────────────────────────────────────────────
 // Desktop popover (Light theme only) — preserved from original.
 // ───────────────────────────────────────────────
 const DesktopLightPopover = ({
-  localLyrics, currentLineIndex, onSeek,
-}: Pick<SongCardLyricsPanelProps, 'localLyrics' | 'currentLineIndex' | 'onSeek'>) => (
+  localLyrics, currentTime, onSeek,
+}: Pick<SongCardLyricsPanelProps, 'localLyrics' | 'currentTime' | 'onSeek'>) => (
   <div 
-    className="light-lyrics-card-popover absolute bg-white p-4 z-50 rounded-lg flex flex-col genie-surface"
-    data-genie="open"
+    className="light-lyrics-card-popover absolute bg-white p-4 z-50 rounded-lg flex flex-col nl-desktop-lyrics-pop"
     style={{
       ['--genie-origin' as string]: genieOriginToTransformOrigin(getGenieOrigin()),
       transformOrigin: 'var(--genie-origin)',
@@ -157,103 +76,12 @@ const DesktopLightPopover = ({
     }}
     onClick={(e) => e.stopPropagation()}
   >
-    <style>{`
-      .light-lyrics-card-popover {
-        box-shadow: 0 12px 40px rgba(0,0,0,0.12), 0 2px 10px rgba(0,0,0,0.06);
-        border: 1px solid rgba(0,0,0,0.15);
-        display: flex;
-        flex-direction: column;
-      }
-      .light-lyrics-scroll-container::-webkit-scrollbar {
-        width: 14px !important;
-        display: block !important;
-      }
-      .light-lyrics-scroll-container::-webkit-scrollbar-track {
-        background: #FFFFFF !important;
-        border-left: 1px solid #E5E7EB !important;
-      }
-      .light-lyrics-scroll-container::-webkit-scrollbar-thumb {
-        background: #C1C1C1 !important;
-        border-radius: 9px !important;
-        border: 3px solid #FFFFFF !important;
-      }
-      .light-lyrics-scroll-container::-webkit-scrollbar-thumb:hover {
-        background: #A8A8A8 !important;
-      }
-      .light-lyrics-scroll-container::-webkit-scrollbar-button:single-button {
-        background-color: #FFFFFF !important;
-        display: block !important;
-        height: 14px !important;
-        width: 14px !important;
-        border-left: 1px solid #E5E7EB !important;
-      }
-      .light-lyrics-scroll-container::-webkit-scrollbar-button:single-button:decrement {
-        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='18 15 12 9 6 15'></polyline></svg>") !important;
-        background-repeat: no-repeat !important;
-        background-size: 8px !important;
-        background-position: center !important;
-        border-bottom: 1px solid #E5E7EB !important;
-      }
-      .light-lyrics-scroll-container::-webkit-scrollbar-button:single-button:increment {
-        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
-        background-repeat: no-repeat !important;
-        background-size: 8px !important;
-        background-position: center !important;
-        border-top: 1px solid #E5E7EB !important;
-      }
-    `}</style>
-    <div 
-      className="light-lyrics-scroll-container flex-1 overflow-y-auto pr-1 select-text" 
-      style={{
-        maxHeight: '100%',
-        scrollbarWidth: 'auto',
-      }}
-    >
-      {!localLyrics || localLyrics.length === 0 ? (
-        <div className="flex items-center justify-center h-full text-zinc-400 text-xs font-mono">
-          ♪ جاري تحميل الكلمات...
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1 text-left py-2 font-sans">
-          {localLyrics.map((line, i) => {
-            const isActive = i === currentLineIndex;
-            const isHeader = isHeaderLineHelper(line.text);
-            
-            if (isHeader) {
-              return (
-                <div 
-                  key={`lyric-${i}-${line.time}`}
-                  id={`light-lyric-line-${i}`}
-                  className="text-gray-400 text-[12px] font-semibold tracking-wider uppercase py-1 select-none font-sans mt-2 first:mt-0"
-                >
-                  {formatTime(line.time)} {line.text}
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={`lyric-${i}-${line.time}`}
-                id={`light-lyric-line-${i}`}
-                onClick={() => onSeek?.(line.time)}
-                className="lyric-line-item relative px-2.5 py-1.5 transition-all text-left cursor-pointer rounded select-text"
-                style={{
-                  fontFamily: 'Geneva, Arial, sans-serif',
-                  fontSize: '14px',
-                  fontWeight: 'normal',
-                  color: '#000000',
-                  lineHeight: '1.45',
-                  background: isActive ? 'rgba(0, 0, 0, 0.08)' : 'transparent',
-                  transition: 'background-color 0.2s ease, transform 0.2s ease',
-                }}
-              >
-                {line.text}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    <DesktopLyricsViewport
+      lyrics={localLyrics}
+      currentTime={currentTime || 0}
+      onSeek={onSeek || (() => {})}
+      variant="light"
+    />
   </div>
 );
 
@@ -335,16 +163,9 @@ const MobileBottomSheet = ({
 // ───────────────────────────────────────────────
 export const SongCardLyricsPanel = ({
   layoutType, song, isLyricsOpen, resolvedTheme,
-  karaokeMode, localLyrics, currentLineIndex, currentLyricLine,
+  localLyrics, currentLineIndex,
   currentTime, onSeek, isMobile = false, isTablet = false,
 }: SongCardLyricsPanelProps) => {
-  // Auto-scroll active line in the desktop light popover.
-  useEffect(() => {
-    if (resolvedTheme !== 'light') return;
-    if (!isLyricsOpen || currentLineIndex === -1) return;
-    const el = document.getElementById(`light-lyric-line-${currentLineIndex}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [currentLineIndex, isLyricsOpen, resolvedTheme]);
 
   if (!isLyricsOpen) return null;
 
@@ -409,9 +230,7 @@ export const SongCardLyricsPanel = ({
     if (resolvedTheme === 'light') return null;
     return (
       <InlineLyrics
-        karaokeMode={karaokeMode}
         localLyrics={localLyrics}
-        currentLyricLine={currentLyricLine}
         currentTime={currentTime}
         onSeek={onSeek}
       />
@@ -425,7 +244,7 @@ export const SongCardLyricsPanel = ({
       return (
         <DesktopLightPopover
           localLyrics={localLyrics}
-          currentLineIndex={currentLineIndex}
+          currentTime={currentTime}
           onSeek={onSeek}
         />
       );

@@ -137,6 +137,17 @@
     "sleepTimer": "مؤقت النوم",
     "equalizer": "معادل الصوت (EQ)",
     "resume": "استئناف",
-    "close": "إغلاق"
+    "close": "إغلاق",
+    "artists": "الفنانون",
+    "albums": "الألبومات",
+    "genres": "الأنواع",
+    "favorites": "المفضلة",
+    "playAll": "تشغيل الكل",
+    "addToPlaylist": "إضافة لقائمة تشغيل",
+    "newPlaylist": "قائمة تشغيل جديدة",
+    "moreFromArtist": "المزيد من الفنان",
+    "sameAlbum": "من نفس الألبوم",
+    "all": "الكل",
+    "lyricsTab": "الكلمات"
   }
 }

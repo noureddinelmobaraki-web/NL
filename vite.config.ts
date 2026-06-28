@@ -32,23 +32,7 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
       target: 'es2020',
       cssCodeSplit: true,
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          pure_funcs: [
-            'console.log', 'console.info', 'console.debug', 'console.trace',
-            'console.group', 'console.groupEnd',
-          ],
-          drop_debugger: true,
-          passes: 2,
-        },
-        format: {
-          comments: false,
-        },
-        mangle: {
-          safari10: true,
-        },
-      },
+      minify: 'esbuild',
       sourcemap: 'hidden',
       reportCompressedSize: true,
       chunkSizeWarningLimit: 800,
