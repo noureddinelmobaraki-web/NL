@@ -4,6 +4,7 @@ import { Track } from '../engine/types';
 import { audioEngine } from '../engine/audioEngine';
 import { EQ_PRESETS } from '../engine/eqPresets';
 import { getFvTracks, getFvInitialOrder } from '../data/loadSongs';
+import { saveTrackOffline, removeTrackOffline } from '../data/offline';
 
 let sleepTimerInterval: any = null;
 
@@ -49,6 +50,7 @@ export interface MusicState {
   favorites: string[]; // List of track IDs
   history: string[]; // Recently played track IDs
   playCounts: Record<string, number>; // trackId -> play count
+  downloaded: string[]; // Track IDs saved for offline playback
 
   // A-B Loop & Sleep Timer
   loopStart: number | null;
@@ -87,8 +89,17 @@ export interface MusicState {
     createPlaylist: (name: string) => void;
     deletePlaylist: (playlistId: string) => void;
     addToPlaylist: (playlistId: string, trackId: string) => void;
+    addManyToPlaylist: (playlistId: string, trackIds: string[]) => void;
+    addTracksToNewPlaylist: (name: string, trackIds: string[]) => void;
+    renamePlaylist: (playlistId: string, name: string) => void;
     removeFromPlaylist: (playlistId: string, trackId: string) => void;
     addPlayedHistory: (trackId: string) => void;
+
+    // Offline library actions
+    saveOffline: (track: Track) => Promise<void>;
+    saveManyOffline: (tracks: Track[]) => Promise<void>;
+    removeOffline: (track: Track) => Promise<void>;
+    setDownloaded: (ids: string[]) => void;
 
     // A-B Loop & Sleep Timer actions
     setLoopStart: (sec: number | null) => void;
@@ -137,6 +148,7 @@ export const useMusicStore = create<MusicState>()(
       favorites: [],
       history: [],
       playCounts: {},
+      downloaded: [],
 
       // A-B Loop & Sleep Timer
       loopStart: null,
@@ -431,6 +443,32 @@ export const useMusicStore = create<MusicState>()(
           });
         },
 
+        addManyToPlaylist: (playlistId, trackIds) => {
+          const { playlists } = get();
+          set({
+            playlists: playlists.map((pl) => {
+              if (pl.id !== playlistId) return pl;
+              const merged = [...pl.trackIds];
+              for (const id of trackIds) if (!merged.includes(id)) merged.push(id);
+              return { ...pl, trackIds: merged };
+            }),
+          });
+        },
+
+        addTracksToNewPlaylist: (name, trackIds) => {
+          const id = `pl-${Date.now()}`;
+          const unique = Array.from(new Set(trackIds));
+          set({
+            playlists: [...get().playlists, { id, name, trackIds: unique, createdAt: Date.now() }],
+          });
+        },
+
+        renamePlaylist: (playlistId, name) => {
+          set({
+            playlists: get().playlists.map((pl) => (pl.id === playlistId ? { ...pl, name } : pl)),
+          });
+        },
+
         removeFromPlaylist: (playlistId, trackId) => {
           const { playlists } = get();
           set({
@@ -448,6 +486,28 @@ export const useMusicStore = create<MusicState>()(
           const nextCounts = { ...playCounts, [trackId]: (playCounts[trackId] || 0) + 1 };
           set({ history: nextHistory, playCounts: nextCounts });
         },
+
+        saveOffline: async (track) => {
+          if (get().downloaded.includes(track.id)) return;
+          const ok = await saveTrackOffline(track);
+          if (ok && !get().downloaded.includes(track.id)) {
+            set({ downloaded: [...get().downloaded, track.id] });
+          }
+        },
+
+        saveManyOffline: async (tracks) => {
+          for (const t of tracks) {
+            // Sequential on purpose: avoids hammering the CDN and keeps memory low.
+            await get().actions.saveOffline(t);
+          }
+        },
+
+        removeOffline: async (track) => {
+          await removeTrackOffline(track);
+          set({ downloaded: get().downloaded.filter((id) => id !== track.id) });
+        },
+
+        setDownloaded: (ids) => set({ downloaded: ids }),
 
         setLoopStart: (sec) => {
           set({ loopStart: sec });
@@ -527,6 +587,7 @@ export const useMusicStore = create<MusicState>()(
         favorites: state.favorites,
         history: state.history,
         playCounts: state.playCounts,
+        downloaded: state.downloaded,
         queue: state.queue,
         queueIndex: state.queueIndex
       })

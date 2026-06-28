@@ -4,6 +4,9 @@ const CACHE_IMAGES = `nl-images-${VERSION}`;
 const CACHE_HLS = `nl-hls-${VERSION}`;
 const CACHE_AUDIO = `nl-audio-${VERSION}`;
 const CACHE_FONTS = `nl-fonts-${VERSION}`;
+// Persistent library for user-saved songs. NOT version-suffixed, so it
+// survives redeploys. Never trimmed (not present in LIMITS).
+const CACHE_SAVED = 'nl-saved-audio';
 
 const PRECACHE_URLS = [
   '/NL/',
@@ -39,7 +42,7 @@ self.addEventListener('activate', (event) => {
     const keys = await caches.keys();
     await Promise.all(
       keys.map((key) => {
-        if (![CACHE_SHELL, CACHE_IMAGES, CACHE_HLS, CACHE_AUDIO, CACHE_FONTS].includes(key)) {
+        if (![CACHE_SHELL, CACHE_IMAGES, CACHE_HLS, CACHE_AUDIO, CACHE_FONTS, CACHE_SAVED].includes(key)) {
           return caches.delete(key);
         }
       })
@@ -147,6 +150,26 @@ self.addEventListener('fetch', (event) => {
     }
   }
 
+  // ⭐ Saved/offline songs (.m4a, any origin): cache-first from the persistent
+  //    user library, then the rolling audio cache, then network (no auto-cache).
+  //    We return the cached response AS-IS (no Range slicing) so cross-origin
+  //    opaque responses also play correctly offline.
+  {
+    const m4aUrl = new URL(request.url);
+    if (/\.m4a$/i.test(m4aUrl.pathname)) {
+      event.respondWith((async () => {
+        const saved = await caches.open(CACHE_SAVED);
+        const fromSaved = await saved.match(request, { ignoreVary: true });
+        if (fromSaved) return fromSaved;
+        const roll = await caches.open(CACHE_AUDIO);
+        const fromRoll = await roll.match(request, { ignoreVary: true });
+        if (fromRoll) return fromRoll;
+        return fetch(request);
+      })());
+      return;
+    }
+  }
+
   // Navigation requests: serve cached shell as fallback
   if (request.mode === 'navigate') {
     event.respondWith(
@@ -171,6 +194,10 @@ self.addEventListener('fetch', (event) => {
   if (url.hostname === HLS_ORIGIN && /\.(webp|gif|jpg|png)$/i.test(url.pathname)) {
     event.respondWith(
       (async () => {
+        // Saved covers live in the persistent library and must survive redeploys.
+        const savedImg = await caches.open(CACHE_SAVED);
+        const savedHit = await savedImg.match(event.request, { ignoreVary: true });
+        if (savedHit) return savedHit;
         const cache = await caches.open(CACHE_IMAGES);
         const cached = await cache.match(event.request);
         if (cached) {

@@ -3,6 +3,7 @@ import { useMusicStore } from './store/musicStore';
 import { useMusicEngine } from './hooks/useMusicEngine';
 import { useHotkeys } from './hooks/useHotkeys';
 import { fetchLyrics, prefetchMany } from './data/lyrics';
+import { listSavedUrls, ensurePersistentStorage } from './data/offline';
 import { SongList } from './components/SongList';
 import { PlayerScreen } from './components/PlayerScreen';
 import { MiniPlayer } from './components/MiniPlayer';
@@ -26,6 +27,21 @@ export default function MusicPage() {
     apply();
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await ensurePersistentStorage();
+      const urls = await listSavedUrls();
+      if (cancelled) return;
+      const tracks = useMusicStore.getState().tracks;
+      const ids = tracks
+        .filter((t) => urls.includes(t.src) || (t.srcFallback && urls.includes(t.srcFallback)))
+        .map((t) => t.id);
+      useMusicStore.getState().actions.setDownloaded(ids);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Layer 1 (reliable): whenever the current track changes, fetch its lyrics now.

@@ -4,10 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
 import { useNowPlaying } from '../hooks/useNowPlaying';
 import { LyricsPanel } from './LyricsPanel';
-import { downloadTrack } from '../data/downloadTrack';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Heart, Download, Mic2, Volume2, VolumeX, ChevronDown, Loader2
+  Heart, Download, Mic2, Volume2, VolumeX, ChevronDown, Loader2, CheckCircle2
 } from 'lucide-react';
 
 const pressSpring = { type: 'spring', stiffness: 500, damping: 30 } as const;
@@ -40,6 +39,8 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
 
   const [showLyrics, setShowLyrics] = useState(false);
   const [dl, setDl] = useState<'idle' | 'start' | 'done' | 'error'>('idle');
+  const downloaded = useMusicStore((s) => s.downloaded);
+  const isSaved = !!currentTrack && downloaded.includes(currentTrack.id);
 
   if (!currentTrack) {
     return (
@@ -122,13 +123,20 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
           <Mic2 size={18} className={showLyrics ? 'drop-shadow-md' : ''} /> Lyrics
         </button>
         <button
-          onClick={() => currentTrack && downloadTrack({ url: currentTrack.src, title: currentTrack.title }, setDl)}
+          onClick={() => {
+            if (!currentTrack) return;
+            if (isSaved) { actions.removeOffline(currentTrack); return; }
+            setDl('start');
+            actions.saveOffline(currentTrack).finally(() => setDl('idle'));
+          }}
           disabled={dl === 'start'}
-          title="Download MP3"
-          aria-label="Download MP3"
-          className="text-slate-700 hover:text-[#FF7A1A] transition-all hover:scale-110 drop-shadow-md disabled:opacity-50"
+          title={isSaved ? 'Saved offline — tap to remove' : 'Save offline'}
+          aria-label="Save offline"
+          className={`transition-all hover:scale-110 drop-shadow-md disabled:opacity-50 ${isSaved ? 'text-[#00E676]' : 'text-slate-700 hover:text-[#FF7A1A]'}`}
         >
-          {dl === 'start' ? <Loader2 size={22} className="animate-spin" /> : <Download size={22} />}
+          {dl === 'start'
+            ? <Loader2 size={22} className="animate-spin" />
+            : isSaved ? <CheckCircle2 size={22} /> : <Download size={22} />}
         </button>
       </div>
 
