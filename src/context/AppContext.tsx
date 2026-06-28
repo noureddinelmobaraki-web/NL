@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useRef, useEffect, useReducer, useMemo } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useRef, useEffect, useReducer } from 'react';
 import type { Theme, AudioIntent } from '../utils/userPrefs';
 import { loadPrefs } from '../utils/userPrefs';
 import { ActiveSong } from '../types';
@@ -211,58 +211,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoaded(false);
   }, []);
 
-  const contextValue = useMemo(() => ({
-    theme, setTheme,
-    audioIntent, setAudioIntent,
-    ambientColor, setAmbientColor,
-    activeSong, setActiveSong,
-    loaded, setLoaded,
-    currentPage, setCurrentPage,
-    returnToWelcome,
-    navigateTo, endTransition, isTransitioning: nav.transitioning,
-    isGamesOpen, openGames, closeGames,
-    isGameActive, setGameActive,
-    registerGameBack, callGameBack,
-    isMoviesOpen, openMovies, closeMovies,
-    isMovieActive, setMovieActive,
-    registerMovieBack, callMovieBack,
-    isSeriesOpen, openSeries, closeSeries,
-    isSeriesActive, setSeriesActive,
-    registerSeriesBack, callSeriesBack,
-    isTvOpen, openTv, closeTv,
-    isTvActive, setTvActive,
-    registerTvBack, callTvBack,
-    isRetroOpen, openRetro, closeRetro,
-    isXpOpen, openXp, closeXp,
-    isMusicOpen, openMusic, closeMusic,
-  }), [
-    theme, setTheme,
-    audioIntent, setAudioIntent,
-    ambientColor, setAmbientColor,
-    activeSong, setActiveSong,
-    loaded, setLoaded,
-    currentPage, setCurrentPage,
-    returnToWelcome,
-    navigateTo, endTransition, nav.transitioning,
-    isGamesOpen, openGames, closeGames,
-    isGameActive, setGameActive,
-    registerGameBack, callGameBack,
-    isMoviesOpen, openMovies, closeMovies,
-    isMovieActive, setMovieActive,
-    registerMovieBack, callMovieBack,
-    isSeriesOpen, openSeries, closeSeries,
-    isSeriesActive, setSeriesActive,
-    registerSeriesBack, callSeriesBack,
-    isTvOpen, openTv, closeTv,
-    isTvActive, setTvActive,
-    registerTvBack, callTvBack,
-    isRetroOpen, openRetro, closeRetro,
-    isXpOpen, openXp, closeXp,
-    isMusicOpen, openMusic, closeMusic,
-  ]);
-
   return (
-    <AppContext.Provider value={contextValue}>
+    <AppContext.Provider
+      value={{
+        theme, setTheme,
+        audioIntent, setAudioIntent,
+        ambientColor, setAmbientColor,
+        activeSong, setActiveSong,
+        loaded, setLoaded,
+        currentPage, setCurrentPage,
+        returnToWelcome,
+        navigateTo, endTransition, isTransitioning: nav.transitioning,
+        isGamesOpen, openGames, closeGames,
+        isGameActive, setGameActive,
+        registerGameBack, callGameBack,
+        isMoviesOpen, openMovies, closeMovies,
+        isMovieActive, setMovieActive,
+        registerMovieBack, callMovieBack,
+        isSeriesOpen, openSeries, closeSeries,
+        isSeriesActive, setSeriesActive,
+        registerSeriesBack, callSeriesBack,
+        isTvOpen, openTv, closeTv,
+        isTvActive, setTvActive,
+        registerTvBack, callTvBack,
+        isRetroOpen, openRetro, closeRetro,
+        isXpOpen, openXp, closeXp,
+        isMusicOpen, openMusic, closeMusic,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
