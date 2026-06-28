@@ -6,19 +6,25 @@ test.describe('Retro world smoke test', () => {
   test('Opening Retro from the mode switcher renders the Retro World iframe', async ({ page }) => {
     await page.goto('./');
 
-    // في بيئة الاختبار تتخطّى شاشة التحميل نفسها -> يظهر التطبيق الرئيسي مباشرة.
-    // ريترو لم تعد theme، بل تُفتح من «مبدّل الأوضاع» (فقاعة زجاجية).
+    // 1) Wait until the initial theme View-Transition finishes, otherwise the
+    //    html.theme-switching overlay intercepts pointer events.
+    await page.waitForFunction(
+      () => !document.documentElement.classList.contains('theme-switching'),
+      undefined,
+      { timeout: 30000 },
+    );
+
+    // 2) The switcher has a continuous idle animation in the "orb" state, so it is
+    //    never "stable". Use force to bypass the stability/actionability wait.
     const switcher = page.getByRole('group', { name: 'Mode switcher' });
     await expect(switcher).toBeVisible({ timeout: 30000 });
+    await switcher.hover({ force: true }).catch(() => {});
+    await switcher.click({ force: true });
 
-    // على الحاسوب يُفتح بالـ hover، وعلى الهاتف بالنقر — ننفّذ الاثنين للأمان.
-    await switcher.hover();
-    await switcher.click();
-
-    // زر ريترو داخل المبدّل دوره menuitem واسمه Retro.
+    // 3) Retro item inside the switcher.
     const retroItem = page.getByRole('menuitem', { name: 'Retro', exact: true });
     await expect(retroItem).toBeVisible({ timeout: 30000 });
-    await retroItem.click();
+    await retroItem.click({ force: true });
 
     const retroIframe = page.locator('iframe[title="Retro World"]');
     await expect(retroIframe).toBeVisible({ timeout: 30000 });

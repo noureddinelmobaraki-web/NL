@@ -1,12 +1,25 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
 import { useNowPlaying } from '../hooks/useNowPlaying';
 import { LyricsPanel } from './LyricsPanel';
+import { downloadTrack } from '../data/downloadTrack';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Heart, Download, Mic2, Volume2, VolumeX, ChevronDown
+  Heart, Download, Mic2, Volume2, VolumeX, ChevronDown, Loader2
 } from 'lucide-react';
+
+const pressSpring = { type: 'spring', stiffness: 500, damping: 30 } as const;
+const iconSpring  = { type: 'spring', stiffness: 400, damping: 26 } as const;
+const hoverScale  = { scale: 1.06 };
+const tapScale    = { scale: 0.9 };
+const ringInit    = { scale: 0.85, opacity: 0.55 };
+const ringAnim    = { scale: 1.35, opacity: 0 };
+const ringTrans   = { duration: 1.6, repeat: Infinity, ease: 'easeOut' } as const;
+const inFromRight = { scale: 0, rotate: 90, opacity: 0 };
+const inFromLeft  = { scale: 0, rotate: -90, opacity: 0 };
+const centered    = { scale: 1, rotate: 0, opacity: 1 };
 
 function fmt(sec: number): string {
   if (!sec || !isFinite(sec)) return '0:00';
@@ -26,6 +39,7 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
   const actions = useMusicStore((s) => s.actions);
 
   const [showLyrics, setShowLyrics] = useState(false);
+  const [dl, setDl] = useState<'idle' | 'start' | 'done' | 'error'>('idle');
 
   if (!currentTrack) {
     return (
@@ -107,8 +121,14 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
         >
           <Mic2 size={18} className={showLyrics ? 'drop-shadow-md' : ''} /> Lyrics
         </button>
-        <button className="text-slate-700 hover:text-slate-900 transition-all hover:scale-110 drop-shadow-md">
-          <Download size={22} />
+        <button
+          onClick={() => currentTrack && downloadTrack({ url: currentTrack.src, title: currentTrack.title }, setDl)}
+          disabled={dl === 'start'}
+          title="Download MP3"
+          aria-label="Download MP3"
+          className="text-slate-700 hover:text-[#FF7A1A] transition-all hover:scale-110 drop-shadow-md disabled:opacity-50"
+        >
+          {dl === 'start' ? <Loader2 size={22} className="animate-spin" /> : <Download size={22} />}
         </button>
       </div>
 
@@ -143,20 +163,56 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
           <SkipBack size={32} fill="currentColor" />
         </button>
         
-        {/* Play/Pause Glassy Gradient Button */}
-        <button
+        {/* Play/Pause — animated, professional */}
+        <motion.button
           onClick={() => actions.togglePlay()}
-          className="relative w-20 h-20 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-[#FF7A1A]/90 to-[#00E676]/90 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(255,122,26,0.4)] hover:shadow-[0_12px_40px_rgba(0,230,118,0.5)] hover:scale-105 active:scale-95 transition-all duration-300 group"
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          whileHover={hoverScale}
+          whileTap={tapScale}
+          transition={pressSpring}
+          className="relative w-20 h-20 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-[#FF7A1A] to-[#00E676] border border-white/60 shadow-[0_8px_32px_rgba(255,122,26,0.45)] overflow-hidden"
         >
-          <div className="relative flex items-center justify-center w-full h-full">
-            <div className={`absolute transition-all duration-300 transform ${isPlaying ? 'scale-0 opacity-0 rotate-90' : 'scale-100 opacity-100 rotate-0'}`}>
-              <Play size={36} fill="currentColor" className="ml-2 drop-shadow-lg" />
-            </div>
-            <div className={`absolute transition-all duration-300 transform ${isPlaying ? 'scale-100 opacity-100 rotate-0' : 'scale-0 opacity-0 -rotate-90'}`}>
-              <Pause size={36} fill="currentColor" className="drop-shadow-lg" />
-            </div>
-          </div>
-        </button>
+          {/* soft pulsing ring while playing */}
+          <AnimatePresence>
+            {isPlaying && (
+              <motion.span
+                key="ring"
+                className="absolute inset-0 rounded-full border-2 border-white/50"
+                initial={ringInit}
+                animate={ringAnim}
+                exit={ringInit}
+                transition={ringTrans}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* morphing icon */}
+          <AnimatePresence mode="wait" initial={false}>
+            {isPlaying ? (
+              <motion.span
+                key="pause"
+                className="absolute flex items-center justify-center"
+                initial={inFromLeft}
+                animate={centered}
+                exit={inFromRight}
+                transition={iconSpring}
+              >
+                <Pause size={34} fill="currentColor" className="drop-shadow-lg" />
+              </motion.span>
+            ) : (
+              <motion.span
+                key="play"
+                className="absolute flex items-center justify-center"
+                initial={inFromRight}
+                animate={centered}
+                exit={inFromLeft}
+                transition={iconSpring}
+              >
+                <Play size={34} fill="currentColor" className="ml-1 drop-shadow-lg" />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
 
         <button onClick={() => actions.next()} className="text-slate-700 hover:text-slate-900 hover:scale-110 transition-all drop-shadow-md active:scale-95">
           <SkipForward size={32} fill="currentColor" />

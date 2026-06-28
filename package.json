@@ -33,6 +33,7 @@
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@breezystack/lamejs": "1.2.7",
     "@emailjs/browser": "4.4.1",
     "@fontsource/bangers": "^5.2.8",
     "@fontsource/comic-neue": "^5.2.7",

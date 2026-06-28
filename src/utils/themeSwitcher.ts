@@ -13,8 +13,8 @@ export function applyTheme(next: Theme): void {
     try {
       const transition = document.startViewTransition(doSwap);
       if (transition) {
+        transition.finished?.finally(() => root.classList.remove(SWITCH_CLASS)).catch(() => {});
         transition.ready?.catch(() => {});
-        transition.finished?.catch(() => {});
         transition.updateCallbackDone?.catch(() => {});
       }
     } catch (e) {

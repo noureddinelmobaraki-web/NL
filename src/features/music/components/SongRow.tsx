@@ -1,4 +1,5 @@
-import { Heart, Activity, Download } from 'lucide-react';
+import { useState } from 'react';
+import { Heart, Activity, Download, Loader2 } from 'lucide-react';
 import { Track } from '../engine/types';
 import { downloadTrack } from '../data/downloadTrack';
 import styles from '../music.module.css';
@@ -18,6 +19,8 @@ export function SongRow({
   song, isSelected, isFav, rowHeight, offsetTop, 
   onPlay, onToggleFav, formatTime 
 }: SongRowProps) {
+  const [dl, setDl] = useState<'idle' | 'start' | 'done' | 'error'>('idle');
+
   return (
     <div
       onClick={() => onPlay(song.id)}
@@ -51,11 +54,12 @@ export function SongRow({
             <Heart size={16} fill={isFav ? "currentColor" : "none"} />
           </button>
           <button
-            className="p-1.5 text-slate-700 opacity-30 group-hover:opacity-100 hover:text-[#FF7A1A] transition-colors"
+            className="p-1.5 text-slate-700 opacity-30 group-hover:opacity-100 hover:text-[#FF7A1A] transition-colors disabled:opacity-50"
             title="Download"
-            onClick={(e) => { e.stopPropagation(); downloadTrack({ url: song.src, title: song.title }); }}
+            disabled={dl === 'start'}
+            onClick={(e) => { e.stopPropagation(); downloadTrack({ url: song.src, title: song.title }, setDl); }}
           >
-            <Download size={16} />
+            {dl === 'start' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
           </button>
           <div className="text-xs font-mono text-slate-600 opacity-80">
             {formatTime(song.durationSec)}
