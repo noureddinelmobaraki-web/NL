@@ -136,6 +136,18 @@ async function trimCache(cacheName) {
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+  const requestUrl = request.url;
+
+  // ── Supabase API pass-through ──────────────────────────
+  // Never cache Supabase REST, Auth, or Realtime requests.
+  // They must always go to the network.
+  if (
+    requestUrl.includes('.supabase.co') ||
+    requestUrl.includes('.supabase.com') ||
+    requestUrl.includes('supabase.io')
+  ) {
+    return;
+  }
 
   // ⛔️ Bypass صارم: ماشي مسموح للـ SW يخدم ملفات XML/TXT/manifest عبر fallback القشرة.
   // هاد الملفات خاص تُخدَم native (GitHub Pages / السيرفر) بالـ Content-Type الصحيح

@@ -46,6 +46,7 @@ export default defineConfig(({ mode }) => {
         },
         output: {
           manualChunks(id) {
+            if (id.includes('@supabase/supabase-js'))       return 'supabase';
             if (id.includes('node_modules/react-dom'))      return 'react-dom';
             if (id.includes('node_modules/react'))          return 'react-core';
             if (id.includes('node_modules/framer-motion'))  return 'framer';

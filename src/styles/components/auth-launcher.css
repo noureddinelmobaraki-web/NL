@@ -1,0 +1,93 @@
+/* ============================================================
+   AuthLauncher — نظام رؤية ذكي لزر «تسجيل الدخول» (P-FIX2)
+   يعتمد على السمة data-active-page التي يضبطها App.tsx على <html>.
+   welcome/home = كامل | cinema/tv/music = مُنكمش | games/xp/retro = مخفي
+   ============================================================ */
+.auth-launcher {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(64px, calc(env(safe-area-inset-right) + 64px));
+  z-index: 99990;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06)),
+    radial-gradient(140% 160% at 0% 0%, rgba(255, 122, 26, 0.22), transparent 55%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s, padding 0.25s, gap 0.25s;
+  animation: auth-launcher-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.auth-launcher:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.auth-launcher:active { transform: translateY(0) scale(0.98); }
+.auth-launcher:focus-visible { outline: 2px solid #ff7a1a; outline-offset: 3px; }
+
+.auth-launcher__glow {
+  position: absolute;
+  inset: -50% -20%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(55% 55% at 85% 15%, rgba(0, 230, 118, 0.4), transparent 70%);
+  opacity: 0.6;
+}
+.auth-launcher__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00e676;
+  box-shadow: 0 0 8px rgba(0, 230, 118, 0.9);
+  flex-shrink: 0;
+}
+.auth-launcher__icon { flex-shrink: 0; }
+.auth-launcher__label { white-space: nowrap; }
+
+@keyframes auth-launcher-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ─ الأفلام/التلفزيون: حاضر لكن مُنكمش (أيقونة فقط) ─ */
+html[data-active-page="cinema"] .auth-launcher,
+html[data-active-page="tv"] .auth-launcher,
+html[data-active-page="music"] .auth-launcher {
+  padding: 10px;
+  gap: 0;
+}
+html[data-active-page="cinema"] .auth-launcher .auth-launcher__label,
+html[data-active-page="tv"] .auth-launcher .auth-launcher__label,
+html[data-active-page="music"] .auth-launcher .auth-launcher__label,
+html[data-active-page="cinema"] .auth-launcher .auth-launcher__dot,
+html[data-active-page="tv"] .auth-launcher .auth-launcher__dot,
+html[data-active-page="music"] .auth-launcher .auth-launcher__dot {
+  display: none;
+}
+
+/* ─ تجارب ملء الشاشة: إخفاء ─ */
+html[data-active-page="games"] .auth-launcher,
+html[data-active-page="xp"] .auth-launcher,
+html[data-active-page="retro"] .auth-launcher {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-launcher { animation: none; transition: none; }
+}

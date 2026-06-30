@@ -40,6 +40,7 @@
     "@fontsource/patrick-hand": "^5.2.8",
     "@fontsource/share-tech-mono": "^5.2.7",
     "@sentry/react": "10.57.0",
+    "@supabase/supabase-js": "2.108.2",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "esbuild": "0.28.0",

@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   object-src 'none';
-  script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-w/1z/jhuxH7+ZXAT8/zhJZmy/meb3DE+ttbjbXZhXbk=' https://cdn.emailjs.com https://plausible.io https://www.google.com https://www.gstatic.com;
+  script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-kwOTmlDcJErA+Ke+b7qQhRE5zYpCBEZcekVyFNpQhW0=' https://cdn.emailjs.com https://plausible.io https://www.google.com https://www.gstatic.com;
   frame-src 'self' https://noureddinelmobaraki-web.github.io https://www.google.com https://recaptcha.google.com https://www.youtube.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com;
@@ -18,7 +18,7 @@
     https://m.media-amazon.com;
   media-src 'self' blob: https: https://noureddinelmobaraki-web.github.io;
   font-src 'self' data: https://fonts.gstatic.com;
-  connect-src 'self' https: https://iptv-org.github.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com;
+  connect-src 'self' https: https://iptv-org.github.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com https://*.supabase.co wss://*.supabase.co;
   worker-src 'self' blob:;
   manifest-src 'self';
   frame-ancestors 'none';
@@ -44,49 +44,6 @@
 
 
     <script>
-      // Patch window.fetch in sandboxed/iframe environments where window is proxy or read-only
-      try {
-        if (typeof window !== 'undefined' && 'fetch' in window) {
-          (function() {
-            var currentFetch = window.fetch;
-            var patchDescriptor = {
-              configurable: true,
-              enumerable: true,
-              get: function() { return currentFetch; },
-              set: function(v) { currentFetch = v; }
-            };
-            var patched = false;
-            if (typeof Window !== 'undefined' && Window.prototype) {
-              try {
-                Object.defineProperty(Window.prototype, 'fetch', patchDescriptor);
-                patched = true;
-              } catch (e) {}
-            }
-            if (!patched) {
-              var target = window;
-              while (target) {
-                try {
-                  var desc = Object.getOwnPropertyDescriptor(target, 'fetch');
-                  if (desc && desc.configurable) {
-                    Object.defineProperty(target, 'fetch', patchDescriptor);
-                    patched = true;
-                    break;
-                  }
-                } catch (e) {}
-                target = Object.getPrototypeOf(target);
-              }
-            }
-            if (!patched) {
-              try {
-                Object.defineProperty(window, 'fetch', patchDescriptor);
-              } catch (e) {}
-            }
-          })();
-        }
-      } catch (err) {
-        console.warn('Sandbox fetch patch failed:', err);
-      }
-
       // FOUC Fix: Synchronously apply saved theme before paint
       (function() {
         try {

@@ -4,8 +4,9 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick, Monitor, AudioLines } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick, Monitor, AudioLines, User } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
+import { useAuthOptional } from '../../context/AuthContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { audioManager } from '../../audio/audioManager';
 import type { Theme } from '../../utils/userPrefs';
@@ -84,6 +85,7 @@ function GlassModeSwitcherInner() {
     isXpOpen, openXp, closeXp,
     isMusicOpen, openMusic, closeMusic,
   } = useAppContext();
+  const auth = useAuthOptional();
   const reduceMotion  = useReducedMotion();
   const overlayActive = useOverlayActive();
   const isCinema = isMoviesOpen;
@@ -207,7 +209,12 @@ function GlassModeSwitcherInner() {
   // - dot  : حين يوجد modal نشط أو لعبة تعمل (isGameActive)
   // - open : حين يكون المستخدم قد فتحها
   // - orb  : الحالة الافتراضية (دائرة صغيرة)
-  const shouldShrink = (overlayActive || isGameActive || isMovieActive || isTvActive) && !peek;
+  // [P-FIX2] تصفّح قائمة الأفلام (دون تشغيل فعلي) يجب ألّا يُخفي الفقاعة
+  const browsingCinema = isMoviesOpen && !isMovieActive;
+  const shouldShrink =
+    (overlayActive || isGameActive || isMovieActive || isTvActive) &&
+    !peek &&
+    !browsingCinema;
   const state: 'dot' | 'orb' | 'open' = open ? 'open' : shouldShrink ? 'dot' : 'orb';
 
   const spring = reduceMotion
@@ -451,6 +458,22 @@ function GlassModeSwitcherInner() {
                   <ChevronLeft size={16} />
                 </button>
               )}
+
+                {auth?.user && (
+                  <button
+                    type="button"
+                    className="gs-cell"
+                    role="menuitem"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                      auth.openProfile();
+                    }}
+                  >
+                    <User size={16} />
+                    حسابي
+                  </button>
+                )}
 
               {/* زر الصوت */}
               <button

@@ -130,6 +130,28 @@ function AppInner() {
     }
   }, [isAnyPageActive]);
 
+  // ── [P-FIX2] نظام الصفحة النشطة لزر الدخول/الفقاعة ──
+  // يضبط سمة data-active-page على <html>؛ يستهلكها auth-launcher.css.
+  const activePageKey = !loaded
+    ? 'welcome'
+    : isGamesOpen
+      ? 'games'
+      : isTvOpen
+        ? 'tv'
+        : isMoviesOpen || isSeriesOpen
+          ? 'cinema'
+          : isRetroOpen
+            ? 'retro'
+            : isXpOpen
+              ? 'xp'
+              : isMusicOpen
+                ? 'music'
+                : 'home'
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-active-page', activePageKey)
+  }, [activePageKey])
+
   return (
     <>
       {loaded && <GlassModeSwitcher />}

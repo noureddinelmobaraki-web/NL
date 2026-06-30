@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { X, Search, Volume2, VolumeX, Play, Info, ChevronLeft, ChevronRight, Star, Film, Tv } from "lucide-react";
+import { X, Search, Volume2, VolumeX, Play, Info, ChevronLeft, ChevronRight, Star, Film, Tv, Heart, Eye, Bookmark } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "../../context/AppContext";
+import { useMovieItems } from "../../features/account/useMovieItems";
+import { useAuth } from "../../context/AuthContext";
 import { useDeviceType } from "../../hooks/useDeviceType";
 import { useMoviesMusic } from "./useMoviesMusic";
 import { useDocumentMeta } from "../../hooks/useDocumentMeta";
@@ -147,11 +149,11 @@ const getPosterSrc_static = (path: string | null | undefined) => {
 const MOVIE_ROW_SCROLL_STYLE: React.CSSProperties = { scrollbarWidth: "none", msOverflowStyle: "none", scrollSnapType: "x mandatory" };
 
 const MoviePosterCard = React.memo(({ 
-  item, isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t 
+  item, isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t, isFavorite 
 }: { 
   item: CinemaItem, isTouch: boolean, activeHoverId: number | null, 
   setActiveHoverId: (id: number | null) => void, hoverTimer: React.MutableRefObject<any>, 
-  setSelectedItemId: (id: number | null) => void, t: any 
+  setSelectedItemId: (id: number | null) => void, t: any, isFavorite?: boolean 
 }) => {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -194,6 +196,14 @@ const MoviePosterCard = React.memo(({
       }}
       className="nl-poster relative w-[110px] sm:w-[150px] md:w-[170px] aspect-[2/3] rounded-md overflow-hidden bg-neutral-900 border border-zinc-800 hover:border-red-600 focus-visible:outline-none focus-visible:border-red-500 focus-visible:ring-2 focus-visible:ring-red-500 cursor-pointer select-none transition shadow hover:shadow-red-900/50 hover:shadow-lg active:scale-95 flex-shrink-0 snap-start"
     >
+      {isFavorite && (
+        <span
+          className="absolute top-1.5 left-1.5 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-red-600 shadow-sm"
+          aria-label="Favorited"
+        >
+          <Heart size={10} strokeWidth={2.5} fill="white" color="white" />
+        </span>
+      )}
       <img
         src={getPosterSrc_static(item.posterPath)}
         alt={item.title}
@@ -260,7 +270,7 @@ const MoviePosterCard = React.memo(({
   );
 });
 
-const MovieRow = React.memo(({ title, items, isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t }: any) => {
+const MovieRow = React.memo(({ title, items, isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t, isFavoriteFn }: any) => {
   const sliderRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -323,6 +333,7 @@ const MovieRow = React.memo(({ title, items, isTouch, activeHoverId, setActiveHo
                   hoverTimer={hoverTimer} 
                   setSelectedItemId={setSelectedItemId} 
                   t={t} 
+                  isFavorite={isFavoriteFn?.(item.id, item.mediaType)}
                 />
               </div>
             );
@@ -345,6 +356,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const { setMovieActive, registerMovieBack } = useAppContext();
   const isTouch = isMobile || isTablet;
   const currentLang = normLang(i18n.resolvedLanguage || i18n.language);
+
+  const { user } = useAuth();
+  const { has, toggle } = useMovieItems();
 
   const [activeTab, setActiveTab] = useState<'movies' | 'series'>(initialTab);
   const [moviesLoading, setMoviesLoading] = useState(true);
@@ -400,8 +414,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   }, [selectedItemId]);
 
   const rowProps = useMemo(() => ({
-    isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t
-  }), [isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t]);
+    isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t,
+    isFavoriteFn: (id: number, mediaType: 'movie' | 'tv') => has(id, mediaType, 'favorite')
+  }), [isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t, has]);
 
   const isOpenForAudio = Boolean(detailedItem || selectedItemId);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
@@ -927,7 +942,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-6">
               {(searchQuery ? searchResults : filteredList).map((item) => (
                 <div key={item.id} className="flex justify-center">
-                  <MoviePosterCard item={item} {...rowProps} />
+                  <MoviePosterCard item={item} {...rowProps} isFavorite={rowProps.isFavoriteFn?.(item.id, item.mediaType)} />
                 </div>
               ))}
             </div>
@@ -1089,6 +1104,100 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       <span>{t("movies.meta.watchNow")}</span>
                     </button>
                   </div>
+
+                  {user && detailedItem && (
+                    <div className="flex items-center gap-2 mt-1">
+                      {/* Favorite */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggle(
+                            detailedItem.id,
+                            detailedItem.mediaType,
+                            'favorite',
+                            detailedItem.title,
+                            detailedItem.posterPath
+                          )
+                        }
+                        aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'favorite')}
+                        aria-label="Add to favorites"
+                        className={[
+                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
+                          'text-xs font-semibold border transition-all duration-200 cursor-pointer',
+                          has(detailedItem.id, detailedItem.mediaType, 'favorite')
+                            ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-900/30'
+                            : 'bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:border-red-500 hover:text-red-400',
+                        ].join(' ')}
+                      >
+                        <Heart
+                          size={13}
+                          strokeWidth={2}
+                          fill={has(detailedItem.id, detailedItem.mediaType, 'favorite') ? 'currentColor' : 'none'}
+                        />
+                        <span>مفضلة</span>
+                      </button>
+
+                      {/* Watched */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggle(
+                            detailedItem.id,
+                            detailedItem.mediaType,
+                            'watched',
+                            detailedItem.title,
+                            detailedItem.posterPath
+                          )
+                        }
+                        aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watched')}
+                        aria-label="Mark as watched"
+                        className={[
+                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
+                          'text-xs font-semibold border transition-all duration-200 cursor-pointer',
+                          has(detailedItem.id, detailedItem.mediaType, 'watched')
+                            ? 'bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-900/30'
+                            : 'bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:border-emerald-500 hover:text-emerald-400',
+                        ].join(' ')}
+                      >
+                        <Eye
+                          size={13}
+                          strokeWidth={2}
+                          fill={has(detailedItem.id, detailedItem.mediaType, 'watched') ? 'currentColor' : 'none'}
+                        />
+                        <span>شاهدته</span>
+                      </button>
+
+                      {/* Watchlist */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggle(
+                            detailedItem.id,
+                            detailedItem.mediaType,
+                            'watchlist',
+                            detailedItem.title,
+                            detailedItem.posterPath
+                          )
+                        }
+                        aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watchlist')}
+                        aria-label="Add to watchlist"
+                        className={[
+                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
+                          'text-xs font-semibold border transition-all duration-200 cursor-pointer',
+                          has(detailedItem.id, detailedItem.mediaType, 'watchlist')
+                            ? 'bg-amber-500 border-amber-400 text-white shadow-md shadow-amber-900/30'
+                            : 'bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:border-amber-500 hover:text-amber-400',
+                        ].join(' ')}
+                      >
+                        <Bookmark
+                          size={13}
+                          strokeWidth={2}
+                          fill={has(detailedItem.id, detailedItem.mediaType, 'watchlist') ? 'currentColor' : 'none'}
+                        />
+                        <span>سأشاهده</span>
+                      </button>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-4 text-xs font-mono text-zinc-400">
                     <span className="flex items-center gap-0.5 text-amber-500 font-extrabold">
