@@ -25,7 +25,7 @@
  */
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, Suspense, useCallback, useRef, Activity } from "react";
+import { useEffect, Suspense, useCallback, useRef } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
@@ -79,6 +79,10 @@ const MusicPage = lazyWithRetry(
   () => import('./features/music/MusicPage').then(m => ({ default: m.default })),
   'MusicPage',
 );
+const AccountsPage = lazyWithRetry(
+  () => import('./features/accounts/AccountsPage').then(m => ({ default: m.default })),
+  'AccountsPage',
+);
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
 import { useParallax } from "./hooks/useParallax";
@@ -113,14 +117,14 @@ import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
 function AppInner() {
-  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, endTransition } = useAppContext();
+  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, endTransition } = useAppContext();
 
   useEffect(() => {
     applyThemeUtil(theme);
     savePrefs({ theme });
   }, [theme]);
 
-  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen || isXpOpen || isMusicOpen;
+  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen || isXpOpen || isMusicOpen || isAccountsOpen;
 
   useEffect(() => {
     if (isAnyPageActive) {
@@ -146,7 +150,9 @@ function AppInner() {
               ? 'xp'
               : isMusicOpen
                 ? 'music'
-                : 'home'
+                : isAccountsOpen
+                  ? 'accounts'
+                  : 'home'
 
   useEffect(() => {
     document.documentElement.setAttribute('data-active-page', activePageKey)
@@ -255,6 +261,22 @@ function AppInner() {
               </Suspense>
             </SectionErrorBoundary>
           </motion.div>
+        ) : loaded && isAccountsOpen ? (
+          <motion.div
+            key="accounts-screen"
+            data-mode={theme}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="fixed inset-0 w-full h-full z-[8500]"
+          >
+            <SectionErrorBoundary sectionName="accounts">
+              <Suspense fallback={<PageLoader pageType="cinema" />}>
+                <AccountsPage onClose={closeAccounts} />
+              </Suspense>
+            </SectionErrorBoundary>
+          </motion.div>
         ) : (
           <motion.div
             key="main-app-screen"
@@ -282,7 +304,7 @@ function MainApp() {
     ambientColor, setAmbientColor,
     audioIntent, setAudioIntent,
     theme, setTheme,
-    openGames, openMovies, openTv, openRetro, openXp, openMusic
+    openGames, openMovies, openTv, openRetro, openXp, openMusic, openAccounts
   } = useAppContext();
 
   const navigateSection = useNavigateSection();
@@ -534,6 +556,12 @@ function MainApp() {
             setLoaded(true);
             openMusic();
           }}
+          onEnterAccounts={(chosenTheme, musicConsent) => {
+            setTheme(chosenTheme);
+            if (musicConsent) setAudioIntent('user-playing');
+            setLoaded(true);
+            openAccounts();
+          }}
         />
       )}
 
@@ -635,9 +663,7 @@ function MainApp() {
               >
                 <SectionErrorBoundary sectionName="DrawingsPage">
                   <Suspense fallback={<SkeletonSection type="drawings" />}>
-                    <Activity mode={loaded ? 'visible' : 'hidden'}>
-                      <DrawingsPage onSongPlay={handleSongPlay} />
-                    </Activity>
+                    <DrawingsPage onSongPlay={handleSongPlay} />
                   </Suspense>
                 </SectionErrorBoundary>
               </section>

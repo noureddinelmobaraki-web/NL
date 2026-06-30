@@ -1,0 +1,36 @@
+.nl-cpl-overlay{ position:fixed; inset:0; z-index:10050; display:grid; place-items:center; background:rgba(6,7,10,.6); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }
+.nl-cpl{ width:92%; max-width:440px; max-height:84vh; display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:24px; color:#fff;
+  background:linear-gradient(160deg,#1b1e26,#0d0e12); border:1px solid rgba(255,255,255,.14); box-shadow:0 30px 80px rgba(0,0,0,.6); }
+.nl-cpl__head{ display:flex; align-items:center; justify-content:space-between; }
+.nl-cpl__head h3{ display:flex; align-items:center; gap:8px; margin:0; font-size:16px; font-weight:800; }
+.nl-cpl__x{ width:32px; height:32px; border-radius:50%; border:none; background:rgba(255,255,255,.08); color:#fff; cursor:pointer; display:grid; place-items:center; }
+.nl-cpl__x:hover{ background:rgba(255,255,255,.16); }
+.nl-cpl__name{ width:100%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); border-radius:14px; padding:11px 14px; color:#fff; font-size:14px; outline:none; }
+.nl-cpl__name:focus{ border-color:#ff7a1a; }
+.nl-cpl__search{ display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:9px 13px; }
+.nl-cpl__search input{ flex:1; background:transparent; border:none; outline:none; color:#fff; font-size:13.5px; }
+.nl-cpl__count{ font-size:12px; color:#7dffb0; font-weight:700; }
+.nl-cpl__list{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+.nl-cpl__row{ display:flex; align-items:center; gap:11px; padding:8px; border-radius:12px; cursor:pointer; border:1px solid transparent; background:rgba(255,255,255,.04); color:#fff; text-align:start; transition:background .15s, transform .15s; }
+.nl-cpl__row:hover{ background:rgba(255,122,26,.10); transform:translateX(-2px); }
+.nl-cpl__row.is-on{ background:rgba(60,220,130,.14); border-color:rgba(60,220,130,.35); box-shadow:inset 0 0 0 1px rgba(60,220,130,.35); }
+.nl-cpl-prev { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.08); border:none; color:#fff; cursor:pointer; flex-shrink:0; transition:background .15s, transform .15s, color .15s; margin-left:2px; }
+.nl-cpl-prev:hover { background:linear-gradient(135deg,#ff7a1a,#3cdc82); color:#fff; transform:scale(1.08); }
+.nl-cpl-prev:active { transform:scale(0.92); }
+.nl-cpl__cover{ width:42px; height:42px; border-radius:10px; overflow:hidden; display:grid; place-items:center; font-weight:800; font-size:13px; color:#fff; flex-shrink:0; }
+.nl-cpl__cover img{ width:100%; height:100%; object-fit:cover; }
+.nl-cpl__meta{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.nl-cpl__title{ font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nl-cpl__artist{ font-size:11.5px; color:rgba(255,255,255,.6); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nl-cpl__check{ width:28px; height:28px; border-radius:50%; display:grid; place-items:center; color:rgba(255,255,255,.45); flex-shrink:0; }
+.nl-cpl__check.is-on{ background:#00E676; color:#0a0b0f; }
+.nl-cpl__empty{ text-align:center; color:rgba(255,255,255,.5); padding:20px; }
+.nl-cpl__foot{ display:flex; gap:10px; }
+.nl-cpl__cancel{ flex:1; padding:11px; border-radius:14px; border:1px solid rgba(255,255,255,.2); background:transparent; color:#fff; font-weight:700; cursor:pointer; }
+.nl-cpl__create{ flex:2; padding:11px; border-radius:14px; border:none; background:linear-gradient(135deg,#ff7a1a,#00E676); color:#fff; font-weight:800; cursor:pointer; }
+.nl-cpl__create:hover{ filter:brightness(1.06); }
+
+.nl-ts-modes{ display:flex; gap:8px; }
+.nl-ts-mode{ flex:1; padding:9px; border-radius:12px; font-size:12px; font-weight:700; cursor:pointer; color:#fff;
+  border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.05); transition:border-color .12s, background .12s; }
+.nl-ts-mode.is-on{ border-color:#3cdc82; background:rgba(60,220,130,.16); color:#dffff0; }

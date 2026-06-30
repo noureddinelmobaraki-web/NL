@@ -86,6 +86,8 @@ export function useSharedBackgroundMusic(isActive: boolean, options: SharedMusic
       if (hlsRef.current) {
         try {
           hlsRef.current.off(Hls.Events.MANIFEST_PARSED, tryPlay);
+          hlsRef.current.stopLoad();
+          hlsRef.current.detachMedia();
           hlsRef.current.destroy();
         } catch {}
         hlsRef.current = null;

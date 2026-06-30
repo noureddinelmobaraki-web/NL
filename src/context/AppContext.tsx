@@ -73,6 +73,10 @@ interface AppContextType {
   isMusicOpen: boolean;
   openMusic: () => void;
   closeMusic: () => void;
+  // ── الحسابات Accounts ──────────────────────────────────
+  isAccountsOpen: boolean;
+  openAccounts: () => void;
+  closeAccounts: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -97,6 +101,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isRetroOpen  = nav.activePage === 'retro';
   const isXpOpen     = nav.activePage === 'xp';
   const isMusicOpen  = nav.activePage === 'music';
+  const isAccountsOpen = nav.activePage === 'accounts';
 
   const [isGameActive, setGameActive] = useState(false);
   const gameBackRef = useRef<(() => void) | null>(null);
@@ -160,9 +165,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (prev === 'retro')  { try { audioManager.releaseBg('retro_mode'); audioManager.stop('retro'); } catch {} }
     if (prev === 'xp')     { try { audioManager.releaseBg('xp_mode'); audioManager.stop('xp'); } catch {} }
     if (prev === 'music')  { try { audioManager.releaseBg('music_mode'); } catch {} }
+    if (prev === 'accounts') { /* no audio channel */ }
 
     // دخول صفحة جديدة: أوقف موسيقى الثيم (bg) + علّقها
-    if (page !== 'home') {
+    if (page !== 'home' && page !== 'accounts') {
       try { audioManager.stop('bg'); } catch {}
       const reason = page === 'cinema'
         ? (nav.cinemaTab === 'series' ? 'series_mode' : 'movies_mode')
@@ -195,6 +201,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeXp     = useCallback(() => navigateTo('home'), [navigateTo]);
   const openMusic   = useCallback(() => navigateTo('music'), [navigateTo]);
   const closeMusic  = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openAccounts  = useCallback(() => navigateTo('accounts'), [navigateTo]);
+  const closeAccounts = useCallback(() => navigateTo('home'), [navigateTo]);
 
   const returnToWelcome = useCallback(() => {
     gameBackRef.current = null;  setGameActive(false);
@@ -237,6 +245,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isRetroOpen, openRetro, closeRetro,
         isXpOpen, openXp, closeXp,
         isMusicOpen, openMusic, closeMusic,
+        isAccountsOpen, openAccounts, closeAccounts,
       }}
     >
       {children}

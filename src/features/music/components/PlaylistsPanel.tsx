@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useMusicStore } from '../store/musicStore';
 import { Track } from '../engine/types';
 import { Plus, Trash2, Shuffle, DownloadCloud, ChevronLeft, X, Music2 } from 'lucide-react';
+import { CreatePlaylistModal } from './CreatePlaylistModal';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = arr.slice();
@@ -20,7 +21,7 @@ export function PlaylistsPanel({ onOpenPlayer, online }: { onOpenPlayer?: () => 
   const actions = useMusicStore((s) => s.actions);
 
   const [openId, setOpenId] = useState<string | null>(null);
-  const [newName, setNewName] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
   const [dlAll, setDlAll] = useState<'idle' | 'busy' | 'done'>('idle');
 
   const dlSet = useMemo(() => new Set(downloaded), [downloaded]);
@@ -49,13 +50,6 @@ export function PlaylistsPanel({ onOpenPlayer, online }: { onOpenPlayer?: () => 
     () => (online ? openTracks : openTracks.filter((t) => dlSet.has(t.id))),
     [online, openTracks, dlSet],
   );
-
-  const create = () => {
-    const name = newName.trim();
-    if (!name) return;
-    actions.createPlaylist(name);
-    setNewName('');
-  };
 
   const playShuffled = (list: Track[]) => {
     if (list.length === 0) return;
@@ -147,15 +141,11 @@ export function PlaylistsPanel({ onOpenPlayer, online }: { onOpenPlayer?: () => 
     <div className="flex flex-col h-full min-h-0">
       {online && (
         <div className="flex items-center gap-2 px-1 pb-2">
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') create(); }}
-            placeholder="New playlist name..."
-            className="flex-1 bg-white/60 border border-white/60 rounded-2xl px-3 py-2 text-sm text-slate-800 placeholder-slate-600 outline-none focus:border-[#FF7A1A]"
-          />
-          <button onClick={create} className="p-2 rounded-2xl bg-[#FF7A1A] text-white hover:brightness-105" title="Create playlist">
-            <Plus size={18} />
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-gradient-to-r from-[#FF7A1A] to-[#00E676] text-white text-sm font-bold hover:brightness-105"
+          >
+            <Plus size={18} /> إنشاء بلاي ليست
           </button>
         </div>
       )}
@@ -199,6 +189,7 @@ export function PlaylistsPanel({ onOpenPlayer, online }: { onOpenPlayer?: () => 
           })
         )}
       </div>
+      <CreatePlaylistModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={(id) => setOpenId(id)} />
     </div>
   );
 }

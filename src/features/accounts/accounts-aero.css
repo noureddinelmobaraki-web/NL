@@ -1,0 +1,242 @@
+.nl-accounts{ position:relative; isolation:isolate; }
+/* faint static palette wash behind the grid (cheap: no animation) */
+.nl-accounts::before{
+  content:''; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(640px 380px at 88% -6%, rgba(255,122,26,.14), transparent 60%),
+    radial-gradient(620px 420px at 6% 108%, rgba(60,220,130,.13), transparent 60%);
+}
+/* account cards: glassy Aero */
+.nl-accounts .nl-acct-card{
+  background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 10px 26px rgba(0,0,0,.30);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border-radius:16px !important;
+  transition:all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.nl-accounts .nl-acct-card:hover{
+  transform:translateY(-4px) scale(1.02);
+  border-color:rgba(255,122,26,0.3) !important;
+  box-shadow: 
+    0 12px 30px rgba(0, 0, 0, 0.4), 
+    0 0 15px rgba(255,122,26,0.15), 
+    0 0 30px rgba(60,220,130,0.1);
+  background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,0.05));
+}
+/* public profile modal/card sheen (portalled to body) */
+.nl-public-card{
+  position:relative; overflow:hidden;
+  background:linear-gradient(165deg,rgba(28,30,38,.94),rgba(12,13,17,.97)) !important;
+  border:1px solid rgba(255,255,255,.16) !important;
+  box-shadow:0 26px 70px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+.nl-public-card::before{
+  content:''; position:absolute; top:-80px; inset-inline-end:-60px; width:200px; height:200px; z-index:0;
+  border-radius:50%; filter:blur(46px); opacity:.4; background:radial-gradient(circle,#ff7a1a,transparent 70%); pointer-events:none;
+}
+.nl-public-card::after{
+  content:''; position:absolute; bottom:-90px; inset-inline-start:-70px; width:220px; height:220px; z-index:0;
+  border-radius:50%; filter:blur(48px); opacity:.38; background:radial-gradient(circle,#3cdc82,transparent 70%); pointer-events:none;
+}
+.nl-public-card > *{ position:relative; z-index:1; }
+
+/* ── Public Profile Header ── */
+.nl-pub-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+/* ── Glass Bio Box with Quotes ── */
+.nl-pub__bio-box {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 12px 28px;
+  margin: 10px 0;
+  width: 100%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.nl-pub__bio {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+  text-align: center;
+  margin: 0 !important;
+  background: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.nl-pub__quote-open,
+.nl-pub__quote-close {
+  position: absolute;
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 32px;
+  color: rgba(255, 122, 26, 0.35);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.nl-pub__quote-open {
+  top: 4px;
+  right: 10px;
+}
+
+.nl-pub__quote-close {
+  bottom: -12px;
+  left: 10px;
+}
+
+/* ── Featured Songs Glass Grid ── */
+.nl-pub__songs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  .nl-pub__songs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nl-pub-song-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 6px 10px;
+  transition: background 0.15s, transform 0.15s, border-color 0.15s;
+}
+
+.nl-pub-song-card:hover {
+  background: rgba(255, 122, 26, 0.08);
+  border-color: rgba(255, 122, 26, 0.25);
+  transform: translateY(-1px);
+}
+
+.nl-pub-song-card.is-playing {
+  background: rgba(60, 220, 130, 0.08);
+  border-color: rgba(60, 220, 130, 0.35);
+  box-shadow: 0 0 10px rgba(60, 220, 130, 0.1);
+}
+
+.nl-pub-song-play {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.nl-pub-song-play:hover {
+  background: linear-gradient(135deg, #ff7a1a, #3cdc82);
+  transform: scale(1.08);
+}
+
+.nl-pub-song-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.nl-pub-song-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nl-pub-song-artist {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Favorite Movies Aero Grid ── */
+.nl-pub__movies-sec {
+  margin-top: 16px;
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}
+
+.nl-pub__movies-sec h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 10px;
+}
+
+.nl-pub__movies-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+
+.nl-pub-movie-wrapper {
+  position: relative;
+  width: 72px;
+  height: 108px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nl-pub-movie-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0; /* Cover fills the wrapper */
+}
+
+/* Shine effect on hover */
+.nl-pub-movie-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -150%;
+  width: 120%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+
+.nl-pub-movie-wrapper:hover {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
+.nl-pub-movie-wrapper:hover::after {
+  left: 150%;
+}
+
+.nl-public-card { max-width: 560px; width: min(92vw, 560px); }
+.nl-pub__sec-empty { font-size: 12px; color: rgba(255, 255, 255, 0.5); text-align: center; padding: 6px 0 2px; }
+

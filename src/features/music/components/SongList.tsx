@@ -9,8 +9,10 @@ import { SongRow } from './SongRow';
 import { PlaylistsPanel } from './PlaylistsPanel';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
 import { Track } from '../engine/types';
+import { prefetchTracks } from '../data/audioPrefetch';
 import styles from '../music.module.css';
-import { Search, X, CheckSquare, ListPlus, DownloadCloud } from 'lucide-react';
+import { Search, X, CheckSquare, ListPlus, DownloadCloud, Lightbulb } from 'lucide-react';
+import { SuggestSongModal } from './SuggestSongModal';
 
 const ROW_HEIGHT = 64;
 type Tab = 'all' | 'favorites' | 'downloaded' | 'playlists';
@@ -35,6 +37,7 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showAdd, setShowAdd] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const favSet = useMemo(() => new Set(favorites), [favorites]);
@@ -92,6 +95,8 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
   useEffect(() => {
     if (isEndless) deck.ensureIndex(endIndex);
   }, [isEndless, deck, endIndex]);
+
+  useEffect(() => { prefetchTracks(tracks, 6); }, [tracks]);
 
   const rowAt = useCallback((virtualIndex: number): Track | undefined => {
     if (isEndless) return tracks[deck.resolve(virtualIndex)];
@@ -156,6 +161,16 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
                 </button>
               )}
             </div>
+            {online && (
+              <button
+                onClick={() => setSuggestOpen(true)}
+                className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-2xl border bg-white/60 text-slate-800 border-white/60 hover:bg-white/80 transition-colors text-sm font-bold"
+                title="اقترح أغنية"
+              >
+                <Lightbulb size={16} className="text-[#FF7A1A]" />
+                <span className="hidden xs:inline">اقترح أغنية</span>
+              </button>
+            )}
             <button
               onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
               className={
@@ -231,6 +246,10 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
         trackIds={Array.from(selected)}
         onClose={() => setShowAdd(false)}
         onDone={() => { setShowAdd(false); exitSelect(); }}
+      />
+      <SuggestSongModal
+        open={suggestOpen}
+        onClose={() => setSuggestOpen(false)}
       />
     </div>
   );

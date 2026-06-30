@@ -55,6 +55,8 @@ export async function getOrCreateHls(url: string): Promise<Hls> {
       const oldestHls = pool.get(oldestUrl);
       if (oldestHls) {
         try {
+          oldestHls.stopLoad();
+          oldestHls.detachMedia();
           oldestHls.destroy();
         } catch (e) {
           console.error('[hlsPool] Failed to destroy oldest HLS instance:', e);
@@ -80,6 +82,8 @@ export function destroyHls(url: string): void {
   const hls = pool.get(url);
   if (hls) {
     try {
+      hls.stopLoad();
+      hls.detachMedia();
       hls.destroy();
     } catch {}
     pool.delete(url);
@@ -97,6 +101,8 @@ export function destroyHls(url: string): void {
 export function destroyAllHls(): void {
   pool.forEach(hls => {
     try {
+      hls.stopLoad();
+      hls.detachMedia();
       hls.destroy();
     } catch {}
   });

@@ -38,5 +38,8 @@ export const supabase: SupabaseClient = createClient(
       // تدفّق PKCE هو الأنسب لتطبيقات SPA الثابتة على GitHub Pages
       flowType: 'pkce',
     },
+    global: {
+      fetch: (...args) => fetch(...args),
+    },
   },
 )

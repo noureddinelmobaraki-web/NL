@@ -49,6 +49,7 @@ export default defineConfig(({ mode }) => {
             if (id.includes('@supabase/supabase-js'))       return 'supabase';
             if (id.includes('node_modules/react-dom'))      return 'react-dom';
             if (id.includes('node_modules/react'))          return 'react-core';
+            if (id.includes('node_modules/zustand'))        return 'zustand';
             if (id.includes('node_modules/framer-motion'))  return 'framer';
             if (id.includes('node_modules/hls.js'))         return 'hls';
             if (id.includes('src/components/Drawings/'))    return 'drawings';

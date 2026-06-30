@@ -1,16 +1,72 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { X, Users, Heart, Eye, Bookmark, ListMusic, Music, Film, RefreshCw, Activity, LayoutGrid } from 'lucide-react';
+import { supabase } from '../../config/supabase';
 import { useAdminStats } from './useAdminStats';
 import { useAuth }       from '../../context/AuthContext';
 import { isAdmin }       from '../../config/admin';
+import { UserDetailPanel } from './UserDetailPanel';
+import { getFvTracks } from '../music/data/loadSongs';
+import { RoleBadgeChips } from '../account/roleBadge';
 
 interface AdminDashboardProps { onClose: () => void; }
-type Tab = 'overview' | 'users' | 'activity' | 'top';
+type Tab = 'overview' | 'users' | 'activity' | 'top' | 'suggestions';
+
+interface SuggestionRow {
+  id: string;
+  text: string;
+  user_email: string;
+  user_display_name: string;
+  created_at: string;
+}
 
 export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const { user } = useAuth();
-  const { stats, topSongs, topMovies, users, activity, loading, error, refresh } = useAdminStats();
+  const { stats, topSongs = [], topMovies = [], users = [], activity = [], loading, error, refresh } = useAdminStats();
   const [tab, setTab] = useState<Tab>('overview');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  const [suggestions, setSuggestions] = useState<SuggestionRow[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+
+  const fetchSuggestions = async () => {
+    setSuggestionsLoading(true);
+    const { data, error } = await supabase
+      .from('song_suggestions')
+      .select('id, text, user_email, user_display_name, created_at')
+      .order('created_at', { ascending: false });
+    if (!error && data) setSuggestions(data as any[]);
+    setSuggestionsLoading(false);
+  };
+
+  const deleteSuggestion = async (id: string) => {
+    if (!window.confirm('هل تريد حذف هذا الاقتراح؟')) return;
+    const { error } = await supabase.from('song_suggestions').delete().eq('id', id);
+    if (!error) {
+      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+    }
+  };
+
+  React.useEffect(() => {
+    if (tab === 'suggestions') {
+      void fetchSuggestions();
+    }
+  }, [tab]);
+
+  const songNames = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of getFvTracks()) m.set(t.id, `${t.title} — ${t.artist}`);
+    return m;
+  }, []);
+
+  const ov = {
+    total_users:           stats?.total_users           ?? users.length,
+    total_song_favorites:  stats?.total_song_favorites  ?? users.reduce((s, u) => s + (u.song_favorites ?? 0), 0),
+    total_movie_favorites: stats?.total_movie_favorites ?? users.reduce((s, u) => s + (u.movie_favorites ?? 0), 0),
+    total_watched:         stats?.total_watched         ?? users.reduce((s, u) => s + (u.watched ?? 0), 0),
+    total_watchlist:       stats?.total_watchlist       ?? users.reduce((s, u) => s + (u.watchlist ?? 0), 0),
+    total_playlists:       stats?.total_playlists       ?? users.reduce((s, u) => s + (u.playlists ?? 0), 0),
+  };
+
   if (!user || !isAdmin(user.email)) return null;
 
   return (
@@ -35,19 +91,20 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
           <TabButton active={tab==='users'}    onClick={()=>setTab('users')}    icon={<Users size={14}/>}      label={`Users${users.length?` (${users.length})`:''}`} />
           <TabButton active={tab==='activity'} onClick={()=>setTab('activity')} icon={<Activity size={14}/>}   label="Activity" />
           <TabButton active={tab==='top'}      onClick={()=>setTab('top')}      icon={<Heart size={14}/>}      label="Top" />
+          <TabButton active={tab==='suggestions'} onClick={()=>setTab('suggestions')} icon={<ListMusic size={14}/>} label="Suggestions" />
         </div>
         <div className="flex-1 overflow-y-auto p-6">
           {loading && <p className="text-zinc-500 text-sm text-center py-12">Loading...</p>}
           {error   && <p className="text-red-400 text-sm text-center py-4">{error}</p>}
           {!loading && !error && (<>
-            {tab==='overview' && stats && (
+            {tab==='overview' && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <StatCard icon={<Users size={16}/>}     label="Total Users"     value={stats.total_users}           color="blue" />
-                <StatCard icon={<Heart size={16}/>}     label="Song Favorites"  value={stats.total_song_favorites}  color="red" />
-                <StatCard icon={<Film size={16}/>}      label="Movie Favorites" value={stats.total_movie_favorites} color="purple" />
-                <StatCard icon={<Eye size={16}/>}       label="Watched"         value={stats.total_watched}         color="emerald" />
-                <StatCard icon={<Bookmark size={16}/>}  label="Watchlist"       value={stats.total_watchlist}       color="amber" />
-                <StatCard icon={<ListMusic size={16}/>} label="Playlists"       value={stats.total_playlists}       color="sky" />
+                <StatCard icon={<Users size={16}/>}     label="Total Users"     value={ov.total_users}           color="blue" />
+                <StatCard icon={<Heart size={16}/>}     label="Song Favorites"  value={ov.total_song_favorites}  color="red" />
+                <StatCard icon={<Film size={16}/>}      label="Movie Favorites" value={ov.total_movie_favorites} color="purple" />
+                <StatCard icon={<Eye size={16}/>}       label="Watched"         value={ov.total_watched}         color="emerald" />
+                <StatCard icon={<Bookmark size={16}/>}  label="Watchlist"       value={ov.total_watchlist}       color="amber" />
+                <StatCard icon={<ListMusic size={16}/>} label="Playlists"       value={ov.total_playlists}       color="sky" />
               </div>
             )}
             {tab==='users' && (
@@ -64,10 +121,11 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   </tr></thead>
                   <tbody>
                     {users.map((u)=>(
-                      <tr key={u.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/40">
+                      <tr key={u.id} onClick={() => setSelectedUserId(u.id)} className="border-b border-zinc-800/50 hover:bg-zinc-800/40 cursor-pointer">
                         <td className="py-2 pr-3"><div className="flex flex-col">
                           <span className="text-zinc-200 font-medium">{u.display_name || '—'}</span>
                           <span className="text-[11px] text-zinc-500">{u.email}</span>
+                          <RoleBadgeChips role={u.role} badge={u.badge} />
                         </div></td>
                         <td className="py-2 px-2 text-center text-zinc-300">{u.song_favorites}</td>
                         <td className="py-2 px-2 text-center text-zinc-300">{u.playlists}</td>
@@ -107,7 +165,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   <div className="space-y-1.5">
                     {topSongs.map((s,i)=>(
                       <div key={s.song_id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/50">
-                        <span className="text-xs text-zinc-400 font-mono"><span className="text-zinc-600 mr-2">{i+1}.</span>{s.song_id}</span>
+                        <span className="text-xs text-zinc-300"><span className="text-zinc-600 mr-2 font-mono">{i+1}.</span>{songNames.get(s.song_id) ?? s.song_id}</span>
                         <span className="text-xs font-bold text-red-400">{s.favorite_count}</span>
                       </div>
                     ))}
@@ -132,9 +190,41 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 </section>
               </div>
             )}
+            {tab==='suggestions' && (
+              <div className="space-y-3">
+                {suggestionsLoading && <p className="text-zinc-500 text-xs text-center py-4">Loading suggestions...</p>}
+                {!suggestionsLoading && suggestions.map((s) => (
+                  <div key={s.id} className="flex flex-col gap-2 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/40 relative group">
+                    <button
+                      onClick={() => deleteSuggestion(s.id)}
+                      className="absolute top-3 right-3 p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-800/80 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="حذف الاقتراح"
+                    >
+                      <X size={14} />
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-zinc-200">{s.user_display_name}</span>
+                      <span className="text-[10px] text-zinc-500">{s.user_email}</span>
+                      <span className="text-[10px] text-zinc-600 mr-auto">{new Date(s.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-sm text-zinc-300 bg-black/25 p-3 rounded-lg border border-white/5 white-space-pre-wrap">{s.text}</p>
+                  </div>
+                ))}
+                {!suggestionsLoading && suggestions.length === 0 && (
+                  <p className="py-8 text-center text-zinc-600 text-xs">لا توجد اقتراحات حالياً.</p>
+                )}
+              </div>
+            )}
           </>)}
         </div>
       </div>
+      {selectedUserId && (
+        <UserDetailPanel
+          userId={selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+          onDeleted={() => setSelectedUserId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -157,11 +247,11 @@ const colorMap: Record<Color, string> = {
   amber: 'text-amber-400 bg-amber-900/20 border-amber-800/50',
   sky: 'text-sky-400 bg-sky-900/20 border-sky-800/50',
 };
-function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: Color }) {
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | undefined; color: Color }) {
   return (
     <div className={`flex flex-col gap-1.5 p-3 rounded-xl border ${colorMap[color]}`}>
       <div className="flex items-center gap-1.5 opacity-80">{icon}<span className="text-xs">{label}</span></div>
-      <span className="text-2xl font-bold tracking-tight">{value.toLocaleString()}</span>
+      <span className="text-2xl font-bold tracking-tight">{(value ?? 0).toLocaleString()}</span>
     </div>
   );
 }

@@ -39,6 +39,8 @@ export const VideoCard = memo(({
     if (isFar) {
       const destroyHls = () => {
         if (hlsRef.current) {
+          hlsRef.current.stopLoad();
+          hlsRef.current.detachMedia();
           hlsRef.current.destroy();
           hlsRef.current = null;
         }
@@ -78,6 +80,8 @@ export const VideoCard = memo(({
 
     return () => {
       if (hlsRef.current) {
+        hlsRef.current.stopLoad();
+        hlsRef.current.detachMedia();
         hlsRef.current.destroy();
         hlsRef.current = null;
       }

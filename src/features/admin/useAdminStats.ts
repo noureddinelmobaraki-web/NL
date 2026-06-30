@@ -13,6 +13,7 @@ export interface AdminUser {
   id: string; email: string; created_at: string; last_sign_in_at: string | null;
   display_name: string | null; avatar_url: string | null; bio: string | null;
   song_favorites: number; playlists: number; movie_favorites: number; watched: number; watchlist: number;
+  role: string | null; badge: string | null; frame?: string | null;
 }
 export interface ActivityRow { email: string; action: string; item: string; media_type: string | null; at: string; }
 

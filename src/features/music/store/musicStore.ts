@@ -86,7 +86,7 @@ export interface MusicState {
 
     // Playlists & Favorites actions
     toggleFavorite: (trackId: string) => void;
-    createPlaylist: (name: string) => void;
+    createPlaylist: (name: string) => string;
     deletePlaylist: (playlistId: string) => void;
     addToPlaylist: (playlistId: string, trackId: string) => void;
     addManyToPlaylist: (playlistId: string, trackIds: string[]) => void;
@@ -425,6 +425,7 @@ export const useMusicStore = create<MusicState>()(
           set({
             playlists: [...playlists, { id, name, trackIds: [], createdAt: Date.now() }]
           });
+          return id;
         },
 
         deletePlaylist: (playlistId) => {

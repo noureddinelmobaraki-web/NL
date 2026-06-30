@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Camera, Music2, Pencil, Aperture, Gamepad2, Clapperboard, Tv, Monitor, AudioLines } from 'lucide-react';
+import { Camera, Music2, Pencil, Aperture, Gamepad2, Clapperboard, Tv, Monitor, AudioLines, Users } from 'lucide-react';
 import { NavButton } from '../NavButton';
 import { audioManager } from '../../audio/audioManager';
 import { itemVariants } from './appConstants';
@@ -19,7 +19,7 @@ export function AppNavGrid({
   onOpenLens,
 }: AppNavGridProps) {
   const { t, i18n } = useTranslation();
-  const { openGames, openMovies, openTv, openXp, openMusic } = useAppContext();
+  const { openGames, openMovies, openTv, openXp, openMusic, openAccounts } = useAppContext();
 
   const moviesSeriesLabel = i18n.exists('nav.movies_and_series') ? t('nav.movies_and_series') : 
     (i18n.exists('nav.movies') && i18n.exists('nav.series') 
@@ -97,6 +97,14 @@ export function AppNavGrid({
           import('../Movies/MoviesPage').catch(() => {});
         }}
         theme={resolvedTheme} 
+      />
+      <NavButton
+        icon={Users}
+        label={(i18n.exists('nav.accounts') ? t('nav.accounts') : 'الحسابات').toUpperCase()}
+        onClick={(e) => { setGenieOriginFromElement(e.currentTarget); openAccounts(); }}
+        onMouseEnter={() => { import('../../features/accounts/AccountsPage').catch(() => {}); }}
+        onPointerDown={() => { import('../../features/accounts/AccountsPage').catch(() => {}); }}
+        theme={resolvedTheme}
       />
       <NavButton 
         icon={Tv} 

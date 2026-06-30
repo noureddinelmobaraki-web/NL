@@ -4,7 +4,7 @@
   position:fixed;
   top:max(16px, env(safe-area-inset-top));
   right:max(16px, env(safe-area-inset-right));
-  z-index:8500;            /* تحت الـ mini-player 8600 وفوق المعارض 8000 */
+  z-index:9000 !important;            /* تحت الـ profile orb 9200 وفوق المعارض والصفحات 8500 */
   pointer-events:none;            /* التفاعل على السطح الداخلي فقط */
 }
 

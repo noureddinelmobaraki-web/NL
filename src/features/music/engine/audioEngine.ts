@@ -146,7 +146,11 @@ export class AudioEngine {
       await this.audio.play();
       this.setPlayState(true);
       setMediaSessionPlaybackState('playing');
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        // Expected when interrupted by a new track load
+        return;
+      }
       console.error('[AudioEngine] Play failed', error);
       this.setPlayState(false);
       setMediaSessionPlaybackState('paused');

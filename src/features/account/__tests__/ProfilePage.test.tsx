@@ -46,6 +46,10 @@ vi.mock('../../music/store/musicStore', () => ({
       playlists: [
         { id: 'pl-1', name: 'تجربة', trackIds: [], createdAt: 0 },
       ],
+      actions: {
+        playTrack: vi.fn(),
+        setQueue: vi.fn(),
+      }
     }),
 }))
 

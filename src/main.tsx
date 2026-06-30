@@ -1,48 +1,3 @@
-// Fix read-only window.fetch in sandboxed iframe environments (e.g. AI Studio preview)
-try {
-  if (typeof window !== 'undefined' && 'fetch' in window) {
-    let currentFetch = window.fetch;
-    const patchDescriptor = {
-      configurable: true,
-      enumerable: true,
-      get() {
-        return currentFetch;
-      },
-      set(v: any) {
-        currentFetch = v;
-      }
-    };
-    let patched = false;
-    if (typeof Window !== 'undefined' && Window.prototype) {
-      try {
-        Object.defineProperty(Window.prototype, 'fetch', patchDescriptor);
-        patched = true;
-      } catch (e) {}
-    }
-    if (!patched) {
-      let target = window as any;
-      while (target) {
-        try {
-          const desc = Object.getOwnPropertyDescriptor(target, 'fetch');
-          if (desc && desc.configurable) {
-            Object.defineProperty(target, 'fetch', patchDescriptor);
-            patched = true;
-            break;
-          }
-        } catch (e) {}
-        target = Object.getPrototypeOf(target);
-      }
-    }
-    if (!patched) {
-      try {
-        Object.defineProperty(window, 'fetch', patchDescriptor);
-      } catch (e) {}
-    }
-  }
-} catch (err) {
-  console.warn('Failed to patch window.fetch accessor:', err);
-}
-
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -58,6 +13,24 @@ import { isAutomatedEnv } from './utils/env';
 import { initSentry } from './utils/sentry';
 import './i18n';
 import i18n, { applyDirection } from './i18n';
+
+// Dynamic preconnect to Supabase endpoint
+try {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (supabaseUrl) {
+    const origin = new URL(supabaseUrl).origin;
+    const link = document.createElement('link');
+    link.rel = 'preconnect';
+    link.href = origin;
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+    
+    const dnsLink = document.createElement('link');
+    dnsLink.rel = 'dns-prefetch';
+    dnsLink.href = origin;
+    document.head.appendChild(dnsLink);
+  }
+} catch (e) {}
 
 initSentry();
 applyDirection(i18n.resolvedLanguage || 'ar');

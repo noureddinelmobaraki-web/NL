@@ -4,7 +4,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick, Monitor, AudioLines, User } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick, Monitor, AudioLines, User, Users } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuthOptional } from '../../context/AuthContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
@@ -84,6 +84,7 @@ function GlassModeSwitcherInner() {
     isRetroOpen, openRetro, closeRetro,
     isXpOpen, openXp, closeXp,
     isMusicOpen, openMusic, closeMusic,
+    isAccountsOpen, openAccounts, closeAccounts,
   } = useAppContext();
   const auth = useAuthOptional();
   const reduceMotion  = useReducedMotion();
@@ -407,6 +408,27 @@ function GlassModeSwitcherInner() {
                   }}
                 >
                   <AudioLines size={16} />
+                </button>
+
+                {/* زر الحسابات Accounts */}
+                <button
+                  type="button"
+                  className={`gs-cell gs-icon${isAccountsOpen ? ' is-active' : ''}`}
+                  role="menuitem"
+                  aria-label={isAccountsOpen ? 'Close Accounts' : 'Accounts'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isGamesOpen) closeGames();
+                    if (isMoviesOpen) closeMovies();
+                    if (isTvOpen) closeTv();
+                    if (isRetroOpen) closeRetro();
+                    if (isXpOpen) closeXp();
+                    if (isMusicOpen) closeMusic();
+                    if (isAccountsOpen) closeAccounts();
+                    else { openAccounts(); setOpen(false); }
+                  }}
+                >
+                  <Users size={16} />
                 </button>
               </div>
 

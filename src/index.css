@@ -28,6 +28,7 @@
 @import "./styles/components/glass-switcher.css" layer(components);
 @import "./styles/components/mobile-gallery.css" layer(components);
 @import "./styles/components/xp.css" layer(components);
+@import "./styles/components/skeleton.css" layer(components);
 @import "./styles/animations.css" layer(utilities);
 @import "./styles/touch-gestures.css" layer(utilities);
 @import "./styles/utilities/typography.css" layer(utilities);

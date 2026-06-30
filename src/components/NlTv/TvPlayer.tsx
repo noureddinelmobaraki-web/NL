@@ -94,6 +94,8 @@ export function TvPlayer({
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("playing", handlePlaying);
       if (hls) {
+        hls.stopLoad();
+        hls.detachMedia();
         hls.destroy();
       }
       onVideoRefReady(null);

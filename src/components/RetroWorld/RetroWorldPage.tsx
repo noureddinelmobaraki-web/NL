@@ -54,7 +54,11 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
 
     if (!isRetroOpen) {
       if (hlsRef.current) {
-        try { hlsRef.current.destroy(); } catch {}
+        try {
+          hlsRef.current.stopLoad();
+          hlsRef.current.detachMedia();
+          hlsRef.current.destroy();
+        } catch {}
         hlsRef.current = null;
       }
       if (audioRef.current) {
@@ -111,6 +115,8 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
       if (hlsRef.current) {
         try {
           hlsRef.current.off(Hls.Events.MANIFEST_PARSED, tryPlay);
+          hlsRef.current.stopLoad();
+          hlsRef.current.detachMedia();
           hlsRef.current.destroy();
         } catch {}
         hlsRef.current = null;

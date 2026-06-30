@@ -1,0 +1,75 @@
+.nl-gate{
+  position:fixed; inset:0; z-index:10000; display:grid; place-items:center;
+  background:rgba(8,9,12,.34);
+  backdrop-filter:blur(10px) saturate(125%); -webkit-backdrop-filter:blur(10px) saturate(125%);
+  animation:nl-gate-in .5s ease both;
+}
+.nl-gate.is-leaving{ animation:nl-gate-out .6s ease forwards; }
+@keyframes nl-gate-in{ from{opacity:0} to{opacity:1} }
+@keyframes nl-gate-out{
+  from{opacity:1; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px)}
+  to{opacity:0; backdrop-filter:blur(0); -webkit-backdrop-filter:blur(0)}
+}
+
+.nl-gate__card{
+  position:relative; isolation:isolate; overflow:hidden;
+  display:flex; flex-direction:column; align-items:center; gap:15px;
+  padding:34px 28px 30px; width:88%; max-width:360px; text-align:center;
+  border-radius:28px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,.05) 42%,rgba(255,255,255,.02));
+  border:1px solid rgba(255,255,255,.28);
+  box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.5);
+  backdrop-filter:blur(22px) saturate(160%); -webkit-backdrop-filter:blur(22px) saturate(160%);
+  animation:nl-gate-pop .55s cubic-bezier(.2,.8,.2,1) both;
+}
+/* vivid orange + green light splashes (site palette) */
+.nl-gate__card::before,
+.nl-gate__card::after{ content:''; position:absolute; z-index:-1; border-radius:50%; filter:blur(46px); opacity:.55; }
+.nl-gate__card::before{ width:220px; height:220px; top:-70px; inset-inline-end:-60px;
+  background:radial-gradient(circle,#ff7a1a,transparent 70%); }
+.nl-gate__card::after{ width:240px; height:240px; bottom:-80px; inset-inline-start:-70px;
+  background:radial-gradient(circle,#3cdc82,transparent 70%); }
+/* Aero top sheen */
+.nl-gate__card > *{ position:relative; z-index:1; }
+.nl-gate__card::-webkit-scrollbar{ display:none; }
+
+.nl-gate__hi{ margin:0; color:#fff; font-weight:800; font-size:18px; letter-spacing:.2px; }
+.nl-gate__note{ margin:0; font-size:12.5px; line-height:1.65; color:rgba(255,255,255,.82); max-width:280px; }
+
+/* Glossy Aero primary button (login / enter) */
+.nl-gate__primary{
+  position:relative; overflow:hidden;
+  display:inline-flex; align-items:center; gap:9px; padding:13px 30px;
+  border:1px solid rgba(255,255,255,.55); border-radius:999px; cursor:pointer;
+  font-weight:900; font-size:15px; color:#fff; letter-spacing:.3px;
+  background:linear-gradient(180deg,#ffae6b 0%,#ff7a1a 48%,#e9650a 100%);
+  box-shadow:0 10px 26px rgba(255,122,26,.5), inset 0 1px 0 rgba(255,255,255,.85),
+             inset 0 -8px 14px rgba(180,70,0,.45);
+  transition:transform .15s, filter .15s, box-shadow .15s;
+}
+.nl-gate__primary::before{ /* glossy top highlight */
+  content:''; position:absolute; inset:1px 1px 50% 1px; border-radius:999px 999px 40px 40px;
+  background:linear-gradient(180deg,rgba(255,255,255,.65),rgba(255,255,255,0));
+  pointer-events:none;
+}
+.nl-gate__primary::after{ /* sweeping shine */
+  content:''; position:absolute; top:0; inset-inline-start:-120%; width:60%; height:100%;
+  background:linear-gradient(115deg,transparent,rgba(255,255,255,.55),transparent);
+  transform:skewX(-18deg); animation:nl-shine 4.5s ease-in-out infinite;
+}
+@keyframes nl-shine{ 0%,60%{ inset-inline-start:-120% } 80%,100%{ inset-inline-start:140% } }
+.nl-gate__primary:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+.nl-gate__primary:active{ transform:translateY(0) scale(.98); }
+
+/* Glassy green guest button */
+.nl-gate__guest{
+  display:inline-flex; align-items:center; gap:8px; padding:10px 22px;
+  border:1px solid rgba(60,220,130,.55); border-radius:999px; cursor:pointer;
+  background:linear-gradient(180deg,rgba(60,220,130,.22),rgba(60,220,130,.08));
+  color:#dffff0; font-weight:800; font-size:13.5px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4); transition:filter .15s, transform .15s;
+}
+.nl-gate__guest:hover{ filter:brightness(1.1); transform:translateY(-1px); }
+
+@media (prefers-reduced-motion:reduce){ .nl-gate,.nl-gate__card,.nl-gate__primary::after{ animation:none } }

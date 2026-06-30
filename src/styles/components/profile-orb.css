@@ -1,0 +1,49 @@
+.profile-orb{
+  border:none; cursor:pointer; padding:0; background:transparent;
+  display:grid; place-items:center; border-radius:50%;
+  filter:drop-shadow(0 8px 22px rgba(0,0,0,.45));
+  transition:width .34s cubic-bezier(.4,0,.2,1),height .34s cubic-bezier(.4,0,.2,1),
+    top .34s cubic-bezier(.4,0,.2,1),right .34s cubic-bezier(.4,0,.2,1),transform .2s ease;
+}
+/* HERO: inline, centered, just above the NL letters on the welcome screen */
+.profile-orb--hero{
+  position:absolute; left:50%; top:50%;
+  transform:translate(-50%, calc(-50% - 96px));
+  width:76px; height:76px; z-index:30;
+}
+.profile-orb--hero:active{transform:translate(-50%, calc(-50% - 96px)) scale(.95)}
+@media (max-width:580px){ .profile-orb--hero{ width:60px; height:60px; transform:translate(-50%, calc(-50% - 74px)); } }
+/* thin polished gradient ring (no fat primitive outline) */
+.profile-orb-ring{
+  position:absolute; inset:0; border-radius:50%; padding:2px;
+  background:linear-gradient(135deg,var(--nl-orange,#ff7a1a),var(--nl-green,#3cdc82));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude; opacity:.95;
+}
+.profile-orb-inner{
+  position:relative; width:calc(100% - 5px); height:calc(100% - 5px); border-radius:50%;
+  overflow:hidden; display:grid; place-items:center;
+  background:radial-gradient(120% 120% at 30% 25%,#1a1d24,#0c0d11);
+}
+.profile-orb-inner img{width:100%;height:100%;object-fit:cover;display:block}
+.profile-orb-initials{font-weight:800;color:#fff;font-size:22px;letter-spacing:.5px}
+.profile-orb-guest{color:#aeb3bd;width:44%;height:44%}
+.profile-orb.is-guest .profile-orb-ring{opacity:.55;filter:grayscale(.3)}
+.profile-orb:hover{filter:drop-shadow(0 10px 26px rgba(0,0,0,.5)) brightness(1.05)}
+/* DOCKED: small pill to the LEFT of the glass bubble (bubble is at right:16px) */
+.profile-orb.is-docked{
+  position:fixed; width:34px; height:34px; top:18px; right:64px; z-index:9200;
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));
+}
+.profile-orb.is-docked:hover{transform:scale(1.06)}
+.profile-orb.is-docked:active{transform:scale(.92)}
+.profile-orb.is-docked .profile-orb-initials{font-size:13px}
+.profile-orb.is-docked .profile-orb-ring{padding:1.5px}
+@media (max-width:520px){ .profile-orb.is-docked{width:32px;height:32px;top:16px;right:58px} }
+@media (prefers-reduced-motion:reduce){ .profile-orb{transition:none} }
+
+.profile-orb--gate{position:relative;width:96px;height:96px}
+@media (max-width:580px){ .profile-orb--gate{width:84px;height:84px} }
+
+.profile-orb--welcome{position:relative;width:100%;height:100%}
+

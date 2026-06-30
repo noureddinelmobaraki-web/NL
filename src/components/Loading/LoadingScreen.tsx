@@ -8,7 +8,9 @@ import { ThemePicker } from './ThemePicker';
 import { LOADING_TIMINGS } from '../../constants/loading';
 import { isAutomatedEnv } from '../../utils/env';
 import type { Theme } from '../../utils/userPrefs';
-import { Gamepad2, Film, Tv, Joystick, Monitor, AudioLines } from 'lucide-react';
+import { Gamepad2, Film, Tv, Joystick, Monitor, AudioLines, Users } from 'lucide-react';
+import { WelcomeGate } from './WelcomeGate';
+import { ProfileOrb } from '../../features/account/ProfileOrb';
 
 const POSTER_IMAGE_URL = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp';
 
@@ -20,20 +22,23 @@ export interface LoadingScreenProps {
   onEnterRetro?: (chosenTheme: Theme, musicConsent: boolean) => void;
   onEnterXp?: (chosenTheme: Theme, musicConsent: boolean) => void;
   onEnterMusic?: (chosenTheme: Theme, musicConsent: boolean) => void;
+  onEnterAccounts?: (chosenTheme: Theme, musicConsent: boolean) => void;
 }
 
-export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnterTv, onEnterRetro, onEnterXp, onEnterMusic }: LoadingScreenProps) => {
+export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnterTv, onEnterRetro, onEnterXp, onEnterMusic, onEnterAccounts }: LoadingScreenProps) => {
   const isAutomated = isAutomatedEnv();
   const { phase, setPhase, useStatic, triggerVideoFailed } = useLoadingPhase();
   const doneRef = useRef(false);
 
   const [musicConsent, setMusicConsent] = useState(false);
+  const [gateDone, setGateDone] = useState(isAutomated);
   
   const introAudio = useIntroAudio({
     src: INTRO_MUSIC_HLS,
     enabled: musicConsent,
     volume: 0.6,
   });
+
 
   useEffect(() => {
     const root = document.documentElement;
@@ -142,6 +147,17 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
     }, LOADING_TIMINGS.zoomOut);
   }, [musicConsent, onEnterMusic, setPhase, introAudio]);
 
+  const finishToAccounts = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setPhase('zooming');
+    if (musicConsent) introAudio.fadeOut(800);
+    setTimeout(() => {
+      setPhase('hidden');
+      onEnterAccounts?.('midnight', musicConsent);
+    }, LOADING_TIMINGS.zoomOut);
+  }, [musicConsent, onEnterAccounts, setPhase, introAudio]);
+
   if (phase === 'hidden') return null;
 
   const zoomStyle = phase === 'zooming'
@@ -150,6 +166,7 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
 
   return (
     <>
+      {!gateDone && <WelcomeGate onDismiss={() => setGateDone(true)} />}
       <style>{`
         @keyframes nl-zoom-in {
           0%   { transform: scale(1);    opacity: 1; }
@@ -202,10 +219,42 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
           transform: scale(0.95);
         }
 
-        /* 1. الشاشات الكبيرة (حاسوب ولوحي) -> 6 أزرار بجانب بعضها */
+        /* 1. الشاشات الكبيرة (حاسوب ولوحي) -> 7 أزرار بجانب بعضها */
         @media (min-width: 581px) {
           .loading-buttons-container {
-            grid-template-columns: repeat(6, auto);
+            grid-template-columns: repeat(7, auto);
+          }
+        }
+
+        .nl-welcome-orb {
+          position: fixed;
+          top: 10px;
+          left: 10px;                 /* On mobile, place on the left to avoid speaker overlap */
+          z-index: 20000;
+          display: block;
+        }
+        .nl-welcome-orb button {
+          width: 40px !important;
+          height: 40px !important;
+        }
+        .nl-speaker-btn {
+          top: 10px !important;
+          right: 10px !important;
+        }
+
+        @media (min-width: 900px) {
+          .nl-welcome-orb {
+            top: 16px;
+            left: auto !important;
+            right: 18px !important;   /* On desktop, place top-right */
+          }
+          .nl-welcome-orb button {
+            width: 64px !important;
+            height: 64px !important;
+          }
+          .nl-speaker-btn {
+            top: 16px !important;
+            right: 96px !important;   /* Shift speaker left on desktop to sit side-by-side */
           }
         }
 
@@ -282,6 +331,9 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
           background: 'radial-gradient(ellipse at center,rgba(0,0,0,0.18) 0%,rgba(0,0,0,0.58) 100%)',
         }} />
         <IntroSpeakerButton enabled={musicConsent} onToggle={handleSpeakerToggle} />
+        <div className="nl-welcome-orb">
+          <ProfileOrb variant="welcome" />
+        </div>
         <div style={{
           position: 'relative', zIndex: 2,
           color: 'white',
@@ -313,6 +365,17 @@ export const LoadingScreen = ({ onComplete, onEnterGames, onEnterCinema, onEnter
           >
             <Film size={16} aria-hidden="true" />
             <span>Movies & Series</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={finishToAccounts}
+            aria-label="Accounts"
+            data-testid="welcome-accounts-btn"
+            className="loading-btn"
+          >
+            <Users size={16} aria-hidden="true" />
+            <span>Accounts</span>
           </button>
 
           <button

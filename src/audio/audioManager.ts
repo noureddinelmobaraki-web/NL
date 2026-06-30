@@ -1,4 +1,14 @@
-type AudioSource = 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro' | 'games' | 'movies' | 'series' | 'tv' | 'retro' | 'xp';
+type AudioSource =
+  | 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro'
+  | 'games' | 'movies' | 'series' | 'tv' | 'retro' | 'xp'
+  | 'profile'   // أغنية بروفيل المستخدم (ThemeSongBar)
+  | 'preview';  // معاينة أغنية داخل النوافذ (useSongPreview)
+
+interface ExternalSource {
+  pause: () => void;       // كيف يوقف هذا المصدر نفسه (مثلاً audioEngine.pause)
+  isPlaying: () => boolean;
+  resume?: () => void;     // اختياري: استئناف عند تحرّر الأولوية
+}
 
 /** Metadata لكل suppressor مسجَّل في bgSuppressors. */
 interface SuppressorMeta {
@@ -67,6 +77,7 @@ const amLog = {
 class AudioManager {
   private active: AudioSource | null = null;
   private registry = new Map<AudioSource, AudioEntry>();
+  private externals = new Map<AudioSource, ExternalSource>();
   // Rule 3: BG Suppression mechanisms — Map-based with metadata (P01.1)
   // Key = reason string، Value = { reason, ts } لتمكين diagnose & purge.
   private bgSuppressors = new Map<string, SuppressorMeta>();
@@ -91,6 +102,35 @@ class AudioManager {
   private visibilityListenersInstalled = false;
   private pendingGestureResume = false;
   private lastRecoverAt = 0;
+
+  /** يسجّل مشغّلاً خارجياً (لا يملك <audio> داخل المدير) ليخضع للأولويات. */
+  registerExternal(source: AudioSource, ctrl: ExternalSource): () => void {
+    this.externals.set(source, ctrl);
+    return () => { this.externals.delete(source); };
+  }
+
+  /** يجعل `source` حصرياً: يوقف كل مصدر آخر أقلّ أو يساوي أولويةً (داخلي وخارجي) ويكبت bg. */
+  requestExclusive(source: AudioSource, reason = `excl_${source}`): void {
+    const myPrio = this.getPriority(source);
+    // (أ) أوقف المصادر الخارجية الأدنى/المساوية (مثل NL music) — لكن ليس نفسه
+    for (const [src, ctrl] of this.externals) {
+      if (src === source) continue;
+      if (this.getPriority(src) <= myPrio && ctrl.isPlaying()) {
+        try { ctrl.pause(); } catch {}
+      }
+    }
+    // (ب) أوقف المصدر الداخلي النشط لو أولويته أدنى/مساوية
+    if (this.active && this.active !== source && this.getPriority(this.active) <= myPrio) {
+      this.pause(this.active);
+    }
+    // (ج) اكبت الخلفية ما دام هذا المصدر فعّالاً
+    this.suppressBg(reason);
+  }
+
+  /** يُنهي الحصرية ويعيد الخلفية (والمشغّلات الخارجية التي تدعم resume إن رغبت). */
+  releaseExclusive(reason = `excl`): void {
+    this.releaseBg(reason);
+  }
 
   constructor() {
     this.installVisibilityListenersIfBrowser();
@@ -312,7 +352,9 @@ class AudioManager {
 
   private getPriority(source: AudioSource): number {
     const priorities: Record<AudioSource, number> = {
+      'preview': 11, // المعاينة هي تفاعل مستخدم مباشر -> الأعلى
       'song': 10,  // highest
+      'profile': 9,  // أغنية بروفيل المستخدم
       'intro': 4,
       'lens': 8,
       'mebit': 8,

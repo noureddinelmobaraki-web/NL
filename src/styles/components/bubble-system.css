@@ -1,0 +1,10 @@
+/* Shared “evaporate” state for floating bubbles (login button + profile orb). */
+.is-evaporated{
+  opacity:0 !important;
+  pointer-events:none !important;
+  transform:scale(.86) !important;
+  transition:opacity .22s ease, transform .22s ease !important;
+}
+.auth-launcher,.profile-orb.is-docked{
+  transition:opacity .25s ease, transform .25s ease;
+}

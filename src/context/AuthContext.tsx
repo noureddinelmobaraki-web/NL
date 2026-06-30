@@ -18,6 +18,9 @@ import { startKeepAlive, stopKeepAlive } from '../config/supabaseKeepAlive'
 const AuthModal = lazy(() => import('../features/account/AuthModal'))
 const ProfilePage = lazy(() => import('../features/account/ProfilePage'))
 const SongFavoritesSync = lazy(() => import('../features/account/SongFavoritesSync'))
+const ProfileOrb = lazy(() => import('../features/account/ProfileOrb').then(m => ({ default: m.ProfileOrb })));
+import '../styles/components/profile-orb.css';
+import '../styles/components/bubble-system.css';
 
 // فحص خفيف لا يستورد supabase-js
 const isConfigured: boolean = Boolean(
@@ -130,6 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       stopKeepAlive()
     }
   }, [getClient])
+
+  // Warm the auth UI chunks + supabase client so the modal opens instantly.
+  useEffect(() => {
+    if (!isConfigured) return;
+    const warm = () => {
+      import('../features/account/AuthModal').catch(() => {});
+      import('../features/account/ProfilePage').catch(() => {});
+      void getClient();
+    };
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
+    if (ric) { const id = ric(warm); return () => (window as unknown as { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); }
+    const t = window.setTimeout(warm, 1200); return () => window.clearTimeout(t);
+  }, [getClient]);
 
   // إغلاق نافذة الدخول تلقائيًا عند نجاح تسجيل الدخول
   useEffect(() => {
@@ -304,7 +320,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
-      {isConfigured && <AuthLauncher />}
+      {isConfigured && (
+        <>
+          <AuthLauncher />
+          <Suspense fallback={null}><ProfileOrb /></Suspense>
+        </>
+      )}
       {isConfigured && (
         <Suspense fallback={null}>
           <SongFavoritesSync />

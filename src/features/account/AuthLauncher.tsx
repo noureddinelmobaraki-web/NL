@@ -1,10 +1,14 @@
+import { useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { LogIn } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useBubbleAvoidance } from '../../system/useBubbleAvoidance'
 import '../../styles/components/auth-launcher.css'
 
 export default function AuthLauncher() {
   const { user, openAuthModal } = useAuth()
+  const ref = useRef<HTMLButtonElement>(null)
+  useBubbleAvoidance(ref, true)
 
   // يختفي تلقائيًا بعد تسجيل الدخول — تصبح بوابة الحساب داخل الفقاعة («حسابي»)
   if (user) return null
@@ -12,9 +16,12 @@ export default function AuthLauncher() {
 
   return createPortal(
     <button
+      ref={ref}
       type="button"
       className="auth-launcher"
       data-glass-avoid=""
+      onPointerEnter={() => import('./AuthModal').catch(() => {})}
+      onFocus={() => import('./AuthModal').catch(() => {})}
       onClick={openAuthModal}
       aria-label="تسجيل الدخول"
     >

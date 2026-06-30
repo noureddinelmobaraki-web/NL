@@ -19,6 +19,7 @@ export const IntroSpeakerButton = ({ enabled, onToggle }: Props) => {
       onMouseLeave={() => setHover(false)}
       aria-label={enabled ? 'Mute intro music' : 'Enable intro music'}
       aria-pressed={enabled}
+      className="nl-speaker-btn"
       style={{
         position: 'absolute',
         top: 14, right: 14,

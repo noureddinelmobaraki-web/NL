@@ -2,13 +2,14 @@ import { useEffect } from 'react';
 import { useMusicStore } from '../store/musicStore';
 import { audioEngine } from '../engine/audioEngine';
 import { fetchLyrics, prefetchLyrics } from '../data/lyrics';
+import { audioManager } from '../../../audio/audioManager';
+import { prefetchAudio } from '../data/audioPrefetch';
 
 export function useMusicEngine() {
   const actions = useMusicStore((s) => s.actions);
 
-  // 2. Synchronize store preferences down to the engine on initial load
+  // Synchronize store preferences down to the engine on initial load
   useEffect(() => {
-    // Only configure engine parameters once state gets loaded or changed
     const store = useMusicStore.getState();
     audioEngine.setVolume(store.volume);
     audioEngine.setMuted(store.muted);
@@ -20,7 +21,7 @@ export function useMusicEngine() {
     audioEngine.setLoop(store.loopStart, store.loopEnd);
   }, []);
 
-  // 3. Setup core callbacks from audioEngine back into Zustand store
+  // Setup core callbacks from audioEngine back into Zustand store
   useEffect(() => {
     audioEngine.onTimeUpdate = (currentTime, duration, buffered) => {
       actions.updatePlaybackProgress(currentTime, duration, buffered);
@@ -28,6 +29,11 @@ export function useMusicEngine() {
 
     audioEngine.onPlayState = (isPlaying) => {
       actions.setPlaying(isPlaying);
+      if (isPlaying) {
+        audioManager.requestExclusive('song', 'nl_music');
+      } else {
+        audioManager.releaseExclusive('nl_music');
+      }
     };
 
     audioEngine.onEnded = () => {
@@ -54,12 +60,17 @@ export function useMusicEngine() {
       // ready the moment the user opens the Lyrics panel.
       fetchLyrics(track);
       // Warm up the next track in the queue for an instant skip.
-      const s = useMusicStore.getState();
-      const activeQueue = s.shuffle ? s.shuffleQueue : s.queue;
-      const i = activeQueue.indexOf(track.id);
-      const nextId = i >= 0 ? activeQueue[i + 1] : undefined;
-      const nextTrack = nextId ? s.tracks.find((t) => t.id === nextId) : undefined;
-      if (nextTrack) prefetchLyrics(nextTrack);
+      try {
+        const s = useMusicStore.getState();
+        const activeQueue = s.shuffle ? s.shuffleQueue : s.queue;
+        const i = activeQueue.indexOf(track.id);
+        const nextId = i >= 0 ? activeQueue[i + 1] : undefined;
+        const nextTrack = nextId ? s.tracks.find((t) => t.id === nextId) : undefined;
+        if (nextTrack) {
+          prefetchLyrics(nextTrack);
+          prefetchAudio(nextTrack.src);
+        }
+      } catch { /* noop */ }
     };
 
     return () => {
@@ -80,5 +91,14 @@ export function useMusicEngine() {
     return () => {
       try { audioEngine.pause(); } catch {}
     };
+  }, []);
+
+  // Register audioEngine as an external 'song' source under audioManager priority control
+  useEffect(() => {
+    const off = audioManager.registerExternal('song', {
+      pause: () => { try { audioEngine.pause(); } catch {} },
+      isPlaying: () => useMusicStore.getState().isPlaying,
+    });
+    return off;
   }, []);
 }
