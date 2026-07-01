@@ -258,6 +258,7 @@ function GlassModeSwitcherInner() {
             scheduleIdleCollapse();
           } else {
             keepAlive();
+            setOpen(true); // إصلاح: النقر على سطح المكتب يفتح الشبكة أيضًا (يثبّت اختبار Retro)
           }
         }}
         role="group"

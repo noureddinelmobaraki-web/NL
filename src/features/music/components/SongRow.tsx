@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Heart, Activity, Download, Loader2, CheckCircle2, Check } from 'lucide-react';
+import { Heart, Activity, Download, Loader2, CheckCircle2, Check, Share2 } from 'lucide-react';
 import { Track } from '../engine/types';
 import { useMusicStore } from '../store/musicStore';
+import { shareSong } from '../data/shareSong';
 import styles from '../music.module.css';
 
 interface SongRowProps {
@@ -24,8 +25,16 @@ export function SongRow({
   selectable = false, selected = false, onToggleSelect,
 }: SongRowProps) {
   const [dl, setDl] = useState<'idle' | 'start' | 'done' | 'error'>('idle');
+  const [shareState, setShareState] = useState<'idle' | 'copied' | 'shared' | 'error'>('idle');
   const isSaved = useMusicStore((s) => s.downloaded.includes(song.id));
   const offlineActions = useMusicStore((s) => s.actions);
+
+  const handleShareClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = await shareSong(song);
+    setShareState(res);
+    setTimeout(() => setShareState('idle'), 2000);
+  };
 
   return (
     <div
@@ -87,6 +96,19 @@ export function SongRow({
             {dl === 'start'
               ? <Loader2 size={16} className="animate-spin" />
               : isSaved ? <CheckCircle2 size={16} /> : <Download size={16} />}
+          </button>
+          <button
+            onClick={handleShareClick}
+            className={`p-1.5 transition-colors rounded-full text-slate-700 opacity-30 group-hover:opacity-100 hover:text-[#34E89E] ${
+              shareState !== 'idle' ? 'text-[#00E676] opacity-100 scale-110' : ''
+            }`}
+            title="مشاركة الأغنية"
+          >
+            {shareState === 'copied' || shareState === 'shared' ? (
+              <Check size={16} className="text-[#00E676]" />
+            ) : (
+              <Share2 size={16} />
+            )}
           </button>
           <div className="text-xs font-mono text-slate-600 opacity-80">
             {formatTime(song.durationSec)}

@@ -182,30 +182,38 @@ if (!fs.existsSync(assetsTsPath)) {
 
     console.log(`  Found ${allUrls.length} unique absolute URLs to verify.`);
 
+    const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
     async function checkUrl(url, attempt = 1) {
+      const MAX_ATTEMPTS = 4;
       try {
-        const res = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'verify-build-bot' } });
+        let res = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'verify-build-bot' } });
+        if (res.status === 403 || res.status === 405) {
+          res = await fetch(url, { method: 'GET', headers: { 'User-Agent': 'verify-build-bot' } });
+        }
+
+        if (RETRY_STATUS.has(res.status) && attempt < MAX_ATTEMPTS) {
+          const delay = 300 * Math.pow(2, attempt - 1) + Math.random() * 150;
+          await sleep(delay);
+          return checkUrl(url, attempt + 1);
+        }
+
         if (res.status >= 400 && res.status < 600) {
-          if (res.status === 405 || res.status === 403) {
-            // retry with GET
-            const getRes = await fetch(url, { method: 'GET', headers: { 'User-Agent': 'verify-build-bot' } });
-            if (getRes.status >= 400) {
-              return { ok: false, status: getRes.status, url };
-            }
-            return { ok: true, url };
-          }
           return { ok: false, status: res.status, url };
         }
         return { ok: true, url };
       } catch (err) {
-        if (attempt < 2) {
+        if (attempt < MAX_ATTEMPTS) {
+          const delay = 300 * Math.pow(2, attempt - 1) + Math.random() * 150;
+          await sleep(delay);
           return checkUrl(url, attempt + 1);
         }
         return { ok: false, error: err.message, url };
       }
     }
 
-    async function checkUrlsWithConcurrency(urls, concurrency = 8) {
+    async function checkUrlsWithConcurrency(urls, concurrency = 4) {
       const queue = [...urls];
       const results = [];
       const failed = [];
@@ -233,7 +241,7 @@ if (!fs.existsSync(assetsTsPath)) {
       return failed;
     }
 
-    const failedIntegrity = await checkUrlsWithConcurrency(allUrls, 8);
+    const failedIntegrity = await checkUrlsWithConcurrency(allUrls, 4);
     if (failedIntegrity.length > 0) {
       console.error(`  ❌ FAIL: ${failedIntegrity.length} assets returned 4xx/5xx or failed to load.`);
       globalFailure = true;

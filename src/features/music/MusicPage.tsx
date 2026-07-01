@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMusicStore } from './store/musicStore';
 import { useMusicEngine } from './hooks/useMusicEngine';
 import { useHotkeys } from './hooks/useHotkeys';
+import { useSongDeepLink } from './hooks/useSongDeepLink';
 import { fetchLyrics, prefetchMany } from './data/lyrics';
 import { listSavedUrls, ensurePersistentStorage } from './data/offline';
 import { SongList } from './components/SongList';
@@ -13,6 +14,7 @@ import styles from './music.module.css';
 export default function MusicPage() {
   useMusicEngine(); // يربط المحرّك بالمتجر (دون الاشتراك في currentTime هنا)
   useHotkeys();    // اختصارات لوحة المفاتيح
+  useSongDeepLink(); // معالجة الروابط العميقة للأغاني
 
   const hasCurrent = useMusicStore((s) => Boolean(s.currentId));
   const currentId = useMusicStore((s) => s.currentId);

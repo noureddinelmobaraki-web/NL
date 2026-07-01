@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, Camera, Save, Loader2, Star, Clock, ShieldCheck, Trash2, LogOut, Music2,
+  X, Camera, Save, Loader2, Star, Clock, ShieldCheck, Trash2, LogOut, Music2, Bell,
 } from 'lucide-react';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
@@ -17,6 +17,7 @@ import { useMusicStore } from '../music/store/musicStore';
 import { useMovieItems } from './useMovieItems';
 import { ThemeSongBar } from './components/ThemeSongBar';
 import { ThemeSongPicker } from './components/ThemeSongPicker';
+import { InboxPanel } from './components/InboxPanel';
 import '../../styles/components/profile-page.css';
 
 const BIO_MAX = 280;
@@ -63,6 +64,9 @@ export default function ProfilePage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [inboxOpen, setInboxOpen] = useState(false);
+
   useEffect(() => {
     document.documentElement.classList.add('nl-modal-open');
     return () => {
@@ -76,6 +80,28 @@ export default function ProfilePage() {
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [listeningReport, setListeningReport] = useState<any>(null);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase.rpc('my_suggestions_unread_count');
+      if (!error && data !== null) {
+        setUnreadCount(Number(data));
+      }
+    } catch (e) {
+      console.warn("Could not fetch unread count", e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    void fetchUnreadCount();
+    // Poll every 30 seconds for new suggestions
+    const t = setInterval(fetchUnreadCount, 30000);
+    return () => {
+      clearInterval(t);
+    };
+  }, [user, fetchUnreadCount]);
 
   useEffect(() => {
     if (!user) return;
@@ -223,6 +249,19 @@ export default function ProfilePage() {
     <div className="profile-overlay" role="dialog" aria-modal="true">
       <div className="profile-shell">
         <button className="icon-btn profile-close" onClick={closeProfile} aria-label="إغلاق"><X size={20} /></button>
+        <button 
+          type="button"
+          className="icon-btn absolute top-[16px] start-[16px]" 
+          onClick={() => setInboxOpen(true)}
+          aria-label="صندوق المقترحات"
+        >
+          <Bell size={20} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 animate-pulse shadow-lg shadow-red-500/30">
+              {unreadCount}
+            </span>
+          )}
+        </button>
         <span className="sr-only">{user.email}</span>
 
         {loading ? (
@@ -385,6 +424,13 @@ export default function ProfilePage() {
               </div>
             </section>
           </>
+        )}
+
+        {inboxOpen && (
+          <InboxPanel 
+            onClose={() => setInboxOpen(false)} 
+            onRefreshCount={fetchUnreadCount} 
+          />
         )}
       </div>
 

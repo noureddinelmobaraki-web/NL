@@ -4,9 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
 import { useNowPlaying } from '../hooks/useNowPlaying';
 import { LyricsPanel } from './LyricsPanel';
+import { NowPlayingMenu } from './NowPlayingMenu';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Heart, Download, Mic2, Volume2, VolumeX, ChevronDown, Loader2, CheckCircle2
+  Heart, Download, Mic2, Volume2, VolumeX, ChevronDown, Loader2, CheckCircle2,
+  MoreHorizontal
 } from 'lucide-react';
 
 const pressSpring = { type: 'spring', stiffness: 500, damping: 30 } as const;
@@ -38,6 +40,7 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
   const actions = useMusicStore((s) => s.actions);
 
   const [showLyrics, setShowLyrics] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [dl, setDl] = useState<'idle' | 'start' | 'done' | 'error'>('idle');
   const downloaded = useMusicStore((s) => s.downloaded);
   const isSaved = !!currentTrack && downloaded.includes(currentTrack.id);
@@ -56,6 +59,12 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
 
   return (
     <div className="relative flex flex-col h-[100dvh] w-full overflow-hidden text-slate-800">
+      <AnimatePresence>
+        {menuOpen && (
+          <NowPlayingMenu track={currentTrack} onClose={() => setMenuOpen(false)} />
+        )}
+      </AnimatePresence>
+
       {/* رأس: إغلاق */}
       <div className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
         {onClose ? (
@@ -64,7 +73,13 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
           </button>
         ) : <span />}
         <span className="text-xs font-bold uppercase tracking-widest text-slate-500 drop-shadow-sm">Now Playing</span>
-        <span className="w-9" />
+        <button 
+          onClick={() => setMenuOpen(true)}
+          className="p-2 text-slate-600 hover:text-slate-900 transition-colors drop-shadow-sm"
+          title="خيارات التشغيل"
+        >
+          <MoreHorizontal size={24} className="drop-shadow-sm" />
+        </button>
       </div>
 
       {/* الكوفر (مربع) — تعتيم بالإضاءة فقط */}

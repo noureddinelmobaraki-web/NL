@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Play, Pause, Share2 as ShareIcon, Check } from 'lucide-react';
 import type { Song } from '../../types';
+import { songShareUrl } from '../../features/music/data/shareSong';
 
 interface SongCardHeaderProps {
   song: Song;
@@ -40,7 +41,7 @@ export const SongCardHeader = ({
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const shareUrl = `${window.location.origin}${window.location.pathname}?song=${song.id}`;
+    const shareUrl = songShareUrl({ id: String(song.id) });
     
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
