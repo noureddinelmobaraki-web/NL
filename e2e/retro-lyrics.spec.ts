@@ -16,7 +16,7 @@ test.describe('Retro world smoke test', () => {
 
     // 2) The switcher has a continuous idle animation in the "orb" state, so it is
     //    never "stable". Use force to bypass the stability/actionability wait.
-    const switcher = page.getByRole('group', { name: 'Mode switcher' });
+    const switcher = page.getByRole('button', { name: 'Mode switcher' });
     await expect(switcher).toBeVisible({ timeout: 30000 });
     await switcher.hover({ force: true }).catch(() => {});
     await switcher.click({ force: true });

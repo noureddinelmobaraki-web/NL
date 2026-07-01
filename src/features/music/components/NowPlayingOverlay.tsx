@@ -6,7 +6,11 @@ export function NowPlayingOverlay({ open, onClose }: { open: boolean; onClose: (
     if (open) {
       const prev = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = prev; };
+      document.body.setAttribute('data-nowplaying-full', 'true');
+      return () => {
+        document.body.style.overflow = prev;
+        document.body.removeAttribute('data-nowplaying-full');
+      };
     }
     return undefined;
   }, [open]);

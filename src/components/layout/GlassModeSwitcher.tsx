@@ -649,6 +649,13 @@ function GlassModeSwitcherInner() {
   const section = getSection();
   const skin = theme;
 
+  const lightPanel = theme === 'light' || theme === 'lite' || theme === 'bit';
+  const fgVars = {
+    ['--gs-fg' as string]:      lightPanel ? '#10131c' : '#ffffff',
+    ['--gs-fg-dim' as string]:  lightPanel ? 'rgba(16,19,28,0.62)' : 'rgba(255,255,255,0.62)',
+    ['--gs-fg-faint' as string]: lightPanel ? 'rgba(16,19,28,0.42)' : 'rgba(255,255,255,0.42)',
+  } as React.CSSProperties;
+
   const totalX = dragOffset.x + avoidOffset.x;
   const totalY = dragOffset.y + avoidOffset.y;
 
@@ -739,7 +746,8 @@ function GlassModeSwitcherInner() {
           {state === 'open' && (
             <motion.div
               key="expanded-panel"
-              className="flex flex-col w-full gap-4 text-white"
+              style={fgVars}
+              className="flex flex-col w-full gap-4 text-[color:var(--gs-fg)]"
               role="menu"
               initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92 }}
               animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
@@ -758,14 +766,14 @@ function GlassModeSwitcherInner() {
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <User size={24} className="text-white/70" />
+                    <User size={24} className="text-[color:var(--gs-fg-dim)]" />
                   )}
                 </div>
                 <div className="flex-grow min-w-0 text-left">
-                  <div className="font-bold text-sm text-white truncate">
+                  <div className="font-bold text-sm text-[color:var(--gs-fg)] truncate">
                     {auth?.user?.user_metadata?.display_name || auth?.user?.user_metadata?.full_name || (auth?.user ? 'NL User' : 'Guest')}
                   </div>
-                  <div className="text-[10px] text-white/40 truncate mt-0.5">
+                  <div className="text-[10px] text-[color:var(--gs-fg-faint)] truncate mt-0.5">
                     {auth?.user ? auth.user.email : 'Not logged in'}
                   </div>
                 </div>
@@ -782,7 +790,7 @@ function GlassModeSwitcherInner() {
                       auth.openProfile();
                       triggerVibrate();
                     }}
-                    className="w-full py-2.5 px-4 rounded-xl backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/15 active:scale-[0.98] text-xs font-bold transition-all cursor-pointer text-center"
+                    className="w-full py-2.5 px-4 rounded-xl backdrop-blur-md bg-white/10 border border-white/20 text-[color:var(--gs-fg)] hover:bg-white/15 active:scale-[0.98] text-xs font-bold transition-all cursor-pointer text-center"
                     data-nav-id="profile-btn"
                     tabIndex={getTabIndex('profile-btn')}
                     onFocus={() => handleFocus('profile-btn')}
@@ -810,7 +818,7 @@ function GlassModeSwitcherInner() {
 
               {/* 3. Modes Section (المظاهر) */}
               <div className="flex flex-col gap-1.5" dir="ltr">
-                <div className="text-[10px] font-bold text-white/45 uppercase tracking-wider text-left pl-1">
+                <div className="text-[10px] font-bold text-[color:var(--gs-fg-faint)] uppercase tracking-wider text-left pl-1">
                   Modes
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -830,7 +838,7 @@ function GlassModeSwitcherInner() {
                           setOpen(false);
                           triggerVibrate();
                         }}
-                        className={`h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-white cursor-pointer ${
+                        className={`h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-[color:var(--gs-fg)] cursor-pointer ${
                           isActive
                             ? 'bg-[#00E676]/20 border-[#00E676]/40 shadow-[0_4px_12px_rgba(0,230,118,0.22)] font-bold'
                             : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
@@ -839,7 +847,7 @@ function GlassModeSwitcherInner() {
                         tabIndex={getTabIndex(itemId)}
                         onFocus={() => handleFocus(itemId)}
                       >
-                        <IconComp size={15} className={isActive ? 'text-[#00E676]' : 'text-white/70'} />
+                        <IconComp size={15} className={isActive ? 'text-[#00E676]' : 'text-[color:var(--gs-fg-dim)]'} />
                         <span className="truncate max-w-full px-1">{m.label}</span>
                       </button>
                     );
@@ -849,7 +857,7 @@ function GlassModeSwitcherInner() {
 
               {/* 4. Destinations Section (الوجهات) */}
               <div className="flex flex-col gap-1.5" dir="ltr">
-                <div className="text-[10px] font-bold text-white/45 uppercase tracking-wider text-left pl-1">
+                <div className="text-[10px] font-bold text-[color:var(--gs-fg-faint)] uppercase tracking-wider text-left pl-1">
                   Destinations
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -861,7 +869,7 @@ function GlassModeSwitcherInner() {
                         key={d.id}
                         type="button"
                         onClick={d.onClick}
-                        className={`h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-white cursor-pointer ${
+                        className={`h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-[color:var(--gs-fg)] cursor-pointer ${
                           isActive
                             ? 'bg-[#FF7A1A]/20 border-[#FF7A1A]/40 shadow-[0_4px_12px_rgba(255,122,26,0.22)] font-bold'
                             : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
@@ -870,7 +878,7 @@ function GlassModeSwitcherInner() {
                         tabIndex={getTabIndex(itemId)}
                         onFocus={() => handleFocus(itemId)}
                       >
-                        <div className={isActive ? 'text-[#FF7A1A]' : 'text-white/70'}>
+                        <div className={isActive ? 'text-[#FF7A1A]' : 'text-[color:var(--gs-fg-dim)]'}>
                           {d.icon}
                         </div>
                         <span className="truncate max-w-full px-1">{d.label}</span>
@@ -893,7 +901,7 @@ function GlassModeSwitcherInner() {
                         setOpen(false);
                         triggerVibrate();
                       }}
-                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white transition-all cursor-pointer"
+                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
                       title="Back to games"
                       data-nav-id="back-game"
                       tabIndex={getTabIndex('back-game')}
@@ -911,7 +919,7 @@ function GlassModeSwitcherInner() {
                         setOpen(false);
                         triggerVibrate();
                       }}
-                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white transition-all cursor-pointer"
+                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
                       title="Back to movies"
                       data-nav-id="back-movie"
                       tabIndex={getTabIndex('back-movie')}
@@ -929,7 +937,7 @@ function GlassModeSwitcherInner() {
                         setOpen(false);
                         triggerVibrate();
                       }}
-                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white transition-all cursor-pointer"
+                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
                       title="Back to TV list"
                       data-nav-id="back-tv"
                       tabIndex={getTabIndex('back-tv')}
@@ -945,21 +953,21 @@ function GlassModeSwitcherInner() {
                     <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-0.5 rounded-xl" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={prev}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-white transition-all cursor-pointer"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
                         title="Prev"
                       >
                         <SkipBack size={12} />
                       </button>
                       <button
                         onClick={togglePlay}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-white transition-all cursor-pointer"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
                         title={musicIsPlaying ? "Pause" : "Play"}
                       >
                         {musicIsPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                       </button>
                       <button
                         onClick={next}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-white transition-all cursor-pointer"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
                         title="Next"
                       >
                         <SkipForward size={12} />
@@ -973,7 +981,7 @@ function GlassModeSwitcherInner() {
                         toggleAudio();
                         triggerVibrate();
                       }}
-                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white transition-all cursor-pointer"
+                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
                       title="Mute"
                       data-nav-id="sound-or-transport"
                       tabIndex={getTabIndex('sound-or-transport')}

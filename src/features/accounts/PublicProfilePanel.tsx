@@ -27,6 +27,9 @@ interface Pub {
   movies: Array<{ tmdb_id: number; media_type: string; title: string; poster_path: string }>;
 }
 
+const first3Words = (title: string) =>
+  title.trim().split(/\s+/).slice(0, 3).join(' ');
+
 export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged?: () => void }) {
   const { user } = useAuth();
   const admin = isAdmin(user?.email);
@@ -165,26 +168,25 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
                     const meta = songMap.get(s.song_id);
                     return (
                       <div key={s.song_id} className={`nl-pub-song-card${isPlaying ? ' is-playing' : ''}`}>
-                        {trackObj && (
-                          <button
-                            type="button"
-                            className="nl-pub-song-play"
-                            onClick={() => preview.toggle(trackObj)}
-                            aria-label={isPlaying ? 'إيقاف مؤقت' : 'استماع'}
-                          >
-                            {isPlaying ? <Pause size={11} /> : <Play size={11} />}
-                          </button>
-                        )}
-                        <span className="nl-pub-song-cover" style={{ background: trackObj?.coverColor }}>
+                        <span className="nl-pub-song-cover">
                           {trackObj?.coverUrl ? (
                             <img src={trackObj.coverUrl} alt="" loading="lazy" decoding="async" />
                           ) : (
                             <span>{getInitials(meta ? meta.title : s.song_id)}</span>
                           )}
+                          {trackObj && (
+                            <button
+                              type="button"
+                              className="nl-pub-song-play"
+                              onClick={() => preview.toggle(trackObj)}
+                              aria-label={isPlaying ? 'إيقاف مؤقت' : 'استماع'}
+                            >
+                              {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                            </button>
+                          )}
                         </span>
-                        <span className="nl-pub-song-meta">
-                          <span className="nl-pub-song-title">{meta ? meta.title : s.song_id}</span>
-                          <span className="nl-pub-song-artist">{meta ? meta.artist : 'NL Music'}</span>
+                        <span className="nl-pub-song-title" title={meta ? meta.title : s.song_id}>
+                          {first3Words(meta ? meta.title : s.song_id)}
                         </span>
                       </div>
                     );

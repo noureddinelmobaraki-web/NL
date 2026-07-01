@@ -78,15 +78,15 @@ export default function AuthModal() {
       return
     }
     setOtpSent(true)
-    setNotice('أرسلنا رمزًا من 6 أرقام إلى بريدك.')
+    setNotice('أرسلنا رمز الدخول إلى بريدك.')
   }, [email, sendEmailOtp, clearMsg])
 
   const handleVerifyOtp = useCallback(
     async (e: FormEvent) => {
       e.preventDefault()
       clearMsg()
-      if (otp.length !== 6) {
-        setError('الرمز مكوّن من 6 أرقام.')
+      if (otp.length < 6 || otp.length > 8) {
+        setError('الرمز مكوّن من 6 إلى 8 أرقام.')
         return
       }
       setBusy(true)
@@ -229,11 +229,11 @@ export default function AuthModal() {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={8}
               placeholder="••••••"
               className="auth-otp"
               value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))}
               disabled={busy}
             />
             <button type="submit" className="auth-primary" disabled={busy}>

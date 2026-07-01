@@ -700,3 +700,39 @@ body.retro-active .glass-switcher-anchor {
   pointer-events: none;
   z-index: 1;
 }
+
+/* ظلال خفيفة للقراءة فوق الزجاج */
+.glass-switcher[data-state="open"] [role="menu"] {
+  text-shadow: 0 1px 1px rgba(0,0,0,0.06);
+}
+
+/* نقل المبدّل للأعلى على الهاتف عند فتح المشغّل الكامل */
+body[data-nowplaying-full="true"] .glass-switcher-anchor[data-device="mobile"] {
+  top: max(12px, env(safe-area-inset-top));
+  bottom: auto;
+}
+
+/* ===== لون خط اللوحة المفتوحة: موثوق ومتكيّف مع الوضع ===== */
+
+/* الافتراضي (dark / midnight / أي وضع داكن): نص أبيض */
+.glass-switcher[data-state="open"] [role="menu"] {
+  color: #ffffff;
+  --gs-fg: #ffffff;
+  --gs-fg-dim: rgba(255,255,255,0.62);
+  --gs-fg-faint: rgba(255,255,255,0.42);
+}
+
+/* الأوضاع الفاتحة (light / lite / bit): نص داكن واضح */
+.glass-switcher[data-theme-skin="light"][data-state="open"] [role="menu"],
+.glass-switcher[data-theme-skin="lite"][data-state="open"] [role="menu"],
+.glass-switcher[data-theme-skin="bit"][data-state="open"] [role="menu"] {
+  color: #10131c;
+  --gs-fg: #10131c;
+  --gs-fg-dim: rgba(16,19,28,0.62);
+  --gs-fg-faint: rgba(16,19,28,0.42);
+}
+
+/* العناوين الثانوية (Modes / Destinations + البريد) تستخدم الدرجة الباهتة */
+.glass-switcher[data-state="open"] [role="menu"] .gs-dim { color: var(--gs-fg-dim); }
+.glass-switcher[data-state="open"] [role="menu"] .gs-faint { color: var(--gs-fg-faint); }
+
