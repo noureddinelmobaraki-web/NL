@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Volume2, VolumeX, X } from 'lucide-react';
+import { Play, Pause, X } from 'lucide-react';
 import { getFvTracks } from '../../music/data/loadSongs';
 import { getInitials } from '../../music/utils/cover';
 import { audioManager } from '../../../audio/audioManager';
-import { prefetchAudio } from '../../music/data/audioPrefetch';
 
 import { useMusicStore } from '../../music/store/musicStore';
 
-const FULL_VOL = 0.85;   // الصوت الطبيعي عند فتح البروفايل
-const LOW_VOL = 0.05;    // عند الخفض: 5% فقط (كان 0.10)
+const FULL_VOL = 0.85;   // مستوى صوت أغنية البروفايل
 
 export function ThemeSongBar({
   songId,
@@ -23,116 +21,113 @@ export function ThemeSongBar({
   canRemove?: boolean;
   onRemove?: () => void;
 }) {
-  const allTracks = useMusicStore((s) => s.tracks);
-  const track = songId ? allTracks.find((t) => t.id === songId) || getFvTracks().find((t) => t.id === songId) : undefined;
-  
+  // نشترك في المسار المطلوب فقط — لا في مصفوفة tracks كاملة (تفادي إعادة رندر من متجر ضخم).
+  const track = useMusicStore(
+    useCallback(
+      (s) => (songId ? s.tracks.find((t) => t.id === songId) ?? null : null),
+      [songId],
+    ),
+  ) ?? (songId ? getFvTracks().find((t) => t.id === songId) ?? null : null);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [low, setLow] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [playing, setPlaying] = useState(false);
   
   const clipStart = Math.max(0, start ?? 0);
   const clipEnd = end && end > clipStart ? end : null;
+  const src = track?.src ?? null;
 
-  const [localUrl, setLocalUrl] = useState<string | null>(null);
-
+  // عنصر <audio> واحد فقط. بثّ تدرّجي مثل سبوتيفاي:
+  // preload='metadata' → لا تنزيل كامل؛ المتصفح يبثّ الصوت عند play() عبر HTTP Range.
   useEffect(() => {
-    if (!track) { setLocalUrl(null); return; }
-    // أغنية البروفايل تُشغَّل كاملة من البداية → لا seeking ولا تنزيل كامل.
-    // البثّ المباشر من المصدر يضمن جاهزية فورية داخل نافذة تفعيل نقرة الفتح.
-    setLocalUrl(track.src);
-    prefetchAudio(track.src); // تسخين الكاش فقط (بلا crossOrigin) — تحسين اختياري
-  }, [track]);
+    if (!src) return;
 
-  // عنصر صوت معزول. بلا crossOrigin (متوافق CORS مثل المحرّك).
-  useEffect(() => {
-    if (!track || !localUrl) return;
     const a = new Audio();
-    a.preload = 'auto';
-    a.src = localUrl;
+    a.preload = 'metadata';
+    a.src = src;
     audioRef.current = a;
 
-    // التنسيق يبقى عبر المدير: يوقف NL music ويكبت الخلفية. (register يصفّر الصوت داخليًا)
-    audioManager.register('profile', a, low ? LOW_VOL : FULL_VOL);
+    // التنسيق عبر المدير (يوقف موسيقى NL ويكبت الخلفية). register يصفّر الصوت داخليًا،
+    // ثم executePlay يتكفّل بالـ fade-in السلس (200ms) للمصدر 'profile'.
+    audioManager.register('profile', a, FULL_VOL);
     audioManager.requestExclusive('profile', 'profile_song');
 
-    // تشغيل مباشر — لا يمرّ عبر playChain حتى لا نفقد تفعيل إيماءة المستخدم.
-    const startPlayback = () => {
-      try { a.currentTime = clipStart; } catch {}
-      a.volume = low ? LOW_VOL : FULL_VOL;   // نضبط الصوت مباشرة (register صفّره)
-      const p = a.play();
+    let started = false;
+
+    // تشغيل واحد محميّ بحارس started — يمنع نهائيًا إعادة التشغيل من البداية (سبب الشرارة/التكرار).
+    const startOnce = () => {
+      if (started) return;
+      const el = audioRef.current;
+      if (!el) return;
+      started = true;
+      try { if (clipStart) el.currentTime = clipStart; } catch { /* noop */ }
+      el.volume = FULL_VOL;
+      const p = el.play();
       if (p && typeof p.then === 'function') {
         p.then(() => {
-          setReady(true);
-          // مزامنة حالة المدير دون مقاطعة (العنصر يعمل أصلًا → لن يعيد التشغيل)
+          setPlaying(true);
+          // مزامنة حالة المدير دون مقاطعة (العنصر يعمل أصلًا → لن يُعيد التشغيل).
           audioManager.play('profile').catch(() => {});
-        }).catch(() => { /* محجوب — سيُعاد عند أول تفاعل عبر تأثير kick */ });
+        }).catch(() => { started = false; /* محجوب: يُعاد عند أول تفاعل */ });
       } else {
-        setReady(true);
+        setPlaying(true);
       }
     };
 
-    const onReady = () => startPlayback();
-    const onTime = () => {
-      if (clipEnd != null && a.currentTime >= clipEnd) {
-        try { a.currentTime = clipStart; } catch {}
-        a.play().catch(() => {});
+    // حلقة المقطع: مستمع timeupdate واحد فقط وعند وجود نهاية محدّدة.
+    const onTime = clipEnd == null ? null : () => {
+      const el = audioRef.current;
+      if (el && el.currentTime >= clipEnd) {
+        try { el.currentTime = clipStart; } catch { /* noop */ }
       }
     };
 
-    a.addEventListener('loadedmetadata', onReady);
-    a.addEventListener('loadeddata', onReady);
-    a.addEventListener('canplay', onReady);
-    a.addEventListener('timeupdate', onTime);
+    // نبدأ عند أول جاهزية فقط (once) — لا loadedmetadata + loadeddata + canplay معًا.
+    const onCanPlay = () => { startOnce(); };
+    a.addEventListener('canplay', onCanPlay, { once: true });
+    if (onTime) a.addEventListener('timeupdate', onTime);
+
     a.load();
-    // محاولة فورية: نافذة تفعيل نقرة فتح البروفايل قد تكون سارية → تشغيل تلقائي حقيقي.
-    startPlayback();
+    // محاولة فورية داخل نافذة إيماءة فتح البروفايل → تشغيل تلقائي حقيقي.
+    startOnce();
+
+    // إعادة المحاولة مرة واحدة عند أول تفاعل إذا مَنع المتصفّح التشغيل التلقائي.
+    const kick = () => startOnce();
+    window.addEventListener('pointerdown', kick, { once: true });
+    window.addEventListener('touchend', kick, { once: true });
+    window.addEventListener('keydown', kick, { once: true });
 
     return () => {
-      a.removeEventListener('loadedmetadata', onReady);
-      a.removeEventListener('loadeddata', onReady);
-      a.removeEventListener('canplay', onReady);
-      a.removeEventListener('timeupdate', onTime);
+      a.removeEventListener('canplay', onCanPlay);
+      if (onTime) a.removeEventListener('timeupdate', onTime);
+      window.removeEventListener('pointerdown', kick);
+      window.removeEventListener('touchend', kick);
+      window.removeEventListener('keydown', kick);
       audioManager.stop('profile');
       audioManager.unregister('profile');
       audioManager.releaseExclusive('profile_song');
-      try { a.pause(); } catch {}
+      try { a.pause(); } catch { /* noop */ }
       a.src = '';
+      a.load(); // يُلغي أي بثّ شبكي جارٍ فورًا (يوقف التنزيل).
       audioRef.current = null;
-      setReady(false);
+      setPlaying(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [track?.id, localUrl, clipStart, clipEnd]);
+  }, [src, clipStart, clipEnd]);
 
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = low ? LOW_VOL : FULL_VOL;
-  }, [low]);
-
-  // إعادة المحاولة عند تفاعل المستخدم إن حجب المتصفّح التشغيل التلقائي.
-  // نُشغّل a.play() مباشرةً (متزامنة داخل الإيماءة) لا عبر playChain المؤجَّلة.
-  useEffect(() => {
-    if (!track) return;
-    const kick = () => {
-      const a = audioRef.current;
-      if (a && a.paused) {
-        a.volume = low ? LOW_VOL : FULL_VOL;
-        a.play().then(() => {
-          setReady(true);
-          audioManager.play('profile').catch(() => {});
-        }).catch(() => {});
-      }
-    };
-    // بدون once: يظل يحاول حتى ينجح؛ وبعد التشغيل يصبح no-op (a.paused=false).
-    window.addEventListener('pointerdown', kick);
-    window.addEventListener('keydown', kick);
-    window.addEventListener('touchend', kick);
-    return () => {
-      window.removeEventListener('pointerdown', kick);
-      window.removeEventListener('keydown', kick);
-      window.removeEventListener('touchend', kick);
-    };
-  }, [track, low]);
-
-  const toggleLow = useCallback(() => setLow((v) => !v), []);
+  // زر إيقاف/تشغيل حقيقي — يوقف الصوت فعليًا (لا يخفضه إلى 5%).
+  const togglePlay = useCallback(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (a.paused) {
+      a.volume = FULL_VOL;
+      a.play().then(() => {
+        setPlaying(true);
+        audioManager.play('profile').catch(() => {});
+      }).catch(() => {});
+    } else {
+      audioManager.stop('profile'); // إيقاف كامل + تحرير كبت الخلفية.
+      setPlaying(false);
+    }
+  }, []);
 
   if (!track) return null;
 
@@ -142,12 +137,12 @@ export function ThemeSongBar({
         {track.coverUrl ? <img src={track.coverUrl} alt="" /> : <span>{getInitials(track.title)}</span>}
       </span>
       <span className="nl-theme-song__tube">
-        <span className="nl-theme-song__eq" data-on={ready ? 'true' : 'false'}><i /><i /><i /><i /></span>
+        <span className="nl-theme-song__eq" data-on={playing ? 'true' : 'false'}><i /><i /><i /><i /></span>
         <span className="nl-theme-song__name">{track.title}</span>
         <span className="nl-theme-song__artist">{track.artist}</span>
       </span>
-      <button className="nl-theme-song__vol" onClick={toggleLow} aria-label={low ? 'رفع الصوت' : 'خفض الصوت إلى 5%'} title={low ? 'رفع الصوت' : 'خفض الصوت إلى 5%'}>
-        {low ? <VolumeX size={16} /> : <Volume2 size={16} />}
+      <button className="nl-theme-song__vol" onClick={togglePlay} aria-label={playing ? 'إيقاف الأغنية' : 'تشغيل الأغنية'} title={playing ? 'إيقاف' : 'تشغيل'}>
+        {playing ? <Pause size={16} /> : <Play size={16} />}
       </button>
       {canRemove && (
         <button className="nl-theme-song__remove" onClick={onRemove} aria-label="إزالة الأغنية" title="إزالة"><X size={15} /></button>

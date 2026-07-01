@@ -1,0 +1,47 @@
+/* src/styles/components/profile-mobile-fit.css
+   ضبط أحجام العناصر لتناسب شاشة الهاتف: بروفايل + شريط الأغنية + الحسابات + البروفايل العام.
+   كل القواعد داخل max-width:767px فقط. سطح المكتب غير متأثر. */
+
+@media (max-width: 767px) {
+
+  /* شريط أغنية البروفايل: مقاس مريح ولا يزاحم زرّ الإغلاق */
+  .nl-theme-song {
+    padding: 7px 9px;
+    gap: 8px;
+    border-radius: 14px;
+  }
+  .nl-theme-song__cover { width: 38px; height: 38px; border-radius: 10px; }
+  .nl-theme-song__name { font-size: 12px; }
+  .nl-theme-song__artist { font-size: 10px; }
+  .nl-theme-song__vol,
+  .nl-theme-song__remove { width: 34px; height: 34px; } /* هدف لمس مريح */
+
+  /* شبكة الحسابات: أعمدة أصغر وفراغ أقل لتناسب عرض الهاتف */
+  .nl-accounts__grid {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 0.75rem;
+    padding: 1rem 0.25rem 2.5rem;
+  }
+  .nl-accounts .nl-acct-card { padding: 1rem 0.6rem; }
+  .nl-accounts__title { font-size: 1.05rem; }
+  .nl-accounts__bar { padding: 0.9rem 0.35rem; gap: 0.6rem; }
+  .nl-acc-card__name { font-size: 0.9rem; }
+  /* على اللمس نلغي رفع البطاقة عند hover (لا فائدة منه ويكلّف رسمًا) */
+  .nl-accounts .nl-acct-card:hover { transform: none; }
+
+  /* البروفايل العام: عرض كامل ونصوص متناسبة */
+  .nl-public-card { width: 100% !important; max-width: 100% !important; }
+  .nl-pub__movies img,
+  .nl-pub-movie-wrapper { width: 64px; height: 96px; }
+  .nl-pub-song-title { font-size: 12px; }
+
+  /* حقول البروفايل تملأ العرض */
+  .profile-field { width: 100%; }
+  .profile-field input,
+  .profile-field textarea { font-size: 16px; } /* يمنع تكبير iOS التلقائي عند التركيز */
+}
+
+/* شاشات ضيقة جدًّا: عمودان للأفاتار على الأقل */
+@media (max-width: 360px) {
+  .nl-accounts__grid { grid-template-columns: repeat(2, 1fr); }
+}
