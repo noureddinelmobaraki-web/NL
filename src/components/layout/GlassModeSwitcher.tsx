@@ -870,6 +870,7 @@ function GlassModeSwitcherInner() {
                       <button
                         key={d.id}
                         type="button"
+                        role="menuitem"
                         onClick={d.onClick}
                         className={`h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-[color:var(--gs-fg)] cursor-pointer ${
                           isActive

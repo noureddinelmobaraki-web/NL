@@ -840,3 +840,22 @@ body[data-nowplaying-full="true"] .glass-switcher-anchor[data-device="mobile"] {
 .glass-switcher.is-mobile[data-theme-skin="bit"][data-state="open"] [role="menu"] .border-t {
   border-color: rgba(0,0,0,0.10) !important;
 }
+
+/* إصلاح جذري لتشوّه GPU على الهاتف: لا أي backdrop-filter داخل اللوحة المفتوحة */
+.glass-switcher.is-mobile[data-state="open"],
+.glass-switcher.is-mobile[data-state="open"] * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* خلايا gs-cell داخل لوحة الهاتف: زجاجية بلا blur */
+.glass-switcher.is-mobile[data-state="open"] .gs-cell {
+  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06)) !important;
+  border-color: rgba(255,255,255,0.18) !important;
+}
+.glass-switcher.is-mobile[data-theme-skin="light"][data-state="open"] .gs-cell,
+.glass-switcher.is-mobile[data-theme-skin="lite"][data-state="open"] .gs-cell,
+.glass-switcher.is-mobile[data-theme-skin="bit"][data-state="open"] .gs-cell {
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7)) !important;
+  border-color: rgba(0,0,0,0.08) !important;
+}

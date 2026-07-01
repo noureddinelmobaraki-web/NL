@@ -30,7 +30,7 @@ export function useRetroViewport(
 
   useLayoutEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-    const isRetroActive = enabled && theme === 'retro' && isMobile;
+    const isRetroActive = enabled && isMobile;
 
     const head = document.head;
     const ORIGINAL_ATTR = 'data-original-viewport';
