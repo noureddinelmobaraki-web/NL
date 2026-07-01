@@ -95,7 +95,7 @@ export function GamesPage({ onClose }: GamesPageProps) {
     <video
       className="nl-games-video"
       src={GAMES_BG_VIDEO}
-      autoPlay loop muted playsInline preload="auto"
+      autoPlay loop muted playsInline preload="metadata"
       aria-hidden="true" tabIndex={-1}
     />
   );

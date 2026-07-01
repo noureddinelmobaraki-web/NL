@@ -63,6 +63,17 @@ export default function ProfilePage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const originalBody = document.body.style.overflow;
+    const originalHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalBody;
+      document.documentElement.style.overflow = originalHtml;
+    };
+  }, []);
+
   const [pickerOpen, setPickerOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);

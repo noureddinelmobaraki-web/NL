@@ -37,25 +37,25 @@ export async function fetchWithCache(url: string, signal?: AbortSignal, ttlMs = 
   const fresh = (t: number) => now - t < ttlMs;
 
   const revalidate = async () => {
-    const res = await fetch(url, { signal });
+    const res = await fetch(url, { signal: signal ?? AbortSignal.timeout(10_000) });
     if (!res.ok) throw new Error("TMDB network response failed");
     const d = await res.json();
     const entry = { d, t: Date.now() };
-    MEMORY_CACHE[url] = entry;
+    MEMORY_CACHE[key] = entry;
     try { localStorage.setItem(key, JSON.stringify(entry)); } catch {}
     return d;
   };
 
-  if (MEMORY_CACHE[url]) {
-    if (!fresh(MEMORY_CACHE[url].t)) revalidate().catch(()=>{});
-    return MEMORY_CACHE[url].d;
+  if (MEMORY_CACHE[key]) {
+    if (!fresh(MEMORY_CACHE[key].t)) revalidate().catch(()=>{});
+    return MEMORY_CACHE[key].d;
   }
 
   try {
     const local = localStorage.getItem(key);
     if (local) {
       const parsed = JSON.parse(local) as CacheEntry;
-      MEMORY_CACHE[url] = parsed;
+      MEMORY_CACHE[key] = parsed;
       if (!fresh(parsed.t)) revalidate().catch(()=>{});
       return parsed.d;
     }
@@ -351,7 +351,6 @@ const MovieRow = React.memo(({ title, items, isTouch, activeHoverId, setActiveHo
 
 export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => void; initialTab?: 'movies' | 'series' }) {
   const { t, i18n } = useTranslation();
-  const ENABLE_BG_VIDEO = false;
   const { isMobile, isTablet } = useDeviceType();
   const { setMovieActive, registerMovieBack } = useAppContext();
   const isTouch = isMobile || isTablet;
@@ -826,9 +825,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   return createPortal(
     <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[9500] w-full h-[100dvh] bg-gradient-to-b from-[#141414] via-[#101010] to-[#0a0a0a] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto">
-      {ENABLE_BG_VIDEO && (
-        <video className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0" src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/MOVIESBG_web.webm" autoPlay loop muted playsInline preload="auto" style={{ filter: "brightness(0.28)" }} />
-      )}
       <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(20,20,20,1) 0%, rgba(20,20,20,0.68) 45%, rgba(20,20,20,0.88) 100%)" }} />
 
       {isTouch && (

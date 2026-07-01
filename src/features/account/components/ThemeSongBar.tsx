@@ -4,6 +4,9 @@ import { getFvTracks } from '../../music/data/loadSongs';
 import { getInitials } from '../../music/utils/cover';
 import { audioManager } from '../../../audio/audioManager';
 import { prefetchAudio } from '../../music/data/audioPrefetch';
+import { prepareSeekableAudioSource } from '../../music/data/seekableSource';
+
+import { useMusicStore } from '../../music/store/musicStore';
 
 const FULL_VOL = 0.85;
 const LOW_VOL = 0.10;
@@ -21,20 +24,43 @@ export function ThemeSongBar({
   canRemove?: boolean;
   onRemove?: () => void;
 }) {
+  const allTracks = useMusicStore((s) => s.tracks);
+  const track = songId ? allTracks.find((t) => t.id === songId) || getFvTracks().find((t) => t.id === songId) : undefined;
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [low, setLow] = useState(false);
   const [ready, setReady] = useState(false);
-
-  const track = songId ? getFvTracks().find((t) => t.id === songId) : undefined;
+  
   const clipStart = Math.max(0, start ?? 0);
   const clipEnd = end && end > clipStart ? end : null;
 
-  // Build / tear down the isolated audio element. NO crossOrigin (CORS-safe like the engine).
+  const [localUrl, setLocalUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (!track) return;
+    let cancelled = false;
+    let dispose: (() => void) | null = null;
+    
+    prepareSeekableAudioSource(track.src)
+      .then(({ url, cleanup }) => {
+        if (cancelled) { cleanup(); return; }
+        dispose = cleanup;
+        setLocalUrl(url);
+      })
+      .catch(() => { if (!cancelled) setLocalUrl(track.src); });
+      
+    return () => {
+      cancelled = true;
+      if (dispose) dispose();
+    };
+  }, [track]);
+
+  // Build / tear down the isolated audio element. NO crossOrigin (CORS-safe like the engine).
+  useEffect(() => {
+    if (!track || !localUrl) return;
     const a = new Audio();
     a.preload = 'auto';
-    a.src = track.src;
+    a.src = localUrl;
     a.volume = low ? LOW_VOL : FULL_VOL;
     audioRef.current = a;
 
@@ -74,7 +100,7 @@ export function ThemeSongBar({
       setReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [track?.id, clipStart, clipEnd]);
+  }, [track?.id, localUrl, clipStart, clipEnd]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = low ? LOW_VOL : FULL_VOL;

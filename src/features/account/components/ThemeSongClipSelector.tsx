@@ -5,6 +5,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { audioManager } from '../../../audio/audioManager';
 import { invalidateProfile } from '../../accounts/profileCache';
 import type { Track } from '../../music/engine/types';
+import { prepareSeekableAudioSource } from '../../music/data/seekableSource';
 import '../../../styles/components/clip-selector.css';
 
 interface Props { track: Track; onBack: () => void; onSaved: () => void; }
@@ -38,30 +39,33 @@ export function ThemeSongClipSelector({ track, onBack, onSaved }: Props) {
   }, [track]);
 
   useEffect(() => {
-    let revoked = false; let objUrl: string | null = null; setLoadingBlob(true);
-    const src = track.src;
-    if (src && src.includes('.m3u8')) { setLocalUrl(src); setLoadingBlob(false); return; }
-    fetch(src).then((r) => r.blob()).then((b) => { if (revoked) return; objUrl = URL.createObjectURL(b); setLocalUrl(objUrl); })
-      .catch(() => { setLocalUrl(src); }).finally(() => { if (!revoked) setLoadingBlob(false); });
-    return () => { revoked = true; if (objUrl) URL.revokeObjectURL(objUrl); };
+    let cancelled = false; let dispose: (() => void) | null = null; setLoadingBlob(true);
+    prepareSeekableAudioSource(track.src)
+      .then(({ url, cleanup }) => {
+        if (cancelled) { cleanup(); return; }
+        dispose = cleanup; setLocalUrl(url);
+      })
+      .catch(() => { if (!cancelled) setLocalUrl(track.src); })
+      .finally(() => { if (!cancelled) setLoadingBlob(false); });
+    return () => { cancelled = true; if (dispose) dispose(); };
   }, [track.src]);
 
   useEffect(() => {
     if (!localUrl) return;
     const a = new Audio(localUrl); a.preload = 'auto'; audioRef.current = a;
-    audioManager.register('preview', a, 0.9);
+    audioManager.register('preview_clip', a, 0.9);
     const onMeta = () => { const d = a.duration || 30; setDuration(d); setEnd((prev) => (prev && prev > 0 && prev < d ? prev : Math.min(d, 30))); };
     const onTime = () => { setPlayhead(a.currentTime); if (a.currentTime >= endRef.current) { a.pause(); a.currentTime = startRef.current; setPlaying(false); } };
     const onEnd = () => setPlaying(false);
     a.addEventListener('loadedmetadata', onMeta); a.addEventListener('timeupdate', onTime); a.addEventListener('ended', onEnd);
     return () => { a.pause(); a.removeEventListener('loadedmetadata', onMeta); a.removeEventListener('timeupdate', onTime); a.removeEventListener('ended', onEnd);
-      try { audioManager.unregister('preview'); audioManager.releaseExclusive('clip_preview'); } catch { /* noop */ } audioRef.current = null; };
+      try { audioManager.unregister('preview_clip'); audioManager.releaseExclusive('clip_preview'); } catch { /* noop */ } audioRef.current = null; };
   }, [localUrl]);
 
   const togglePlay = useCallback(() => {
     const a = audioRef.current; if (!a) return;
     if (!a.paused) { a.pause(); setPlaying(false); try { audioManager.releaseExclusive('clip_preview'); } catch { /* noop */ } return; }
-    try { audioManager.requestExclusive('preview', 'clip_preview'); } catch { /* noop */ }
+    try { audioManager.requestExclusive('preview_clip', 'clip_preview'); } catch { /* noop */ }
     if (a.currentTime < startRef.current || a.currentTime >= endRef.current) a.currentTime = startRef.current;
     a.volume = 0.9; a.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
   }, []);

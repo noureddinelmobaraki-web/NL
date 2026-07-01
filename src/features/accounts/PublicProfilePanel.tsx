@@ -37,6 +37,17 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
   const [bonus, setBonus] = useState('');
   const preview = useSongPreview();
 
+  useEffect(() => {
+    const originalBody = document.body.style.overflow;
+    const originalHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalBody;
+      document.documentElement.style.overflow = originalHtml;
+    };
+  }, []);
+
   const songMap = useMemo(() => {
     const m = new Map<string, { title: string; artist: string }>();
     try {

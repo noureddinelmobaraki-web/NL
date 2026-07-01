@@ -91,7 +91,7 @@ export const BlackHoleTransition = ({ onComplete, onNearComplete }: BlackHoleTra
       <video
         ref={videoRef}
         key={videoUrl}
-        autoPlay muted playsInline preload="auto"
+        autoPlay muted playsInline preload="metadata"
         className="mood-warp-video"
         onEnded={() => {
           if (!completedRef.current) {

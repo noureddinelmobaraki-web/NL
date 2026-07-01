@@ -14,6 +14,12 @@ export class SectionErrorBoundary extends Component<Props, State> {
 
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
+  componentDidMount() {
+    // نجح التركيب => تحمّلت الـ chunks بنجاح. صفّر الحارس ليعمل التعافي التلقائي
+    // لأي نشر لاحق ضمن نفس الجلسة دون أن يعلَق المستخدم على شاشة الخطأ.
+    try { sessionStorage.removeItem('nl_boundary_chunk_reload'); } catch { /* ignore */ }
+  }
+
   static getDerivedStateFromError(): Partial<State> {
     return { hasError: true };
   }

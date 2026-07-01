@@ -2,7 +2,8 @@ type AudioSource =
   | 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro'
   | 'games' | 'movies' | 'series' | 'tv' | 'retro' | 'xp'
   | 'profile'   // أغنية بروفيل المستخدم (ThemeSongBar)
-  | 'preview';  // معاينة أغنية داخل النوافذ (useSongPreview)
+  | 'preview'   // معاينة أغنية داخل النوافذ (useSongPreview)
+  | 'preview_clip'; // معاينة مقطع لضبط أغنية الثيم (ThemeSongClipSelector)
 
 interface ExternalSource {
   pause: () => void;       // كيف يوقف هذا المصدر نفسه (مثلاً audioEngine.pause)
@@ -306,6 +307,8 @@ class AudioManager {
         const incomingPriority = this.getPriority(source);
         
         // If incoming is lower priority, it CANNOT interrupt, unless forced.
+        // ملاحظة مقصودة: المقارنة صارمة (<) => المصادر متساوية الأولوية تقاطع بعضها
+        // (مثال: preview يقاطع preview_clip والعكس). لتغيير ذلك استخدم (<=) بحذر.
         if (!opts?.force && incomingPriority < currentPriority) {
           amLog.warn(`Incoming ${source} (p:${incomingPriority}) cannot interrupt ${this.active} (p:${currentPriority})`);
           return;
@@ -353,8 +356,9 @@ class AudioManager {
   private getPriority(source: AudioSource): number {
     const priorities: Record<AudioSource, number> = {
       'preview': 11, // المعاينة هي تفاعل مستخدم مباشر -> الأعلى
+      'preview_clip': 11, // معاينة المقطع تفاعل مباشر أيضًا -> نفس أولوية المعاينة
+      'profile': 12, // أغنية بروفيل المستخدم
       'song': 10,  // highest
-      'profile': 9,  // أغنية بروفيل المستخدم
       'intro': 4,
       'lens': 8,
       'mebit': 8,
