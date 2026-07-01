@@ -14,8 +14,9 @@ type Tab = 'overview' | 'users' | 'activity' | 'top' | 'suggestions';
 interface SuggestionRow {
   id: string;
   text: string;
-  user_email: string;
-  user_display_name: string;
+  status: string;
+  email: string | null;
+  display_name: string | null;
   created_at: string;
 }
 
@@ -30,20 +31,18 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
 
   const fetchSuggestions = async () => {
     setSuggestionsLoading(true);
-    const { data, error } = await supabase
-      .from('song_suggestions')
-      .select('id, text, user_email, user_display_name, created_at')
-      .order('created_at', { ascending: false });
-    if (!error && data) setSuggestions(data as any[]);
+    // الدالة SECURITY DEFINER وتُرجِع الصفوف مرتبة تنازلياً حسب created_at
+    const { data, error } = await supabase.rpc('admin_list_song_suggestions');
+    if (error) console.error('admin_list_song_suggestions failed:', error.message);
+    if (!error && data) setSuggestions(data as SuggestionRow[]);
     setSuggestionsLoading(false);
   };
 
   const deleteSuggestion = async (id: string) => {
     if (!window.confirm('هل تريد حذف هذا الاقتراح؟')) return;
-    const { error } = await supabase.from('song_suggestions').delete().eq('id', id);
-    if (!error) {
-      setSuggestions((prev) => prev.filter((s) => s.id !== id));
-    }
+    const { error } = await supabase.rpc('admin_delete_suggestion', { p_id: id });
+    if (error) { console.error('admin_delete_suggestion failed:', error.message); return; }
+    setSuggestions((prev) => prev.filter((s) => s.id !== id));
   };
 
   React.useEffect(() => {
@@ -203,8 +202,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       <X size={14} />
                     </button>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-zinc-200">{s.user_display_name}</span>
-                      <span className="text-[10px] text-zinc-500">{s.user_email}</span>
+                      <span className="text-xs font-bold text-zinc-200">{s.display_name ?? 'مستخدم'}</span>
+                      <span className="text-[10px] text-zinc-500">{s.email ?? ''}</span>
                       <span className="text-[10px] text-zinc-600 mr-auto">{new Date(s.created_at).toLocaleDateString()}</span>
                     </div>
                     <p className="text-sm text-zinc-300 bg-black/25 p-3 rounded-lg border border-white/5 white-space-pre-wrap">{s.text}</p>

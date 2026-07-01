@@ -4,12 +4,11 @@ import { getFvTracks } from '../../music/data/loadSongs';
 import { getInitials } from '../../music/utils/cover';
 import { audioManager } from '../../../audio/audioManager';
 import { prefetchAudio } from '../../music/data/audioPrefetch';
-import { prepareSeekableAudioSource } from '../../music/data/seekableSource';
 
 import { useMusicStore } from '../../music/store/musicStore';
 
-const FULL_VOL = 0.85;
-const LOW_VOL = 0.10;
+const FULL_VOL = 0.85;   // الصوت الطبيعي عند فتح البروفايل
+const LOW_VOL = 0.05;    // عند الخفض: 5% فقط (كان 0.10)
 
 export function ThemeSongBar({
   songId,
@@ -37,67 +36,66 @@ export function ThemeSongBar({
   const [localUrl, setLocalUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!track) return;
-    let cancelled = false;
-    let dispose: (() => void) | null = null;
-    
-    prepareSeekableAudioSource(track.src)
-      .then(({ url, cleanup }) => {
-        if (cancelled) { cleanup(); return; }
-        dispose = cleanup;
-        setLocalUrl(url);
-      })
-      .catch(() => { if (!cancelled) setLocalUrl(track.src); });
-      
-    return () => {
-      cancelled = true;
-      if (dispose) dispose();
-    };
+    if (!track) { setLocalUrl(null); return; }
+    // أغنية البروفايل تُشغَّل كاملة من البداية → لا seeking ولا تنزيل كامل.
+    // البثّ المباشر من المصدر يضمن جاهزية فورية داخل نافذة تفعيل نقرة الفتح.
+    setLocalUrl(track.src);
+    prefetchAudio(track.src); // تسخين الكاش فقط (بلا crossOrigin) — تحسين اختياري
   }, [track]);
 
-  // Build / tear down the isolated audio element. NO crossOrigin (CORS-safe like the engine).
+  // عنصر صوت معزول. بلا crossOrigin (متوافق CORS مثل المحرّك).
   useEffect(() => {
     if (!track || !localUrl) return;
     const a = new Audio();
     a.preload = 'auto';
     a.src = localUrl;
-    a.volume = low ? LOW_VOL : FULL_VOL;
     audioRef.current = a;
 
+    // التنسيق يبقى عبر المدير: يوقف NL music ويكبت الخلفية. (register يصفّر الصوت داخليًا)
     audioManager.register('profile', a, low ? LOW_VOL : FULL_VOL);
-    audioManager.requestExclusive('profile', 'profile_song'); // يوقف NL music + يكبت bg
+    audioManager.requestExclusive('profile', 'profile_song');
 
-    prefetchAudio(track?.src);
-    const tryPlay = () => { 
-      setReady(true);
+    // تشغيل مباشر — لا يمرّ عبر playChain حتى لا نفقد تفعيل إيماءة المستخدم.
+    const startPlayback = () => {
       try { a.currentTime = clipStart; } catch {}
-      console.log('[ThemeSongBar] trying to play...', track?.title);
-      audioManager.play('profile').catch((e) => {
-        console.warn('[ThemeSongBar] play failed, waiting for interaction', e);
-      });
+      a.volume = low ? LOW_VOL : FULL_VOL;   // نضبط الصوت مباشرة (register صفّره)
+      const p = a.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => {
+          setReady(true);
+          // مزامنة حالة المدير دون مقاطعة (العنصر يعمل أصلًا → لن يعيد التشغيل)
+          audioManager.play('profile').catch(() => {});
+        }).catch(() => { /* محجوب — سيُعاد عند أول تفاعل عبر تأثير kick */ });
+      } else {
+        setReady(true);
+      }
     };
 
+    const onReady = () => startPlayback();
     const onTime = () => {
       if (clipEnd != null && a.currentTime >= clipEnd) {
         try { a.currentTime = clipStart; } catch {}
-        audioManager.play('profile').catch(() => {});
+        a.play().catch(() => {});
       }
     };
-    
-    a.addEventListener('loadedmetadata', tryPlay);
-    a.addEventListener('loadeddata', tryPlay);
-    a.addEventListener('canplaythrough', tryPlay);
+
+    a.addEventListener('loadedmetadata', onReady);
+    a.addEventListener('loadeddata', onReady);
+    a.addEventListener('canplay', onReady);
     a.addEventListener('timeupdate', onTime);
     a.load();
+    // محاولة فورية: نافذة تفعيل نقرة فتح البروفايل قد تكون سارية → تشغيل تلقائي حقيقي.
+    startPlayback();
 
     return () => {
-      a.removeEventListener('loadedmetadata', tryPlay);
-      a.removeEventListener('loadeddata', tryPlay);
-      a.removeEventListener('canplaythrough', tryPlay);
+      a.removeEventListener('loadedmetadata', onReady);
+      a.removeEventListener('loadeddata', onReady);
+      a.removeEventListener('canplay', onReady);
       a.removeEventListener('timeupdate', onTime);
       audioManager.stop('profile');
       audioManager.unregister('profile');
       audioManager.releaseExclusive('profile_song');
+      try { a.pause(); } catch {}
       a.src = '';
       audioRef.current = null;
       setReady(false);
@@ -109,23 +107,30 @@ export function ThemeSongBar({
     if (audioRef.current) audioRef.current.volume = low ? LOW_VOL : FULL_VOL;
   }, [low]);
 
-  // Retry autoplay on first user gesture if the browser blocked it.
+  // إعادة المحاولة عند تفاعل المستخدم إن حجب المتصفّح التشغيل التلقائي.
+  // نُشغّل a.play() مباشرةً (متزامنة داخل الإيماءة) لا عبر playChain المؤجَّلة.
   useEffect(() => {
     if (!track) return;
     const kick = () => {
-      if (audioRef.current && audioRef.current.paused) {
-        audioManager.play('profile').catch(() => {});
+      const a = audioRef.current;
+      if (a && a.paused) {
+        a.volume = low ? LOW_VOL : FULL_VOL;
+        a.play().then(() => {
+          setReady(true);
+          audioManager.play('profile').catch(() => {});
+        }).catch(() => {});
       }
     };
-    window.addEventListener('pointerdown', kick, { once: true });
-    window.addEventListener('keydown', kick, { once: true });
-    window.addEventListener('touchend', kick, { once: true });
+    // بدون once: يظل يحاول حتى ينجح؛ وبعد التشغيل يصبح no-op (a.paused=false).
+    window.addEventListener('pointerdown', kick);
+    window.addEventListener('keydown', kick);
+    window.addEventListener('touchend', kick);
     return () => {
       window.removeEventListener('pointerdown', kick);
       window.removeEventListener('keydown', kick);
       window.removeEventListener('touchend', kick);
     };
-  }, [track]);
+  }, [track, low]);
 
   const toggleLow = useCallback(() => setLow((v) => !v), []);
 
@@ -141,7 +146,7 @@ export function ThemeSongBar({
         <span className="nl-theme-song__name">{track.title}</span>
         <span className="nl-theme-song__artist">{track.artist}</span>
       </span>
-      <button className="nl-theme-song__vol" onClick={toggleLow} aria-label={low ? 'رفع الصوت' : 'خفض الصوت إلى 10%'} title={low ? 'رفع الصوت' : 'خفض الصوت إلى 10%'}>
+      <button className="nl-theme-song__vol" onClick={toggleLow} aria-label={low ? 'رفع الصوت' : 'خفض الصوت إلى 5%'} title={low ? 'رفع الصوت' : 'خفض الصوت إلى 5%'}>
         {low ? <VolumeX size={16} /> : <Volume2 size={16} />}
       </button>
       {canRemove && (

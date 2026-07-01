@@ -24,9 +24,12 @@ if (!isSupabaseConfigured && import.meta.env.DEV) {
   )
 }
 
+// قيم نائبة صالحة الشكل عند غياب الأسرار (مثل بناء CI / Lighthouse / Playwright).
+// supabase-js يرمي استثناءً عند URL/Key فارغ، مما يُجهِض تركيب التطبيق بالكامل.
+// isSupabaseConfigured يبقى false → ميزات الحساب معطّلة، ولا اتصال حقيقي يحدث.
 export const supabase: SupabaseClient = createClient(
-  supabaseUrl ?? '',
-  supabaseAnonKey ?? '',
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'public-anon-placeholder',
   {
     auth: {
       // تخزين الجلسة محليًا حتى يبقى المستخدم مسجّلًا بعد إعادة التحميل

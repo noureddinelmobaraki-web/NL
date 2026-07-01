@@ -38,8 +38,18 @@ export function useAdminStats() {
       supabase.from('admin_recent_activity').select('*'),
     ]);
     if (statsRes.error) setError(statsRes.error.message); else setStats(statsRes.data as AdminStats);
-    if (songsRes.data)    setTopSongs(songsRes.data   as TopSong[]);
-    if (moviesRes.data)   setTopMovies(moviesRes.data as TopMovie[]);
+    if (songsRes.data)
+      setTopSongs((songsRes.data as any[]).map((r) => ({
+        song_id: r.song_id,
+        favorite_count: r.favorite_count ?? r.fav_count ?? 0,
+      })));
+    if (moviesRes.data)
+      setTopMovies((moviesRes.data as any[]).map((r) => ({
+        tmdb_id: r.tmdb_id,
+        media_type: r.media_type,
+        title: r.title,
+        favorite_count: r.favorite_count ?? r.fav_count ?? 0,
+      })));
     if (usersRes.data)    setUsers(usersRes.data      as AdminUser[]);
     if (activityRes.data) setActivity(activityRes.data as ActivityRow[]);
     setLoading(false);

@@ -31,6 +31,18 @@
 
 @media (max-width: 767px) {
 
+  /* ============ تعديلات الشاشات الصغيرة والهاتف للملف المفوكس ============ */
+  div:nth-of-type(4) > div:nth-of-type(1) > button:nth-of-type(1) {
+    padding-left: 2px;
+    margin-left: 270px;
+    margin-top: -43px;
+    margin-bottom: 0px;
+    margin-right: 0px;
+    padding-bottom: -3px;
+    padding-right: -4px;
+    padding-top: -3px;
+  }
+
   /* ============ نافذة البروفايل الشخصية (ProfilePage) ============ */
   .profile-overlay.profile-overlay {
     align-items: stretch;
