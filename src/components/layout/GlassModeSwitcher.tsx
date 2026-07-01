@@ -649,15 +649,17 @@ function GlassModeSwitcherInner() {
   const section = getSection();
   const skin = theme;
 
+  const totalX = dragOffset.x + avoidOffset.x;
+  const totalY = dragOffset.y + avoidOffset.y;
+
   const lightPanel = theme === 'light' || theme === 'lite' || theme === 'bit';
   const fgVars = {
     ['--gs-fg' as string]:      lightPanel ? '#10131c' : '#ffffff',
     ['--gs-fg-dim' as string]:  lightPanel ? 'rgba(16,19,28,0.62)' : 'rgba(255,255,255,0.62)',
     ['--gs-fg-faint' as string]: lightPanel ? 'rgba(16,19,28,0.42)' : 'rgba(255,255,255,0.42)',
+    // لون سطري مضمون (لا يعتمد على Tailwind ولا على كاش ملفات CSS في AI Studio)
+    color: lightPanel ? '#10131c' : '#ffffff',
   } as React.CSSProperties;
-
-  const totalX = dragOffset.x + avoidOffset.x;
-  const totalY = dragOffset.y + avoidOffset.y;
 
   return createPortal(
     <div
@@ -722,9 +724,9 @@ function GlassModeSwitcherInner() {
         aria-label="Mode switcher"
         onKeyDown={handleKeyDown}
       >
-        <span className="glass-switcher__smoke" aria-hidden="true" />
-        <span className="glass-switcher__marble" aria-hidden="true" />
-        <span className="glass-switcher__sheen" aria-hidden="true" />
+        <span className="glass-switcher__smoke" style={state === 'open' ? { opacity: 0 } : undefined} aria-hidden="true" />
+        <span className="glass-switcher__marble" style={state === 'open' ? { opacity: 0 } : undefined} aria-hidden="true" />
+        <span className="glass-switcher__sheen" style={state === 'open' ? { opacity: 0 } : undefined} aria-hidden="true" />
 
         {isCinema && state !== 'open' && !isMusicActive && (
           <Film className="glass-switcher__cine-icon" size={state === 'dot' ? 11 : 22} aria-hidden="true" />
