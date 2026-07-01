@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import './index.css';
 import './transitions/genie.css';
 import './styles/page-mode-layer.css';
+import './styles/components/mobile-modals.css';
 import { registerServiceWorker } from './utils/registerSW';
 import { reportWebVitals } from './utils/vitals';
 import { isAutomatedEnv } from './utils/env';

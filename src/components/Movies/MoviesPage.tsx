@@ -357,7 +357,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const currentLang = normLang(i18n.resolvedLanguage || i18n.language);
 
   const { user } = useAuth();
-  const { has, toggle } = useMovieItems();
+  const { has, toggle, items: movieItems, watchlistCount } = useMovieItems();
 
   const [activeTab, setActiveTab] = useState<'movies' | 'series'>(initialTab);
   const [moviesLoading, setMoviesLoading] = useState(true);
@@ -389,6 +389,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [searchResults, setSearchResults] = useState<CinemaItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showWatchlist, setShowWatchlist] = useState(false);
 
   // Slideshow / Modal
   useDocumentMeta("movies.title", "movies.description");
@@ -416,6 +417,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t,
     isFavoriteFn: (id: number, mediaType: 'movie' | 'tv') => has(id, mediaType, 'favorite')
   }), [isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t, has]);
+
+  const watchlistItems = useMemo(
+    () => movieItems.filter((i) => i.status === 'watchlist'),
+    [movieItems]
+  );
+
+  const openWatchlistItem = useCallback((rec: { tmdb_id: number; media_type: 'movie' | 'tv' }) => {
+    setActiveTab(rec.media_type === 'tv' ? 'series' : 'movies');
+    setShowWatchlist(false);
+    setSelectedItemId(rec.tmdb_id);
+  }, []);
 
   const isOpenForAudio = Boolean(detailedItem || selectedItemId);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
@@ -899,6 +911,21 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               )}
             </div>
 
+            {user && (
+              <button
+                onClick={() => setShowWatchlist((v) => !v)}
+                aria-pressed={showWatchlist}
+                aria-label={currentLang === "ar" ? "قائمة المشاهدة" : "Watchlist"}
+                className={`relative p-2 rounded border flex items-center justify-center cursor-pointer transition ${showWatchlist ? 'bg-amber-500 border-amber-400 text-white' : 'bg-neutral-900/80 border-zinc-800 text-zinc-400 hover:text-white'}`}
+              >
+                <Bookmark size={15} fill={showWatchlist ? 'currentColor' : 'none'} />
+                {watchlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">
+                    {watchlistCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button onClick={toggleMute} className="p-2 rounded bg-neutral-900/80 border border-zinc-800 hover:bg-neutral-800 transition text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer" style={{ width: "34px", height: "34px" }}>
               {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
             </button>
@@ -922,7 +949,58 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           </div>
         )}
 
-        {searchQuery.trim() !== "" || selectedGenreId !== null ? (
+        {showWatchlist ? (
+          <main className="pt-24 px-4 sm:px-10 pb-20">
+            <div className="flex items-center gap-3 mb-6">
+              <button onClick={() => setShowWatchlist(false)} className="p-1 px-3 bg-zinc-800/80 border border-zinc-700 text-xs rounded hover:bg-zinc-700 cursor-pointer">
+                ← {t("movies.back") || (currentLang === "ar" ? "رجوع" : "Back")}
+              </button>
+              <div className="text-md sm:text-xl font-black flex items-center gap-2">
+                <Bookmark size={18} className="text-amber-500 fill-current" />
+                <span>{currentLang === "ar" ? "قائمة المشاهدة" : "My Watchlist"}</span>
+              </div>
+            </div>
+
+            {watchlistItems.length === 0 ? (
+              <div className="w-full py-20 flex flex-col items-center gap-3 text-center text-zinc-500">
+                <Bookmark size={30} />
+                <span className="font-medium">{currentLang === "ar" ? "لا توجد عناصر في قائمة المشاهدة بعد." : "Your watchlist is empty."}</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-6">
+                {watchlistItems.map((rec) => (
+                  <div key={`${rec.tmdb_id}-${rec.media_type}`} className="relative group flex justify-center">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={rec.title}
+                      onClick={() => openWatchlistItem(rec)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openWatchlistItem(rec); } }}
+                      className="nl-poster relative w-[110px] sm:w-[150px] md:w-[170px] aspect-[2/3] rounded-md overflow-hidden bg-neutral-900 border border-zinc-800 hover:border-amber-500 cursor-pointer select-none transition shadow hover:shadow-lg active:scale-95 flex-shrink-0"
+                    >
+                      {rec.poster_path ? (
+                        <img src={`https://image.tmdb.org/t/p/w342${rec.poster_path}`} alt={rec.title} loading="lazy" className="w-full h-full object-cover pointer-events-none" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-zinc-600"><Film size={26} /></div>
+                      )}
+                      <span className="absolute top-1 inset-inline-start-1 text-[8px] font-black px-1 rounded bg-black/70 text-white">
+                        {rec.media_type === 'tv' ? (currentLang === "ar" ? "مسلسل" : "TV") : (currentLang === "ar" ? "فيلم" : "Movie")}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggle(rec.tmdb_id, rec.media_type, 'watchlist', rec.title, rec.poster_path); }}
+                      aria-label={currentLang === "ar" ? "إزالة من القائمة" : "Remove from watchlist"}
+                      className="absolute top-1.5 inset-inline-end-1.5 w-6 h-6 grid place-items-center rounded-full bg-black/70 border border-white/20 text-white opacity-0 group-hover:opacity-100 transition hover:bg-red-600 cursor-pointer"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </main>
+        ) : searchQuery.trim() !== "" || selectedGenreId !== null ? (
           <main className="pt-24 px-4 sm:px-10 pb-20">
             <div className="flex items-center gap-3 mb-6">
               <button onClick={() => { setSearchQuery(""); setSelectedGenreId(null); }} className="p-1 px-3 bg-zinc-800/80 border border-zinc-700 text-xs rounded hover:bg-zinc-700 cursor-pointer">

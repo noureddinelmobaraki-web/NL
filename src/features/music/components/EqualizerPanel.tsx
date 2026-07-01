@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { Sliders } from 'lucide-react';
+import { Sliders, X } from 'lucide-react';
 import { useMusicStore } from '../store/musicStore';
 import { EQ_FREQS, EQ_PRESETS } from '../engine/eqPresets';
 
-export function EqualizerPanel() {
+export function EqualizerPanel({ onClose }: { onClose?: () => void } = {}) {
   const { t } = useTranslation();
   const {
     eqGains,
@@ -20,7 +20,12 @@ export function EqualizerPanel() {
   };
 
   return (
-    <div className="p-3 md:p-4 rounded-xl bg-[rgba(14,22,46,0.85)] border border-white/20 backdrop-blur-[20px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),0_8px_30px_rgba(0,0,0,0.5)] flex flex-col gap-4">
+    <div className="relative p-3 md:p-4 rounded-xl bg-[rgba(14,22,46,0.85)] border border-white/20 backdrop-blur-[20px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),0_8px_30px_rgba(0,0,0,0.5)] flex flex-col gap-4">
+      {onClose && (
+        <button type="button" className="nl-glass-close" onClick={onClose} aria-label="إغلاق">
+          <X size={16} />
+        </button>
+      )}
       {/* Header and Preset Picker */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-2">
         <div className="flex items-center gap-2">

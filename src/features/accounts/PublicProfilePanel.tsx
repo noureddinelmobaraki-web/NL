@@ -8,6 +8,7 @@ import { AvatarFrame } from '../account/components/AvatarFrame';
 import { RoleBadgeChips } from '../account/roleBadge';
 import { useProfileRating } from './useProfileRating';
 import { getFvTracks } from '../music/data/loadSongs';
+import { getInitials } from '../music/utils/cover';
 import { ThemeSongBar } from '../account/components/ThemeSongBar';
 import { fetchPublicProfile } from './profileCache';
 import { useSongPreview } from '../music/hooks/useSongPreview';
@@ -178,6 +179,13 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
                             {isPlaying ? <Pause size={11} /> : <Play size={11} />}
                           </button>
                         )}
+                        <span className="nl-pub-song-cover" style={{ background: trackObj?.coverColor }}>
+                          {trackObj?.coverUrl ? (
+                            <img src={trackObj.coverUrl} alt="" loading="lazy" decoding="async" />
+                          ) : (
+                            <span>{getInitials(meta ? meta.title : s.song_id)}</span>
+                          )}
+                        </span>
                         <span className="nl-pub-song-meta">
                           <span className="nl-pub-song-title">{meta ? meta.title : s.song_id}</span>
                           <span className="nl-pub-song-artist">{meta ? meta.artist : 'NL Music'}</span>
