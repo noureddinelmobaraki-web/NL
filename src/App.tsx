@@ -116,8 +116,20 @@ import { MobileQAOverlay } from "./components/dev/MobileQAOverlay";
 import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
+const PENDING_SONG_KEY = 'nl:pending-song';
+function readPendingSong(): string | null {
+  try {
+    const p = new URLSearchParams(window.location.search).get('song');
+    if (p && p.startsWith('fv-')) {
+      sessionStorage.setItem(PENDING_SONG_KEY, p);
+      return p;
+    }
+    return sessionStorage.getItem(PENDING_SONG_KEY);
+  } catch { return null; }
+}
+
 function AppInner() {
-  const { theme, loaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, endTransition, openMusic } = useAppContext();
+  const { theme, loaded, setLoaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, endTransition, openMusic } = useAppContext();
 
   useEffect(() => {
     applyThemeUtil(theme);
@@ -125,14 +137,13 @@ function AppInner() {
   }, [theme]);
 
   useEffect(() => {
-    if (loaded) {
-      const params = new URLSearchParams(window.location.search);
-      const raw = params.get('song');
-      if (raw && raw.startsWith('fv-')) {
-        openMusic();
-      }
+    const pending = readPendingSong();
+    if (!pending) return;
+    if (!loaded) {
+      setLoaded(true);
     }
-  }, [loaded, openMusic]);
+    openMusic();
+  }, [loaded, openMusic, setLoaded]);
 
   const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen || isXpOpen || isMusicOpen || isAccountsOpen;
 

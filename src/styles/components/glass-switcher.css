@@ -1,235 +1,702 @@
-/* ===== Glass Mode Switcher — فقاعة زجاجية حيّة، كل الأوضاع، أعلى-اليمين ===== */
+/* ===== Glass Mode Switcher — فقاعة زجاجية حيّة، كل الأوضاع ===== */
+
 /* الحاوية المثبّتة (anchor) لا تتحرّك ولا تتحوّل: مرجع ثابت للتموضع والقياس. */
-.glass-switcher-anchor{
-  position:fixed;
-  top:max(16px, env(safe-area-inset-top));
-  right:max(16px, env(safe-area-inset-right));
-  z-index:9000 !important;            /* تحت الـ profile orb 9200 وفوق المعارض والصفحات 8500 */
-  pointer-events:none;            /* التفاعل على السطح الداخلي فقط */
+.glass-switcher-anchor {
+  position: fixed;
+  z-index: 9000 !important;            /* تحت الـ profile orb 9200 وفوق المعارض والصفحات 8500 */
+  pointer-events: none;            /* التفاعل على السطح الداخلي فقط */
+  transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* تموضع افتراضي حسب نوع الجهاز */
+.glass-switcher-anchor[data-device="desktop"] {
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: auto;
+}
+
+.glass-switcher-anchor[data-device="mobile"] {
+  bottom: max(16px, env(safe-area-inset-bottom));
+  right: max(16px, env(safe-area-inset-right));
+  top: auto;
+}
+
+/* رفع المبدّل لتجنّب شريط تشغيل الأغاني السفلي */
+.glass-switcher-anchor[data-device="mobile"][data-music-active="true"] {
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px);
 }
 
 /* السطح = الفقاعة نفسها التي تتحوّل (morph) بين الحالات */
-.glass-switcher{
-  pointer-events:auto;
-  position:relative;
-  display:flex; align-items:center; justify-content:center;
-  isolation:isolate; overflow:hidden;
-  border-radius:30px;
-  background:linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
-  -webkit-backdrop-filter:blur(24px) saturate(180%);
-  backdrop-filter:blur(24px) saturate(180%);
-  border:1px solid rgba(255,255,255,0.35);
+.glass-switcher {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 30px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.35);
   box-shadow:
     0 10px 34px rgba(0,0,0,0.28),
     0 2px 8px rgba(0,0,0,0.18),
     inset 0 1px 0 rgba(255,255,255,0.55),
     inset 0 -8px 18px rgba(255,255,255,0.06),
-    0 0 var(--gs-glow, 18px) rgba(139,148,255,0.55),
-    0 0 calc(var(--gs-glow, 18px) * 2) rgba(255,140,66,0.35);
-  cursor:pointer;
-  will-change:transform, width, height, border-radius, box-shadow;
-  animation:gs-breathe 3.6s ease-in-out infinite;
+    0 0 var(--gs-glow, 18px) var(--gs-accent-glow, rgba(139,148,255,0.55)),
+    0 0 calc(var(--gs-glow, 18px) * 2) var(--gs-accent-glow-2, rgba(255,140,66,0.35));
+  cursor: pointer;
+  transform-origin: center center;
+}
+
+.glass-switcher.is-interacting {
+  will-change: transform;
 }
 
 /* ── الحالات الثلاث ── */
-.glass-switcher[data-state="dot"]{ width:18px; height:18px; border-radius:50%; }
-.glass-switcher[data-state="orb"]{
-  width:40px; height:40px; border-radius:50%;
-  /* أشفّ وأزجّ: خلفية أخفت + تشبّع أعلى */
-  background:linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
-  border:1px solid rgba(255,255,255,0.28);
-  -webkit-backdrop-filter:blur(16px) saturate(190%);
-  backdrop-filter:blur(16px) saturate(190%);
+.glass-switcher[data-state="dot"] {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+.glass-switcher[data-state="orb"] {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.28);
+  -webkit-backdrop-filter: blur(16px) saturate(190%);
+  backdrop-filter: blur(16px) saturate(190%);
   box-shadow:
     0 6px 22px rgba(0,0,0,0.22),
     inset 0 1px 0 rgba(255,255,255,0.65),
     inset 0 -6px 14px rgba(255,255,255,0.05),
-    0 0 var(--gs-glow,12px) rgba(139,148,255,0.50),
-    0 0 calc(var(--gs-glow,12px) * 2) rgba(255,140,66,0.30);
-  /* تنفّس بسيط (تمدد/تقلص بطيء ~±4%) + توهج */
-  animation:gs-breathe 3.6s ease-in-out infinite, gs-orb-pulse 5.5s ease-in-out infinite;
+    0 0 var(--gs-glow,12px) var(--gs-accent-glow, rgba(139,148,255,0.50)),
+    0 0 calc(var(--gs-glow,12px) * 2) var(--gs-accent-glow-2, rgba(255,140,66,0.30));
 }
-@keyframes gs-orb-pulse{
-  0%,100%{ transform:scale(1); }
-  50%{ transform:scale(1.06); }
-}
-.glass-switcher[data-state="open"]{
-  width:min(86vw, 360px); border-radius:26px; padding:10px; cursor:default;
-}
-.glass-switcher.is-mobile[data-state="open"]{ width:min(92vw, 320px); }
 
-/* ── طبقة الدخان اللوني المتحرّك (smoke / fluid) ── */
-.glass-switcher__smoke{
-  position:absolute; inset:-30%; z-index:-2; border-radius:inherit; pointer-events:none;
+/* الجزيرة الحية (Live Island Mode) عند تشغيل الموسيقى */
+.glass-switcher[data-live="true"][data-state="orb"] {
+  width: auto;
+  min-width: 140px;
+  max-width: 200px;
+  height: 40px;
+  border-radius: 20px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.glass-switcher[data-state="open"] {
+  width: min(86vw, 360px);
+  border-radius: 26px;
+  padding: 14px;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.glass-switcher.is-mobile[data-state="open"] {
+  width: min(92vw, 320px);
+}
+
+/* ── التوهجات والصبغات المخصصة لكل قسم ── */
+.glass-switcher[data-section="cinema"] {
+  --gs-accent: #ffb066;
+  --gs-accent-2: #ff8c42;
+  --gs-accent-glow: rgba(255,176,102,0.6);
+  --gs-accent-glow-2: rgba(255,140,66,0.4);
+}
+.glass-switcher[data-section="music"] {
+  --gs-accent: #46e0c0;
+  --gs-accent-2: #00e676;
+  --gs-accent-glow: rgba(70,224,192,0.6);
+  --gs-accent-glow-2: rgba(0,230,118,0.4);
+}
+.glass-switcher[data-section="games"] {
+  --gs-accent: #22c55e;
+  --gs-accent-2: #a3f363;
+  --gs-accent-glow: rgba(34,197,94,0.6);
+  --gs-accent-glow-2: rgba(163,243,99,0.4);
+}
+.glass-switcher[data-section="retro"] {
+  --gs-accent: #a855f7;
+  --gs-accent-2: #c084fc;
+  --gs-accent-glow: rgba(168,85,247,0.6);
+  --gs-accent-glow-2: rgba(192,132,252,0.4);
+}
+.glass-switcher[data-section="tv"] {
+  --gs-accent: #38bdf8;
+  --gs-accent-2: #0ea5e9;
+  --gs-accent-glow: rgba(56,189,248,0.6);
+  --gs-accent-glow-2: rgba(14,165,233,0.4);
+}
+.glass-switcher[data-section="xp"] {
+  --gs-accent: #2563eb;
+  --gs-accent-2: #3b82f6;
+  --gs-accent-glow: rgba(37,99,235,0.6);
+  --gs-accent-glow-2: rgba(59,130,246,0.4);
+}
+.glass-switcher[data-section="accounts"] {
+  --gs-accent: #6366f1;
+  --gs-accent-2: #818cf8;
+  --gs-accent-glow: rgba(99,102,241,0.6);
+  --gs-accent-glow-2: rgba(129,140,248,0.4);
+}
+.glass-switcher[data-section="bg"], .glass-switcher:not([data-section]) {
+  --gs-accent: #8b94ff;
+  --gs-accent-2: #ff8c42;
+  --gs-accent-glow: rgba(139,148,255,0.55);
+  --gs-accent-glow-2: rgba(255,140,66,0.35);
+}
+
+/* ── طبقة الدخان اللوني المتحرّك ── */
+.glass-switcher__smoke {
+  position: absolute;
+  inset: -30%;
+  z-index: -2;
+  border-radius: inherit;
+  pointer-events: none;
   background:
-    radial-gradient(40% 40% at 30% 30%, rgba(255,140,66,0.55), transparent 70%),
-    radial-gradient(45% 45% at 70% 40%, rgba(139,148,255,0.55), transparent 70%),
+    radial-gradient(40% 40% at 30% 30%, var(--gs-accent, rgba(255,140,66,0.55)), transparent 70%),
+    radial-gradient(45% 45% at 70% 40%, var(--gs-accent-2, rgba(139,148,255,0.55)), transparent 70%),
     radial-gradient(50% 50% at 50% 75%, rgba(70,224,192,0.45), transparent 70%),
     radial-gradient(40% 40% at 60% 60%, rgba(255,111,174,0.45), transparent 70%);
-  filter:blur(14px) saturate(160%);
-  mix-blend-mode:screen;
-  opacity:.65;
-  animation:gs-smoke 14s ease-in-out infinite alternate;
-}
-@keyframes gs-smoke{
-  0%{ transform:translate3d(-6%,-4%,0) rotate(0deg) scale(1.05); }
-  50%{ transform:translate3d(6%,5%,0) rotate(180deg) scale(1.2); }
-  100%{ transform:translate3d(-4%,6%,0) rotate(360deg) scale(1.08); }
+  filter: blur(14px) saturate(160%);
+  mix-blend-mode: screen;
+  opacity: .65;
+  animation: gs-smoke 14s ease-in-out infinite alternate;
 }
 
-/* ── طبقة رخام زجاجي داخلية (جديد) ── */
-.glass-switcher__marble{
-  position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none;
+@keyframes gs-smoke {
+  0% { transform: translate3d(-6%,-4%,0) rotate(0deg) scale(1.05); }
+  50% { transform: translate3d(6%,5%,0) rotate(180deg) scale(1.2); }
+  100% { transform: translate3d(-4%,6%,0) rotate(360deg) scale(1.08); }
+}
+
+/* ── طبقة رخام زجاجي داخلية ── */
+.glass-switcher__marble {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
   background:
-    radial-gradient(60% 60% at 32% 28%, rgba(255,170,90,0.55), transparent 60%),
-    radial-gradient(55% 55% at 70% 38%, rgba(120,160,255,0.55), transparent 62%),
+    radial-gradient(60% 60% at 32% 28%, var(--gs-accent, rgba(255,170,90,0.55)), transparent 60%),
+    radial-gradient(55% 55% at 70% 38%, var(--gs-accent-2, rgba(120,160,255,0.55)), transparent 62%),
     radial-gradient(60% 60% at 55% 75%, rgba(80,230,190,0.50), transparent 65%),
     conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0.05), rgba(255,255,255,0.18), rgba(255,255,255,0.05));
-  filter:blur(2px) saturate(170%);
-  mix-blend-mode:screen;
-  opacity:.85;
-  animation:gs-marble-spin 9s linear infinite, gs-orb-pulse 5.5s ease-in-out infinite;
+  filter: blur(2px) saturate(170%);
+  mix-blend-mode: screen;
+  opacity: .85;
+  animation: gs-marble-spin 9s linear infinite;
 }
-@keyframes gs-marble-spin{
-  to{ transform:rotate(360deg); }
+
+@keyframes gs-marble-spin {
+  to { transform: rotate(360deg); }
 }
-.glass-switcher[data-state="open"] .glass-switcher__marble{ opacity:0; }
+.glass-switcher[data-state="open"] .glass-switcher__marble {
+  opacity: 0;
+}
+
+/* إخفاء طبقة الرخام على الموبايل لتقليل عبء GPU */
+.glass-switcher[data-device="mobile"] .glass-switcher__marble {
+  display: none !important;
+}
+.glass-switcher[data-device="mobile"] {
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+}
 
 /* ── لمعة علوية زجاجية ── */
-.glass-switcher__sheen{
-  position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none;
+.glass-switcher__sheen {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
   background:
     radial-gradient(35% 25% at 30% 22%, rgba(255,255,255,0.85), transparent 60%),
     linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0) 50%);
-  opacity:.8;
-  animation:gs-glint 6s ease-in-out infinite;
-}
-@keyframes gs-glint{
-  0%,100%{ transform:translate3d(0,0,0); opacity:.7; }
-  50%{ transform:translate3d(8%,6%,0); opacity:.95; }
+  opacity: .8;
+  animation: gs-glint 6s ease-in-out infinite;
 }
 
-@keyframes gs-breathe{
-  0%,100%{ --gs-glow:10px; }
-  50%{ --gs-glow:22px; }
+@keyframes gs-glint {
+  0%,100% { transform: translate3d(0,0,0); opacity: .7; }
+  50% { transform: translate3d(8%,6%,0); opacity: .95; }
 }
-@property --gs-glow{ syntax:"<length>"; inherits:false; initial-value:12px; }
 
-.glass-switcher[data-state="dot"]{
-  animation:gs-breathe 2.4s ease-in-out infinite;
+/* ── التحكم في تشغيل وإيقاف الحركات (Performance Gating) ── */
+.glass-switcher,
+.glass-switcher__smoke,
+.glass-switcher__marble,
+.glass-switcher__sheen {
+  animation-play-state: paused !important;
+}
+
+/* تفعيل حركة تنفس خفيفة عند الراحة بشرط ألا تكون الصفحة مخفية */
+.glass-switcher:not([data-hidden="true"]) {
+  animation: gs-breathe-slow 8s ease-in-out infinite;
+  animation-play-state: running !important;
+}
+
+/* تشغيل كل حركات الدخان والرخام واللمعان الكاملة فقط عند التفاعل أو الفتح أو تشغيل الميديا */
+.glass-switcher:not([data-hidden="true"])[data-animating="true"],
+.glass-switcher:not([data-hidden="true"])[data-state="open"],
+.glass-switcher:not([data-hidden="true"])[data-live="true"] {
+  animation: gs-breathe 3.6s ease-in-out infinite;
+  animation-play-state: running !important;
+}
+
+.glass-switcher:not([data-hidden="true"])[data-animating="true"] .glass-switcher__smoke,
+.glass-switcher:not([data-hidden="true"])[data-state="open"] .glass-switcher__smoke,
+.glass-switcher:not([data-hidden="true"])[data-live="true"] .glass-switcher__smoke {
+  animation-play-state: running !important;
+}
+
+.glass-switcher:not([data-hidden="true"])[data-animating="true"] .glass-switcher__marble,
+.glass-switcher:not([data-hidden="true"])[data-state="open"] .glass-switcher__marble,
+.glass-switcher:not([data-hidden="true"])[data-live="true"] .glass-switcher__marble {
+  animation-play-state: running !important;
+}
+
+.glass-switcher:not([data-hidden="true"])[data-animating="true"] .glass-switcher__sheen,
+.glass-switcher:not([data-hidden="true"])[data-state="open"] .glass-switcher__sheen,
+.glass-switcher:not([data-hidden="true"])[data-live="true"] .glass-switcher__sheen {
+  animation-play-state: running !important;
+}
+
+@keyframes gs-breathe {
+  0%,100% { --gs-glow: 10px; }
+  50% { --gs-glow: 22px; }
+}
+
+@keyframes gs-breathe-slow {
+  0%,100% { --gs-glow: 6px; }
+  50% { --gs-glow: 12px; }
+}
+
+@property --gs-glow {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 12px;
+}
+
+.glass-switcher[data-state="dot"] {
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.6),
-    0 0 var(--gs-glow, 18px) rgba(139,148,255,0.8),
-    0 0 calc(var(--gs-glow, 18px) * 2) rgba(255,140,66,0.6);
+    0 0 var(--gs-glow, 12px) var(--gs-accent-glow, rgba(139,148,255,0.8)),
+    0 0 calc(var(--gs-glow, 12px) * 2) var(--gs-accent-glow-2, rgba(255,140,66,0.6));
 }
 
-/* ── شبكة الأزرار: خلايا متساوية تماماً ── */
-.glass-switcher__grid{
-  display:grid;
-  grid-template-columns:repeat(4, 1fr);
-  gap:8px; width:100%;
+/* ── البحث (Command Palette) ── */
+.gs-search-row {
+  width: 100%;
 }
-.glass-switcher.is-mobile .glass-switcher__grid{ grid-template-columns:repeat(2, 1fr); }
- 
-/* ── شبكة أزرار الميزات الأربعة (الألعاب، الأفلام، التلفاز، ريترو) ── */
-.glass-switcher__features-grid {
-  grid-column: span 4;
+
+.gs-search-container {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 0 10px;
+  height: 38px;
+  gap: 8px;
+  transition: border-color 0.2s, background-color 0.2s;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.gs-search-container:focus-within {
+  border-color: var(--gs-accent, #8b94ff);
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.gs-search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  color: #fff;
+  font-size: 13px;
+  direction: rtl;
+  font-weight: 500;
+  padding: 0;
+}
+
+.gs-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── التقسيم والعنونة (Sections Layout) ── */
+.gs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.gs-section-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  margin-bottom: 2px;
+  text-align: right;
+  padding-right: 4px;
+  user-select: none;
+}
+
+/* ── شبكة الأزرار ── */
+.glass-switcher__grid {
   display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.glass-switcher.is-mobile .glass-switcher__grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ── مظهر خلايا الميزات ── */
+.glass-switcher__features-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   width: 100%;
 }
 
 .glass-switcher.is-mobile .glass-switcher__features-grid {
-  grid-column: span 2;
+  grid-template-columns: repeat(4, 1fr);
 }
 
-/* 1. عند توسيع الشاشة (حاسوب وشاشات عريضة) → واحدة بجانب واحدة (4 في الصف) */
-@media (min-width: 481px) {
-  .glass-switcher__features-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-/* 2. عندما تصغر الشاشة قليلاً (حجم متوسط للهاتف) → تترتب 3 في الصف وتلتف الرابعة صفاً آخر */
-@media (max-width: 480px) and (min-width: 361px) {
-  .glass-switcher__features-grid {
+@media (max-width: 480px) {
+  .glass-switcher.is-mobile .glass-switcher__features-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
-/* 3. عندما تصغر الشاشة أكثر (حجم صغير جداً للهاتف) → تترتب 2 في الأعلى و 2 في الأسفل (2x2) */
-@media (max-width: 360px) {
-  .glass-switcher__features-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.gs-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: 14px;
+  font: 600 12px/1 -apple-system,"SF Pro Text",system-ui,sans-serif;
+  color: #10131c;
+  text-align: center;
+  white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.42);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+  cursor: pointer;
+  transition: transform .18s, background .18s, box-shadow .18s, border-color .18s;
+  outline: none;
 }
 
-.gs-cell{
-  display:flex; align-items:center; justify-content:center;
-  height:44px; min-width:0; padding:0 6px; border-radius:14px;
-  font:600 12px/1 -apple-system,"SF Pro Text",system-ui,sans-serif;
-  color:#10131c; text-align:center; white-space:nowrap;
-  border:1px solid rgba(255,255,255,0.4);
-  background:rgba(255,255,255,0.42);
-  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);
-  cursor:pointer; transition:transform .18s, background .18s, box-shadow .18s;
+.gs-cell:hover, .gs-cell:focus {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.62);
+  border-color: rgba(255,255,255,0.6);
 }
-.gs-cell:hover{ transform:translateY(-1px); background:rgba(255,255,255,0.62); }
-.gs-cell.is-active{
-  background:linear-gradient(135deg,#FFB066,#FF8C42); color:#1a1004;
-  box-shadow:0 4px 14px rgba(255,140,66,.45), inset 0 1px 0 rgba(255,255,255,.5);
+
+.gs-cell:active {
+  transform: translateY(1px);
 }
+
+.gs-cell.is-active {
+  background: linear-gradient(135deg, #FFB066, #FF8C42);
+  color: #1a1004;
+  border-color: rgba(255,140,66,0.6);
+  box-shadow: 0 4px 14px rgba(255,140,66,.45), inset 0 1px 0 rgba(255,255,255,.5);
+}
+
 .glass-switcher__features-grid .gs-cell.is-active {
   background: linear-gradient(135deg, #a3f363, #22c55e);
   color: #022c22;
   border-color: rgba(34, 197, 94, 0.6);
   box-shadow: 0 4px 14px rgba(34, 197, 94, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
-.gs-exit{ color:#b00020; }
+
+.gs-exit {
+  color: #b00020;
+}
+
+/* ── مشغل ميديا الموسيقى المدمج (Compact Transport Controls) ── */
+.gs-transport-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gs-transport-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #10131c;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.gs-transport-btn:hover, .gs-transport-btn:focus {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.08);
+}
+
+.gs-transport-btn:active {
+  transform: scale(0.92);
+}
+
+/* ── الأنماط والمؤشرات التفاعلية للجزيرة الحية ── */
+.gs-equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 14px;
+  height: 14px;
+}
+
+.gs-eq-bar {
+  width: 2.5px;
+  height: 100%;
+  background-color: var(--gs-accent, #46e0c0);
+  border-radius: 1px;
+  animation: gs-eq-anim 0.8s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+
+.glass-switcher[data-live="true"] .gs-eq-bar {
+  animation-play-state: running;
+}
+
+.gs-eq-bar.bar-1 { animation-delay: 0.1s; height: 35%; }
+.gs-eq-bar.bar-2 { animation-delay: 0.3s; height: 95%; }
+.gs-eq-bar.bar-3 { animation-delay: 0.5s; height: 60%; }
+
+@keyframes gs-eq-anim {
+  0% { height: 25%; }
+  100% { height: 100%; }
+}
+
+.gs-live-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 95px;
+  direction: ltr;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* ── جلود المظهر الخاصة بكل سمة (Bit / Lite skins) ── */
+
+/* 1. مظهر بكسل (Bit Skin) */
+.glass-switcher[data-theme-skin="bit"] {
+  background: #f0f0f0 !important;
+  border: 2px solid #000 !important;
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 #000 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  --gs-glow: 0px !important;
+}
+
+.glass-switcher[data-theme-skin="bit"] .glass-switcher__smoke,
+.glass-switcher[data-theme-skin="bit"] .glass-switcher__marble,
+.glass-switcher[data-theme-skin="bit"] .glass-switcher__sheen {
+  display: none !important;
+}
+
+.glass-switcher[data-theme-skin="bit"] .gs-section-header {
+  color: #000 !important;
+  font-family: monospace;
+}
+
+.glass-switcher[data-theme-skin="bit"] .gs-search-container {
+  background: #fff !important;
+  border: 2px solid #000 !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #000 !important;
+}
+
+.glass-switcher[data-theme-skin="bit"] .gs-search-input {
+  color: #000 !important;
+  font-family: monospace;
+}
+
+.glass-switcher[data-theme-skin="bit"] .gs-search-input::placeholder {
+  color: #888 !important;
+}
+
+.glass-switcher[data-theme-skin="bit"] .gs-cell {
+  background: #fff !important;
+  border: 2px solid #000 !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #000 !important;
+  color: #000 !important;
+}
+
+.glass-switcher[data-theme-skin="bit"] .gs-cell:hover,
+.glass-switcher[data-theme-skin="bit"] .gs-cell:focus {
+  background: #e0e0e0 !important;
+  transform: translate(1px, 1px) !important;
+  box-shadow: 1px 1px 0 #000 !important;
+}
+
+.glass-switcher[data-theme-skin="bit"] .gs-cell:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: none !important;
+}
+
+.glass-switcher[data-theme-skin="bit"] .gs-cell.is-active {
+  background: #a3f363 !important;
+  color: #000 !important;
+}
+
+.glass-switcher[data-theme-skin="bit"] .gs-transport-btn {
+  background: #fff !important;
+  border: 2px solid #000 !important;
+  border-radius: 0 !important;
+  color: #000 !important;
+  box-shadow: 1px 1px 0 #000 !important;
+}
+
+/* 2. مظهر خفيف ومسطّح (Lite Skin) */
+.glass-switcher[data-theme-skin="lite"] {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  backdrop-filter: blur(8px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  --gs-glow: 0px !important;
+}
+
+.glass-switcher[data-theme-skin="lite"] .glass-switcher__smoke,
+.glass-switcher[data-theme-skin="lite"] .glass-switcher__marble,
+.glass-switcher[data-theme-skin="lite"] .glass-switcher__sheen {
+  opacity: 0.12 !important;
+}
+
+.glass-switcher[data-theme-skin="lite"] .gs-section-header {
+  color: rgba(0, 0, 0, 0.55) !important;
+}
+
+.glass-switcher[data-theme-skin="lite"] .gs-search-container {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.glass-switcher[data-theme-skin="lite"] .gs-search-input {
+  color: #000 !important;
+}
+
+.glass-switcher[data-theme-skin="lite"] .gs-search-input::placeholder {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+.glass-switcher[data-theme-skin="lite"] .gs-cell {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #111 !important;
+  box-shadow: none !important;
+}
+
+.glass-switcher[data-theme-skin="lite"] .gs-cell:hover,
+.glass-switcher[data-theme-skin="lite"] .gs-cell:focus {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+
+.glass-switcher[data-theme-skin="lite"] .gs-cell.is-active {
+  background: #000 !important;
+  color: #fff !important;
+  border-color: #000 !important;
+}
+
+.glass-switcher[data-theme-skin="lite"] .gs-transport-btn {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #000 !important;
+}
 
 /* ── ضمان الأولوية القصوى في كل الأوضاع بما فيها retro ── */
-body.retro-active .glass-switcher-anchor{ z-index:2147483600 !important; }
+body.retro-active .glass-switcher-anchor {
+  z-index: 2147483600 !important;
+}
 
 /* ── fallback لمتصفّحات بلا backdrop-filter ── */
-@supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){
-  .glass-switcher{ background:rgba(245,247,255,0.92); }
-  .gs-cell{ background:rgba(245,247,255,0.96); }
+@supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))) {
+  .glass-switcher { background: rgba(245,247,255,0.92); }
+  .gs-cell { background: rgba(245,247,255,0.96); }
 }
 
 /* ── احترام prefers-reduced-motion ── */
-@media (prefers-reduced-motion: reduce){
+@media (prefers-reduced-motion: reduce) {
   .glass-switcher,
   .glass-switcher[data-state="dot"],
   .glass-switcher[data-state="orb"],
   .glass-switcher__smoke,
   .glass-switcher__marble,
-  .glass-switcher__sheen{ animation:none; }
+  .glass-switcher__sheen {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
-/* ===== وضع السينما: زجاجي أصفر + أيقونة فيلم (كل الخصائص محفوظة) ===== */
-.glass-switcher.is-cinema{
-  background:linear-gradient(135deg, rgba(255,210,90,0.30), rgba(255,170,40,0.12));
-  border-color:rgba(255,200,70,0.6);
+/* ===== وضع السينما: زجاجي أصفر + أيقونة فيلم ===== */
+.glass-switcher.is-cinema {
+  background: linear-gradient(135deg, rgba(255,210,90,0.30), rgba(255,170,40,0.12));
+  border-color: rgba(255,200,70,0.6);
   box-shadow:
     0 10px 34px rgba(0,0,0,0.30),
     inset 0 1px 0 rgba(255,255,255,0.55),
     0 0 var(--gs-glow,18px) rgba(255,200,70,0.78),
     0 0 calc(var(--gs-glow,18px) * 2) rgba(255,160,40,0.45);
 }
-.glass-switcher.is-cinema .glass-switcher__smoke{
+
+.glass-switcher.is-cinema .glass-switcher__smoke {
   background:
     radial-gradient(45% 45% at 30% 30%, rgba(255,200,70,0.60), transparent 70%),
     radial-gradient(45% 45% at 70% 45%, rgba(255,160,40,0.55), transparent 70%),
     radial-gradient(50% 50% at 50% 75%, rgba(255,225,120,0.50), transparent 70%);
 }
+
 /* تصغير الفقاعة في وضع السينما لتبدو كأيقونة */
-.glass-switcher.is-cinema[data-state="orb"]{ width:35px; height:35px; }
-/* الأيقونة تتوسّط وتظهر في orb/dot فقط (حالة open تبقى شبكة الأزرار كاملة) */
-.glass-switcher__cine-icon{
-  position:absolute; inset:0; margin:auto;
-  width:max-content; height:max-content;
-  color:#3a2600;
-  filter:drop-shadow(0 1px 2px rgba(255,255,255,.55));
-  pointer-events:none; z-index:1;
+.glass-switcher.is-cinema[data-state="orb"] {
+  width: 35px;
+  height: 35px;
+}
+
+/* الأيقونة تتوسّط وتظهر في orb/dot فقط */
+.glass-switcher__cine-icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: max-content;
+  height: max-content;
+  color: #3a2600;
+  filter: drop-shadow(0 1px 2px rgba(255,255,255,.55));
+  pointer-events: none;
+  z-index: 1;
 }

@@ -18,7 +18,6 @@ import { startKeepAlive, stopKeepAlive } from '../config/supabaseKeepAlive'
 const AuthModal = lazy(() => import('../features/account/AuthModal'))
 const ProfilePage = lazy(() => import('../features/account/ProfilePage'))
 const SongFavoritesSync = lazy(() => import('../features/account/SongFavoritesSync'))
-const ProfileOrb = lazy(() => import('../features/account/ProfileOrb').then(m => ({ default: m.ProfileOrb })));
 import '../styles/components/profile-orb.css';
 import '../styles/components/bubble-system.css';
 
@@ -323,7 +322,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {isConfigured && (
         <>
           <AuthLauncher />
-          <Suspense fallback={null}><ProfileOrb /></Suspense>
         </>
       )}
       {isConfigured && (

@@ -71,15 +71,9 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
           <button onClick={onClose} className="p-2 -ml-2 text-slate-600 hover:text-slate-900 transition-colors drop-shadow-sm">
             <ChevronDown size={28} className="drop-shadow-sm" />
           </button>
-        ) : <span />}
+        ) : <div className="w-9" />}
         <span className="text-xs font-bold uppercase tracking-widest text-slate-500 drop-shadow-sm">Now Playing</span>
-        <button 
-          onClick={() => setMenuOpen(true)}
-          className="p-2 text-slate-600 hover:text-slate-900 transition-colors drop-shadow-sm"
-          title="خيارات التشغيل"
-        >
-          <MoreHorizontal size={24} className="drop-shadow-sm" />
-        </button>
+        <div className="w-9" />
       </div>
 
       {/* الكوفر (مربع) — تعتيم بالإضاءة فقط */}
@@ -118,8 +112,8 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
         <p className="text-sm font-medium text-slate-600 truncate mt-1 drop-shadow-sm">{currentTrack.artist}</p>
       </div>
 
-      {/* صف الإجراءات الثانوية: قلب / كلمات / تحميل (تحت العنوان) */}
-      <div className="flex items-center justify-center gap-6 mt-4 shrink-0">
+      {/* صف الإجراءات الثانوية: قلب / كلمات / تحميل / المزيد (تحت العنوان) */}
+      <div className="flex items-center justify-center gap-5 mt-4 shrink-0">
         <button
           onClick={() => actions.toggleFavorite(currentTrack.id)}
           className={`transition-all hover:scale-110 drop-shadow-md ${isFav ? 'text-rose-500' : 'text-slate-700 hover:text-slate-900'}`}
@@ -152,6 +146,13 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
           {dl === 'start'
             ? <Loader2 size={22} className="animate-spin" />
             : isSaved ? <CheckCircle2 size={22} /> : <Download size={22} />}
+        </button>
+        <button
+          onClick={() => setMenuOpen(true)}
+          className="transition-all hover:scale-110 drop-shadow-md text-slate-700 hover:text-slate-900 cursor-pointer"
+          title="خيارات التشغيل"
+        >
+          <MoreHorizontal size={22} />
         </button>
       </div>
 
