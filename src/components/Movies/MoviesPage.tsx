@@ -16,6 +16,8 @@ import { normLang, tmdbLang } from "../../utils/lang";
 import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
 import "../../styles/components/cinema.css";
 import { MovieSourcesModal } from "./MovieSourcesModal";
+import { useTopMovies } from "./useTopMovies";
+import { logPlay } from "../../features/music/data/playTracking";
 
 function NLLogo() {
   return <span className="nl-logo" aria-label="NL" role="img">NL</span>;
@@ -355,9 +357,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const { setMovieActive, registerMovieBack } = useAppContext();
   const isTouch = isMobile || isTablet;
   const currentLang = normLang(i18n.resolvedLanguage || i18n.language);
+  const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || PUBLIC_TMDB_KEY;
+  const omdbKey = import.meta.env.VITE_OMDB_API_KEY || PUBLIC_OMDB_KEY;
 
   const { user } = useAuth();
   const { has, toggle, items: movieItems, watchlistCount } = useMovieItems();
+
+  const topMoviesRows = useTopMovies('movie', 20);
+  const topSeriesRows = useTopMovies('series', 20);
+  const [topMovies, setTopMovies] = useState<CinemaItem[]>([]);
+  const [topSeries, setTopSeries] = useState<CinemaItem[]>([]);
 
   const [activeTab, setActiveTab] = useState<'movies' | 'series'>(initialTab);
   const [moviesLoading, setMoviesLoading] = useState(true);
@@ -382,6 +391,101 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [dramaSeries, setDramaSeries] = useState<CinemaItem[]>([]);
   const [animationSeries, setAnimationSeries] = useState<CinemaItem[]>([]);
   const [seriesGenres, setSeriesGenres] = useState<any[]>([]);
+
+  // Resolution effects for Top items
+  useEffect(() => {
+    let cancelled = false;
+    if (topMoviesRows.length === 0) {
+      setTopMovies([]);
+      return;
+    }
+    const loadTopMoviesDetails = async () => {
+      const items: CinemaItem[] = [];
+      const langParam = `&language=${tmdbLang(currentLang)}`;
+      
+      const allLoaded = [
+        ...trendingMovies,
+        ...topRatedMovies,
+        ...popularMovies,
+        ...actionMovies,
+        ...horrorMovies,
+        ...dramaMovies,
+        ...sciFiMovies,
+        ...FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang))
+      ];
+
+      for (const row of topMoviesRows) {
+        if (cancelled) return;
+        const matched = allLoaded.find(m => m.id === row.tmdb_id && m.mediaType === 'movie');
+        if (matched) {
+          items.push(matched);
+        } else if (tmdbKey) {
+          try {
+            const detail = await fetchWithCache(
+              `${TMDB_BASE_URL}/movie/${row.tmdb_id}?api_key=${tmdbKey}${langParam}`
+            );
+            if (!cancelled && detail) {
+              items.push(normalizeItem(detail, 'movie', currentLang));
+            }
+          } catch (e) {
+            console.warn("Failed to fetch top movie details for ID", row.tmdb_id, e);
+          }
+        }
+      }
+      if (!cancelled) {
+        setTopMovies(items);
+      }
+    };
+    loadTopMoviesDetails();
+    return () => { cancelled = true; };
+  }, [topMoviesRows, trendingMovies, topRatedMovies, popularMovies, actionMovies, horrorMovies, dramaMovies, sciFiMovies, tmdbKey, currentLang]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (topSeriesRows.length === 0) {
+      setTopSeries([]);
+      return;
+    }
+    const loadTopSeriesDetails = async () => {
+      const items: CinemaItem[] = [];
+      const langParam = `&language=${tmdbLang(currentLang)}`;
+      
+      const allLoaded = [
+        ...trendingSeries,
+        ...topRatedSeries,
+        ...popularSeries,
+        ...actionSeries,
+        ...mysterySeries,
+        ...dramaSeries,
+        ...animationSeries,
+        ...FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang))
+      ];
+
+      for (const row of topSeriesRows) {
+        if (cancelled) return;
+        const matched = allLoaded.find(m => m.id === row.tmdb_id && m.mediaType === 'tv');
+        if (matched) {
+          items.push(matched);
+        } else if (tmdbKey) {
+          try {
+            const detail = await fetchWithCache(
+              `${TMDB_BASE_URL}/tv/${row.tmdb_id}?api_key=${tmdbKey}${langParam}`
+            );
+            if (!cancelled && detail) {
+              items.push(normalizeItem(detail, 'tv', currentLang));
+            }
+          } catch (e) {
+            console.warn("Failed to fetch top series details for ID", row.tmdb_id, e);
+          }
+        }
+      }
+      if (!cancelled) {
+        setTopSeries(items);
+      }
+    };
+    loadTopSeriesDetails();
+    return () => { cancelled = true; };
+  }, [topSeriesRows, trendingSeries, topRatedSeries, popularSeries, actionSeries, mysterySeries, dramaSeries, animationSeries, tmdbKey, currentLang]);
 
   // Filtering / Search
   const [selectedGenreId, setSelectedGenreId] = useState<number | null>(null);
@@ -431,9 +535,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const isOpenForAudio = Boolean(detailedItem || selectedItemId);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
-
-  const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || PUBLIC_TMDB_KEY;
-  const omdbKey = import.meta.env.VITE_OMDB_API_KEY || PUBLIC_OMDB_KEY;
 
   const [scrolled, setScrolled] = useState(false);
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
@@ -734,7 +835,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       const list = isTv ? FALLBACK_SERIES : FALLBACK_MOVIES;
       const match = list.find(m => m.id === selectedItemId);
       if (!cancelled && match) {
-        setDetailedItem(normalizeItem(match, mediaType, currentLang));
+        const normalized = normalizeItem(match, mediaType, currentLang);
+        setDetailedItem(normalized);
+        logPlay({
+          item_type: normalized.mediaType === 'tv' ? 'series' : 'movie',
+          item_id: String(normalized.id),
+          media_type: normalized.mediaType,
+          title: normalized.title || null,
+        });
         setIsLoadingDetails(false);
       }
       return;
@@ -766,9 +874,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
         if (!cancelled) {
           const normalized = normalizeItem(detail, mediaType, currentLang);
-          setDetailedItem({
+          const resolvedItem = {
             ...normalized,
             rating: imdbRating !== "N/A" ? parseFloat(imdbRating) : normalized.rating || 8.1
+          };
+          setDetailedItem(resolvedItem);
+          logPlay({
+            item_type: resolvedItem.mediaType === 'tv' ? 'series' : 'movie',
+            item_id: String(resolvedItem.id),
+            media_type: resolvedItem.mediaType,
+            title: resolvedItem.title || null,
           });
         }
       } catch (err) {
@@ -1092,6 +1207,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 </div>
               ) : (
                 <div className="relative pb-24 -mt-4 bg-[#141414]">
+                  {topMovies.length > 0 && (
+                    <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Movies"} items={topMovies} {...rowProps} />
+                  )}
                   <MovieRow title={t("movies.rows.trending")} items={trendingMovies} {...rowProps} />
                   <MovieRow title={t("movies.rows.topRated")} items={topRatedMovies} {...rowProps} />
                   <MovieRow title={t("movies.rows.action")} items={actionMovies} {...rowProps} />
@@ -1124,6 +1242,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 </div>
               ) : (
                 <div className="relative pb-24 -mt-4 bg-[#141414]">
+                  {topSeries.length > 0 && (
+                    <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Series"} items={topSeries} {...rowProps} />
+                  )}
                   <MovieRow title={t("movies.rows.trending")} items={trendingSeries} {...rowProps} />
                   <MovieRow title={t("movies.rows.topRated")} items={topRatedSeries} {...rowProps} />
                   <MovieRow title={t("movies.rows.popular")} items={popularSeries} {...rowProps} />

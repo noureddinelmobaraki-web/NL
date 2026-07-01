@@ -9,7 +9,7 @@ import { getFvTracks } from '../music/data/loadSongs';
 import { RoleBadgeChips } from '../account/roleBadge';
 
 interface AdminDashboardProps { onClose: () => void; }
-type Tab = 'overview' | 'users' | 'activity' | 'top' | 'suggestions';
+type Tab = 'overview' | 'users' | 'activity' | 'top' | 'suggestions' | 'listening';
 
 interface SuggestionRow {
   id: string;
@@ -28,6 +28,20 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
 
   const [suggestions, setSuggestions] = useState<SuggestionRow[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+
+  const [listeningOverview, setListeningOverview] = useState<any[]>([]);
+  const [listeningLoading, setListeningLoading] = useState(false);
+
+  const fetchListeningStats = async () => {
+    setListeningLoading(true);
+    const { data, error } = await supabase.rpc('admin_listening_overview');
+    if (error) {
+      console.error('admin_listening_overview failed:', error.message);
+    } else if (data) {
+      setListeningOverview(data as any[]);
+    }
+    setListeningLoading(false);
+  };
 
   const fetchSuggestions = async () => {
     setSuggestionsLoading(true);
@@ -48,6 +62,9 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   React.useEffect(() => {
     if (tab === 'suggestions') {
       void fetchSuggestions();
+    }
+    if (tab === 'listening') {
+      void fetchListeningStats();
     }
   }, [tab]);
 
@@ -91,6 +108,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
           <TabButton active={tab==='activity'} onClick={()=>setTab('activity')} icon={<Activity size={14}/>}   label="Activity" />
           <TabButton active={tab==='top'}      onClick={()=>setTab('top')}      icon={<Heart size={14}/>}      label="Top" />
           <TabButton active={tab==='suggestions'} onClick={()=>setTab('suggestions')} icon={<ListMusic size={14}/>} label="Suggestions" />
+          <TabButton active={tab==='listening'} onClick={()=>setTab('listening')} icon={<Activity size={14}/>} label="Listening Stats" />
         </div>
         <div className="flex-1 overflow-y-auto p-6">
           {loading && <p className="text-zinc-500 text-sm text-center py-12">Loading...</p>}
@@ -212,6 +230,127 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 {!suggestionsLoading && suggestions.length === 0 && (
                   <p className="py-8 text-center text-zinc-600 text-xs">لا توجد اقتراحات حالياً.</p>
                 )}
+              </div>
+            )}
+            {tab==='listening' && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-zinc-800/40 border border-zinc-700/50 rounded-xl">
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-300">التحكم في الإحصائيات (Stats Controls)</h4>
+                    <p className="text-[10px] text-zinc-500">إجراءات عامة على مستوى المنصة</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm('هل أنت متأكد من إرسال التقرير؟')) return;
+                        const { error } = await supabase.rpc('admin_send_report');
+                        if (error) {
+                          alert('فشل إرسال التقرير: ' + error.message);
+                        } else {
+                          alert('تم إرسال التقرير بنجاح!');
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded font-bold text-[11px] cursor-pointer"
+                    >
+                      إرسال تقرير (Send Report)
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm('تحذير: هل أنت متأكد من تصفير جميع الإحصائيات لجميع المستخدمين؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+                        const { error } = await supabase.rpc('admin_reset_all_stats');
+                        if (error) {
+                          alert('فشل التصفير: ' + error.message);
+                        } else {
+                          alert('تم تصفير جميع الإحصائيات بنجاح!');
+                          void fetchListeningStats();
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold text-[11px] cursor-pointer"
+                    >
+                      تصفير الكل (Reset All Stats)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-zinc-300">
+                    <thead>
+                      <tr className="text-zinc-500 border-b border-zinc-800">
+                        <th className="py-2 pr-3 font-semibold text-right">المستخدم (User)</th>
+                        <th className="py-2 px-2 font-semibold text-center">أغاني (Songs)</th>
+                        <th className="py-2 px-2 font-semibold text-center">أفلام (Movies)</th>
+                        <th className="py-2 px-2 font-semibold text-center">مسلسلات (Series)</th>
+                        <th className="py-2 pl-2 font-semibold text-left">الإجراءات (Actions)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {listeningLoading && (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-zinc-500">جاري التحميل...</td>
+                        </tr>
+                      )}
+                      {!listeningLoading && listeningOverview.map((row, i) => {
+                        const songsCount = row.song_plays ?? row.songs_played ?? row.songs_count ?? 0;
+                        const moviesCount = row.movie_plays ?? row.movies_played ?? row.movies_count ?? 0;
+                        const seriesCount = row.series_plays ?? row.series_played ?? row.series_count ?? 0;
+                        const rowUserId = row.user_id ?? row.id ?? `user-${i}`;
+                        
+                        return (
+                          <tr key={rowUserId} className="border-b border-zinc-800/50 hover:bg-zinc-800/40">
+                            <td className="py-2 pr-3 text-right">
+                              <div className="flex flex-col">
+                                <span className="text-zinc-200 font-medium">{row.display_name || '—'}</span>
+                                <span className="text-[11px] text-zinc-500">{row.email || '—'}</span>
+                              </div>
+                            </td>
+                            <td className="py-2 px-2 text-center text-zinc-300 font-mono">{songsCount}</td>
+                            <td className="py-2 px-2 text-center text-zinc-300 font-mono">{moviesCount}</td>
+                            <td className="py-2 px-2 text-center text-zinc-300 font-mono">{seriesCount}</td>
+                            <td className="py-2 pl-2 text-left">
+                              <div className="flex justify-start gap-1.5">
+                                <button
+                                  onClick={async () => {
+                                    const { data, error } = await supabase.rpc('admin_user_report', { p_user_id: rowUserId });
+                                    if (error) {
+                                      alert('فشل جلب التقرير: ' + error.message);
+                                    } else {
+                                      alert('تقرير المستخدم:\n' + JSON.stringify(data, null, 2));
+                                    }
+                                  }}
+                                  className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[10px] cursor-pointer"
+                                  title="تقرير مستخدم واحد"
+                                >
+                                  تقرير (Report)
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (!window.confirm(`هل أنت متأكد من حذف إحصائيات الاستماع للمستخدم ${row.display_name || ''}؟`)) return;
+                                    const { error } = await supabase.rpc('admin_delete_user_stats', { p_user_id: rowUserId });
+                                    if (error) {
+                                      alert('فشل الحذف: ' + error.message);
+                                    } else {
+                                      alert('تم حذف إحصائيات المستخدم بنجاح!');
+                                      void fetchListeningStats();
+                                    }
+                                  }}
+                                  className="px-2 py-1 bg-red-900/50 hover:bg-red-800 border border-red-800/40 text-red-200 rounded text-[10px] cursor-pointer"
+                                  title="حذف مستخدم بعينه"
+                                >
+                                  حذف (Delete)
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {!listeningLoading && listeningOverview.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-zinc-600 text-xs">لا توجد إحصائيات استماع بعد.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </>)}

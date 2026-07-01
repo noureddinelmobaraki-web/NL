@@ -5,6 +5,7 @@ import { audioEngine } from '../engine/audioEngine';
 import { EQ_PRESETS } from '../engine/eqPresets';
 import { getFvTracks, getFvInitialOrder } from '../data/loadSongs';
 import { saveTrackOffline, removeTrackOffline } from '../data/offline';
+import { logPlay } from '../data/playTracking';
 
 let sleepTimerInterval: any = null;
 
@@ -196,6 +197,9 @@ export const useMusicStore = create<MusicState>()(
           }
 
           actions.addPlayedHistory(id);
+
+          // NL: تسجيل النقرة/الفتح لترتيب Top (fire-and-forget — لا يؤثر على التشغيل)
+          logPlay({ item_type: 'song', item_id: track.id, title: track.title, seconds: Math.round(track.durationSec || 0) });
 
           try {
             await audioEngine.load(track, { autoplay: startAutoplay });

@@ -12,10 +12,11 @@ import { Track } from '../engine/types';
 import { prefetchTracks } from '../data/audioPrefetch';
 import styles from '../music.module.css';
 import { Search, X, CheckSquare, ListPlus, DownloadCloud, Lightbulb } from 'lucide-react';
-import { SuggestSongModal } from './SuggestSongModal';
+import {SuggestSongModal} from './SuggestSongModal';
+import {useTopSongs} from '../hooks/useTopSongs';
 
 const ROW_HEIGHT = 64;
-type Tab = 'all' | 'favorites' | 'downloaded' | 'playlists';
+type Tab = 'all' | 'top' | 'favorites' | 'downloaded' | 'playlists';
 
 function formatTime(sec?: number): string {
   if (!sec || !isFinite(sec)) return '--:--';
@@ -31,6 +32,7 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
   const currentId = useMusicStore((s) => s.currentId);
   const actions = useMusicStore((s) => s.actions);
   const online = useOnlineStatus();
+  const topIds = useTopSongs(50);
 
   const [tab, setTab] = useState<Tab>('all');
   const [query, setQuery] = useState('');
@@ -49,7 +51,7 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
   }, [online, tab]);
 
   const tabsToShow: Tab[] = online
-    ? ['all', 'favorites', 'downloaded', 'playlists']
+    ? ['all', 'top', 'favorites', 'downloaded', 'playlists']
     : ['downloaded', 'playlists'];
 
   const exitSelect = useCallback(() => { setSelectMode(false); setSelected(new Set()); }, []);
@@ -66,8 +68,12 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
   const baseList = useMemo<Track[]>(() => {
     if (tab === 'favorites') return tracks.filter((t) => favSet.has(t.id));
     if (tab === 'downloaded') return tracks.filter((t) => dlSet.has(t.id));
+    if (tab === 'top') {
+      const map = new Map(tracks.map((t) => [t.id, t] as const));
+      return topIds.map((id) => map.get(id)).filter((t): t is Track => !!t);
+    }
     return tracks; // 'all'
-  }, [tracks, tab, favSet, dlSet]);
+  }, [tracks, tab, favSet, dlSet, topIds]);
 
   const filtered = useMemo(() => {
     let list = baseList;
@@ -125,17 +131,22 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Tabs */}
-      <div className="flex items-center gap-2 px-1 pb-2 overflow-x-auto scrollbar-hide">
+      <div className="flex items-center gap-1.5 px-1 pb-2 overflow-x-auto scrollbar-hide">
         {tabsToShow.map((t) => (
           <button
             key={t}
             onClick={() => { setTab(t); if (t === 'playlists') exitSelect(); }}
             className={
-              'px-3 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-colors ' +
-              (tab === t ? 'bg-[#FF7A1A] text-white shadow-sm' : 'bg-white/60 text-slate-800 hover:bg-white/80 border border-white/60 shadow-sm')
+              'rounded-full font-bold whitespace-nowrap transition-all duration-300 ease-out transform origin-center ' +
+              (tab === t
+                ? 'bg-[#FF7A1A] text-white shadow-md scale-100 px-4 py-1.5 text-xs sm:text-sm font-extrabold ring-2 ring-[#FF7A1A]/20'
+                : 'bg-white/50 text-slate-700 hover:bg-white/80 border border-white/60 shadow-sm scale-90 px-2.5 py-1 text-[11px] sm:text-xs opacity-70 hover:opacity-100 hover:scale-95')
             }
           >
-            {t === 'all' ? 'All' : t === 'favorites' ? 'Favorites' : t === 'downloaded' ? 'Downloaded' : 'Playlists'}
+            {t === 'all' ? 'All'
+              : t === 'top' ? 'Top'
+              : t === 'favorites' ? 'Favorites'
+              : t === 'downloaded' ? 'Downloaded' : 'Playlists'}
           </button>
         ))}
         {!online && <span className="ml-auto text-xs font-bold text-[#00B894] whitespace-nowrap px-2">Offline</span>}
