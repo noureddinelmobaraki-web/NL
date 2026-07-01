@@ -467,7 +467,7 @@
   transform: scale(0.92);
 }
 
-/* ── الأنماط والمؤشرات التفاعلية ��لجزيرة الحية ── */
+/* ── الأنماط والمؤشرات ال��فاعلية ��لجزيرة الحية ── */
 .gs-equalizer {
   display: flex;
   align-items: flex-end;
@@ -750,8 +750,6 @@ body[data-nowplaying-full="true"] .glass-switcher-anchor[data-device="mobile"] {
   background:
     linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02) 46%),
     linear-gradient(135deg, rgba(30,33,44,0.52), rgba(16,18,26,0.60));
-  -webkit-backdrop-filter: blur(18px) saturate(155%);
-  backdrop-filter: blur(18px) saturate(155%);
   box-shadow:
     0 18px 50px rgba(0,0,0,0.42),
     0 2px 10px rgba(0,0,0,0.22),
@@ -760,7 +758,6 @@ body[data-nowplaying-full="true"] .glass-switcher-anchor[data-device="mobile"] {
   border: 1px solid rgba(255,255,255,0.24);
   animation: none !important;   /* يوقف gs-breathe الذي يحرّك --gs-glow */
   isolation: auto;
-  transform: translateZ(0); /* يعزل الطبقة ويمنع تشوّه backdrop على الهاتف */
 }
 
 /* الأوضاع الفاتحة (light / lite / bit): خلفية فاتحة صلبة */
@@ -841,11 +838,74 @@ body[data-nowplaying-full="true"] .glass-switcher-anchor[data-device="mobile"] {
   border-color: rgba(0,0,0,0.10) !important;
 }
 
-/* إصلاح جذري لتشوّه GPU على الهاتف: لا أي backdrop-filter داخل اللوحة المفتوحة */
-.glass-switcher.is-mobile[data-state="open"],
-.glass-switcher.is-mobile[data-state="open"] * {
+/* ============================================================
+   إصلاح جذري نهائي لتشوّه GPU على الهاتف
+   على الهاتف: لا أي backdrop-filter/blur/mix-blend في أي حالة
+   (الفقاعة المطويّة dot/orb + الجزيرة الحيّة + اللوحة المفتوحة).
+   السبب: معالج رسوميات الهاتف يُفسد التركيب مع أي backdrop-filter
+   والتلف يتراكم ويبقى. زجاجية سطح المكتب (.is-desktop) تبقى كاملة.
+   ============================================================ */
+.glass-switcher.is-mobile,
+.glass-switcher.is-mobile * {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
+}
+
+/* أوقِف توهّج --gs-glow المتحرّك وأي ترقية-طبقة على الهاتف (مصدر تراكم التلف) */
+.glass-switcher.is-mobile {
+  animation: none !important;
+  will-change: auto !important;
+}
+.glass-switcher.is-mobile.is-interacting {
+  will-change: auto !important;
+}
+
+/* أخفِ الطبقات القائمة على blur/mix-blend على الهاتف تمامًا (كل الحالات) */
+.glass-switcher.is-mobile .glass-switcher__smoke,
+.glass-switcher.is-mobile .glass-switcher__marble,
+.glass-switcher.is-mobile .glass-switcher__sheen {
+  display: none !important;
+}
+
+/* خلفية زجاجية بديلة للفقاعة المطويّة/الجزيرة الحيّة على الهاتف (بديل الـblur) */
+.glass-switcher.is-mobile[data-state="orb"],
+.glass-switcher.is-mobile[data-state="dot"],
+.glass-switcher.is-mobile[data-live="true"][data-state="orb"] {
+  background: linear-gradient(135deg, rgba(38,42,54,0.92), rgba(22,25,34,0.94)) !important;
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.34),
+    inset 0 1px 0 rgba(255,255,255,0.22) !important;
+  border: 1px solid rgba(255,255,255,0.16) !important;
+}
+.glass-switcher.is-mobile[data-theme-skin="light"][data-state="orb"],
+.glass-switcher.is-mobile[data-theme-skin="lite"][data-state="orb"],
+.glass-switcher.is-mobile[data-theme-skin="bit"][data-state="orb"],
+.glass-switcher.is-mobile[data-theme-skin="light"][data-live="true"][data-state="orb"],
+.glass-switcher.is-mobile[data-theme-skin="lite"][data-live="true"][data-state="orb"],
+.glass-switcher.is-mobile[data-theme-skin="bit"][data-live="true"][data-state="orb"] {
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(238,242,248,0.96)) !important;
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.9) !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
+}
+
+/* ============================================================
+   تباين لوحة سطح المكتب: طبقة تعتيم متكيّفة كي يظهر
+   النص فوق أي خلفية (يُبقي الزجاجية مع blur لكن يضمن الوضوح)
+   يُصلح مشكل "نص أبيض على خلفية بيضاء" على الحاسوب
+   ============================================================ */
+.glass-switcher.is-desktop[data-state="open"] {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 46%),
+    linear-gradient(135deg, rgba(26,29,38,0.56), rgba(16,18,26,0.62));
+}
+.glass-switcher.is-desktop[data-theme-skin="light"][data-state="open"],
+.glass-switcher.is-desktop[data-theme-skin="lite"][data-state="open"],
+.glass-switcher.is-desktop[data-theme-skin="bit"][data-state="open"] {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.42) 48%),
+    linear-gradient(135deg, rgba(250,251,254,0.66), rgba(236,240,247,0.62));
 }
 
 /* خلايا gs-cell داخل لوحة الهاتف: زجاجية بلا blur */
