@@ -39,13 +39,9 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
   const preview = useSongPreview();
 
   useEffect(() => {
-    const originalBody = document.body.style.overflow;
-    const originalHtml = document.documentElement.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.classList.add('nl-modal-open');
     return () => {
-      document.body.style.overflow = originalBody;
-      document.documentElement.style.overflow = originalHtml;
+      document.documentElement.classList.remove('nl-modal-open');
     };
   }, []);
 

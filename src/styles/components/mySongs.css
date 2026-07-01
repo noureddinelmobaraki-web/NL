@@ -143,3 +143,4 @@
 .nl-suggest__send{ width:100%; margin-top:10px; padding:11px; border:none; border-radius:14px; cursor:pointer; font-weight:800; color:#fff;
   background:linear-gradient(135deg,#ff7a1a,#00E676); display:inline-flex; align-items:center; justify-content:center; gap:7px; }
 .nl-suggest__send:disabled{ opacity:.5; cursor:default; }
+.nl-suggest__err { color: #ff8f8f; font-size: 12px; margin: 5px 0 0; }

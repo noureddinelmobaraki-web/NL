@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './test-base';
 
 test.describe('Noureddin El Mobaraki (NL) E2E Smoke Tests', () => {
   test('should load the main page and show the hero title with the correct name', async ({ page }) => {

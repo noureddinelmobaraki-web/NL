@@ -1,6 +1,8 @@
 import { Variants } from "framer-motion";
 import { ASSETS } from "../../constants/assets";
 
+import { isAutomatedEnv } from '../../utils/env';
+
 export const CONFIG_ASSETS = {
   mainBackground: ASSETS.profile.heroBg,
   nameHeaderBg: ASSETS.profile.headerBg,
@@ -10,15 +12,15 @@ export const CONFIG_ASSETS = {
   youtubeHighlightsBg: ASSETS.songs.ytHighlights,
 };
 
-const isAutomatedEnv = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
+const isAutomated = isAutomatedEnv();
 
 export const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: { 
-      staggerChildren: isAutomatedEnv ? 0 : 0.15, 
-      delayChildren: isAutomatedEnv ? 0 : 0.3 
+      staggerChildren: isAutomated ? 0 : 0.15, 
+      delayChildren: isAutomated ? 0 : 0.3 
     }
   }
 };

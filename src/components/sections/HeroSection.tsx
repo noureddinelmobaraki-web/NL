@@ -11,10 +11,12 @@ import { REQUIRED_HERO_VARS } from '../../constants/cssVarLists';
 import { useLightProfileImage } from '../../hooks/useLightProfileImage';
 import siteData from '../../../metadata.json';
 
+import { isAutomatedEnv } from '../../utils/env';
+
 export const HeroSection = memo(() => {
   const resolvedTheme = useResolvedTheme();
   const { isMobile } = useDeviceType(); // MOBILE-ONLY
-  const isAutomated = typeof navigator !== 'undefined' && (navigator as any).webdriver === true;
+  const isAutomated = isAutomatedEnv();
   const headerRef = useFadeInOnView<HTMLElement>();
 
   // Light theme profile switching logic

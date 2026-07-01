@@ -37,6 +37,7 @@
     justify-content: stretch;
     padding: 0;
     overflow: hidden; /* التمرير ينتقل للـ shell */
+    background: rgba(0,0,0,0.85); /* تعميق الخلفية للهاتف */
   }
   .profile-overlay .profile-shell {
     width: 100%;
@@ -45,32 +46,44 @@
     max-height: 100dvh;
     margin: 0;
     border-radius: 0;
-    padding: 20px 16px calc(28px + env(safe-area-inset-bottom, 0px));
+    padding: 20px 16px calc(60px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .profile-overlay .profile-shell::-webkit-scrollbar {
+    display: none;
   }
 
   /* ============ نافذة بروفايل الحسابات (PublicProfilePanel) ============ */
   .nl-pub-overlay.nl-pub-overlay {
     align-items: flex-end;
     padding: 0;
+    overflow: hidden;
   }
   .nl-pub-overlay .nl-pub {
     width: 100%;
     max-width: 100%;
     max-height: 92dvh;
     border-radius: 22px 22px 0 0;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .nl-pub-overlay .nl-pub::-webkit-scrollbar {
+    display: none;
   }
 
   /* ============ نافذة اختيار أغنية البروفايل (ThemeSongPicker) ============ */
   .nl-tsp-overlay.nl-tsp-overlay {
     place-items: end stretch;
     align-items: flex-end;
+    overflow: hidden;
   }
   .nl-tsp-overlay .nl-tsp {
     width: 100%;
@@ -78,16 +91,27 @@
     max-height: 88dvh;
     border-radius: 24px 24px 0 0;
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   .nl-tsp-overlay .nl-tsp .nl-tsp__list {
+    flex: 1;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .nl-tsp-overlay .nl-tsp .nl-tsp__list::-webkit-scrollbar {
+    display: none;
   }
 
   /* ============ نافذة إنشاء بلاي ليست (CreatePlaylistModal) ============ */
   .nl-cpl-overlay.nl-cpl-overlay {
     place-items: end stretch;
     align-items: flex-end;
+    overflow: hidden;
   }
   .nl-cpl-overlay .nl-cpl {
     width: 100%;
@@ -95,10 +119,20 @@
     max-height: 90dvh;
     border-radius: 24px 24px 0 0;
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   .nl-cpl-overlay .nl-cpl .nl-cpl__list {
+    flex: 1;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .nl-cpl-overlay .nl-cpl .nl-cpl__list::-webkit-scrollbar {
+    display: none;
   }
 
   /* مقبض علوي بصري لأسلوب الصفيحة (اختياري، تجميلي فقط) */

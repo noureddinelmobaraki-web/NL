@@ -167,4 +167,11 @@ button, a, [role="button"], input, select, textarea, label {
   100% { background-position: -200% 0; }
 }
 
+html.nl-modal-open, 
+html.nl-modal-open body {
+  overflow: hidden !important;
+  height: 100% !important;
+  position: relative !important;
+}
+
 

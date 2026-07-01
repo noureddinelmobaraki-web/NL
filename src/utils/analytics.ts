@@ -9,6 +9,8 @@ declare global {
   }
 }
 
+import { isAutomatedEnv } from './env';
+
 /**
  * Safely tracks a custom event with properties to Plausible Analytics.
  * Only triggers in production and when not running in an automated/headless environment.
@@ -18,7 +20,7 @@ export function track(
   props?: Record<string, string | number | boolean | undefined | null>
 ): void {
   const isProd = import.meta.env.PROD;
-  const isAutomated = navigator.webdriver === true;
+  const isAutomated = isAutomatedEnv();
 
   if (isProd && !isAutomated) {
     try {

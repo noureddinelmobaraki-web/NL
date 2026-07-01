@@ -71,7 +71,10 @@ export function ThemeSongBar({
     const tryPlay = () => { 
       setReady(true);
       try { a.currentTime = clipStart; } catch {}
-      audioManager.play('profile').catch(() => {});
+      console.log('[ThemeSongBar] trying to play...', track?.title);
+      audioManager.play('profile').catch((e) => {
+        console.warn('[ThemeSongBar] play failed, waiting for interaction', e);
+      });
     };
 
     const onTime = () => {
@@ -83,14 +86,14 @@ export function ThemeSongBar({
     
     a.addEventListener('loadedmetadata', tryPlay);
     a.addEventListener('loadeddata', tryPlay);
-    a.addEventListener('canplay', tryPlay);
+    a.addEventListener('canplaythrough', tryPlay);
     a.addEventListener('timeupdate', onTime);
     a.load();
 
     return () => {
       a.removeEventListener('loadedmetadata', tryPlay);
       a.removeEventListener('loadeddata', tryPlay);
-      a.removeEventListener('canplay', tryPlay);
+      a.removeEventListener('canplaythrough', tryPlay);
       a.removeEventListener('timeupdate', onTime);
       audioManager.stop('profile');
       audioManager.unregister('profile');

@@ -9,6 +9,7 @@ export function SuggestSongModal({ open, onClose }: { open: boolean; onClose: ()
   const [text, setText] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -19,6 +20,7 @@ export function SuggestSongModal({ open, onClose }: { open: boolean; onClose: ()
       return;
     }
     setBusy(true);
+    setErr(null);
     const { error } = await supabase.rpc('submit_song_suggestion', { p_text: text.trim() });
     setBusy(false);
     if (!error) {
@@ -28,6 +30,9 @@ export function SuggestSongModal({ open, onClose }: { open: boolean; onClose: ()
         setSent(false);
         onClose();
       }, 1400);
+    } else {
+      console.error('[SuggestSongModal] submit failed', error);
+      setErr('تعذّر إرسال الاقتراح. حاول لاحقًا.');
     }
   };
 
@@ -46,6 +51,7 @@ export function SuggestSongModal({ open, onClose }: { open: boolean; onClose: ()
           placeholder="اسم الأغنية / الفنان..."
           rows={3}
         />
+        {err && <p className="nl-suggest__err" role="alert">{err}</p>}
         <button className="nl-suggest__send" onClick={submit} disabled={busy || !text.trim()}>
           {sent ? <><Check size={15} /> تم الإرسال</> : <><Send size={15} /> إرسال</>}
         </button>

@@ -8,7 +8,18 @@ interface NavigatorWithWebdriver extends Navigator {
 
 export const isAutomatedEnv = (): boolean => {
   if (typeof navigator === 'undefined') return false;
-  return (navigator as NavigatorWithWebdriver).webdriver === true;
+
+  // 1) WebDriver (Playwright/Selenium)
+  if ((navigator as NavigatorWithWebdriver).webdriver === true) return true;
+
+  // 2) Deterministic key injected by E2E fixtures before any script
+  if (typeof window !== 'undefined' && (window as unknown as { __NL_AUTOMATED__?: boolean }).__NL_AUTOMATED__ === true) return true;
+
+  // 3) Lighthouse (appends "Chrome-Lighthouse" or "Lighthouse") and Headless Chrome
+  const ua = navigator.userAgent || '';
+  if (/Chrome-Lighthouse|Lighthouse|HeadlessChrome|Headless/i.test(ua)) return true;
+
+  return false;
 };
 
 export const isStandaloneApp = (): boolean => {
