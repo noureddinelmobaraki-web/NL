@@ -22,9 +22,13 @@ export function loadRuffle(): Promise<any> {
       }
       return;
     }
+    (window as any).RufflePlayer = (window as any).RufflePlayer || {};
+    (window as any).RufflePlayer.config = (window as any).RufflePlayer.config || {};
+    (window as any).RufflePlayer.config.publicPath = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/ruffle/';
+
     const script = document.createElement('script');
     script.id = 'nl-ruffle-script';
-    script.src = `${import.meta.env.BASE_URL}ruffle/ruffle.js`;
+    script.src = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/ruffle/ruffle.js';
     script.async = true;
     script.addEventListener('load', ready, { once: true });
     script.addEventListener('error', () => { rufflePromise = null; reject(new Error('Ruffle failed')); }, { once: true });

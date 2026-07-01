@@ -9,6 +9,7 @@ import './transitions/genie.css';
 import './styles/page-mode-layer.css';
 import './styles/components/mobile-modals.css';
 import './styles/components/profile-mobile-fit.css';
+import './styles/components/perf-lite.css';
 import { registerServiceWorker } from './utils/registerSW';
 import { reportWebVitals } from './utils/vitals';
 import { isAutomatedEnv } from './utils/env';
