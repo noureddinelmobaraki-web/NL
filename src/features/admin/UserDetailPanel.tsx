@@ -90,11 +90,26 @@ export function UserDetailPanel({ userId, onClose, onDeleted }: Props) {
                   {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_DEFS[r].label}</option>)}
                 </select>
               </label>
-              <label>الوسام (badge)
-                <select value={badge} onChange={(e) => setBadge(e.target.value)}>
-                  <option value="">— بلا وسام —</option>
-                  {BADGE_OPTIONS.map((b) => <option key={b} value={b}>{BADGE_DEFS[b].label}</option>)}
-                </select>
+              <label>الأوسمة (badges) — يمكن اختيار عدّة أوسمة
+                <div className="udp-badge-grid" role="group" aria-label="الأوسمة">
+                  {BADGE_OPTIONS.map((b) => {
+                    const set = new Set(badge.split(',').map((s) => s.trim()).filter(Boolean));
+                    return (
+                      <label key={b} className="udp-badge-check">
+                        <input
+                          type="checkbox"
+                          checked={set.has(b)}
+                          onChange={(e) => {
+                            const next = new Set(badge.split(',').map((s) => s.trim()).filter(Boolean));
+                            if (e.target.checked) next.add(b); else next.delete(b);
+                            setBadge(BADGE_OPTIONS.filter((k) => next.has(k)).join(','));
+                          }}
+                        />
+                        {BADGE_DEFS[b].label}
+                      </label>
+                    );
+                  })}
+                </div>
               </label>
               <button className="btn-accent" disabled={busy}
                 onClick={() => run(() => a.setFrame(frame, role || null, badge || null))}>
