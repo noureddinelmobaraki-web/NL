@@ -1,0 +1,90 @@
+.nl-crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10080;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 14, 22, 0.62);
+  padding: 16px;
+}
+/* الحاوية تعتمد .aero-glass (زجاج ثابت) — هنا فقط أبعاد/تخطيط */
+.nl-crop {
+  width: min(92vw, 360px);
+  padding: 18px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.nl-crop__close {
+  position: absolute;
+  top: 10px;
+  inset-inline-start: 10px;
+  background: none;
+  border: none;
+  color: #dfe9f2;
+  cursor: pointer;
+  z-index: 2;
+}
+.nl-crop__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin: 2px 0 0;
+}
+.nl-crop__viewport {
+  position: relative;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #08131d;
+  touch-action: none;
+  cursor: grab;
+}
+.nl-crop__viewport:active {
+  cursor: grabbing;
+}
+.nl-crop__viewport img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  user-select: none;
+  will-change: transform;
+  max-width: none;
+}
+.nl-crop__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px rgba(93, 184, 255, 0.8), 0 0 0 9999px rgba(4, 12, 20, 0.32),
+             inset 0 2px 10px rgba(255, 255, 255, 0.35);
+}
+.nl-crop__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+.nl-crop__zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  color: #dfe9f2;
+}
+.nl-crop__zoom input {
+  flex: 1;
+  accent-color: var(--aero-sky-2, #5db8ff);
+}
+.nl-crop__err {
+  color: #ff9a9a;
+  font-size: 12px;
+  margin: 0;
+}
+.nl-crop__actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: flex-end;
+}

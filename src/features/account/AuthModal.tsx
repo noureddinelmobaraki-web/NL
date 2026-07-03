@@ -44,7 +44,7 @@ export default function AuthModal() {
       e.preventDefault()
       clearMsg()
       if (!email || !password) {
-        setError('أدخل البريد وكلمة السر.')
+        setError('Enter email and password.')
         return
       }
       setBusy(true)
@@ -54,11 +54,11 @@ export default function AuthModal() {
           : await signUpWithPassword(email, password)
       setBusy(false)
       if (!res.ok) {
-        setError(res.error ?? 'تعذّر إتمام العملية.')
+        setError(res.error ?? 'Operation failed.')
         return
       }
       if (tab === 'signup') {
-        setNotice('أُرسلت رسالة تأكيد إلى بريدك. تحقّق منه لإكمال التسجيل.')
+        setNotice('Confirmation sent to your email. Check it to complete registration.')
       }
     },
     [tab, email, password, signInWithPassword, signUpWithPassword, clearMsg],
@@ -67,18 +67,18 @@ export default function AuthModal() {
   const handleSendOtp = useCallback(async () => {
     clearMsg()
     if (!email) {
-      setError('أدخل بريدك أولًا.')
+      setError('Enter your email first.')
       return
     }
     setBusy(true)
     const res = await sendEmailOtp(email)
     setBusy(false)
     if (!res.ok) {
-      setError(res.error ?? 'تعذّر إرسال الرمز.')
+      setError(res.error ?? 'Failed to send code.')
       return
     }
     setOtpSent(true)
-    setNotice('أرسلنا رمز الدخول إلى بريدك.')
+    setNotice('We sent a login code to your email.')
   }, [email, sendEmailOtp, clearMsg])
 
   const handleVerifyOtp = useCallback(
@@ -86,13 +86,13 @@ export default function AuthModal() {
       e.preventDefault()
       clearMsg()
       if (otp.length < 6 || otp.length > 8) {
-        setError('الرمز مكوّن من 6 إلى 8 أرقام.')
+        setError('The code consists of 6 to 8 digits.')
         return
       }
       setBusy(true)
       const res = await verifyEmailOtp(email, otp)
       setBusy(false)
-      if (!res.ok) setError(res.error ?? 'رمز غير صحيح.')
+      if (!res.ok) setError(res.error ?? 'Incorrect code.')
       // عند النجاح يغلق المزوّد النافذة تلقائيًا
     },
     [otp, email, verifyEmailOtp, clearMsg],
@@ -105,7 +105,7 @@ export default function AuthModal() {
       const res = await signInWithOAuth(provider)
       if (!res.ok) {
         setBusy(false)
-        setError(res.error ?? 'تعذّر تسجيل الدخول.')
+        setError(res.error ?? 'Login failed.')
       }
       // عند النجاح تتم إعادة التوجيه خارج الصفحة
     },
@@ -115,17 +115,17 @@ export default function AuthModal() {
   const handleReset = useCallback(async () => {
     clearMsg()
     if (!email) {
-      setError('أدخل بريدك لاسترجاع كلمة السر.')
+      setError('Enter email to reset password.')
       return
     }
     setBusy(true)
     const res = await resetPassword(email)
     setBusy(false)
     if (!res.ok) {
-      setError(res.error ?? 'تعذّر الإرسال.')
+      setError(res.error ?? 'Failed to send.')
       return
     }
-    setNotice('أرسلنا رابط استرجاع كلمة السر إلى بريدك.')
+    setNotice('We sent a password reset link to your email.')
   }, [email, resetPassword, clearMsg])
 
   return createPortal(
@@ -133,7 +133,7 @@ export default function AuthModal() {
       className="auth-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="نافذة الحساب"
+      aria-label="Account Window"
       onMouseDown={closeAuthModal}
     >
       <div
@@ -144,14 +144,14 @@ export default function AuthModal() {
         <button
           type="button"
           className="auth-close"
-          aria-label="إغلاق"
+          aria-label="Close"
           onClick={closeAuthModal}
         >
           ×
         </button>
 
         <h2 className="auth-title">
-          {tab === 'signin' ? 'تسجيل الدخول' : 'إنشاء حساب'}
+          {tab === 'signin' ? 'Login' : 'Create Account'}
         </h2>
 
         <div className="auth-tabs">
@@ -163,7 +163,7 @@ export default function AuthModal() {
               clearMsg()
             }}
           >
-            دخول
+            Login
           </button>
           <button
             type="button"
@@ -173,7 +173,7 @@ export default function AuthModal() {
               clearMsg()
             }}
           >
-            تسجيل
+            Register
           </button>
         </div>
 
@@ -184,7 +184,7 @@ export default function AuthModal() {
             disabled={busy}
             onClick={() => handleOAuth('google')}
           >
-            المتابعة عبر Google
+            Continue with Google
           </button>
           <button
             type="button"
@@ -192,12 +192,12 @@ export default function AuthModal() {
             disabled={busy}
             onClick={() => handleOAuth('github')}
           >
-            المتابعة عبر GitHub
+            Continue with GitHub
           </button>
         </div>
 
         <div className="auth-divider">
-          <span>أو</span>
+          <span>Or</span>
         </div>
 
         {!otpSent ? (
@@ -206,7 +206,7 @@ export default function AuthModal() {
               type="email"
               inputMode="email"
               autoComplete="email"
-              placeholder="البريد الإلكتروني"
+              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={busy}
@@ -214,13 +214,13 @@ export default function AuthModal() {
             <input
               type="password"
               autoComplete={tab === 'signin' ? 'current-password' : 'new-password'}
-              placeholder="كلمة السر"
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={busy}
             />
             <button type="submit" className="auth-primary" disabled={busy}>
-              {tab === 'signin' ? 'دخول' : 'إنشاء الحساب'}
+              {tab === 'signin' ? 'Login' : 'Create Account'}
             </button>
           </form>
         ) : (
@@ -237,7 +237,7 @@ export default function AuthModal() {
               disabled={busy}
             />
             <button type="submit" className="auth-primary" disabled={busy}>
-              تأكيد الرمز
+              Confirm Code
             </button>
           </form>
         )}
@@ -250,7 +250,7 @@ export default function AuthModal() {
               disabled={busy}
               onClick={handleSendOtp}
             >
-              الدخول برمز عبر البريد بدل كلمة السر
+              Login with email code instead of password
             </button>
           ) : (
             <button
@@ -263,7 +263,7 @@ export default function AuthModal() {
                 clearMsg()
               }}
             >
-              الرجوع
+              Go Back
             </button>
           )}
           {tab === 'signin' && !otpSent && (
@@ -273,7 +273,7 @@ export default function AuthModal() {
               disabled={busy}
               onClick={handleReset}
             >
-              نسيت كلمة السر؟
+              Forgot Password?
             </button>
           )}
         </div>

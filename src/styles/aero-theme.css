@@ -1,0 +1,163 @@
+/* ========================================================================
+   نظام تصميم Frutiger Aero (نوستالجي) — نسخة خفيفة/ذكية
+   كل التأثيرات ثابتة (تدرّجات + ظلال داخلية). لا backdrop-filter هنا.
+   ======================================================================== */
+:root {
+  /* لوحة اليرو */
+  --aero-sky-1: #d6f0ff;
+  --aero-sky-2: #5db8ff;
+  --aero-sky-3: #2b7fd4;
+  --aero-aqua-1: #b7f7ec;
+  --aero-aqua-2: #37d3c0;
+  --aero-aqua-3: #149e8f;
+  --aero-grass-1: #c7f6a6;
+  --aero-grass-2: #5fce6a;
+  --aero-grass-3: #2c9e4b;
+  /* أكسنت المشروع (نُبقيه للانسجام) */
+  --aero-orange: #ff7a1a;
+  --aero-green: #3cdc82;
+
+  /* أسطح زجاجية ثابتة */
+  --aero-glass-tint: linear-gradient(165deg, rgba(210, 240, 255, 0.14), rgba(180, 225, 255, 0.05));
+  --aero-glass-border: rgba(255, 255, 255, 0.42);
+  --aero-radius: 18px;
+  --aero-shadow: 0 12px 30px rgba(10, 40, 60, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+
+  /* اللمعان الزجاجي العلوي الكلاسيكي (glass sheen) */
+  --aero-gloss: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.22) 45%,
+    rgba(255, 255, 255, 0.02) 46%,
+    rgba(255, 255, 255, 0.10) 100%);
+  /* بريق الفقاعة الكروي */
+  --aero-bubble: radial-gradient(circle at 32% 26%,
+    rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.18) 42%, transparent 62%);
+}
+
+/* ---- سطح زجاجي أساسي قابل لإعادة الاستخدام (ثابت/خفيف) ---- */
+.aero-glass {
+  position: relative;
+  background: var(--aero-glass-tint), linear-gradient(165deg, rgba(20, 30, 44, 0.72), rgba(10, 16, 26, 0.9));
+  border: 1px solid var(--aero-glass-border);
+  border-radius: var(--aero-radius);
+  box-shadow: var(--aero-shadow);
+  isolation: isolate;
+}
+/* شريط اللمعان العلوي — رخيص، pointer-events:none */
+.aero-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--aero-gloss);
+  -webkit-mask: linear-gradient(180deg, #000 0 55%, transparent 56%);
+          mask: linear-gradient(180deg, #000 0 55%, transparent 56%);
+  opacity: 0.7;
+  z-index: 0;
+}
+.aero-glass > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* نسخة "ضبابة" اختيارية: تُفعّل فقط على الأجهزة القادرة (ماوس + شاشة أكبر) */
+@media (hover: hover) and (min-width: 900px) {
+  .aero-glass--blur {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* ---- زر/حبّة زجاجية لمّاعة ---- */
+.aero-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #08202e;
+  background: linear-gradient(180deg, var(--aero-sky-1), var(--aero-sky-2) 55%, var(--aero-sky-3));
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 6px 16px rgba(20, 90, 150, 0.35);
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.aero-pill::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 50% 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.05));
+}
+.aero-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 20px rgba(20, 90, 150, 0.45);
+}
+.aero-pill:active {
+  transform: translateY(0);
+}
+.aero-pill--grass {
+  background: linear-gradient(180deg, var(--aero-grass-1), var(--aero-grass-2) 55%, var(--aero-grass-3));
+}
+.aero-pill--accent {
+  color: #fff;
+  background: linear-gradient(180deg, #ffb066, var(--aero-orange) 55%, #c85a00);
+}
+
+/* ---- طبقة فقاعات زخرفية خفيفة (ثابتة افتراضياً) ---- */
+.aero-bubbles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.aero-bubbles::before,
+.aero-bubbles::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: var(--aero-bubble);
+  opacity: 0.5;
+  mix-blend-mode: screen;
+}
+.aero-bubbles::before {
+  width: 120px;
+  height: 120px;
+  top: 8%;
+  inset-inline-end: 10%;
+}
+.aero-bubbles::after {
+  width: 70px;
+  height: 70px;
+  bottom: 14%;
+  inset-inline-start: 14%;
+  opacity: 0.4;
+}
+/* الحركة تُفعّل فقط على الأجهزة القادرة وبلا تفضيل تقليل الحركة/البيانات */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .aero-bubbles::before {
+    animation: aero-float 11s ease-in-out infinite;
+  }
+  .aero-bubbles::after {
+    animation: aero-float 8s ease-in-out infinite reverse;
+  }
+}
+@keyframes aero-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+/* إيقاف كامل عند تقليل الحركة أو الأجهزة اللمسية أو تقليل البيانات */
+@media (prefers-reduced-motion: reduce), (hover: none), (prefers-reduced-data: reduce) {
+  .aero-bubbles {
+    display: none;
+  }
+}

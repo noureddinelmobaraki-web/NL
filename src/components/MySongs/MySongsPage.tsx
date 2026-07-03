@@ -169,7 +169,7 @@ export const MySongs = ({
   return (
     <section
       id="my-songs-section"
-      aria-label="My Songs — أغانيّ"
+      aria-label="My Songs — My Songs"
       role="region"
       className="w-full py-24 px-6 sm:px-12 font-sans selection:bg-indigo-500/30 relative"
       style={{
@@ -220,13 +220,13 @@ export const MySongs = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-[var(--text-primary)]">تعذّر تحميل الأغاني</h2>
-            <p className="text-[var(--text-muted)] max-w-md">يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى</p>
+            <h2 className="text-2xl font-bold text-[var(--text-primary)]">Failed to load songs</h2>
+            <p className="text-[var(--text-muted)] max-w-md">Please check your internet connection and try again</p>
             <button
               onClick={state.retry}
               className="px-8 py-3 bg-[var(--accent-indigo)] text-white rounded-full font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-500/20"
             >
-              إعادة المحاولة
+              Retry
             </button>
           </div>
         ) : (

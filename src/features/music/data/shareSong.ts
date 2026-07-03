@@ -9,7 +9,7 @@ export function songShareUrl(track: Pick<Track, 'id'>): string {
 export async function shareSong(track: Track): Promise<'shared' | 'copied' | 'error'> {
   const url = songShareUrl(track);
   const title = `${track.title}${track.artist ? ' — ' + track.artist : ''}`;
-  const shareData = { title, text: `استمع إلى ${track.title} على NL Music`, url };
+  const shareData = { title, text: `Listen to ${track.title} on NL Music`, url };
 
   // 1) حاول المشاركة الأصلية أولاً (يجب استدعاؤها مباشرة داخل إيماءة المستخدم)
   const nav = typeof navigator !== 'undefined' ? navigator : undefined;

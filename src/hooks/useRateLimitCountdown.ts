@@ -59,9 +59,9 @@ export function useRateLimitCountdown(
 
 function formatArabicCountdown(s: number): string {
   if (s <= 0) return '';
-  if (s < 60) return `حاول مرة أخرى بعد ${s} ثانية`;
+  if (s < 60) return `Try again in ${s} second`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `حاول مرة أخرى بعد ${m} دقيقة`;
+  if (m < 60) return `Try again in ${m} minute`;
   const h = Math.floor(m / 60);
-  return `حاول مرة أخرى بعد ${h} ساعة`;
+  return `Try again in ${h} hour`;
 }

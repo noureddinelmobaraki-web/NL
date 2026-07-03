@@ -104,7 +104,7 @@ export const SongList = ({
           />
           <input
             type="text"
-            placeholder="بحث عن أغنية... (البحث بـ العنوان)"
+            placeholder="Search for a song... (Title search)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`w-full rounded-full focus:outline-none transition-all ${isMobile ? 'px-[16px] py-[10px] text-[16px] font-sans' : 'px-5 py-2 text-xs font-mono'}`}
@@ -123,7 +123,7 @@ export const SongList = ({
               onClick={() => setSearchQuery('')}
               className="absolute left-3 text-[10px] font-mono uppercase bg-zinc-800/80 text-zinc-400 px-3 py-1.5 rounded-full hover:text-white transition-colors"
             >
-              مسح
+              Clear
             </button>
           )}
         </div>
@@ -140,8 +140,8 @@ export const SongList = ({
               color: 'var(--text-primary, #ffffff)',
             }}
           >
-            <option value="default">التاريخ (الافتراضي)</option>
-            <option value="name">الاسم (أ-ي)</option>
+            <option value="default">Date (Default)</option>
+            <option value="name">Name (A-Z)</option>
           </select>
         </div>
       </div>

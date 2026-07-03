@@ -65,7 +65,7 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
         )}
       </AnimatePresence>
 
-      {/* رأس: إغلاق */}
+      {/* رأس: Close */}
       <div className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
         {onClose ? (
           <button onClick={onClose} className="p-2 -ml-2 text-slate-600 hover:text-slate-900 transition-colors drop-shadow-sm">
@@ -150,13 +150,13 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
         <button
           onClick={() => setMenuOpen(true)}
           className="transition-all hover:scale-110 drop-shadow-md text-slate-700 hover:text-slate-900 cursor-pointer"
-          title="خيارات التشغيل"
+          title="Playback Options"
         >
           <MoreHorizontal size={22} />
         </button>
       </div>
 
-      {/* شريط التقدم */}
+      {/* Progress Bar */}
       <div className="px-8 mt-5 shrink-0">
         <input
           type="range"

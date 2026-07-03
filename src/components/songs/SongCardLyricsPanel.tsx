@@ -207,7 +207,7 @@ export const SongCardLyricsPanel = ({
             margin: 0,
           }}
         >
-          الكلمات غير متوفرة حالياً
+          Lyrics currently unavailable
         </p>
         <p
           style={{

@@ -108,7 +108,7 @@ export function normalizeItem(raw: any, mediaType: Media, lang: string): CinemaI
   const rawTitle = pick(isTv ? (raw.name ?? raw.title) : (raw.title ?? raw.name), lang) || "Unknown Title";
   let rawOverview = pick(raw.overview, lang);
   if (!rawOverview || rawOverview.trim() === '') {
-    if (lang === 'ar') rawOverview = "القصة غير متوفرة حالياً.";
+    if (lang === 'ar') rawOverview = "Synopsis currently unavailable.";
     else if (lang === 'fr') rawOverview = "Synopsis non disponible.";
     else rawOverview = "Overview not available.";
   }
@@ -958,7 +958,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         <button
           onClick={() => { selectedItemId !== null ? setSelectedItemId(null) : onClose(); }}
           className="nl-cinema-back"
-          aria-label={currentLang === "ar" ? "رجوع" : "Back"}
+          aria-label={currentLang === "ar" ? "Back" : "Back"}
         >
           <ChevronLeft size={22} />
         </button>
@@ -973,11 +973,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             <div className="flex bg-zinc-950/45 rounded-full p-1 border border-white/10 backdrop-blur-md shadow-inner scale-90 sm:scale-100">
               <button onClick={() => setActiveTab('movies')} className={`px-3 py-1 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'movies' ? 'bg-red-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
                 <Film size={12} />
-                <span>{currentLang === "ar" ? "أفلام" : "Movies"}</span>
+                <span>{currentLang === "ar" ? "Movies" : "Movies"}</span>
               </button>
               <button onClick={() => setActiveTab('series')} className={`px-3 py-1 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'series' ? 'bg-red-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
                 <Tv size={12} />
-                <span>{currentLang === "ar" ? "مسلسلات" : "Series"}</span>
+                <span>{currentLang === "ar" ? "Series" : "Series"}</span>
               </button>
             </div>
 
@@ -1030,7 +1030,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               <button
                 onClick={() => setShowWatchlist((v) => !v)}
                 aria-pressed={showWatchlist}
-                aria-label={currentLang === "ar" ? "قائمة المشاهدة" : "Watchlist"}
+                aria-label={currentLang === "ar" ? "Watchlist" : "Watchlist"}
                 className={`relative p-2 rounded border flex items-center justify-center cursor-pointer transition ${showWatchlist ? 'bg-amber-500 border-amber-400 text-white' : 'bg-neutral-900/80 border-zinc-800 text-zinc-400 hover:text-white'}`}
               >
                 <Bookmark size={15} fill={showWatchlist ? 'currentColor' : 'none'} />
@@ -1068,18 +1068,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           <main className="pt-24 px-4 sm:px-10 pb-20">
             <div className="flex items-center gap-3 mb-6">
               <button onClick={() => setShowWatchlist(false)} className="p-1 px-3 bg-zinc-800/80 border border-zinc-700 text-xs rounded hover:bg-zinc-700 cursor-pointer">
-                ← {t("movies.back") || (currentLang === "ar" ? "رجوع" : "Back")}
+                ← {t("movies.back") || (currentLang === "ar" ? "Back" : "Back")}
               </button>
               <div className="text-md sm:text-xl font-black flex items-center gap-2">
                 <Bookmark size={18} className="text-amber-500 fill-current" />
-                <span>{currentLang === "ar" ? "قائمة المشاهدة" : "My Watchlist"}</span>
+                <span>{currentLang === "ar" ? "Watchlist" : "My Watchlist"}</span>
               </div>
             </div>
 
             {watchlistItems.length === 0 ? (
               <div className="w-full py-20 flex flex-col items-center gap-3 text-center text-zinc-500">
                 <Bookmark size={30} />
-                <span className="font-medium">{currentLang === "ar" ? "لا توجد عناصر في قائمة المشاهدة بعد." : "Your watchlist is empty."}</span>
+                <span className="font-medium">{currentLang === "ar" ? "No items in watchlist yet." : "Your watchlist is empty."}</span>
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-6">
@@ -1099,13 +1099,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         <div className="w-full h-full flex items-center justify-center text-zinc-600"><Film size={26} /></div>
                       )}
                       <span className="absolute top-1 inset-inline-start-1 text-[8px] font-black px-1 rounded bg-black/70 text-white">
-                        {rec.media_type === 'tv' ? (currentLang === "ar" ? "مسلسل" : "TV") : (currentLang === "ar" ? "فيلم" : "Movie")}
+                        {rec.media_type === 'tv' ? (currentLang === "ar" ? "Series" : "TV") : (currentLang === "ar" ? "Movie" : "Movie")}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); toggle(rec.tmdb_id, rec.media_type, 'watchlist', rec.title, rec.poster_path); }}
-                      aria-label={currentLang === "ar" ? "إزالة من القائمة" : "Remove from watchlist"}
+                      aria-label={currentLang === "ar" ? "Remove from list" : "Remove from watchlist"}
                       className="absolute top-1.5 inset-inline-end-1.5 w-6 h-6 grid place-items-center rounded-full bg-black/70 border border-white/20 text-white opacity-0 group-hover:opacity-100 transition hover:bg-red-600 cursor-pointer"
                     >
                       <X size={12} />
@@ -1138,7 +1138,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
             {(searchQuery ? searchResults : filteredList).length === 0 && !isSearching && (
               <div className="w-full py-20 text-center text-zinc-500 font-medium">
-                {t("movies.noResults") || (currentLang === "ar" ? "لا توجد نتائج مطابقة." : "No matching titles found.")}
+                {t("movies.noResults") || (currentLang === "ar" ? "No matching results." : "No matching titles found.")}
               </div>
             )}
           </main>
@@ -1208,7 +1208,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               ) : (
                 <div className="relative pb-24 -mt-4 bg-[#141414]">
                   {topMovies.length > 0 && (
-                    <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Movies"} items={topMovies} {...rowProps} />
+                    <MovieRow title={currentLang === "ar" ? "Most Watched" : "Top Movies"} items={topMovies} {...rowProps} />
                   )}
                   <MovieRow title={t("movies.rows.trending")} items={trendingMovies} {...rowProps} />
                   <MovieRow title={t("movies.rows.topRated")} items={topRatedMovies} {...rowProps} />
@@ -1243,7 +1243,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               ) : (
                 <div className="relative pb-24 -mt-4 bg-[#141414]">
                   {topSeries.length > 0 && (
-                    <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Series"} items={topSeries} {...rowProps} />
+                    <MovieRow title={currentLang === "ar" ? "Most Watched" : "Top Series"} items={topSeries} {...rowProps} />
                   )}
                   <MovieRow title={t("movies.rows.trending")} items={trendingSeries} {...rowProps} />
                   <MovieRow title={t("movies.rows.topRated")} items={topRatedSeries} {...rowProps} />
@@ -1329,7 +1329,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           strokeWidth={2}
                           fill={has(detailedItem.id, detailedItem.mediaType, 'favorite') ? 'currentColor' : 'none'}
                         />
-                        <span>مفضلة</span>
+                        <span>Favorite</span>
                       </button>
 
                       {/* Watched */}
@@ -1359,7 +1359,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           strokeWidth={2}
                           fill={has(detailedItem.id, detailedItem.mediaType, 'watched') ? 'currentColor' : 'none'}
                         />
-                        <span>شاهدته</span>
+                        <span>Watched</span>
                       </button>
 
                       {/* Watchlist */}
@@ -1389,7 +1389,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           strokeWidth={2}
                           fill={has(detailedItem.id, detailedItem.mediaType, 'watchlist') ? 'currentColor' : 'none'}
                         />
-                        <span>سأشاهده</span>
+                        <span>Plan to Watch</span>
                       </button>
                     </div>
                   )}

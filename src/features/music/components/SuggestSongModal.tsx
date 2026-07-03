@@ -32,7 +32,7 @@ export function SuggestSongModal({ open, onClose }: { open: boolean; onClose: ()
       }, 1400);
     } else {
       console.error('[SuggestSongModal] submit failed', error);
-      setErr('تعذّر إرسال الاقتراح. حاول لاحقًا.');
+      setErr('Failed to send suggestion. Try again later.');
     }
   };
 
@@ -40,20 +40,20 @@ export function SuggestSongModal({ open, onClose }: { open: boolean; onClose: ()
     <div className="nl-suggest-overlay" onMouseDown={onClose}>
       <div className="nl-suggest" dir="rtl" onMouseDown={(e) => e.stopPropagation()}>
         <header>
-          <span><Lightbulb size={16} /> اقتراح أغنية</span>
-          <button onClick={onClose} aria-label="إغلاق"><X size={16} /></button>
+          <span><Lightbulb size={16} /> Suggest a Song</span>
+          <button onClick={onClose} aria-label="Close"><X size={16} /></button>
         </header>
-        <p className="nl-suggest__note">اترك اسم أغنية تودّ إضافتها إلى الموقع وستصل إلى الإدارة.</p>
+        <p className="nl-suggest__note">Leave the name of a song you'd like added, and it will reach the administration.</p>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={500}
-          placeholder="اسم الأغنية / الفنان..."
+          placeholder="Song Name / Artist..."
           rows={3}
         />
         {err && <p className="nl-suggest__err" role="alert">{err}</p>}
         <button className="nl-suggest__send" onClick={submit} disabled={busy || !text.trim()}>
-          {sent ? <><Check size={15} /> تم الإرسال</> : <><Send size={15} /> إرسال</>}
+          {sent ? <><Check size={15} /> Sent</> : <><Send size={15} /> Send</>}
         </button>
       </div>
     </div>,

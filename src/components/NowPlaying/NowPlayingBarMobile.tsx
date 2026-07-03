@@ -169,7 +169,7 @@ export const NowPlayingBarMobile = ({
         {/* Lyrics button (only when song has LRC) */}
         <button
           onClick={handleLyricsClick}
-          aria-label="فتح الكلمات"
+          aria-label="Open Lyrics"
           style={{
             ...TOUCH_BTN,
             background: 'rgba(255, 255, 255, 0.06)',
@@ -194,7 +194,7 @@ export const NowPlayingBarMobile = ({
         {/* Prev */}
         <button 
           onClick={onPrev} 
-          aria-label="السابق" 
+          aria-label="Prev" 
           style={{
             ...TOUCH_BTN,
             background: 'rgba(255, 255, 255, 0.06)',
@@ -209,7 +209,7 @@ export const NowPlayingBarMobile = ({
         {/* Play/Pause (primary) */}
         <button 
           onClick={onPlayPause} 
-          aria-label={isPlaying ? 'إيقاف' : 'تشغيل'} 
+          aria-label={isPlaying ? 'Stop' : 'Play'} 
           style={{
             ...PRIMARY_BTN,
             background: isPlaying
@@ -232,7 +232,7 @@ export const NowPlayingBarMobile = ({
         {/* Next */}
         <button 
           onClick={onNext} 
-          aria-label="التالي" 
+          aria-label="Next" 
           style={{
             ...TOUCH_BTN,
             background: 'rgba(255, 255, 255, 0.06)',
@@ -247,7 +247,7 @@ export const NowPlayingBarMobile = ({
         {/* Close */}
         <button 
           onClick={onClose} 
-          aria-label="إغلاق" 
+          aria-label="Close" 
           style={{
             ...TOUCH_BTN,
             background: 'rgba(255, 255, 255, 0.06)',
@@ -273,7 +273,7 @@ export const NowPlayingBarMobile = ({
       }}>
         <button
           onClick={onShuffleToggle}
-          aria-label="عشوائي"
+          aria-label="Shuffle"
           aria-pressed={isShuffle}
           style={{
             ...TOUCH_BTN,
@@ -306,7 +306,7 @@ export const NowPlayingBarMobile = ({
           step={0.1}
           value={progress}
           onChange={handleSeek}
-          aria-label="شريط التقدم"
+          aria-label="Progress Bar"
           className="np-mobile-seek"
           style={{
             flex: 1,
@@ -332,7 +332,7 @@ export const NowPlayingBarMobile = ({
 
         <button
           onClick={onRepeatToggle}
-          aria-label={`تكرار: ${repeatMode}`}
+          aria-label={`Repeat: ${repeatMode}`}
           aria-pressed={repeatMode !== 'off'}
           style={{
             ...TOUCH_BTN,

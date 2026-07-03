@@ -141,11 +141,11 @@ export function ThemeSongBar({
         <span className="nl-theme-song__name">{track.title}</span>
         <span className="nl-theme-song__artist">{track.artist}</span>
       </span>
-      <button className="nl-theme-song__vol" onClick={togglePlay} aria-label={playing ? 'إيقاف الأغنية' : 'تشغيل الأغنية'} title={playing ? 'إيقاف' : 'تشغيل'}>
+      <button className="nl-theme-song__vol" onClick={togglePlay} aria-label={playing ? 'Stop Song' : 'Play Song'} title={playing ? 'Stop' : 'Play'}>
         {playing ? <Pause size={16} /> : <Play size={16} />}
       </button>
       {canRemove && (
-        <button className="nl-theme-song__remove" onClick={onRemove} aria-label="إزالة الأغنية" title="إزالة"><X size={15} /></button>
+        <button className="nl-theme-song__remove" onClick={onRemove} aria-label="Remove Song" title="Remove"><X size={15} /></button>
       )}
     </div>
   );

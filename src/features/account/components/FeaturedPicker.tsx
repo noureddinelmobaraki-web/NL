@@ -66,8 +66,8 @@ export function FeaturedPicker({ userId, onClose, onSaved }: Props) {
     <div className="picker-overlay" onClick={onClose}>
       <div className="picker-panel" onClick={(e) => e.stopPropagation()}>
         <header className="picker-head">
-          <h3><Star size={18} /> اختر المميّزة ({order.length}/{FEATURED_MAX})</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="إغلاق"><X size={18} /></button>
+          <h3><Star size={18} /> Choose Featured ({order.length}/{FEATURED_MAX})</h3>
+          <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={18} /></button>
         </header>
         {error && <p className="profile-section-error">{error}</p>}
         <div className="picker-grid">
@@ -86,9 +86,9 @@ export function FeaturedPicker({ userId, onClose, onSaved }: Props) {
           })}
         </div>
         <footer className="picker-foot">
-          <button className="btn-ghost" onClick={onClose} disabled={saving}>إلغاء</button>
+          <button className="btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="btn-accent" onClick={save} disabled={saving}>
-            {saving ? <Loader2 className="spin" size={16} /> : <Star size={16} />} حفظ
+            {saving ? <Loader2 className="spin" size={16} /> : <Star size={16} />} Save
           </button>
         </footer>
       </div>

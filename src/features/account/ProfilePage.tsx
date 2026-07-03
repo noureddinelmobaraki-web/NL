@@ -18,6 +18,9 @@ import { useMovieItems } from './useMovieItems';
 import { ThemeSongBar } from './components/ThemeSongBar';
 import { ThemeSongPicker } from './components/ThemeSongPicker';
 import { InboxPanel } from './components/InboxPanel';
+import { AvatarCropModal } from './components/AvatarCropModal';
+import { AvatarPickerModal } from './components/AvatarPickerModal';
+import { uploadAvatarBlob, deleteOldAvatarIfOwned } from './utils/avatarStorage';
 import '../../styles/components/profile-page.css';
 
 const BIO_MAX = 280;
@@ -58,6 +61,8 @@ export default function ProfilePage() {
   const [themeSongStart, setThemeSongStart] = useState<number | null>(null);
   const [themeSongEnd, setThemeSongEnd] = useState<number | null>(null);
   const [songPickerOpen, setSongPickerOpen] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -198,14 +203,14 @@ export default function ProfilePage() {
       if (r.ok === false) {
         if (r.error === 'rate_limited' && r.next_allowed_at) {
           setNameLockUntil(new Date(r.next_allowed_at));
-          setError('يمكنك تغيير الاسم مرة واحدة كل أسبوع فقط.');
+          setError('You can change the name only once a week.');
         } else if (r.error === 'invalid_name') {
-          setError('الاسم قصير جدًّا (حرفان على الأقل).');
+          setError('Name is too short (min 2 characters).');
         } else {
-          setError('تعذّر حفظ الاسم.');
+          setError('Failed to save name.');
         }
       } else {
-        setNotice('تم الحفظ ✓');
+        setNotice('Saved ✓');
         if (!admin) {
           const next = new Date(Date.now() + 7 * 864e5);
           setNameLockUntil(next);
@@ -218,28 +223,55 @@ export default function ProfilePage() {
     }
   };
 
-  // ---- avatar upload ----
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ---- avatar: يفتح نافذة القص أولاً (بدل الرفع المباشر) ----
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (!AVATAR_TYPES.includes(file.type)) { setError('صيغة غير مدعومة.'); return; }
-    if (file.size > AVATAR_MAX) { setError('الحد الأقصى 2MB.'); return; }
+    if (!AVATAR_TYPES.includes(file.type)) { setError('Unsupported format.'); return; }
+    if (file.size > AVATAR_MAX) { setError('Maximum 2MB.'); return; }
+    setError(null);
+    setCropFile(file);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  // ---- بعد القص: يضغط إلى 512×512 webp ويرفع ويحذف القديم ----
+  const handleCroppedBlob = async (blob: Blob) => {
+    if (!user) return;
     setUploading(true); setError(null);
     try {
-      const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase();
-      const path = `${user.id}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-      if (upErr) throw new Error(upErr.message);
-      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-      const { error: updErr } = await supabase.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', user.id);
+      const prev = avatarUrl;
+      const publicUrl = await uploadAvatarBlob(user.id, blob);
+      const { error: updErr } = await supabase
+        .from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
       if (updErr) throw new Error(updErr.message);
-      setAvatarUrl(pub.publicUrl);
-      setNotice('تم تحديث الصورة ✓');
+      setAvatarUrl(publicUrl);
+      setNotice('Image updated ✓');
+      void deleteOldAvatarIfOwned(prev); // تنظيف القديم (لا يُعطّل النجاح)
     } catch (err) {
       setError(String((err as Error).message));
     } finally {
       setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
+      setCropFile(null);
+    }
+  };
+
+  // ---- تطبيق الأفاتار الافتراضية المحددة ----
+  const applyDefaultAvatar = async (webpUrl: string) => {
+    if (!user) return;
+    setUploading(true); setError(null);
+    try {
+      const prev = avatarUrl;
+      const { error: updErr } = await supabase
+        .from('profiles').update({ avatar_url: webpUrl }).eq('id', user.id);
+      if (updErr) throw new Error(updErr.message);
+      setAvatarUrl(webpUrl);
+      setNotice('Image updated ✓');
+      setAvatarPickerOpen(false);
+      void deleteOldAvatarIfOwned(prev); // احذف المرفوعة القديمة إن وُجدت
+    } catch (err) {
+      setError(String((err as Error).message));
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -248,12 +280,12 @@ export default function ProfilePage() {
   return createPortal(
     <div className="profile-overlay" role="dialog" aria-modal="true">
       <div className="profile-shell">
-        <button className="icon-btn profile-close" onClick={closeProfile} aria-label="إغلاق"><X size={20} /></button>
+        <button className="icon-btn profile-close" onClick={closeProfile} aria-label="Close"><X size={20} /></button>
         <button 
           type="button"
           className="icon-btn absolute top-[16px] start-[16px]" 
           onClick={() => setInboxOpen(true)}
-          aria-label="صندوق المقترحات"
+          aria-label="Suggestion Box"
         >
           <Bell size={20} />
           {unreadCount > 0 && (
@@ -265,7 +297,7 @@ export default function ProfilePage() {
         <span className="sr-only">{user.email}</span>
 
         {loading ? (
-          <p className="profile-loading"><Loader2 className="spin" size={20} /> جارٍ التحميل…</p>
+          <p className="profile-loading"><Loader2 className="spin" size={20} /> Loading...…</p>
         ) : (
           <>
             <form className="profile-card" onSubmit={handleSave}>
@@ -279,7 +311,7 @@ export default function ProfilePage() {
                 />
               ) : null}
               <button type="button" className="profile-theme-edit" onClick={() => setSongPickerOpen(true)}>
-                <Music2 size={14} /> {themeSong ? 'تغيير أغنية البروفايل' : 'اختر أغنية لبروفايلك'}
+                <Music2 size={14} /> {themeSong ? 'Change profile song' : 'Choose a song for your profile'}
               </button>
               {songPickerOpen && (
                 <ThemeSongPicker
@@ -293,7 +325,7 @@ export default function ProfilePage() {
                 <div className="profile-admin-msg">
                   <ShieldCheck size={15} className="shrink-0 mt-0.5" />
                   <div>
-                    <strong>رسالة من الإدارة</strong>
+                    <strong>Message from Admin</strong>
                     <p>{adminNote}</p>
                     {adminNoteAt && <time>{new Date(adminNoteAt).toLocaleDateString()}</time>}
                   </div>
@@ -306,7 +338,7 @@ export default function ProfilePage() {
                     ? <img src={avatarUrl} alt="" />
                     : <span className="profile-noavatar">{(displayName || 'NL').slice(0, 2).toUpperCase()}</span>}
                 </AvatarFrame>
-                <button type="button" className="profile-cam" onClick={() => fileRef.current?.click()} disabled={uploading} aria-label="تغيير الصورة">
+                <button type="button" className="profile-cam" onClick={() => setAvatarPickerOpen(true)} disabled={uploading} aria-label="Change picture">
                   {uploading ? <Loader2 className="spin" size={16} /> : <Camera size={16} />}
                 </button>
                 <input ref={fileRef} type="file" accept={AVATAR_TYPES.join(',')} className="profile-avatar__input" hidden onChange={handleAvatarChange} />
@@ -316,30 +348,30 @@ export default function ProfilePage() {
 
               <p className="profile-email text-xs text-zinc-400 -mt-1">{user.email}</p>
 
-              <label className="profile-field">الاسم الظاهر
-                <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} disabled={locked} placeholder="اسمك الظاهر" />
+              <label className="profile-field">Display Name
+                <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} disabled={locked} placeholder="Your display name" />
               </label>
               {locked && (
-                <p className="profile-name-lock"><Clock size={13} /> يمكنك تغيير الاسم بعد {daysLeft} يوم.</p>
+                <p className="profile-name-lock"><Clock size={13} /> You can change name after {daysLeft} day.</p>
               )}
 
-              <label className="profile-field">نبذة
-                <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={BIO_MAX} rows={3} placeholder="عرّف بنفسك…" />
+              <label className="profile-field">About
+                <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={BIO_MAX} rows={3} placeholder="Introduce yourself…" />
                 <span className="profile-counter">{bio.length}/{BIO_MAX}</span>
               </label>
 
               <div className="flex gap-6 justify-center w-full max-w-[420px] my-2 bg-white/5 border border-white/10 rounded-xl p-3">
                 <div className="flex-1 text-center">
                   <span className="block text-lg font-bold text-white">{musicStoreFavoritesCount}</span>
-                  <span className="text-[11px] text-zinc-400">أغنية مفضلة</span>
+                  <span className="text-[11px] text-zinc-400">Favorite Song</span>
                 </div>
                 <div className="flex-1 text-center border-x border-white/10">
                   <span className="block text-lg font-bold text-white">{musicStorePlaylistsCount}</span>
-                  <span className="text-[11px] text-zinc-400">قائمة تشغيل</span>
+                  <span className="text-[11px] text-zinc-400">Playlist</span>
                 </div>
                 <div className="flex-1 text-center">
                   <span className="block text-lg font-bold text-white">{movieFavoritesCount}</span>
-                  <span className="text-[11px] text-zinc-400">فيلم مفضل</span>
+                  <span className="text-[11px] text-zinc-400">Favorite Movie</span>
                 </div>
               </div>
 
@@ -348,51 +380,51 @@ export default function ProfilePage() {
 
               <div className="profile-actions">
                 <button type="submit" className="btn-accent" disabled={saving}>
-                  {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />} حفظ
+                  {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />} Save
                 </button>
                 <button type="button" className="btn-ghost" onClick={() => setPickerOpen(true)}>
-                  <Star size={16} /> المميّزة
+                  <Star size={16} /> Featured
                 </button>
               </div>
             </form>
 
             <section className="profile-section">
-              <h3><Star size={16} /> الأغاني المفضّلة</h3>
+              <h3><Star size={16} /> Favorite Songs</h3>
               <FavoriteSongsSection userId={user.id} />
             </section>
 
             <section className="profile-section">
-              <h3><Star size={16} /> الأفلام والمسلسلات</h3>
+              <h3><Star size={16} /> Movies & Series</h3>
               <FavoriteMoviesSection userId={user.id} />
             </section>
 
             {listeningReport && (
               <section className="profile-section">
-                <h3 className="flex items-center gap-2" style={{ direction: 'rtl' }}><Clock size={16} /> إحصائيات النشاط (Activity Stats)</h3>
+                <h3 className="flex items-center gap-2" style={{ direction: 'rtl' }}><Clock size={16} /> Activity Stats (Activity Stats)</h3>
                 <div className="grid grid-cols-3 gap-3 my-3">
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
                     <span className="block text-md font-bold text-sky-400">
                       {listeningReport.song_plays ?? listeningReport.songs_played ?? listeningReport.songs_count ?? 0}
                     </span>
-                    <span className="text-[10px] text-zinc-400">استماع للأغاني</span>
+                    <span className="text-[10px] text-zinc-400">Songs listend</span>
                   </div>
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center border-x border-white/10">
                     <span className="block text-md font-bold text-red-400">
                       {listeningReport.movie_plays ?? listeningReport.movies_played ?? listeningReport.movies_count ?? 0}
                     </span>
-                    <span className="text-[10px] text-zinc-400">مشاهدة الأفلام</span>
+                    <span className="text-[10px] text-zinc-400">Movies watched</span>
                   </div>
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
                     <span className="block text-md font-bold text-purple-400">
                       {listeningReport.series_plays ?? listeningReport.series_played ?? listeningReport.series_count ?? 0}
                     </span>
-                    <span className="text-[10px] text-zinc-400">مشاهدة المسلسلات</span>
+                    <span className="text-[10px] text-zinc-400">Series watched</span>
                   </div>
                 </div>
 
                 {Array.isArray(listeningReport.recent_plays) && listeningReport.recent_plays.length > 0 && (
                   <div className="mt-4 space-y-2 text-right" style={{ direction: 'rtl' }}>
-                    <h4 className="text-xs font-bold text-zinc-300">أحدث النشاطات (Recent Activity)</h4>
+                    <h4 className="text-xs font-bold text-zinc-300">Latest Activities (Recent Activity)</h4>
                     <div className="max-h-40 overflow-y-auto space-y-1.5 scrollbar-thin pr-1">
                       {listeningReport.recent_plays.map((p: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5 text-[11px]">
@@ -411,16 +443,16 @@ export default function ProfilePage() {
             {admin && (
               <section className="profile-section">
                 <button className="btn-accent profile-admin-btn" onClick={() => setAdminOpen(true)}>
-                  <ShieldCheck size={16} /> لوحة الأدمن
+                  <ShieldCheck size={16} /> Admin Panel
                 </button>
               </section>
             )}
 
             <section className="profile-section profile-danger">
-              <h3><Trash2 size={16} /> منطقة الخطر</h3>
+              <h3><Trash2 size={16} /> Danger Zone</h3>
               <div className="profile-danger-row">
-                <button className="btn-ghost" onClick={() => { signOut(); closeProfile(); }}><LogOut size={16} /> تسجيل الخروج</button>
-                <button className="btn-danger" onClick={() => setDeleteModalOpen(true)}><Trash2 size={16} /> حذف الحساب</button>
+                <button className="btn-ghost" onClick={() => { signOut(); closeProfile(); }}><LogOut size={16} /> Log Out</button>
+                <button className="btn-danger" onClick={() => setDeleteModalOpen(true)}><Trash2 size={16} /> Delete Account</button>
               </div>
             </section>
           </>
@@ -440,6 +472,22 @@ export default function ProfilePage() {
         <DeleteAccountModal
           onClose={() => setDeleteModalOpen(false)}
           onDeleted={() => { setDeleteModalOpen(false); closeProfile(); } }
+        />
+      )}
+
+      {cropFile && (
+        <AvatarCropModal
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onConfirm={handleCroppedBlob}
+        />
+      )}
+
+      {avatarPickerOpen && (
+        <AvatarPickerModal
+          onClose={() => setAvatarPickerOpen(false)}
+          onPickDefault={applyDefaultAvatar}
+          onUploadClick={() => { setAvatarPickerOpen(false); fileRef.current?.click(); }}
         />
       )}
     </div>,

@@ -1,0 +1,47 @@
+[
+  {
+    "file": "src/audio/audioManager.ts",
+    "line": 66,
+    "text": "/** Lightweight DEV-only logger. لا يطبع شيئاً في production إلا عند تفعيل"
+  },
+  {
+    "file": "src/features/account/roleBadge.tsx",
+    "line": 54,
+    "text": "  si:        { label: 'سي',          color: '#1E90FF', Icon: UserCheck },"
+  },
+  {
+    "file": "src/features/account/roleBadge.tsx",
+    "line": 55,
+    "text": "  elmqwed:   { label: 'المقود',      color: '#6C5CE7', Icon: LifeBuoy },"
+  },
+  {
+    "file": "src/features/admin/AdminDashboard.tsx",
+    "line": 326,
+    "text": "                                    if (!window.confirm(`هل أنت متأكد من حذف إحصائيات الاستماع للمستخدم ${row.display_name || ''}؟`)) return;"
+  },
+  {
+    "file": "src/features/music/utils/search.ts",
+    "line": 23,
+    "text": "    .replace(/ـ/g, '')"
+  },
+  {
+    "file": "src/features/music/utils/search.ts",
+    "line": 24,
+    "text": "    .replace(/[أإآ]/g, 'ا')"
+  },
+  {
+    "file": "src/features/music/utils/search.ts",
+    "line": 25,
+    "text": "    .replace(/ى/g, 'ي')"
+  },
+  {
+    "file": "src/features/music/utils/search.ts",
+    "line": 26,
+    "text": "    .replace(/ة/g, 'ه')"
+  },
+  {
+    "file": "src/features/music/utils/search.ts",
+    "line": 28,
+    "text": "    .replace(/[^a-z0-9ا-ي]/g, ' ')"
+  }
+]

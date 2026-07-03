@@ -47,7 +47,7 @@ export const SongCardHeader = ({
       try {
         await navigator.share({
           title: song.title,
-          text: `استمع لـ "${song.title}" — NL`,
+          text: `Listen to "${song.title}" — NL`,
           url: shareUrl,
         });
         return;
@@ -202,7 +202,7 @@ export const SongCardHeader = ({
             <button 
               onClick={(e) => { e.stopPropagation(); onToggleLyrics(); }}
               className={`lyrics-btn-compact ${isLyricsOpen ? 'active' : ''}`}
-              aria-label={isLyricsOpen ? 'إغلاق كلمات الأغنية' : 'فتح كلمات الأغنية'}
+              aria-label={isLyricsOpen ? 'Close song lyrics' : 'Open song lyrics'}
               aria-pressed={isLyricsOpen}
               title={isLyricsOpen ? 'Close Lyrics' : 'Show Lyrics'}
               style={{
@@ -254,7 +254,7 @@ export const SongCardHeader = ({
 
           <button
             type="button"
-            aria-label="مشاركة الأغنية"
+            aria-label="Share song"
             onClick={handleShare}
             style={{
               background: 'transparent',
@@ -276,12 +276,12 @@ export const SongCardHeader = ({
               position: 'relative',
             }}
             className="hover:scale-105 active:scale-95 transition-transform"
-            title={copied ? 'تم نسخ الرابط!' : 'مشاركة الأغنية'}
+            title={copied ? 'Link copied!' : 'Share song'}
           >
             {copied ? <Check size={18} className="text-emerald-500" /> : <ShareIcon size={18} />}
             {copied && (
               <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] px-2 py-1 rounded shadow-md whitespace-nowrap animate-bounce font-sans">
-                تم نسخ الرابط!
+                Link copied!
               </span>
             )}
           </button>

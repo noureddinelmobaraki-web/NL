@@ -32,12 +32,12 @@ export const FALLBACK_MOVIES: CuratedMovie[] = [
     imdb_id: "tt15239678",
     title: {
       en: "Dune: Part Two",
-      ar: "كثبان: الجزء الثاني",
+      ar: "Dune: Part Two",
       fr: "Dune : Deuxième Partie"
     },
     overview: {
       en: "Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family.",
-      ar: "يتحد بول أتريدس مع تشاني والفريمن لشن حرب انتقامية ضد المتآمرين الذين دمروا عائلته، بينما يكافح لمنع المستقبل الكارثي الذي يمكنه التنبؤ به وحده.",
+      ar: "Paul Atreides unites with Chani and the Fremen to wage a revenge war against the conspirators who destroyed his family, while struggling to prevent a disastrous future he alone can foresee.",
       fr: "Paul Atreides s'unit à Chani et aux Fremen pour mener la révolte contre ceux qui ont détruit sa famille. Hanté par de sombres prémonitions, il doit choisir entre l'amour de sa vie et le destin de l'univers."
     },
     poster_path: "",
@@ -59,12 +59,12 @@ export const FALLBACK_MOVIES: CuratedMovie[] = [
     imdb_id: "tt1375666",
     title: {
       en: "Inception",
-      ar: "بداية",
+      ar: "Inception",
       fr: "Inception"
     },
     overview: {
       en: "Cobb, a skilled thief who steals valuable secrets from deep within the subconscious during the dream state, is offered a chance at redemption: inception.",
-      ar: "كوب، سارق ماهر يسرق الأسرار القيمة من عمق العقل الباطن أثناء حالة الحلم، تُعرض عليه فرصة للاسترداد من خلال زرع فكرة في عقل شخص ما.",
+      ar: "Cobb, a skilled thief who steals valuable secrets from deep within the subconscious during the dream state, is offered a chance at redemption by planting an idea into someone's mind.",
       fr: "Cobb, un voleur expérimenté dans l'art de s'emparer des secrets les plus précieux d'un individu pendant qu'il rêve, se voit offrir une chance de rachat : l'inception."
     },
     poster_path: "",
@@ -86,12 +86,12 @@ export const FALLBACK_MOVIES: CuratedMovie[] = [
     imdb_id: "tt0468569",
     title: {
       en: "The Dark Knight",
-      ar: "فارس الظلام",
+      ar: "The Dark Knight",
       fr: "The Dark Knight : Le Chevalier Noir"
     },
     overview: {
       en: "Batman raises the stakes in his war on crime. With the help of Gordon and Dent, Batman sets out to dismantle the remaining criminal organizations that plague the streets.",
-      ar: "يرفع باتمان الرهانات في حربه على الجريمة، وبمساعدة غوردون ودينت، يسعى إلى تفكيك منظمات الجريمة المتبقية، لكنه يواجه عقلًا إجراميًا جديدًا يُعرف باسم الجوكر.",
+      ar: "Batman raises the stakes in his war on crime. With the help of Gordon and Dent, he sets out to dismantle the remaining criminal organizations, but faces a new criminal mastermind known as the Joker.",
       fr: "Le Chevalier Noir entreprend de démanteler les dernières organisations criminelles de Gotham. Mais il se heurte bientôt à un cerveau criminel hors du commun, le Joker."
     },
     poster_path: "",
@@ -113,12 +113,12 @@ export const FALLBACK_MOVIES: CuratedMovie[] = [
     imdb_id: "tt0816692",
     title: {
       en: "Interstellar",
-      ar: "بين النجوم",
+      ar: "Interstellar",
       fr: "Interstellar"
     },
     overview: {
       en: "The adventures of a group of explorers who make use of a newly discovered wormhole to surpass the limitations on human space travel.",
-      ar: "مجموعة من المستكشفين يخوضون رحلة ملحمية عبر ثقب دودي تم اكتشافه حديثًا للبحث عن موطن بديل للبشرية وسط احتضار كوكب الأرض.",
+      ar: "A team of explorers travel through a newly discovered wormhole in space in an epic voyage to find a new habitable planet for humanity as Earth is dying.",
       fr: "Un groupe d'explorateurs utilise une faille nouvellement découverte dans l'espace-temps afin de surmonter les limites du voyage spatial humain."
     },
     poster_path: "",
@@ -140,12 +140,12 @@ export const FALLBACK_MOVIES: CuratedMovie[] = [
     imdb_id: "tt9362722",
     title: {
       en: "Spider-Man: Across the Spider-Verse",
-      ar: "رجل العنكبوت: عبر عوالم العنكبوت",
+      ar: "Spider-Man: Across the Spider-Verse",
       fr: "Spider-Man : Across the Spider-Verse"
     },
     overview: {
       en: "After reuniting with Gwen Stacy, Brooklyn's full-time, friendly neighborhood Spider-Man is catapulted across the Multiverse, where he encounters a team of Spider-People.",
-      ar: "بعد لم شمله مع غوين ستايسي، يتم إلقاء مايلز موراليس عبر الأكوان المتعددة، حيث يلتقي بنخبة من حماة عوالم العناكب، ويواجه تهديدًا مدمرًا جديدًا.",
+      ar: "After reuniting with Gwen Stacy, Miles Morales is catapulted across the Multiverse, where he encounters a team of Spider-People charged with protecting its very existence, and faces a new devastating threat.",
       fr: "Miles Morales est catapulté à travers le Multiverse, où il rencontre une équipe de Spider-Héros chargée de protéger l'existence même du Multiverse."
     },
     poster_path: "",
@@ -165,10 +165,10 @@ export const FALLBACK_MOVIES: CuratedMovie[] = [
 ];
 
 export const FALLBACK_GENRES = [
-  { id: 28, name: { en: "Action", ar: "أكشن", fr: "Action" } },
-  { id: 12, name: { en: "Adventure", ar: "مغامرة", fr: "Aventure" } },
-  { id: 18, name: { en: "Drama", ar: "دراما", fr: "Drame" } },
-  { id: 27, name: { en: "Horror", ar: "رعب", fr: "Horreur" } },
-  { id: 35, name: { en: "Comedy", ar: "كوميديا", fr: "Comédie" } },
-  { id: 878, name: { en: "Sci-Fi", ar: "خيال علمي", fr: "Sci-Fi" } }
+  { id: 28, name: { en: "Action", ar: "Action", fr: "Action" } },
+  { id: 12, name: { en: "Adventure", ar: "Adventure", fr: "Aventure" } },
+  { id: 18, name: { en: "Drama", ar: "Drama", fr: "Drame" } },
+  { id: 27, name: { en: "Horror", ar: "Horror", fr: "Horreur" } },
+  { id: 35, name: { en: "Comedy", ar: "Comedy", fr: "Comédie" } },
+  { id: 878, name: { en: "Sci-Fi", ar: "Sci-Fi", fr: "Sci-Fi" } }
 ];

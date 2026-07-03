@@ -100,7 +100,7 @@ export function AppNavGrid({
       />
       <NavButton
         icon={Users}
-        label={(i18n.exists('nav.accounts') ? t('nav.accounts') : 'الحسابات').toUpperCase()}
+        label={(i18n.exists('nav.accounts') ? t('nav.accounts') : 'Accounts').toUpperCase()}
         onClick={(e) => { setGenieOriginFromElement(e.currentTarget); openAccounts(); }}
         onMouseEnter={() => { import('../../features/accounts/AccountsPage').catch(() => {}); }}
         onPointerDown={() => { import('../../features/accounts/AccountsPage').catch(() => {}); }}

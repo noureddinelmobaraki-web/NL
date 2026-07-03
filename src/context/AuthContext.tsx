@@ -67,7 +67,7 @@ export interface AuthContextType {
 
 const NOT_CONFIGURED: AuthResult = {
   ok: false,
-  error: 'ميزات الحساب غير مفعّلة حاليًا.',
+  error: 'Account features are currently disabled.',
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)

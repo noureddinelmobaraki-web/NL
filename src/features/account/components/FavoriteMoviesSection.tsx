@@ -23,7 +23,7 @@ export function FavoriteMoviesSection({ userId }: Props) {
     return (
       <div className="profile-empty">
         <Film size={26} />
-        <span>لا توجد أفلام أو مسلسلات مفضّلة بعد</span>
+        <span>No favorite movies or series yet</span>
       </div>
     );
 
@@ -36,7 +36,7 @@ export function FavoriteMoviesSection({ userId }: Props) {
               ? <img src={`${IMG}${r.poster_path}`} alt={r.title} loading="lazy" />
               : <span className="fav-initials"><Film size={22} /></span>}
             {r.is_featured && <span className="fav-star"><Star size={12} /></span>}
-            <span className="fav-badge">{r.media_type === 'tv' ? 'مسلسل' : 'فيلم'}</span>
+            <span className="fav-badge">{r.media_type === 'tv' ? 'Series' : 'Movie'}</span>
           </span>
           <span className="fav-meta"><span className="fav-title">{r.title}</span></span>
         </div>

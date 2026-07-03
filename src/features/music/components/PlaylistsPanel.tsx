@@ -145,7 +145,7 @@ export function PlaylistsPanel({ onOpenPlayer, online }: { onOpenPlayer?: () => 
             onClick={() => setCreateOpen(true)}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-gradient-to-r from-[#FF7A1A] to-[#00E676] text-white text-sm font-bold hover:brightness-105"
           >
-            <Plus size={18} /> إنشاء بلاي ليست
+            <Plus size={18} /> Create Playlist
           </button>
         </div>
       )}

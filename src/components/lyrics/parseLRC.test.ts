@@ -71,9 +71,9 @@ describe('parseLRC — empty / instrumental lines', () => {
 
 describe('parseLRC — translation tracks', () => {
   it('splits "Primary / Translation"', () => {
-    const r = parseLRC('[00:01.00]Hello / مرحبا') as any[];
+    const r = parseLRC('[00:01.00]Hello / Hello') as any[];
     expect(r[0].text).toBe('Hello');
-    expect(r[0].translation).toBe('مرحبا');
+    expect(r[0].translation).toBe('Hello');
   });
   it('leaves URLs containing slashes untouched', () => {
     const r = parseLRC('[00:01.00]https://example.com/path') as any[];

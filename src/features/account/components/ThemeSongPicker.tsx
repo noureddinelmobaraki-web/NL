@@ -61,13 +61,13 @@ export function ThemeSongPicker({ open, onClose, onSaved }: {
     <div className="nl-tsp-overlay" onMouseDown={close}>
       <div className="nl-tsp" dir="rtl" onMouseDown={(e) => e.stopPropagation()}>
         <header className="nl-tsp__head">
-          <h3>أغنية البروفايل</h3>
-          <button className="nl-tsp__x" onClick={close} aria-label="إغلاق"><X size={18} /></button>
+          <h3>Profile Song</h3>
+          <button className="nl-tsp__x" onClick={close} aria-label="Close"><X size={18} /></button>
         </header>
 
         <label className="nl-tsp__search">
           <Search size={15} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن أغنية..." />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search for a song..." />
         </label>
         <div className="nl-tsp__list">
           {filtered.map((t) => {
@@ -79,7 +79,7 @@ export function ThemeSongPicker({ open, onClose, onSaved }: {
                   type="button"
                   className="nl-tsp__play"
                   onClick={() => preview.toggle(t)}
-                  aria-label={isPlaying ? 'إيقاف' : 'استماع'}
+                  aria-label={isPlaying ? 'Stop' : 'Listen'}
                 >
                   {isPlaying ? <Pause size={15} /> : <Play size={15} />}
                 </button>
@@ -99,14 +99,14 @@ export function ThemeSongPicker({ open, onClose, onSaved }: {
                   className="nl-tsp__choose"
                   onClick={() => choose(t)}
                   disabled={isSaving}
-                  aria-label="اختيار"
+                  aria-label="Select"
                 >
-                  {isSaving ? '...' : <>اختيار <Check size={15} /></>}
+                  {isSaving ? '...' : <>Select <Check size={15} /></>}
                 </button>
               </div>
             );
           })}
-          {filtered.length === 0 && <p className="nl-tsp__empty">لا نتائج.</p>}
+          {filtered.length === 0 && <p className="nl-tsp__empty">No results.</p>}
         </div>
       </div>
     </div>,

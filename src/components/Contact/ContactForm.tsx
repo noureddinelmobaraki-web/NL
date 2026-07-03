@@ -115,7 +115,7 @@ export const ContactForm = () => {
         EMAILJS_SERVICE,
         EMAILJS_TEMPLATE,
         {
-          sender_name: mode === 'anonymous' ? 'مجهول' : (senderName.trim() || 'مجهول'),
+          sender_name: mode === 'anonymous' ? 'Anonymous' : (senderName.trim() || 'Anonymous'),
           message: message.trim(),
           time: new Date().toLocaleString('ar-MA', {
             timeZone: 'Africa/Casablanca'

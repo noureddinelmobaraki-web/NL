@@ -10,7 +10,7 @@ import { useProfileRating } from './useProfileRating';
 import { getFvTracks } from '../music/data/loadSongs';
 import { getInitials } from '../music/utils/cover';
 import { ThemeSongBar } from '../account/components/ThemeSongBar';
-import { fetchPublicProfile } from './profileCache';
+import { fetchPublicProfile, invalidateProfile } from './profileCache';
 import { useSongPreview } from '../music/hooks/useSongPreview';
 
 interface PubProfile {
@@ -107,9 +107,9 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
   return createPortal(
     <div className="nl-pub-overlay" onMouseDown={handleClose}>
       <div className="nl-pub nl-public-card" dir="rtl" onMouseDown={(e) => e.stopPropagation()}>
-        <button type="button" className="nl-pub__close" onClick={handleClose} aria-label="إغلاق"><X size={20} /></button>
+        <button type="button" className="nl-pub__close" onClick={handleClose} aria-label="Close"><X size={20} /></button>
         {!p ? (
-          <p className="nl-pub__loading"><Loader2 className="spin" size={18} /> ...جارٍ التحميل</p>
+          <p className="nl-pub__loading"><Loader2 className="spin" size={18} /> ...Loading...</p>
         ) : (
           <>
             <div className="nl-pub-header">
@@ -120,7 +120,7 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
                   <span className="nl-pub__ph">{(p.display_name || 'NL').slice(0, 2).toUpperCase()}</span>
                 )}
               </AvatarFrame>
-              <h2 className="nl-pub__name">{p.display_name || 'مستخدم'}</h2>
+              <h2 className="nl-pub__name">{p.display_name || 'User'}</h2>
               <RoleBadgeChips role={p.role} badge={p.badge} />
             </div>
 
@@ -152,14 +152,32 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
 
             {admin && (
               <div className="nl-pub__admin">
-                <ShieldCheck size={14} /> <span>ضبط النجوم (أدمن)</span>
+                <ShieldCheck size={14} /> <span>Manage Stars (Admin)</span>
                 <input type="number" value={bonus} onChange={(e) => setBonus(e.target.value)} placeholder="0" />
-                <button type="button" onClick={onAdminSet}>تطبيق</button>
+                <button type="button" onClick={onAdminSet}>Apply</button>
+                <button
+                  type="button"
+                  className="nl-pub__admin-clear"
+                  onClick={async () => {
+                    if (!window.confirm("Clear this user's picture?")) return;
+                    const { error } = await supabase.rpc('admin_clear_avatar', { target: id });
+                    if (error) {
+                      console.error('[admin_clear_avatar] failed', error);
+                      window.alert('Failed to remove picture: ' + (error.message || 'unknown error'));
+                      return;
+                    }
+                    invalidateProfile(id);
+                    await fetchProfile(true);
+                    onChanged?.();
+                  }}
+                >
+                  Remove Picture (Censorship)
+                </button>
               </div>
             )}
 
             <div className="nl-pub__sec">
-              <h3>أغانٍ مميّزة</h3>
+              <h3>Featured Songs</h3>
               {(data?.songs?.length ?? 0) > 0 ? (
                 <div className="nl-pub__songs-grid">
                   {data!.songs.map((s) => {
@@ -179,7 +197,7 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
                               type="button"
                               className="nl-pub-song-play"
                               onClick={() => preview.toggle(trackObj)}
-                              aria-label={isPlaying ? 'إيقاف مؤقت' : 'استماع'}
+                              aria-label={isPlaying ? 'Pause' : 'Listen'}
                             >
                               {isPlaying ? <Pause size={14} /> : <Play size={14} />}
                             </button>
@@ -193,13 +211,13 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
                   })}
                 </div>
               ) : (
-                <p className="nl-pub__sec-empty">لا توجد أغانٍ مميّزة بعد.</p>
+                <p className="nl-pub__sec-empty">No featured songs yet.</p>
               )}
             </div>
 
             {data!.movies.length > 0 && (
               <div className="nl-pub__movies-sec">
-                <h3>الأفلام والمسلسلات المفضلة</h3>
+                <h3>Favorite Movies & Series</h3>
                 <div className="nl-pub__movies-grid">
                   {data!.movies.map((m) => (
                     <div key={`${m.media_type}-${m.tmdb_id}`} className="nl-pub-movie-wrapper">

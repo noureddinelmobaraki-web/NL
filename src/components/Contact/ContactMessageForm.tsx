@@ -54,9 +54,9 @@ export const ContactMessageForm = ({
           onClick={() => setMode('anonymous')}
           disabled={isBlocked}
           aria-pressed={mode === 'anonymous'}
-          aria-label="إرسال كمجهول"
+          aria-label="Send Anonymously"
         >
-          مجهول
+          Anonymous
         </button>
         <button
           type="button"
@@ -64,19 +64,19 @@ export const ContactMessageForm = ({
           onClick={() => setMode('named')}
           disabled={isBlocked}
           aria-pressed={mode === 'named'}
-          aria-label="إرسال باسمي"
+          aria-label="Send as Myself"
         >
-          باسمي
+          By Me
         </button>
       </div>
 
       {mode === 'named' && (
         <>
-          <label htmlFor="sender-name" className="sr-only">اسمك</label>
+          <label htmlFor="sender-name" className="sr-only">Your Name</label>
           <input
             id="sender-name"
             type="text"
-            placeholder="اكتب اسمك..."
+            placeholder="Type your name..."
             value={senderName}
             onChange={e => setSenderName(e.target.value)}
             maxLength={50}
@@ -91,10 +91,10 @@ export const ContactMessageForm = ({
       )}
 
       <div style={{ position: 'relative' }}>
-        <label htmlFor="message-body" className="sr-only">رسالتك</label>
+        <label htmlFor="message-body" className="sr-only">Your Message</label>
         <textarea
           id="message-body"
-          placeholder="قوليا"
+          placeholder="Tell me"
           value={message}
           onChange={e => setMessage(e.target.value)}
           maxLength={2000}
@@ -142,7 +142,7 @@ export const ContactMessageForm = ({
       <button
         type="submit"
         disabled={status === 'sending' || isBlocked}
-        aria-label={status === 'sending' ? 'جاري الإرسال...' : 'إرسال الرسالة'}
+        aria-label={status === 'sending' ? 'Sending...' : 'Send Message'}
         aria-busy={status === 'sending'}
         style={{
           ...currentStyles.sendBtn,
@@ -153,7 +153,7 @@ export const ContactMessageForm = ({
       >
         {status === 'sending' ? (
           <span style={currentStyles.spinner} />
-        ) : 'أرسل →'}
+        ) : 'Send →'}
       </button>
 
       {!isBlocked && (
@@ -163,7 +163,7 @@ export const ContactMessageForm = ({
           fontSize: '0.72rem',
           marginTop: '8px'
         }}>
-          {Math.max(0, remainingToday)} رسالة متبقية اليوم
+          {Math.max(0, remainingToday)} messages remaining today
         </p>
       )}
 
@@ -193,14 +193,14 @@ export const ContactMessageForm = ({
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
-              تم الإرسال بنجاح!
+              Sent successfully!
             </>
           ) : (
             <>
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
-              فشل الإرسال
+              Send failed
             </>
           )}
         </div>

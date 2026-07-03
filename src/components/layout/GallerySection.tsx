@@ -158,7 +158,7 @@ export const GallerySection = ({
                 alt="Lens icon" 
               />
             </div>
-            <span className="md:hidden text-white/50 text-xs font-mono mb-1">اضغط للعرض</span>
+            <span className="md:hidden text-white/50 text-xs font-mono mb-1">Tap to view</span>
             <span className="font-manga text-white text-xl tracking-widest uppercase" style={{ textShadow: '2px 2px 0 #000' }}>
               Open Gallery
             </span>

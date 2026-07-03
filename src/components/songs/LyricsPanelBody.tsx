@@ -56,7 +56,7 @@ export const LyricsPanelBody = ({
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: 'var(--lyric-inactive-color)' }}>
         <div className="spinner !w-6 !h-6" />
-        <span className="text-xs font-mono uppercase tracking-widest">تحميل الكلمات...</span>
+        <span className="text-xs font-mono uppercase tracking-widest">Loading lyrics...</span>
       </div>
     );
   }

@@ -49,7 +49,7 @@ export function FavoriteSongsSection({ userId }: Props) {
     return (
       <div className="profile-empty">
         <Music2 size={26} />
-        <span>لا توجد أغانٍ مفضّلة بعد</span>
+        <span>No favorite songs yet</span>
       </div>
     );
 

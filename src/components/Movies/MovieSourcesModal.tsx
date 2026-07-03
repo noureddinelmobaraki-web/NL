@@ -152,7 +152,7 @@ export const MovieSourcesModal: React.FC<MovieSourcesModalProps> = ({ isOpen, on
                 type="button"
                 onClick={onClose}
                 className="p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition cursor-pointer"
-                aria-label="إغلاق"
+                aria-label="Close"
               >
                 <X size={16} />
               </button>
@@ -161,7 +161,7 @@ export const MovieSourcesModal: React.FC<MovieSourcesModalProps> = ({ isOpen, on
             {/* Body */}
             <div className="p-5 flex flex-col gap-4">
               <p className="text-xs text-zinc-400 leading-relaxed font-sans text-center">
-                اختر أحد المصادر الثلاثة لفتح الفيلم في المتصفح
+                Select one of the three sources to open the movie in your browser
               </p>
 
               {hasImdb ? (
@@ -191,7 +191,7 @@ export const MovieSourcesModal: React.FC<MovieSourcesModalProps> = ({ isOpen, on
               ) : (
                 <div className="flex flex-col items-center justify-center p-6 bg-red-950/20 border border-red-900/40 rounded-xl text-center gap-3">
                   <AlertCircle className="text-red-500" size={32} />
-                  <p className="text-sm font-bold text-red-400">لا يوجد معرّف IMDb لهذا العنوان</p>
+                  <p className="text-sm font-bold text-red-400">No ID exists IMDb for this title</p>
                 </div>
               )}
             </div>
@@ -199,7 +199,7 @@ export const MovieSourcesModal: React.FC<MovieSourcesModalProps> = ({ isOpen, on
             {/* Footer */}
             <div className="px-5 py-3.5 bg-zinc-900/50 border-t border-zinc-800/40 text-center">
               <span className="text-[11px] text-zinc-500 font-sans tracking-wide">
-                يُفتح في تبويب جديد بأمان
+                Opens safely in a new tab
               </span>
             </div>
           </motion.div>

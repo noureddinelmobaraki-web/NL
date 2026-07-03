@@ -51,8 +51,8 @@ export function UserDetailPanel({ userId, onClose, onDeleted }: Props) {
     <div className="udp-overlay" onClick={onClose}>
       <div className="udp-panel" onClick={(e) => e.stopPropagation()}>
         <header className="udp-head">
-          <h3><ShieldCheck size={18} /> لوحة التحكّم بالمستخدم</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="إغلاق"><X size={18} /></button>
+          <h3><ShieldCheck size={18} /> User Control Panel</h3>
+          <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={18} /></button>
         </header>
 
         {a.loading && !a.data && <div className="udp-loading"><Loader2 className="spin" size={22} /></div>}
@@ -65,7 +65,7 @@ export function UserDetailPanel({ userId, onClose, onDeleted }: Props) {
                 {p.avatar_url ? <img src={p.avatar_url} alt="" /> : <span className="udp-noavatar">NL</span>}
               </AvatarFrame>
               <div>
-                <div className="udp-name">{p.display_name || 'بلا اسم'}</div>
+                <div className="udp-name">{p.display_name || 'No Name'}</div>
                 <div className="udp-email"><Mail size={12} /> {p.email ?? '—'}</div>
                 <div className="udp-id">{p.id}</div>
                 <RoleBadgeChips role={role || p.role} badge={badge || p.badge} />
@@ -73,25 +73,25 @@ export function UserDetailPanel({ userId, onClose, onDeleted }: Props) {
             </section>
 
             <section className="udp-stats">
-              <span><Music2 size={14} /> {a.data!.stats.song_count} أغنية</span>
-              <span><Film size={14} /> {a.data!.stats.movie_count} فيلم/مسلسل</span>
-              <span><Star size={14} /> {a.data!.stats.play_count} تشغيل</span>
+              <span><Music2 size={14} /> {a.data!.stats.song_count} Song</span>
+              <span><Film size={14} /> {a.data!.stats.movie_count} Movie/Series</span>
+              <span><Star size={14} /> {a.data!.stats.play_count} Play</span>
             </section>
 
             <section className="udp-controls">
-              <label>الإطار
+              <label>Frame
                 <select value={frame} onChange={(e) => setFrame(e.target.value)}>
                   {FRAME_IDS.map((f: FrameId) => <option key={f} value={f}>{FRAME_LABELS[f]}</option>)}
                 </select>
               </label>
-              <label>الرتبة (role)
+              <label>Rank (role)
                 <select value={role} onChange={(e) => setRole(e.target.value)}>
-                  <option value="">— بلا رتبة —</option>
+                  <option value="">— No Rank —</option>
                   {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_DEFS[r].label}</option>)}
                 </select>
               </label>
-              <label>الأوسمة (badges) — يمكن اختيار عدّة أوسمة
-                <div className="udp-badge-grid" role="group" aria-label="الأوسمة">
+              <label>Badges (badges) — Multiple badges can be selected
+                <div className="udp-badge-grid" role="group" aria-label="Badges">
                   {BADGE_OPTIONS.map((b) => {
                     const set = new Set(badge.split(',').map((s) => s.trim()).filter(Boolean));
                     return (
@@ -113,31 +113,31 @@ export function UserDetailPanel({ userId, onClose, onDeleted }: Props) {
               </label>
               <button className="btn-accent" disabled={busy}
                 onClick={() => run(() => a.setFrame(frame, role || null, badge || null))}>
-                {busy ? <Loader2 className="spin" size={16} /> : <Save size={16} />} حفظ الإطار/الرتبة
+                {busy ? <Loader2 className="spin" size={16} /> : <Save size={16} />} Save Frame/Rank
               </button>
             </section>
 
             <section className="udp-note">
-              <label>رسالة للمستخدم (تصله في بروفايله)
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="اكتب رسالة تظهر للمستخدم…" />
+              <label>Message to user (Visible in their profile)
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Write a message for the user…" />
               </label>
-              <button className="btn-ghost" disabled={busy} onClick={() => run(() => a.setNote(note))}>حفظ الرسالة</button>
+              <button className="btn-ghost" disabled={busy} onClick={() => run(() => a.setNote(note))}>Save Message</button>
             </section>
 
             <section className="udp-fav">
-              <h4><Music2 size={15} /> الأغاني ({a.data!.song_favorites.length})</h4>
+              <h4><Music2 size={15} /> Songs ({a.data!.song_favorites.length})</h4>
               <ul>
                 {a.data!.song_favorites.map((s) => (
                   <li key={s.song_id}>
                     <span>{songNames.get(s.song_id) ?? s.song_id}</span>
-                    <button className="icon-btn danger" disabled={busy} onClick={() => run(() => a.deleteSong(s.song_id))} aria-label="حذف"><Trash2 size={14} /></button>
+                    <button className="icon-btn danger" disabled={busy} onClick={() => run(() => a.deleteSong(s.song_id))} aria-label="Delete"><Trash2 size={14} /></button>
                   </li>
                 ))}
               </ul>
             </section>
 
             <section className="udp-fav">
-              <h4><Film size={15} /> الأفلام/المسلسلات ({a.data!.movie_items.length})</h4>
+              <h4><Film size={15} /> Movies/Series ({a.data!.movie_items.length})</h4>
               <ul>
                 {a.data!.movie_items.map((m) => (
                   <li key={`${m.tmdb_id}-${m.media_type}-${m.status}`}>
@@ -145,23 +145,23 @@ export function UserDetailPanel({ userId, onClose, onDeleted }: Props) {
                     <span>{m.title} <em>({m.status})</em></span>
                     <button className="icon-btn danger" disabled={busy}
                       onClick={() => run(() => a.deleteMovie({ tmdb_id: m.tmdb_id, media_type: m.media_type, status: m.status }))}
-                      aria-label="حذف"><Trash2 size={14} /></button>
+                      aria-label="Delete"><Trash2 size={14} /></button>
                   </li>
                 ))}
               </ul>
             </section>
 
             <section className="udp-danger">
-              <h4><AlertTriangle size={15} /> منطقة الخطر</h4>
+              <h4><AlertTriangle size={15} /> Danger Zone</h4>
               {!confirmDel ? (
-                <button className="btn-danger" onClick={() => setConfirmDel(true)}><Trash2 size={16} /> حذف المستخدم بالكامل</button>
+                <button className="btn-danger" onClick={() => setConfirmDel(true)}><Trash2 size={16} /> Delete User Entirely</button>
               ) : (
                 <div className="udp-confirm">
-                  <span>تأكيد الحذف النهائي؟</span>
-                  <button className="btn-ghost" disabled={busy} onClick={() => setConfirmDel(false)}>تراجع</button>
+                  <span>Confirm Final Deletion?</span>
+                  <button className="btn-ghost" disabled={busy} onClick={() => setConfirmDel(false)}>Undo</button>
                   <button className="btn-danger" disabled={busy}
                     onClick={() => run(async () => { await a.deleteUser(true); onDeleted?.(); onClose(); })}>
-                    {busy ? <Loader2 className="spin" size={16} /> : <Trash2 size={16} />} حذف نهائي
+                    {busy ? <Loader2 className="spin" size={16} /> : <Trash2 size={16} />} Final Delete
                   </button>
                 </div>
               )}

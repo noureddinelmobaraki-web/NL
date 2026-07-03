@@ -20,7 +20,7 @@ export const isSupabaseConfigured: boolean = Boolean(
 if (!isSupabaseConfigured && import.meta.env.DEV) {
   // تحذير في وضع التطوير فقط — لا يظهر للمستخدم النهائي
   console.warn(
-    '[Supabase] VITE_SUPABASE_URL أو VITE_SUPABASE_ANON_KEY غير مضبوطين — ميزات الحساب معطّلة.',
+    '[Supabase] VITE_SUPABASE_URL Or VITE_SUPABASE_ANON_KEY Not configured — Account features disabled.',
   )
 }
 

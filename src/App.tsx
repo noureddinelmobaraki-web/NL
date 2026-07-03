@@ -508,7 +508,7 @@ function MainApp() {
       />
 
       <a href="#main-content" className="skip-to-content">
-        <span lang="ar">تخطي إلى المحتوى</span> / <span lang="en">Skip to main content</span>
+        <span lang="ar">Skip to content</span> / <span lang="en">Skip to main content</span>
       </a>
       
       <Suspense fallback={null}>
@@ -647,7 +647,7 @@ function MainApp() {
               <section 
                 ref={songsRef} 
                 className="fade-in-section"
-                aria-label="أغانيّ المفضلة"
+                aria-label="My Favorite Songs"
               >
                 <SectionErrorBoundary sectionName="MySongs">
                   <Suspense fallback={<SkeletonSection type="songs" />}>
@@ -667,7 +667,7 @@ function MainApp() {
                 ref={contactRef}
                 className="fade-in-section"
                 style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}
-                aria-label="اتصل بي"
+                aria-label="Contact Me"
               >
                 <SectionErrorBoundary sectionName="ContactForm">
                   <Suspense fallback={<SkeletonSection type="contact" />}>
@@ -680,7 +680,7 @@ function MainApp() {
                 id="drawings-section"
                 ref={drawingsRef}
                 className="fade-in-section"
-                aria-label="رسوماتي"
+                aria-label="My Drawings"
               >
                 <SectionErrorBoundary sectionName="DrawingsPage">
                   <Suspense fallback={<SkeletonSection type="drawings" />}>

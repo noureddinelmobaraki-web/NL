@@ -176,10 +176,10 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
               <button
                 onClick={() => setSuggestOpen(true)}
                 className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-2xl border bg-white/60 text-slate-800 border-white/60 hover:bg-white/80 transition-colors text-sm font-bold"
-                title="اقترح أغنية"
+                title="Suggest Song"
               >
                 <Lightbulb size={16} className="text-[#FF7A1A]" />
-                <span className="hidden xs:inline">اقترح أغنية</span>
+                <span className="hidden xs:inline">Suggest Song</span>
               </button>
             )}
             <button

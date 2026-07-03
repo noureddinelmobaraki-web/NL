@@ -9,9 +9,9 @@ export const FRAME_IDS: FrameId[] = [
 ];
 
 export const FRAME_LABELS: Record<FrameId, string> = {
-  none: 'بلا إطار', wood: 'خشب', copper: 'نحاس', bronze: 'برونز',
-  silver: 'فضّي', gold: 'ذهبي', rainbow: 'قوس قزح', neon: 'نيون',
-  emerald: 'زمرّد', orange: 'برتقالي',
+  none: 'No Frame', wood: 'Wood', copper: 'Copper', bronze: 'Bronze',
+  silver: 'Silver', gold: 'Gold', rainbow: 'Rainbow', neon: 'Neon',
+  emerald: 'Emerald', orange: 'Orange',
 };
 
 interface Props { frame?: string | null; size?: number; children: ReactNode; }

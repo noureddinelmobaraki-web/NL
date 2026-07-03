@@ -28,21 +28,21 @@ const MODES: { id: Theme; label: string; icon: any }[] = [
 const SOURCES = ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games', 'movies', 'series', 'tv', 'retro'] as const;
 
 const AVOID_SELECTOR =
-  '[data-glass-avoid],[aria-label="Close"],[aria-label="إغلاق"],.modal-close-btn,.gallery-close-btn';
+  '[data-glass-avoid],[aria-label="Close"],[aria-label="Close"],.modal-close-btn,.gallery-close-btn';
 
 const ARABIC_ALIASES: Record<string, string[]> = {
-  dark: ['داكن', 'مظلم', 'ليل', 'dark'],
-  light: ['فاتح', 'مضيء', 'نهار', 'light'],
-  midnight: ['منتصف الليل', 'midnight', 'ليل'],
-  bit: ['بكسل', 'ريترو', 'bit', 'بيكسل'],
-  lite: ['خفيف', 'سريع', 'lite'],
-  games: ['ألعاب', 'العاب', 'games', 'لعب'],
-  cinema: ['أفلام', 'سينما', 'movies', 'افلام', 'فيلم', 'cinema'],
-  tv: ['تلفاز', 'تلفزيون', 'tv'],
-  retro: ['ريترو', 'قديم', 'retro'],
-  xp: ['ويندوز', 'xp', 'كمبيوتر', 'مكتب'],
-  music: ['موسيقى', 'اغاني', 'أغاني', 'music', 'صوت'],
-  accounts: ['حسابات', 'اعضاء', 'أعضاء', 'accounts', 'مستخدمين']
+  dark: ['Dark', 'Dark', 'Night', 'dark'],
+  light: ['Light', 'Bright', 'Day', 'light'],
+  midnight: ['Midnight', 'midnight', 'Night'],
+  bit: ['Pixel', 'Retro', 'bit', 'Pixel'],
+  lite: ['Lite', 'Fast', 'lite'],
+  games: ['Games', 'Games', 'games', 'Play'],
+  cinema: ['Movies', 'Cinema', 'movies', 'Movies', 'Movie', 'cinema'],
+  tv: ['TV', 'Television', 'tv'],
+  retro: ['Retro', 'Old', 'retro'],
+  xp: ['Windows', 'xp', 'Computer', 'Desktop'],
+  music: ['Music', 'Songs', 'Songs', 'music', 'Audio'],
+  accounts: ['Accounts', 'Members', 'Members', 'accounts', 'Users']
 };
 
 export function clampOffset(
@@ -394,7 +394,7 @@ function GlassModeSwitcherInner() {
       id: 'games',
       label: 'Games',
       ariaLabel: isGamesOpen ? 'Close games' : 'Games',
-      title: 'الألعاب',
+      title: 'Games',
       icon: <Gamepad2 size={16} />,
       isActive: isGamesOpen,
       onClick: (e: any) => {
@@ -410,7 +410,7 @@ function GlassModeSwitcherInner() {
       id: 'cinema',
       label: 'Cinema',
       ariaLabel: isMoviesOpen ? 'Close Cinema' : 'Cinema',
-      title: 'السينما والأفلام',
+      title: 'Cinema & Movies',
       icon: <Film size={16} />,
       isActive: isMoviesOpen,
       onClick: (e: any) => {
@@ -426,7 +426,7 @@ function GlassModeSwitcherInner() {
       id: 'tv',
       label: 'TV',
       ariaLabel: isTvOpen ? 'Close TV' : 'TV',
-      title: 'التلفاز والبث المباشر',
+      title: 'TV & Live Stream',
       icon: <Tv size={16} />,
       isActive: isTvOpen,
       onClick: (e: any) => {
@@ -443,7 +443,7 @@ function GlassModeSwitcherInner() {
       id: 'retro',
       label: 'Retro',
       ariaLabel: isRetroOpen ? 'Close Retro' : 'Retro',
-      title: 'الألعاب الكلاسيكية',
+      title: 'Classic Games',
       icon: <Joystick size={16} />,
       isActive: isRetroOpen,
       onClick: (e: any) => {
@@ -460,7 +460,7 @@ function GlassModeSwitcherInner() {
       id: 'xp',
       label: 'Windows XP',
       ariaLabel: isXpOpen ? 'Close Windows XP' : 'Windows XP',
-      title: 'سطح مكتب ويندوز',
+      title: 'Windows Desktop',
       icon: <Monitor size={16} />,
       isActive: isXpOpen,
       onClick: (e: any) => {
@@ -478,7 +478,7 @@ function GlassModeSwitcherInner() {
       id: 'music',
       label: 'Music',
       ariaLabel: isMusicOpen ? 'Close Music' : 'Music',
-      title: 'المشغل الموسيقي',
+      title: 'Music Player',
       icon: <AudioLines size={16} />,
       isActive: isMusicOpen,
       onClick: (e: any) => {
@@ -497,7 +497,7 @@ function GlassModeSwitcherInner() {
       id: 'accounts',
       label: 'Accounts',
       ariaLabel: isAccountsOpen ? 'Close Accounts' : 'Accounts',
-      title: 'دليل المستخدمين',
+      title: 'User Directory',
       icon: <Users size={16} />,
       isActive: isAccountsOpen,
       onClick: (e: any) => {

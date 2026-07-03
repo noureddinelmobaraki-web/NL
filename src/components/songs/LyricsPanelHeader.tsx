@@ -59,7 +59,7 @@ export const LyricsPanelHeader = ({ title, onClose }: LyricsPanelHeaderProps) =>
     </div>
     <button
       onClick={onClose}
-      aria-label="إغلاق الكلمات"
+      aria-label="Close Lyrics"
       style={{
         width: '36px',
         height: '36px',

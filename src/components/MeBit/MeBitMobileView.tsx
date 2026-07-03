@@ -144,7 +144,7 @@ export const MeBitMobileView = ({
             <button
               onClick={(e) => { e.stopPropagation(); onToggleAudio(); }}
               className="ios-btn"
-              aria-label={isMeBitPlaying ? 'إيقاف الموسيقى' : 'تشغيل الموسيقى'}
+              aria-label={isMeBitPlaying ? 'Stop Music' : 'Play Music'}
               type="button"
             >
               {isMeBitPlaying ? <Volume2 size={20} /> : <VolumeX size={20} className="text-zinc-400" />}
@@ -152,7 +152,7 @@ export const MeBitMobileView = ({
             <button
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               className="ios-btn ios-btn-close"
-              aria-label="إغلاق المعرض"
+              aria-label="Close Gallery"
               type="button"
             >
               <X size={20} />
@@ -169,7 +169,7 @@ export const MeBitMobileView = ({
                 type="button"
                 onClick={() => onOpenView(i)}
                 className="grid-photo-btn"
-                aria-label={`فتح الصورة ${i + 1}`}
+                aria-label={`Open Image ${i + 1}`}
               >
                 <motion.img
                   layoutId={i === selectedIndex ? "mebit-img-active" : undefined}
@@ -204,7 +204,7 @@ export const MeBitMobileView = ({
         <button
           onClick={(e) => { e.stopPropagation(); onEnterGrid(); }}
           className="ios-btn"
-          aria-label="عودة للشبكة"
+          aria-label="Back to Grid"
           type="button"
         >
           <ChevronLeft size={20} />
@@ -218,7 +218,7 @@ export const MeBitMobileView = ({
           <button
             onClick={(e) => { e.stopPropagation(); onToggleAudio(); }}
             className="ios-btn"
-            aria-label={isMeBitPlaying ? 'إيقاف الموسيقى' : 'تشغيل الموسيقى'}
+            aria-label={isMeBitPlaying ? 'Stop Music' : 'Play Music'}
             type="button"
           >
             {isMeBitPlaying ? <Volume2 size={20} /> : <VolumeX size={20} className="text-zinc-400" />}
@@ -226,7 +226,7 @@ export const MeBitMobileView = ({
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
             className="ios-btn ios-btn-close"
-            aria-label="إغلاق المعرض"
+            aria-label="Close Gallery"
             type="button"
           >
             <X size={20} />
@@ -288,7 +288,7 @@ export const MeBitMobileView = ({
           <button
             type="button"
             className="gallery-nav-arrow gallery-nav-prev"
-            aria-label="الصورة السابقة"
+            aria-label="Previous Image"
             onClick={(e) => { e.stopPropagation(); onPrev(); }}
           >
             <ChevronLeft size={26} aria-hidden="true" />
@@ -296,7 +296,7 @@ export const MeBitMobileView = ({
           <button
             type="button"
             className="gallery-nav-arrow gallery-nav-next"
-            aria-label="الصورة التالية"
+            aria-label="Next Image"
             onClick={(e) => { e.stopPropagation(); onNext(); }}
           >
             <ChevronRight size={26} aria-hidden="true" />

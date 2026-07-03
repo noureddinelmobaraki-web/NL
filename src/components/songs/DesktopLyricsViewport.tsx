@@ -75,7 +75,7 @@ export const DesktopLyricsViewport = ({
   if (!lyrics || lyrics.length === 0) {
     return (
       <div className={`nl-desktop-lyrics nl-desktop-lyrics--${variant} nl-desktop-lyrics--empty`}>
-        ♪ جاري تحميل الكلمات...
+        ♪ Loading lyrics......
       </div>
     );
   }

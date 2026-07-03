@@ -53,7 +53,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   };
 
   const deleteSuggestion = async (id: string) => {
-    if (!window.confirm('هل تريد حذف هذا الاقتراح؟')) return;
+    if (!window.confirm('Delete this suggestion?')) return;
     const { error } = await supabase.rpc('admin_delete_suggestion', { p_id: id });
     if (error) { console.error('admin_delete_suggestion failed:', error.message); return; }
     setSuggestions((prev) => prev.filter((s) => s.id !== id));
@@ -215,12 +215,12 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                     <button
                       onClick={() => deleteSuggestion(s.id)}
                       className="absolute top-3 right-3 p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-800/80 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="حذف الاقتراح"
+                      title="Delete Suggestion"
                     >
                       <X size={14} />
                     </button>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-zinc-200">{s.display_name ?? 'مستخدم'}</span>
+                      <span className="text-xs font-bold text-zinc-200">{s.display_name ?? 'User'}</span>
                       <span className="text-[10px] text-zinc-500">{s.email ?? ''}</span>
                       <span className="text-[10px] text-zinc-600 mr-auto">{new Date(s.created_at).toLocaleDateString()}</span>
                     </div>
@@ -228,7 +228,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   </div>
                 ))}
                 {!suggestionsLoading && suggestions.length === 0 && (
-                  <p className="py-8 text-center text-zinc-600 text-xs">لا توجد اقتراحات حالياً.</p>
+                  <p className="py-8 text-center text-zinc-600 text-xs">No current suggestions.</p>
                 )}
               </div>
             )}
@@ -236,38 +236,38 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-zinc-800/40 border border-zinc-700/50 rounded-xl">
                   <div>
-                    <h4 className="text-xs font-bold text-zinc-300">التحكم في الإحصائيات (Stats Controls)</h4>
-                    <p className="text-[10px] text-zinc-500">إجراءات عامة على مستوى المنصة</p>
+                    <h4 className="text-xs font-bold text-zinc-300">Manage Stats (Stats Controls)</h4>
+                    <p className="text-[10px] text-zinc-500">Platform-wide Actions</p>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={async () => {
-                        if (!window.confirm('هل أنت متأكد من إرسال التقرير؟')) return;
+                        if (!window.confirm('Are you sure you want to send the report?')) return;
                         const { error } = await supabase.rpc('admin_send_report');
                         if (error) {
-                          alert('فشل إرسال التقرير: ' + error.message);
+                          alert('Failed to send report: ' + error.message);
                         } else {
-                          alert('تم إرسال التقرير بنجاح!');
+                          alert('Report sent successfully!');
                         }
                       }}
                       className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded font-bold text-[11px] cursor-pointer"
                     >
-                      إرسال تقرير (Send Report)
+                      Send Report (Send Report)
                     </button>
                     <button
                       onClick={async () => {
-                        if (!window.confirm('تحذير: هل أنت متأكد من تصفير جميع الإحصائيات لجميع المستخدمين؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+                        if (!window.confirm('Warning: Are you sure you want to reset all stats for all users? This cannot be undone.')) return;
                         const { error } = await supabase.rpc('admin_reset_all_stats');
                         if (error) {
-                          alert('فشل التصفير: ' + error.message);
+                          alert('Failed to reset: ' + error.message);
                         } else {
-                          alert('تم تصفير جميع الإحصائيات بنجاح!');
+                          alert('All stats reset successfully!');
                           void fetchListeningStats();
                         }
                       }}
                       className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold text-[11px] cursor-pointer"
                     >
-                      تصفير الكل (Reset All Stats)
+                      Reset All (Reset All Stats)
                     </button>
                   </div>
                 </div>
@@ -276,17 +276,17 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   <table className="w-full text-left text-xs text-zinc-300">
                     <thead>
                       <tr className="text-zinc-500 border-b border-zinc-800">
-                        <th className="py-2 pr-3 font-semibold text-right">المستخدم (User)</th>
-                        <th className="py-2 px-2 font-semibold text-center">أغاني (Songs)</th>
-                        <th className="py-2 px-2 font-semibold text-center">أفلام (Movies)</th>
-                        <th className="py-2 px-2 font-semibold text-center">مسلسلات (Series)</th>
-                        <th className="py-2 pl-2 font-semibold text-left">الإجراءات (Actions)</th>
+                        <th className="py-2 pr-3 font-semibold text-right">User (User)</th>
+                        <th className="py-2 px-2 font-semibold text-center">Songs (Songs)</th>
+                        <th className="py-2 px-2 font-semibold text-center">Movies (Movies)</th>
+                        <th className="py-2 px-2 font-semibold text-center">Series (Series)</th>
+                        <th className="py-2 pl-2 font-semibold text-left">Actions (Actions)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {listeningLoading && (
                         <tr>
-                          <td colSpan={5} className="py-8 text-center text-zinc-500">جاري التحميل...</td>
+                          <td colSpan={5} className="py-8 text-center text-zinc-500">Loading......</td>
                         </tr>
                       )}
                       {!listeningLoading && listeningOverview.map((row, i) => {
@@ -312,31 +312,31 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                                   onClick={async () => {
                                     const { data, error } = await supabase.rpc('admin_user_report', { p_user_id: rowUserId });
                                     if (error) {
-                                      alert('فشل جلب التقرير: ' + error.message);
+                                      alert('Failed to fetch report: ' + error.message);
                                     } else {
-                                      alert('تقرير المستخدم:\n' + JSON.stringify(data, null, 2));
+                                      alert('User Report:\n' + JSON.stringify(data, null, 2));
                                     }
                                   }}
                                   className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[10px] cursor-pointer"
-                                  title="تقرير مستخدم واحد"
+                                  title="Single User Report"
                                 >
-                                  تقرير (Report)
+                                  Report (Report)
                                 </button>
                                 <button
                                   onClick={async () => {
                                     if (!window.confirm(`هل أنت متأكد من حذف إحصائيات الاستماع للمستخدم ${row.display_name || ''}؟`)) return;
                                     const { error } = await supabase.rpc('admin_delete_user_stats', { p_user_id: rowUserId });
                                     if (error) {
-                                      alert('فشل الحذف: ' + error.message);
+                                      alert('Failed to delete: ' + error.message);
                                     } else {
-                                      alert('تم حذف إحصائيات المستخدم بنجاح!');
+                                      alert('User stats deleted successfully!');
                                       void fetchListeningStats();
                                     }
                                   }}
                                   className="px-2 py-1 bg-red-900/50 hover:bg-red-800 border border-red-800/40 text-red-200 rounded text-[10px] cursor-pointer"
-                                  title="حذف مستخدم بعينه"
+                                  title="Delete specific user"
                                 >
-                                  حذف (Delete)
+                                  Delete (Delete)
                                 </button>
                               </div>
                             </td>
@@ -345,7 +345,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       })}
                       {!listeningLoading && listeningOverview.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="py-8 text-center text-zinc-600 text-xs">لا توجد إحصائيات استماع بعد.</td>
+                          <td colSpan={5} className="py-8 text-center text-zinc-600 text-xs">No listening stats yet.</td>
                         </tr>
                       )}
                     </tbody>

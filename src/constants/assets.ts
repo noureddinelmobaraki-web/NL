@@ -71,8 +71,8 @@ export const MOOD_TRANSITION_VIDEOS = {
 } as const;
 
 export const MOOD_TRANSITION_TIMING = {
-  total: 2000,           // الفيديو طوله 2 ثانية
-  revealMoodAt: 1800,    // MusicMood يبدأ يظهر في الـ 1.8 ثانية
+  total: 2000,           // الفيديو طوله 2 second
+  revealMoodAt: 1800,    // MusicMood يبدأ يظهر في الـ 1.8 second
   fadeOutDuration: 200,  // الـ 200ms الأخيرة fade-out للفيديو
 } as const;
 
@@ -164,7 +164,7 @@ export const ASSETS = {
       `${CDN}/The%20Way%20I%20Am.webp`,
       `${CDN}/VVS.webp`,
       `${CDN}/ink.webp`,
-      `${CDN}/عبلة.webp`,
+      `${CDN}/Abla.webp`,
     ]
   },
   gallery: {

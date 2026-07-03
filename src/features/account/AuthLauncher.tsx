@@ -23,12 +23,12 @@ export default function AuthLauncher() {
       onPointerEnter={() => import('./AuthModal').catch(() => {})}
       onFocus={() => import('./AuthModal').catch(() => {})}
       onClick={openAuthModal}
-      aria-label="تسجيل الدخول"
+      aria-label="Login"
     >
       <span className="auth-launcher__glow" aria-hidden="true" />
       <span className="auth-launcher__dot" aria-hidden="true" />
       <LogIn className="auth-launcher__icon" size={15} strokeWidth={2.5} aria-hidden="true" />
-      <span className="auth-launcher__label">تسجيل الدخول</span>
+      <span className="auth-launcher__label">Login</span>
     </button>,
     document.body,
   )

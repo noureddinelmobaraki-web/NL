@@ -102,7 +102,7 @@ export function SongRow({
             className={`p-1.5 transition-colors rounded-full text-slate-700 opacity-30 group-hover:opacity-100 hover:text-[#34E89E] ${
               shareState !== 'idle' ? 'text-[#00E676] opacity-100 scale-110' : ''
             }`}
-            title="مشاركة الأغنية"
+            title="Share song"
           >
             {shareState === 'copied' || shareState === 'shared' ? (
               <Check size={16} className="text-[#00E676]" />

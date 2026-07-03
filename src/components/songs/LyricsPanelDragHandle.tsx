@@ -28,7 +28,7 @@ const GHOST_CLICK_SUPPRESS_MS    = 350;
 
 export const LyricsPanelDragHandle = ({
   onDismiss,
-  ariaLabel = 'اسحب لإغلاق الكلمات',
+  ariaLabel = 'Swipe to close lyrics',
 }: LyricsPanelDragHandleProps) => {
   const [dragY, setDragY] = useState(0);
   const startY = useRef<number | null>(null);

@@ -17,15 +17,15 @@ export function PageLoader({ pageType }: PageLoaderProps) {
   const getPageTitle = () => {
     switch (pageType) {
       case "cinema":
-        return isRtl ? "جاري تحميل السينما..." : "Loading Cinema...";
+        return isRtl ? "Loading Cinema......" : "Loading Cinema...";
       case "tv":
-        return isRtl ? "جاري تشغيل التلفاز..." : "Loading NL TV...";
+        return isRtl ? "Loading TV......" : "Loading NL TV...";
       case "games":
-        return isRtl ? "جاري تحضير الألعاب..." : "Loading Games...";
+        return isRtl ? "Preparing Games......" : "Loading Games...";
       case "retro":
-        return isRtl ? "جاري تشغيل عالم ريترو..." : "Loading Retro World...";
+        return isRtl ? "Loading Retro World......" : "Loading Retro World...";
       default:
-        return isRtl ? "جاري التحميل..." : "Loading...";
+        return isRtl ? "Loading......" : "Loading...";
     }
   };
 

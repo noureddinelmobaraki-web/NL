@@ -224,7 +224,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
       ref={containerRef}
       role="dialog"
       aria-modal="true"
-      aria-label="معرض الصور"
+      aria-label="Gallery"
       tabIndex={-1}
       style={{
         ['--genie-origin' as string]: genieOriginToTransformOrigin(getGenieOrigin()),

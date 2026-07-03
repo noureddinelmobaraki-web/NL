@@ -539,7 +539,7 @@ export const DrawingsFullscreen = ({
         >
           <div className="backdrop-blur-xl bg-black/40 border border-white/10 text-white px-6 py-4 rounded-2xl flex flex-col items-center gap-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-bounce">
             <div className="text-sm font-medium tracking-wide text-center flex items-center gap-2">
-              <span className="text-white/95">اسحب للأعلى للاستكشاف</span>
+              <span className="text-white/95">Swipe up to explore</span>
             </div>
             <div className="text-[10px] text-white/50 font-mono tracking-widest uppercase">
               Swipe up to explore

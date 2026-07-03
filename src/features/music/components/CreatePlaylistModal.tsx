@@ -32,7 +32,7 @@ export function CreatePlaylistModal({ open, onClose, onCreated }: {
     setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
   const submit = () => {
-    const finalName = name.trim() || `بلاي ليست ${Date.now() % 1000}`;
+    const finalName = name.trim() || `Playlist ${Date.now() % 1000}`;
     let id: string;
     if (picked.length > 0) {
       id = actions.createPlaylist(finalName);
@@ -55,23 +55,23 @@ export function CreatePlaylistModal({ open, onClose, onCreated }: {
     <div className="nl-cpl-overlay" onMouseDown={handleClose}>
       <div className="nl-cpl" dir="rtl" onMouseDown={(e) => e.stopPropagation()}>
         <header className="nl-cpl__head">
-          <h3><ListMusic size={18} /> إنشاء بلاي ليست</h3>
-          <button className="nl-cpl__x" onClick={handleClose} aria-label="إغلاق"><X size={18} /></button>
+          <h3><ListMusic size={18} /> Create Playlist</h3>
+          <button className="nl-cpl__x" onClick={handleClose} aria-label="Close"><X size={18} /></button>
         </header>
 
         <input
           className="nl-cpl__name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="اسم البلاي ليست..."
+          placeholder="Playlist Name..."
         />
 
         <label className="nl-cpl__search">
           <Search size={15} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن أغنية..." />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search for a song..." />
         </label>
 
-        <div className="nl-cpl__count">{picked.length} مختارة</div>
+        <div className="nl-cpl__count">{picked.length} Selected</div>
 
         <div className="nl-cpl__list">
           {filtered.map((t: Track) => {
@@ -87,7 +87,7 @@ export function CreatePlaylistModal({ open, onClose, onCreated }: {
                     e.stopPropagation(); // Prevent row selection toggle
                     preview.toggle(t);
                   }}
-                  aria-label="معاينة"
+                  aria-label="Preview"
                 >
                   {isPlaying ? <Pause size={13} /> : <Play size={13} />}
                 </button>
@@ -111,13 +111,13 @@ export function CreatePlaylistModal({ open, onClose, onCreated }: {
               </div>
             );
           })}
-          {filtered.length === 0 && <p className="nl-cpl__empty">لا نتائج.</p>}
+          {filtered.length === 0 && <p className="nl-cpl__empty">No results.</p>}
         </div>
 
         <footer className="nl-cpl__foot">
-          <button className="nl-cpl__cancel" onClick={handleClose}>إلغاء</button>
+          <button className="nl-cpl__cancel" onClick={handleClose}>Cancel</button>
           <button className="nl-cpl__create" onClick={submit}>
-            إنشاء {picked.length > 0 ? `(${picked.length})` : ''}
+            Create {picked.length > 0 ? `(${picked.length})` : ''}
           </button>
         </footer>
       </div>

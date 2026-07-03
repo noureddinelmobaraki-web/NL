@@ -154,7 +154,7 @@ export const MoodControls = memo(({
       <div className="relative group/play">
         <button
           onClick={handlePlayPause}
-          aria-label={audioStatus === 'playing' ? 'إيقاف مؤقت' : 'تشغيل'}
+          aria-label={audioStatus === 'playing' ? 'Pause' : 'Play'}
           className="w-[52px] h-[52px] lg:w-[56px] lg:h-[56px] rounded-full border-[1.5px] border-[rgba(0,0,0,0.12)] bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.05)_0%,transparent_60%)] flex items-center justify-center transition-all duration-200 ease-out cursor-pointer text-[rgba(0,0,0,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500/60 focus-visible:outline-offset-4 hover:scale-108 hover:border-[rgba(0,0,0,0.4)] hover:text-[rgba(0,0,0,0.9)] active:scale-94"
         >
           {audioStatus === 'playing' ? (
@@ -174,7 +174,7 @@ export const MoodControls = memo(({
       <div className="relative group/dice" style={{ perspective: '800px' }}>
         <button
           onClick={handleDiceClick}
-          aria-label="أغنية عشوائية"
+          aria-label="Random Song"
           className="w-[52px] h-[52px] lg:w-[56px] lg:h-[56px] rounded-full border-[1.5px] border-[rgba(0,0,0,0.12)] bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.05)_0%,transparent_60%)] flex items-center justify-center transition-all duration-250 cursor-pointer p-0 active:scale-94 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500/60 focus-visible:outline-offset-4"
           style={{
             transformStyle: 'preserve-3d',
@@ -218,7 +218,7 @@ export const MoodControls = memo(({
           className="pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 rounded bg-neutral-900/90 px-3 py-1.5 text-center text-[11px] font-medium tracking-wide text-white opacity-0 transition-all duration-200 delay-500 group-hover/dice:opacity-100 hidden lg:block shadow-md whitespace-nowrap border border-white/10"
           style={{ transformOrigin: 'bottom center' }}
         >
-          أغنية عشوائية / Roll for a random song
+          Random Song / Roll for a random song
         </span>
       </div>
     </div>

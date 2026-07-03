@@ -103,7 +103,7 @@ export class SectionErrorBoundary extends Component<Props, State> {
                 color: '#111111',
               }}
             >
-              عذراً، حدث خطأ ما
+              Sorry, something went wrong
             </h1>
             <p
               style={{
@@ -115,7 +115,7 @@ export class SectionErrorBoundary extends Component<Props, State> {
                 color: '#444444',
               }}
             >
-              واجه التطبيق مشكلة غير متوقعة. يرجى إعادة تحميل الصفحة للمتابعة.
+              The application encountered an unexpected problem. Please reload the page to continue.
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -135,7 +135,7 @@ export class SectionErrorBoundary extends Component<Props, State> {
               onMouseOver={(e) => { e.currentTarget.style.opacity = '0.85'; }}
               onMouseOut={(e) => { e.currentTarget.style.opacity = '1'; }}
             >
-              إعادة التحميل
+              Reload
             </button>
           </div>
         );

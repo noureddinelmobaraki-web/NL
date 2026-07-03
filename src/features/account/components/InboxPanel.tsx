@@ -53,7 +53,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
             message: d.message,
             created_at: d.created_at,
             is_read: d.is_read,
-            sender_name: d.sender?.display_name || 'مستخدم',
+            sender_name: d.sender?.display_name || 'User',
             sender_avatar: d.sender?.avatar_url
           }));
           setSuggestions(mapped);
@@ -82,7 +82,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
       onClose();
       closeProfile();
     } else {
-      alert('الأغنية غير متوفرة في دليل الموسيقى الحالي.');
+      alert('Song is unavailable in current music directory.');
     }
   };
 
@@ -133,7 +133,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
       <div className="flex items-center justify-between border-b border-white/10 pb-4 shrink-0">
         <div className="flex items-center gap-2">
           <MailOpen className="text-teal-400" size={20} />
-          <h3 className="text-lg font-bold">صندوق المقترحات الموسيقية</h3>
+          <h3 className="text-lg font-bold">Music Suggestion Box</h3>
         </div>
         <div className="flex items-center gap-3">
           {suggestions.some((s) => !s.is_read) && (
@@ -141,7 +141,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
               onClick={handleMarkAllRead}
               className="text-xs text-teal-400 hover:text-teal-300 font-bold transition-colors"
             >
-              قراءة الكل
+              Mark all as read
             </button>
           )}
           <button 
@@ -158,16 +158,16 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full py-12 text-slate-400 gap-2">
             <Loader2 size={32} className="animate-spin text-teal-400" />
-            <p className="text-sm">جارٍ تحميل المقترحات...</p>
+            <p className="text-sm">Loading suggestions......</p>
           </div>
         ) : suggestions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-12 text-center text-slate-500">
             <div className="w-16 h-16 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 mb-4">
               <MailOpen size={28} />
             </div>
-            <h4 className="font-bold text-sm text-slate-400">صندوقك فارغ تماماً</h4>
+            <h4 className="font-bold text-sm text-slate-400">Your box is completely empty</h4>
             <p className="text-xs text-slate-500 mt-1 max-w-[240px] mx-auto">
-              عندما يرسل لك الأصدقاء أغاني لتقوم بالاستماع إليها، ستظهر مقترحاتهم هنا.
+              When friends send you songs to listen to, their suggestions will appear here.
             </p>
           </div>
         ) : (
@@ -197,7 +197,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
                     <button
                       onClick={() => handlePlaySuggestion(item.song_id)}
                       className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity duration-200"
-                      title="تشغيل الآن"
+                      title="Play Now"
                     >
                       <Play size={20} fill="currentColor" />
                     </button>
@@ -209,14 +209,14 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
                   <div className="min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <h4 className="font-bold text-white truncate text-sm">
-                        {track?.title || `أغنية #${item.song_id}`}
+                        {track?.title || `Song #${item.song_id}`}
                       </h4>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           disabled={deletingId === item.id}
                           onClick={() => handleDelete(item.id)}
                           className="p-1 hover:bg-rose-500/15 text-slate-400 hover:text-rose-400 rounded transition-colors"
-                          title="حذف"
+                          title="Delete"
                         >
                           {deletingId === item.id ? (
                             <Loader2 size={13} className="animate-spin" />
@@ -227,7 +227,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
                       </div>
                     </div>
                     <p className="text-xs text-slate-400 truncate mt-0.5">
-                      {track?.artist || 'مغني مجهول'}
+                      {track?.artist || 'Unknown Artist'}
                     </p>
                   </div>
 
@@ -235,7 +235,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
                   <div className="mt-2 bg-white/5 rounded-xl p-2 border border-white/5">
                     <div className="flex items-center gap-1.5 text-[10px] text-teal-400 font-bold mb-1">
                       <MessageSquare size={10} />
-                      <span>اقتراح من: {item.sender_name || 'مستكشف'}</span>
+                      <span>Suggestion from: {item.sender_name || 'Explorer'}</span>
                     </div>
                     {item.message && (
                       <p className="text-[11px] text-slate-300 leading-relaxed font-medium break-words">
@@ -261,7 +261,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
 
       {/* Footer */}
       <div className="text-center text-[10px] text-slate-600 pt-3 border-t border-white/10 shrink-0 select-none">
-        شارك حب الموسيقى • NL Music Inbox
+        Share the love for music • NL Music Inbox
       </div>
     </div>
   );

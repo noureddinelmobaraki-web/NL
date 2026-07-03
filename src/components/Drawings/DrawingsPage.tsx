@@ -136,14 +136,14 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-[var(--text-primary)]">تعذّر تحميل الرسومات</h2>
-          <p className="text-[var(--text-muted)]">يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى</p>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Failed to load drawings</h2>
+          <p className="text-[var(--text-muted)]">Please check your internet connection and try again</p>
           <button
             onClick={() => setRetryCount(c => c + 1)}
             className="px-8 py-3 bg-[var(--accent-red)] text-white rounded-full font-bold transition-all shadow-lg shadow-red-500/20"
             style={{ minHeight: '44px', minWidth: '44px', touchAction: 'manipulation' }}
           >
-            إعادة المحاولة
+            Retry
           </button>
         </div>
       </section>

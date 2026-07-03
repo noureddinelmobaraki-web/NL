@@ -145,7 +145,7 @@ export const LensMobileView = ({
             <button
               onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
               className="ios-btn"
-              aria-label={isMuted ? 'تشغيل الصوت' : 'كتم الصوت'}
+              aria-label={isMuted ? 'Play Audio' : 'Mute'}
               type="button"
             >
               {isMuted ? <VolumeX size={20} className="text-zinc-400" /> : <Volume2 size={20} />}
@@ -153,7 +153,7 @@ export const LensMobileView = ({
             <button
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               className="ios-btn ios-btn-close"
-              aria-label="إغلاق المعرض"
+              aria-label="Close Gallery"
               type="button"
             >
               <X size={20} />
@@ -170,7 +170,7 @@ export const LensMobileView = ({
                 type="button"
                 onClick={() => onOpenView(i)}
                 className="grid-photo-btn"
-                aria-label={`فتح الصورة ${i + 1}`}
+                aria-label={`Open Image ${i + 1}`}
               >
                 <motion.img
                   layoutId={i === selectedIndex ? "lens-img-active" : undefined}
@@ -205,7 +205,7 @@ export const LensMobileView = ({
         <button
           onClick={(e) => { e.stopPropagation(); onEnterGrid(); }}
           className="ios-btn"
-          aria-label="عودة للشبكة"
+          aria-label="Back to Grid"
           type="button"
         >
           <ChevronLeft size={20} />
@@ -219,7 +219,7 @@ export const LensMobileView = ({
           <button
             onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
             className="ios-btn"
-            aria-label={isMuted ? 'تشغيل الصوت' : 'كتم الصوت'}
+            aria-label={isMuted ? 'Play Audio' : 'Mute'}
             type="button"
           >
             {isMuted ? <VolumeX size={20} className="text-zinc-400" /> : <Volume2 size={20} />}
@@ -227,7 +227,7 @@ export const LensMobileView = ({
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
             className="ios-btn ios-btn-close"
-            aria-label="إغلاق المعرض"
+            aria-label="Close Gallery"
             type="button"
           >
             <X size={20} />
@@ -289,7 +289,7 @@ export const LensMobileView = ({
           <button
             type="button"
             className="gallery-nav-arrow gallery-nav-prev"
-            aria-label="الصورة السابقة"
+            aria-label="Previous Image"
             onClick={(e) => { e.stopPropagation(); onIndexChange((selectedIndex - 1 + photos.length) % photos.length); }}
           >
             <ChevronLeft size={26} aria-hidden="true" />
@@ -297,7 +297,7 @@ export const LensMobileView = ({
           <button
             type="button"
             className="gallery-nav-arrow gallery-nav-next"
-            aria-label="الصورة التالية"
+            aria-label="Next Image"
             onClick={(e) => { e.stopPropagation(); onIndexChange((selectedIndex + 1) % photos.length); }}
           >
             <ChevronRight size={26} aria-hidden="true" />

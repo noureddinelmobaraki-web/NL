@@ -22,7 +22,7 @@ export function EqualizerPanel({ onClose }: { onClose?: () => void } = {}) {
   return (
     <div className="relative p-3 md:p-4 rounded-xl bg-[rgba(14,22,46,0.85)] border border-white/20 backdrop-blur-[20px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),0_8px_30px_rgba(0,0,0,0.5)] flex flex-col gap-4">
       {onClose && (
-        <button type="button" className="nl-glass-close" onClick={onClose} aria-label="إغلاق">
+        <button type="button" className="nl-glass-close" onClick={onClose} aria-label="Close">
           <X size={16} />
         </button>
       )}

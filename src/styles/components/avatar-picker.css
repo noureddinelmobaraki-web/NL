@@ -1,0 +1,226 @@
+/* ===================================================================
+   Avatar Picker — أفاتارات تطفو في الهواء (بلا نافذة) + شريط زجاجي Aero
+   =================================================================== */
+.nl-avpick-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10080; /* فوق نافذة البروفيل (10000) ومنتقياتها (10020/10060) */
+  display: grid;
+  place-items: center;
+  /* تعتيم خفيف جدًا للتركيز — لا نافذة */
+  background: #04070d;
+  padding: 16px;
+}
+
+/* طبقة فيديو الحسابات داخل منتقي الأفاتار — تغطي كامل الشاشة خلف الأفاتارات */
+.nl-avpick-overlay .nl-accounts__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* عزل صفحة البروفيل: تتوقف عن الرسم/الحركة وقت فتح المنتقي (تخفيف الحمل) */
+html.nl-avpick-active .profile-overlay {
+  visibility: hidden;
+  content-visibility: hidden;
+}
+
+/* الحاوية بلا خلفية ولا إطار — كل شيء يطفو */
+.nl-avpick {
+  position: relative;
+  z-index: 1;
+  width: min(94vw, 460px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.nl-avpick__close {
+  position: absolute;
+  top: -6px;
+  inset-inline-start: 2px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #eaf2fa;
+  cursor: pointer;
+  z-index: 6;
+}
+.nl-avpick__close:hover { background: rgba(255, 255, 255, 0.18); }
+
+/* أزرار أيقونية (رفع / اختيار) */
+.nl-avpick__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 8px 20px rgba(6, 30, 50, 0.45);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+.nl-avpick__icon:active { transform: translateY(1px) scale(0.97); }
+.nl-avpick__icon:disabled { opacity: 0.6; cursor: default; }
+
+/* زر الرفع — حلقة زجاجية خضراء صغيرة تطفو فوق الأفاتارات */
+.nl-avpick__upload { margin-bottom: 2px; }
+.nl-avpick__icon--upload {
+  background: linear-gradient(180deg, rgba(60, 220, 130, 0.96), rgba(30, 160, 90, 0.96));
+  /* نبض خفيف: يكبر ويصغر ليدلّ أنه قابل للضغط */
+  animation: nl-avpick-upload-pulse 1.8s ease-in-out infinite;
+}
+.nl-avpick__icon--upload:hover,
+.nl-avpick__icon--upload:active {
+  animation-play-state: paused; /* يوقف النبض عند التفاعل ليظهر تأثير الضغط */
+}
+@keyframes nl-avpick-upload-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+.nl-avpick__icon--upload:hover {
+  filter: brightness(1.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 3px rgba(60, 220, 130, 0.28), 0 8px 22px rgba(6, 30, 50, 0.5);
+}
+
+/* زر الاختيار — أكبر قليلًا بلون برتقالي Aero */
+.nl-avpick__icon--confirm {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(180deg, #ff9a3d, #ff7a1a);
+}
+.nl-avpick__icon--confirm:hover {
+  filter: brightness(1.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 3px rgba(255, 122, 26, 0.3), 0 10px 26px rgba(6, 30, 50, 0.5);
+}
+
+/* المسرح ثلاثي الأبعاد — الأفاتارات تطفو */
+.nl-avpick__stage {
+  position: relative;
+  width: 100%;
+  height: 210px;
+  perspective: 950px;
+  transform-style: preserve-3d;
+  display: grid;
+  place-items: center;
+  touch-action: pan-y;
+  user-select: none;
+  overflow: visible;
+}
+.nl-avpick__item {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.32s ease;
+  will-change: transform, opacity;
+}
+.nl-avpick__item picture,
+.nl-avpick__item img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+/* إطار Aero زجاجي حول كل دائرة */
+.nl-avpick__item::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 3px 10px rgba(255, 255, 255, 0.5),
+              inset 0 -6px 14px rgba(20, 90, 150, 0.35),
+              0 10px 24px rgba(6, 30, 50, 0.5);
+}
+.nl-avpick__item.is-active::after {
+  border-color: rgba(255, 122, 26, 0.8);
+  box-shadow: 0 0 0 2px rgba(255, 122, 26, 0.55),
+              inset 0 3px 12px rgba(255, 255, 255, 0.6),
+              0 12px 30px rgba(6, 30, 50, 0.55);
+}
+
+/* الشريط الزجاجي — يمثّل حافة النافذة غير المرئية أسفل الأفاتارات */
+.nl-avpick__shelf {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  width: min(86%, 360px);
+  height: 52px;
+  border-radius: 16px 16px 22px 22px / 22px 22px 30px 30px;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(180, 220, 255, 0.10) 42%, rgba(10, 30, 50, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  border-top-color: rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.5),
+              inset 0 -10px 18px rgba(20, 90, 150, 0.18),
+              0 18px 40px rgba(4, 20, 40, 0.5);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+/* لمعان علوي رفيع + انعكاس */
+.nl-avpick__shelf::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 46%;
+  border-radius: 16px 16px 40px 40px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+  opacity: 0.7;
+}
+
+.nl-avpick__nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.nl-avpick__arrow {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: background 0.18s ease;
+}
+.nl-avpick__arrow:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.08));
+}
+
+/* الهاتف */
+@media (max-width: 480px) {
+  .nl-avpick { width: min(96vw, 380px); gap: 14px; }
+  .nl-avpick__stage { height: 180px; }
+  .nl-avpick__item { width: 104px; height: 104px; }
+  .nl-avpick__icon--confirm { width: 52px; height: 52px; }
+  .nl-avpick__shelf { height: 46px; width: min(90%, 320px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-avpick__item { transition: none; }
+  .nl-avpick__icon--upload { animation: none; }
+}

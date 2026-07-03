@@ -266,3 +266,81 @@
 .nl-public-card { max-width: 560px; width: min(92vw, 560px); }
 .nl-pub__sec-empty { font-size: 12px; color: rgba(255, 255, 255, 0.5); text-align: center; padding: 6px 0 2px; }
 
+/* ــ طبقة خلفية الفيديو (خلف كل شيء) ــ */
+.nl-accounts__bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none;
+  background: #081018;
+}
+.nl-accounts__bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.08) brightness(0.74);
+}
+/* زجاج Aero ثابت فوق الفيديو: أزرق سماوي/أكوا/أخضر خفيف — يُبقي المحتوى واضحاً */
+.nl-accounts__bg-glass {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 22, 34, 0.42), rgba(8, 16, 26, 0.66) 60%, rgba(6, 12, 20, 0.82)),
+    radial-gradient(720px 440px at 86% -8%, rgba(93, 184, 255, 0.16), transparent 60%),
+    radial-gradient(680px 460px at 8% 108%, rgba(95, 206, 106, 0.14), transparent 60%);
+}
+
+/* ــ لمسة Aero لمّاعة ثابتة على بطاقات الحسابات (رخيصة) ــ */
+.nl-accounts .nl-acct-card {
+  position: relative;
+  overflow: hidden;
+}
+.nl-accounts .nl-acct-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.04) 46%, transparent 47%);
+}
+.nl-accounts .nl-acct-card > * {
+  position: relative;
+  z-index: 1;
+}
+/* توهّج أزرق/أخضر Aero عند المرور (يدمج مع القاعدة الموجودة) */
+.nl-accounts .nl-acct-card:hover {
+  border-color: rgba(93, 184, 255, 0.4) !important;
+  box-shadow: 0 12px 30px rgba(6, 30, 50, 0.45), 0 0 16px rgba(93, 184, 255, 0.18), 0 0 30px rgba(95, 206, 106, 0.12);
+}
+
+/* الاستجابة: تصغير لطيف على الجوال (تعديل فقط، لا إعادة تعريف كامل) */
+@media (max-width: 520px) {
+  .nl-accounts .nl-accounts__grid {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+/* ــ زر إزالة الصورة للأدمن ــ */
+.nl-pub__admin-clear {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ff9a9a;
+  background: rgba(255, 60, 60, 0.10);
+  border: 1px solid rgba(255, 60, 60, 0.28);
+  border-radius: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.nl-pub__admin-clear:hover {
+  background: rgba(255, 60, 60, 0.18);
+  border-color: rgba(255, 60, 60, 0.45);
+}
+
+

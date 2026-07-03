@@ -93,7 +93,7 @@ export const NowPlayingBarDesktop = ({
             onClick={onShuffleToggle}
             className={`p-2 hover:scale-110 active:scale-95 transition-all outline-none ${isShuffle ? "text-[var(--accent-indigo)]" : "text-[var(--text-muted)]"}`}
             title="Shuffle"
-            aria-label={isShuffle ? 'إيقاف العشوائي' : 'تشغيل العشوائي'}
+            aria-label={isShuffle ? 'Disable Shuffle' : 'Enable Shuffle'}
           >
             <Shuffle size={16} aria-hidden="true" />
           </button>
@@ -101,7 +101,7 @@ export const NowPlayingBarDesktop = ({
             onClick={onRepeatToggle}
             className={`p-2 hover:scale-110 active:scale-95 transition-all outline-none ${repeatMode !== 'off' ? "text-[var(--accent-indigo)]" : "text-[var(--text-muted)]"}`}
             title="Repeat"
-            aria-label={repeatMode === 'off' ? 'تكرار إيقاف' : repeatMode === 'all' ? 'تكرار الكل' : 'تكرار الأغنية'}
+            aria-label={repeatMode === 'off' ? 'Repeat Off' : repeatMode === 'all' ? 'Repeat All' : 'Repeat Song'}
           >
             {repeatMode === 'one' ? <Repeat1 size={16} aria-hidden="true" /> : <Repeat size={16} aria-hidden="true" />}
           </button>
@@ -111,7 +111,7 @@ export const NowPlayingBarDesktop = ({
         <div className="flex gap-0.5 items-center">
           <button
             onClick={onPrev}
-            aria-label="الأغنية السابقة"
+            aria-label="Previous Song"
             className="p-2.5 text-[var(--text-secondary)] hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
           >
             <SkipBack size={20} fill="currentColor" aria-hidden="true" />
@@ -127,7 +127,7 @@ export const NowPlayingBarDesktop = ({
 
           <button
             onClick={onNext}
-            aria-label="الأغنية التالية"
+            aria-label="Next Song"
             className="p-2.5 text-[var(--text-secondary)] hover:bg-[var(--card-control-bg)] rounded-full transition-all outline-none"
           >
             <SkipForward size={20} fill="currentColor" aria-hidden="true" />
@@ -152,7 +152,7 @@ export const NowPlayingBarDesktop = ({
                 onClick={onToggleQueue}
                 className={`p-2 transition-colors outline-none ${showQueue ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
                 title="Queue"
-                aria-label={showQueue ? 'إخفاء القائمة' : 'عرض القائمة'}
+                aria-label={showQueue ? 'Hide Queue' : 'Show Queue'}
               >
                 <ListMusic size={18} aria-hidden="true" />
               </button>

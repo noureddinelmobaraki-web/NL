@@ -192,7 +192,7 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
       
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100dvh', zIndex: 9999, backgroundColor: '#000' }}>
         
-        {/* أدوات التحكم العلوية (خروج + صوت) */}
+        {/* أدوات التحكم العلوية (خروج + Audio) */}
       <style>{`
         .retro-control-btn:focus-visible {
           outline: 3px solid #fff;
@@ -204,7 +204,7 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
       <button
         onClick={() => onClose?.() || closeRetro()}
         className="retro-control-btn hover:scale-105 active:scale-95 transition-transform"
-        aria-label="إغلاق ريترو"
+        aria-label="Close Retro"
         style={{
           position: 'fixed',
           top: '20px',

@@ -61,7 +61,7 @@ export const MobileNavBar = ({
     },
     { id: 'xp',           Icon: Monitor,   label: t('xp.nav'), isXp: true },
     { id: 'music',        Icon: AudioLines,label: t('nav.music'), isMusic: true },
-    { id: 'accounts',     Icon: Users,     label: i18n.exists('nav.accounts') ? t('nav.accounts') : 'الحسابات', isAccounts: true },
+    { id: 'accounts',     Icon: Users,     label: i18n.exists('nav.accounts') ? t('nav.accounts') : 'Accounts', isAccounts: true },
     {
       id: 'music-toggle',
       Icon: MusicIcon,

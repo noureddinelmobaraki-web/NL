@@ -5,6 +5,7 @@ import App from './App.tsx';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 import './index.css';
+import './styles/aero-theme.css';
 import './transitions/genie.css';
 import './styles/page-mode-layer.css';
 import './styles/components/mobile-modals.css';

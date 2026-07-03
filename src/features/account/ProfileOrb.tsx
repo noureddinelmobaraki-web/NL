@@ -60,7 +60,7 @@ export function ProfileOrb({ variant = 'auto' }: Props) {
       data-bubble=""
       className={`profile-orb${cls}${user ? '' : ' is-guest'}`}
       onClick={onClick}
-      aria-label={user ? 'فتح البروفايل' : 'تسجيل الدخول'}
+      aria-label={user ? 'Open Profile' : 'Login'}
     >
       <span className="profile-orb-ring" aria-hidden="true" />
       <span className="profile-orb-inner">
