@@ -164,7 +164,7 @@ export const ASSETS = {
       `${CDN}/The%20Way%20I%20Am.webp`,
       `${CDN}/VVS.webp`,
       `${CDN}/ink.webp`,
-      `${CDN}/Abla.webp`,
+      `${CDN}/%D8%B9%D8%A8%D9%84%D8%A9.webp`,
     ]
   },
   gallery: {
