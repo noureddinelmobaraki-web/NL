@@ -17,6 +17,29 @@
   position: absolute;
   inset: 0;
   z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #081018; /* fallback while the HLS video loads */
+}
+/* NOTE: these size/glass rules are duplicated from accounts-aero.css on purpose.
+   The avatar picker can be opened WITHOUT visiting the Accounts page, so
+   accounts-aero.css may not be loaded. Keeping them here makes the picker
+   self-sufficient so the background video always fills the whole screen. */
+.nl-avpick-overlay .nl-accounts__bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.08) brightness(0.74);
+}
+.nl-avpick-overlay .nl-accounts__bg-glass {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 22, 34, 0.42), rgba(8, 16, 26, 0.66) 60%, rgba(6, 12, 20, 0.82)),
+    radial-gradient(720px 440px at 86% -8%, rgba(93, 184, 255, 0.16), transparent 60%),
+    radial-gradient(680px 460px at 8% 108%, rgba(95, 206, 106, 0.14), transparent 60%);
 }
 
 /* عزل صفحة البروفيل: تتوقف عن الرسم/الحركة وقت فتح المنتقي (تخفيف الحمل) */
