@@ -78,7 +78,7 @@
 .nl-ray-glow, .nl-ray-core { fill: none; }
 
 /* ---- Node anchor (centre positioned; animated left/top) ---- */
-.nl-node-anchor { position: absolute; top: 0; left: 0; transform: translate(-50%, -50%); z-index: 12; }
+.nl-node-anchor { position: absolute; top: 0; left: 0; z-index: 12; will-change: transform; }
 
 /* ---- The glass pill button (hugs its text; never a window) ---- */
 .nl-node {
@@ -373,5 +373,12 @@ body.low-perf .nl-topbar-btn {
   .nl-sound-btn {
     background: linear-gradient(150deg, rgba(30, 48, 70, 0.85), rgba(16, 28, 44, 0.85));
   }
+}
+
+@media (hover: none) {
+  .nl-launcher-bg-media { filter: none !important; }
+  .nl-node.nl-tint-midnight { animation: none !important; }
+  .nl-tether-glow,
+  .nl-tether-core { animation: none !important; filter: none !important; }
 }
 

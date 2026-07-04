@@ -1,11 +1,13 @@
 // src/components/launcher/ConnectorLayer.tsx
-// The glass rays. Each edge draws two stacked paths:
-//   1) a wide, blurred "glow" filament (frutiger-aero bloom)
-//   2) a thin bright "core" that animates on via pathLength 0 -> 1
-// Collapsing a branch fades its edges out (AnimatePresence) so rays retract.
+// الأشعّة الزجاجية. كل حافة تُرسم بخطين مكدّسين:
+//   1) “glow” عريض شفّاف متدرّج (توهّج frutiger-aero)
+//   2) “core” رفيع ساطع
+// لا يُستعمل أي مرشّح SVG: تحريك pathLength على مسار مُرشّح أجبر الهاتف على
+// إعادة رسترة منطقة feGaussianBlur كبيرة في كل إطار (CPU) → تجمّد لحظة
+// تفرّع الفروع. الخطّان المكدّسان (شفّاف عريض + ساطع رفيع) يعطيان
+// التوهّج الزجاجي دون أي مرشّح gaussian.
 //
-// NOTE: motion props are passed as single-brace variables on purpose — inline
-// double-brace object literals must be avoided in this codegen pipeline.
+// motion props تُمرّر كمتغيّرات قوس مفرد (لا كائنات قوس مزدوج مضمّنة).
 
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Edge } from './graph.geometry';
@@ -21,20 +23,21 @@ interface ConnectorLayerProps {
 const groupInit = { opacity: 0 };
 const groupAnim = { opacity: 1 };
 const groupExit = { opacity: 0, transition: { duration: 0.18 } };
-const rayInit = { pathLength: 0, opacity: 0 };
-const glowAnim = { pathLength: 1, opacity: 0.55 };
-const coreAnim = { pathLength: 1, opacity: 0.95 };
 const rayExit = { opacity: 0 };
 
 export function ConnectorLayer({ edges, size, reduced }: ConnectorLayerProps) {
   const { w, h } = size;
   if (w === 0 || h === 0) return null;
 
-  const drawDur = reduced ? 0.001 : 0.5;
-  const rayTrans = {
-    pathLength: { duration: drawDur, ease: ease.out },
-    opacity: { duration: 0.2 },
-  };
+  // على الهاتف (أو reduce-motion) نتخطّى رسم pathLength نهائياً ونكتفي بتلاشٍ
+  // للشعاع الجاهز = صفر عمل هندسي لكل إطار.
+  const lite = reduced || (w > 0 && w < 768);
+  const rayInit = lite ? { opacity: 0 } : { pathLength: 0, opacity: 0 };
+  const glowAnim = lite ? { opacity: 0.55 } : { pathLength: 1, opacity: 0.55 };
+  const coreAnim = lite ? { opacity: 0.95 } : { pathLength: 1, opacity: 0.95 };
+  const rayTrans = lite
+    ? { opacity: { duration: 0.2 } }
+    : { pathLength: { duration: 0.5, ease: ease.out }, opacity: { duration: 0.2 } };
 
   return (
     <svg
@@ -51,13 +54,6 @@ export function ConnectorLayer({ edges, size, reduced }: ConnectorLayerProps) {
           <stop offset="55%" stopColor="#5fe0a8" stopOpacity="0.9" />
           <stop offset="100%" stopColor="#6fd0ff" stopOpacity="0.85" />
         </linearGradient>
-        <filter id="nlRayGlow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="3.2" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
       </defs>
 
       <AnimatePresence>
@@ -69,7 +65,6 @@ export function ConnectorLayer({ edges, size, reduced }: ConnectorLayerProps) {
               stroke="url(#nlRayGrad)"
               strokeWidth={edge.depth === 1 ? 9 : 7}
               strokeLinecap="round"
-              filter="url(#nlRayGlow)"
               initial={rayInit}
               animate={glowAnim}
               exit={rayExit}

@@ -7,17 +7,19 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick, Monitor,
   AudioLines, User, Users, Moon, Sun, MoonStar, Grid2x2, Feather,
-  SkipBack, SkipForward, Play, Pause, Bell, Palette, Compass
+  Bell
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuthOptional } from '../../context/AuthContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { audioManager } from '../../audio/audioManager';
 import { useNowPlaying } from '../../features/music/hooks/useNowPlaying';
-import { useNowPlayingMeta } from '../../audio/nowPlayingBus';
+import { useNowPlayingState } from '../../audio/nowPlayingBus';
 import { useInboxNotifications } from '../../features/account/hooks/useInboxNotifications';
 import type { Theme } from '../../utils/userPrefs';
 import '../../styles/components/glass-switcher.css';
+import { PLAYER_BTN } from '../../constants/assets';
+import { GlassBubbleGraph } from './GlassBubbleGraph';
 
 const MODES: { id: Theme; label: string; icon: any }[] = [
   { id: 'dark',     label: 'Dark',     icon: Moon },
@@ -221,16 +223,15 @@ function GlassModeSwitcherInner() {
     () => LIVE_SOURCES.find((s) => audioManager.isSourceActive(s)) ?? null,
     () => null,
   );
-  const liveMeta = useNowPlayingMeta();
-  const liveActive = !!activeLiveSource || isMusicActive;
+  // مصدر الحقيقة الوحيد لِما يُسمع الآن: ناقل now-playing العالمي (كل مصدر ينشر فيه).
+  // هذا يُصلح "Amoudou دائمًا": أي أغنية تُشغَّل تُحدِّث الـ bus وتظهر باسمها.
+  const nowPlaying = useNowPlayingState();
+  const liveActive = !!nowPlaying || !!activeLiveSource || isMusicActive;
   const liveTitle =
-    activeLiveSource === 'song' && currentTrack
-      ? currentTrack.title
-      : liveMeta && liveMeta.source === activeLiveSource
-        ? liveMeta.title
-        : activeLiveSource
-          ? (SOURCE_LABELS[activeLiveSource] ?? 'Playing')
-          : currentTrack?.title ?? '';
+    nowPlaying?.title
+    ?? (activeLiveSource ? (SOURCE_LABELS[activeLiveSource] ?? 'Playing') : null)
+    ?? currentTrack?.title
+    ?? '';
 
   // ── الإشعارات (صندوق الأغاني المُرسَلة) داخل النوتش ─────────
   const { items: notifications, unreadCount, markAllRead } = useInboxNotifications();
@@ -932,81 +933,17 @@ function GlassModeSwitcherInner() {
                 )}
               </div>
 
-              {/* 3. Modes + Destinations — شجرة تفرّعات خفيفة (حاسوب/هاتف) */}
-              <div className="gs-tree" dir="ltr">
-              <div className="gs-branch" data-branch="modes">
-                <div className="gs-branch-node">
-                  <Palette size={13} aria-hidden="true" />
-                  <span>Modes</span>
-                </div>
-                <div className="gs-branch-twigs">
-                  {MODES.map((m) => {
-                    const IconComp = m.icon;
-                    const isActive = theme === m.id;
-                    const itemId = `mode-${m.id}`;
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={isActive}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setTheme(m.id);
-                          setOpen(false);
-                          triggerVibrate();
-                        }}
-                        className={`gs-twig h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-[color:var(--gs-fg)] cursor-pointer ${
-                          isActive
-                            ? 'bg-[#00E676]/20 border-[#00E676]/40 shadow-[0_4px_12px_rgba(0,230,118,0.22)] font-bold'
-                            : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                        }`}
-                        data-nav-id={itemId}
-                        tabIndex={getTabIndex(itemId)}
-                        onFocus={() => handleFocus(itemId)}
-                      >
-                        <IconComp size={15} className={isActive ? 'text-[#00E676]' : 'text-[color:var(--gs-fg-dim)]'} />
-                        <span className="truncate max-w-full px-1">{m.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="gs-branch" data-branch="dest">
-                <div className="gs-branch-node">
-                  <Compass size={13} aria-hidden="true" />
-                  <span>Go to</span>
-                </div>
-                <div className="gs-branch-twigs">
-                  {DESTINATIONS.map((d) => {
-                    const isActive = d.isActive;
-                    const itemId = `dest-${d.id}`;
-                    return (
-                      <button
-                        key={d.id}
-                        type="button"
-                        role="menuitem"
-                        onClick={d.onClick}
-                        className={`gs-twig h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-[color:var(--gs-fg)] cursor-pointer ${
-                          isActive
-                            ? 'bg-[#FF7A1A]/20 border-[#FF7A1A]/40 shadow-[0_4px_12px_rgba(255,122,26,0.22)] font-bold'
-                            : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                        }`}
-                        data-nav-id={itemId}
-                        tabIndex={getTabIndex(itemId)}
-                        onFocus={() => handleFocus(itemId)}
-                      >
-                        <div className={isActive ? 'text-[#FF7A1A]' : 'text-[color:var(--gs-fg-dim)]'}>
-                          {d.icon}
-                        </div>
-                        <span className="truncate max-w-full px-1">{d.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              </div>
+              {/* 3. متصفّح متفرّع بنمط نافذة الافتتاح (أبطأ وأخفّ) */}
+              <GlassBubbleGraph
+                modes={filteredModes}
+                destinations={filteredDestinations}
+                theme={theme}
+                reduceMotion={!!reduceMotion}
+                isMobile={!isDesktop}
+                getTabIndex={getTabIndex}
+                handleFocus={handleFocus}
+                onMode={(id) => { setTheme(id); setOpen(false); triggerVibrate(); }}
+              />
 
               {/* Sleek Footer Bottom Controls */}
               <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-1 w-full" dir="ltr">
@@ -1069,30 +1006,68 @@ function GlassModeSwitcherInner() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {currentTrack ? (
-                    <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-0.5 rounded-xl" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={prev}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
-                        title="Prev"
-                      >
-                        <SkipBack size={12} />
-                      </button>
-                      <button
-                        onClick={togglePlay}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
-                        title={musicIsPlaying ? "Pause" : "Play"}
-                      >
-                        {musicIsPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
-                      </button>
-                      <button
-                        onClick={next}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
-                        title="Next"
-                      >
-                        <SkipForward size={12} />
-                      </button>
-                    </div>
+                  {(nowPlaying?.controls || currentTrack) ? (
+                    (() => {
+                      // متغيّرات CSS لصور كل زر (normal/hover/pressed/disabled).
+                      const bg = (o: Record<string, string>) => o as unknown as import('react').CSSProperties;
+                      const ctl = nowPlaying?.controls;
+                      const playing = nowPlaying ? nowPlaying.isPlaying : musicIsPlaying;
+                      const onPrev = ctl?.prev ?? prev;
+                      const onToggle = ctl?.toggle ?? togglePlay;
+                      const onNext = ctl?.next ?? next;
+                      const canPrev = nowPlaying ? nowPlaying.canPrev !== false : true;
+                      const canNext = nowPlaying ? nowPlaying.canNext !== false : true;
+                      return (
+                        <div className="nl-gs-player" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onPrev(); triggerVibrate(); }}
+                            className="nl-gs-player__btn nl-gs-player__btn--prev"
+                            style={bg({
+                              '--nlp': `url(${PLAYER_BTN.prev.normal})`,
+                              '--nlp-h': `url(${PLAYER_BTN.prev.hover})`,
+                              '--nlp-a': `url(${PLAYER_BTN.prev.pressed})`,
+                              '--nlp-d': `url(${PLAYER_BTN.prev.disabled})`,
+                            })}
+                            disabled={!canPrev}
+                            title="Prev"
+                            aria-label="Previous"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onToggle(); triggerVibrate(); }}
+                            className={`nl-gs-player__btn ${playing ? 'nl-gs-player__btn--stop' : 'nl-gs-player__btn--play'}`}
+                            style={playing
+                              ? bg({
+                                  '--nlp': `url(${PLAYER_BTN.stop.normal})`,
+                                  '--nlp-h': `url(${PLAYER_BTN.stop.hover})`,
+                                  '--nlp-a': `url(${PLAYER_BTN.stop.pressed})`,
+                                })
+                              : bg({
+                                  '--nlp': `url(${PLAYER_BTN.play.normal})`,
+                                  '--nlp-h': `url(${PLAYER_BTN.play.hover})`,
+                                  '--nlp-a': `url(${PLAYER_BTN.play.pressed})`,
+                                  '--nlp-d': `url(${PLAYER_BTN.play.disabled})`,
+                                })}
+                            title={playing ? "Pause" : "Play"}
+                            aria-label={playing ? "Pause" : "Play"}
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onNext(); triggerVibrate(); }}
+                            className="nl-gs-player__btn nl-gs-player__btn--next"
+                            style={bg({
+                              '--nlp': `url(${PLAYER_BTN.next.normal})`,
+                              '--nlp-h': `url(${PLAYER_BTN.next.normal})`,
+                              '--nlp-a': `url(${PLAYER_BTN.next.pressed})`,
+                            })}
+                            disabled={!canNext}
+                            title="Next"
+                            aria-label="Next"
+                          />
+                        </div>
+                      );
+                    })()
                   ) : (
                     <button
                       type="button"

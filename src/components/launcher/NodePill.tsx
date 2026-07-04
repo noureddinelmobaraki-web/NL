@@ -68,7 +68,10 @@ export function NodePill({ placed, onClick }: NodePillProps) {
   const targetOpacity = dimmed ? 0.4 : 1;
   const targetScale = dimmed ? 0.86 : 1;
 
-  const anchorAnim = { left: pos.x, top: pos.y };
+  const anchorAnim = { x: pos.x, y: pos.y };
+  // نُبقي التوسيط عبر transformTemplate بدل CSS transform الثابت، لأن framer
+  // يكتب transform مضمّناً فيتجاوز أي transform في الـ CSS.
+  const centerTemplate = (_t: unknown, gen: string) => `${gen} translate(-50%, -50%)`;
   const btnInit = { opacity: 0, scale: 0.5, x: fromX, y: fromY };
   const btnAnim = { opacity: targetOpacity, scale: targetScale, x: 0, y: 0 };
   const btnExit = { opacity: 0, scale: 0.4, x: fromX, y: fromY };
@@ -86,7 +89,13 @@ export function NodePill({ placed, onClick }: NodePillProps) {
     .join(' ');
 
   return (
-    <motion.div className="nl-node-anchor" initial={false} animate={anchorAnim} transition={spring.soft}>
+    <motion.div
+      className="nl-node-anchor"
+      initial={false}
+      animate={anchorAnim}
+      transition={spring.soft}
+      transformTemplate={centerTemplate}
+    >
       <motion.button
         type="button"
         className={className}

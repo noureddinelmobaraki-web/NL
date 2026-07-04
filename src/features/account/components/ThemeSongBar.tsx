@@ -3,7 +3,7 @@ import { Play, Pause, X } from 'lucide-react';
 import { getFvTracks } from '../../music/data/loadSongs';
 import { getInitials } from '../../music/utils/cover';
 import { audioManager } from '../../../audio/audioManager';
-import { nowPlayingBus } from '../../../audio/nowPlayingBus';
+import { nowPlayingBus, type NowPlayingControls } from '../../../audio/nowPlayingBus';
 
 import { useMusicStore } from '../../music/store/musicStore';
 
@@ -35,6 +35,14 @@ export function ThemeSongBar({
   // مرجع ثابت لأحدث track حتى لا تحتاج useEffect/useCallback إلى إضافته كتبعية (يتجنّب تحذيرات exhaustive-deps).
   const trackRef = useRef(track);
   trackRef.current = track;
+  
+  // مرجع ثابت لدالة التبديل + كائن أزرار تحكّم ثابت (نفس المرجع دائمًا حتى لا
+  // يُبطل حارس shallowEqual في الـ bus). toggle=stop لأن togglePlay يتكفّل بالحالتين.
+  const toggleRef = useRef<() => void>(() => {});
+  const controlsRef = useRef<NowPlayingControls>({
+    toggle: () => toggleRef.current(),
+    stop: () => toggleRef.current(),
+  });
   
   const clipStart = Math.max(0, start ?? 0);
   const clipEnd = end && end > clipStart ? end : null;
@@ -69,13 +77,13 @@ export function ThemeSongBar({
       if (p && typeof p.then === 'function') {
         p.then(() => {
           setPlaying(true);
-          nowPlayingBus.set({ source: 'profile', title: trackRef.current?.title ?? 'Profile Song', subtitle: trackRef.current?.artist });
+          nowPlayingBus.publish({ source: 'profile', title: trackRef.current?.title ?? 'Profile Song', subtitle: trackRef.current?.artist, artworkUrl: trackRef.current?.coverUrl, isPlaying: true, controls: controlsRef.current });
           // مزامنة حالة المدير دون مقاطعة (العنصر يعمل أصلًا → لن يُعيد التشغيل).
           audioManager.play('profile').catch(() => {});
         }).catch(() => { started = false; /* محجوب: يُعاد عند أول تفاعل */ });
       } else {
         setPlaying(true);
-        nowPlayingBus.set({ source: 'profile', title: trackRef.current?.title ?? 'Profile Song', subtitle: trackRef.current?.artist });
+        nowPlayingBus.publish({ source: 'profile', title: trackRef.current?.title ?? 'Profile Song', subtitle: trackRef.current?.artist, artworkUrl: trackRef.current?.coverUrl, isPlaying: true, controls: controlsRef.current });
       }
     };
 
@@ -128,7 +136,7 @@ export function ThemeSongBar({
       a.volume = FULL_VOL;
       a.play().then(() => {
         setPlaying(true);
-        nowPlayingBus.set({ source: 'profile', title: trackRef.current?.title ?? 'Profile Song', subtitle: trackRef.current?.artist });
+        nowPlayingBus.publish({ source: 'profile', title: trackRef.current?.title ?? 'Profile Song', subtitle: trackRef.current?.artist, artworkUrl: trackRef.current?.coverUrl, isPlaying: true, controls: controlsRef.current });
         audioManager.play('profile').catch(() => {});
       }).catch(() => {});
     } else {
@@ -137,6 +145,7 @@ export function ThemeSongBar({
       nowPlayingBus.clear('profile');
     }
   }, []);
+  toggleRef.current = togglePlay;
 
   if (!track) return null;
 

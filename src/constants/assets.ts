@@ -1,6 +1,32 @@
 
 const CDN = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn';
 
+// ── أزرار مشغّل نافذة الفقاعة (كلها من مجلد /play/ على نفس الـ CDN) ──
+const CDN_PLAY = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/play';
+export const PLAYER_BTN = {
+  play: {
+    normal:   `${CDN_PLAY}/play_normal.png`,
+    hover:    `${CDN_PLAY}/play_hover.png`,
+    pressed:  `${CDN_PLAY}/play_pressed.png`,
+    disabled: `${CDN_PLAY}/play_disabled.png`,
+  },
+  stop: {
+    normal:  `${CDN_PLAY}/stop_normal.png`,
+    hover:   `${CDN_PLAY}/stop_hover.png`,
+    pressed: `${CDN_PLAY}/stop_pressed.png`,
+  },
+  next: {
+    normal:  `${CDN_PLAY}/next_normal.png`,
+    pressed: `${CDN_PLAY}/next_pressed.png`,
+  },
+  prev: {
+    normal:   `${CDN_PLAY}/previous_normal.png`,
+    hover:    `${CDN_PLAY}/previous_hover.png`,
+    pressed:  `${CDN_PLAY}/previous_pressed.png`,
+    disabled: `${CDN_PLAY}/previous_disabled.png`,
+  },
+} as const;
+
 export const getLocalAssetUrl = (filename: string): string => {
   const base = import.meta.env.BASE_URL || "/";
   return base.endsWith('/') ? `${base}${filename}` : `${base}/${filename}`;

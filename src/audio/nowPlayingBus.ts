@@ -1,69 +1,110 @@
 // src/audio/nowPlayingBus.ts
-// A tiny framework-agnostic "now playing" bus. Any audio producer (NL music,
-// profile song, lens gallery, section music, previews...) can publish a
-// human-readable label for whatever is currently audible, and the glass
-// switcher notch subscribes to it. This lets the notch show the *name* of the
-// file playing from ANY source, not only the NL music player.
+// ناقل "now playing" عالمي. أي مصدر صوت (NL music، أغنية البروفايل، معرض العدسة،
+// موسيقى الأقسام، المعاينات...) ينشر هنا الاسم + (اختياريًا) أزرار التحكّم لما
+// يُسمع الآن. نوتش الـ glass switcher يعرض الاسم، ومشغّل نافذة الفقاعة يستدعي
+// أزرار التحكّم المنشورة → فيتحكّم دائمًا في الأغنية الظاهرة في النوتش.
 import { useSyncExternalStore } from 'react';
 
-export interface NowPlayingMeta {
-  /** audioManager source key this label belongs to (e.g. 'profile', 'lens'). */
+export interface NowPlayingControls {
+  toggle?: () => void;
+  next?: () => void;
+  prev?: () => void;
+  stop?: () => void;
+}
+
+export interface NowPlayingState {
+  /** مفتاح مصدر audioManager (مثل 'song' أو 'profile'). */
   source: string;
-  /** Primary display text (track / file / section name). */
+  /** النص الأساسي (اسم المقطع/الملف/القسم). */
   title: string;
-  /** Optional secondary text (artist / context). */
+  /** نص ثانوي (الفنان/السياق). */
+  subtitle?: string;
+  /** غلاف اختياري. */
+  artworkUrl?: string;
+  /** هل يعمل الآن (لتبديل play/stop). */
+  isPlaying: boolean;
+  canNext?: boolean;
+  canPrev?: boolean;
+  controls?: NowPlayingControls;
+}
+
+/** شكل قديم (لافتة فقط) للتوافق الخلفي. */
+export interface NowPlayingMeta {
+  source: string;
+  title: string;
   subtitle?: string;
 }
 
 const listeners = new Set<() => void>();
-let current: NowPlayingMeta | null = null;
+let current: NowPlayingState | null = null;
 
 function emit(): void {
   listeners.forEach((cb) => {
-    try {
-      cb();
-    } catch {
-      /* a listener error must never break an audio producer */
-    }
+    try { cb(); } catch { /* خطأ مستمع يجب ألا يكسر منتج صوت */ }
   });
 }
 
+function shallowEqual(a: NowPlayingState | null, b: NowPlayingState | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.source === b.source &&
+    a.title === b.title &&
+    a.subtitle === b.subtitle &&
+    a.artworkUrl === b.artworkUrl &&
+    a.isPlaying === b.isPlaying &&
+    a.canNext === b.canNext &&
+    a.canPrev === b.canPrev &&
+    a.controls === b.controls
+  );
+}
+
 export const nowPlayingBus = {
-  set(meta: NowPlayingMeta): void {
-    if (
-      current &&
-      current.source === meta.source &&
-      current.title === meta.title &&
-      current.subtitle === meta.subtitle
-    ) {
-      return; // no-op: avoids redundant re-renders
-    }
-    current = meta;
+  /** نشر حالة تشغيل كاملة. آخر ناشر يفوز (= ما يُسمع فعلًا الآن). */
+  publish(state: NowPlayingState): void {
+    if (shallowEqual(current, state)) return; // تفادي رندر زائد
+    current = state;
     emit();
   },
-  /** Clear the label. Pass a source to only clear when it still owns the bus. */
+  /** تعديل حقول على العنصر الحالي فقط إن كان `source` ما زال يملك الـ bus. */
+  patch(source: string, partial: Partial<NowPlayingState>): void {
+    if (!current || current.source !== source) return;
+    const next = { ...current, ...partial };
+    if (shallowEqual(current, next)) return;
+    current = next;
+    emit();
+  },
+  /** توافق خلفي: نشر لافتة فقط (isPlaying:true بلا أزرار). */
+  set(meta: NowPlayingMeta): void {
+    nowPlayingBus.publish({ ...meta, isPlaying: true });
+  },
+  /** مسح. مرّر source لتمسح فقط إن كان ما زال يملك الـ bus. */
   clear(source?: string): void {
     if (!current) return;
     if (source && current.source !== source) return;
     current = null;
     emit();
   },
-  get(): NowPlayingMeta | null {
+  get(): NowPlayingState | null {
     return current;
   },
   subscribe(cb: () => void): () => void {
     listeners.add(cb);
-    return () => {
-      listeners.delete(cb);
-    };
+    return () => { listeners.delete(cb); };
   },
 };
 
-/** React hook: re-renders when the now-playing label changes. */
-export function useNowPlayingMeta(): NowPlayingMeta | null {
+/** هوك الحالة الكاملة (النوتش + مشغّل نافذة الفقاعة). */
+export function useNowPlayingState(): NowPlayingState | null {
   return useSyncExternalStore(
     (cb) => nowPlayingBus.subscribe(cb),
     () => nowPlayingBus.get(),
     () => null,
   );
+}
+
+/** هوك اللافتة (توافق خلفي). */
+export function useNowPlayingMeta(): NowPlayingMeta | null {
+  const s = useNowPlayingState();
+  return s ? { source: s.source, title: s.title, subtitle: s.subtitle } : null;
 }

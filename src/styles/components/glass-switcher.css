@@ -1102,3 +1102,106 @@ body[data-nowplaying-full="true"] .glass-switcher-anchor[data-device="mobile"] {
   background: rgba(0,0,0,0.05);
   border-color: rgba(0,0,0,0.1);
 }
+
+/* ── مشغّل نافذة الفقاعة (أزرار صور CDN) ───────────────────── */
+.nl-gs-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.nl-gs-player__btn {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  background-color: transparent;
+  background-image: var(--nlp);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+.nl-gs-player__btn--play,
+.nl-gs-player__btn--stop { width: 34px; height: 34px; }
+.nl-gs-player__btn:hover {
+  background-image: var(--nlp-h, var(--nlp));
+  transform: translateY(-1px) scale(1.05);
+}
+.nl-gs-player__btn:active {
+  background-image: var(--nlp-a, var(--nlp));
+  transform: scale(0.94);
+}
+.nl-gs-player__btn:disabled {
+  background-image: var(--nlp-d, var(--nlp));
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+
+/* ── متصفّح نافذة الفقاعة المتفرّع (بنمط نافذة الافتتاح، أخفّ) ────── */
+.gs-graph {
+  position: relative;
+  width: 100%;
+  overflow: visible;
+}
+.gs-graph--desktop { height: 230px; }
+.gs-graph--mobile { height: 264px; }
+.gs-graph-links { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 1; }
+.gs-graph-anchor { position: absolute; top: 0; left: 0; transform: translate(-50%, -50%); z-index: 2; }
+
+.gs-gnode {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 7px;
+  width: max-content; max-width: 46vw;
+  padding: 7px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--gs-fg, #fff);
+  cursor: pointer;
+  background: linear-gradient(150deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 60%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(255,255,255,0.26);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 6px 16px rgba(0,0,0,0.32);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.gs-gnode::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 50%;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.32), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.gs-gnode-ico { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.gs-gnode-label { font-size: 11px; font-weight: 700; letter-spacing: 0.01em; }
+.gs-gnode-caret { opacity: 0.6; transition: transform 0.25s ease; }
+.gs-gnode-caret.is-open { transform: rotate(180deg); }
+
+.gs-gnode--root { padding: 8px 13px; }
+.gs-gnode--root.is-open {
+  border-color: rgba(122,240,180,0.55);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.45), 0 0 16px rgba(60,220,130,0.3), 0 6px 16px rgba(0,0,0,0.32);
+}
+.gs-gnode--leaf { padding: 6px 11px; }
+.gs-gnode--leaf.is-active {
+  border-color: rgba(0,230,118,0.5);
+  background: linear-gradient(150deg, rgba(0,230,118,0.22), rgba(0,230,118,0.06));
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 0 14px rgba(0,230,118,0.28);
+}
+
+/* أخفّ على اللمس: أزل blur الذي يُعيد أخذ عينات الخلفية كل إطار */
+@media (hover: none) {
+  .gs-gnode {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: linear-gradient(150deg, rgba(30,48,70,0.86), rgba(16,28,44,0.86));
+  }
+}
