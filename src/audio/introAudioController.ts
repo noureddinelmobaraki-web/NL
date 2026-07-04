@@ -27,6 +27,29 @@ class IntroAudioController {
   private volume = 0.6;
   private readonly src = INTRO_MUSIC_SRC;
 
+  // Optimistic "is the user asking for intro music?" flag. It flips the button
+  // instantly on the first press, instead of waiting for the audio bytes to
+  // buffer. audioManager only marks 'intro' active AFTER playback truly starts,
+  // which — with a lazy preload='none' stream — was the 1-to-3 press lag bug.
+  private desired = false;
+  private desiredListeners = new Set<() => void>();
+  private amStateUnsub: (() => void) | null = null;
+
+  /** Subscribe to optimistic desired-flag changes (for useSyncExternalStore). */
+  subscribeDesired = (cb: () => void): (() => void) => {
+    this.desiredListeners.add(cb);
+    return () => { this.desiredListeners.delete(cb); };
+  };
+
+  /** Current optimistic desired flag (stable ref for useSyncExternalStore). */
+  getDesired = (): boolean => this.desired;
+
+  private setDesired(next: boolean): void {
+    if (this.desired === next) return;
+    this.desired = next;
+    this.desiredListeners.forEach((cb) => cb());
+  }
+
   ensureSetup(volume = 0.6): void {
     this.volume = volume;
     if (typeof window === 'undefined') return;
@@ -42,6 +65,18 @@ class IntroAudioController {
 
     audioManager.register('intro', audio, this.volume);
     // NOTE: we intentionally do NOT wire/prefetch the source here.
+
+    // Reconcile the optimistic flag if a higher-priority source ever steals the
+    // 'intro' slot: if we still "want" intro but another source became active,
+    // drop the desired flag so the button reflects reality.
+    if (!this.amStateUnsub) {
+      this.amStateUnsub = audioManager.subscribeState('intro', () => {
+        if (!this.desired) return;
+        if (audioManager.isSourceActive('intro')) return;
+        const current = audioManager.getCurrentActive();
+        if (current && current !== 'intro') this.setDesired(false);
+      });
+    }
   }
 
   /** Attach the media source. Called lazily from play() (inside a user gesture). */
@@ -92,6 +127,9 @@ class IntroAudioController {
   }
 
   async play(): Promise<void> {
+    // Flip the button state IMMEDIATELY (optimistic), inside the user gesture,
+    // so it never looks "off" while the first bytes are still buffering.
+    this.setDesired(true);
     this.ensureSetup(this.volume);
     await this.wireSource(); // fetch the media only now, on the user's press
     const audio = this.audio;
@@ -120,10 +158,12 @@ class IntroAudioController {
   }
 
   pause(fadeMs = 800): void {
+    this.setDesired(false);
     audioManager.pause('intro', fadeMs);
   }
 
   fadeOut(ms = 800): void {
+    this.setDesired(false);
     audioManager.pause('intro', ms);
   }
 

@@ -346,3 +346,32 @@ body.low-perf .nl-topbar-btn {
 @media (prefers-reduced-motion: reduce) {
   .nl-node.nl-tint-midnight { animation: none; }
 }
+
+/* ===================================================================
+      MOBILE / TOUCH PERFORMANCE (root cause of the phone freeze):
+   Stacking several `backdrop-filter: blur()` glass elements ON TOP of a
+   continuously-repainting background <video> forces the GPU to re-sample and
+   re-blur the moving video behind every pill on EVERY video frame. On phones
+   this saturates the compositor, so the page grows sluggish and then locks up
+   the moment anything else needs to paint (a tap, a node animation).
+   Fix: on touch devices drop backdrop-filter entirely and fake the frosted
+   glass with a solid translucent fill. The video keeps playing; the glass just
+   no longer samples it per-frame => smooth on mobile. Desktop is untouched. */
+@media (hover: none) {
+  .nl-node,
+  .nl-topbar-btn,
+  .nl-sound-btn {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .nl-node {
+    background: linear-gradient(150deg, rgba(30, 48, 70, 0.82), rgba(16, 28, 44, 0.82));
+  }
+  .nl-topbar-btn {
+    background: linear-gradient(135deg, rgba(30, 48, 70, 0.85), rgba(16, 28, 44, 0.85));
+  }
+  .nl-sound-btn {
+    background: linear-gradient(150deg, rgba(30, 48, 70, 0.85), rgba(16, 28, 44, 0.85));
+  }
+}
+
