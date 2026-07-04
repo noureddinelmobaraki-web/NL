@@ -83,6 +83,11 @@ const AccountsPage = lazyWithRetry(
   () => import('./features/accounts/AccountsPage').then(m => ({ default: m.default })),
   'AccountsPage',
 );
+const LauncherPage = lazyWithRetry(
+  () => import('./components/launcher/LauncherPage').then(m => ({ default: m.default })),
+  'LauncherPage',
+);
+import { LAUNCHER_ENABLED } from './components/launcher/launcher.config';
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
 import { useParallax } from "./hooks/useParallax";
@@ -533,57 +538,61 @@ function MainApp() {
       )}
 
       {!loaded && (
-        <LoadingScreen 
-          onComplete={(chosenTheme, musicConsent) => {
-            setTheme(chosenTheme);
-            if (musicConsent) {
-              setAudioIntent('user-playing');
-            }
-            setLoaded(true);
-          }}
-          onEnterGames={(chosenTheme, musicConsent) => {
-            setTheme(chosenTheme);
-            if (musicConsent) setAudioIntent('user-playing');
-            setLoaded(true);
-            openGames();
-          }}
-          onEnterCinema={(chosenTheme, musicConsent) => {
-            setTheme(chosenTheme);
-            if (musicConsent) setAudioIntent('user-playing');
-            setLoaded(true);
-            openMovies();
-          }}
-          onEnterTv={(chosenTheme, musicConsent) => {
-            setTheme(chosenTheme);
-            if (musicConsent) setAudioIntent('user-playing');
-            setLoaded(true);
-            openTv();
-          }}
-          onEnterRetro={(chosenTheme, musicConsent) => {
-            setTheme(chosenTheme);
-            if (musicConsent) setAudioIntent('user-playing');
-            setLoaded(true);
-            openRetro();
-          }}
-          onEnterXp={(chosenTheme, musicConsent) => {
-            setTheme(chosenTheme);
-            if (musicConsent) setAudioIntent('user-playing');
-            setLoaded(true);
-            openXp();
-          }}
-          onEnterMusic={(chosenTheme, musicConsent) => {
-            setTheme(chosenTheme);
-            if (musicConsent) setAudioIntent('user-playing');
-            setLoaded(true);
-            openMusic();
-          }}
-          onEnterAccounts={(chosenTheme, musicConsent) => {
-            setTheme(chosenTheme);
-            if (musicConsent) setAudioIntent('user-playing');
-            setLoaded(true);
-            openAccounts();
-          }}
-        />
+        LAUNCHER_ENABLED ? (
+          <LauncherPage />
+        ) : (
+          <LoadingScreen 
+            onComplete={(chosenTheme, musicConsent) => {
+              setTheme(chosenTheme);
+              if (musicConsent) {
+                setAudioIntent('user-playing');
+              }
+              setLoaded(true);
+            }}
+            onEnterGames={(chosenTheme, musicConsent) => {
+              setTheme(chosenTheme);
+              if (musicConsent) setAudioIntent('user-playing');
+              setLoaded(true);
+              openGames();
+            }}
+            onEnterCinema={(chosenTheme, musicConsent) => {
+              setTheme(chosenTheme);
+              if (musicConsent) setAudioIntent('user-playing');
+              setLoaded(true);
+              openMovies();
+            }}
+            onEnterTv={(chosenTheme, musicConsent) => {
+              setTheme(chosenTheme);
+              if (musicConsent) setAudioIntent('user-playing');
+              setLoaded(true);
+              openTv();
+            }}
+            onEnterRetro={(chosenTheme, musicConsent) => {
+              setTheme(chosenTheme);
+              if (musicConsent) setAudioIntent('user-playing');
+              setLoaded(true);
+              openRetro();
+            }}
+            onEnterXp={(chosenTheme, musicConsent) => {
+              setTheme(chosenTheme);
+              if (musicConsent) setAudioIntent('user-playing');
+              setLoaded(true);
+              openXp();
+            }}
+            onEnterMusic={(chosenTheme, musicConsent) => {
+              setTheme(chosenTheme);
+              if (musicConsent) setAudioIntent('user-playing');
+              setLoaded(true);
+              openMusic();
+            }}
+            onEnterAccounts={(chosenTheme, musicConsent) => {
+              setTheme(chosenTheme);
+              if (musicConsent) setAudioIntent('user-playing');
+              setLoaded(true);
+              openAccounts();
+            }}
+          />
+        )
       )}
 
       <div style={{ 

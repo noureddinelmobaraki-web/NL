@@ -1,0 +1,254 @@
+/* ===================================================================
+   NL Launcher v2 — Radial Branching Glass Mind-Map
+   Single full-screen page · no scroll · no hero bleed · no product name
+   =================================================================== */
+
+/* Full-screen, self-contained shell (overrides the old bento container) */
+.nl-launcher-container {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  height: 100dvh;
+  width: 100vw;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #fff;
+  user-select: none;
+  font-family: "Inter", system-ui, sans-serif;
+  display: block;
+}
+
+/* ---- Background: opaque base + video + uniform veil ---- */
+.nl-launcher-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.nl-launcher-bg-base {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(140% 120% at 20% 0%, #10233a 0%, #0a1626 45%, #060d16 100%);
+}
+.nl-launcher-bg-media {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: saturate(1.08) brightness(0.72);
+}
+.nl-launcher-bg-still {
+  background: radial-gradient(120% 100% at 50% 10%, #16324f 0%, #0a1626 60%, #060d16 100%);
+}
+.nl-launcher-bg-veil { position: absolute; inset: 0; }
+
+/* ---- Slim top bar (no brand name) ---- */
+.nl-launcher-topbar {
+  position: absolute;
+  top: max(env(safe-area-inset-top, 14px), 14px);
+  right: 16px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nl-topbar-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 36px; padding: 0 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.22);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.35), 0 6px 18px rgba(0,0,0,0.35);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.nl-topbar-btn.is-primary { color: #7ef0b4; border-color: rgba(60,220,130,0.4); }
+.nl-topbar-ico { color: #3cdc82; }
+.nl-topbar-orb { width: 36px; height: 36px; border-radius: 999px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+@media (max-width: 480px) { .nl-topbar-label { display: none; } .nl-topbar-btn { padding: 0 10px; } }
+
+/* ---- Signature (not a product name) ---- */
+.nl-launcher-sign {
+  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 10px) + 8px);
+  z-index: 20; text-align: center;
+  font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.35em;
+  text-transform: uppercase; color: rgba(255,255,255,0.28); pointer-events: none;
+}
+
+/* ---- The radial stage ---- */
+.nl-graph-stage { position: absolute; inset: 0; z-index: 10; overflow: hidden; }
+.nl-graph-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 11; }
+.nl-ray-glow, .nl-ray-core { fill: none; }
+
+/* ---- Node anchor (centre positioned; animated left/top) ---- */
+.nl-node-anchor { position: absolute; top: 0; left: 0; transform: translate(-50%, -50%); z-index: 12; }
+
+/* ---- The glass pill button (hugs its text; never a window) ---- */
+.nl-node {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 10px;
+  width: max-content; max-width: min(72vw, 320px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  white-space: nowrap;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(150deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.05) 55%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(255,255,255,0.30);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.55),
+    inset 0 -8px 16px rgba(10,30,50,0.35),
+    0 12px 30px rgba(0,0,0,0.45);
+  backdrop-filter: blur(16px) saturate(1.35);
+  -webkit-backdrop-filter: blur(16px) saturate(1.35);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+/* frutiger-aero top gloss */
+.nl-node::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 52%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.38), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.nl-node.is-active {
+  border-color: rgba(122,240,180,0.6);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.6),
+    0 0 0 1px rgba(122,240,180,0.35),
+    0 14px 40px rgba(0,0,0,0.5),
+    0 0 26px rgba(60,220,130,0.35);
+}
+.nl-node.is-dim { filter: saturate(0.7); }
+
+.nl-node-ico {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  flex: none; border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.5), rgba(255,255,255,0.06));
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.6), 0 3px 8px rgba(0,0,0,0.35);
+}
+.nl-node-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nl-node-glyph { color: #eafff5; width: 60%; height: 60%; }
+.nl-node-text { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+.nl-node-label { font-weight: 700; letter-spacing: 0.01em; }
+.nl-node-tag {
+  margin-top: 3px; font-size: 10px; font-weight: 500; letter-spacing: 0.06em;
+  text-transform: uppercase; color: rgba(255,255,255,0.62);
+}
+.nl-node-caret { color: rgba(255,255,255,0.55); flex: none; }
+
+/* Level sizing */
+.nl-node-l0 { padding: 12px 20px; gap: 13px; }
+.nl-node-l0 .nl-node-ico { width: 46px; height: 46px; }
+.nl-node-l0 .nl-node-label { font-size: 1.35rem; }
+.nl-node-l1 { padding: 10px 16px; }
+.nl-node-l1 .nl-node-ico { width: 34px; height: 34px; }
+.nl-node-l1 .nl-node-label { font-size: 1.02rem; }
+.nl-node-l2 { padding: 9px 15px; }
+.nl-node-l2 .nl-node-ico { width: 30px; height: 30px; }
+.nl-node-l2 .nl-node-label { font-size: 0.95rem; }
+
+@media (max-width: 767px) {
+  .nl-node-l0 { padding: 10px 16px; gap: 11px; }
+  .nl-node-l0 .nl-node-ico { width: 40px; height: 40px; }
+  .nl-node-l0 .nl-node-label { font-size: 1.15rem; }
+  .nl-node-l0 .nl-node-tag { display: none; }
+  .nl-node { max-width: 80vw; }
+}
+
+/* Low-perf / touch fallback: drop expensive backdrop blur */
+body.low-perf .nl-node,
+body.low-perf .nl-topbar-btn {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: rgba(12, 24, 38, 0.9);
+}
+@media (hover: none) {
+  .nl-node { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+}
+
+/* ===================================================================
+   NL Launcher v2.1 — mobile fit + compact chips + bigger orb + sound btn
+   =================================================================== */
+
+/* ---- Compact icon-only chip (collapsed inactive root on mobile) ---- */
+.nl-node.is-compact {
+  padding: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  justify-content: center;
+}
+.nl-node.is-compact .nl-node-ico {
+  width: 34px; height: 34px;
+}
+.nl-node.is-compact::before { height: 55%; }
+
+/* ---- Bigger profile orb in the launcher (both devices) ---- */
+.nl-topbar-orb { width: 48px; height: 48px; }
+.profile-orb--welcome { width: 48px !important; height: 48px !important; }
+.nl-topbar-orb .profile-orb { width: 100%; height: 100%; }
+@media (max-width: 480px) {
+  .nl-topbar-orb { width: 46px; height: 46px; }
+  .profile-orb--welcome { width: 46px !important; height: 46px !important; }
+}
+
+/* ---- Enable-sound / intro-music glass button ---- */
+.nl-sound-btn {
+  position: absolute;
+  left: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 12px) + 18px);
+  z-index: 30;
+  display: inline-flex; align-items: center; gap: 9px;
+  height: 40px; padding: 0 15px 0 12px;
+  border-radius: 999px;
+  color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  cursor: pointer;
+  background: linear-gradient(150deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.26);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.45), 0 8px 22px rgba(0,0,0,0.4);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
+}
+.nl-sound-btn::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 52%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.34), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.nl-sound-btn.is-on {
+  color: #7ef0b4;
+  border-color: rgba(122,240,180,0.55);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.5), 0 0 20px rgba(60,220,130,0.32), 0 8px 22px rgba(0,0,0,0.4);
+}
+.nl-sound-ico { display: inline-flex; align-items: center; gap: 6px; }
+.nl-sound-textwrap { position: relative; display: inline-grid; }
+.nl-sound-label { grid-area: 1 / 1; white-space: nowrap; }
+.nl-sound-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.nl-sound-eq i {
+  width: 2.5px; height: 100%; border-radius: 2px; transform-origin: bottom;
+  background: currentColor; display: block;
+}
+@media (max-width: 480px) {
+  .nl-sound-btn { left: 12px; height: 38px; padding: 0 13px 0 11px; font-size: 11px; }
+}
+
+/* ---- Mobile pill tuning: keep everything inside a narrow screen ---- */
+@media (max-width: 767px) {
+  .nl-node { max-width: 74vw; }
+  .nl-node-l0 { padding: 9px 15px; gap: 10px; }
+  .nl-node-l0 .nl-node-ico { width: 36px; height: 36px; }
+  .nl-node-l0 .nl-node-label { font-size: 1.05rem; }
+  .nl-node-l1 { padding: 8px 13px; }
+  .nl-node-l1 .nl-node-ico { width: 30px; height: 30px; }
+  .nl-node-l1 .nl-node-label { font-size: 0.92rem; }
+  .nl-node-l2 { padding: 7px 12px; gap: 8px; }
+  .nl-node-l2 .nl-node-ico { width: 27px; height: 27px; }
+  .nl-node-l2 .nl-node-label {
+    font-size: 0.82rem;
+    white-space: normal;
+    line-height: 1.05;
+    max-width: 96px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .nl-launcher-sign { font-size: 9px; letter-spacing: 0.28em; }
+}
