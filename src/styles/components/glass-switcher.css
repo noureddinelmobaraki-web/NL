@@ -1047,60 +1047,84 @@ body[data-nowplaying-full="true"] .glass-switcher-anchor[data-device="mobile"] {
   box-shadow: 0 2px 6px rgba(239,68,68,0.5);
 }
 
-/* ============================================================
-   لوحة التفرّعات الخفيفة (Branch Tree) — بديل الشبكة القديمة
-   نسخة حاسوب (4 أعمدة) + نسخة هاتف (3/2 أعمدة)، بنفس ثيم الزجاج
-   ============================================================ */
-.gs-tree {
+/* ===== V2: نظام أكورديون — أسود مطفي أملس + صفيحة ذهب ===== */
+.gs-tree2 {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
 }
-.gs-branch { position: relative; }
-.gs-branch-node {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  color: var(--gs-fg-dim, rgba(255,255,255,0.62));
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.14);
-  margin-bottom: 8px;
-}
-.gs-branch-twigs {
-  display: grid;
+.gs-tree2-branch {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  padding-inline-start: 14px;
-  margin-inline-start: 10px;
-  border-inline-start: 1.5px solid rgba(255,255,255,0.12);
 }
-.glass-switcher.is-desktop .gs-branch-twigs { grid-template-columns: repeat(4, 1fr); }
-.glass-switcher.is-mobile .gs-branch-twigs {
-  grid-template-columns: repeat(3, 1fr);
-  padding-inline-start: 12px;
-  margin-inline-start: 8px;
+.gs-tree2-ico {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  color: var(--gs-gold-2, #f4d67a);
 }
-@media (max-width: 360px) {
-  .glass-switcher.is-mobile .gs-branch-twigs { grid-template-columns: repeat(2, 1fr); }
+.gs-tree2-label {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
 }
-.gs-twig { position: relative; }
 
-/* الأوضاع الفاتحة: عمود/عقدة التفرّع بألوان داكنة واضحة */
-.glass-switcher[data-theme-skin="light"] .gs-branch-twigs,
-.glass-switcher[data-theme-skin="lite"] .gs-branch-twigs,
-.glass-switcher[data-theme-skin="bit"] .gs-branch-twigs {
-  border-inline-start-color: rgba(0,0,0,0.12);
+/* ── رأس الجذر ── */
+.gs-tree2-root {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 10px 13px; border-radius: 12px; cursor: pointer;
+  color: var(--gs-fg, #f3ead0);
+  background: linear-gradient(180deg, #1b1b1e 0%, #111113 100%);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
-.glass-switcher[data-theme-skin="light"] .gs-branch-node,
-.glass-switcher[data-theme-skin="lite"] .gs-branch-node,
-.glass-switcher[data-theme-skin="bit"] .gs-branch-node {
-  background: rgba(0,0,0,0.05);
-  border-color: rgba(0,0,0,0.1);
+.gs-tree2-root .gs-tree2-label { flex: 1; text-align: left; }
+.gs-tree2-root.is-open {
+  border-color: var(--gs-gold, #d4af37);
+  background: linear-gradient(180deg, #241f16 0%, #14110b 100%);
+  box-shadow: inset 0 1px 0 rgba(244, 214, 122, 0.18), 0 0 0 1px rgba(212, 175, 55, 0.22);
+}
+.gs-tree2-caret { opacity: 0.65; transition: transform 0.15s ease, color 0.15s ease; }
+.gs-tree2-caret.is-open { transform: rotate(180deg); color: var(--gs-gold, #d4af37); }
+
+/* ── شبكة الأبناء (لا تتداخل أبدًا) ── */
+.gs-tree2-grid {
+  display: grid; gap: 8px; padding: 2px;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+}
+.gs-tree2.is-mobile .gs-tree2-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ── ورقة ── */
+.gs-tree2-leaf {
+  display: flex; align-items: center; gap: 7px; min-width: 0;
+  padding: 9px 10px; border-radius: 11px; cursor: pointer;
+  color: var(--gs-fg, #ece4cf);
+  background: linear-gradient(180deg, #161618 0%, #0e0e10 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.gs-tree2-leaf .gs-tree2-label { font-size: 11px; font-weight: 600; }
+.gs-tree2-leaf:hover { border-color: rgba(212, 175, 55, 0.5); transform: translateY(-1px); }
+.gs-tree2-leaf:active { transform: scale(0.97); }
+
+/* وجهات: لون حسب الصفحة (--gs-accent يتغيّر مع data-section) */
+.gs-tree2-leaf.is-active {
+  border-color: var(--gs-accent, var(--gs-gold, #d4af37));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gs-accent, #d4af37) 24%, #141416), #0e0e10);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gs-accent, #d4af37) 45%, transparent);
+}
+/* أوضاع: لون حسب الوضع (--gs-mode يتغيّر مع data-theme-skin) */
+.gs-tree2-leaf--mode.is-active {
+  border-color: var(--gs-mode, var(--gs-gold, #d4af37));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gs-mode, #d4af37) 24%, #141416), #0e0e10);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gs-mode, #d4af37) 45%, transparent);
+}
+
+/* خفّة على اللمس: بلا blur مطلقًا (لا شيء يُعيد أخذ عينات الخلفية) */
+@media (hover: none) {
+  .gs-tree2-leaf:hover { transform: none; }
 }
 
 /* ── مشغّل نافذة الفقاعة (أزرار صور CDN) ───────────────────── */
@@ -1147,61 +1171,49 @@ body[data-nowplaying-full="true"] .glass-switcher-anchor[data-device="mobile"] {
   transform: none;
 }
 
-/* ── متصفّح نافذة الفقاعة المتفرّع (بنمط نافذة الافتتاح، أخفّ) ────── */
-.gs-graph {
-  position: relative;
-  width: 100%;
-  overflow: visible;
-}
-.gs-graph--desktop { height: 230px; }
-.gs-graph--mobile { height: 264px; }
-.gs-graph-links { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 1; }
-.gs-graph-anchor { position: absolute; top: 0; left: 0; transform: translate(-50%, -50%); z-index: 2; }
-
-.gs-gnode {
-  position: relative;
-  display: inline-flex; align-items: center; gap: 7px;
-  width: max-content; max-width: 46vw;
-  padding: 7px 12px;
-  border-radius: 999px;
-  white-space: nowrap;
-  color: var(--gs-fg, #fff);
-  cursor: pointer;
-  background: linear-gradient(150deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 60%, rgba(255,255,255,0.02) 100%);
-  border: 1px solid rgba(255,255,255,0.26);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 6px 16px rgba(0,0,0,0.32);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
-.gs-gnode::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 50%;
-  border-radius: 999px 999px 0 0;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.32), rgba(255,255,255,0));
-  pointer-events: none;
-}
-.gs-gnode-ico { display: inline-flex; align-items: center; justify-content: center; flex: none; }
-.gs-gnode-label { font-size: 11px; font-weight: 700; letter-spacing: 0.01em; }
-.gs-gnode-caret { opacity: 0.6; transition: transform 0.25s ease; }
-.gs-gnode-caret.is-open { transform: rotate(180deg); }
-
-.gs-gnode--root { padding: 8px 13px; }
-.gs-gnode--root.is-open {
-  border-color: rgba(122,240,180,0.55);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.45), 0 0 16px rgba(60,220,130,0.3), 0 6px 16px rgba(0,0,0,0.32);
-}
-.gs-gnode--leaf { padding: 6px 11px; }
-.gs-gnode--leaf.is-active {
-  border-color: rgba(0,230,118,0.5);
-  background: linear-gradient(150deg, rgba(0,230,118,0.22), rgba(0,230,118,0.06));
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 0 14px rgba(0,230,118,0.28);
+/* ===== V2: هوية الذهب + أسود مطفي للنافذة المفتوحة ===== */
+.glass-switcher {
+  --gs-gold: #d4af37;
+  --gs-gold-2: #f4d67a;
+  --gs-gold-line: rgba(212, 175, 55, 0.5);
 }
 
-/* أخفّ على اللمس: أزل blur الذي يُعيد أخذ عينات الخلفية كل إطار */
-@media (hover: none) {
-  .gs-gnode {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    background: linear-gradient(150deg, rgba(30,48,70,0.86), rgba(16,28,44,0.86));
-  }
+/* لون مختلف لكل وضع (--gs-mode) */
+.glass-switcher[data-theme-skin="dark"]     { --gs-mode: #d4af37; }
+.glass-switcher[data-theme-skin="light"]    { --gs-mode: #b8860b; }
+.glass-switcher[data-theme-skin="midnight"] { --gs-mode: #c0a4ff; }
+.glass-switcher[data-theme-skin="bit"]      { --gs-mode: #7cfc00; }
+.glass-switcher[data-theme-skin="lite"]     { --gs-mode: #7fd0ff; }
+
+/* النافذة المفتوحة: أسود مطفي أملس + خط ذهبي رفيع، بلا blur (أخفّ ويساعد FCP) */
+.glass-switcher.is-desktop[data-state="open"],
+.glass-switcher.is-mobile[data-state="open"] {
+  background: linear-gradient(155deg, #141416 0%, #0c0c0e 55%, #161617 100%) !important;
+  border: 1px solid var(--gs-gold-line, rgba(212, 175, 55, 0.5)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 18px 50px rgba(0, 0, 0, 0.55) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* شريط فاصل ذهبي رفيع أعلى أقسام اللوحة بدل خطوط white/10 */
+.glass-switcher[data-state="open"] .border-t,
+.glass-switcher[data-state="open"] .border-b {
+  border-color: rgba(212, 175, 55, 0.18) !important;
+}
+
+/* مشغّل النوتش: إطار ذهبي خفيف بلا blur */
+.nl-gs-player {
+  background: rgba(212, 175, 55, 0.06) !important;
+  border: 1px solid rgba(212, 175, 55, 0.22) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* خفّة FCP: لا backdrop-filter على الأورب وهو مغلق (يعمل عبر portal دائمًا) */
+.glass-switcher:not([data-state="open"]) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }

@@ -110,6 +110,7 @@ import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
 import { FloatingControls } from "./components/layout/FloatingControls";
 import { GlassModeSwitcher } from "./components/layout/GlassModeSwitcher";
+import { NowPlayingBridge } from './audio/NowPlayingBridge';
 const GallerySection = lazyWithRetry(
   () => import('./components/layout/GallerySection').then(m => ({ default: m.GallerySection })),
   'GallerySection',
@@ -186,7 +187,12 @@ function AppInner() {
 
   return (
     <>
-      {loaded && <GlassModeSwitcher />}
+      {loaded && (
+        <>
+          <GlassModeSwitcher />
+          <NowPlayingBridge />
+        </>
+      )}
       <AnimatePresence mode="wait" onExitComplete={endTransition}>
         {loaded && isGamesOpen ? (
           <motion.div

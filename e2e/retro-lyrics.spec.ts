@@ -21,6 +21,9 @@ test.describe('Retro world smoke test', () => {
     await switcher.hover({ force: true }).catch(() => {});
     await switcher.click({ force: true });
 
+    // V2: الوجهات خلف فرع "Go to" (أكورديون) — افتحه أولاً.
+    await page.getByRole('button', { name: 'Go to' }).click();
+
     // 3) Retro item inside the switcher.
     const retroItem = page.getByRole('menuitem', { name: 'Retro', exact: true });
     await expect(retroItem).toBeVisible({ timeout: 30000 });

@@ -1,13 +1,10 @@
 // src/components/layout/GlassBubbleGraph.tsx
-// نسخة مصغّرة وخفيفة من متصفّح نافذة الافتتاح (radial branching) مخصّصة
-// لنافذة الفقاعة. جذران: Modes / Go-to. عند اختيار جذر تتفرّع أبناؤه على
-// أشعّة زجاجية منحنية. حركة أبطأ وأخفّ من نافذة الافتتاح، وتخطيط منفصل
-// للهاتف والحاسوب. يُبقي معرّفات التنقل mode-<id>/dest-<id>.
-
-import { useMemo, useState } from 'react';
+// نظام تفرّع خفيف احترافي لنافذة تغيير الأوضاع (V2).
+// جذران (Modes / Go to) بأسلوب أكورديون: فتح واحد يُغلق الآخر.
+// الأبناء شبكة ملتفّة لا تتداخل. بلا SVG/مواضع مطلقة/ResizeObserver.
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Palette, Compass, ChevronDown, type LucideIcon } from 'lucide-react';
-import { useStageSize } from '../launcher/useStageSize';
 import type { Theme } from '../../utils/userPrefs';
 
 export interface BubbleMode { id: Theme; label: string; icon: LucideIcon; }
@@ -33,204 +30,115 @@ interface Props {
 }
 
 type RootId = 'modes' | 'dest';
-interface Pt { x: number; y: number; }
-interface Leaf {
-  navId: string;
-  label: string;
-  icon: React.ReactNode;
-  active: boolean;
-  pos: Pt;
-  onClick: (e: React.MouseEvent) => void;
-}
 
-const DEG = Math.PI / 180;
-
-function clamp(p: Pt, w: number, h: number, pad: number): Pt {
-  return {
-    x: Math.max(pad, Math.min(w - pad, p.x)),
-    y: Math.max(pad, Math.min(h - pad, p.y)),
-  };
-}
-
-/** منحنى زجاجي (ليس خطًا مستقيمًا) — ينحني على المحور المهيمن. */
-function curve(a: Pt, b: Pt): string {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  if (Math.abs(dy) >= Math.abs(dx)) {
-    const c1y = a.y + dy * 0.55;
-    const c2y = b.y - dy * 0.55;
-    return `M ${a.x} ${a.y} C ${a.x} ${c1y}, ${b.x} ${c2y}, ${b.x} ${b.y}`;
-  }
-  const c1x = a.x + dx * 0.55;
-  const c2x = b.x - dx * 0.55;
-  return `M ${a.x} ${a.y} C ${c1x} ${a.y}, ${c2x} ${b.y}, ${b.x} ${b.y}`;
-}
-
-/** نشر count نقاط في قوس متجه للأسفل (90°) حول parent. */
-function fanDown(parent: Pt, count: number, spreadDeg: number, radius: number): Pt[] {
-  if (count <= 0) return [];
-  const baseDeg = 90;
-  if (count === 1) {
-    const A = baseDeg * DEG;
-    return [{ x: parent.x + Math.cos(A) * radius, y: parent.y + Math.sin(A) * radius }];
-  }
-  const start = baseDeg - spreadDeg / 2;
-  const step = spreadDeg / (count - 1);
-  const out: Pt[] = [];
-  for (let i = 0; i < count; i++) {
-    const A = (start + step * i) * DEG;
-    out.push({ x: parent.x + Math.cos(A) * radius, y: parent.y + Math.sin(A) * radius });
-  }
-  return out;
-}
-
-// حركة أبطأ وألين من نافذة الافتتاح (أطول وأنعم).
-const softSpring = { type: 'spring' as const, stiffness: 120, damping: 22, mass: 1.1 };
+// حركات خفيفة (transform/opacity فقط) — بلا كائنات inline لتفادي أي التباس.
+const easeOut = [0.22, 0.61, 0.36, 1] as const;
+const gridInit = { opacity: 0, y: -4 };
+const gridShow = { opacity: 1, y: 0 };
+const gridHide = { opacity: 0, y: -4 };
+const leafInit = { opacity: 0, scale: 0.92 };
+const leafShow = { opacity: 1, scale: 1 };
+const leafHide = { opacity: 0, scale: 0.92 };
 
 export function GlassBubbleGraph({
   modes, destinations, theme, onMode, getTabIndex, handleFocus, reduceMotion, isMobile,
 }: Props) {
-  const { ref, size } = useStageSize<HTMLDivElement>();
-  const [activeRoot, setActiveRoot] = useState<RootId | null>('modes');
+  const [activeRoot, setActiveRoot] = useState<RootId>('modes');
 
-  const roots: { id: RootId; label: string; icon: LucideIcon }[] = useMemo(() => ([
+  const roots: { id: RootId; label: string; icon: LucideIcon }[] = [
     { id: 'modes', label: 'Modes', icon: Palette },
     { id: 'dest', label: 'Go to', icon: Compass },
-  ]), []);
+  ];
 
-  const { w, h } = size;
-
-  const { rootPts, leaves, edges } = useMemo(() => {
-    const empty = { rootPts: {} as Record<RootId, Pt>, leaves: [] as Leaf[], edges: [] as { id: string; path: string }[] };
-    if (w === 0 || h === 0) return empty;
-
-    const pad = isMobile ? 42 : 48;
-    const rootY = Math.max(28, h * 0.13);
-    // جذران في صفّ أعلى المسرح.
-    const rp: Record<RootId, Pt> = {
-      modes: { x: w * 0.30, y: rootY },
-      dest: { x: w * 0.70, y: rootY },
-    };
-    if (!activeRoot) return { rootPts: rp, leaves: [], edges: [] };
-
-    const parent = rp[activeRoot];
-    const list: Omit<Leaf, 'pos'>[] = activeRoot === 'modes'
-      ? modes.map((m) => {
-          const Icon = m.icon;
-          return {
-            navId: `mode-${m.id}`,
-            label: m.label,
-            icon: <Icon size={16} />,
-            active: theme === m.id,
-            onClick: () => onMode(m.id),
-          };
-        })
-      : destinations.map((d) => ({
-          navId: `dest-${d.id}`,
-          label: d.label,
-          icon: d.icon,
-          active: d.isActive,
-          onClick: d.onClick,
-        }));
-
-    const count = list.length;
-    // قوس أوسع للعدد الأكبر، مقيّد داخل المسرح.
-    const spread = Math.min(isMobile ? 168 : 150, 30 * (count - 1) + 46);
-    const radius = Math.min(h - rootY - pad, isMobile ? 116 : 132);
-    const pts = fanDown(parent, count, spread, radius).map((p) => clamp(p, w, h, pad));
-    const lv: Leaf[] = list.map((it, i) => ({ ...it, pos: pts[i] }));
-    const ed = lv.map((c) => ({ id: c.navId, path: curve(parent, c.pos) }));
-    return { rootPts: rp, leaves: lv, edges: ed };
-  }, [w, h, activeRoot, modes, destinations, theme, onMode, isMobile]);
+  const dur = reduceMotion ? 0 : 0.16;
+  const gridT = { duration: dur, ease: easeOut };
+  const leafT = (i: number) => ({ duration: dur, ease: easeOut, delay: reduceMotion ? 0 : i * 0.015 });
 
   return (
-    <div
-      ref={ref}
-      className={`gs-graph ${isMobile ? 'gs-graph--mobile' : 'gs-graph--desktop'}`}
-      dir="ltr"
-    >
-      {/* الأشعّة الزجاجية المنحنية */}
-      <svg className="gs-graph-links" width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" aria-hidden="true">
-        <defs>
-          <linearGradient id="gsRayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#bff6d8" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#6fd0ff" stopOpacity="0.7" />
-          </linearGradient>
-        </defs>
-        <AnimatePresence>
-          {edges.map((e) => (
-            <motion.path
-              key={e.id}
-              d={e.path}
-              stroke="url(#gsRayGrad)"
-              strokeWidth={2}
-              strokeLinecap="round"
-              initial={reduceMotion ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
-              animate={reduceMotion ? { opacity: 0.7 } : { pathLength: 1, opacity: 0.75 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: reduceMotion ? 0 : 0.55, ease: 'easeOut' }}
-            />
-          ))}
-        </AnimatePresence>
-      </svg>
-
-      {/* الجذور */}
+    <div className={`gs-tree2 ${isMobile ? 'is-mobile' : 'is-desktop'}`} dir="ltr" role="none">
       {roots.map((rt) => {
-        const p = rootPts[rt.id];
-        if (!p) return null;
-        const Icon = rt.icon;
+        const RootIcon = rt.icon;
         const isOpen = activeRoot === rt.id;
         return (
-          <motion.div
-            key={rt.id}
-            className="gs-graph-anchor"
-            initial={false}
-            animate={{ left: p.x, top: p.y }}
-            transition={reduceMotion ? { duration: 0 } : softSpring}
-          >
+          <div key={rt.id} className="gs-tree2-branch" data-open={isOpen ? 'true' : 'false'}>
             <button
               type="button"
-              className={`gs-gnode gs-gnode--root ${isOpen ? 'is-open' : ''}`}
-              onClick={(e) => { e.stopPropagation(); setActiveRoot((prev) => (prev === rt.id ? null : rt.id)); }}
+              className={`gs-tree2-root ${isOpen ? 'is-open' : ''}`}
+              onClick={(e) => { e.stopPropagation(); setActiveRoot(rt.id); }}
               aria-expanded={isOpen}
             >
-              <span className="gs-gnode-ico"><Icon size={16} /></span>
-              <span className="gs-gnode-label">{rt.label}</span>
-              <ChevronDown className={`gs-gnode-caret ${isOpen ? 'is-open' : ''}`} size={13} aria-hidden="true" />
+              <span className="gs-tree2-ico"><RootIcon size={16} /></span>
+              <span className="gs-tree2-label">{rt.label}</span>
+              <ChevronDown className={`gs-tree2-caret ${isOpen ? 'is-open' : ''}`} size={14} aria-hidden="true" />
             </button>
-          </motion.div>
+
+            <AnimatePresence initial={false}>
+              {isOpen && (
+                <motion.div
+                  key={rt.id + '-grid'}
+                  className="gs-tree2-grid"
+                  role="menu"
+                  initial={reduceMotion ? undefined : gridInit}
+                  animate={gridShow}
+                  exit={reduceMotion ? undefined : gridHide}
+                  transition={gridT}
+                >
+                  {rt.id === 'modes'
+                    ? modes.map((m, i) => {
+                        const MIcon = m.icon;
+                        const navId = 'mode-' + m.id;
+                        return (
+                          <motion.button
+                            key={navId}
+                            type="button"
+                            role="menuitem"
+                            className={`gs-tree2-leaf gs-tree2-leaf--mode ${theme === m.id ? 'is-active' : ''}`}
+                            initial={reduceMotion ? undefined : leafInit}
+                            animate={leafShow}
+                            exit={reduceMotion ? undefined : leafHide}
+                            transition={leafT(i)}
+                            onClick={(e) => { e.stopPropagation(); onMode(m.id); }}
+                            data-nav-id={navId}
+                            tabIndex={getTabIndex(navId)}
+                            onFocus={() => handleFocus(navId)}
+                            aria-label={m.label}
+                            title={m.label}
+                          >
+                            <span className="gs-tree2-ico"><MIcon size={15} /></span>
+                            <span className="gs-tree2-label">{m.label}</span>
+                          </motion.button>
+                        );
+                      })
+                    : destinations.map((d, i) => {
+                        const navId = 'dest-' + d.id;
+                        return (
+                          <motion.button
+                            key={navId}
+                            type="button"
+                            role="menuitem"
+                            className={`gs-tree2-leaf ${d.isActive ? 'is-active' : ''}`}
+                            initial={reduceMotion ? undefined : leafInit}
+                            animate={leafShow}
+                            exit={reduceMotion ? undefined : leafHide}
+                            transition={leafT(i)}
+                            onClick={(e) => { e.stopPropagation(); d.onClick(e); }}
+                            data-nav-id={navId}
+                            tabIndex={getTabIndex(navId)}
+                            onFocus={() => handleFocus(navId)}
+                            aria-label={d.ariaLabel ?? d.label}
+                            title={d.title ?? d.label}
+                          >
+                            <span className="gs-tree2-ico">{d.icon}</span>
+                            <span className="gs-tree2-label">{d.label}</span>
+                          </motion.button>
+                        );
+                      })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         );
       })}
-
-      {/* الأوراق (أبناء الجذر المفتوح) */}
-      <AnimatePresence>
-        {leaves.map((lf) => (
-          <motion.div
-            key={lf.navId}
-            className="gs-graph-anchor"
-            initial={false}
-            animate={{ left: lf.pos.x, top: lf.pos.y }}
-            transition={reduceMotion ? { duration: 0 } : softSpring}
-          >
-            <motion.button
-              type="button"
-              className={`gs-gnode gs-gnode--leaf ${lf.active ? 'is-active' : ''}`}
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.5 }}
-              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.4 }}
-              transition={reduceMotion ? { duration: 0 } : { ...softSpring, delay: 0.06 }}
-              onClick={(e) => { e.stopPropagation(); lf.onClick(e); }}
-              data-nav-id={lf.navId}
-              tabIndex={getTabIndex(lf.navId)}
-              onFocus={() => handleFocus(lf.navId)}
-              title={lf.label}
-            >
-              <span className="gs-gnode-ico">{lf.icon}</span>
-              <span className="gs-gnode-label">{lf.label}</span>
-            </motion.button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
     </div>
   );
 }

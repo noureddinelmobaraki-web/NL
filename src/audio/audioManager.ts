@@ -1,3 +1,5 @@
+import { nowPlayingBus } from './nowPlayingBus';
+
 type AudioSource =
   | 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro'
   | 'games' | 'movies' | 'series' | 'tv' | 'retro' | 'xp'
@@ -163,6 +165,37 @@ class AudioManager {
     this.active = source;
     if (oldActive) this.notifyStateChange(oldActive);
     if (source) this.notifyStateChange(source);
+    this.syncNowPlaying(source);
+  }
+
+  // المصادر التي لها ناشر غنيّ خاص بها (اسم حقيقي + أزرار) — لا نلمسها هنا.
+  private static readonly RICH_NP = new Set<string>(['song', 'profile']);
+  // لافتات ودّية لأي مصدر آخر (تُستبدل باسم ملف حقيقي إن نشره منتجه).
+  private static readonly NP_LABELS: Record<string, string> = {
+    lens: 'Lens Gallery', mebit: 'ME', games: 'Games', movies: 'Cinema',
+    series: 'Series', tv: 'TV', retro: 'Retro', video: 'Video',
+    intro: 'Intro', preview: 'Preview', preview_clip: 'Preview', xp: 'Windows XP',
+  };
+
+  /** ينشر تحكّمًا عالميًا في النوتش لأي مصدر شغّال ليس له ناشر غنيّ. */
+  private syncNowPlaying(source: AudioSource | null): void {
+    if (source && source !== 'bg' && !AudioManager.RICH_NP.has(source)) {
+      const label = AudioManager.NP_LABELS[source] ?? source;
+      nowPlayingBus.publish({
+        source,
+        title: label,
+        isPlaying: true,
+        controls: {
+          toggle: () => { if (this.isSourceActive(source)) this.pause(source); else void (this.play as any)(source); },
+          stop: () => { this.stop(source); },
+        },
+      });
+      return;
+    }
+    if (!source) {
+      const cur = nowPlayingBus.get();
+      if (cur && !AudioManager.RICH_NP.has(cur.source)) nowPlayingBus.clear(cur.source);
+    }
   }
 
   /**

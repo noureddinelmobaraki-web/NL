@@ -4,8 +4,6 @@ import { audioEngine } from '../engine/audioEngine';
 import { fetchLyrics, prefetchLyrics } from '../data/lyrics';
 import { audioManager } from '../../../audio/audioManager';
 import { prefetchAudio } from '../data/audioPrefetch';
-import { nowPlayingBus } from '../../../audio/nowPlayingBus';
-import { selectCurrentTrack } from '../store/selectors';
 
 export function useMusicEngine() {
   const actions = useMusicStore((s) => s.actions);
@@ -102,42 +100,5 @@ export function useMusicEngine() {
       isPlaying: () => useMusicStore.getState().isPlaying,
     });
     return off;
-  }, []);
-
-  // نشر مقطع NL-music + أزرار التحكّم في الـ bus العالمي، حتى يعرض النوتش الاسم
-  // الحقيقي ويتحكّم فيه مشغّل نافذة الفقاعة. حارس lastKey يمنع النشر المتكرر مع
-  // كل تحديث تقدّم (currentTime) — ننشر فقط عند تغيّر المقطع أو حالة التشغيل.
-  useEffect(() => {
-    const controls = {
-      toggle: () => useMusicStore.getState().actions.togglePlay(),
-      next: () => useMusicStore.getState().actions.next(),
-      prev: () => useMusicStore.getState().actions.prev(),
-      stop: () => useMusicStore.getState().actions.togglePlay(),
-    };
-    let lastKey = '';
-    const publish = () => {
-      const s = useMusicStore.getState();
-      const track = selectCurrentTrack(s);
-      if (!track) {
-        if (lastKey !== '') { lastKey = ''; nowPlayingBus.clear('song'); }
-        return;
-      }
-      const key = `${track.id}|${s.isPlaying ? '1' : '0'}`;
-      if (key === lastKey) return;
-      lastKey = key;
-      nowPlayingBus.publish({
-        source: 'song',
-        title: track.title,
-        subtitle: track.artist,
-        artworkUrl: track.coverUrl,
-        isPlaying: s.isPlaying,
-        canNext: true,
-        canPrev: true,
-        controls,
-      });
-    };
-    publish();
-    const unsub = useMusicStore.subscribe(publish);
-    return () => { unsub(); nowPlayingBus.clear('song'); };
   }, []);
 }

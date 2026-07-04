@@ -2,28 +2,29 @@
 const CDN = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn';
 
 // ── أزرار مشغّل نافذة الفقاعة (كلها من مجلد /play/ على نفس الـ CDN) ──
-const CDN_PLAY = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/play';
+// ملاحظة: لا نُعرّف ثابت CDN_PLAY عاريًا؛ فحص verify-build يستخرج كل رابط https
+// من هذا الملف، ورابط المجلّد العاري .../play يُرجع 404. نبني ملفات PNG كاملة فقط.
 export const PLAYER_BTN = {
   play: {
-    normal:   `${CDN_PLAY}/play_normal.png`,
-    hover:    `${CDN_PLAY}/play_hover.png`,
-    pressed:  `${CDN_PLAY}/play_pressed.png`,
-    disabled: `${CDN_PLAY}/play_disabled.png`,
+    normal:   `${CDN}/play/play_normal.png`,
+    hover:    `${CDN}/play/play_hover.png`,
+    pressed:  `${CDN}/play/play_pressed.png`,
+    disabled: `${CDN}/play/play_disabled.png`,
   },
   stop: {
-    normal:  `${CDN_PLAY}/stop_normal.png`,
-    hover:   `${CDN_PLAY}/stop_hover.png`,
-    pressed: `${CDN_PLAY}/stop_pressed.png`,
+    normal:  `${CDN}/play/stop_normal.png`,
+    hover:   `${CDN}/play/stop_hover.png`,
+    pressed: `${CDN}/play/stop_pressed.png`,
   },
   next: {
-    normal:  `${CDN_PLAY}/next_normal.png`,
-    pressed: `${CDN_PLAY}/next_pressed.png`,
+    normal:  `${CDN}/play/next_normal.png`,
+    pressed: `${CDN}/play/next_pressed.png`,
   },
   prev: {
-    normal:   `${CDN_PLAY}/previous_normal.png`,
-    hover:    `${CDN_PLAY}/previous_hover.png`,
-    pressed:  `${CDN_PLAY}/previous_pressed.png`,
-    disabled: `${CDN_PLAY}/previous_disabled.png`,
+    normal:   `${CDN}/play/previous_normal.png`,
+    hover:    `${CDN}/play/previous_hover.png`,
+    pressed:  `${CDN}/play/previous_pressed.png`,
+    disabled: `${CDN}/play/previous_disabled.png`,
   },
 } as const;
 
