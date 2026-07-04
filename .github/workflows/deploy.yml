@@ -87,12 +87,25 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # First attempt. The GitHub Pages API intermittently returns a transient
+      # "Deployment failed, try again later." even when the build artifact is
+      # perfectly valid. We poll longer and tolerate more transient status
+      # errors, but a hard "failed" status from the API is not retried by the
+      # action itself -- so we allow this step to fail softly and retry once.
       - id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
         with:
-          # Harden against the transient GitHub Pages API failure
-          # ("Deployment failed, try again later.") that fails this job even when
-          # the build is fine: poll longer and tolerate more transient status
-          # errors before giving up.
+          timeout: 600000
+          error_count: 20
+      # Automatic single retry: clears virtually all transient Pages API
+      # failures without needing a manual "Re-run jobs". Only runs if the first
+      # attempt actually failed. Note: `if` expressions do NOT use the
+      # dollar-brace wrapper, so no expansion syntax is needed here.
+      - name: Retry Pages deployment (transient API failure)
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        with:
           timeout: 600000
           error_count: 20

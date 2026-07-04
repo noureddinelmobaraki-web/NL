@@ -7,13 +7,15 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   Volume2, VolumeX, LogOut, Gamepad2, ChevronLeft, Film, Tv, Joystick, Monitor,
   AudioLines, User, Users, Moon, Sun, MoonStar, Grid2x2, Feather,
-  SkipBack, SkipForward, Play, Pause
+  SkipBack, SkipForward, Play, Pause, Bell, Palette, Compass
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuthOptional } from '../../context/AuthContext';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { audioManager } from '../../audio/audioManager';
 import { useNowPlaying } from '../../features/music/hooks/useNowPlaying';
+import { useNowPlayingMeta } from '../../audio/nowPlayingBus';
+import { useInboxNotifications } from '../../features/account/hooks/useInboxNotifications';
 import type { Theme } from '../../utils/userPrefs';
 import '../../styles/components/glass-switcher.css';
 
@@ -26,6 +28,31 @@ const MODES: { id: Theme; label: string; icon: any }[] = [
 ];
 
 const SOURCES = ['bg', 'song', 'lens', 'mebit', 'video', 'intro', 'games', 'movies', 'series', 'tv', 'retro'] as const;
+
+// Every source whose playback should light up the notch with a track/file name.
+// 'bg' (ambient site music) is deliberately excluded so the notch is not always
+// on; every *explicitly chosen* sound (songs, profile song, galleries, sections,
+// previews) turns the orb into a live notch.
+const LIVE_SOURCES = ['song', 'profile', 'lens', 'mebit', 'games', 'movies', 'series', 'tv', 'retro', 'video', 'intro', 'preview', 'preview_clip'] as const;
+
+// Friendly fallback labels when a producer did not publish a specific file name.
+const SOURCE_LABELS: Record<string, string> = {
+  bg: 'Background',
+  song: 'NL Music',
+  profile: 'Profile Song',
+  lens: 'Lens Gallery',
+  mebit: 'ME',
+  video: 'Video',
+  intro: 'Intro',
+  games: 'Games',
+  movies: 'Cinema',
+  series: 'Series',
+  tv: 'TV',
+  retro: 'Retro',
+  xp: 'Windows XP',
+  preview: 'Preview',
+  preview_clip: 'Preview',
+};
 
 const AVOID_SELECTOR =
   '[data-glass-avoid],[aria-label="Close"],[aria-label="Close"],.modal-close-btn,.gallery-close-btn';
@@ -184,6 +211,30 @@ function GlassModeSwitcherInner() {
     () => SOURCES.some((s) => audioManager.isSourceActive(s)),
     () => false,
   );
+
+  // ── نوتش عالمية: تتفاعل مع كل مصدر صوت (وليس NL music فقط) ─────────
+  const activeLiveSource = useSyncExternalStore(
+    (cb) => {
+      const unsubs = LIVE_SOURCES.map((s) => audioManager.subscribeState(s, cb));
+      return () => unsubs.forEach((u) => u && u());
+    },
+    () => LIVE_SOURCES.find((s) => audioManager.isSourceActive(s)) ?? null,
+    () => null,
+  );
+  const liveMeta = useNowPlayingMeta();
+  const liveActive = !!activeLiveSource || isMusicActive;
+  const liveTitle =
+    activeLiveSource === 'song' && currentTrack
+      ? currentTrack.title
+      : liveMeta && liveMeta.source === activeLiveSource
+        ? liveMeta.title
+        : activeLiveSource
+          ? (SOURCE_LABELS[activeLiveSource] ?? 'Playing')
+          : currentTrack?.title ?? '';
+
+  // ── الإشعارات (صندوق الأغاني المُرسَلة) داخل النوتش ─────────
+  const { items: notifications, unreadCount, markAllRead } = useInboxNotifications();
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const triggerVibrate = useCallback(() => {
     if (isTouch && 'vibrate' in navigator) {
@@ -674,7 +725,7 @@ function GlassModeSwitcherInner() {
         data-state={state}
         data-section={section}
         data-theme-skin={skin}
-        data-live={isMusicActive ? "true" : "false"}
+        data-live={(liveActive || unreadCount > 0) ? "true" : "false"}
         data-hidden={!isTabVisible ? "true" : "false"}
         data-animating={(isInteracting || open) ? "true" : "false"}
         className={`glass-switcher ${isDesktop ? 'is-desktop' : 'is-mobile'}${isCinema ? ' is-cinema' : ''}${isInteracting ? ' is-interacting' : ''}`}
@@ -728,20 +779,71 @@ function GlassModeSwitcherInner() {
         <span className="glass-switcher__marble" style={state === 'open' ? { opacity: 0 } : undefined} aria-hidden="true" />
         <span className="glass-switcher__sheen" style={state === 'open' ? { opacity: 0 } : undefined} aria-hidden="true" />
 
-        {isCinema && state !== 'open' && !isMusicActive && (
+        {isCinema && state !== 'open' && !liveActive && (
           <Film className="glass-switcher__cine-icon" size={state === 'dot' ? 11 : 22} aria-hidden="true" />
         )}
 
-        {/* الجزيرة الحية: Equalizer + Track Title */}
-        {isMusicActive && state === 'orb' && (
+        {/* الجزيرة الحية (Dynamic Notch): تتفاعل مع كل الأصوات + الإشعارات */}
+        {(liveActive || unreadCount > 0) && state === 'orb' && (
           <>
-            <div className="gs-equalizer">
-              <span className="gs-eq-bar bar-1" />
-              <span className="gs-eq-bar bar-2" />
-              <span className="gs-eq-bar bar-3" />
-            </div>
-            <span className="gs-live-title">{currentTrack?.title}</span>
+            {liveActive && (
+              <>
+                <div className="gs-equalizer">
+                  <span className="gs-eq-bar bar-1" />
+                  <span className="gs-eq-bar bar-2" />
+                  <span className="gs-eq-bar bar-3" />
+                </div>
+                <span className="gs-live-title">{liveTitle}</span>
+              </>
+            )}
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                className="gs-notif-bell"
+                onClick={(e) => { e.stopPropagation(); setNotifOpen((v) => !v); }}
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell size={13} />
+                <span className="gs-notif-count">{unreadCount}</span>
+              </button>
+            )}
           </>
+        )}
+
+        {/* لوحة الإشعارات المنبثقة من النوتش (نوتش كاملة) */}
+        {notifOpen && state !== 'open' && (
+          <div className="gs-notif-panel" role="dialog" aria-label="Notifications" onClick={(e) => e.stopPropagation()}>
+            <div className="gs-notif-head">
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <button type="button" className="gs-notif-mark" onClick={() => { void markAllRead(); }}>
+                  Mark read
+                </button>
+              )}
+            </div>
+            <div className="gs-notif-list">
+              {notifications.length === 0 ? (
+                <div className="gs-notif-empty">No notifications</div>
+              ) : (
+                notifications.slice(0, 6).map((n) => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    className="gs-notif-item"
+                    data-unread={n.isRead ? 'false' : 'true'}
+                    onClick={() => { setNotifOpen(false); setOpen(false); auth?.openProfile?.(); }}
+                  >
+                    <span className="gs-notif-item-dot" />
+                    <span className="gs-notif-item-main">
+                      <span className="gs-notif-item-title">{n.title}</span>
+                      <span className="gs-notif-item-sub">{n.sender} • {n.timeLabel}</span>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         )}
 
         <AnimatePresence>
@@ -779,6 +881,18 @@ function GlassModeSwitcherInner() {
                     {auth?.user ? auth.user.email : 'Not logged in'}
                   </div>
                 </div>
+                {auth?.user && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setOpen(false); auth.openProfile(); triggerVibrate(); }}
+                    className="gs-panel-bell relative shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[color:var(--gs-fg)] transition-all cursor-pointer"
+                    title="Notifications"
+                    aria-label="Notifications"
+                  >
+                    <Bell size={16} />
+                    {unreadCount > 0 && <span className="gs-bell-badge">{unreadCount}</span>}
+                  </button>
+                )}
               </div>
 
               {/* 2. Login / Account Button */}
@@ -818,12 +932,14 @@ function GlassModeSwitcherInner() {
                 )}
               </div>
 
-              {/* 3. Modes Section (المظاهر) */}
-              <div className="flex flex-col gap-1.5" dir="ltr">
-                <div className="text-[10px] font-bold text-[color:var(--gs-fg-faint)] uppercase tracking-wider text-left pl-1">
-                  Modes
+              {/* 3. Modes + Destinations — شجرة تفرّعات خفيفة (حاسوب/هاتف) */}
+              <div className="gs-tree" dir="ltr">
+              <div className="gs-branch" data-branch="modes">
+                <div className="gs-branch-node">
+                  <Palette size={13} aria-hidden="true" />
+                  <span>Modes</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="gs-branch-twigs">
                   {MODES.map((m) => {
                     const IconComp = m.icon;
                     const isActive = theme === m.id;
@@ -840,7 +956,7 @@ function GlassModeSwitcherInner() {
                           setOpen(false);
                           triggerVibrate();
                         }}
-                        className={`h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-[color:var(--gs-fg)] cursor-pointer ${
+                        className={`gs-twig h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-[color:var(--gs-fg)] cursor-pointer ${
                           isActive
                             ? 'bg-[#00E676]/20 border-[#00E676]/40 shadow-[0_4px_12px_rgba(0,230,118,0.22)] font-bold'
                             : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
@@ -857,12 +973,12 @@ function GlassModeSwitcherInner() {
                 </div>
               </div>
 
-              {/* 4. Destinations Section (الوجهات) */}
-              <div className="flex flex-col gap-1.5" dir="ltr">
-                <div className="text-[10px] font-bold text-[color:var(--gs-fg-faint)] uppercase tracking-wider text-left pl-1">
-                  Destinations
+              <div className="gs-branch" data-branch="dest">
+                <div className="gs-branch-node">
+                  <Compass size={13} aria-hidden="true" />
+                  <span>Go to</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="gs-branch-twigs">
                   {DESTINATIONS.map((d) => {
                     const isActive = d.isActive;
                     const itemId = `dest-${d.id}`;
@@ -872,7 +988,7 @@ function GlassModeSwitcherInner() {
                         type="button"
                         role="menuitem"
                         onClick={d.onClick}
-                        className={`h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-[color:var(--gs-fg)] cursor-pointer ${
+                        className={`gs-twig h-14 rounded-xl flex flex-col items-center justify-center gap-1 border transition-all text-[10px] leading-tight text-[color:var(--gs-fg)] cursor-pointer ${
                           isActive
                             ? 'bg-[#FF7A1A]/20 border-[#FF7A1A]/40 shadow-[0_4px_12px_rgba(255,122,26,0.22)] font-bold'
                             : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
@@ -889,6 +1005,7 @@ function GlassModeSwitcherInner() {
                     );
                   })}
                 </div>
+              </div>
               </div>
 
               {/* Sleek Footer Bottom Controls */}

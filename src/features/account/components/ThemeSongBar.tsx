@@ -3,6 +3,7 @@ import { Play, Pause, X } from 'lucide-react';
 import { getFvTracks } from '../../music/data/loadSongs';
 import { getInitials } from '../../music/utils/cover';
 import { audioManager } from '../../../audio/audioManager';
+import { nowPlayingBus } from '../../../audio/nowPlayingBus';
 
 import { useMusicStore } from '../../music/store/musicStore';
 
@@ -31,6 +32,9 @@ export function ThemeSongBar({
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
+  // مرجع ثابت لأحدث track حتى لا تحتاج useEffect/useCallback إلى إضافته كتبعية (يتجنّب تحذيرات exhaustive-deps).
+  const trackRef = useRef(track);
+  trackRef.current = track;
   
   const clipStart = Math.max(0, start ?? 0);
   const clipEnd = end && end > clipStart ? end : null;
@@ -65,11 +69,13 @@ export function ThemeSongBar({
       if (p && typeof p.then === 'function') {
         p.then(() => {
           setPlaying(true);
+          nowPlayingBus.set({ source: 'profile', title: trackRef.current?.title ?? 'Profile Song', subtitle: trackRef.current?.artist });
           // مزامنة حالة المدير دون مقاطعة (العنصر يعمل أصلًا → لن يُعيد التشغيل).
           audioManager.play('profile').catch(() => {});
         }).catch(() => { started = false; /* محجوب: يُعاد عند أول تفاعل */ });
       } else {
         setPlaying(true);
+        nowPlayingBus.set({ source: 'profile', title: trackRef.current?.title ?? 'Profile Song', subtitle: trackRef.current?.artist });
       }
     };
 
@@ -105,6 +111,7 @@ export function ThemeSongBar({
       audioManager.stop('profile');
       audioManager.unregister('profile');
       audioManager.releaseExclusive('profile_song');
+      nowPlayingBus.clear('profile');
       try { a.pause(); } catch { /* noop */ }
       a.src = '';
       a.load(); // يُلغي أي بثّ شبكي جارٍ فورًا (يوقف التنزيل).
@@ -121,11 +128,13 @@ export function ThemeSongBar({
       a.volume = FULL_VOL;
       a.play().then(() => {
         setPlaying(true);
+        nowPlayingBus.set({ source: 'profile', title: trackRef.current?.title ?? 'Profile Song', subtitle: trackRef.current?.artist });
         audioManager.play('profile').catch(() => {});
       }).catch(() => {});
     } else {
       audioManager.stop('profile'); // إيقاف كامل + تحرير كبت الخلفية.
       setPlaying(false);
+      nowPlayingBus.clear('profile');
     }
   }, []);
 

@@ -12,7 +12,6 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
-import { audioManager } from '../../audio/audioManager';
 import { setGenieOriginFromElement } from '../../transitions/genieOrigin';
 import { useReducedMotion } from '../../motion/tokens';
 import type { Theme } from '../../utils/userPrefs';
@@ -22,13 +21,11 @@ import { useStageSize } from './useStageSize';
 import { ConnectorLayer } from './ConnectorLayer';
 import { NodePill } from './NodePill';
 
-function play(source: 'lens' | 'mebit') {
-  try {
-    audioManager.play(source);
-  } catch {
-    /* audio is best-effort */
-  }
-}
+// NOTE: the launcher intentionally makes NO sound of its own. It used to call
+// audioManager.play('lens') / play('mebit') as "click cues", but those keys are
+// full looping gallery/ME tracks -- so every node tap started the Lens gallery
+// song across the whole app. Navigation targets start their own audio; the
+// launcher must stay silent.
 
 export function LauncherGraph() {
   const { ref, size } = useStageSize<HTMLDivElement>();
@@ -68,16 +65,13 @@ export function LauncherGraph() {
 
   const runAction = (action: NodeAction) => {
     if (action.kind === 'open') {
-      play('lens');
       navMap[action.handler]?.();
       setTheme('midnight');
       setLoaded(true);
     } else if (action.kind === 'me') {
-      play('mebit');
       setTheme('midnight');
       setLoaded(true);
     } else if (action.kind === 'theme') {
-      play('mebit');
       setTheme(action.theme as Theme);
       setLoaded(true);
     }
@@ -88,7 +82,6 @@ export function LauncherGraph() {
 
     // Expandable node -> toggle its branch open/closed.
     if (node.children?.length) {
-      play('lens');
       if (level === 0) {
         setActiveBranch(null);
         setActiveRoot((prev) => (prev === node.id ? null : node.id));
