@@ -89,3 +89,10 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # Harden against the transient GitHub Pages API failure
+          # ("Deployment failed, try again later.") that fails this job even when
+          # the build is fine: poll longer and tolerate more transient status
+          # errors before giving up.
+          timeout: 600000
+          error_count: 20

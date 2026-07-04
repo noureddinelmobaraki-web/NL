@@ -78,6 +78,11 @@ export const MOOD_TRANSITION_TIMING = {
 
 export const INTRO_MUSIC_HLS = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/intro/intro_stream.m3u8';
 
+// Start-page / launcher intro song. Plain progressive .m4a fetched LAZILY on the
+// user's first press (see introAudioController.wireSource) — never at page load,
+// so it never slows the initial page/screen.
+export const INTRO_MUSIC_SRC = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/song_099.m4a';
+
 export const ASSETS = {
   profile: {
     main:      `${CDN}/profile_img.webp`,

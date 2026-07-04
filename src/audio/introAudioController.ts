@@ -1,6 +1,6 @@
 import { getHlsClass } from './hlsPool';
 import { audioManager } from './audioManager';
-import { INTRO_MUSIC_HLS } from '../constants/assets';
+import { INTRO_MUSIC_SRC } from '../constants/assets';
 
 type HlsLike = {
   loadSource: (u: string) => void;
@@ -13,12 +13,19 @@ type HlsLike = {
  * Both the welcome-screen speaker (useIntroAudio) and the in-page
  * "Intro Music" button (useIntroMusic) delegate to this one controller,
  * so there is never a registration conflict.
+ *
+ * PERFORMANCE: this controller is now fully LAZY. Nothing is fetched at page
+ * load. The <audio> element uses preload="none" and the media bytes are only
+ * requested the first time the user actually presses a sound button (play()).
+ * The source is a plain progressive .m4a (not HLS), so a single request streams
+ * it on demand.
  */
 class IntroAudioController {
   private audio: HTMLAudioElement | null = null;
   private setupStarted = false;
+  private sourceWired = false;
   private volume = 0.6;
-  private readonly src = INTRO_MUSIC_HLS;
+  private readonly src = INTRO_MUSIC_SRC;
 
   ensureSetup(volume = 0.6): void {
     this.volume = volume;
@@ -29,27 +36,33 @@ class IntroAudioController {
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
     audio.loop = true;
-    audio.preload = 'auto';
+    audio.preload = 'none'; // <- do NOT fetch anything until the user presses play
     audio.volume = 0; // audioManager controls the fade target
     this.audio = audio;
 
     audioManager.register('intro', audio, this.volume);
-    void this.setupStream();
+    // NOTE: we intentionally do NOT wire/prefetch the source here.
   }
 
-  private async setupStream(): Promise<void> {
+  /** Attach the media source. Called lazily from play() (inside a user gesture). */
+  private async wireSource(): Promise<void> {
     const audio = this.audio;
-    if (!audio) return;
+    if (!audio || this.sourceWired) return;
+    this.sourceWired = true;
     try {
+      // Progressive file (default): a single on-demand request, no preloading.
+      if (!this.src.endsWith('.m3u8')) {
+        audio.src = this.src;
+        return;
+      }
+      // HLS fallback (kept for compatibility if the source is ever a manifest).
       if (audio.canPlayType('application/vnd.apple.mpegurl')) {
         audio.src = this.src;
-        audio.load();
         return;
       }
       const Hls = await getHlsClass();
       if (!this.audio) return;
       if (Hls.isSupported()) {
-        // Dedicated VOD config (NOT the live low-latency pool config).
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
@@ -57,11 +70,10 @@ class IntroAudioController {
           backBufferLength: 30,
           startPosition: 0,
         }) as unknown as HlsLike;
-        hls.loadSource(this.src); // prefetch manifest now => fast first press
+        hls.loadSource(this.src);
         hls.attachMedia(audio);
       } else {
         audio.src = this.src;
-        audio.load();
       }
     } catch {
       /* swallow: control becomes inert if the stream cannot load */
@@ -81,6 +93,7 @@ class IntroAudioController {
 
   async play(): Promise<void> {
     this.ensureSetup(this.volume);
+    await this.wireSource(); // fetch the media only now, on the user's press
     const audio = this.audio;
     if (!audio) return;
     this.resumeAudioContexts();

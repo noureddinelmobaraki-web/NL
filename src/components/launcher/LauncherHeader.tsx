@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { LogIn, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppContext } from '../../context/AppContext';
+import { setGenieOriginFromElement } from '../../transitions/genieOrigin';
 import { ProfileOrb } from '../../features/account/ProfileOrb';
 import { spring } from '../../motion/tokens';
 
@@ -17,7 +18,20 @@ const orbTap = { scale: 0.94 };
 
 export function LauncherHeader() {
   const { user, openAuthModal } = useAuth();
-  const { openAccounts } = useAppContext();
+  const { openAccounts, setLoaded } = useAppContext();
+
+  // FIX: the launcher only renders while !loaded, and <AccountsPage> only renders
+  // while loaded. So navigating to "accounts" alone did nothing. We must also hand
+  // control to the main app (setLoaded true), exactly like the graph's leaf nav.
+  const onAccounts = (e: React.MouseEvent<HTMLButtonElement>) => {
+    setGenieOriginFromElement(e.currentTarget);
+    openAccounts();
+    setLoaded(true);
+  };
+
+  const warmAccounts = () => {
+    import('../../features/accounts/AccountsPage').catch(() => {});
+  };
 
   return (
     <div className="nl-launcher-topbar">
@@ -26,7 +40,9 @@ export function LauncherHeader() {
         whileHover={hover}
         whileTap={tap}
         transition={spring.snappy}
-        onClick={openAccounts}
+        onClick={onAccounts}
+        onMouseEnter={warmAccounts}
+        onPointerDown={warmAccounts}
         className="nl-topbar-btn"
         title="Accounts"
       >

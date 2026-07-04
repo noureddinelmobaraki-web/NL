@@ -252,3 +252,97 @@ body.low-perf .nl-topbar-btn {
   }
   .nl-launcher-sign { font-size: 9px; letter-spacing: 0.28em; }
 }
+
+/* ===================================================================
+   BATCH 3 — profile "tether" rays + midnight default skin (v3)
+   =================================================================== */
+
+/* Glass tether rays: shoot from the profile orb, tie a small knot around each
+   corner of the window and trail off BEHIND it. The layer is injected INTO the
+   window overlay at z-index:-1, so it sits above the dark backdrop but behind the
+   translucent glass panel (the panel's own blur softens the rays => they look
+   like they grip the window from behind). Only these four rays are styled. */
+.nl-tether-box {
+  position: fixed;
+  inset: 0;
+  z-index: -1;               /* behind the glass panel, above the dark backdrop */
+  pointer-events: none;
+  overflow: visible;
+}
+.nl-tether-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.nl-tether-glow {
+  fill: none;
+  stroke: rgba(122, 240, 190, 0.3);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: blur(3.5px);
+  animation: nl-tether-pulse 2.8s ease-in-out infinite;
+}
+.nl-tether-core {
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 3px rgba(150, 245, 205, 0.6));
+  animation: nl-tether-pulse 2.8s ease-in-out infinite;
+}
+/* Gentle, tasteful brightness pulse (opacity only => cheap, no layout/paint
+   thrash). Brightness rises then falls once the ray has curled the corner. */
+@keyframes nl-tether-pulse {
+  0%, 100% { stroke-opacity: 0.58; }
+  50%      { stroke-opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nl-tether-glow, .nl-tether-core { animation: none; filter: none; }
+}
+
+/* Midnight = the DEFAULT "Me" skin: a deep midnight gradient with a soft,
+   perpetual glow that signals it is the primary / default choice. The other four
+   skins are intentionally left untouched. */
+.nl-node.nl-tint-midnight {
+  background:
+    linear-gradient(150deg,
+      rgba(66, 92, 190, 0.55) 0%,
+      rgba(38, 46, 118, 0.5) 45%,
+      rgba(12, 15, 42, 0.62) 100%);
+  border-color: rgba(150, 170, 255, 0.5);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    inset 0 -8px 18px rgba(8, 10, 30, 0.55),
+    0 0 18px rgba(86, 116, 255, 0.35),
+    0 12px 30px rgba(0, 0, 0, 0.5);
+  animation: nl-midnight-glow 4.5s ease-in-out infinite;
+}
+.nl-node.nl-tint-midnight .nl-node-ico {
+  background:
+    radial-gradient(circle at 32% 28%,
+      rgba(188, 206, 255, 0.6),
+      rgba(40, 50, 120, 0.25));
+  box-shadow: inset 0 0 10px rgba(120, 150, 255, 0.45);
+}
+.nl-node.nl-tint-midnight .nl-node-glyph { color: #eaf0ff; }
+.nl-node.nl-tint-midnight:hover { border-color: rgba(180, 196, 255, 0.7); }
+@keyframes nl-midnight-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.5),
+      inset 0 -8px 18px rgba(8, 10, 30, 0.55),
+      0 0 16px rgba(86, 116, 255, 0.3),
+      0 12px 30px rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.55),
+      inset 0 -8px 18px rgba(8, 10, 30, 0.6),
+      0 0 26px rgba(110, 140, 255, 0.5),
+      0 12px 34px rgba(0, 0, 0, 0.55);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nl-node.nl-tint-midnight { animation: none; }
+}

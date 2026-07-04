@@ -31,6 +31,8 @@ export interface GraphNode {
   action: NodeAction;
   /** Only shown on root pills. */
   tagline?: string;
+  /** Optional visual tint for the pill (e.g. the default 'midnight' skin). */
+  tint?: 'midnight';
   children?: GraphNode[];
 }
 
@@ -45,7 +47,7 @@ export const ROOTS: GraphNode[] = [
     action: { kind: 'branch' },
     children: [
       // Midnight is the default entry; the other four are the "special skins".
-      { id: 'skin-midnight', label: 'Midnight', icon: 'lucide:moon-star', action: { kind: 'me' } },
+      { id: 'skin-midnight', label: 'Midnight', icon: 'lucide:moon-star', tint: 'midnight', action: { kind: 'me' } },
       { id: 'skin-light', label: 'Light', icon: 'lucide:sun', action: { kind: 'theme', theme: 'light' } },
       { id: 'skin-dark', label: 'Dark', icon: 'lucide:moon', action: { kind: 'theme', theme: 'dark' } },
       { id: 'skin-bit', label: 'Bit', icon: 'lucide:joystick', action: { kind: 'theme', theme: 'bit' } },

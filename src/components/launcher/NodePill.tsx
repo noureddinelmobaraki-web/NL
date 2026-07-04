@@ -80,6 +80,7 @@ export function NodePill({ placed, onClick }: NodePillProps) {
     active ? 'is-active' : '',
     dimmed ? 'is-dim' : '',
     compact ? 'is-compact' : '',
+    node.tint ? `nl-tint-${node.tint}` : '',
   ]
     .filter(Boolean)
     .join(' ');

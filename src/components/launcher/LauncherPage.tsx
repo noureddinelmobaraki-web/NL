@@ -8,6 +8,7 @@ import { LauncherBackground } from './LauncherBackground';
 import { LauncherHeader } from './LauncherHeader';
 import { LauncherGraph } from './LauncherGraph';
 import { LauncherSound } from './LauncherSound';
+import { ProfileTethers } from './ProfileTethers';
 
 export default function LauncherPage() {
   // Lock page scroll while the launcher owns the screen, so no stray scrollbar
@@ -38,6 +39,9 @@ export default function LauncherPage() {
 
       {/* Enable-sound / intro-music control (glass, same style) */}
       <LauncherSound />
+
+      {/* Glass "tether" rays that clamp onto the profile/auth window corners */}
+      <ProfileTethers />
 
       {/* Subtle signature (not a product name) */}
       <footer className="nl-launcher-sign" aria-hidden="true">
