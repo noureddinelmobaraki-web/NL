@@ -380,7 +380,7 @@ function NotchIslandInner() {
 
         {state === "live" &&
           transport &&
-          (onSongSurface ? (
+          (onSongSurface || transport.hasControls === false ? (
             <NotchLivePill t={transport} onVibrate={vibrate} compact nameOnly />
           ) : (
             <NotchLivePill t={transport} onVibrate={vibrate} />

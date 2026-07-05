@@ -46,37 +46,15 @@ export const ROOTS: GraphNode[] = [
     icon: `${CDN}/ME_520x520.webp`,
     action: { kind: "branch" },
     children: [
-      // Home is the default entry (the main, standalone page); the other four are its "modes" (skins).
+      // Home is now the ONLY child of "me": a standalone primary page. The four
+      // skins (light/dark/bit/lite) were removed from the reception screen — they
+      // live exclusively as "Modes" inside the notch window AFTER entering Home.
       {
         id: "home",
         label: "Home",
         icon: "lucide:home",
         tint: "midnight",
         action: { kind: "me" },
-      },
-      {
-        id: "skin-light",
-        label: "Light",
-        icon: "lucide:sun",
-        action: { kind: "theme", theme: "light" },
-      },
-      {
-        id: "skin-dark",
-        label: "Dark",
-        icon: "lucide:moon",
-        action: { kind: "theme", theme: "dark" },
-      },
-      {
-        id: "skin-bit",
-        label: "Bit",
-        icon: "lucide:joystick",
-        action: { kind: "theme", theme: "bit" },
-      },
-      {
-        id: "skin-lite",
-        label: "Lite",
-        icon: "lucide:feather",
-        action: { kind: "theme", theme: "lite" },
       },
     ],
   },

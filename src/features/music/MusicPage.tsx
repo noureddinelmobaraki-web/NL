@@ -66,7 +66,7 @@ export default function MusicPage() {
   }, []);
 
   return (
-    <div className={'h-[100dvh] w-full overflow-hidden bg-gradient-to-br from-[#FFE8D6] via-[#FFF4EC] to-[#E8FBF2] ' + styles['nlp-root']}>
+    <div className={'nl-music-root h-[100dvh] w-full overflow-hidden bg-gradient-to-br from-[#FFE8D6] via-[#FFF4EC] to-[#E8FBF2] ' + styles['nlp-root']}>
       {/* سطح مكتبي: عمودان — القائمة يساراً، المشغّل يميناً */}
       <div className="hidden lg:grid grid-cols-[minmax(360px,1fr)_minmax(380px,520px)] gap-4 h-full p-4">
         <div className="h-full min-h-0">

@@ -9,17 +9,18 @@
 //  - Tap a branch (level 1) -> its remaining choices fan out; siblings dim.
 //  - Tap a leaf  -> genie-navigate into the matching full-screen page / theme.
 
-import { useMemo, useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import { useAppContext } from '../../context/AppContext';
-import { setGenieOriginFromElement } from '../../transitions/genieOrigin';
-import { useReducedMotion } from '../../motion/tokens';
-import type { Theme } from '../../utils/userPrefs';
-import { ROOTS, type NodeAction, type OpenHandler } from './graph.config';
-import { computeGraph, type Layout, type PlacedNode } from './graph.geometry';
-import { useStageSize } from './useStageSize';
-import { ConnectorLayer } from './ConnectorLayer';
-import { NodePill } from './NodePill';
+import { useMemo, useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import { useAppContext } from "../../context/AppContext";
+import { setGenieOriginFromElement } from "../../transitions/genieOrigin";
+import { useReducedMotion } from "../../motion/tokens";
+import type { Theme } from "../../utils/userPrefs";
+import { ROOTS, type NodeAction, type OpenHandler } from "./graph.config";
+import { introAudioController } from "../../audio/introAudioController";
+import { computeGraph, type Layout, type PlacedNode } from "./graph.geometry";
+import { useStageSize } from "./useStageSize";
+import { ConnectorLayer } from "./ConnectorLayer";
+import { NodePill } from "./NodePill";
 
 // NOTE: the launcher intentionally makes NO sound of its own. It used to call
 // audioManager.play('lens') / play('mebit') as "click cues", but those keys are
@@ -46,7 +47,7 @@ export function LauncherGraph() {
   const [activeRoot, setActiveRoot] = useState<string | null>(null);
   const [activeBranch, setActiveBranch] = useState<string | null>(null);
 
-  const layout: Layout = size.w > 0 && size.w < 768 ? 'mobile' : 'desktop';
+  const layout: Layout = size.w > 0 && size.w < 768 ? "mobile" : "desktop";
 
   const { nodes, edges } = useMemo(
     () => computeGraph(size, layout, ROOTS, activeRoot, activeBranch),
@@ -64,20 +65,26 @@ export function LauncherGraph() {
   };
 
   const runAction = (action: NodeAction) => {
-    if (action.kind === 'open') {
+    // Entering the app from the reception screen: stop the welcome/intro
+    // background music so it never keeps playing inside the app pages.
+    introAudioController.fadeOut(600);
+    if (action.kind === "open") {
       navMap[action.handler]?.();
-      setTheme('midnight');
+      setTheme("midnight");
       setLoaded(true);
-    } else if (action.kind === 'me') {
-      setTheme('midnight');
+    } else if (action.kind === "me") {
+      setTheme("midnight");
       setLoaded(true);
-    } else if (action.kind === 'theme') {
+    } else if (action.kind === "theme") {
       setTheme(action.theme as Theme);
       setLoaded(true);
     }
   };
 
-  const handleNodeClick = (e: React.MouseEvent<HTMLButtonElement>, placed: PlacedNode) => {
+  const handleNodeClick = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    placed: PlacedNode,
+  ) => {
     const { node, level } = placed;
 
     // Expandable node -> toggle its branch open/closed.
@@ -101,7 +108,11 @@ export function LauncherGraph() {
       <ConnectorLayer edges={edges} size={size} reduced={reduced} />
       <AnimatePresence>
         {nodes.map((placed) => (
-          <NodePill key={placed.node.id} placed={placed} onClick={handleNodeClick} />
+          <NodePill
+            key={placed.node.id}
+            placed={placed}
+            onClick={handleNodeClick}
+          />
         ))}
       </AnimatePresence>
     </div>

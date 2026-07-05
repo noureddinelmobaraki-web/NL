@@ -238,7 +238,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 w-full h-full bg-black z-[9999] overflow-hidden flex flex-col font-sans transition-all duration-300 ${
+      className={`nl-tv-root fixed inset-0 w-full h-full bg-black z-[9999] overflow-hidden flex flex-col font-sans transition-all duration-300 ${
         hideOverlays ? "cursor-none" : "cursor-default"
       }`}
     >
