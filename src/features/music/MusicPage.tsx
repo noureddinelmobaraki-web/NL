@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useMusicStore } from './store/musicStore';
-import { useMusicEngine } from './hooks/useMusicEngine';
 import { useHotkeys } from './hooks/useHotkeys';
 import { useSongDeepLink } from './hooks/useSongDeepLink';
 import { fetchLyrics, prefetchMany } from './data/lyrics';
@@ -10,11 +9,14 @@ import { PlayerScreen } from './components/PlayerScreen';
 import { MiniPlayer } from './components/MiniPlayer';
 import { NowPlayingOverlay } from './components/NowPlayingOverlay';
 import styles from './music.module.css';
+import { songSurfaceBus } from '../../audio/songSurfaceBus';
 
 export default function MusicPage() {
-  useMusicEngine(); // يربط المحرّك بالمتجر (دون الاشتراك في currentTime هنا)
   useHotkeys();    // اختصارات لوحة المفاتيح
   useSongDeepLink(); // معالجة الروابط العميقة للأغاني
+
+  // إعلان "سطح أغنية معروض" → النوتش يعرض نسخة مصغّرة (اسم فقط) هنا، والمشغّل الكامل في بقية الصفحات.
+  useEffect(() => songSurfaceBus.enter(), []);
 
   const hasCurrent = useMusicStore((s) => Boolean(s.currentId));
   const currentId = useMusicStore((s) => s.currentId);

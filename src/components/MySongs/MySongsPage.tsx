@@ -4,6 +4,7 @@ import { MusicMoodScreen } from '../MusicMood/MusicMoodScreen';
 import { SectionErrorBoundary } from '../SectionErrorBoundary';
 import newMoodIcon from '../../assets/images/regenerated_image_1780500901330.png';
 import { audioManager } from '../../audio/audioManager';
+import { songSurfaceBus } from '../../audio/songSurfaceBus';
 import { ActiveSong } from '../../types';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useMySongsState } from './hooks/useMySongsState';
@@ -44,6 +45,9 @@ export const MySongs = ({
   useEffect(() => {
     isMoodActiveRef.current = isMoodActive;
   }, [isMoodActive]);
+
+  // إعلان "سطح أغنية معروض" (My Songs) → النوتش يعرض الاسم فقط هنا.
+  useEffect(() => songSurfaceBus.enter(), []);
   const isDesktop = useIsDesktop();
   const moodAudioCtxRef = useRef<AudioContext | null>(null);
 

@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
-import { useMusicStore } from '../store/musicStore';
-import { audioEngine } from '../engine/audioEngine';
-import { fetchLyrics, prefetchLyrics } from '../data/lyrics';
-import { audioManager } from '../../../audio/audioManager';
-import { prefetchAudio } from '../data/audioPrefetch';
+import { useEffect } from "react";
+import { useMusicStore } from "../store/musicStore";
+import { audioEngine } from "../engine/audioEngine";
+import { fetchLyrics, prefetchLyrics } from "../data/lyrics";
+import { audioManager } from "../../../audio/audioManager";
+import { soundGovernor } from "../../../audio/soundGovernor";
+import { prefetchAudio } from "../data/audioPrefetch";
 
 export function useMusicEngine() {
   const actions = useMusicStore((s) => s.actions);
@@ -30,9 +31,12 @@ export function useMusicEngine() {
     audioEngine.onPlayState = (isPlaying) => {
       actions.setPlaying(isPlaying);
       if (isPlaying) {
-        audioManager.requestExclusive('song', 'nl_music');
+        audioManager.requestExclusive("song", "nl_music");
+        // أبلِغ السلطة المركزية: أغنية NL Music بدأت → توقِف أي أغنية أخرى (My Songs) وتكشف التعارض مع الخلفية.
+        soundGovernor.notePlaying("nl-music");
       } else {
-        audioManager.releaseExclusive('nl_music');
+        audioManager.releaseExclusive("nl_music");
+        soundGovernor.noteStopped("nl-music");
       }
     };
 
@@ -41,7 +45,7 @@ export function useMusicEngine() {
     };
 
     audioEngine.onTrackError = (msg) => {
-      console.error('[MusicEngine] Playback error:', msg);
+      console.error("[MusicEngine] Playback error:", msg);
       // Fallback or skip to next
       actions.next();
     };
@@ -65,12 +69,16 @@ export function useMusicEngine() {
         const activeQueue = s.shuffle ? s.shuffleQueue : s.queue;
         const i = activeQueue.indexOf(track.id);
         const nextId = i >= 0 ? activeQueue[i + 1] : undefined;
-        const nextTrack = nextId ? s.tracks.find((t) => t.id === nextId) : undefined;
+        const nextTrack = nextId
+          ? s.tracks.find((t) => t.id === nextId)
+          : undefined;
         if (nextTrack) {
           prefetchLyrics(nextTrack);
           prefetchAudio(nextTrack.src);
         }
-      } catch { /* noop */ }
+      } catch {
+        /* noop */
+      }
     };
 
     return () => {
@@ -85,19 +93,54 @@ export function useMusicEngine() {
     };
   }, [actions]);
 
-  // Suppress site background music while the Music page is mounted, and stop
-  // playback when leaving.
-  useEffect(() => {
-    return () => {
-      try { audioEngine.pause(); } catch {}
-    };
-  }, []);
-
   // Register audioEngine as an external 'song' source under audioManager priority control
   useEffect(() => {
-    const off = audioManager.registerExternal('song', {
-      pause: () => { try { audioEngine.pause(); } catch {} },
+    const off = audioManager.registerExternal("song", {
+      pause: () => {
+        try {
+          audioEngine.pause();
+        } catch {}
+      },
       isPlaying: () => useMusicStore.getState().isPlaying,
+    });
+    return off;
+  }, []);
+
+  // تسجيل NL Music كقناة "أغنية" في السلطة المركزية (soundGovernor) — أسبقية عالية للأغاني.
+  // يتيح للحاكم إيقافها/خفضها تدريجيًا عند التعارض مع أغنية أخرى أو مع خلفية صفحة.
+  useEffect(() => {
+    const off = soundGovernor.register({
+      id: "nl-music",
+      kind: "song",
+      priority: 10,
+      label: () => {
+        const s = useMusicStore.getState();
+        const track = s.tracks.find((t) => t.id === s.currentId);
+        return track ? track.title : "NL Music";
+      },
+      isPlaying: () => useMusicStore.getState().isPlaying,
+      pause: () => {
+        try {
+          audioEngine.pause();
+        } catch {
+          /* noop */
+        }
+      },
+      stop: () => {
+        try {
+          audioEngine.pause();
+        } catch {
+          /* noop */
+        }
+      },
+      setVolume: (v) => {
+        try {
+          audioEngine.setVolume(v);
+        } catch {
+          /* noop */
+        }
+      },
+      getVolume: () => useMusicStore.getState().volume,
     });
     return off;
   }, []);

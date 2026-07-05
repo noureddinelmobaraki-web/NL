@@ -11,7 +11,7 @@
     -webkit-backdrop-filter: blur(8px) saturate(140%);
     backdrop-filter: blur(8px) saturate(140%);
   }
-  .glass-switcher {
+  .notch-island {
     -webkit-backdrop-filter: blur(12px) saturate(160%);
     backdrop-filter: blur(12px) saturate(160%);
   }

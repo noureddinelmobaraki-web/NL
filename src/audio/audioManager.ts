@@ -106,6 +106,12 @@ class AudioManager {
   private pendingGestureResume = false;
   private lastRecoverAt = 0;
 
+  // كتم رئيسي (master mute) يتحكّم به النوتش
+  private masterMuted = false;
+  private muteSubscribers = new Set<() => void>();
+  // مشتركون في تغيّر المصدر النشط (يستخدمه حلّال تعارض الصوت في النوتش لكشف التراكب).
+  private activeSubscribers = new Set<() => void>();
+
   /** يسجّل مشغّلاً خارجياً (لا يملك <audio> داخل المدير) ليخضع للأولويات. */
   registerExternal(source: AudioSource, ctrl: ExternalSource): () => void {
     this.externals.set(source, ctrl);
@@ -166,6 +172,7 @@ class AudioManager {
     if (oldActive) this.notifyStateChange(oldActive);
     if (source) this.notifyStateChange(source);
     this.syncNowPlaying(source);
+    this.activeSubscribers.forEach((cb) => { try { cb(); } catch { /* ignore */ } });
   }
 
   // المصادر التي لها ناشر غنيّ خاص بها (اسم حقيقي + أزرار) — لا نلمسها هنا.
@@ -180,6 +187,10 @@ class AudioManager {
   /** ينشر تحكّمًا عالميًا في النوتش لأي مصدر شغّال ليس له ناشر غنيّ. */
   private syncNowPlaying(source: AudioSource | null): void {
     if (source && source !== 'bg' && !AudioManager.RICH_NP.has(source)) {
+      // لا تطرد الأغنية من النوتش: إن كانت أغنية 'song' ما زالت تعمل، اترك الـ bus لها
+      // (الأغنية مصدر خارجي عالي الأولوية تستمر عبر الصفحات). يقتل خطأ "الأغنية لا تظهر في النوتش".
+      const songExt = this.externals.get('song');
+      if (songExt && songExt.isPlaying()) return;
       const label = AudioManager.NP_LABELS[source] ?? source;
       nowPlayingBus.publish({
         source,
@@ -279,10 +290,55 @@ class AudioManager {
     }
 
     element.volume = 0;
+    element.muted = this.masterMuted;
   }
 
   isRegistered(source: AudioSource): boolean {
     return this.registry.has(source);
+  }
+
+  // ── كتم رئيسي (master mute) يتحكّم به النوتش ──────────────────
+  isMuted(): boolean { return this.masterMuted; }
+  setMuted(muted: boolean): void {
+    if (this.masterMuted === muted) return;
+    this.masterMuted = muted;
+    this.registry.forEach((e) => { try { e.element.muted = muted; } catch { /* ignore */ } });
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('audio, video').forEach((el) => {
+        try { (el as HTMLMediaElement).muted = muted; } catch { /* ignore */ }
+      });
+    }
+    this.muteSubscribers.forEach((cb) => { try { cb(); } catch { /* ignore */ } });
+  }
+  toggleMuted(): void { this.setMuted(!this.masterMuted); }
+  subscribeMuted(cb: () => void): () => void {
+    this.muteSubscribers.add(cb);
+    return () => { this.muteSubscribers.delete(cb); };
+  }
+
+  /** يشترك في تغيّر المصدر النشط (للكشف عن تراكب الأغنية مع خلفية الصفحة). */
+  subscribeActive(cb: () => void): () => void {
+    this.activeSubscribers.add(cb);
+    return () => { this.activeSubscribers.delete(cb); };
+  }
+
+  /**
+   * يرجع ما إذا كان مصدر صوت معين هو النشط حالياً في AudioManager.
+   *
+   * @param source - مصدر الصوت المراد فحصه.
+   * @returns true إذا كان المصدر نشطاً، وإلا false.
+   */
+  isSourceActive(source: AudioSource): boolean {
+    return this.active === source;
+  }
+
+  /**
+   * يرجع السورس النشط حالياً على AudioManager بشكل مباشر (أو null إذا لم يكن هناك مصدر نشط).
+   *
+   * @returns مصدر الصوت النشط أو null.
+   */
+  getCurrentActive(): AudioSource | null {
+    return this.active;
   }
 
   /**
@@ -449,8 +505,6 @@ class AudioManager {
     
     await this.fadeIn(entry.element, entry.volume, fadeDuration);
   }
-
-
 
   /**
    * يقوم بإيقاف مصدر الصوت مؤقتاً.
@@ -650,28 +704,7 @@ class AudioManager {
   }
 
   /**
-   * يرجع ما إذا كان مصدر صوت معين هو النشط حالياً في AudioManager.
-   *
-   * @param source - مصدر الصوت المراد فحصه.
-   * @returns true إذا كان المصدر نشطاً، وإلا false.
-   */
-  isSourceActive(source: AudioSource): boolean {
-    return this.active === source;
-  }
-
-  /**
-   * يرجع السورس النشط حالياً على AudioManager بشكل مباشر (أو null إذا لم يكن هناك مصدر نشط).
-   *
-   * @returns مصدر الصوت النشط أو null.
-   */
-  getCurrentActive(): AudioSource | null {
-    return this.active;
-  }
-
-  // ─── P01.3: Diagnostics & Emergency API ───────────────────────────────
-
-  /**
-   * يُعيد snapshot كامل لحالة AudioManager. للقراءة من DevTools أو tests.
+   * Snapshot يُعاد من audioManager.diagnose() للقراءة من DevTools أو tests.
    * لا يُغيّر أي شيء (read-only). آمن في production.
    *
    * @example

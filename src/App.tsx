@@ -109,8 +109,9 @@ import { getThemedImage } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
 import { FloatingControls } from "./components/layout/FloatingControls";
-import { GlassModeSwitcher } from "./components/layout/GlassModeSwitcher";
+import { NotchIsland } from "./components/notch/NotchIsland";
 import { NowPlayingBridge } from './audio/NowPlayingBridge';
+import { MusicEngineHost } from './features/music/MusicEngineHost';
 const GallerySection = lazyWithRetry(
   () => import('./components/layout/GallerySection').then(m => ({ default: m.GallerySection })),
   'GallerySection',
@@ -189,8 +190,9 @@ function AppInner() {
     <>
       {loaded && (
         <>
-          <GlassModeSwitcher />
+          <NotchIsland />
           <NowPlayingBridge />
+          <MusicEngineHost />
         </>
       )}
       <AnimatePresence mode="wait" onExitComplete={endTransition}>

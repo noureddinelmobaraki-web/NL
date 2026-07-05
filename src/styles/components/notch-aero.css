@@ -1,0 +1,300 @@
+/* =====================================================================
+   Notch — Silver Aero Glass (Windows XP / Windows 7 style)
+   زجاج فضّي لامع مع نص محفور داكن للوضوح، ويظهر فوق كل الصفحات.
+   ===================================================================== */
+
+.notch-anchor {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483000; /* فوق كل المودالات والصفحات */
+  pointer-events: none;
+  --notch-accent: #7fd0ff;
+  --notch-ink: #16242f;      /* حبر داكن للقراءة على الفضّي */
+}
+
+/* الجسم الفضّي الزجاجي */
+.notch-island {
+  pointer-events: auto;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 7px 12px;
+  border-radius: 21px;
+  color: var(--notch-ink);
+  font-family: inherit;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+  /* طبقة لمعان علوية (Aero) + جسم فضّي مزرق */
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.72) 0%,
+      rgba(255,255,255,.30) 46%,
+      rgba(255,255,255,.02) 50%,
+      rgba(255,255,255,.10) 100%),
+    linear-gradient(180deg,
+      rgba(207,218,230,.78) 0%,
+      rgba(170,184,201,.72) 52%,
+      rgba(139,155,175,.74) 100%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255,255,255,.85);
+  box-shadow:
+    0 0 0 1px rgba(96,116,140,.45),
+    0 10px 26px rgba(24,36,52,.34),
+    0 2px 6px rgba(24,36,52,.22),
+    inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 -9px 16px rgba(255,255,255,.18);
+  transition: border-radius .25s ease, background .3s ease, box-shadow .25s ease;
+}
+
+.notch-island__gloss {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 50%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,0));
+  opacity: .7;
+  pointer-events: none;
+}
+
+/* الأورب المنكمش (دائري فضّي لامع) */
+.notch-island[data-state="orb"] {
+  min-height: 0;
+  padding: 9px;
+  border-radius: 50%;
+}
+.notch-orb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  color: color-mix(in srgb, var(--notch-accent) 72%, #0d2233);
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,.8));
+}
+
+/* شارة التشغيل */
+.notch-live { display: inline-flex; align-items: center; gap: 9px; max-width: min(72vw, 380px); }
+.notch-live.is-compact { gap: 7px; }
+.notch-live__title {
+  font-weight: 600; font-size: 13px; line-height: 1;
+  color: var(--notch-ink);
+  text-shadow: 0 1px 0 rgba(255,255,255,.6);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 150px;
+}
+.notch-live.is-compact .notch-live__title { max-width: 120px; font-size: 12px; }
+
+.notch-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.notch-eq__bar {
+  width: 3px; height: 100%; border-radius: 2px;
+  background: color-mix(in srgb, var(--notch-accent) 78%, #24455c);
+  transform-origin: bottom;
+  animation: notchEq .9s ease-in-out infinite;
+}
+.notch-eq__bar:nth-child(2) { animation-delay: .18s; }
+.notch-eq__bar:nth-child(3) { animation-delay: .36s; }
+@keyframes notchEq { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+
+/* أزرار المشغّل — فضّية لامعة (بأيقونات lucide خفيفة، بلا صور CDN) */
+.notch-player { display: inline-flex; align-items: center; gap: 5px; }
+.notch-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  color: var(--notch-ink); cursor: pointer;
+  border: 1px solid rgba(255,255,255,.9);
+  background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(198,210,224,.85) 52%, rgba(168,183,201,.9));
+  box-shadow: 0 0 0 1px rgba(96,116,140,.4), inset 0 1px 0 rgba(255,255,255,.95), 0 2px 4px rgba(24,36,52,.22);
+  transition: filter .15s ease, transform .08s ease;
+}
+.notch-btn:hover { filter: brightness(1.06); }
+.notch-btn:active { transform: scale(.9); }
+.notch-btn:disabled { opacity: .4; cursor: default; box-shadow: none; }
+.notch-btn--primary {
+  width: 34px; height: 34px;
+  color: #0a1522;
+  border-color: color-mix(in srgb, var(--notch-accent) 60%, #fff);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--notch-accent) 60%, #fff),
+    color-mix(in srgb, var(--notch-accent) 92%, #0a1522 6%));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--notch-accent) 55%, #46647d), inset 0 1px 0 rgba(255,255,255,.85), 0 3px 7px rgba(24,36,52,.28);
+}
+
+/* =========================== النافذة =========================== */
+.notch-island[data-state="open"] {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 300px;
+  max-width: 92vw;
+  padding: 12px;
+  border-radius: 18px;
+  cursor: default;
+}
+.notch-island.is-mobile[data-state="open"] { width: min(90vw, 340px); }
+
+.notch-panel { display: flex; flex-direction: column; gap: 10px; }
+.notch-panel__loading { height: 96px; border-radius: 12px; background: rgba(255,255,255,.28); }
+
+.notch-tree { display: flex; flex-direction: column; gap: 8px; }
+.notch-tree__branch { display: flex; flex-direction: column; }
+
+/* زرّا الجذر: فضّيان لامعان — مغلقان افتراضيًّا */
+.notch-tree__root {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 10px 12px; border-radius: 12px; cursor: pointer;
+  color: var(--notch-ink); font-weight: 600; font-size: 13px;
+  border: 1px solid rgba(255,255,255,.85);
+  background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(206,218,231,.7) 52%, rgba(176,190,208,.78));
+  box-shadow: 0 0 0 1px rgba(96,116,140,.35), inset 0 1px 0 rgba(255,255,255,.9);
+  transition: filter .18s ease;
+}
+.notch-tree__root:hover { filter: brightness(1.05); }
+.notch-tree__root.is-open {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--notch-accent) 30%, rgba(255,255,255,.9)),
+    color-mix(in srgb, var(--notch-accent) 34%, rgba(196,210,224,.8)));
+  border-color: color-mix(in srgb, var(--notch-accent) 55%, #fff);
+}
+.notch-tree__root .notch-tree__ico { color: color-mix(in srgb, var(--notch-accent) 70%, #123); display: inline-flex; }
+.notch-tree__label { flex: 1; text-align: left; text-shadow: 0 1px 0 rgba(255,255,255,.55); }
+.notch-tree__caret { transition: transform .2s ease; opacity: .7; }
+.notch-tree__caret.is-open { transform: rotate(180deg); }
+
+/* الشبكة المتفرّعة (أكورديون) */
+.notch-tree__grid { overflow: hidden; }
+.notch-tree__grid-inner { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; padding: 8px 2px 2px; }
+.notch-tree.is-mobile .notch-tree__grid-inner { grid-template-columns: repeat(3, 1fr); }
+
+.notch-tree__leaf {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 9px 4px; border-radius: 10px; cursor: pointer;
+  color: var(--notch-ink); font-size: 11px; font-weight: 500;
+  border: 1px solid rgba(255,255,255,.7);
+  background: linear-gradient(180deg, rgba(255,255,255,.7), rgba(206,218,231,.5));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+  transition: filter .15s ease, transform .08s ease;
+}
+.notch-tree__leaf:hover { filter: brightness(1.05); }
+.notch-tree__leaf:active { transform: scale(.95); }
+.notch-tree__leaf .notch-tree__ico { display: inline-flex; color: color-mix(in srgb, var(--notch-accent) 62%, #123); }
+.notch-tree__leaf .notch-tree__label { text-align: center; text-shadow: 0 1px 0 rgba(255,255,255,.5); }
+.notch-tree__leaf.is-active {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--notch-accent) 34%, rgba(255,255,255,.85)),
+    color-mix(in srgb, var(--notch-accent) 40%, rgba(196,210,224,.7)));
+  border-color: color-mix(in srgb, var(--notch-accent) 55%, #fff);
+}
+
+/* شريط الأدوات: كتم + بروفايل/حساب + خروج */
+.notch-panel__footer {
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 9px; border-top: 1px solid rgba(255,255,255,.5);
+}
+.notch-panel__mini { flex: 1 1 auto; min-width: 0; }
+.notch-panel__mini .notch-live { max-width: 100%; }
+.notch-panel__tools { display: flex; align-items: center; gap: 6px; margin-inline-start: auto; }
+.notch-tool {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 9px; cursor: pointer;
+  color: var(--notch-ink);
+  border: 1px solid rgba(255,255,255,.85);
+  background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(198,210,224,.72));
+  box-shadow: 0 0 0 1px rgba(96,116,140,.32), inset 0 1px 0 rgba(255,255,255,.9);
+  transition: filter .15s ease, transform .08s ease;
+}
+.notch-tool:hover { filter: brightness(1.06); }
+.notch-tool:active { transform: scale(.92); }
+.notch-tool[aria-pressed="true"] {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--notch-accent) 34%, rgba(255,255,255,.85)),
+    color-mix(in srgb, var(--notch-accent) 40%, rgba(196,210,224,.7)));
+  border-color: color-mix(in srgb, var(--notch-accent) 55%, #fff);
+}
+.notch-tool--exit { color: #a11f1f; }
+.notch-tool--exit:hover { background: linear-gradient(180deg, rgba(255,224,224,.95), rgba(240,180,180,.8)); }
+
+.notch-island.is-dragging { cursor: grabbing; }
+
+@media (prefers-reduced-motion: reduce) {
+  .notch-eq__bar { animation: none; transform: scaleY(.7); }
+  .notch-island { transition: none; }
+}
+
+/* ── نوتش مصغّر (اسم الأغنية فقط) في صفحات الموسيقى ── */
+.notch-live.is-name-only { gap: 8px; }
+.notch-live.is-name-only .notch-live__title {
+  max-width: 168px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── حلّال تعارض الصوت: تفرّع النوتش إلى خطّين ── */
+.notch-fork {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  z-index: 2;
+  pointer-events: auto;
+  animation: notch-fork-in 220ms ease both;
+}
+@keyframes notch-fork-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.96); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+.notch-fork__branch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 168px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: linear-gradient(180deg, rgba(240, 246, 252, 0.92), rgba(198, 214, 230, 0.84));
+  color: #16242f;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(8, 15, 25, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.notch-fork__branch:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(8, 15, 25, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
+.notch-fork__branch:active { transform: translateY(0); }
+/* الخطّان الصغيران المتفرّعان نحو النوتش */
+.notch-fork__branch::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  width: 2px;
+  height: 13px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.08));
+}
+.notch-fork__branch--song::before { right: 24px; transform: rotate(15deg); transform-origin: bottom; }
+.notch-fork__branch--bg::before   { left: 24px;  transform: rotate(-15deg); transform-origin: bottom; }
+.notch-fork__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 116px;
+}
+.notch-fork__icon { display: inline-flex; opacity: 0.82; }
+.notch-fork__branch--bg { color: #7a1f2b; }
+@media (prefers-reduced-motion: reduce) {
+  .notch-fork { animation: none; }
+  .notch-fork__branch { transition: none; }
+}
