@@ -1,30 +1,49 @@
 // src/home/HomeInteractiveMap.tsx
-// المنسّق: يقرّر lite/reduced، يرسم العمود المركزي، ويحوّل كل عقدة قسم إلى محطّة.
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { Station } from './Station';
 import { HomeFallbackList } from './HomeFallbackList';
-import { sideFor, type HomeStationInput } from './home.stations';
+import type { StationWeight } from './StationWindow';
 import { useAdaptivePerformance } from '../hooks/useAdaptivePerformance';
+
+export interface HomeStationInput {
+  id: string;
+  node: ReactNode;
+  bare?: boolean;
+}
 
 interface HomeInteractiveMapProps {
   stations: HomeStationInput[];
 }
 
 const TITLES: Record<string, string> = {
-  profile: 'noureddin_el_mobaraki.profile',
-  streaming: 'STREAMING_PLATFORMS.exe',
-  highlights: 'HIGHLIGHTS',
-  gallery: 'GALLERY',
-  songs: 'MY_SONGS',
-  contact: 'CONTACT',
-  drawings: 'DRAWINGS',
+  profile: 'profile',
+  bio: 'bio',
+  streaming: 'streaming',
+  social: 'social',
+  highlights: 'highlights',
+  gallery: 'gallery',
+  songs: 'songs',
+  contact: 'contact',
+  drawings: 'drawings',
+};
+
+const WEIGHTS: Record<string, StationWeight> = {
+  profile: 'sm',
+  bio: 'lg',
+  streaming: 'lg',
+  social: 'md',
+  highlights: 'md',
+  gallery: 'lg',
+  songs: 'lg',
+  contact: 'md',
+  drawings: 'lg',
 };
 
 export const HomeInteractiveMap = memo(function HomeInteractiveMap({
   stations,
 }: HomeInteractiveMapProps) {
   const { lightMode, reduced } = useAdaptivePerformance();
-  const lite = lightMode; // هاتف/ضعيف/save-data → خيوط جاهزة
+  const lite = lightMode;
 
   if (reduced) {
     const items = stations.map((s) => ({
@@ -38,14 +57,13 @@ export const HomeInteractiveMap = memo(function HomeInteractiveMap({
   return (
     <div className="nl-home-map" data-lite={lite ? 'true' : 'false'}>
       <div className="nl-home-spine" aria-hidden="true" />
-      {stations.map((s, i) => (
+      {stations.map((s) => (
         <Station
           key={s.id}
           id={s.id}
-          side={sideFor(s.id, i)}
           title={TITLES[s.id] ?? s.id}
+          weight={WEIGHTS[s.id] ?? 'md'}
           lite={lite}
-          reduced={reduced}
           bare={s.bare}
         >
           {s.node}

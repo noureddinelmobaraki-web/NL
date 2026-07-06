@@ -212,20 +212,29 @@ export function computeGraph(
   return { nodes, edges };
 }
 
-// ---------------------------------------------------------------- home cascade
-export interface Cascade {
-  from: Pt;
-  to: Pt;
-  path: string;
+// ---------------------------------------------------------------- home rays
+export interface StationRays {
+  head: Pt;
+  headY: number;
+  left: string;
+  right: string;
+  stem: string;
 }
 
-// خريطة Home التفاعلية: خيط واحد يدخل من حافة الجانب المعطى ويلتوي نحو مركز المسرح
-// حيث النافذة. يُعيد استخدام نفس منحنى curve() في خريطة الاستقبال.
-export function computeCascade(size: Size, side: 'left' | 'right'): Cascade {
+// خيوط Home: تزحف من الحافتين ومن العمود نحو رأس النافذة (أعلى-الوسط).
+export function computeStationRays(size: Size, headYRatio = 0.28): StationRays {
   const { w, h } = size;
-  const midY = h * 0.5;
-  const from: Pt = side === 'left' ? { x: 0, y: midY } : { x: w, y: midY };
-  const to: Pt = { x: w * 0.5, y: midY };
-  return { from, to, path: curve(from, to) };
+  const headY = h * headYRatio;
+  const head: Pt = { x: w * 0.5, y: headY };
+  const top: Pt = { x: w * 0.5, y: 0 };
+  const leftFrom: Pt = { x: 0, y: headY };
+  const rightFrom: Pt = { x: w, y: headY };
+  return {
+    head,
+    headY,
+    left: curve(leftFrom, head),
+    right: curve(rightFrom, head),
+    stem: curve(top, head),
+  };
 }
 

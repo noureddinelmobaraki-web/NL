@@ -1,23 +1,20 @@
-/* src/styles/home-map.css — طبقة الخريطة التفاعلية (Home) */
+/* src/styles/home-map.css — خريطة Home (فضّي معدني) */
 .nl-home-map { position: relative; width: 100%; }
 
-/* العمود الضوئي المركزي */
 .nl-home-spine {
   position: absolute; top: 0; bottom: 0; left: 50%;
   width: 2px; transform: translateX(-50%);
-  background: linear-gradient(
-    to bottom,
+  background: linear-gradient(to bottom,
     transparent,
-    rgba(120, 220, 180, 0.35) 12%,
-    rgba(120, 200, 255, 0.35) 88%,
-    transparent
-  );
+    rgba(224, 232, 242, 0.45) 12%,
+    rgba(198, 210, 224, 0.5) 88%,
+    transparent);
   pointer-events: none; z-index: 0;
 }
 
 .nl-home-station {
   position: relative;
-  min-height: 128vh;
+  min-height: 132vh;
   content-visibility: auto;
   contain-intrinsic-size: 100vh;
 }
@@ -25,7 +22,6 @@
 .nl-home-stage {
   position: sticky; top: 0;
   height: 100dvh;
-  display: flex; align-items: center; justify-content: center;
   overflow: visible;
 }
 
@@ -33,64 +29,133 @@
   position: absolute; inset: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 1; overflow: visible;
 }
-.nl-home-ray-glow { filter: none; opacity: 0.55; }
-.nl-home-ray-core { opacity: 0.95; }
+.nl-home-ray-glow { stroke: rgba(230, 240, 252, 0.5); filter: blur(2px); }
+.nl-home-socket { fill: #f7fbff; stroke: rgba(180, 195, 214, 0.9); stroke-width: 1; }
 
-.nl-home-window {
-  position: relative; z-index: 2;
-  width: min(920px, 92vw);
-  will-change: transform, opacity;
+.nl-home-anchor {
+  position: absolute;
+  top: 28%; left: 50%;
+  transform: translateX(-50%);
+  width: min(940px, 92vw);
+  z-index: 2;
 }
-.nl-home-window--left  { margin-right: auto; }
-.nl-home-window--right { margin-left: auto; }
+
+.nl-home-window { will-change: transform, opacity; transform-origin: top center; }
+.nl-home-window--sm { width: min(560px, 88vw); margin: 0 auto; }
+.nl-home-window--md { width: min(760px, 92vw); margin: 0 auto; }
+.nl-home-window--lg { width: 100%; }
 
 .nl-home-window-glass {
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--bg-page, #0b1020) 78%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text-primary, #ffffff) 14%, transparent);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  position: relative;
+  border-radius: 16px;
+  color: #17202e;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.95) 0%,
+    rgba(232,238,246,0.82) 16%,
+    rgba(188,199,212,0.72) 52%,
+    rgba(205,215,228,0.8) 82%,
+    rgba(232,239,247,0.9) 100%);
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow:
+    0 14px 44px rgba(18,28,48,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 0 -16px 32px rgba(120,140,166,0.34);
+  backdrop-filter: blur(10px) saturate(1.4);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
   overflow: hidden;
 }
+.nl-home-window-glass::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 46%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
+  pointer-events: none;
+}
 .nl-home-window-titlebar {
+  position: relative;
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 14px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 7px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(210,220,232,0.5));
+  border-bottom: 1px solid rgba(255,255,255,0.7);
 }
 .nl-home-window-dot {
   width: 10px; height: 10px; border-radius: 50%;
-  background: #5fe0a8; box-shadow: 0 0 8px #5fe0a8;
+  background: radial-gradient(circle at 30% 30%, #ffffff, #9fb0c4);
+  box-shadow: 0 0 6px rgba(255,255,255,0.8);
 }
 .nl-home-window-title {
   font: 600 12px/1 ui-monospace, monospace;
-  letter-spacing: 0.06em; color: var(--text-primary, #eafff5); opacity: 0.8;
+  letter-spacing: 0.08em; color: #33445c; opacity: 0.9;
 }
 .nl-home-window-body {
-  padding: clamp(14px, 3vw, 28px);
-  max-height: 82dvh; overflow: auto;
+  position: relative;
+  padding: clamp(14px, 3vw, 26px);
+  max-height: 66dvh; overflow: auto;
 }
 
 .nl-home-bare { width: 100%; }
+.nl-home-hub { display: flex; flex-direction: column; gap: 22px; }
 
-/* تدهور تدريجي حسب القدرة */
 .nl-home-map[data-lite="true"] .nl-home-window-glass {
   backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--bg-page, #0b1020);
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .nl-home-window-glass { background: var(--bg-page, #0b1020); }
+  .nl-home-window-glass { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* شبكة التفرّع */
+.nl-lattice { position: relative; width: 100%; margin-top: 8px; }
+.nl-lattice-bus {
+  width: 42px; height: 2px; margin: 0 auto 26px;
+  background: linear-gradient(90deg, transparent, rgba(210,222,236,0.9), transparent);
+}
+.nl-lattice-svg { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: visible; }
+.nl-lattice-ray { stroke: #cdd8e6; stroke-width: 2; }
+.nl-lattice-ray--lite { stroke-width: 1.5; }
+.nl-lattice-row {
+  position: relative; z-index: 1;
+  display: flex; flex-wrap: wrap; gap: 14px;
+  justify-content: center; align-items: stretch;
+}
+.nl-lattice-node {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  min-width: 118px; padding: 14px 16px;
+  border-radius: 14px; cursor: pointer;
+  color: #1b2534; text-decoration: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(206,217,230,0.8));
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow: 0 8px 22px rgba(18,28,48,0.28), inset 0 1px 0 rgba(255,255,255,0.9);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.nl-lattice-node:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(18,28,48,0.34), inset 0 1px 0 rgba(255,255,255,0.95);
+}
+.nl-lattice-node-glyph {
+  display: grid; place-items: center;
+  width: 40px; height: 40px; border-radius: 10px;
+  color: var(--node-accent, #33445c);
+  background: radial-gradient(circle at 30% 30%, #ffffff, rgba(220,228,238,0.8));
+  border: 1px solid rgba(255,255,255,0.8);
+}
+.nl-lattice-node-label {
+  font: 600 12px/1 ui-monospace, monospace; letter-spacing: 0.04em; color: #33445c;
+}
+
+/* إعادة تصميم my songs داخل الخريطة */
+.nl-home-songs :where(.song-card, .mysongs-card) {
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(210,220,232,0.78)) !important;
+  color: #1b2534 !important;
+  border: 1px solid rgba(255,255,255,0.85) !important;
+  box-shadow: 0 6px 18px rgba(18,28,48,0.22), inset 0 1px 0 rgba(255,255,255,0.9) !important;
 }
 
 .nl-home-fallback { width: 100%; }
 
-/* احترام تقليل الحركة */
 @media (prefers-reduced-motion: reduce) {
   .nl-home-station { min-height: auto; }
-  .nl-home-stage { position: static; height: auto; display: block; }
+  .nl-home-stage { position: static; height: auto; }
+  .nl-home-anchor { position: static; transform: none; width: 100%; }
 }
 
-/* RTL: عكس الجهات */
-[dir="rtl"] .nl-home-window--left  { margin-right: 0; margin-left: auto; }
-[dir="rtl"] .nl-home-window--right { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .nl-lattice-node-label,
+[dir="rtl"] .nl-home-window-title { letter-spacing: 0; }

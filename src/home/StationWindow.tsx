@@ -1,12 +1,13 @@
 // src/home/StationWindow.tsx
-// النافذة الزجاجية (Frutiger-Aero). تكبر/تصغر وتتلاشى عبر قيم Motion فقط.
+// نافذة فضّية معدنية مثبّتة عند رأسها (top:28%) لتتصل بالخيوط.
 import { memo, type ReactNode } from 'react';
 import { motion, type MotionValue } from 'framer-motion';
-import type { StationSide } from './home.stations';
+
+export type StationWeight = 'sm' | 'md' | 'lg';
 
 interface StationWindowProps {
   title: string;
-  side: StationSide;
+  weight: StationWeight;
   scale: MotionValue<number>;
   opacity: MotionValue<number>;
   y: MotionValue<number>;
@@ -16,36 +17,40 @@ interface StationWindowProps {
 
 export const StationWindow = memo(function StationWindow({
   title,
-  side,
+  weight,
   scale,
   opacity,
   y,
   children,
   bare,
 }: StationWindowProps) {
+  const windowStyle = { scale, opacity, y };
+
   if (bare) {
     const bareStyle = { opacity, y };
     return (
-      <motion.div className="nl-home-bare" style={bareStyle}>
-        {children}
-      </motion.div>
+      <div className="nl-home-anchor">
+        <motion.div className="nl-home-bare" style={bareStyle}>
+          {children}
+        </motion.div>
+      </div>
     );
   }
 
-  const windowStyle = { scale, opacity, y };
-
   return (
-    <motion.div
-      className={`nl-home-window nl-home-window--${side}`}
-      style={windowStyle}
-    >
-      <div className="nl-home-window-glass">
-        <div className="nl-home-window-titlebar">
-          <span className="nl-home-window-dot" />
-          <span className="nl-home-window-title">{title}</span>
+    <div className="nl-home-anchor">
+      <motion.div
+        className={`nl-home-window nl-home-window--${weight}`}
+        style={windowStyle}
+      >
+        <div className="nl-home-window-glass">
+          <div className="nl-home-window-titlebar">
+            <span className="nl-home-window-dot" />
+            <span className="nl-home-window-title">{title}</span>
+          </div>
+          <div className="nl-home-window-body">{children}</div>
         </div>
-        <div className="nl-home-window-body">{children}</div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 });

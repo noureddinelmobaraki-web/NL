@@ -106,6 +106,8 @@ import { HeroSection } from './components/sections/HeroSection';
 import { StreamingSection } from './components/sections/StreamingSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
 import { HomeInteractiveMap } from './home/HomeInteractiveMap';
+import { StationLattice, type LatticeItem } from './home/StationLattice';
+import { STREAMING_PLATFORMS, SOCIAL_CHANNELS } from './config/streaming';
 import { getThemedImage } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
@@ -512,6 +514,19 @@ function MainApp() {
     };
   }, []);
 
+  const streamingItems: LatticeItem[] = STREAMING_PLATFORMS.map((p) => {
+    const Icon = p.icon;
+    return { id: p.id, label: p.name, href: p.url, color: p.color, content: <Icon size={20} aria-hidden="true" /> };
+  });
+  const socialItems: LatticeItem[] = SOCIAL_CHANNELS.map((s) => {
+    const Icon = s.icon;
+    return { id: s.id, label: s.name, href: s.url, color: s.color, content: <Icon size={20} aria-hidden="true" /> };
+  });
+  const galleryItems: LatticeItem[] = [
+    { id: 'me-bit', label: 'me bit', onClick: () => scrollToSection('me-bit-gallery'), content: <span>▣</span> },
+    { id: 'lens', label: 'lens', onClick: () => scrollToSection('lens-section'), content: <span>◎</span> },
+  ];
+
   return (
     <ButtonProvider>
       <AppBackgroundFx
@@ -644,7 +659,16 @@ function MainApp() {
               <HomeInteractiveMap
                 stations={[
                   { id: 'profile', node: <HeroSection /> },
-                  { id: 'streaming', node: <StreamingSection /> },
+                  {
+                    id: 'streaming',
+                    node: (
+                      <div className="nl-home-hub">
+                        <StreamingSection />
+                        <StationLattice items={streamingItems} lite={false} />
+                        <StationLattice items={socialItems} lite={false} />
+                      </div>
+                    ),
+                  },
                   {
                     id: 'highlights',
                     node: (
@@ -657,26 +681,25 @@ function MainApp() {
                   {
                     id: 'gallery',
                     node: (
-                      <Suspense fallback={<SkeletonSection type="drawings" />}>
-                        <GallerySection
-                          resolvedTheme={resolvedTheme}
-                          isLensGalleryOpen={isLensGalleryOpen}
-                          onGalleryOpen={handleGalleryOpen}
-                          onLensOpen={openLens}
-                          onLensClose={closeLens}
-                          onPrefetchMeBit={ensureMeBitLoaded}
-                        />
-                      </Suspense>
+                      <div className="nl-home-hub">
+                        <StationLattice items={galleryItems} lite={false} />
+                        <Suspense fallback={<SkeletonSection type="drawings" />}>
+                          <GallerySection
+                            resolvedTheme={resolvedTheme}
+                            isLensGalleryOpen={isLensGalleryOpen}
+                            onGalleryOpen={handleGalleryOpen}
+                            onLensOpen={openLens}
+                            onLensClose={closeLens}
+                            onPrefetchMeBit={ensureMeBitLoaded}
+                          />
+                        </Suspense>
+                      </div>
                     ),
                   },
                   {
                     id: 'songs',
                     node: (
-                      <section
-                        ref={songsRef}
-                        className="fade-in-section"
-                        aria-label="My Favorite Songs"
-                      >
+                      <section ref={songsRef} className="fade-in-section nl-home-songs" aria-label="My Favorite Songs">
                         <SectionErrorBoundary sectionName="MySongs">
                           <Suspense fallback={<SkeletonSection type="songs" />}>
                             <MySongs
