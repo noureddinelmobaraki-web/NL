@@ -27,19 +27,6 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
     try { p.unloadModule('cc'); } catch (err) { void err; }
   }, []);
 
-  const tick = useCallback(() => {
-    const p = playerRef.current;
-    if (p && typeof p.getCurrentTime === 'function') {
-      const cur = p.getCurrentTime();
-      const dur = p.getDuration();
-      setCurrent(cur);
-      if (dur && fillRef.current) {
-        fillRef.current.style.width = ((cur / dur) * 100).toFixed(2) + '%';
-      }
-    }
-    rafRef.current = window.requestAnimationFrame(tick);
-  }, []);
-
   useEffect(() => {
     if (!apiReady || !hostRef.current) return;
     const hostEl = hostRef.current;
@@ -47,6 +34,8 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
     hostEl.appendChild(placeholder);
 
     const player = new window.YT.Player(placeholder, {
+      width: '100%',
+      height: '100%',
       host: 'https://www.youtube-nocookie.com',
       videoId,
       playerVars: {
@@ -69,37 +58,44 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
           setMuted(e.target.isMuted());
           killCaptions(e.target);
           setCcOn(false);
-          if (autoplay) {
-            e.target.playVideo();
-          }
+          if (autoplay) { e.target.playVideo(); }
         },
         onStateChange: (e) => {
           const S = window.YT.PlayerState;
           setPlaying(e.data === S.PLAYING);
           const dur = e.target.getDuration();
           if (dur) setDuration(dur);
-          if (e.data === S.PLAYING && !ccOn) {
-            killCaptions(e.target);
-          }
+          if (e.data === S.PLAYING && !ccOn) { killCaptions(e.target); }
         },
       },
     });
     playerRef.current = player;
-    rafRef.current = window.requestAnimationFrame(tick);
 
     return () => {
-      window.cancelAnimationFrame(rafRef.current);
-      try {
-        player.destroy();
-      } catch {
-        // noop
-      }
+      try { player.destroy(); } catch { /* noop */ }
       playerRef.current = null;
-      if (hostEl) {
-        hostEl.innerHTML = '';
-      }
+      if (hostEl) { hostEl.innerHTML = ''; }
     };
-  }, [apiReady, videoId, autoplay, tick, killCaptions, ccOn]);
+  }, [apiReady, videoId, autoplay, killCaptions, ccOn]);
+
+  // Progress ticker runs ONLY while playing, so a paused or off-screen video costs nothing.
+  useEffect(() => {
+    if (!playing) return;
+    const loop = () => {
+      const p = playerRef.current;
+      if (p && typeof p.getCurrentTime === 'function') {
+        const cur = p.getCurrentTime();
+        const dur = p.getDuration();
+        setCurrent(cur);
+        if (dur && fillRef.current) {
+          fillRef.current.style.width = ((cur / dur) * 100).toFixed(2) + '%';
+        }
+      }
+      rafRef.current = window.requestAnimationFrame(loop);
+    };
+    rafRef.current = window.requestAnimationFrame(loop);
+    return () => window.cancelAnimationFrame(rafRef.current);
+  }, [playing]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -108,31 +104,19 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
   const togglePlay = useCallback(() => {
     const p = playerRef.current;
     if (!p) return;
-    if (playing) {
-      p.pauseVideo();
-    } else {
-      p.playVideo();
-    }
+    if (playing) { p.pauseVideo(); } else { p.playVideo(); }
   }, [playing]);
 
   const toggleMute = useCallback(() => {
     const p = playerRef.current;
     if (!p) return;
-    if (p.isMuted()) {
-      p.unMute();
-      setMuted(false);
-    } else {
-      p.mute();
-      setMuted(true);
-    }
+    if (p.isMuted()) { p.unMute(); setMuted(false); } else { p.mute(); setMuted(true); }
   }, []);
 
   const toggleCaptions = useCallback(() => {
@@ -167,9 +151,7 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
 
   const goFullscreen = useCallback(() => {
     const el = wrapRef.current;
-    if (el && el.requestFullscreen) {
-      el.requestFullscreen();
-    }
+    if (el && el.requestFullscreen) { el.requestFullscreen(); }
   }, []);
 
   return (

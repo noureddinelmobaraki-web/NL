@@ -23,6 +23,8 @@ declare global {
       data: number;
     }
     interface PlayerOptions {
+      width?: string | number;
+      height?: string | number;
       host?: string;
       videoId?: string;
       playerVars?: PlayerVars;
