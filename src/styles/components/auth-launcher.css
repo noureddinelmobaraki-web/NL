@@ -91,3 +91,11 @@ html[data-active-page="retro"] .auth-launcher {
 @media (prefers-reduced-motion: reduce) {
   .auth-launcher { animation: none; transition: none; }
 }
+
+@media (max-width: 640px) {
+  .auth-launcher {
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(160%);
+    transform: translateZ(0);
+  }
+}

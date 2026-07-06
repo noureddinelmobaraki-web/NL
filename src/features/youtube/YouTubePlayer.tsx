@@ -18,8 +18,14 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [ccOn, setCcOn] = useState(false);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
+
+  const killCaptions = useCallback((p: YT.Player) => {
+    try { p.unloadModule('captions'); } catch (err) { void err; }
+    try { p.unloadModule('cc'); } catch (err) { void err; }
+  }, []);
 
   const tick = useCallback(() => {
     const p = playerRef.current;
@@ -51,6 +57,8 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
         disablekb: 1,
         playsinline: 1,
         fs: 0,
+        cc_load_policy: 0,
+        hl: 'en',
         autoplay: autoplay ? 1 : 0,
       },
       events: {
@@ -59,6 +67,8 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
           setReady(true);
           setDuration(e.target.getDuration());
           setMuted(e.target.isMuted());
+          killCaptions(e.target);
+          setCcOn(false);
           if (autoplay) {
             e.target.playVideo();
           }
@@ -68,6 +78,9 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
           setPlaying(e.data === S.PLAYING);
           const dur = e.target.getDuration();
           if (dur) setDuration(dur);
+          if (e.data === S.PLAYING && !ccOn) {
+            killCaptions(e.target);
+          }
         },
       },
     });
@@ -86,7 +99,19 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
         hostEl.innerHTML = '';
       }
     };
-  }, [apiReady, videoId, autoplay, tick]);
+  }, [apiReady, videoId, autoplay, tick, killCaptions, ccOn]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+        playerRef.current.pauseVideo();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
 
   const togglePlay = useCallback(() => {
     const p = playerRef.current;
@@ -110,6 +135,23 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
     }
   }, []);
 
+  const toggleCaptions = useCallback(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (ccOn) {
+      try { p.unloadModule('captions'); } catch (err) { void err; }
+      try { p.unloadModule('cc'); } catch (err) { void err; }
+      setCcOn(false);
+    } else {
+      try {
+        p.loadModule('captions');
+        p.loadModule('cc');
+        p.setOption('captions', 'reload', true);
+      } catch (err) { void err; }
+      setCcOn(true);
+    }
+  }, [ccOn]);
+
   const seek = useCallback((clientX: number, el: HTMLDivElement) => {
     const p = playerRef.current;
     if (!p) return;
@@ -125,10 +167,8 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
 
   const goFullscreen = useCallback(() => {
     const el = wrapRef.current;
-    if (el) {
-      if (el.requestFullscreen) {
-        el.requestFullscreen();
-      }
+    if (el && el.requestFullscreen) {
+      el.requestFullscreen();
     }
   }, []);
 
@@ -136,21 +176,30 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
     <div className="nl-tube-player" ref={wrapRef}>
       <div className="nl-tube-stage">
         <div ref={hostRef} className="nl-tube-iframe-host" />
-        <button className="nl-tube-surface" onClick={togglePlay} aria-label="تشغيل/إيقاف" />
+        <button className="nl-tube-surface" onClick={togglePlay} aria-label="Play or pause" />
         {!ready ? <div className="nl-tube-spinner" aria-hidden="true" /> : null}
       </div>
       <div className="nl-tube-controls">
-        <button className="nl-tube-ctl" onClick={togglePlay} aria-label={playing ? "إيقاف مؤقت" : "تشغيل"}>
+        <button className="nl-tube-ctl" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'}>
           {playing ? <Pause size={18} /> : <Play size={18} />}
         </button>
-        <div className="nl-tube-track" onClick={onTrackClick} role="slider" aria-label="شريط التقدّم" tabIndex={0}>
+        <div className="nl-tube-track" onClick={onTrackClick} role="slider" aria-label="Seek" tabIndex={0}>
           <div className="nl-tube-track-fill" ref={fillRef} />
         </div>
         <span className="nl-tube-time">{formatDuration(current)} / {formatDuration(duration)}</span>
-        <button className="nl-tube-ctl" onClick={toggleMute} aria-label={muted ? "تشغيل الصوت" : "كتم الصوت"}>
+        <button
+          className={ccOn ? 'nl-tube-ctl nl-tube-cc is-on' : 'nl-tube-ctl nl-tube-cc'}
+          onClick={toggleCaptions}
+          aria-label="Toggle captions"
+          aria-pressed={ccOn}
+          title="Captions"
+        >
+          CC
+        </button>
+        <button className="nl-tube-ctl" onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
           {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
         </button>
-        <button className="nl-tube-ctl" onClick={goFullscreen} aria-label="ملء الشاشة">
+        <button className="nl-tube-ctl" onClick={goFullscreen} aria-label="Fullscreen">
           <Maximize2 size={18} />
         </button>
       </div>

@@ -1,25 +1,19 @@
-import { useRef } from 'react'
-import { createPortal } from 'react-dom'
-import { LogIn } from 'lucide-react'
-import { useAuth } from '../../context/AuthContext'
-import { useBubbleAvoidance } from '../../system/useBubbleAvoidance'
-import '../../styles/components/auth-launcher.css'
+import { createPortal } from 'react-dom';
+import { LogIn } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import '../../styles/components/auth-launcher.css';
 
 export default function AuthLauncher() {
-  const { user, openAuthModal } = useAuth()
-  const ref = useRef<HTMLButtonElement>(null)
-  useBubbleAvoidance(ref, true)
+  const { user, openAuthModal } = useAuth();
 
-  // يختفي تلقائيًا بعد تسجيل الدخول — تصبح بوابة الحساب داخل الفقاعة («حسابي»)
-  if (user) return null
-  if (typeof document === 'undefined') return null
+  // Hidden once signed in (the account lives inside the bubble afterwards).
+  if (user) return null;
+  if (typeof document === 'undefined') return null;
 
   return createPortal(
     <button
-      ref={ref}
       type="button"
       className="auth-launcher"
-      data-glass-avoid=""
       onPointerEnter={() => import('./AuthModal').catch(() => {})}
       onFocus={() => import('./AuthModal').catch(() => {})}
       onClick={openAuthModal}
@@ -31,5 +25,5 @@ export default function AuthLauncher() {
       <span className="auth-launcher__label">Login</span>
     </button>,
     document.body,
-  )
+  );
 }

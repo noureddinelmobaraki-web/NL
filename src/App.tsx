@@ -25,7 +25,7 @@
  */
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, Suspense, useCallback, useRef, useState } from "react";
+import { useEffect, Suspense, useCallback, useRef, lazy } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
@@ -105,7 +105,7 @@ import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
 import { StreamingSection } from './components/sections/StreamingSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
-import { YouTubePortal } from './features/youtube/YouTubePortal';
+import { useTubeStore } from './features/youtube/tubeStore';
 import './styles/youtube-page.css';
 import { HomeInteractiveMap } from './home/HomeInteractiveMap';
 import { StationLattice, type LatticeItem } from './home/StationLattice';
@@ -140,8 +140,12 @@ function readPendingSong(): string | null {
   } catch { return null; }
 }
 
+const NL_ENTER_FADE = { opacity: 0 } as const;
+const YouTubePortal = lazy(() => import('./features/youtube/YouTubePortal'));
+
 function AppInner() {
   const { theme, loaded, setLoaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, endTransition, openMusic } = useAppContext();
+  const isAutomated = isAutomatedEnv();
 
   useEffect(() => {
     applyThemeUtil(theme);
@@ -205,7 +209,7 @@ function AppInner() {
           <motion.div
             key="games-screen"
             data-mode={theme}
-            initial={{ opacity: 0 }}
+            initial={isAutomated ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -221,7 +225,7 @@ function AppInner() {
           <motion.div
             key="tv-screen"
             data-mode={theme}
-            initial={{ opacity: 0 }}
+            initial={isAutomated ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -237,7 +241,7 @@ function AppInner() {
           <motion.div
             key="cinema-screen"
             data-mode={theme}
-            initial={{ opacity: 0 }}
+            initial={isAutomated ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -256,7 +260,7 @@ function AppInner() {
           <motion.div
             key="retro-screen"
             data-mode={theme}
-            initial={{ opacity: 0 }}
+            initial={isAutomated ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -272,7 +276,7 @@ function AppInner() {
           <motion.div
             key="xp-screen"
             data-mode={theme}
-            initial={{ opacity: 0 }}
+            initial={isAutomated ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -288,7 +292,7 @@ function AppInner() {
           <motion.div
             key="music-screen"
             data-mode={theme}
-            initial={{ opacity: 0 }}
+            initial={isAutomated ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -304,7 +308,7 @@ function AppInner() {
           <motion.div
             key="accounts-screen"
             data-mode={theme}
-            initial={{ opacity: 0 }}
+            initial={isAutomated ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -319,7 +323,7 @@ function AppInner() {
         ) : (
           <motion.div
             key="main-app-screen"
-            initial={{ opacity: 0 }}
+            initial={isAutomated ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -347,7 +351,10 @@ function MainApp() {
   } = useAppContext();
 
   const navigateSection = useNavigateSection();
-  const [tubeOpen, setTubeOpen] = useState(false);
+  const tubeOpen = useTubeStore((s) => s.open);
+  const tubeVideoId = useTubeStore((s) => s.videoId);
+  const openTube = useTubeStore((s) => s.openTube);
+  const closeTube = useTubeStore((s) => s.closeTube);
 
 
   const resolvedTheme = useResolvedTheme();
@@ -678,7 +685,7 @@ function MainApp() {
                       <HighlightsSection
                         vaultPlaylistCoverUrl={CONFIG_ASSETS.vaultPlaylistCover}
                         youtubeHighlightsBgUrl={CONFIG_ASSETS.youtubeHighlightsBg}
-                        onOpenTube={() => setTubeOpen(true)}
+                        onOpenTube={() => openTube()}
                       />
                     ),
                   },
@@ -779,7 +786,11 @@ function MainApp() {
           onMoodTrigger={handleMoodTrigger}
         />
       )}
-      <YouTubePortal open={tubeOpen} onClose={() => setTubeOpen(false)} />
+      {tubeOpen ? (
+        <Suspense fallback={null}>
+          <YouTubePortal open={tubeOpen} initialVideoId={tubeVideoId ?? undefined} onClose={closeTube} />
+        </Suspense>
+      ) : null}
       {import.meta.env.DEV && <MobileQAOverlay />}
     </ButtonProvider>
   );

@@ -11,6 +11,9 @@ declare global {
       disablekb?: 0 | 1;
       playsinline?: 0 | 1;
       fs?: 0 | 1;
+      cc_load_policy?: 0 | 1;
+      cc_lang_pref?: string;
+      hl?: string;
     }
     interface PlayerEvent {
       target: Player;
@@ -39,6 +42,9 @@ declare global {
       getCurrentTime(): number;
       getDuration(): number;
       loadVideoById(id: string): void;
+      loadModule(name: string): void;
+      unloadModule(name: string): void;
+      setOption(module: string, option: string, value: unknown): void;
       destroy(): void;
     }
     const PlayerState: {

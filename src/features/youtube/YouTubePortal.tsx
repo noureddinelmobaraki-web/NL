@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Youtube, ChevronDown } from 'lucide-react';
@@ -7,12 +7,20 @@ import { getChannelUrl } from './loadYoutube';
 import { YouTubePlayer } from './YouTubePlayer';
 import { VideoCard } from './VideoCard';
 import { formatDate, formatViews } from './format';
+import { useBodyScrollLock } from './hooks/useBodyScrollLock';
+import { useEscapeToClose } from './hooks/useEscapeToClose';
+import { useTubeCollections } from './hooks/useTubeCollections';
+import { useTubeTabs } from './hooks/useTubeTabs';
+import { useTubeSelection } from './hooks/useTubeSelection';
+import { useTubePagination } from './hooks/useTubePagination';
 
 interface YouTubePortalProps {
   open: boolean;
+  initialVideoId?: string;
   onClose: () => void;
 }
 
+const PAGE_SIZE = 12;
 const EASE = [0.22, 1, 0.36, 1] as const;
 const backdropAnim = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
 const panelAnim = {
@@ -23,41 +31,25 @@ const panelAnim = {
 const panelTrans = { duration: 0.42, ease: EASE };
 const backdropTrans = { duration: 0.28 };
 
-export function YouTubePortal({ open, onClose }: YouTubePortalProps) {
+export function YouTubePortal({ open, initialVideoId, onClose }: YouTubePortalProps) {
   const { videos, loading, error } = useYoutubeVideos(open);
-  const [activeId, setActiveId] = useState<string>('');
+  const tabs = useTubeCollections();
+  const { activeTab, setActiveTab, filtered, allTabId } = useTubeTabs(videos, tabs);
+  const { activeId, active, select } = useTubeSelection(videos, open, initialVideoId);
   const [descOpen, setDescOpen] = useState(false);
 
-  const active = useMemo(
-    () => videos.find((v) => v.id === activeId) || videos[0],
-    [videos, activeId],
+  useBodyScrollLock(open);
+  useEscapeToClose(open, onClose);
+
+  const rest = filtered.filter((v) => (active ? v.id !== active.id : true));
+  const { visible, canShowMore, showMore } = useTubePagination(rest, PAGE_SIZE);
+
+  const onSelect = useCallback(
+    (id: string) => { select(id); setDescOpen(false); },
+    [select],
   );
-
-  useEffect(() => {
-    if (open && videos.length > 0 && !activeId) setActiveId(videos[0].id);
-  }, [open, videos, activeId]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open, onClose]);
-
-  const onSelect = useCallback((id: string) => {
-    setActiveId(id);
-    setDescOpen(false);
-    const body = document.querySelector('.nl-tube-body');
-    if (body) body.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
   const toggleDesc = useCallback(() => setDescOpen((v) => !v), []);
-  const rest = videos.filter((v) => (active ? v.id !== active.id : true));
+  const playingId = activeId || (active ? active.id : '');
 
   return createPortal(
     <AnimatePresence>
@@ -94,12 +86,34 @@ export function YouTubePortal({ open, onClose }: YouTubePortalProps) {
               </button>
             </header>
 
+            {tabs.length > 0 ? (
+              <nav className="nl-tube-tabs" aria-label="Collections">
+                <button
+                  type="button"
+                  className={activeTab === allTabId ? 'nl-tube-tab is-active' : 'nl-tube-tab'}
+                  onClick={() => setActiveTab(allTabId)}
+                >
+                  All
+                </button>
+                {tabs.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={activeTab === t.id ? 'nl-tube-tab is-active' : 'nl-tube-tab'}
+                    onClick={() => setActiveTab(t.id)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </nav>
+            ) : null}
+
             <div className="nl-tube-body">
               {loading ? <div className="nl-tube-skeleton" /> : null}
 
               {!loading && active ? (
                 <>
-                  <YouTubePlayer videoId={active.id} autoplay />
+                  <YouTubePlayer videoId={playingId} autoplay />
                   <h2 className="nl-tube-title">{active.title}</h2>
                   <div className="nl-tube-meta">
                     <span>{formatDate(active.publishedAt)}</span>
@@ -114,14 +128,19 @@ export function YouTubePortal({ open, onClose }: YouTubePortalProps) {
                     </div>
                   ) : null}
 
-                  {rest.length > 0 ? (
+                  {visible.length > 0 ? (
                     <>
                       <h3 className="nl-tube-grid-title">More videos</h3>
                       <div className="nl-tube-grid">
-                        {rest.map((v) => (
+                        {visible.map((v) => (
                           <VideoCard key={v.id} video={v} active={false} onSelect={onSelect} />
                         ))}
                       </div>
+                      {canShowMore ? (
+                        <button type="button" className="nl-tube-more" onClick={showMore}>
+                          MORE
+                        </button>
+                      ) : null}
                     </>
                   ) : null}
                 </>
@@ -146,3 +165,5 @@ export function YouTubePortal({ open, onClose }: YouTubePortalProps) {
     document.body,
   );
 }
+
+export default YouTubePortal;
