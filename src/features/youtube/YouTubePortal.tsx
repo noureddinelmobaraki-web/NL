@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Youtube, ChevronDown } from 'lucide-react';
+import { X, Youtube } from 'lucide-react';
 import { useYoutubeVideos } from './useYoutubeVideos';
 import { getChannelUrl } from './loadYoutube';
 import { YouTubePlayer } from './YouTubePlayer';
@@ -35,21 +35,31 @@ export function YouTubePortal({ open, initialVideoId, onClose }: YouTubePortalPr
   const { videos, loading, error } = useYoutubeVideos(open);
   const tabs = useTubeCollections();
   const { activeTab, setActiveTab, filtered, allTabId } = useTubeTabs(videos, tabs);
-  const { activeId, active, select } = useTubeSelection(videos, open, initialVideoId);
-  const [descOpen, setDescOpen] = useState(false);
+  const { activeId, active, select, clear } = useTubeSelection(videos, open, initialVideoId);
+  const [minimized, setMinimized] = useState(false);
 
   useBodyScrollLock(open);
   useEscapeToClose(open, onClose);
 
-  const rest = filtered.filter((v) => (active ? v.id !== active.id : true));
+  const rest = filtered.filter((v) => v.id !== activeId);
   const { visible, canShowMore, showMore } = useTubePagination(rest, PAGE_SIZE);
 
-  const onSelect = useCallback(
-    (id: string) => { select(id); setDescOpen(false); },
-    [select],
-  );
-  const toggleDesc = useCallback(() => setDescOpen((v) => !v), []);
-  const playingId = activeId || (active ? active.id : '');
+  const onSelect = useCallback((id: string) => {
+    select(id);
+    setMinimized(false);
+  }, [select]);
+
+  const onTab = useCallback((id: string) => {
+    setActiveTab(id);
+    setMinimized((prev) => (activeId ? true : prev));
+  }, [setActiveTab, activeId]);
+
+  const closeVideo = useCallback(() => {
+    clear();
+    setMinimized(false);
+  }, [clear]);
+
+  const expandVideo = useCallback(() => setMinimized(false), []);
 
   return createPortal(
     <AnimatePresence>
@@ -91,7 +101,7 @@ export function YouTubePortal({ open, initialVideoId, onClose }: YouTubePortalPr
                 <button
                   type="button"
                   className={activeTab === allTabId ? 'nl-tube-tab is-active' : 'nl-tube-tab'}
-                  onClick={() => setActiveTab(allTabId)}
+                  onClick={() => onTab(allTabId)}
                 >
                   All
                 </button>
@@ -100,7 +110,7 @@ export function YouTubePortal({ open, initialVideoId, onClose }: YouTubePortalPr
                     key={t.id}
                     type="button"
                     className={activeTab === t.id ? 'nl-tube-tab is-active' : 'nl-tube-tab'}
-                    onClick={() => setActiveTab(t.id)}
+                    onClick={() => onTab(t.id)}
                   >
                     {t.label}
                   </button>
@@ -111,42 +121,46 @@ export function YouTubePortal({ open, initialVideoId, onClose }: YouTubePortalPr
             <div className="nl-tube-body">
               {loading ? <div className="nl-tube-skeleton" /> : null}
 
-              {!loading && active ? (
-                <>
-                  <YouTubePlayer videoId={playingId} autoplay />
-                  <h2 className="nl-tube-title">{active.title}</h2>
-                  <div className="nl-tube-meta">
-                    <span>{formatDate(active.publishedAt)}</span>
-                    {active.viewCount ? <span>{formatViews(active.viewCount)}</span> : null}
-                  </div>
-                  {active.description ? (
-                    <div className={descOpen ? 'nl-tube-desc is-open' : 'nl-tube-desc'}>
-                      <p>{active.description}</p>
-                      <button className="nl-tube-desc-toggle" onClick={toggleDesc}>
-                        <ChevronDown size={16} /> {descOpen ? 'Less' : 'More'}
+              {activeId ? (
+                <div className={minimized ? 'nl-tube-stagewrap is-mini' : 'nl-tube-stagewrap'}>
+                  {minimized ? (
+                    <div className="nl-tube-mini-bar">
+                      <button className="nl-tube-mini-btn" onClick={expandVideo} type="button">Expand</button>
+                      <button className="nl-tube-mini-btn" onClick={closeVideo} type="button" aria-label="Close video">
+                        <X size={14} />
                       </button>
                     </div>
                   ) : null}
-
-                  {visible.length > 0 ? (
-                    <>
-                      <h3 className="nl-tube-grid-title">More videos</h3>
-                      <div className="nl-tube-grid">
-                        {visible.map((v) => (
-                          <VideoCard key={v.id} video={v} active={false} onSelect={onSelect} />
-                        ))}
+                  <YouTubePlayer videoId={activeId} autoplay onClose={closeVideo} />
+                  {!minimized && active ? (
+                    <div className="nl-tube-nowplaying">
+                      <h2 className="nl-tube-title">{active.title}</h2>
+                      <div className="nl-tube-meta">
+                        <span>{formatDate(active.publishedAt)}</span>
+                        {active.viewCount ? <span>{formatViews(active.viewCount)}</span> : null}
                       </div>
-                      {canShowMore ? (
-                        <button type="button" className="nl-tube-more" onClick={showMore}>
-                          MORE
-                        </button>
-                      ) : null}
-                    </>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {!loading && rest.length > 0 ? (
+                <>
+                  <h3 className="nl-tube-grid-title">{activeId ? 'More videos' : 'Videos'}</h3>
+                  <div className="nl-tube-grid">
+                    {visible.map((v) => (
+                      <VideoCard key={v.id} video={v} active={false} onSelect={onSelect} />
+                    ))}
+                  </div>
+                  {canShowMore ? (
+                    <button type="button" className="nl-tube-more" onClick={showMore}>
+                      MORE
+                    </button>
                   ) : null}
                 </>
               ) : null}
 
-              {!loading && !active && !error ? (
+              {!loading && videos.length === 0 && !error ? (
                 <div className="nl-tube-empty">
                   <Youtube size={40} />
                   <p>No videos yet.</p>

@@ -9,13 +9,12 @@ export function useTubeSelection(
   const [activeId, setActiveId] = useState<string>('');
 
   useEffect(() => {
-    if (!open) return;
-    if (initialVideoId) { setActiveId(initialVideoId); return; }
-    if (videos.length > 0 && !activeId) setActiveId(videos[0].id);
-  }, [open, initialVideoId, videos, activeId]);
+    if (!open) { setActiveId(''); return; }
+    if (initialVideoId) { setActiveId(initialVideoId); }
+  }, [open, initialVideoId]);
 
   const active = useMemo(
-    () => videos.find((v) => v.id === activeId) || videos[0],
+    () => videos.find((v) => v.id === activeId),
     [videos, activeId],
   );
 
@@ -25,5 +24,7 @@ export function useTubeSelection(
     if (body) body.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  return { activeId, active, select };
+  const clear = useCallback(() => setActiveId(''), []);
+
+  return { activeId, active, select, clear };
 }

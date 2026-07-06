@@ -1,0 +1,58 @@
+/* Frameless tethered video — just the video, curvy rope, faint close. v14 */
+.nl-tether-box {
+  position: fixed;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 26px 64px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(0, 0, 0, 0.55);
+  animation: nl-tether-pop 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes nl-tether-pop {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+.nl-tether-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* transparent close that appears when interacting with the top of the video */
+.nl-tether-vclose {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(10, 12, 16, 0.42);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  z-index: 2;
+}
+.nl-tether-box:hover .nl-tether-vclose,
+.nl-tether-box:focus-within .nl-tether-vclose { opacity: 1; }
+.nl-tether-vclose:hover { background: rgba(220, 40, 40, 0.9); }
+@media (hover: none) {
+  .nl-tether-vclose { opacity: 0.85; }
+}
+
+/* curvy rope + knots */
+.nl-tether-rope {
+  stroke: #ff3b3b;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 2 9;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  animation: nl-tether-draw 0.45s ease;
+}
+@keyframes nl-tether-draw { from { opacity: 0; } to { opacity: 1; } }
+.nl-tether-knot { fill: #ff3b3b; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); }

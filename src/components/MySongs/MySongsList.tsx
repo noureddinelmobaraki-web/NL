@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Song, LyricLine } from '../../types';
-import { SongList } from '../songs/SongList';
+import { SongListLite as SongList } from '../songs/SongListLite';
 import { useVirtualSongList } from '../../hooks/useVirtualSongList';
 
 export interface MySongsListProps {

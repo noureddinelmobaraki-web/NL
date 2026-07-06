@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize2 } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize2, X } from 'lucide-react';
 import { useYouTubeIframeApi } from './useYouTubeIframeApi';
 import { formatDuration } from './format';
 
 interface YouTubePlayerProps {
   videoId: string;
   autoplay?: boolean;
+  onClose?: () => void;
 }
 
-export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) {
+export function YouTubePlayer({ videoId, autoplay = true, onClose }: YouTubePlayerProps) {
   const apiReady = useYouTubeIframeApi();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -18,7 +19,6 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [ccOn, setCcOn] = useState(false);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
 
@@ -57,7 +57,6 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
           setDuration(e.target.getDuration());
           setMuted(e.target.isMuted());
           killCaptions(e.target);
-          setCcOn(false);
           if (autoplay) { e.target.playVideo(); }
         },
         onStateChange: (e) => {
@@ -65,7 +64,7 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
           setPlaying(e.data === S.PLAYING);
           const dur = e.target.getDuration();
           if (dur) setDuration(dur);
-          if (e.data === S.PLAYING && !ccOn) { killCaptions(e.target); }
+          if (e.data === S.PLAYING) { killCaptions(e.target); }
         },
       },
     });
@@ -76,9 +75,9 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
       playerRef.current = null;
       if (hostEl) { hostEl.innerHTML = ''; }
     };
-  }, [apiReady, videoId, autoplay, killCaptions, ccOn]);
+  }, [apiReady, videoId, autoplay, killCaptions]);
 
-  // Progress ticker runs ONLY while playing, so a paused or off-screen video costs nothing.
+  // Progress ticker runs ONLY while playing.
   useEffect(() => {
     if (!playing) return;
     const loop = () => {
@@ -119,23 +118,6 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
     if (p.isMuted()) { p.unMute(); setMuted(false); } else { p.mute(); setMuted(true); }
   }, []);
 
-  const toggleCaptions = useCallback(() => {
-    const p = playerRef.current;
-    if (!p) return;
-    if (ccOn) {
-      try { p.unloadModule('captions'); } catch (err) { void err; }
-      try { p.unloadModule('cc'); } catch (err) { void err; }
-      setCcOn(false);
-    } else {
-      try {
-        p.loadModule('captions');
-        p.loadModule('cc');
-        p.setOption('captions', 'reload', true);
-      } catch (err) { void err; }
-      setCcOn(true);
-    }
-  }, [ccOn]);
-
   const seek = useCallback((clientX: number, el: HTMLDivElement) => {
     const p = playerRef.current;
     if (!p) return;
@@ -159,6 +141,11 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
       <div className="nl-tube-stage">
         <div ref={hostRef} className="nl-tube-iframe-host" />
         <button className="nl-tube-surface" onClick={togglePlay} aria-label="Play or pause" />
+        {onClose ? (
+          <button className="nl-tube-vclose" onClick={onClose} type="button" aria-label="Close video">
+            <X size={18} />
+          </button>
+        ) : null}
         {!ready ? <div className="nl-tube-spinner" aria-hidden="true" /> : null}
       </div>
       <div className="nl-tube-controls">
@@ -169,15 +156,6 @@ export function YouTubePlayer({ videoId, autoplay = true }: YouTubePlayerProps) 
           <div className="nl-tube-track-fill" ref={fillRef} />
         </div>
         <span className="nl-tube-time">{formatDuration(current)} / {formatDuration(duration)}</span>
-        <button
-          className={ccOn ? 'nl-tube-ctl nl-tube-cc is-on' : 'nl-tube-ctl nl-tube-cc'}
-          onClick={toggleCaptions}
-          aria-label="Toggle captions"
-          aria-pressed={ccOn}
-          title="Captions"
-        >
-          CC
-        </button>
         <button className="nl-tube-ctl" onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
           {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
         </button>

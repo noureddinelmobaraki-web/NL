@@ -99,3 +99,8 @@ html[data-active-page="retro"] .auth-launcher {
     transform: translateZ(0);
   }
 }
+
+/* v14: on the reception/launcher screen the launcher header already shows a
+   Login button, so hide the global floating one to avoid a duplicate. */
+body:has(#nl-launcher) .auth-launcher { display: none !important; }
+

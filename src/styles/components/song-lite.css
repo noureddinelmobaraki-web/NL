@@ -1,0 +1,544 @@
+/* ============================================================================
+   NL — Songs window (Frutiger Aero structure, METALLIC SILVER + BLOOD RED)
+   ----------------------------------------------------------------------------
+   Identity: brushed-metal silver SURFACES, blood-red ACCENT (active ring,
+   play button, EQ, focus, pressed states). Silver dominates; red punctuates.
+   Perf principles:
+   - Metal/glass is FAKED with gradients + inset highlights (no blur stacks).
+   - Exactly ONE subtle backdrop-filter, on the active card only, and only
+     when motion is allowed.
+   - Animations use transform/opacity only (GPU-composited).
+   - Off-screen rows are skipped via content-visibility + intrinsic size.
+   Breakpoints: <=767 mobile (two-line header) | 768–1023 tablet | >=1100 3-col.
+   ========================================================================== */
+
+/* Full-width, predictable sizing everywhere (floating narrow panel). */
+.nl-songs-lite,
+.nl-songs-lite *,
+.nl-songs-lite *::before,
+.nl-songs-lite *::after { box-sizing: border-box; }
+
+/* ---------- Theme tokens ------------------------------------------------- */
+
+/* midnight (default): cool dark gunmetal + red. */
+.nl-songs-lite.theme-midnight, .nl-song-card.theme-midnight {
+  --aero-text: #f2f4f7;            --aero-dim: #a6adb8;
+  --aero-card-bg: linear-gradient(180deg, #4a4f58 0%, #2c3038 55%, #1b1e24 100%);
+  --aero-edge: #5a6068;
+  --aero-gloss: rgba(255, 255, 255, .18);
+  --aero-inner-hi: rgba(255, 255, 255, .30);
+  --aero-card-shadow: 0 3px 10px rgba(0, 0, 0, .5);
+  --aero-accent: #e6474b;
+  --aero-red-bg: linear-gradient(180deg, #e6474b 0%, #b3141b 55%, #7e0d12 100%);
+  --aero-red-edge: #f08a8d;
+  --aero-divider: rgba(200, 205, 215, .18);
+  --aero-btn-bg: linear-gradient(180deg, #6a707a 0%, #41464e 55%, #2b2f35 100%);
+  --aero-btn-fg: #f2f4f7;
+  --aero-btn-edge: #7d838d;
+  --aero-badge-bg: rgba(210, 215, 225, .12);
+  --aero-badge-fg: #c9ced8;
+  --aero-badge-edge: rgba(200, 206, 216, .35);
+  --aero-thumb-bg: linear-gradient(180deg, #585e66, #33373e);
+  --aero-bubble: rgba(215, 220, 228, .08);
+  --aero-bubble-2: rgba(230, 71, 75, .07);
+  --aero-ghost: rgba(200, 205, 215, .07);
+}
+
+/* dark: warmer graphite + red. */
+.nl-songs-lite.theme-dark, .nl-song-card.theme-dark {
+  --aero-text: #eceef0;            --aero-dim: #9aa0a6;
+  --aero-card-bg: linear-gradient(180deg, #3e4144 0%, #26282b 55%, #17181b 100%);
+  --aero-edge: #55585c;
+  --aero-gloss: rgba(255, 255, 255, .12);
+  --aero-inner-hi: rgba(255, 255, 255, .22);
+  --aero-card-shadow: 0 3px 10px rgba(0, 0, 0, .55);
+  --aero-accent: #e6474b;
+  --aero-red-bg: linear-gradient(180deg, #e6474b 0%, #b3141b 55%, #7e0d12 100%);
+  --aero-red-edge: #ef7d80;
+  --aero-divider: rgba(190, 194, 200, .16);
+  --aero-btn-bg: linear-gradient(180deg, #5c6064 0%, #3a3d41 55%, #26282c 100%);
+  --aero-btn-fg: #eceef0;
+  --aero-btn-edge: #6e7276;
+  --aero-badge-bg: rgba(200, 204, 210, .10);
+  --aero-badge-fg: #b9bec4;
+  --aero-badge-edge: rgba(190, 195, 202, .32);
+  --aero-thumb-bg: linear-gradient(180deg, #4c4f53, #2b2d31);
+  --aero-bubble: rgba(205, 209, 215, .07);
+  --aero-bubble-2: rgba(230, 71, 75, .06);
+  --aero-ghost: rgba(190, 194, 200, .06);
+}
+
+/* lite: light brushed silver + red, glossy. */
+.nl-songs-lite.theme-lite, .nl-song-card.theme-lite {
+  --aero-text: #17191c;            --aero-dim: #565c64;
+  --aero-card-bg: linear-gradient(180deg, #f7f9fb 0%, #d6dbe1 60%, #b7bdc5 100%);
+  --aero-edge: #8b9199;
+  --aero-gloss: rgba(255, 255, 255, .85);
+  --aero-inner-hi: rgba(255, 255, 255, .95);
+  --aero-card-shadow: 0 3px 8px rgba(40, 45, 55, .25);
+  --aero-accent: #c0161d;
+  --aero-red-bg: linear-gradient(180deg, #e6474b 0%, #b3141b 55%, #7e0d12 100%);
+  --aero-red-edge: #a8353a;
+  --aero-divider: rgba(90, 96, 104, .25);
+  --aero-btn-bg: linear-gradient(180deg, #ffffff 0%, #ccd2d9 55%, #aab1ba 100%);
+  --aero-btn-fg: #22252a;
+  --aero-btn-edge: #8b9199;
+  --aero-badge-bg: rgba(120, 127, 136, .14);
+  --aero-badge-fg: #3c4148;
+  --aero-badge-edge: rgba(120, 127, 136, .4);
+  --aero-thumb-bg: linear-gradient(180deg, #e8ebef, #c2c8cf);
+  --aero-bubble: rgba(140, 147, 156, .16);
+  --aero-bubble-2: rgba(192, 22, 29, .07);
+  --aero-ghost: rgba(140, 147, 156, .12);
+}
+
+/* light = classic Mac System 7: flat monochrome + flat red accent, NO gloss. */
+.nl-songs-lite.theme-light, .nl-song-card.theme-light {
+  --aero-text: #111111;            --aero-dim: #555555;
+  --aero-card-bg: #ffffff;
+  --aero-edge: #222222;
+  --aero-gloss: transparent;
+  --aero-inner-hi: transparent;
+  --aero-card-shadow: 0 1px 0 rgba(0, 0, 0, .25);
+  --aero-accent: #c0161d;
+  --aero-red-bg: #c0161d;          /* flat, no gradient */
+  --aero-red-edge: #7e0d12;
+  --aero-divider: #cccccc;
+  --aero-btn-bg: #f4f4f4;
+  --aero-btn-fg: #111111;
+  --aero-btn-edge: #222222;
+  --aero-badge-bg: #eeeeee;
+  --aero-badge-fg: #333333;
+  --aero-badge-edge: #999999;
+  --aero-thumb-bg: #dddddd;
+  --aero-bubble: transparent;
+  --aero-bubble-2: transparent;
+  --aero-ghost: #f0f0f0;
+}
+
+/* bit = chunky 8-bit: square, hard offsets, silver chrome + neon red. */
+.nl-songs-lite.theme-bit, .nl-song-card.theme-bit {
+  --aero-text: #eef0f4;            --aero-dim: #8f959d;
+  --aero-card-bg: #17181c;
+  --aero-edge: #c8ccd2;
+  --aero-gloss: transparent;
+  --aero-inner-hi: transparent;
+  --aero-card-shadow: 4px 4px 0 rgba(0, 0, 0, .6);
+  --aero-accent: #ff3b41;
+  --aero-red-bg: #ff3b41;          /* flat, no gradient */
+  --aero-red-edge: #ff3b41;
+  --aero-divider: #3a3d44;
+  --aero-btn-bg: #26282e;
+  --aero-btn-fg: #e6e9ee;
+  --aero-btn-edge: #c8ccd2;
+  --aero-badge-bg: #26282e;
+  --aero-badge-fg: #c8ccd2;
+  --aero-badge-edge: #c8ccd2;
+  --aero-thumb-bg: #26282e;
+  --aero-bubble: transparent;
+  --aero-bubble-2: transparent;
+  --aero-ghost: #22242a;
+}
+
+/* ---------- Container + ambient sheen (single static paint layer) -------- */
+
+.nl-songs-lite {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  color: var(--aero-text);
+}
+
+.nl-songs-lite::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(140px 140px at 12% 6%, var(--aero-bubble) 0%, transparent 70%),
+    radial-gradient(90px 90px at 86% 18%, var(--aero-bubble-2) 0%, transparent 70%),
+    radial-gradient(180px 180px at 70% 92%, var(--aero-bubble) 0%, transparent 70%);
+  opacity: .55;
+}
+
+.nl-songs-lite > * { position: relative; z-index: 1; }
+
+.nl-songs-lite__toolbar { min-width: 0; }
+
+.nl-songs-lite__empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--aero-dim);
+  background: var(--aero-card-bg);
+  border: 1px dashed var(--aero-edge);
+  border-radius: 12px;
+}
+
+/* ---------- Responsive grid ---------------------------------------------- */
+
+.nl-songs-lite__grid {
+  display: grid;
+  grid-template-columns: 1fr;          /* mobile: single column, full width */
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Off-screen rows cost ~nothing to lay out or paint. */
+.nl-song-cell {
+  min-width: 0;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100px;  /* matches two-line mobile row height */
+}
+
+.nl-song-cell.is-active {
+  content-visibility: visible;         /* expanded card must always render */
+  contain-intrinsic-size: none;
+}
+
+/* Tablet: 768–1023 -> 2 columns, active spans both. */
+@media (min-width: 768px) {
+  .nl-songs-lite__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .nl-song-cell { contain-intrinsic-size: auto 74px; }
+  .nl-song-cell.is-active { grid-column: span 2; }
+}
+
+/* Desktop: >=1100 -> 3 columns, active spans 2. */
+@media (min-width: 1100px) {
+  .nl-songs-lite__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .nl-song-cell.is-active { grid-column: span 2; }
+}
+
+/* ---------- Card slot (bounded, tactile, brushed metal) ------------------- */
+
+.nl-song-card {
+  position: relative;
+  isolation: isolate;
+  contain: content;
+  overflow: hidden;
+  cursor: pointer;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--aero-edge);
+  background: var(--aero-card-bg);
+  color: var(--aero-text);
+  box-shadow: var(--aero-card-shadow), inset 0 1px 0 var(--aero-inner-hi);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Metal gloss: top-half highlight sweep — polished chrome look, zero blur. */
+.nl-song-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 55% 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, var(--aero-gloss), transparent);
+}
+
+/* Active card: blood-red ring + soft red bloom from the top. */
+.nl-song-card.is-active {
+  box-shadow: var(--aero-card-shadow), inset 0 1px 0 var(--aero-inner-hi),
+              0 0 0 1px var(--aero-accent);
+}
+.nl-song-card.is-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 0%,
+              color-mix(in srgb, var(--aero-accent) 16%, transparent) 0%,
+              transparent 60%);
+}
+
+/* THE one allowed backdrop-filter: active card only, motion allowed only. */
+@media (prefers-reduced-motion: no-preference) {
+  .nl-song-card.is-active { backdrop-filter: blur(6px) saturate(1.1); }
+}
+.nl-songs-lite.is-reduced-motion .nl-song-card.is-active { backdrop-filter: none; }
+
+@media (hover: hover) and (pointer: fine) {
+  .nl-song-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(10, 12, 16, .35), inset 0 1px 0 var(--aero-inner-hi);
+  }
+}
+.nl-song-card:active { transform: scale(.995); }
+
+.nl-song-card:focus-visible {
+  outline: 2px solid var(--aero-accent);
+  outline-offset: 2px;
+}
+
+/* Ghost placeholder (isRevealed === false): fixed height, flat paint. */
+.nl-song-card.is-ghost {
+  background: var(--aero-ghost);
+  border-color: transparent;
+  box-shadow: none;
+}
+.nl-song-card.is-ghost::before, .nl-song-card.is-ghost::after { display: none; }
+.nl-song-card__ghost { height: 94px; }        /* two-line mobile row */
+@media (min-width: 768px) { .nl-song-card__ghost { height: 68px; } }
+
+/* ---------- Header: grid re-flows per device ------------------------------
+   Mobile (<=767): two stacked lines —
+     [ thumb | title........... ]
+     [ meta badges | actions -> ]
+   Desktop (>=768): single row —
+     [ thumb | title / meta | actions ]
+--------------------------------------------------------------------------- */
+
+.nl-aero-head {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "thumb title  title"
+    "thumb meta   actions";
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 6px;
+  padding: 8px;
+}
+
+.nl-aero-thumb   { grid-area: thumb; }
+.nl-aero-title   { grid-area: title; }
+.nl-aero-meta    { grid-area: meta; min-width: 0; }
+.nl-aero-actions { grid-area: actions; justify-self: end; }
+
+@media (min-width: 768px) {
+  .nl-aero-head {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "thumb title actions"
+      "thumb meta  actions";
+    column-gap: 12px;
+    row-gap: 2px;
+    padding: 10px 12px;
+  }
+  .nl-aero-thumb, .nl-aero-actions { align-self: center; }
+  .nl-aero-title { align-self: end; }
+  .nl-aero-meta  { align-self: start; }
+}
+
+.nl-aero-thumb {
+  position: relative;
+  align-self: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--aero-thumb-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--aero-dim);
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 768px) { .nl-aero-thumb { width: 44px; height: 44px; border-radius: 12px; } }
+
+.nl-aero-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Playing EQ: 3 red bars, transform-only animation (composited). */
+.nl-eq {
+  position: absolute;
+  left: 0; right: 0; bottom: 3px;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  color: var(--aero-accent);
+}
+.nl-eq span {
+  width: 3px; height: 9px;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: bottom;
+  animation: nl-eq 1s ease-in-out infinite;
+}
+.nl-eq span:nth-child(2) { animation-delay: .18s; }
+.nl-eq span:nth-child(3) { animation-delay: .36s; }
+@keyframes nl-eq { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+
+/* Title: ALWAYS visible — owns a full-width line on mobile. */
+.nl-aero-title {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;           /* one line, ellipsis, never crushed */
+  unicode-bidi: plaintext;           /* correct base direction for Arabic/mixed */
+  color: var(--aero-text);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .18);
+}
+@media (min-width: 768px) { .nl-aero-title { font-size: 15px; } }
+.nl-song-card.theme-lite .nl-aero-title,
+.nl-song-card.theme-light .nl-aero-title { text-shadow: none; }
+
+.nl-aero-meta { display: flex; align-items: center; gap: 6px; }
+
+.nl-aero-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  background: var(--aero-badge-bg);
+  color: var(--aero-badge-fg);
+  border: 1px solid var(--aero-badge-edge);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.nl-aero-badge--inst { opacity: .7; }
+
+/* ---------- Action cluster (chrome orbs + red play) ------------------------ */
+
+.nl-aero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;                    /* never collapses */
+}
+
+.nl-aero-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;                       /* visual ~36px; tap target 44px below */
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--aero-btn-edge);
+  background: var(--aero-btn-bg);
+  color: var(--aero-btn-fg);
+  cursor: pointer;
+  /* Chrome orb: top highlight + lower shading + drop shadow. */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5),
+              inset 0 -6px 10px rgba(10, 12, 16, .22),
+              0 1px 3px rgba(10, 12, 16, .3);
+  transition: transform 100ms ease, filter 120ms ease;
+}
+
+/* Mobile: extend the hit area to >=44x44 without growing the visual orb. */
+@media (max-width: 767px) {
+  .nl-aero-btn::after {
+    content: "";
+    position: absolute;
+    inset: -4px;                     /* 36 + 4 + 4 = 44px tap target */
+    border-radius: inherit;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nl-aero-btn:hover { filter: brightness(1.08); }
+}
+.nl-aero-btn:active { transform: translateY(1px) scale(.96); filter: brightness(.92); }
+.nl-aero-btn:focus-visible { outline: 2px solid var(--aero-accent); outline-offset: 2px; }
+
+/* Pressed toggle (Lyrics open): blood-red edge + glyph. */
+.nl-aero-btn[aria-pressed="true"] {
+  border-color: var(--aero-accent);
+  color: var(--aero-accent);
+  box-shadow: inset 0 2px 4px rgba(10, 12, 16, .35);
+}
+
+/* Primary Play/Pause: the blood-red glossy orb, white glyph. */
+.nl-aero-btn--primary {
+  background: var(--aero-red-bg);
+  color: #ffffff;
+  border-color: var(--aero-red-edge);
+}
+.nl-song-card.is-waiting .nl-aero-btn--primary { filter: saturate(.75); }
+
+.nl-spin { animation: nl-spin .8s linear infinite; }
+@keyframes nl-spin { to { transform: rotate(360deg); } }
+
+/* ---------- Expanded (active) area ---------------------------------------- */
+
+.nl-song-card__expand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 2px;
+  padding: 6px 10px 10px;
+  border-top: 1px solid var(--aero-divider);
+}
+@media (min-width: 768px) { .nl-song-card__expand { padding: 8px 12px 12px; } }
+
+/* ---------- Theme structural overrides ------------------------------------ */
+
+/* light: classic Mac System 7 — flat panels, square-ish, no gloss. */
+.nl-song-card.theme-light { border-radius: 8px; border-width: 1px; }
+.nl-song-card.theme-light::before,
+.nl-song-card.theme-light::after { display: none; }
+.nl-song-card.theme-light .nl-aero-btn {
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .3);
+}
+.nl-song-card.theme-light .nl-aero-btn:active { box-shadow: none; }
+.nl-song-card.theme-light .nl-aero-btn--primary { border-color: #7e0d12; }
+.nl-song-card.theme-light .nl-aero-thumb {
+  border-radius: 6px;
+  border: 1px solid #222;
+  box-shadow: none;
+}
+.nl-song-card.theme-light .nl-aero-badge { border-radius: 4px; }
+
+/* bit: crisp 8-bit — square everything, hard offsets, pixelated art. */
+.nl-song-card.theme-bit { border-radius: 0; border-width: 2px; }
+.nl-song-card.theme-bit::before,
+.nl-song-card.theme-bit::after { display: none; }
+.nl-song-card.theme-bit .nl-aero-btn {
+  border-radius: 0;
+  border-width: 2px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, .6);
+}
+.nl-song-card.theme-bit .nl-aero-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+.nl-song-card.theme-bit .nl-aero-btn--primary { color: #14060a; }
+.nl-song-card.theme-bit .nl-aero-thumb { border-radius: 0; }
+.nl-song-card.theme-bit .nl-aero-thumb img { image-rendering: pixelated; }
+.nl-song-card.theme-bit .nl-aero-badge { border-radius: 0; }
+.nl-song-card.theme-bit .nl-eq span { border-radius: 0; }
+.nl-songs-lite.theme-bit .nl-songs-lite__empty { border-radius: 0; }
+
+/* ---------- Reduced motion ------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-songs-lite *,
+  .nl-songs-lite *::before,
+  .nl-songs-lite *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.nl-songs-lite.is-reduced-motion .nl-eq span { animation: none; transform: scaleY(.7); }
+.nl-songs-lite.is-reduced-motion .nl-spin { animation: none; }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Play, Pause, Share2 as ShareIcon, Check, Video } from 'lucide-react';
 import type { Song } from '../../types';
 import { songShareUrl } from '../../features/music/data/shareSong';
-import { useTubeStore } from '../../features/youtube/tubeStore';
+import { useSongVideoStore } from '../../features/songVideo/songVideoStore';
 import { getSongYoutubeId } from '../../features/youtube/songYoutubeMap';
 
 interface SongCardHeaderProps {
@@ -40,7 +40,7 @@ export const SongCardHeader = ({
 }: SongCardHeaderProps) => {
   const isTouch = isMobile || isTablet;
   const [copied, setCopied] = useState(false);
-  const openTube = useTubeStore((s) => s.openTube);
+  const openSongVideo = useSongVideoStore((s) => s.openSongVideo);
   const songVideoId = getSongYoutubeId(song.id);
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -206,7 +206,7 @@ export const SongCardHeader = ({
             <button
               type="button"
               className="song-yt-btn"
-              onClick={(e) => { e.stopPropagation(); openTube(songVideoId); }}
+              onClick={(e) => { e.stopPropagation(); openSongVideo(songVideoId, e.currentTarget); }}
               aria-label="Watch on YouTube"
               title="Watch on YouTube"
             >
