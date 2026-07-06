@@ -8,6 +8,7 @@ import { REQUIRED_HIGHLIGHTS_VARS } from '../../constants/cssVarLists';
 interface HighlightsSectionProps {
   vaultPlaylistCoverUrl: string;
   youtubeHighlightsBgUrl: string;
+  onOpenTube: () => void;
 }
 
 const STYLES_REFACTORED = {
@@ -22,7 +23,8 @@ const STYLES_REFACTORED = {
 
 export const HighlightsSection = memo(({ 
   vaultPlaylistCoverUrl: _v, 
-  youtubeHighlightsBgUrl: _y 
+  youtubeHighlightsBgUrl: _y,
+  onOpenTube
 }: HighlightsSectionProps) => {
   const resolvedTheme = useResolvedTheme();
   const sectionRef = useFadeInOnView<HTMLElement>();
@@ -67,11 +69,12 @@ export const HighlightsSection = memo(({
         <h3 lang="en" className="font-manga text-xl font-bold bg-[var(--ink-color)] text-[var(--text-inverse)] inline-block px-4 py-1 manga-border w-fit rotate-1 shadow-[3px_3px_0px_var(--manga-shadow-color)] border-[var(--border-strong)]">
           ■ HIGHLIGHTS
         </h3>
-        <a 
-          href="https://www.youtube.com/@nourdin_el_mobaraki"
-          target="_blank"
-          rel="noreferrer"
-          className="group relative overflow-hidden border-[3px] border-[var(--ink-color)] transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px] highlights-yt-link"
+        <button 
+          type="button"
+          onClick={onOpenTube}
+          title="مشاهدة فيديوهات NL"
+          aria-label="مشاهدة فيديوهات NL"
+          className="group relative overflow-hidden border-[3px] border-[var(--ink-color)] transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[200px] highlights-yt-link w-full text-start cursor-pointer"
         >
           <div 
             className="absolute inset-0 bg-cover bg-center filter grayscale group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-100"
@@ -84,7 +87,7 @@ export const HighlightsSection = memo(({
               Watch on YouTube
             </span>
           </div>
-        </a>
+        </button>
       </div>
     </section>
   );

@@ -25,7 +25,7 @@
  */
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, Suspense, useCallback, useRef } from "react";
+import { useEffect, Suspense, useCallback, useRef, useState } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
@@ -105,6 +105,8 @@ import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
 import { StreamingSection } from './components/sections/StreamingSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
+import { YouTubePortal } from './features/youtube/YouTubePortal';
+import './styles/youtube-page.css';
 import { HomeInteractiveMap } from './home/HomeInteractiveMap';
 import { StationLattice, type LatticeItem } from './home/StationLattice';
 import { STREAMING_PLATFORMS, SOCIAL_CHANNELS } from './config/streaming';
@@ -345,6 +347,7 @@ function MainApp() {
   } = useAppContext();
 
   const navigateSection = useNavigateSection();
+  const [tubeOpen, setTubeOpen] = useState(false);
 
 
   const resolvedTheme = useResolvedTheme();
@@ -675,6 +678,7 @@ function MainApp() {
                       <HighlightsSection
                         vaultPlaylistCoverUrl={CONFIG_ASSETS.vaultPlaylistCover}
                         youtubeHighlightsBgUrl={CONFIG_ASSETS.youtubeHighlightsBg}
+                        onOpenTube={() => setTubeOpen(true)}
                       />
                     ),
                   },
@@ -775,6 +779,7 @@ function MainApp() {
           onMoodTrigger={handleMoodTrigger}
         />
       )}
+      <YouTubePortal open={tubeOpen} onClose={() => setTubeOpen(false)} />
       {import.meta.env.DEV && <MobileQAOverlay />}
     </ButtonProvider>
   );

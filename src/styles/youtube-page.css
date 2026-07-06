@@ -1,0 +1,193 @@
+/* ============================================================
+   youtube-page.css — NL YOUTUBE (metallic glass, responsive, polished)
+   ============================================================ */
+:root {
+  --nl-tube-silver: linear-gradient(180deg,
+    rgba(255,255,255,0.95) 0%,
+    rgba(232,238,246,0.82) 16%,
+    rgba(188,199,212,0.72) 52%,
+    rgba(205,215,228,0.80) 82%,
+    rgba(232,239,247,0.90) 100%);
+  --nl-tube-ink: #17202e;
+  --nl-tube-ink-soft: #33445c;
+  --nl-tube-line: rgba(255,255,255,0.9);
+  --nl-tube-accent: #2f6df6;
+}
+
+.nl-tube-backdrop {
+  position: fixed; inset: 0; z-index: 150;
+  display: grid; place-items: center; padding: clamp(8px, 2vw, 28px);
+  background: rgba(10, 16, 28, 0.62);
+  backdrop-filter: blur(8px) saturate(1.2); -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+.nl-tube-root {
+  width: min(1080px, 96vw); height: min(90dvh, 940px);
+  display: flex; flex-direction: column; overflow: hidden; position: relative;
+  color: var(--nl-tube-ink);
+  border-radius: 20px;
+  border: 1px solid var(--nl-tube-line);
+  background: var(--nl-tube-silver);
+  box-shadow:
+    0 28px 70px rgba(12, 20, 38, 0.6),
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 0 -18px 36px rgba(120,140,166,0.34);
+  backdrop-filter: blur(12px) saturate(1.5); -webkit-backdrop-filter: blur(12px) saturate(1.5);
+}
+.nl-tube-root::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
+  pointer-events: none;
+}
+
+.nl-tube-header {
+  position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(210,220,232,0.5));
+  border-bottom: 1px solid rgba(255,255,255,0.7);
+}
+.nl-tube-brand { display: flex; align-items: center; gap: 12px; }
+.nl-tube-brand-mark {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px;
+  font-weight: 900; letter-spacing: -0.03em; color: var(--nl-tube-ink);
+  background: radial-gradient(circle at 30% 25%, #ffffff, #c3cedd 70%, #9fb0c4);
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 12px rgba(18,28,48,0.25);
+}
+.nl-tube-brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.nl-tube-brand-title { font-weight: 900; font-size: 1.05rem; letter-spacing: 0.06em; color: var(--nl-tube-ink); }
+.nl-tube-brand-sub { font-size: 0.78rem; color: var(--nl-tube-ink-soft); }
+.nl-tube-close {
+  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px;
+  color: var(--nl-tube-ink-soft); cursor: pointer;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(206,217,230,0.8));
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow: 0 4px 12px rgba(18,28,48,0.2), inset 0 1px 0 rgba(255,255,255,0.95);
+  transition: transform 0.16s ease;
+}
+.nl-tube-close:hover { transform: translateY(-1px); }
+
+/* Custom scrolling list - single column: player first then grid of other videos */
+.nl-tube-body {
+  position: relative; z-index: 1; flex: 1; min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
+  padding: clamp(14px, 2.2vw, 24px);
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* Player section */
+.nl-tube-player { width: 100%; }
+.nl-tube-stage {
+  position: relative; aspect-ratio: 16 / 9; width: 100%; overflow: hidden;
+  border-radius: 14px; background: #05070c;
+  border: 1px solid rgba(255,255,255,0.7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 10px 26px rgba(18,28,48,0.45);
+}
+.nl-tube-iframe-host, .nl-tube-iframe-host iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.nl-tube-surface { position: absolute; inset: 0; width: 100%; height: 100%; background: transparent; border: 0; cursor: pointer; }
+.nl-tube-spinner {
+  position: absolute; inset: 0; margin: auto; width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.5); border-top-color: var(--nl-tube-accent);
+  animation: nl-tube-spin 0.8s linear infinite;
+}
+@keyframes nl-tube-spin { to { transform: rotate(360deg); } }
+
+.nl-tube-controls {
+  display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(206,217,230,0.78));
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 6px 16px rgba(18,28,48,0.22);
+}
+.nl-tube-ctl {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px;
+  color: var(--nl-tube-ink); cursor: pointer;
+  background: radial-gradient(circle at 30% 30%, #ffffff, rgba(220,228,238,0.85));
+  border: 1px solid rgba(255,255,255,0.9);
+}
+.nl-tube-track { position: relative; flex: 1; height: 8px; border-radius: 5px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(150,165,185,0.6), rgba(190,202,218,0.6)); box-shadow: inset 0 1px 2px rgba(18,28,48,0.35); }
+.nl-tube-track-fill { position: absolute; inset-block: 0; inset-inline-start: 0; width: 0%; border-radius: 5px;
+  background: linear-gradient(90deg, #6f8bd6, var(--nl-tube-accent)); box-shadow: 0 0 8px rgba(47,109,246,0.5); }
+.nl-tube-time { font: 700 12px/1 ui-monospace, monospace; color: var(--nl-tube-ink-soft); white-space: nowrap; }
+
+/* Active video info */
+.nl-tube-title { margin: 4px 0 2px; font-size: clamp(1.05rem, 2.4vw, 1.4rem); font-weight: 800; color: var(--nl-tube-ink); }
+.nl-tube-meta { display: flex; gap: 14px; color: var(--nl-tube-ink-soft); font-size: 0.85rem; font-weight: 600; }
+.nl-tube-desc { color: var(--nl-tube-ink-soft); font-size: 0.9rem; }
+.nl-tube-desc p { max-height: 4.5em; overflow: hidden; white-space: pre-line; margin: 0; }
+.nl-tube-desc.is-open p { max-height: none; }
+.nl-tube-desc-toggle { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--nl-tube-accent); background: transparent; border: 0; cursor: pointer; font-weight: 700; }
+
+/* Grid title */
+.nl-tube-grid-title { margin: 6px 0 0; font-size: 0.95rem; font-weight: 800; color: var(--nl-tube-ink); letter-spacing: 0.02em; }
+
+/* Fluid Grid setup: adjusts naturally based on container width */
+.nl-tube-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+@media (max-width: 560px) {
+  .nl-tube-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+}
+
+/* Vertical grid cards — metallic plate-like cards */
+.nl-tube-card {
+  display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 14px; text-align: start; cursor: pointer;
+  color: var(--nl-tube-ink); width: 100%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(206,217,230,0.78));
+  border: 1px solid rgba(255,255,255,0.85);
+  box-shadow: 0 6px 16px rgba(18,28,48,0.2), inset 0 1px 0 rgba(255,255,255,0.9);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.nl-tube-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(18,28,48,0.3); }
+.nl-tube-card.is-active { border-color: var(--nl-tube-accent); box-shadow: 0 0 0 1px var(--nl-tube-accent), 0 8px 20px rgba(18,28,48,0.28); }
+.nl-tube-card-thumb { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 9px; overflow: hidden; background: #05070c; }
+.nl-tube-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nl-tube-card-dur { position: absolute; inset-block-end: 6px; inset-inline-end: 6px; padding: 1px 5px; border-radius: 4px; font-size: 11px; background: rgba(0,0,0,0.8); color: #fff; }
+.nl-tube-card-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.nl-tube-card-title { font-weight: 700; font-size: 0.86rem; line-height: 1.25; color: var(--nl-tube-ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.nl-tube-card-meta { font-size: 0.75rem; color: var(--nl-tube-ink-soft); }
+
+.nl-tube-empty, .nl-tube-error { display: grid; place-items: center; gap: 10px; padding: 40px; color: var(--nl-tube-ink-soft); text-align: center; }
+.nl-tube-empty-link { color: var(--nl-tube-accent); font-weight: 700; }
+.nl-tube-skeleton { width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; background: rgba(190,202,218,0.5); animation: nl-tube-pulse 1.2s ease-in-out infinite; }
+@keyframes nl-tube-pulse { 50% { opacity: 0.55; } }
+
+/* ===== Custom styles for each theme overlaying the silver chassis ===== */
+[data-theme="dark"] .nl-tube-root { box-shadow: 0 0 0 1px rgba(184,255,63,0.35), 0 28px 70px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.95); }
+[data-theme="dark"] .nl-tube-track-fill { background: linear-gradient(90deg, #9bff5a, #B8FF3F); box-shadow: 0 0 10px rgba(184,255,63,0.6); }
+[data-theme="dark"] .nl-tube-card.is-active { border-color: #B8FF3F; box-shadow: 0 0 0 1px #B8FF3F, 0 8px 20px rgba(0,0,0,0.4); }
+
+[data-theme="light"] .nl-tube-root,
+[data-theme="light"] .nl-tube-stage,
+[data-theme="light"] .nl-tube-close,
+[data-theme="light"] .nl-tube-controls,
+[data-theme="light"] .nl-tube-card,
+[data-theme="light"] .nl-tube-card-thumb,
+[data-theme="light"] .nl-tube-brand-mark { border-radius: 0; }
+[data-theme="light"] .nl-tube-root { box-shadow: 3px 3px 0 #999, 6px 6px 0 #777; }
+
+[data-theme="bit"] .nl-tube-root,
+[data-theme="bit"] .nl-tube-stage,
+[data-theme="bit"] .nl-tube-close,
+[data-theme="bit"] .nl-tube-controls,
+[data-theme="bit"] .nl-tube-card,
+[data-theme="bit"] .nl-tube-card-thumb,
+[data-theme="bit"] .nl-tube-brand-mark { border-radius: 0; }
+[data-theme="bit"] .nl-tube-brand-title,
+[data-theme="bit"] .nl-tube-title,
+[data-theme="bit"] .nl-tube-brand-mark { font-family: var(--font-manga, 'Press Start 2P', monospace); }
+[data-theme="bit"] .nl-tube-track-fill { background: #ffff00; box-shadow: 0 0 8px rgba(255,255,0,0.7); }
+
+[data-theme="lite"] .nl-tube-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(0,0,0,0.88); }
+[data-theme="lite"] .nl-tube-root { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); box-shadow: 0 28px 70px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.9); }
+[data-theme="lite"] .nl-tube-track-fill { background: #ffffff; box-shadow: none; }
+[data-theme="lite"] .nl-tube-card.is-active { border-color: #ffffff; box-shadow: 0 0 0 1px #ffffff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-tube-card, .nl-tube-close { transition: none; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nl-tube-root, .nl-tube-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
