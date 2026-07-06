@@ -8,6 +8,7 @@ import './index.css';
 import './styles/aero-theme.css';
 import './transitions/genie.css';
 import './styles/page-mode-layer.css';
+import './styles/home-map.css';
 import './styles/components/mobile-modals.css';
 import './styles/components/profile-mobile-fit.css';
 import './styles/components/perf-lite.css';

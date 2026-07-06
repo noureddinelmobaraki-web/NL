@@ -1,0 +1,96 @@
+/* src/styles/home-map.css — طبقة الخريطة التفاعلية (Home) */
+.nl-home-map { position: relative; width: 100%; }
+
+/* العمود الضوئي المركزي */
+.nl-home-spine {
+  position: absolute; top: 0; bottom: 0; left: 50%;
+  width: 2px; transform: translateX(-50%);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(120, 220, 180, 0.35) 12%,
+    rgba(120, 200, 255, 0.35) 88%,
+    transparent
+  );
+  pointer-events: none; z-index: 0;
+}
+
+.nl-home-station {
+  position: relative;
+  min-height: 128vh;
+  content-visibility: auto;
+  contain-intrinsic-size: 100vh;
+}
+
+.nl-home-stage {
+  position: sticky; top: 0;
+  height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
+  overflow: visible;
+}
+
+.nl-home-filament {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 1; overflow: visible;
+}
+.nl-home-ray-glow { filter: none; opacity: 0.55; }
+.nl-home-ray-core { opacity: 0.95; }
+
+.nl-home-window {
+  position: relative; z-index: 2;
+  width: min(920px, 92vw);
+  will-change: transform, opacity;
+}
+.nl-home-window--left  { margin-right: auto; }
+.nl-home-window--right { margin-left: auto; }
+
+.nl-home-window-glass {
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-page, #0b1020) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary, #ffffff) 14%, transparent);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  overflow: hidden;
+}
+.nl-home-window-titlebar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.nl-home-window-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #5fe0a8; box-shadow: 0 0 8px #5fe0a8;
+}
+.nl-home-window-title {
+  font: 600 12px/1 ui-monospace, monospace;
+  letter-spacing: 0.06em; color: var(--text-primary, #eafff5); opacity: 0.8;
+}
+.nl-home-window-body {
+  padding: clamp(14px, 3vw, 28px);
+  max-height: 82dvh; overflow: auto;
+}
+
+.nl-home-bare { width: 100%; }
+
+/* تدهور تدريجي حسب القدرة */
+.nl-home-map[data-lite="true"] .nl-home-window-glass {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--bg-page, #0b1020);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nl-home-window-glass { background: var(--bg-page, #0b1020); }
+}
+
+.nl-home-fallback { width: 100%; }
+
+/* احترام تقليل الحركة */
+@media (prefers-reduced-motion: reduce) {
+  .nl-home-station { min-height: auto; }
+  .nl-home-stage { position: static; height: auto; display: block; }
+}
+
+/* RTL: عكس الجهات */
+[dir="rtl"] .nl-home-window--left  { margin-right: 0; margin-left: auto; }
+[dir="rtl"] .nl-home-window--right { margin-left: 0; margin-right: auto; }

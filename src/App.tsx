@@ -105,6 +105,7 @@ import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
 import { StreamingSection } from './components/sections/StreamingSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
+import { HomeInteractiveMap } from './home/HomeInteractiveMap';
 import { getThemedImage } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
@@ -640,71 +641,93 @@ function MainApp() {
             />
 
             <div id="main-content" className="flex flex-col gap-14" tabIndex={-1}>
-              <HeroSection />
-              <StreamingSection />
-              <div className="manga-divider opacity-30" />
-              <div className="mt-2">
-                <HighlightsSection 
-                  vaultPlaylistCoverUrl={CONFIG_ASSETS.vaultPlaylistCover}
-                  youtubeHighlightsBgUrl={CONFIG_ASSETS.youtubeHighlightsBg}
-                />
-              </div>
-
-              <Suspense fallback={<SkeletonSection type="drawings" />}>
-                <GallerySection 
-                  resolvedTheme={resolvedTheme}
-                  isLensGalleryOpen={isLensGalleryOpen}
-                  onGalleryOpen={handleGalleryOpen}
-                  onLensOpen={openLens}
-                  onLensClose={closeLens}
-                  onPrefetchMeBit={ensureMeBitLoaded}
-                />
-              </Suspense>
-
-              <section 
-                ref={songsRef} 
-                className="fade-in-section"
-                aria-label="My Favorite Songs"
-              >
-                <SectionErrorBoundary sectionName="MySongs">
-                  <Suspense fallback={<SkeletonSection type="songs" />}>
-                    <MySongs 
-                      onSongPlay={handleSongPlay} 
-                      onSongStop={handleSongStop}
-                      onActiveSongChange={setActiveSong}
-                      onAmbientColorChange={setAmbientColor}
-                      onRegisterMoodTrigger={handleRegisterMoodTrigger}
-                    />
-                  </Suspense>
-                </SectionErrorBoundary>
-              </section>
-
-              <section
-                id="contact-section"
-                ref={contactRef}
-                className="fade-in-section"
-                style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}
-                aria-label="Contact Me"
-              >
-                <SectionErrorBoundary sectionName="ContactForm">
-                  <Suspense fallback={<SkeletonSection type="contact" />}>
-                    <ContactForm />
-                  </Suspense>
-                </SectionErrorBoundary>
-              </section>
-
-              <section
-                id="drawings-section"
-                ref={drawingsRef}
-                className="fade-in-section"
-                aria-label="My Drawings"
-              >
-                <SectionErrorBoundary sectionName="DrawingsPage">
-                  <Suspense fallback={<SkeletonSection type="drawings" />}>
-                    <DrawingsPage onSongPlay={handleSongPlay} />
-                  </Suspense>
-                </SectionErrorBoundary>
-              </section>
+              <HomeInteractiveMap
+                stations={[
+                  { id: 'profile', node: <HeroSection /> },
+                  { id: 'streaming', node: <StreamingSection /> },
+                  {
+                    id: 'highlights',
+                    node: (
+                      <HighlightsSection
+                        vaultPlaylistCoverUrl={CONFIG_ASSETS.vaultPlaylistCover}
+                        youtubeHighlightsBgUrl={CONFIG_ASSETS.youtubeHighlightsBg}
+                      />
+                    ),
+                  },
+                  {
+                    id: 'gallery',
+                    node: (
+                      <Suspense fallback={<SkeletonSection type="drawings" />}>
+                        <GallerySection
+                          resolvedTheme={resolvedTheme}
+                          isLensGalleryOpen={isLensGalleryOpen}
+                          onGalleryOpen={handleGalleryOpen}
+                          onLensOpen={openLens}
+                          onLensClose={closeLens}
+                          onPrefetchMeBit={ensureMeBitLoaded}
+                        />
+                      </Suspense>
+                    ),
+                  },
+                  {
+                    id: 'songs',
+                    node: (
+                      <section
+                        ref={songsRef}
+                        className="fade-in-section"
+                        aria-label="My Favorite Songs"
+                      >
+                        <SectionErrorBoundary sectionName="MySongs">
+                          <Suspense fallback={<SkeletonSection type="songs" />}>
+                            <MySongs
+                              onSongPlay={handleSongPlay}
+                              onSongStop={handleSongStop}
+                              onActiveSongChange={setActiveSong}
+                              onAmbientColorChange={setAmbientColor}
+                              onRegisterMoodTrigger={handleRegisterMoodTrigger}
+                            />
+                          </Suspense>
+                        </SectionErrorBoundary>
+                      </section>
+                    ),
+                  },
+                  {
+                    id: 'contact',
+                    node: (
+                      <section
+                        id="contact-section"
+                        ref={contactRef}
+                        className="fade-in-section"
+                        style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}
+                        aria-label="Contact Me"
+                      >
+                        <SectionErrorBoundary sectionName="ContactForm">
+                          <Suspense fallback={<SkeletonSection type="contact" />}>
+                            <ContactForm />
+                          </Suspense>
+                        </SectionErrorBoundary>
+                      </section>
+                    ),
+                  },
+                  {
+                    id: 'drawings',
+                    node: (
+                      <section
+                        id="drawings-section"
+                        ref={drawingsRef}
+                        className="fade-in-section"
+                        aria-label="My Drawings"
+                      >
+                        <SectionErrorBoundary sectionName="DrawingsPage">
+                          <Suspense fallback={<SkeletonSection type="drawings" />}>
+                            <DrawingsPage onSongPlay={handleSongPlay} />
+                          </Suspense>
+                        </SectionErrorBoundary>
+                      </section>
+                    ),
+                  },
+                ]}
+              />
             </div>
           </motion.div>
         </div>

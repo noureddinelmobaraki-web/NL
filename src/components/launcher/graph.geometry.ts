@@ -211,3 +211,21 @@ export function computeGraph(
 
   return { nodes, edges };
 }
+
+// ---------------------------------------------------------------- home cascade
+export interface Cascade {
+  from: Pt;
+  to: Pt;
+  path: string;
+}
+
+// خريطة Home التفاعلية: خيط واحد يدخل من حافة الجانب المعطى ويلتوي نحو مركز المسرح
+// حيث النافذة. يُعيد استخدام نفس منحنى curve() في خريطة الاستقبال.
+export function computeCascade(size: Size, side: 'left' | 'right'): Cascade {
+  const { w, h } = size;
+  const midY = h * 0.5;
+  const from: Pt = side === 'left' ? { x: 0, y: midY } : { x: w, y: midY };
+  const to: Pt = { x: w * 0.5, y: midY };
+  return { from, to, path: curve(from, to) };
+}
+
