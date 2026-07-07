@@ -16,36 +16,16 @@
  *    still registering with `observeCard` so it can be revealed.
  *  - Current lyric line found via O(log n) binary search.
  */
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import type { SongCardProps } from './SongCard';
 import { SongCardHeaderAero } from './SongCardHeaderAero';
 import { SongCardControls } from './SongCardControls';
-import { SongCardLyricsPanel } from './SongCardLyricsPanel';
+import { useSongLyricsStore } from '../../features/songLyrics';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
-import { useSongLyrics } from '../../hooks/useSongLyrics';
-
-type LyricLineT = NonNullable<SongCardProps['lyrics']>[number];
 
 const noop = () => {};
-
-/** Binary search: index of the last line whose `time` <= currentTime, else -1. */
-function findCurrentLineIndex(lines: LyricLineT[], time: number): number {
-  let lo = 0;
-  let hi = lines.length - 1;
-  let ans = -1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (lines[mid].time <= time) {
-      ans = mid;
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  return ans;
-}
 
 /** True if the event originated inside the transport/lyrics area or a control. */
 function isInteractiveTarget(target: EventTarget | null): boolean {
@@ -69,24 +49,18 @@ function SongCardLiteInner(props: SongCardProps) {
     onPlayPause,
     onPrev,
     onNext,
-    setLyricsOpen,
-    isLyricsOpen,
-    lyrics,
     currentTime,
     duration,
     onSeek,
     volume,
     onVolumeChange,
-    karaokeMode,
-    setKaraokeMode,
-    currentLyricLine,
     observeCard,
     isRevealed,
     onHoverPrefetchLrc,
   } = props;
 
   const theme = useResolvedTheme();
-  const { isMobile, isTablet } = useDeviceType();
+  const { isMobile } = useDeviceType();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const revealed = isRevealed !== false;
 
@@ -99,22 +73,12 @@ function SongCardLiteInner(props: SongCardProps) {
     };
   }, [observeCard, song.id]);
 
-  /* Lyrics: never fetched by this component directly — useSongLyrics owns it.
-     Self-fetch is enabled ONLY while this card's lyrics panel is open. */
-  const lyricsOpen = Boolean(isActive && isLyricsOpen);
-  const { lyrics: localLyrics } = useSongLyrics({
-    song,
-    externalLyrics: lyrics,
-    enableSelfFetch: lyricsOpen,
-  });
+  const currentTimeRef = useRef(currentTime ?? 0);
+  currentTimeRef.current = currentTime ?? 0;
+
+  const lyricsOpen = useSongLyricsStore((s) => s.song?.id === song.id);
 
   const time = currentTime ?? 0;
-  /* Memo keyed on (lines, time): the binary search is O(log n) so this is
-     effectively free, but memoizing keeps referential noise out of the panel. */
-  const currentLineIndex = useMemo(
-    () => findCurrentLineIndex(localLyrics, time),
-    [localLyrics, time],
-  );
 
   /* ----- Button wiring (behavior identical to the old card) ----- */
 
@@ -131,13 +95,17 @@ function SongCardLiteInner(props: SongCardProps) {
     (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
       if (!song.lrc) return;
-      if (isActive) setLyricsOpen((p) => !p);
-      else {
+      if (!isActive) {
         onPlay();
-        setLyricsOpen(true);
       }
+      useSongLyricsStore.getState().toggle({
+        song,
+        anchorEl: e.currentTarget,
+        getCurrentTime: () => currentTimeRef.current,
+        onSeek: onSeek ?? noop,
+      });
     },
-    [song.lrc, isActive, setLyricsOpen, onPlay],
+    [song, isActive, onPlay, onSeek],
   );
 
   /* Row acts as a button; clicks on inner controls/expanded area are ignored
@@ -207,21 +175,6 @@ function SongCardLiteInner(props: SongCardProps) {
                 isPlaying={isPlaying}
                 isWaiting={isWaiting}
                 song={song}
-              />
-              <SongCardLyricsPanel
-                layoutType={isMobile || isTablet ? 'popover' : 'inline'}
-                song={song}
-                isLyricsOpen={lyricsOpen}
-                resolvedTheme={theme}
-                karaokeMode={Boolean(karaokeMode)}
-                setKaraokeMode={setKaraokeMode}
-                localLyrics={localLyrics}
-                currentLineIndex={currentLineIndex}
-                currentLyricLine={currentLyricLine}
-                currentTime={currentTime}
-                onSeek={onSeek}
-                isMobile={isMobile}
-                isTablet={isTablet}
               />
             </div>
           ) : null}

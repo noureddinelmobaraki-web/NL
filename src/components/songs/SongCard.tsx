@@ -11,7 +11,7 @@
  *
  * Visual contract: external props unchanged, every class/style preserved.
  */
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import './lyricsReveal.css';
 import { Song, LyricLine } from '../../types';
@@ -19,12 +19,11 @@ import { SONG_BG_FALLBACK } from '../../constants/assets';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { useAmbientColor } from '../../hooks/useAmbientColor';
-import { useSongLyrics } from '../../hooks/useSongLyrics';
 import { OsWindow } from '../OsWindow';
 import { Waveform } from './Waveform';
 import { SongCardHeader } from './SongCardHeader';
 import { SongCardControls } from './SongCardControls';
-import { SongCardLyricsPanel } from './SongCardLyricsPanel';
+import { useSongLyricsStore } from '../../features/songLyrics';
 
 export interface SongCardProps {
   song: Song;
@@ -58,11 +57,9 @@ export interface SongCardProps {
 export const SongCard = memo(({
   song, index, isActive, isActiveInBar, isPlaying, isWaiting,
   onPlay, onPlayPause, onPrev, onNext,
-  setLyricsOpen, isLyricsOpen = false,
-  lyrics = [], currentTime, duration, onSeek,
+  currentTime, duration, onSeek,
   volume, onVolumeChange,
-  karaokeMode = false, setKaraokeMode,
-  currentLyricLine, onAmbientColorChange,
+  onAmbientColorChange,
   observeCard, onHoverPrefetchLrc,
 }: SongCardProps) => {
   const { isMobile, isTablet } = useDeviceType();
@@ -74,25 +71,10 @@ export const SongCard = memo(({
     if (observeCard) observeCard(song.id, el);
   };
 
-  // ── Lyrics: fetch + cache + preloader broadcast in one hook ──────────────
-  const { lyrics: localLyrics } = useSongLyrics({
-    song,
-    externalLyrics: lyrics,
-    enableSelfFetch: isLyricsOpen,
-  });
+  const currentTimeRef = useRef(currentTime ?? 0);
+  currentTimeRef.current = currentTime ?? 0;
 
-  // ── Binary-search the active line — O(log n) on long lyrics ─────────────
-  const currentLineIndex = useMemo(() => {
-    if (!localLyrics || localLyrics.length === 0) return -1;
-    const t = currentTime ?? 0;
-    let lo = 0, hi = localLyrics.length - 1, res = -1;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      if (localLyrics[mid].time <= t) { res = mid; lo = mid + 1; }
-      else hi = mid - 1;
-    }
-    return res;
-  }, [localLyrics, currentTime]);
+  const lyricsOpen = useSongLyricsStore((s) => s.song?.id === song.id);
 
   // ── Ambient color: lazy + cached + visibility-aware ──────────────────────
   useAmbientColor({
@@ -104,19 +86,29 @@ export const SongCard = memo(({
 
   // ── Global events: close-mobile-lyrics / open-song-lyrics ────────────────
   useEffect(() => {
-    const closeHandler = () => setLyricsOpen(false);
+    const closeHandler = () => useSongLyricsStore.getState().close();
     document.addEventListener('close-mobile-lyrics', closeHandler);
     return () => document.removeEventListener('close-mobile-lyrics', closeHandler);
-  }, [setLyricsOpen]);
+  }, []);
 
   useEffect(() => {
     const openHandler = (e: Event) => {
       const detail = (e as CustomEvent<{ songId: number }>).detail;
-      if (detail?.songId === song.id) setLyricsOpen(true);
+      if (detail?.songId === song.id) {
+        const cardEl = cardRef.current;
+        if (cardEl) {
+          useSongLyricsStore.getState().toggle({
+            song,
+            anchorEl: cardEl,
+            getCurrentTime: () => currentTimeRef.current,
+            onSeek: onSeek ?? (() => {}),
+          });
+        }
+      }
     };
     document.addEventListener('open-song-lyrics', openHandler);
     return () => document.removeEventListener('open-song-lyrics', openHandler);
-  }, [song.id, setLyricsOpen]);
+  }, [song, onSeek]);
 
   // ── Light-theme scroll-to-active is now owned by SongCardLyricsPanel ──
 
@@ -153,8 +145,8 @@ export const SongCard = memo(({
       }}
       className={`song-card-container
         song-card relative ${
-          (resolvedTheme === 'light' && isLyricsOpen) ||
-          ((isMobile || isTablet) && isLyricsOpen)
+          (resolvedTheme === 'light' && lyricsOpen) ||
+          ((isMobile || isTablet) && lyricsOpen)
             ? 'overflow-visible'
             : 'overflow-hidden'
         } flex flex-col ${(isMobile || isTablet) ? 'transition-all' : ''} cursor-pointer
@@ -187,7 +179,7 @@ export const SongCard = memo(({
         ...((isMobile || isTablet)
           ? {
               minHeight: '80px',
-              ...(isLyricsOpen ? {} : { maxHeight: '80px' }),
+              ...(lyricsOpen ? {} : { maxHeight: '80px' }),
               padding: '12px 16px',
               borderRadius: resolvedTheme === 'light' ? '0' : '14px',
               border: isActive
@@ -242,13 +234,18 @@ export const SongCard = memo(({
           isMobile={isMobile}
           isTablet={isTablet}
           resolvedTheme={resolvedTheme}
-          isLyricsOpen={isLyricsOpen}
+          isLyricsOpen={lyricsOpen}
           duration={duration}
           onPlay={onPlay}
           onPlayPause={onPlayPause}
-          onToggleLyrics={() => {
-            if (!isActive) { onPlay(); setLyricsOpen(true); }
-            else setLyricsOpen((prev) => !prev);
+          onToggleLyrics={(anchorEl) => {
+            if (!isActive) { onPlay(); }
+            useSongLyricsStore.getState().toggle({
+              song,
+              anchorEl,
+              getCurrentTime: () => currentTimeRef.current,
+              onSeek: onSeek ?? (() => {}),
+            });
           }}
         />
 
@@ -269,22 +266,6 @@ export const SongCard = memo(({
               isWaiting={isWaiting}
               song={song}
             />
-
-            <SongCardLyricsPanel
-              layoutType="inline"
-              song={song}
-              isLyricsOpen={isLyricsOpen}
-              resolvedTheme={resolvedTheme}
-              karaokeMode={karaokeMode}
-              setKaraokeMode={setKaraokeMode}
-              localLyrics={localLyrics}
-              currentLineIndex={currentLineIndex}
-              currentLyricLine={currentLyricLine}
-              currentTime={currentTime}
-              onSeek={onSeek}
-              isMobile={isMobile}
-              isTablet={isTablet}
-            />
           </div>
         )}
       </div>
@@ -300,22 +281,6 @@ export const SongCard = memo(({
           />
         </div>
       )}
-
-      <SongCardLyricsPanel
-        layoutType="popover"
-        song={song}
-        isLyricsOpen={isLyricsOpen}
-        resolvedTheme={resolvedTheme}
-        karaokeMode={karaokeMode}
-        setKaraokeMode={setKaraokeMode}
-        localLyrics={localLyrics}
-        currentLineIndex={currentLineIndex}
-        currentLyricLine={currentLyricLine}
-        currentTime={currentTime}
-        onSeek={onSeek}
-        isMobile={isMobile}
-        isTablet={isTablet}
-      />
     </motion.div>
     );
   };
@@ -325,7 +290,7 @@ export const SongCard = memo(({
       <OsWindow
         title={`song_card.${song.id}`}
         className={isActive && !isMobile ? 'col-span-2' : ''}
-        overflow={isLyricsOpen ? 'visible' : 'hidden'}
+        overflow={lyricsOpen ? 'visible' : 'hidden'}
       >
         {renderContent()}
       </OsWindow>

@@ -19,7 +19,7 @@ interface SongCardHeaderProps {
   duration?: number;
   onPlay: () => void;
   onPlayPause?: () => void;
-  onToggleLyrics: () => void;
+  onToggleLyrics: (el: HTMLElement) => void;
 }
 
 export const SongCardHeader = ({
@@ -215,7 +215,7 @@ export const SongCardHeader = ({
           ) : null}
           {song.lrc && (
             <button 
-              onClick={(e) => { e.stopPropagation(); onToggleLyrics(); }}
+              onClick={(e) => { e.stopPropagation(); onToggleLyrics(e.currentTarget); }}
               className={`lyrics-btn-compact ${isLyricsOpen ? 'active' : ''}`}
               aria-label={isLyricsOpen ? 'Close song lyrics' : 'Open song lyrics'}
               aria-pressed={isLyricsOpen}

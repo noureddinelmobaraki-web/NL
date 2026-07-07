@@ -107,6 +107,7 @@ import { StreamingSection } from './components/sections/StreamingSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
 import { useTubeStore } from './features/youtube/tubeStore';
 import SongVideoTether from './features/songVideo/SongVideoTether';
+import { SongLyricsTether } from './features/songLyrics';
 import './styles/youtube-page.css';
 import { HomeInteractiveMap } from './home/HomeInteractiveMap';
 import { StationLattice, type LatticeItem } from './home/StationLattice';
@@ -793,6 +794,7 @@ function MainApp() {
         </Suspense>
       ) : null}
       <SongVideoTether />
+      <SongLyricsTether />
       {import.meta.env.DEV && <MobileQAOverlay />}
     </ButtonProvider>
   );

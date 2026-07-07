@@ -1,0 +1,137 @@
+.nl-lyr-overlay { -webkit-tap-highlight-color: transparent; }
+
+/* Light background dimmer (NO blur) — focuses the eye on the lyrics box. */
+.nl-lyr-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  pointer-events: auto;
+  animation: nl-lyr-scrim-in 0.22s ease-out;
+}
+@keyframes nl-lyr-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Curved red rope (halo pass + core pass). */
+.nl-lyr-rope {
+  stroke: #c40000;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  fill: none;
+}
+.nl-lyr-rope--halo {
+  stroke: rgba(196, 0, 0, 0.4);
+  stroke-width: 7;
+  filter: blur(3px);
+}
+
+/* Frameless box shell — FULLY OPAQUE matte black. */
+.nl-lyr-tetherbox {
+  background: #060606;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 222, 58, 0.12);
+  animation: nl-lyr-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center;
+}
+@keyframes nl-lyr-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Matte OPAQUE black surface — no blur → cheap to paint. */
+.nl-lyr-box {
+  --lyr-dim: #a98f24;   /* clearly readable inactive words */
+  --lyr-on: #ffde3a;    /* vivid active yellow */
+  --lyr-shadow: rgba(255, 222, 58, 0.4);
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background: #060606;
+  color: var(--lyr-dim);
+  padding: 16px;
+  font-weight: 700;
+  text-align: center;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.nl-lyr-box::-webkit-scrollbar { display: none; }
+
+.nl-lyr-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 46% 4px;
+}
+
+.nl-lyr-line {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.34;
+  color: var(--lyr-dim);
+  opacity: 0.72;
+  cursor: pointer;
+  transition: opacity 0.25s ease, transform 0.25s ease, color 0.25s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 28px;
+  transform: translateZ(0);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nl-lyr-line.is-active {
+  color: var(--lyr-on);
+  opacity: 1;
+  transform: scale(1.05);
+  will-change: transform, opacity;
+  text-shadow: 0 0 16px var(--lyr-shadow);
+}
+
+.nl-lyr-text { display: inline; }
+
+/* Per-word karaoke wipe driven by --wp (set imperatively by the engine). */
+.nl-lw { white-space: pre; color: var(--lyr-dim); }
+.is-active .nl-lw {
+  background-image: linear-gradient(to right, var(--lyr-on) var(--wp, 0%), var(--lyr-dim) var(--wp, 0%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.is-active[dir="rtl"] .nl-lw {
+  background-image: linear-gradient(to left, var(--lyr-on) var(--wp, 0%), var(--lyr-dim) var(--wp, 0%));
+}
+
+/* Translation under the primary line. */
+.nl-lyr-tr { font-size: 12px; font-weight: 600; opacity: 0.75; }
+
+/* Section chips + instrumental. */
+.nl-lyr-section { display: flex; justify-content: center; margin: 6px 0; }
+.nl-lyr-section span {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 222, 58, 0.65);
+  border: 1px solid rgba(255, 222, 58, 0.3);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.nl-lyr-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lyr-dim);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+}
+
+@media (max-width: 479px) {
+  .nl-lyr-line { font-size: 15px; }
+  .nl-lyr-inner { gap: 10px; padding: 44% 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nl-lyr-line { transition: none; }
+  .nl-lyr-box { scroll-behavior: auto; }
+  .nl-lyr-tetherbox { animation: none; }
+  .nl-lyr-scrim { animation: none; }
+}
