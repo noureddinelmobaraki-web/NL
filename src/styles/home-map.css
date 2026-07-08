@@ -3,25 +3,25 @@
 
 .nl-home-spine {
   position: absolute; top: 0; bottom: 0; left: 50%;
-  width: 2px; transform: translateX(-50%);
+  width: 3px; transform: translateX(-50%);
   background: linear-gradient(to bottom,
     transparent,
-    rgba(224, 232, 242, 0.45) 12%,
-    rgba(198, 210, 224, 0.5) 88%,
+    rgba(224, 232, 242, 0.75) 8%,
+    rgba(198, 210, 224, 0.9) 92%,
     transparent);
+  box-shadow: 0 0 10px rgba(210, 225, 245, 0.5);
   pointer-events: none; z-index: 0;
 }
 
 .nl-home-station {
   position: relative;
-  min-height: 132vh;
-  content-visibility: auto;
-  contain-intrinsic-size: 100vh;
+  min-height: auto;
+  padding: clamp(48px, 9vh, 120px) 0;
 }
 
 .nl-home-stage {
-  position: sticky; top: 0;
-  height: 100dvh;
+  position: static;
+  height: auto;
   overflow: visible;
 }
 
@@ -33,10 +33,10 @@
 .nl-home-socket { fill: #f7fbff; stroke: rgba(180, 195, 214, 0.9); stroke-width: 1; }
 
 .nl-home-anchor {
-  position: absolute;
-  top: 28%; left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  transform: none;
   width: min(940px, 92vw);
+  margin: 0 auto;
   z-index: 2;
 }
 
@@ -88,7 +88,7 @@
 .nl-home-window-body {
   position: relative;
   padding: clamp(14px, 3vw, 26px);
-  max-height: 66dvh; overflow: auto;
+  max-height: none; overflow: visible;
 }
 
 .nl-home-bare { width: 100%; }
@@ -159,3 +159,135 @@
 
 [dir="rtl"] .nl-lattice-node-label,
 [dir="rtl"] .nl-home-window-title { letter-spacing: 0; }
+
+/* === مرحلة 1: الهيكل العظمي المرئي (عمود + عُقد) === */
+
+/* إخفاء خيوط SVG الزخرفية القديمة (تُستبدل بعُقد CSS نظيفة) */
+.nl-home-filament { display: none; }
+
+/* تأكيد أن كل محطّة حاوية نسبية للعُقد */
+.nl-home-station { position: relative; }
+
+/* العُقدة: نقطة متوهّجة على العمود في أعلى كل محطّة */
+.nl-home-station::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #9fb0c4);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 0 0 4px rgba(180, 200, 225, 0.22),
+    0 0 14px rgba(210, 228, 248, 0.85);
+  z-index: 3;
+}
+
+/* خط نزول قصير من العُقدة نحو النافذة */
+.nl-home-station::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 2px; height: clamp(28px, 6vh, 64px);
+  background: linear-gradient(to bottom, rgba(200, 214, 230, 0.9), transparent);
+  z-index: 2;
+}
+
+/* === مرحلة 2: عُقدة profile — إبقاء نافذة Hero الريترو وإخفاء الزجاج الخارجي === */
+
+/* إخفاء شريط عنوان الزجاج الخارجي (المكرّر) */
+#station-profile .nl-home-window-titlebar { display: none; }
+
+/* تجريد الزجاج الخارجي: بلا خلفية/حدود/ظل — تبقى نافذة Hero وحدها */
+#station-profile .nl-home-window-glass {
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 0;
+  overflow: visible;
+}
+#station-profile .nl-home-window-glass::before { display: none; }
+
+/* إلغاء حشوة/قص جسم الزجاج حتى تملأ نافذة Hero المساحة */
+#station-profile .nl-home-window-body {
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+/* توسيع عرض العُقدة ليناسب تخطيط العمودين (نافذة + صورة) */
+#station-profile .nl-home-window--sm {
+  width: min(940px, 94vw);
+}
+
+/* إبراز عُقدة البداية قليلًا (أول محطّة) */
+#station-profile::before {
+  width: 20px; height: 20px;
+  box-shadow:
+    0 0 0 6px rgba(180, 200, 225, 0.25),
+    0 0 22px rgba(210, 228, 248, 0.95);
+}
+
+/* === مرحلة 2.1: ضبط الصورة فوق البطاقة (الشاشات الصغيرة فقط) === */
+
+@media (max-width: 1023px) {
+  /* 1) الصورة دائمًا فوق البطاقة + تمركز + منع الفيضان الأفقي */
+  #station-profile .hero-layout-grid {
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 24px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 2) تحجيم آمن يمنع اختفاء الجانب الأيمن */
+  #station-profile .nl-home-window--sm {
+    width: 94vw !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+  #station-profile .hero-window {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    overflow: visible !important;
+  }
+  #station-profile .hero-header-card { width: 100% !important; }
+
+  /* 3) صورة البروفايل: مرئية ومتمركزة وفوق البطاقة، مع مسافة لأسلاك التعليق */
+  #station-profile .hero-profile-container {
+    width: min(240px, 66vw) !important;
+    max-width: min(240px, 66vw) !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+    margin: 48px auto 8px !important;
+    overflow: visible !important;
+    position: relative !important;
+  }
+
+  /* 4) أسلاك التعليق: خطّان من العقدة مباشرة إلى زوايا الصورة */
+  #station-profile .hero-profile-container::before {
+    content: "" !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 100% !important;
+    height: 48px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 0 L3 100' stroke='%23c8d6e6' stroke-width='1.4' vector-effect='non-scaling-stroke' fill='none'/%3E%3Cpath d='M50 0 L97 100' stroke='%23c8d6e6' stroke-width='1.4' vector-effect='non-scaling-stroke' fill='none'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 100% !important;
+    pointer-events: none !important;
+    z-index: 4 !important;
+  }
+
+  /* إخفاء أسلاك البطاقة حتى لا تتداخل مع الصورة */
+  #station-profile .hero-window::before {
+    content: none !important;
+  }
+}

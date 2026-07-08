@@ -1,7 +1,6 @@
 // src/home/HomeInteractiveMap.tsx
 import { memo, type ReactNode } from 'react';
 import { Station } from './Station';
-import { HomeFallbackList } from './HomeFallbackList';
 import type { StationWeight } from './StationWindow';
 import { useAdaptivePerformance } from '../hooks/useAdaptivePerformance';
 
@@ -42,17 +41,8 @@ const WEIGHTS: Record<string, StationWeight> = {
 export const HomeInteractiveMap = memo(function HomeInteractiveMap({
   stations,
 }: HomeInteractiveMapProps) {
-  const { lightMode, reduced } = useAdaptivePerformance();
+  const { lightMode } = useAdaptivePerformance();
   const lite = lightMode;
-
-  if (reduced) {
-    const items = stations.map((s) => ({
-      id: s.id,
-      title: TITLES[s.id] ?? s.id,
-      node: s.node,
-    }));
-    return <HomeFallbackList items={items} />;
-  }
 
   return (
     <div className="nl-home-map" data-lite={lite ? 'true' : 'false'}>

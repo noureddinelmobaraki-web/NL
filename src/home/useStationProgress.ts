@@ -18,15 +18,11 @@ export function useStationProgress(
     offset: ['start end', 'end start'],
   });
 
-  // يُرسم مع الدخول (0→0.45) ثم يتراجع مع الخروج (0.55→1) = رجوع الزمن.
-  const draw = useTransform(scrollYProgress, [0, 0.45, 0.55, 1], [0, 1, 1, 0]);
-  const windowScale = useTransform(scrollYProgress, [0, 0.5, 1], [0.86, 1, 0.9]);
-  const windowOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.16, 0.5, 0.84, 1],
-    [0, 1, 1, 1, 0],
-  );
-  const windowY = useTransform(scrollYProgress, [0, 0.5, 1], [46, 0, -34]);
+  // مرحلة 0: تحييد الحركة اللاصقة — النوافذ ظاهرة دائمًا والخيوط مرسومة بالكامل.
+  const draw = useTransform(scrollYProgress, [0, 1], [1, 1]);
+  const windowScale = useTransform(scrollYProgress, [0, 1], [1, 1]);
+  const windowOpacity = useTransform(scrollYProgress, [0, 1], [1, 1]);
+  const windowY = useTransform(scrollYProgress, [0, 1], [0, 0]);
 
   return { progress: scrollYProgress, draw, windowScale, windowOpacity, windowY };
 }
