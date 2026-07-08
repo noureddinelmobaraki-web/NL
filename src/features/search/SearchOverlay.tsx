@@ -34,7 +34,7 @@ export default function SearchOverlay({ onClose }: { onClose?: () => void }) {
     runSearch(term).then((r) => { setHits(r); setLoading(false) })
   }, [])
 
-  useEffect(() => { ensureIndex(); doSearch(q) }, []) // تحميل الفهرس وبحث أولي
+  useEffect(() => { ensureIndex() }, []) // تحميل الفهرس مرة واحدة؛ البحث الأولي يتكفّل به تأثير الـ debounce أدناه
 
   useEffect(() => {
     const id = setTimeout(() => { syncUrl(q); doSearch(q) }, 200) // debounce

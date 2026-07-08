@@ -149,6 +149,8 @@ const YouTubePortal = lazy(() => import('./features/youtube/YouTubePortal'));
 function AppInner() {
   const { theme, loaded, setLoaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, endTransition, openMusic } = useAppContext();
   const isAutomated = isAutomatedEnv();
+  // عند الدخول من رابط مشاركة، لا تبدأ العرض عند opacity:0 حتى لا يبقى المحتوى غير مرسوم حتى إعادة الرسم
+  const bootedFromDeepLink = useRef(readPendingSong() !== null).current;
 
   useEffect(() => {
     applyThemeUtil(theme);
@@ -160,6 +162,7 @@ function AppInner() {
     if (!pending) return;
     if (!loaded) {
       setLoaded(true);
+      return; // اعرض الرئيسية أولًا في تزامة منفصلة، ثم افتح الموسيقى عند إعادة تشغيل التأثير (يطابق مسار التنقّل الطبيعي)
     }
     openMusic();
   }, [loaded, openMusic, setLoaded]);
@@ -212,7 +215,7 @@ function AppInner() {
           <motion.div
             key="games-screen"
             data-mode={theme}
-            initial={isAutomated ? false : NL_ENTER_FADE}
+            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -228,7 +231,7 @@ function AppInner() {
           <motion.div
             key="tv-screen"
             data-mode={theme}
-            initial={isAutomated ? false : NL_ENTER_FADE}
+            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -244,7 +247,7 @@ function AppInner() {
           <motion.div
             key="cinema-screen"
             data-mode={theme}
-            initial={isAutomated ? false : NL_ENTER_FADE}
+            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -263,7 +266,7 @@ function AppInner() {
           <motion.div
             key="retro-screen"
             data-mode={theme}
-            initial={isAutomated ? false : NL_ENTER_FADE}
+            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -279,7 +282,7 @@ function AppInner() {
           <motion.div
             key="xp-screen"
             data-mode={theme}
-            initial={isAutomated ? false : NL_ENTER_FADE}
+            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -295,7 +298,7 @@ function AppInner() {
           <motion.div
             key="music-screen"
             data-mode={theme}
-            initial={isAutomated ? false : NL_ENTER_FADE}
+            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -311,7 +314,7 @@ function AppInner() {
           <motion.div
             key="accounts-screen"
             data-mode={theme}
-            initial={isAutomated ? false : NL_ENTER_FADE}
+            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -326,7 +329,7 @@ function AppInner() {
         ) : (
           <motion.div
             key="main-app-screen"
-            initial={isAutomated ? false : NL_ENTER_FADE}
+            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
