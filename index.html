@@ -73,9 +73,9 @@
     <title>Noureddin El Mobaraki (NL) | Official Website & Music Archive</title>
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <meta http-equiv="content-language" content="ar">
-    <link rel="alternate" hreflang="ar" href="https://noureddinelmobaraki-web.github.io/NL/">
-    <link rel="alternate" hreflang="en" href="https://noureddinelmobaraki-web.github.io/NL/">
-    <link rel="alternate" hreflang="fr" href="https://noureddinelmobaraki-web.github.io/NL/">
+    <link rel="alternate" hreflang="ar" href="https://noureddinelmobaraki-web.github.io/NL/?lng=ar">
+    <link rel="alternate" hreflang="en" href="https://noureddinelmobaraki-web.github.io/NL/?lng=en">
+    <link rel="alternate" hreflang="fr" href="https://noureddinelmobaraki-web.github.io/NL/?lng=fr">
     <link rel="alternate" hreflang="x-default" href="https://noureddinelmobaraki-web.github.io/NL/">
     <meta name="description" content="الموقع الرسمي للفنان والمنتج الموسيقي Noureddin El Mobaraki المعروف فنياً بـ NL و Nordine GB. استمع لأحدث أعمال الراب والهيب هوب وتصفح الأرشيف الموسيقي الكامل من الدار البيضاء.">
     <meta name="author" content="Noureddin El Mobaraki">
@@ -110,15 +110,15 @@
       "@type": "Person",
       "@id": "https://noureddinelmobaraki-web.github.io/NL/#person",
       "name": "Noureddin El Mobaraki",
-      "additionalName": "Nordine GB",
-      "alternateName": "NL",
-      "description": "Independent Rap and Hip-Hop Music Producer and Lyricist based in Casablanca.",
+      "alternateName": [
+        "NL", "NL MUSIC", "NL GB", "Nordine GB", "Nourdine GB", "Noureddine",
+        "Nordine Lembarki", "Noureddin El Mobaraki", "Nordine El Mobaraki",
+        "نور الدين المباركي", "نورالدين المباركي", "نوردين جي بي"
+      ],
+      "jobTitle": "Rap Artist & Music Producer",
       "url": "https://noureddinelmobaraki-web.github.io/NL/",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Casablanca",
-        "addressCountry": "MA"
-      },
+      "image": "https://noureddinelmobaraki-web.github.io/NL/og-image.jpg",
+      "homeLocation": { "@type": "Place", "name": "Casablanca, Morocco" },
       "sameAs": [
         "https://open.spotify.com/artist/5nwGOyilF1p4uv35v6vb2u",
         "https://music.apple.com/us/artist/nl/1535833912",
@@ -130,11 +130,7 @@
         "https://www.instagram.com/nourdin_el_mobaraki",
         "https://www.tiktok.com/@nourdine_el_mobaraki",
         "https://www.facebook.com/profile.php?id=61558584390374"
-      ],
-      "image": "https://noureddinelmobaraki-web.github.io/NL/og-image.jpg",
-      "jobTitle": "Rap Artist & Music Producer",
-      "nationality": "Moroccan",
-      "knowsLanguage": ["ar", "fr", "en"]
+      ]
     }
     </script>
     <script type="application/ld+json">
@@ -144,7 +140,11 @@
       "@id": "https://noureddinelmobaraki-web.github.io/NL/#musicgroup",
       "member": { "@id": "https://noureddinelmobaraki-web.github.io/NL/#person" },
       "name": "NL",
-      "alternateName": ["Noureddin El Mobaraki", "Nordine GB"],
+      "alternateName": [
+        "NL", "NL MUSIC", "NL GB", "Nordine GB", "Nourdine GB", "Noureddine",
+        "Nordine Lembarki", "Noureddin El Mobaraki", "Nordine El Mobaraki",
+        "نور الدين المباركي", "نورالدين المباركي", "نوردين جي بي"
+      ],
       "genre": ["Rap", "Hip-Hop", "Moroccan Hip-Hop", "Darija Rap"],
       "foundingLocation": {
         "@type": "Place",
@@ -156,6 +156,25 @@
         "https://music.apple.com/us/artist/nl/1535833912",
         "https://www.youtube.com/@nourdin_el_mobaraki"
       ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://noureddinelmobaraki-web.github.io/NL/#website",
+      "url": "https://noureddinelmobaraki-web.github.io/NL/",
+      "name": "NL — Noureddin El Mobaraki",
+      "inLanguage": ["ar", "en", "fr"],
+      "publisher": { "@id": "https://noureddinelmobaraki-web.github.io/NL/#person" },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://noureddinelmobaraki-web.github.io/NL/?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
     }
     </script>
     <link rel="icon" type="image/webp" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp" />

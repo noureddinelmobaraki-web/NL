@@ -6,6 +6,31 @@ import { isAutomatedEnv } from '../utils/env';
 import { audioManager } from '../audio/audioManager';
 import { navReducer, initialNavState, type PageId, type CinemaTab } from './navigationController';
 
+// [History] تعيين الصفحة <-> معامل ?view=
+const VIEW_TO_NAV: Record<string, { page: PageId; cinemaTab?: CinemaTab }> = {
+  games:    { page: 'games' },
+  movies:   { page: 'cinema', cinemaTab: 'movies' },
+  series:   { page: 'cinema', cinemaTab: 'series' },
+  tv:       { page: 'tv' },
+  retro:    { page: 'retro' },
+  xp:       { page: 'xp' },
+  music:    { page: 'music' },
+  accounts: { page: 'accounts' },
+};
+
+function navToView(page: PageId, cinemaTab: CinemaTab): string {
+  if (page === 'home') return 'home';
+  if (page === 'cinema') return cinemaTab === 'series' ? 'series' : 'movies';
+  return page;
+}
+
+function buildViewUrl(view: string): string {
+  const url = new URL(window.location.href);
+  if (view === 'home') url.searchParams.delete('view');
+  else url.searchParams.set('view', view);
+  return url.pathname + url.search + url.hash;
+}
+
 interface AppContextType {
   theme: Theme;
   setTheme: React.Dispatch<React.SetStateAction<Theme>>;
@@ -92,6 +117,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(isAutomatedCtx);
   const [currentPage, setCurrentPage] = useState('home');
 
+  const isPopStateNavRef = useRef(false); // true فقط أثناء معالجة popstate
+
   const [nav, dispatch] = useReducer(navReducer, initialNavState);
 
   const isGamesOpen  = nav.activePage === 'games';
@@ -151,6 +178,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const navigateTo = useCallback((page: PageId, cinemaTab?: CinemaTab) => {
     dispatch({ type: 'NAVIGATE', page, cinemaTab });
+
+    // [History] سجّل إدخالًا حتى يعمل زر العودة داخل الموقع
+    if (typeof window === 'undefined') return;
+    if (isPopStateNavRef.current) return; // لا تُعد الدفع أثناء الرجوع
+    const view = navToView(page, cinemaTab ?? 'movies');
+    const currentView = (window.history.state && window.history.state.nlView) || null;
+    if (currentView === view) return; // تجنّب إدخالات مكرّرة
+    try {
+      window.history.pushState({ nlView: view }, '', buildViewUrl(view));
+    } catch (e) { /* تجاهل — لا تكسر التنقّل */ }
   }, []);
 
   useEffect(() => {
@@ -180,6 +217,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [nav.activePage, nav.cinemaTab]);
 
   const endTransition = useCallback(() => dispatch({ type: 'TRANSITION_END' }), []);
+
+  // [History] تهيئة أولية: اجعل للإدخال الأول حالة nlView
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.history.state && window.history.state.nlView) return; // سبقت التهيئة
+    try {
+      window.history.replaceState({ nlView: 'home' }, '', window.location.href);
+    } catch (e) { /* تجاهل */ }
+  }, []);
+
+  // [History] زر العودة/التقدّم في المتصفّح
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPopState = (e: PopStateEvent) => {
+      const state = e.state as { nlView?: string } | null;
+      const view = (state && state.nlView)
+        || new URLSearchParams(window.location.search).get('view')
+        || 'home';
+      const map = VIEW_TO_NAV[view];
+      isPopStateNavRef.current = true;
+      endTransition(); // حرّر قفل transitioning أولًا حتى لا يُتجاهل NAVIGATE
+      if (map) navigateTo(map.page, map.cinemaTab);
+      else navigateTo('home');
+      setTimeout(() => { isPopStateNavRef.current = false; }, 0);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [navigateTo, endTransition]);
 
   useEffect(() => {
     if (!nav.transitioning) return;
@@ -217,6 +282,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     } catch {}
     setLoaded(false);
+
+    // [History] أعد ضبط السجلّ إلى الجذر (دون إضافة إدخال)
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.replaceState({ nlView: 'home' }, '', import.meta.env.BASE_URL);
+      } catch (e) { /* تجاهل */ }
+    }
   }, []);
 
   return (

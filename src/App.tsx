@@ -127,6 +127,7 @@ const GallerySection = lazyWithRetry(
 import { AppProvider, useAppContext } from './context/AppContext';
 import { isAutomatedEnv } from './utils/env';
 import { MobileQAOverlay } from "./components/dev/MobileQAOverlay";
+import SearchOverlay from './features/search/SearchOverlay'
 import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
 
@@ -795,6 +796,19 @@ function MainApp() {
       ) : null}
       <SongVideoTether />
       <SongLyricsTether />
+      {/* SearchOverlay should be updated separately to match context if needed, but for now we remove the searchOpen state since it's causing typescript errors. A search implementation using URL state would just read the url search param directly here. */}
+      {new URLSearchParams(window.location.search).has('q') ? (
+        <SearchOverlay
+          onClose={() => {
+            const p = new URLSearchParams(window.location.search)
+            p.delete('q')
+            const qs = p.toString()
+            window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''))
+            // Force a re-render so it hides, normally handled by react-router or a state var
+            window.dispatchEvent(new Event('popstate'));
+          }}
+        />
+      ) : null}
       {import.meta.env.DEV && <MobileQAOverlay />}
     </ButtonProvider>
   );

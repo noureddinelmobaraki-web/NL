@@ -3,7 +3,8 @@ import type { Track } from '../engine/types';
 export function songShareUrl(track: Pick<Track, 'id'>): string {
   const num = String(track.id).replace(/^fv-/, '');
   const base = 'https://noureddinelmobaraki-web.github.io/NL';
-  return `${base}/s/${num}.html`;
+  // رابط نظيف بمجلّد (مع شرطة مائلة نهائية لتجنّب إعادة توجيه 301)
+  return `${base}/s/${num}/`;
 }
 
 export async function shareSong(track: Track): Promise<'shared' | 'copied' | 'error'> {

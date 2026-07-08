@@ -15,7 +15,7 @@ const songsJsonPath = path.resolve('public/data/nl-music-fv.json');
 const distPath = path.resolve('dist');
 const sharePagesDir = path.join(distPath, 's');
 
-console.log('📢 Starting generation of static share pages for NL Music...');
+console.log('📢 Generating static share pages for NL Music (clean + legacy)...');
 
 if (!fs.existsSync(distPath)) {
   console.log('⚠️ dist/ directory does not exist yet. Skipping share pages generation.');
@@ -35,10 +35,12 @@ try {
   }
 
   const fallbackCover = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_cover.webp';
+  let count = 0;
 
   for (const song of songsData) {
     const id = song.id;
     if (id === undefined || id === null) continue;
+    const sid = String(id);
 
     const title = song.title || 'أغنية غير معروفة';
     const artist = song.artist || 'فنان غير معروف';
@@ -47,39 +49,49 @@ try {
     const escapedTitle = escapeHtml(title);
     const escapedArtist = escapeHtml(artist);
 
-    const htmlContent = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <title>${escapedTitle} — ${escapedArtist}</title>
-  <meta name="robots" content="noindex">
-  
-  <!-- Open Graph -->
-  <meta property="og:type" content="music.song">
-  <meta property="og:title" content="${escapedTitle} — ${escapedArtist}">
-  <meta property="og:description" content="استمع إلى ${escapedTitle} على NL Music">
-  <meta property="og:image" content="${coverUrl}">
-  <meta property="og:url" content="https://noureddinelmobaraki-web.github.io/NL/s/${id}.html">
-  
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="${escapedTitle} — ${escapedArtist}">
-  <meta name="twitter:description" content="استمع إلى ${escapedTitle} على NL Music">
-  <meta name="twitter:image" content="${coverUrl}">
-  
-  <!-- Redirect -->
-  <meta http-equiv="refresh" content="0; url=/NL/?song=fv-${id}">
-  <script>location.replace('/NL/?song=fv-' + ${id})</script>
-</head>
-<body style="font-family: sans-serif; text-align: center; padding: 50px; background-color: #0d1117; color: #c9d1d9;">
-  <p>جاري تحويلك إلى NL Music... إذا لم يتم تحويلك تلقائياً، <a href="/NL/?song=fv-${id}" style="color: #58a6ff; text-decoration: none;">افتح NL Music</a>.</p>
-</body>
-</html>`;
+    // الرابط النظيف (المجلّد) هو canonical للمشاركة
+    const cleanUrl = 'https://noureddinelmobaraki-web.github.io/NL/s/' + sid + '/';
+    const target = '/NL/?song=fv-' + sid;
 
-    fs.writeFileSync(path.join(sharePagesDir, `${id}.html`), htmlContent, 'utf8');
+    const htmlContent =
+'<!DOCTYPE html>\n' +
+'<html lang="ar" dir="rtl">\n' +
+'<head>\n' +
+'  <meta charset="UTF-8">\n' +
+'  <title>' + escapedTitle + ' — ' + escapedArtist + '</title>\n' +
+'  <meta name="robots" content="noindex">\n' +
+'  <!-- Open Graph -->\n' +
+'  <meta property="og:type" content="music.song">\n' +
+'  <meta property="og:title" content="' + escapedTitle + ' — ' + escapedArtist + '">\n' +
+'  <meta property="og:description" content="استمع إلى ' + escapedTitle + ' على NL Music">\n' +
+'  <meta property="og:image" content="' + coverUrl + '">\n' +
+'  <meta property="og:url" content="' + cleanUrl + '">\n' +
+'  <!-- Twitter Card -->\n' +
+'  <meta name="twitter:card" content="summary_large_image">\n' +
+'  <meta name="twitter:title" content="' + escapedTitle + ' — ' + escapedArtist + '">\n' +
+'  <meta name="twitter:description" content="استمع إلى ' + escapedTitle + ' على NL Music">\n' +
+'  <meta name="twitter:image" content="' + coverUrl + '">\n' +
+'  <!-- Redirect (الزواحف تتجاهلها وتقرأ og:*) -->\n' +
+'  <meta http-equiv="refresh" content="0; url=' + target + '">\n' +
+'  <script>location.replace(' + JSON.stringify(target) + ')</script>\n' +
+'</head>\n' +
+'<body style="font-family: sans-serif; text-align: center; padding: 50px; background-color: #0d1117; color: #c9d1d9;">\n' +
+'  <p>جارٍ تحويلك إلى NL Music… إذا لم يتم تحويلك تلقائيًا، <a href="' + target + '" style="color: #58a6ff; text-decoration: none;">افتح NL Music</a>.</p>\n' +
+'</body>\n' +
+'</html>\n';
+
+    // 1) الرابط النظيف الجديد: s/<id>/index.html
+    const cleanDir = path.join(sharePagesDir, sid);
+    fs.mkdirSync(cleanDir, { recursive: true });
+    fs.writeFileSync(path.join(cleanDir, 'index.html'), htmlContent, 'utf8');
+
+    // 2) توافق خلفي: s/<id>.html (الروابط المنشورة سابقًا تبقى تعمل)
+    fs.writeFileSync(path.join(sharePagesDir, sid + '.html'), htmlContent, 'utf8');
+
+    count++;
   }
 
-  console.log(`✅ Generated ${songsData.length} static share pages in dist/s/.`);
+  console.log('✅ Generated ' + count + ' share pages (clean folder + legacy .html).');
 } catch (error) {
   console.error('❌ Error generating share pages:', error);
   process.exit(1);
