@@ -20,11 +20,12 @@ export const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: '2.5rem',
     fontWeight: 'bold',
-    color: 'var(--text-primary)',
+    color: '#0b0f14',
     marginBottom: '8px',
     textAlign: 'center',
     fontFamily: 'var(--font-manga)',
     letterSpacing: '0.05em',
+    textShadow: '0 1px 2px rgba(255, 255, 255, 0.5)',
   },
   toggleRow: {
     display: 'flex',
