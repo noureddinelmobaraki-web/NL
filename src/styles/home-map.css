@@ -140,6 +140,13 @@
   font: 600 12px/1 ui-monospace, monospace; letter-spacing: 0.04em; color: #33445c;
 }
 
+/* ===== Phase 6D: gallery windows stack vertically and hang, roped corner-to-corner ===== */
+/* Windows keep the default .nl-home-hub column flow (one below the other). The ropes
+   defined in cords.config.ts hang the ME bit window from the node by its two top
+   corners, and the Lens window from the ME bit window's two bottom corners. We only
+   open up the vertical gap so the hanging ropes between them have room to droop. */
+#station-gallery .nl-home-hub { gap: clamp(40px, 7vh, 96px); }
+
 /* إعادة تصميم my songs داخل الخريطة */
 .nl-home-songs :where(.song-card, .mysongs-card) {
   border-radius: 12px;
@@ -290,4 +297,220 @@
   #station-profile .hero-window::before {
     content: none !important;
   }
+}
+
+/* ===== Phase 6A: dynamic white rope cords + node dots ===== */
+/* Neutralize legacy CSS nodes & drop-lines (now drawn dynamically by HomeCords) */
+.nl-home-station::before,
+.nl-home-station::after { content: none !important; }
+/* Legacy profile hanging-wire pseudo (superseded by dynamic cords) */
+#station-profile .hero-profile-container::before { content: none !important; background-image: none !important; }
+
+.nl-cords {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0; overflow: visible;
+}
+.nl-cord-glow { fill: none; stroke: rgba(255,255,255,0.34); stroke-width: 5; stroke-linecap: round; }
+.nl-cord-core { fill: none; stroke: rgba(255,255,255,0.92); stroke-width: 1.6; stroke-linecap: round; }
+.nl-home-map[data-lite="true"] .nl-cord-glow { display: none; }
+.nl-cord-node-halo { fill: rgba(200,224,255,0.22); }
+.nl-cord-node-core { fill: #eef6ff; stroke: rgba(255,255,255,0.9); stroke-width: 1; }
+
+/* Profile hero: image centered on top, identity window full-width below (hanging look) */
+#station-profile .hero-profile-container { margin-left: auto !important; margin-right: auto !important; }
+@media (max-width: 1023px) {
+  #station-profile .hero-profile-container { display: flex !important; }
+}
+
+
+/* ===== Phase 6A.1: active-node highlight + red flow along ACTIVE cords only ===== */
+:root { --nl-cord-highlight: #ffcf3f; } /* warm yellow lighting for the active cord */
+
+/* Active cord: keep the white line, wrap it in a soft YELLOW halo as "lighting".
+   Reuse the .nl-cord-glow path (hidden for idle cords in lite mode) and turn it
+   into a warm glow ONLY for the active cord, forcing it visible even in lite mode.
+   Only one cord is active at a time, so this stays cheap. */
+.nl-cord--active .nl-cord-core { stroke: #ffffff; }
+.nl-home-map .nl-cord--active .nl-cord-glow,
+.nl-home-map[data-lite="true"] .nl-cord--active .nl-cord-glow {
+  display: block;
+  stroke-width: 6;
+  stroke-linecap: round;
+  animation: nl-cord-halo-cycle 2.6s ease-in-out infinite;
+}
+/* Active line glow smoothly cycles between blood red and golden yellow */
+@keyframes nl-cord-halo-cycle {
+  0%, 100% {
+    stroke: #c11626;
+    opacity: 0.5;
+    filter: drop-shadow(0 0 4px rgba(193,22,38,0.9)) drop-shadow(0 0 10px rgba(193,22,38,0.5));
+  }
+  50% {
+    stroke: #ffcf3f;
+    opacity: 0.65;
+    filter: drop-shadow(0 0 5px rgba(255,207,63,0.95)) drop-shadow(0 0 12px rgba(255,207,63,0.6));
+  }
+}
+/* Streaming/social lattice rays: keep the white line, add the same red<->gold glow when the section is active */
+.nl-home-station[data-active="true"] .nl-lattice-ray {
+  animation: nl-line-halo-cycle 2.6s ease-in-out infinite;
+}
+@keyframes nl-line-halo-cycle {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(193,22,38,0.9)) drop-shadow(0 0 6px rgba(193,22,38,0.5)); }
+  50%      { filter: drop-shadow(0 0 3px rgba(255,207,63,0.95)) drop-shadow(0 0 8px rgba(255,207,63,0.6)); }
+}
+.nl-cord-node-glow { pointer-events: none; }
+.nl-cord-node-core { fill: #ffffff; stroke: none; }
+.nl-cord-node--active .nl-cord-node-glow {
+  animation: nl-cord-node-pulse 2s ease-in-out infinite;
+}
+@keyframes nl-cord-node-pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nl-cord--active .nl-cord-glow,
+  .nl-home-station[data-active="true"] .nl-lattice-ray,
+  .nl-cord-node--active .nl-cord-node-glow { animation: none; }
+}
+
+/* ===== Phase 6B: unify streaming/social branch rays with the white rope look ===== */
+.nl-lattice-ray { stroke: rgba(255, 255, 255, 0.9); stroke-width: 1.6; }
+.nl-lattice-ray--lite { stroke-width: 1.4; }
+
+/* ===== Phase 6G: streaming/social icons become square glass windows; the name
+   hangs below on 4 thin strings and gently sways (pure CSS, no JS) ===== */
+
+/* Vertical unit: square icon window on top, hanging name below. */
+.nl-lattice-node-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Frameless interactive node — the old white padded box is removed. */
+.nl-lattice .nl-lattice-node {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+.nl-lattice .nl-lattice-node:hover { transform: translateY(-3px); box-shadow: none; }
+.nl-lattice .nl-lattice-node:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
+}
+
+/* The square glass window; the brand image fills it edge-to-edge. Square is set
+   with equal width/height (no aspect-ratio) so it works on old iOS Safari too. */
+.nl-lattice-glass {
+  position: relative;
+  display: block;
+  width: clamp(58px, 15vw, 82px);
+  height: clamp(58px, 15vw, 82px);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(180, 210, 240, 0.10));
+  box-shadow:
+    0 6px 16px rgba(18, 28, 48, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+/* Glyph slot now fills the whole square (was a 40x40 chip). */
+.nl-lattice .nl-lattice-node-glyph {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+.nl-lattice-img,
+.nl-lattice .nl-lattice-node-glyph img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Light glass gloss — pure gradient, NO backdrop-filter (cheap on weak phones). */
+.nl-lattice-glass-gloss {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    158deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.14) 26%,
+    rgba(255, 255, 255, 0) 52%
+  );
+}
+
+/* The name dangles from the icon on 4 thin strings and sways gently. */
+.nl-lattice-hanger {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: top center;
+  animation: nl-name-sway 4.4s ease-in-out infinite;
+}
+.nl-lattice-strings {
+  display: block;
+  width: 46px;
+  height: 16px;
+  overflow: visible;
+}
+.nl-lattice-strings line {
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 0.8; /* half of the 1.6 branch rays */
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+}
+
+/* Name tag (text content unchanged) styled as a small hanging sign. */
+.nl-lattice .nl-lattice-node-label {
+  font: 600 12px/1 ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  color: #eef4ff;
+  padding: 4px 9px;
+  border-radius: 9px;
+  white-space: nowrap;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(150, 190, 230, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 3px 8px rgba(18, 28, 48, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Give each hanging name room + stagger the sway so they don't move in lockstep. */
+.nl-lattice-row { gap: 22px 18px; }
+.nl-lattice-node-unit:nth-child(2n) .nl-lattice-hanger { animation-duration: 5.1s; animation-delay: -1.2s; }
+.nl-lattice-node-unit:nth-child(3n) .nl-lattice-hanger { animation-duration: 4.0s; animation-delay: -2.4s; }
+
+@keyframes nl-name-sway {
+  0%, 100% { transform: translateY(0) rotate(-1.8deg); }
+  50%      { transform: translateY(2px) rotate(1.8deg); }
+}
+
+/* Strings glow red<->gold together with the rays when the section is active. */
+.nl-home-station[data-active="true"] .nl-lattice-strings line {
+  animation: nl-line-halo-cycle 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-lattice-hanger,
+  .nl-home-station[data-active="true"] .nl-lattice-strings line { animation: none; }
 }

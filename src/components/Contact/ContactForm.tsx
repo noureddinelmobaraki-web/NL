@@ -166,7 +166,7 @@ export const ContactForm = () => {
   return (
     <section dir="rtl" style={styles.section}>
       <form 
-        className="manga-panel"
+        className="manga-panel nl-contact-frameless"
         onSubmit={(e) => { e.preventDefault(); handleSend(); }}
         noValidate
         style={{

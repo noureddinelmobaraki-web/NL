@@ -6,7 +6,6 @@ import { motion, Variants } from "framer-motion";
 import { Maximize2 } from "lucide-react";
 import { ASSETS, getThemedImage, getLocalAssetUrl } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
-import { LensGallery } from "../Lens/LensGallery";
 import { audioManager } from "../../audio/audioManager";
 
 const ME_BIT_IMAGES = ASSETS.profile.me_bits;
@@ -22,19 +21,15 @@ const itemVariants: Variants = {
 
 export interface GallerySectionProps {
   resolvedTheme: string;
-  isLensGalleryOpen: boolean;
   onGalleryOpen: (index?: number) => void;
   onLensOpen: () => void;
-  onLensClose: () => void;
   onPrefetchMeBit?: () => void;
 }
 
 export const GallerySection = ({
   resolvedTheme,
-  isLensGalleryOpen,
   onGalleryOpen,
   onLensOpen,
-  onLensClose,
   onPrefetchMeBit,
 }: GallerySectionProps) => {
   const ctaRef = useRef<HTMLDivElement>(null);
@@ -128,7 +123,7 @@ export const GallerySection = ({
             audioManager.play('lens');
             onLensOpen();
           }}
-          className="relative w-full border-[4px] border-[var(--ink-color)] bg-black overflow-hidden group cursor-pointer shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[160px] sm:h-[200px]"
+          className="nl-lens-cta relative w-full border-[4px] border-[var(--ink-color)] bg-black overflow-hidden group cursor-pointer shadow-[10px_10px_0px_var(--manga-shadow-color)] hover:shadow-[14px_14px_0px_var(--manga-shadow-color)] transition-all h-[160px] sm:h-[200px]"
           role="button"
           aria-label="Open photography gallery"
           tabIndex={0}
@@ -173,14 +168,6 @@ export const GallerySection = ({
           </div>
         </div>
       </motion.section>
-
-      <LensGallery
-        isOpen={isLensGalleryOpen}
-        onClose={() => {
-          audioManager.pause('lens');
-          onLensClose();
-        }}
-      />
     </>
   );
 };

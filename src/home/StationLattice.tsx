@@ -21,6 +21,7 @@ export interface LatticeItem {
 interface StationLatticeProps {
   items: LatticeItem[];
   lite: boolean;
+  cordId?: string;
 }
 
 function accentStyle(color?: string): CSSProperties | undefined {
@@ -32,6 +33,7 @@ function accentStyle(color?: string): CSSProperties | undefined {
 export const StationLattice = memo(function StationLattice({
   items,
   lite,
+  cordId,
 }: StationLatticeProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const busRef = useRef<HTMLDivElement>(null);
@@ -80,7 +82,7 @@ export const StationLattice = memo(function StationLattice({
   }, [items.length]);
 
   return (
-    <div ref={wrapRef} className="nl-lattice">
+    <div ref={wrapRef} className="nl-lattice" data-cord-id={cordId}>
       <div ref={busRef} className="nl-lattice-bus" aria-hidden="true" />
       <svg
         className="nl-lattice-svg"
@@ -103,40 +105,52 @@ export const StationLattice = memo(function StationLattice({
           const setRef = (el: HTMLElement | null) => {
             nodeRefs.current[i] = el;
           };
-          const inner = (
-            <>
+          const glass = (
+            <span className="nl-lattice-glass">
               <span className="nl-lattice-node-glyph">{it.content}</span>
-              <span className="nl-lattice-node-label">{it.label}</span>
-            </>
+              <span className="nl-lattice-glass-gloss" aria-hidden="true" />
+            </span>
           );
-          if (it.href) {
-            const setAnchor = (el: HTMLAnchorElement | null) => setRef(el);
-            return (
-              <a
-                key={it.id}
-                ref={setAnchor}
-                className="nl-lattice-node"
-                href={it.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={accentStyle(it.color)}
-              >
-                {inner}
-              </a>
-            );
-          }
-          const setButton = (el: HTMLButtonElement | null) => setRef(el);
-          return (
+          const icon = it.href ? (
+            <a
+              ref={(el: HTMLAnchorElement | null) => setRef(el)}
+              className="nl-lattice-node"
+              href={it.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={it.label}
+            >
+              {glass}
+            </a>
+          ) : (
             <button
-              key={it.id}
-              ref={setButton}
+              ref={(el: HTMLButtonElement | null) => setRef(el)}
               type="button"
               className="nl-lattice-node"
               onClick={it.onClick}
-              style={accentStyle(it.color)}
+              aria-label={it.label}
             >
-              {inner}
+              {glass}
             </button>
+          );
+          return (
+            <div key={it.id} className="nl-lattice-node-unit" style={accentStyle(it.color)}>
+              {icon}
+              <span className="nl-lattice-hanger">
+                <svg
+                  className="nl-lattice-strings"
+                  viewBox="0 0 44 20"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <line x1="8" y1="0" x2="4" y2="20" />
+                  <line x1="18" y1="0" x2="16" y2="20" />
+                  <line x1="26" y1="0" x2="28" y2="20" />
+                  <line x1="36" y1="0" x2="40" y2="20" />
+                </svg>
+                <span className="nl-lattice-node-label">{it.label}</span>
+              </span>
+            </div>
           );
         })}
       </div>

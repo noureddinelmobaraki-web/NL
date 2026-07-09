@@ -1,0 +1,60 @@
+/* aero-gallery.css - Frutiger Aero unified gallery hub (Phases 2A / 2A.1 / 2B / 2C) */
+.nlag-overlay{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .45s ease;overflow:hidden}
+.nlag-overlay[data-open="true"]{opacity:1;pointer-events:auto}
+
+/* background layers (same video source + glass treatment as Accounts page) */
+.nlag-bg{position:absolute;inset:0;z-index:0;overflow:hidden;background:#081018}
+.nlag-bg-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(1.1) brightness(.78)}
+.nlag-bg-glass{position:absolute;inset:0;background:linear-gradient(180deg,rgba(120,190,255,.30),rgba(60,120,210,.22) 55%,rgba(20,60,130,.40)),radial-gradient(720px 440px at 86% -8%,rgba(120,200,255,.20),transparent 60%),radial-gradient(680px 460px at 8% 108%,rgba(120,255,190,.16),transparent 60%);backdrop-filter:blur(10px) saturate(150%);-webkit-backdrop-filter:blur(10px) saturate(150%)}
+
+/* animated rainbow aura; morphs palette when the album changes (2B) */
+.nlag-rainbow{position:absolute;inset:-20%;z-index:1;pointer-events:none;background:conic-gradient(from 0deg,rgba(255,0,90,.18),rgba(255,180,0,.16),rgba(70,255,140,.18),rgba(0,200,255,.20),rgba(150,90,255,.18),rgba(255,0,90,.18));filter:blur(64px);mix-blend-mode:screen;opacity:.5;animation:nlag-spin 28s linear infinite;transition:background .7s ease,opacity .7s ease}
+@keyframes nlag-spin{to{transform:rotate(360deg)}}
+.nlag-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;background:radial-gradient(120% 90% at 50% 38%,transparent 42%,rgba(8,26,54,.38))}
+
+/* ===== bottom album switcher (2A.1 position + 2B segmented redesign) ===== */
+.nlag-header{position:absolute;left:0;right:0;top:auto;bottom:calc(env(safe-area-inset-bottom, 0px) + 20px);z-index:7;display:flex;align-items:center;justify-content:center;padding:0 1rem;pointer-events:none}
+.nlag-tabs{position:relative;display:flex;gap:.25rem;padding:.4rem;border-radius:999px;pointer-events:auto;background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.18));box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 34px rgba(15,55,120,.4);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.6)}
+.nlag-tab{position:relative;appearance:none;border:0;cursor:pointer;padding:.62rem 1.6rem;border-radius:999px;font-weight:700;font-size:1rem;letter-spacing:.02em;color:#0b3a6b;background:transparent;transition:color .25s;min-width:104px}
+.nlag-tab-label{position:relative;z-index:1}
+.nlag-tab[data-active="true"]{color:#fff}
+.nlag-seg{position:absolute;inset:0;z-index:0;border-radius:999px;background:linear-gradient(180deg,rgba(140,210,255,.98),rgba(40,120,220,.98));box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 6px 18px rgba(20,90,180,.6)}
+.nlag-tab:hover{color:#08528f}
+.nlag-tab[data-active="true"]:hover{color:#fff}
+
+/* close button (top-right; user keeps Login/notch there) */
+.nlag-close{position:absolute;top:1.1rem;right:1.15rem;z-index:8;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.55);cursor:pointer;color:#0b3a6b;font-size:1.25rem;line-height:1;display:grid;place-items:center;background:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,.25));box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 6px 16px rgba(20,60,120,.3);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:transform .25s}
+.nlag-close:hover{transform:scale(1.08) rotate(90deg)}
+
+/* stage + pyramid grid */
+.nlag-stage{position:relative;z-index:5;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(.6rem,1.4vw,1.1rem);padding:1.25rem clamp(1rem,4vw,3rem) 6.75rem;overflow:auto}
+.nlag-pyramid{display:flex;flex-direction:column;align-items:center;gap:clamp(.6rem,1.4vw,1.1rem)}
+.nlag-row{display:flex;justify-content:center;gap:clamp(.6rem,1.4vw,1.1rem)}
+.nlag-frame{position:relative;cursor:pointer;border:0;border-radius:18px;padding:6px;background:linear-gradient(160deg,rgba(255,255,255,.72),rgba(200,235,255,.28) 45%,rgba(120,180,255,.35));box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 10px 26px rgba(15,50,110,.35);border:1px solid rgba(255,255,255,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:box-shadow .28s;will-change:transform}
+.nlag-frame::after{content:"";position:absolute;left:6px;right:6px;top:6px;height:38%;border-radius:14px 14px 40% 40%;background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0));pointer-events:none}
+.nlag-frame:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 16px 40px rgba(15,60,140,.5);z-index:3}
+.nlag-frame img{display:block;width:clamp(96px,13vw,168px);height:clamp(96px,13vw,168px);object-fit:cover;border-radius:12px;background:rgba(255,255,255,.15)}
+
+/* per-album accents (rainbow + switcher + frame tint) */
+.nlag-overlay[data-album="lens"] .nlag-rainbow{background:conic-gradient(from 40deg,rgba(0,220,180,.22),rgba(0,200,255,.22),rgba(120,120,255,.2),rgba(0,255,200,.22),rgba(0,220,180,.22))}
+.nlag-overlay[data-album="lens"] .nlag-seg{background:linear-gradient(180deg,rgba(120,255,220,.98),rgba(0,168,158,.98));box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 6px 18px rgba(0,150,140,.6)}
+.nlag-overlay[data-album="lens"] .nlag-frame{background:linear-gradient(160deg,rgba(255,255,255,.72),rgba(200,255,240,.28) 45%,rgba(90,220,200,.32))}
+
+/* ===== 2C responsive ===== */
+@media (max-width:1024px){.nlag-frame img{width:clamp(92px,15vw,150px);height:clamp(92px,15vw,150px)}}
+@media (max-width:640px){.nlag-stage{padding:.85rem .6rem 6rem}.nlag-pyramid{gap:.55rem}.nlag-row{gap:.55rem}.nlag-frame{padding:4px;border-radius:14px}.nlag-frame img{width:clamp(84px,27vw,116px);height:clamp(84px,27vw,116px);border-radius:10px}.nlag-tab{padding:.55rem 1.2rem;min-width:88px;font-size:.92rem}.nlag-close{top:.8rem;right:.8rem;width:40px;height:40px;font-size:1.1rem}.nlag-header{bottom:calc(env(safe-area-inset-bottom, 0px) + 14px)}}
+@media (max-width:400px){.nlag-frame img{width:clamp(72px,28vw,98px);height:clamp(72px,28vw,98px)}.nlag-tab{min-width:80px;padding:.5rem 1rem}}
+@media (max-height:760px){.nlag-frame img{width:clamp(70px,12vh,150px);height:clamp(70px,12vh,150px)}}
+@media (max-height:520px) and (orientation:landscape){.nlag-stage{padding:.5rem 1rem 4.75rem}.nlag-pyramid{gap:.4rem}.nlag-row{gap:.4rem}.nlag-frame img{width:clamp(54px,13vh,96px);height:clamp(54px,13vh,96px)}.nlag-header{bottom:calc(env(safe-area-inset-bottom, 0px) + 8px)}.nlag-close{top:.55rem;right:.6rem}}
+@media (prefers-reduced-motion:reduce){.nlag-rainbow{animation:none}.nlag-close{transition:none}}
+
+/* fullscreen behavior (2A.1) */
+body.nl-aero-active{overflow:hidden}
+body.nl-aero-active nav[aria-label="Mobile Navigation"]{display:none !important}
+/* Phase 2D: true fullscreen — hide floating action buttons (incl. scroll-to-top) while the hub/viewer is open */
+body.nl-aero-active .fab-slot-top-right,
+body.nl-aero-active .fab-slot-top-right-2,
+body.nl-aero-active .fab-slot-bottom-right{
+  display:none !important;
+  pointer-events:none !important;
+}

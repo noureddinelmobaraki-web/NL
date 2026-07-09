@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Volume2, VolumeX, Heart, Info } from 'lucide-react'; // MOBILE-ONLY
+import { X, Volume2, VolumeX, ChevronUp, ChevronDown } from 'lucide-react';
 import { getGenieOrigin, genieOriginToTransformOrigin } from '../../transitions/genieOrigin';
 import { VideoData } from './types';
 import { VideoCard } from './VideoCard';
@@ -52,8 +52,6 @@ export const DrawingsFullscreen = ({
   }, [activeIndex]));
 
 
-  const [likedVideos, setLikedVideos] = useState<Record<number, boolean>>({});
-  const [showInfo, setShowInfo] = useState(false);
   const [showProgressCounter, setShowProgressCounter] = useState(true);
   const autoHideTimeoutRef = useRef<number | null>(null);
 
@@ -331,7 +329,33 @@ export const DrawingsFullscreen = ({
   }, [activeIndex, videos.length]);
 
   // FIXED: All touch targets are guaranteed ≥44x44px (iOS HIG) via min-width/height
-  const buttonClass = "rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/15 text-white shadow-[0_2px_8px_rgba(0,0,0,0.5)] active:scale-[0.92] transition-transform duration-150 pointer-events-auto cursor-pointer";
+  const goTo = useCallback((index: number) => {
+    const clamped = Math.max(0, Math.min(index, videos.length - 1));
+    const children = scrollContainerRef.current?.querySelectorAll('.video-card-wrapper');
+    const child = children?.[clamped] as HTMLElement | undefined;
+    child?.scrollIntoView({ behavior: 'smooth' });
+  }, [videos.length]);
+
+  // DESKTOP: mouse-wheel navigation — one drawing per gesture (TikTok-style)
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    let locked = false;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) < 8) return;
+      e.preventDefault();
+      if (locked) return;
+      locked = true;
+      goTo(activeIndex + (e.deltaY > 0 ? 1 : -1));
+      window.setTimeout(() => { locked = false; }, 550);
+    };
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, [activeIndex, goTo]);
+
+  const railStyle = { right: railRight, bottom: railBottom };
+
+  const buttonClass = "nld-rail-btn pointer-events-auto cursor-pointer";
 
   const buttonSize = isTablet
     ? { width: '56px', height: '56px', minWidth: '56px', minHeight: '56px', touchAction: 'manipulation' as const }
@@ -405,10 +429,6 @@ export const DrawingsFullscreen = ({
               isMuted={isMuted}
               total={videos.length}
               onRef={(el) => onRef(el, idx)}
-              onLikeToggle={(i) => {
-                triggerVibration();
-                setLikedVideos((prev) => ({ ...prev, [i]: !prev[i] }));
-              }}
             />
           ))}
         </div>
@@ -452,23 +472,25 @@ export const DrawingsFullscreen = ({
           <div style={{ width: '44px' }} />
         </div>
 
-        {/* Action rail bar overlaid on content */}
+        {/* Action rail: previous / mute / next (glass) */}
         <div
           className={`absolute flex flex-col items-center z-[200] ${railGap}`}
-          style={{
-            right: railRight,
-            bottom: railBottom,
-            opacity: isUIVisible ? 1 : 0,
-            transition: 'opacity 400ms ease',
-            pointerEvents: isUIVisible ? 'all' : 'none',
-          }}
+          style={railStyle}
         >
-          {/* Mute/unmute button */}
+          {/* Previous (up) */}
           <button
-            onClick={() => {
-              triggerVibration();
-              onToggleMute();
-            }}
+            onClick={() => { triggerVibration(); goTo(activeIndex - 1); }}
+            className={buttonClass}
+            style={buttonSize}
+            aria-label="Previous drawing"
+            disabled={activeIndex === 0}
+          >
+            <ChevronUp size={isTablet ? 28 : 22} className="text-white" />
+          </button>
+
+          {/* Mute / unmute */}
+          <button
+            onClick={() => { triggerVibration(); onToggleMute(); }}
             className={buttonClass}
             style={buttonSize}
             aria-label={isMuted ? 'Unmute video' : 'Mute video'}
@@ -480,35 +502,15 @@ export const DrawingsFullscreen = ({
             )}
           </button>
 
-          {/* Like action */}
+          {/* Next (down) */}
           <button
-            onClick={() => {
-              triggerVibration();
-              setLikedVideos((prev) => ({ ...prev, [activeIndex]: !prev[activeIndex] }));
-            }}
+            onClick={() => { triggerVibration(); goTo(activeIndex + 1); }}
             className={buttonClass}
             style={buttonSize}
-            aria-label="Like video"
+            aria-label="Next drawing"
+            disabled={activeIndex === videos.length - 1}
           >
-            <Heart
-              size={isTablet ? 28 : 22}
-              className={`transition-all duration-150 ${
-                likedVideos[activeIndex] ? 'fill-red-500 text-red-500 scale-110' : 'text-white'
-              }`}
-            />
-          </button>
-
-          {/* Info action */}
-          <button
-            onClick={() => {
-              triggerVibration();
-              setShowInfo(true);
-            }}
-            className={buttonClass}
-            style={buttonSize}
-            aria-label="Video information"
-          >
-            <Info size={isTablet ? 28 : 22} className="text-white" />
+            <ChevronDown size={isTablet ? 28 : 22} className="text-white" />
           </button>
         </div>
 
@@ -559,31 +561,6 @@ export const DrawingsFullscreen = ({
         </div>
       </div>
 
-      {/* Slide up drawer / popup overlay for Info action */}
-      {showInfo && (
-        <div
-          className="absolute inset-0 bg-black/70 flex items-center justify-center z-[300] p-6 text-white cursor-pointer"
-          onClick={() => setShowInfo(false)}
-          style={{ touchAction: 'manipulation' }}
-        >
-          <div
-            className="bg-[var(--bg-elevated)] p-6 rounded-2xl border border-white/10 max-w-sm w-full text-center space-y-4 cursor-default shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-xl font-bold">{videos[activeIndex]?.title || 'Story'}</h3>
-            <p className="text-white/70 text-sm leading-relaxed">
-              {videos[activeIndex]?.desc || 'A short vertical drawing story.'}
-            </p>
-            <button
-              className="px-6 py-2 bg-white/20 hover:bg-white/30 rounded-full font-bold text-sm cursor-pointer transition-colors active:scale-95"
-              style={{ minHeight: '44px', touchAction: 'manipulation' }}
-              onClick={() => setShowInfo(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

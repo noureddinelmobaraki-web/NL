@@ -1,6 +1,8 @@
 // src/home/HomeInteractiveMap.tsx
 import { memo, type ReactNode } from 'react';
 import { Station } from './Station';
+import { HomeCords } from './HomeCords';
+import { CORD_LINKS, CORD_NODES } from './cords.config';
 import type { StationWeight } from './StationWindow';
 import { useAdaptivePerformance } from '../hooks/useAdaptivePerformance';
 
@@ -47,6 +49,7 @@ export const HomeInteractiveMap = memo(function HomeInteractiveMap({
   return (
     <div className="nl-home-map" data-lite={lite ? 'true' : 'false'}>
       <div className="nl-home-spine" aria-hidden="true" />
+      <HomeCords links={CORD_LINKS} nodes={CORD_NODES} />
       {stations.map((s) => (
         <Station
           key={s.id}
@@ -54,7 +57,7 @@ export const HomeInteractiveMap = memo(function HomeInteractiveMap({
           title={TITLES[s.id] ?? s.id}
           weight={WEIGHTS[s.id] ?? 'md'}
           lite={lite}
-          bare={s.bare}
+          bare
         >
           {s.node}
         </Station>

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { audioManager } from '../../audio/audioManager';
 import { VideoData } from './types';
-import { VideoPreview } from './VideoPreview';
+import { DrawingsWindow } from './DrawingsWindow';
 import { DrawingsFullscreen } from './DrawingsFullscreen';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
 
@@ -155,55 +155,14 @@ export const DrawingsPage = ({ onSongPlay }: { onSongPlay: () => void }) => {
   return (
     <section id="drawings-section" className="w-full py-20 px-6 sm:px-12 font-sans overflow-hidden">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
-          <div className="space-y-4">
-            <h2 className="text-6xl sm:text-8xl font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)]">
-              MY DRAWINGS
-            </h2>
-          </div>
-          <div className="h-px flex-1 bg-[var(--border-subtle)] hidden sm:block mx-12 mb-4" />
-          <div className="text-right">
-            <span className="text-[var(--accent-red)] font-mono text-xl">{videos.length}</span>
-            <span className="text-[var(--text-muted)] text-xs uppercase tracking-widest ml-2">Works total</span>
-          </div>
-        </header>
-
-        {/* Closed state: 3-card grid with 9:16 TikTok ratio */}
         {!isOpen && (
-          <div className="space-y-8 mt-10">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-5xl mx-auto justify-center">
-              {videos.slice(0, 3).map((video, i) => (
-                <div
-                  key={video.id}
-                  className="w-full max-w-[320px] mx-auto cursor-pointer relative group overflow-hidden bg-black transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_30px_rgba(0,0,0,0.5)]"
-                  style={{
-                    aspectRatio: '9 / 16',
-                    borderRadius: '16px',
-                    border: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
-                  }}
-                  onClick={() => openGallery(i)}
-                >
-                  <VideoPreview video={video} index={i} />
-                </div>
-              ))}
-            </div>
-
-            <div className="text-center pt-4">
-              <button
-                onClick={() => openGallery(0)}
-                className="manga-button !py-4 !px-8 text-xl bg-[var(--paper-color)] text-[var(--text-primary)] shadow-[8px_8px_0px_var(--manga-shadow-color)] hover:shadow-[12px_12px_0px_var(--manga-shadow-color)] transition-all w-full sm:w-auto"
-                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
-              >
-                <span style={{ fontSize: '1.2rem' }}>▶</span>
-                <span>VIEW ALL {videos.length} STORIES</span>
-                <span style={{ opacity: 0.5, fontSize: '0.85rem' }}>→</span>
-              </button>
-            </div>
-          </div>
+          <DrawingsWindow
+            sources={videos.map((v) => v.src)}
+            onOpen={() => openGallery(0)}
+          />
         )}
 
-        {/* ── Vertical Fullscreen Snap Scroll Gallery (TikTok-style) ─────────────────────────── */}
+        {/* Fullscreen vertical TikTok-style gallery */}
         {isOpen && createPortal(
           <DrawingsFullscreen
             videos={videos}

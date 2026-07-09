@@ -25,8 +25,9 @@ export function useGalleryState() {
     setSelectedImageIndex(prev => (prev !== null ? (prev > 0 ? prev - 1 : ME_BIT_IMAGES.length - 1) : ME_BIT_IMAGES.length - 1));
   }, []);
 
-  const openLens = useCallback(() => {
+  const openLens = useCallback((index: number = 0) => {
     setIsLensGalleryOpen(true);
+    setSelectedImageIndex(index);
   }, []);
 
   const closeLens = useCallback(() => {

@@ -28,6 +28,7 @@ export const Station = memo(function Station({
   const { ref: stageRef, size } = useStageSize<HTMLDivElement>();
   const motionValues = useStationProgress(sectionRef);
   const setActiveStation = useHomeMapState((s) => s.setActiveStation);
+  const isActive = useHomeMapState((s) => s.activeStationId === id);
 
   useMotionValueEvent(motionValues.progress, 'change', (v) => {
     if (v > 0.35 && v < 0.65) setActiveStation(id);
@@ -38,6 +39,7 @@ export const Station = memo(function Station({
       ref={sectionRef}
       id={`station-${id}`}
       data-station={id}
+      data-active={isActive ? 'true' : undefined}
       className="nl-home-station"
       aria-label={title}
     >

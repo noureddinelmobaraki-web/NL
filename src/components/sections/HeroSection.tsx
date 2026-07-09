@@ -41,12 +41,12 @@ export const HeroSection = memo(() => {
       className={`fade-in-section w-full items-[var(--hero-header-align)] hero-layout-grid ${
         isMobile 
           ? 'flex flex-col-reverse gap-[1.5rem]' // MOBILE-ONLY
-          : 'flex flex-col md:flex-row justify-between gap-6'
+          : 'flex flex-col-reverse gap-6'
       }`}
     >
       {/* Outer wrapper playing container chrome */}
       <div 
-        className="hero-window flex-1 w-full flex flex-col overflow-hidden"
+        className="hero-window flex-1 w-full flex flex-col overflow-hidden" data-cord-id="hero-window"
       >
         {/* Title Bar */}
         <div className="hero-titlebar-main">
@@ -146,7 +146,7 @@ export const HeroSection = memo(() => {
       </div>
 
       {/* Unified Profile Card Element */}
-      <div className="hero-profile-container hero-profile-image">
+      <div className="hero-profile-container hero-profile-image" data-cord-id="hero-profile">
         <ResponsiveImage 
           src={activeProfileImg} 
           alt={`${siteData.fullName} — ${siteData.location} based rap artist (${siteData.aliases.join(' / ')})`} 

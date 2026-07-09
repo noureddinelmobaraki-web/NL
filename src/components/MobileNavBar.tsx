@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useDeviceType } from "../hooks/useDeviceType";
 import { Home, Music2, Camera, Aperture, Pause, Play, Gamepad2, Film, Monitor, AudioLines, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -11,7 +10,6 @@ interface MobileNavBarProps {
   onNavigate: (page: string) => void;
   isBgPlaying: boolean;
   onToggleBg: () => void;
-  onMoodTrigger?: () => void; // FIXED: Added onMoodTrigger prop
 }
 
 export const MobileNavBar = ({
@@ -19,30 +17,14 @@ export const MobileNavBar = ({
   onNavigate,
   isBgPlaying,
   onToggleBg,
-  onMoodTrigger,
 }: MobileNavBarProps) => {
   const { isMobile, isTablet } = useDeviceType();
   const { t, i18n } = useTranslation();
   const { openGames, openMovies, openXp, openMusic, openAccounts } = useAppContext();
-  const longPressTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (!isMobile && !isTablet) return null;
 
   const MusicIcon = isBgPlaying ? Pause : Play;
-
-  const handleStart = () => {
-    longPressTimeout.current = setTimeout(() => {
-      // FIXED: Use onMoodTrigger instead of fragile DOM query
-      onMoodTrigger?.();
-    }, 600);
-  };
-
-  const handleEnd = () => {
-    if (longPressTimeout.current) {
-      clearTimeout(longPressTimeout.current);
-      longPressTimeout.current = null;
-    }
-  };
 
   const tabs = [
     { id: 'home',         Icon: Home,      label: t('nav.home') },
@@ -112,11 +94,6 @@ export const MobileNavBar = ({
             }}
             aria-current={isActive ? 'page' : undefined}
             aria-label={tab.label}
-            onMouseDown={isMusic ? handleStart : undefined}
-            onMouseUp={isMusic ? handleEnd : undefined}
-            onMouseLeave={isMusic ? handleEnd : undefined}
-            onTouchStart={isMusic ? handleStart : undefined}
-            onTouchEnd={isMusic ? handleEnd : undefined}
             style={{
               position: 'relative',
               display: 'flex',

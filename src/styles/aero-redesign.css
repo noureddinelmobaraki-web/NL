@@ -1,0 +1,80 @@
+/* ==========================================================================
+   aero-redesign.css — المرحلة 1: إزالة النوافذ البيضاء وإعادة تشكيلها
+   Frutiger Aero خفيف/ذكي. CSS فقط — لا يمسّ أي زر أو محتوى أو معرّف.
+   يُستورد بعد home-map.css ليتجاوز أنماط النافذة الفضّية القديمة.
+   ========================================================================== */
+
+/* 1) إزالة شريط العنوان الأبيض (النقاط + الاسم) من كل المحطّات */
+.nl-home-window-titlebar { display: none !important; }
+
+/* 2) تحويل الإطار الأبيض الفضّي الثقيل إلى لوح زجاجي Aero فاتح وخفيف
+      (نُبقيه فاتحًا حتى يبقى النص الداكن الحالي مقروءًا — بلا كسر تباين) */
+.nl-home-window-glass {
+  border-radius: 24px;
+  color: #12202e;
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.58) 0%,
+      rgba(236, 247, 255, 0.34) 46%,
+      rgba(214, 240, 255, 0.30) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 16px 40px rgba(20, 72, 112, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  /* خفيف: لا ضبابة افتراضيًا (تُفعّل على الديسكتوب القادر فقط أدناه) */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* لمعان علوي رفيع (glass sheen) بدل التدرّج الأبيض الكثيف */
+.nl-home-window-glass::before {
+  height: 42% !important;
+  border-radius: 24px 24px 0 0;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.42),
+    rgba(255, 255, 255, 0)) !important;
+}
+
+/* حافة جسم النافذة تتبع الاستدارة الجديدة */
+.nl-home-window-body { border-radius: 0 0 24px 24px; }
+
+/* 3) ضبابة زجاجية خفيفة — على الأجهزة القادرة فقط (ماوس + شاشة كبيرة) */
+@media (hover: hover) and (min-width: 900px) {
+  .nl-home-map:not([data-lite="true"]) .nl-home-window-glass {
+    backdrop-filter: blur(8px) saturate(1.15);
+    -webkit-backdrop-filter: blur(8px) saturate(1.15);
+  }
+}
+
+/* 4) عُقد الشبكة (Lattice) تنسجم مع الزجاج الفاتح الجديد */
+.nl-lattice-node {
+  border-radius: 18px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.66),
+    rgba(224, 242, 255, 0.42));
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 8px 20px rgba(20, 72, 112, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.nl-lattice-node:hover {
+  box-shadow:
+    0 12px 26px rgba(20, 72, 112, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* 5) العمود الفقري والعُقدة: نبرة أزرق-أكوا Aero بدل الفضّي البارد */
+.nl-home-spine {
+  background: linear-gradient(to bottom,
+    transparent,
+    rgba(120, 200, 255, 0.55) 8%,
+    rgba(90, 175, 240, 0.75) 92%,
+    transparent) !important;
+  box-shadow: 0 0 12px rgba(120, 200, 255, 0.5) !important;
+}
+.nl-home-station::before {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #6fbdf0) !important;
+  box-shadow:
+    0 0 0 4px rgba(120, 200, 255, 0.22),
+    0 0 16px rgba(150, 215, 255, 0.9) !important;
+}

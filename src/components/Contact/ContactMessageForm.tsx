@@ -46,7 +46,7 @@ export const ContactMessageForm = ({
   }, [status]);
 
   return (
-    <>
+    <div className="nl-contact-msgform">
       <div style={currentStyles.toggleRow}>
         <button
           type="button"
@@ -205,6 +205,6 @@ export const ContactMessageForm = ({
           )}
         </div>
       )}
-    </>
+    </div>
   );
 };

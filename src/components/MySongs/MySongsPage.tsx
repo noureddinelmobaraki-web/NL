@@ -1,9 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { preloadBlackHoleTransition, BlackHoleTransition } from '../MusicMood/BlackHoleTransition';
-import { MusicMoodScreen } from '../MusicMood/MusicMoodScreen';
-import { SectionErrorBoundary } from '../SectionErrorBoundary';
-import newMoodIcon from '../../assets/images/regenerated_image_1780500901330.png';
-import { audioManager } from '../../audio/audioManager';
+import { useState, useEffect, useCallback } from 'react';
 import { songSurfaceBus } from '../../audio/songSurfaceBus';
 import { ActiveSong } from '../../types';
 import { useButtonContext } from '../layout/ButtonOrchestrator';
@@ -15,10 +10,6 @@ import { MySongsList } from './MySongsList';
 import {
   SUBTITLE_STYLE_DESKTOP,
   SUBTITLE_STYLE_MOBILE,
-  TAP_HINT_STYLE_DESKTOP,
-  TAP_HINT_TEXT_STYLE_DESKTOP,
-  MOOD_BTN_STYLE_DESKTOP,
-  MOOD_BTN_STYLE_MOBILE,
   TRACKS_CONTAINER_STYLE_MOBILE,
   TRACKS_NUMBER_STYLE_MOBILE,
 } from './MySongsPage.styles';
@@ -31,25 +22,15 @@ export const MySongs = ({
   onSongStop,
   onActiveSongChange,
   onAmbientColorChange,
-  onRegisterMoodTrigger, // FIXED: Expose mood trigger to parent
 }: {
   onSongPlay: () => void;
   onSongStop?: () => void;
   onActiveSongChange: (data: ActiveSong | null) => void;
   onAmbientColorChange?: (color: string | null) => void;
-  onRegisterMoodTrigger?: (fn: () => void) => void;
 }) => {
-  const [isMoodTransitioning, setIsMoodTransitioning] = useState(false);
-  const [isMoodActive, setIsMoodActive] = useState(false);
-  const isMoodActiveRef = useRef(false);
-  useEffect(() => {
-    isMoodActiveRef.current = isMoodActive;
-  }, [isMoodActive]);
-
   // إعلان "سطح أغنية معروض" (My Songs) → النوتش يعرض الاسم فقط هنا.
   useEffect(() => songSurfaceBus.enter(), []);
   const isDesktop = useIsDesktop();
-  const moodAudioCtxRef = useRef<AudioContext | null>(null);
 
   useStructuredData('songs-jsonld.json', 'songs-jsonld');
 
@@ -102,59 +83,9 @@ export const MySongs = ({
     onPrev: playback.handlePrev,
   });
 
-  const handleTriggerMood = useCallback(() => {
-    // FIXED: side effects خارج setState — والشرط check خارج الـ updaters
-    setIsMoodTransitioning(prev => {
-      if (prev) return prev;
-      if (isMoodActiveRef.current) return prev; // إذا كان Mood شغّال أصلاً، لا تبدأ transition جديدة
-      return true;
-    });
-
-    // إنشاء/استئناف AudioContext مرة واحدة فقط
-    if (!moodAudioCtxRef.current || moodAudioCtxRef.current.state === 'closed') {
-      try {
-        moodAudioCtxRef.current = new AudioContext();
-      } catch (err) {
-        console.warn('[MySongsPage] AudioContext creation failed:', err);
-      }
-    }
-    if (moodAudioCtxRef.current?.state === 'suspended') {
-      moodAudioCtxRef.current.resume().catch(() => {});
-    }
-
-    // إيقاف ما يلعب حالياً قبل دخول Mood
-    try {
-      if (playback?.isPlaying) {
-        playback.audioTagRef.current?.pause();
-        onSongStop?.();
-      }
-    } catch {}
-    try { audioManager.pause?.('bg'); } catch {}
-  }, [playback?.isPlaying, playback?.audioTagRef, onSongStop]);
-
   useEffect(() => {
-    onRegisterMoodTrigger?.(handleTriggerMood);
-  }, [onRegisterMoodTrigger, handleTriggerMood]);
-
-  useEffect(() => {
-    if (isMoodActive) {
-      setContext('songs-modal');
-    } else {
-      setContext('page');
-    }
-  }, [isMoodActive, setContext]);
-
-  // Lock body scroll when either mood transition or active mood is running
-  useEffect(() => {
-    if (isMoodTransitioning || isMoodActive) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isMoodTransitioning, isMoodActive]);
+    setContext('page');
+  }, [setContext]);
 
   const { lyricsOpen, setLyricsOpen } = state;
 
@@ -185,30 +116,6 @@ export const MySongs = ({
         transition: 'background 1500ms ease',
       }}
     >
-      {isMoodTransitioning && (
-        <SectionErrorBoundary sectionName="BlackHoleTransition">
-          <BlackHoleTransition
-            onComplete={() => {
-              setIsMoodTransitioning(false);
-              setIsMoodActive(true);
-            }}
-          />
-        </SectionErrorBoundary>
-      )}
-      {isMoodActive && (
-        <SectionErrorBoundary sectionName="MusicMoodScreen">
-          <MusicMoodScreen
-            songs={state.songs}
-            initialSong={state.currentSong}
-            existingAudioCtx={moodAudioCtxRef.current}
-            onExit={() => {
-              setIsMoodActive(false);
-              onSongStop?.();
-              audioManager.unpauseBg();
-            }}
-          />
-        </SectionErrorBoundary>
-      )}
       <audio
         ref={playback.audioTagRef}
         preload="none"
@@ -260,62 +167,6 @@ export const MySongs = ({
               >
                 Curated Soundscape
               </p>
-              {state.songs.length > 0 && (
-                <div className="relative flex items-center">
-                  <div
-                    style={isDesktop ? TAP_HINT_STYLE_DESKTOP : undefined}
-                    className="absolute -left-16 flex items-center animate-pulse hidden sm:flex"
-                  >
-                    <span
-                      style={isDesktop ? TAP_HINT_TEXT_STYLE_DESKTOP : undefined}
-                      className="text-[var(--text-primary)] font-bold text-[10px] uppercase tracking-wider mr-1"
-                    >
-                      Tap
-                    </span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[var(--text-primary)] animate-bounce-horizontal">
-                      <path
-                        d="M5 12H19M19 12L12 5M19 12L12 19"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        style={isDesktop ? {
-                          marginTop: '-12px',
-                          marginLeft: '-8px',
-                          marginRight: '-7px',
-                          marginBottom: '-8px'
-                        } : {}}
-                      />
-                    </svg>
-                  </div>
-                  <div className="relative inline-block">
-                    <button
-                      onMouseEnter={preloadBlackHoleTransition}
-                      onFocus={preloadBlackHoleTransition}
-                      onClick={handleTriggerMood}
-                      className="music-mood-trigger px-4 py-2 border rounded-full text-xs font-mono uppercase text-zinc-400 border-zinc-800 hover:border-violet-500 hover:text-violet-400 transition-all flex items-center gap-2 cursor-pointer group relative overflow-visible shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.5)] bg-black/20 backdrop-blur-md"
-                      style={isDesktop ? MOOD_BTN_STYLE_DESKTOP : MOOD_BTN_STYLE_MOBILE}
-                    >
-                      {/* Mobile Tap Indicator */}
-                      <div className="absolute -top-6 sm:hidden left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce">
-                        <span className="text-[var(--text-primary)] font-bold text-[9px] uppercase tracking-widest bg-black/50 px-2 rounded-full mb-1">Tap</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[var(--text-primary)] rotate-90">
-                          <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                      
-                      <img
-                        src={newMoodIcon}
-                        width={16}
-                        height={16}
-                        className="w-4 h-4 object-contain transition-all group-hover:scale-110"
-                        alt="Music Mood mode"
-                      />
-                      MUSIC MOOD
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           <div className="text-right">

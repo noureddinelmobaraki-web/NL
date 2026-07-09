@@ -25,7 +25,7 @@
  */
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, Suspense, useCallback, useRef, lazy } from "react";
+import { useEffect, useState, Suspense, useCallback, useRef, lazy } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
@@ -95,7 +95,8 @@ import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import { useGalleryState } from "./hooks/useGalleryState";
 import { useAudioController } from "./hooks/useAudioController";
 import { useFadeInOnView } from "./hooks/useFadeInOnView";
-import { MeBitGallery } from './components/MeBit/MeBitGallery';
+import { AeroImageViewer } from './components/AeroGallery/viewer/AeroImageViewer';
+import { AeroGalleryHub, type AeroAlbum } from './components/AeroGallery/AeroGalleryHub';
 import { ButtonProvider } from "./components/layout/ButtonOrchestrator";
 const AudioVisualizer = lazyWithRetry(
   () => import('./components/AudioVisualizer').then(m => ({ default: m.AudioVisualizer })),
@@ -103,7 +104,6 @@ const AudioVisualizer = lazyWithRetry(
 );
 import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
-import { StreamingSection } from './components/sections/StreamingSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
 import { useTubeStore } from './features/youtube/tubeStore';
 import SongVideoTether from './features/songVideo/SongVideoTether';
@@ -112,7 +112,8 @@ import './styles/youtube-page.css';
 import { HomeInteractiveMap } from './home/HomeInteractiveMap';
 import { StationLattice, type LatticeItem } from './home/StationLattice';
 import { STREAMING_PLATFORMS, SOCIAL_CHANNELS } from './config/streaming';
-import { getThemedImage } from "./constants/assets";
+import { SOCIAL_ICON_URLS } from './config/socialIcons';
+import { getThemedImage, ASSETS } from "./constants/assets";
 import { audioManager } from "./audio/audioManager";
 import { OsClockDisplay } from "./components/OsWindow";
 import { FloatingControls } from "./components/layout/FloatingControls";
@@ -376,12 +377,11 @@ function MainApp() {
     isLensGalleryOpen,
     selectedImageIndex,
     setSelectedImageIndex,
-    nextImage,
-    prevImage,
     openLens,
     closeLens,
     getActiveContext,
   } = useGalleryState();
+  const [hubAlbum, setHubAlbum] = useState<AeroAlbum | null>(null);
 
   const activeModalContext = getActiveContext() || "page";
   const isAnyModalOpen = getActiveContext() !== null;
@@ -390,13 +390,11 @@ function MainApp() {
   const {
     audioRef,
     isPlaying,
-    isMeBitPlaying,
     toggleAudio,
     handleSongPlay,
     handleSongStop,
     handleGalleryOpen,
     handleGalleryClose,
-    toggleMeBitAudio,
     ensureMeBitLoaded,
   } = useAudioController({
     isLensGalleryOpen,
@@ -443,14 +441,7 @@ function MainApp() {
     return () => window.removeEventListener('keydown', handler);
   }, [onKeyboardShortcut]);
 
-  // FIXED: Issue #1 — Shared mood trigger state
-  const moodTriggerRef = useRef<(() => void) | null>(null);
-  const handleRegisterMoodTrigger = useCallback((fn: () => void) => {
-    moodTriggerRef.current = fn;
-  }, []);
-  const handleMoodTrigger = useCallback(() => {
-    moodTriggerRef.current?.();
-  }, []);
+
 
   const renderClock = () => {
     if (resolvedTheme !== 'light') return null;
@@ -530,18 +521,41 @@ function MainApp() {
     };
   }, []);
 
-  const streamingItems: LatticeItem[] = STREAMING_PLATFORMS.map((p) => {
-    const Icon = p.icon;
-    return { id: p.id, label: p.name, href: p.url, color: p.color, content: <Icon size={20} aria-hidden="true" /> };
-  });
-  const socialItems: LatticeItem[] = SOCIAL_CHANNELS.map((s) => {
-    const Icon = s.icon;
-    return { id: s.id, label: s.name, href: s.url, color: s.color, content: <Icon size={20} aria-hidden="true" /> };
-  });
-  const galleryItems: LatticeItem[] = [
-    { id: 'me-bit', label: 'me bit', onClick: () => scrollToSection('me-bit-gallery'), content: <span>▣</span> },
-    { id: 'lens', label: 'lens', onClick: () => scrollToSection('lens-section'), content: <span>◎</span> },
-  ];
+  const streamingItems: LatticeItem[] = STREAMING_PLATFORMS.map((p) => ({
+    id: p.id,
+    label: p.name,
+    href: p.url,
+    color: p.color,
+    content: (
+      <img
+        className="nl-lattice-img"
+        src={SOCIAL_ICON_URLS[p.id]}
+        alt=""
+        width={250}
+        height={250}
+        loading="lazy"
+        decoding="async"
+      />
+    ),
+  }));
+  const socialItems: LatticeItem[] = SOCIAL_CHANNELS.map((s) => ({
+    id: s.id,
+    label: s.name,
+    href: s.url,
+    color: s.color,
+    content: (
+      <img
+        className="nl-lattice-img"
+        src={SOCIAL_ICON_URLS[s.id]}
+        alt=""
+        width={250}
+        height={250}
+        loading="lazy"
+        decoding="async"
+      />
+    ),
+  }));
+
 
   return (
     <ButtonProvider>
@@ -644,18 +658,25 @@ function MainApp() {
         <div className="min-h-screen w-full relative flex flex-col items-center py-10 px-4 sm:px-8 md:px-10 lg:px-10 overflow-x-hidden">
           <audio id="bg-audio" ref={audioRef} loop preload="auto" crossOrigin="anonymous" aria-hidden="true" />
 
-          <MeBitGallery
-            isOpen={isGalleryOpen}
-            images={ME_BIT_IMAGES}
-            selectedIndex={selectedImageIndex}
-            isMeBitPlaying={isMeBitPlaying}
-            isMobile={isMobile}
-            isTablet={isTablet}
-            onClose={handleGalleryClose}
-            onNext={nextImage}
-            onPrev={prevImage}
-            onSelectIndex={setSelectedImageIndex}
-            onToggleAudio={toggleMeBitAudio}
+          <AeroImageViewer
+            open={isGalleryOpen || isLensGalleryOpen}
+            album={isLensGalleryOpen ? 'lens' : 'mebit'}
+            images={isLensGalleryOpen ? ASSETS.profile.lens : ME_BIT_IMAGES}
+            startIndex={selectedImageIndex ?? 0}
+            onClose={() => { if (isLensGalleryOpen) closeLens(); else handleGalleryClose(); } }
+          />
+
+          <AeroGalleryHub
+            album={hubAlbum}
+            meBitImages={ME_BIT_IMAGES}
+            lensImages={ASSETS.profile.lens}
+            isGalleryOpen={isGalleryOpen}
+            isLensGalleryOpen={isLensGalleryOpen}
+            onSwitchAlbum={setHubAlbum}
+            onClose={() => { setHubAlbum(null); handleGalleryClose(); closeLens(); }}
+            onOpenMeBit={handleGalleryOpen}
+            onOpenLens={(index?: number) => openLens(index ?? 0)}
+            onPrefetchMeBit={ensureMeBitLoaded}
           />
 
           <motion.div 
@@ -668,7 +689,7 @@ function MainApp() {
             <AppNavGrid
               resolvedTheme={resolvedTheme}
               onScrollToSection={scrollToSection}
-              onOpenLens={openLens}
+              onOpenLens={() => setHubAlbum('lens')}
             />
 
             <div id="main-content" className="flex flex-col gap-14" tabIndex={-1}>
@@ -679,9 +700,8 @@ function MainApp() {
                     id: 'streaming',
                     node: (
                       <div className="nl-home-hub">
-                        <StreamingSection />
-                        <StationLattice items={streamingItems} lite={false} />
-                        <StationLattice items={socialItems} lite={false} />
+                        <StationLattice items={streamingItems} lite={false} cordId="streaming-hub" />
+                        <StationLattice items={socialItems} lite={false} cordId="social-hub" />
                       </div>
                     ),
                   },
@@ -699,14 +719,11 @@ function MainApp() {
                     id: 'gallery',
                     node: (
                       <div className="nl-home-hub">
-                        <StationLattice items={galleryItems} lite={false} />
                         <Suspense fallback={<SkeletonSection type="drawings" />}>
                           <GallerySection
                             resolvedTheme={resolvedTheme}
-                            isLensGalleryOpen={isLensGalleryOpen}
-                            onGalleryOpen={handleGalleryOpen}
-                            onLensOpen={openLens}
-                            onLensClose={closeLens}
+                            onGalleryOpen={() => setHubAlbum('mebit')}
+                            onLensOpen={() => setHubAlbum('lens')}
                             onPrefetchMeBit={ensureMeBitLoaded}
                           />
                         </Suspense>
@@ -724,7 +741,6 @@ function MainApp() {
                               onSongStop={handleSongStop}
                               onActiveSongChange={setActiveSong}
                               onAmbientColorChange={setAmbientColor}
-                              onRegisterMoodTrigger={handleRegisterMoodTrigger}
                             />
                           </Suspense>
                         </SectionErrorBoundary>
@@ -751,6 +767,7 @@ function MainApp() {
                   },
                   {
                     id: 'drawings',
+                    bare: true,
                     node: (
                       <section
                         id="drawings-section"
@@ -789,7 +806,6 @@ function MainApp() {
               audioManager.unpauseBg();
             }
           }}
-          onMoodTrigger={handleMoodTrigger}
         />
       )}
       {tubeOpen ? (

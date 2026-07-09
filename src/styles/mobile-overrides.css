@@ -404,3 +404,274 @@ body.bh-transitioning {
 }
 }
 
+/* ========================================================================== */
+/* DRAWINGS — Frutiger Aero glass action rail (mute + up/down arrows)         */
+/* Applies on all viewports. Buttons keep their inline width/height.          */
+/* ========================================================================== */
+.nld-rail-btn {
+  position: relative;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.15);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 10px 20px -10px rgba(0, 0, 0, 0.35),
+    inset 0 4px 10px rgba(255, 255, 255, 0.25),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: transform 0.15s ease, background 0.2s ease, opacity 0.2s ease;
+}
+.nld-rail-btn:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+.nld-rail-btn:active {
+  transform: scale(0.92);
+}
+.nld-rail-btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* ========================================================================== */
+/* DRAWINGS — Home glass preview window (square, cross-fading posters)         */
+/* ========================================================================== */
+.nld-window-title {
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  font-size: clamp(28px, 6vw, 46px);
+  line-height: 1;
+  color: var(--text-primary);
+}
+.nld-window-hint {
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.nld-glass-window {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 20px 45px -14px rgba(0, 0, 0, 0.5),
+    inset 0 4px 12px rgba(255, 255, 255, 0.22),
+    inset 0 -8px 18px rgba(0, 0, 0, 0.16);
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.35s ease;
+  cursor: pointer;
+  outline: none;
+}
+.nld-glass-window:hover,
+.nld-glass-window:focus-visible {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow:
+    0 32px 60px -14px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.45),
+    inset 0 4px 12px rgba(255, 255, 255, 0.32);
+}
+.nld-glass-window:active {
+  transform: translateY(-2px) scale(1.01);
+}
+.nld-window-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.nld-window-img-front {
+  animation: nldPosterIn 700ms ease forwards;
+}
+@keyframes nldPosterIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.nld-window-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.55) 26%,
+    rgba(0, 0, 0, 0) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+.nld-window-gloss {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 14%),
+    linear-gradient(115deg, rgba(255, 255, 255, 0) 32%, rgba(255, 255, 255, 0.4) 46%, rgba(255, 255, 255, 0.06) 52%, rgba(255, 255, 255, 0) 62%);
+  mix-blend-mode: screen;
+  opacity: 0.75;
+}
+.nld-window-refract {
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 40% at 30% 18%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(125deg, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0) 60%);
+  filter: url(#nld-glass-refract);
+  mix-blend-mode: screen;
+  opacity: 0.55;
+}
+.nld-window-svg {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.nld-window-cta {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  opacity: 0;
+  background: rgba(0, 0, 0, 0.28);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  transition: opacity 0.3s ease;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.nld-glass-window:hover .nld-window-cta,
+.nld-glass-window:focus-visible .nld-window-cta {
+  opacity: 1;
+}
+.nld-window-cta svg {
+  width: 34px;
+  height: 34px;
+  padding: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* ==========================================================================
+   Phase 6F — CONTACT: frameless faded window + compact glass chips
+   ========================================================================== */
+/* Remove the faded "manga-panel" window around the contact block so it matches
+   the other frameless Home sections. !important beats the inline border/shadow
+   set on the <form>. All buttons/behaviour stay intact. */
+.nl-contact-frameless {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  padding: 0 !important;
+}
+/* hide the little macOS traffic-light dots that used to sit on that window */
+.nl-contact-frameless > div[aria-hidden="true"]:first-child { display: none; }
+
+/* the three contact methods now stack vertically so they can hang from ropes */
+.nl-contact-methods {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(30px, 6vh, 58px);
+}
+/* compact Frutiger-glass chip (~1/5 of the old card footprint) */
+.nl-contact-chip {
+  width: clamp(150px, 46vw, 186px);
+  padding: 9px 12px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(14px) saturate(170%);
+  backdrop-filter: blur(14px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-top-color: rgba(255, 255, 255, 0.55);
+  border-left-color: rgba(255, 255, 255, 0.42);
+  box-shadow:
+    0 14px 30px -12px rgba(0, 0, 0, 0.5),
+    inset 0 3px 9px rgba(255, 255, 255, 0.22),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.14);
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.3s ease;
+}
+.nl-contact-chip:hover,
+.nl-contact-chip:focus-visible {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow:
+    0 22px 40px -12px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.4),
+    inset 0 3px 9px rgba(255, 255, 255, 0.3);
+}
+.nl-contact-chip:active { transform: translateY(-1px) scale(1.01); }
+
+/* ==========================================================================
+   Phase 6F — DRAWINGS: interactive elastic pendulum rig
+   ========================================================================== */
+.nld-pendulum {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 2px;
+}
+.nld-pendulum__arm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: top center;
+  will-change: transform;
+}
+.nld-pendulum__pivot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #b8c6d8);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.85), 0 1px 3px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+.nld-pendulum__rope {
+  width: 3px;
+  height: 92px;
+  margin-top: -2px;
+  border-radius: 3px;
+  transform-origin: top center;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.7));
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.6);
+  will-change: transform;
+}
+.nld-pendulum__bob { will-change: transform; }
+/* the window is grab-able; vertical touch still scrolls the page (pan-y) */
+.nld-pendulum .nld-glass-window {
+  cursor: grab;
+  touch-action: pan-y;
+}
+.nld-pendulum .nld-glass-window:active { cursor: grabbing; }
+/* when the drawings section is active, the rope glows red<->gold like the ropes */
+.nl-home-station[data-active="true"] .nld-pendulum__rope,
+.nl-home-station[data-active="true"] .nld-pendulum__pivot {
+  animation: nl-line-halo-cycle 2.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nl-home-station[data-active="true"] .nld-pendulum__rope,
+  .nl-home-station[data-active="true"] .nld-pendulum__pivot { animation: none; }
+}
+
+

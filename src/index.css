@@ -24,7 +24,7 @@
 @import "./styles/components/streaming.css" layer(components);
 @import "./styles/components/song-card.css" layer(components);
 @import "./styles/components/sw-toast.css" layer(components);
-@import "./styles/components/musicMood.css" layer(components);
+/* Music Mood feature removed — musicMood.css deleted */
 @import "./styles/components/notch-aero.css" layer(components);
 @import "./styles/components/mobile-gallery.css" layer(components);
 @import "./styles/components/xp.css" layer(components);
