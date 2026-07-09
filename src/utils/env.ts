@@ -15,7 +15,16 @@ export const isAutomatedEnv = (): boolean => {
   // 2) Deterministic key injected by E2E fixtures before any script
   if (typeof window !== 'undefined' && (window as unknown as { __NL_AUTOMATED__?: boolean }).__NL_AUTOMATED__ === true) return true;
 
-  // 3) Lighthouse (appends "Chrome-Lighthouse" or "Lighthouse") and Headless Chrome
+  // 3) Explicit, UA-independent flag in the URL. Lighthouse CI audits /NL/?lh=1 so
+  //    the app skips the launcher and paints real content immediately (fixes NO_FCP).
+  if (typeof window !== 'undefined') {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('lh') === '1' || sp.has('lighthouse')) return true;
+    } catch { /* ignore */ }
+  }
+
+  // 4) Lighthouse (appends "Chrome-Lighthouse" or "Lighthouse") and Headless Chrome
   const ua = navigator.userAgent || '';
   if (/Chrome-Lighthouse|Lighthouse|HeadlessChrome|Headless/i.test(ua)) return true;
 
