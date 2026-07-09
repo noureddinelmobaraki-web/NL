@@ -464,8 +464,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  transform-origin: top center;
-  animation: nl-name-sway 4.4s ease-in-out infinite;
 }
 .nl-lattice-strings {
   display: block;
@@ -495,22 +493,9 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-/* Give each hanging name room + stagger the sway so they don't move in lockstep. */
+/* Give each hanging name room. Names are static (no sway) for light mobile perf. */
 .nl-lattice-row { gap: 22px 18px; }
-.nl-lattice-node-unit:nth-child(2n) .nl-lattice-hanger { animation-duration: 5.1s; animation-delay: -1.2s; }
-.nl-lattice-node-unit:nth-child(3n) .nl-lattice-hanger { animation-duration: 4.0s; animation-delay: -2.4s; }
 
-@keyframes nl-name-sway {
-  0%, 100% { transform: translateY(0) rotate(-1.8deg); }
-  50%      { transform: translateY(2px) rotate(1.8deg); }
-}
-
-/* Strings glow red<->gold together with the rays when the section is active. */
-.nl-home-station[data-active="true"] .nl-lattice-strings line {
-  animation: nl-line-halo-cycle 2.6s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nl-lattice-hanger,
-  .nl-home-station[data-active="true"] .nl-lattice-strings line { animation: none; }
-}
+/* Phase 6H — hanging names are fully STATIC (no sway, no glow) for light
+   mobile performance: just icon + name, like an ordinary page. The 4 thin
+   strings remain as static hairlines. */

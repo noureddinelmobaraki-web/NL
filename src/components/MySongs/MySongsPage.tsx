@@ -108,11 +108,7 @@ export const MySongs = ({
       role="region"
       className="w-full py-24 px-6 sm:px-12 font-sans selection:bg-indigo-500/30 relative"
       style={{
-        background: `radial-gradient(ellipse at 50% 0%, rgba(${state.ambientColor}, 0.25) 0%, transparent 65%), var(--bg-glass)`,
-        backdropFilter: 'blur(14px) saturate(160%)',
-        WebkitBackdropFilter: 'blur(14px) saturate(160%)',
-        borderTop: '1px solid var(--border-subtle)',
-        borderBottom: '1px solid var(--border-subtle)',
+        background: `radial-gradient(ellipse at 50% 0%, rgba(${state.ambientColor}, 0.16) 0%, transparent 70%)`,
         transition: 'background 1500ms ease',
       }}
     >

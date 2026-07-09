@@ -98,10 +98,6 @@ import { useFadeInOnView } from "./hooks/useFadeInOnView";
 import { AeroImageViewer } from './components/AeroGallery/viewer/AeroImageViewer';
 import { AeroGalleryHub, type AeroAlbum } from './components/AeroGallery/AeroGalleryHub';
 import { ButtonProvider } from "./components/layout/ButtonOrchestrator";
-const AudioVisualizer = lazyWithRetry(
-  () => import('./components/AudioVisualizer').then(m => ({ default: m.AudioVisualizer })),
-  'AudioVisualizer',
-);
 import { isLowEndDevice, prefersReducedMotion } from "./utils/perf";
 import { HeroSection } from './components/sections/HeroSection';
 import { HighlightsSection } from './components/sections/HighlightsSection';
@@ -570,9 +566,6 @@ function MainApp() {
         <span lang="ar">Skip to content</span> / <span lang="en">Skip to main content</span>
       </a>
       
-      <Suspense fallback={null}>
-        <AudioVisualizer audioRef={audioRef} isPlaying={isPlaying} />
-      </Suspense>
 
       {loaded && (
         <>
