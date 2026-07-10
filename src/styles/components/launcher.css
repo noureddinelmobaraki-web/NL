@@ -81,6 +81,9 @@
 .nl-node-anchor { position: absolute; top: 0; left: 0; z-index: 12; will-change: transform; }
 
 /* ---- The glass pill button (hugs its text; never a window) ---- */
+/* ---- New glossy pill shape (Uiverse-by-marcelodolza look) ----
+   Only the *appearance* changed: same layout box, same sizes (l0/l1/l2),
+   same DOM, same framer-motion behaviour. */
 .nl-node {
   position: relative;
   display: inline-flex; align-items: center; gap: 10px;
@@ -89,24 +92,51 @@
   border-radius: 999px;
   white-space: nowrap;
   cursor: pointer;
-  color: #fff;
-  background: linear-gradient(150deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.05) 55%, rgba(255,255,255,0.02) 100%);
-  border: 1px solid rgba(255,255,255,0.30);
+  color: rgba(255,255,255,0.88);
+  background-color: #080808;
+  border: 1px solid rgba(255,255,255,0.10);
   box-shadow:
-    inset 0 1px 1px rgba(255,255,255,0.55),
-    inset 0 -8px 16px rgba(10,30,50,0.35),
-    0 12px 30px rgba(0,0,0,0.45);
-  backdrop-filter: blur(16px) saturate(1.35);
-  -webkit-backdrop-filter: blur(16px) saturate(1.35);
+    inset 0 0.3rem 0.9rem rgba(255,255,255,0.30),
+    inset 0 -0.1rem 0.3rem rgba(0,0,0,0.70),
+    inset 0 -0.4rem 0.9rem rgba(255,255,255,0.50),
+    0 3rem 3rem rgba(0,0,0,0.30),
+    0 1rem 1rem -0.6rem rgba(0,0,0,0.80);
   overflow: hidden;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
 }
-/* frutiger-aero top gloss */
+/* soft inner dome highlight */
 .nl-node::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 52%;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.38), rgba(255,255,255,0));
+  content: ""; position: absolute;
+  left: -15%; right: -15%; top: -100%; bottom: 25%;
+  border-radius: 50%;
+  background-color: rgba(255,255,255,0.12);
   pointer-events: none;
+  transition: all 0.3s ease;
 }
+/* top sheen */
+.nl-node::after {
+  content: ""; position: absolute;
+  left: 6%; right: 6%; top: 12%; bottom: 40%;
+  border-radius: 22px 22px 0 0;
+  box-shadow: inset 0 10px 8px -10px rgba(255,255,255,0.80);
+  background: linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+/* keep icon/label/caret above the gloss layers */
+.nl-node-ico, .nl-node-text, .nl-node-caret { position: relative; z-index: 2; }
+/* hover / press sheen (framer-motion still drives the scale) */
+.nl-node:hover {
+  box-shadow:
+    inset 0 0.3rem 0.5rem rgba(255,255,255,0.40),
+    inset 0 -0.1rem 0.3rem rgba(0,0,0,0.70),
+    inset 0 -0.4rem 0.9rem rgba(255,255,255,0.70),
+    0 3rem 3rem rgba(0,0,0,0.30),
+    0 1rem 1rem -0.6rem rgba(0,0,0,0.80);
+}
+.nl-node:hover::before { transform: translateY(-5%); }
+.nl-node:hover::after { opacity: 0.4; transform: translateY(5%); }
+.nl-node:active::after { opacity: 0.5; }
 .nl-node.is-active {
   border-color: rgba(122,240,180,0.6);
   box-shadow:
@@ -380,5 +410,11 @@ body.low-perf .nl-topbar-btn {
   .nl-node.nl-tint-midnight { animation: none !important; }
   .nl-tether-glow,
   .nl-tether-core { animation: none !important; filter: none !important; }
+}
+
+/* === New glossy-black node pill: keep it on touch / low-perf too (does NOT touch topbar/sound buttons) === */
+body.low-perf .nl-node { background: #080808; }
+@media (hover: none) {
+  .nl-node { background: #080808; }
 }
 
