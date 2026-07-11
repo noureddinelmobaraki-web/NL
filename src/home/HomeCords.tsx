@@ -1,8 +1,10 @@
 // src/home/HomeCords.tsx
 // Dynamic white "rope" cords drawn on ONE SVG overlay above the Home map.
 // Every endpoint is anchored to REAL DOM positions (getBoundingClientRect) so the
-// ropes stay correctly attached at ANY screen size. Recomputed on resize, scroll,
-// font/image load and layout change (ResizeObserver).
+// ropes stay correctly attached at ANY screen size. Recomputed on resize,
+// font/image load and layout change (ResizeObserver). Viewport scrolling alone
+// does not change coordinates relative to the Home map and must not trigger a
+// full geometry pass.
 //
 // Only the ACTIVE station (the section currently in view) animates: its node is a
 // soft luminous red point and a blood-red highlight travels A->B along its cords.
@@ -195,12 +197,21 @@ export const HomeCords = memo(function HomeCords({ links, nodes }: HomeCordsProp
     const svg = svgRef.current;
     const root = svg?.parentElement ?? null;
     const ro = new ResizeObserver(schedule);
+    const mo = new MutationObserver(schedule);
     if (root) ro.observe(root);
     const targetIds = new Set<string>();
     links.forEach((l) => {
       if (l.kind === 'chain') {
         const c = root?.querySelector(`#station-${l.station} ${l.containerSel}`);
-        if (c) ro.observe(c);
+        if (c) {
+          ro.observe(c);
+          mo.observe(c, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-song-revealed'],
+          });
+        }
         return;
       }
       [l.from, l.to].forEach((a) => {
@@ -213,7 +224,6 @@ export const HomeCords = memo(function HomeCords({ links, nodes }: HomeCordsProp
     });
 
     window.addEventListener('resize', schedule);
-    window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('load', schedule);
     const timers = [120, 400, 1000, 2200].map((ms) => window.setTimeout(schedule, ms));
     if (document.fonts && document.fonts.ready) {
@@ -223,8 +233,8 @@ export const HomeCords = memo(function HomeCords({ links, nodes }: HomeCordsProp
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      mo.disconnect();
       window.removeEventListener('resize', schedule);
-      window.removeEventListener('scroll', schedule);
       window.removeEventListener('load', schedule);
       timers.forEach((t) => clearTimeout(t));
     };

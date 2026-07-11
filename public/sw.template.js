@@ -4,6 +4,13 @@ const CACHE_IMAGES = `nl-images-${VERSION}`;
 const CACHE_HLS = `nl-hls-${VERSION}`;
 const CACHE_AUDIO = `nl-audio-${VERSION}`;
 const CACHE_FONTS = `nl-fonts-${VERSION}`;
+const VERSIONED_CACHE_PREFIXES = [
+  'nl-shell-',
+  'nl-images-',
+  'nl-hls-',
+  'nl-audio-',
+  'nl-fonts-',
+];
 // Persistent library for user-saved songs. NOT version-suffixed, so it
 // survives redeploys. Never trimmed (not present in LIMITS).
 const CACHE_SAVED = 'nl-saved-audio';
@@ -38,15 +45,22 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    // Cleanup old caches
+    // Delete only stale, versioned caches owned by this service worker.
+    // Cache Storage is origin-wide, so unrelated project caches and the
+    // persistent NL caches (nl-saved-audio / nl-img-v1) must be preserved.
+    const currentCaches = new Set([
+      CACHE_SHELL,
+      CACHE_IMAGES,
+      CACHE_HLS,
+      CACHE_AUDIO,
+      CACHE_FONTS,
+    ]);
     const keys = await caches.keys();
-    await Promise.all(
-      keys.map((key) => {
-        if (![CACHE_SHELL, CACHE_IMAGES, CACHE_HLS, CACHE_AUDIO, CACHE_FONTS, CACHE_SAVED].includes(key)) {
-          return caches.delete(key);
-        }
-      })
+    const staleOwnedCaches = keys.filter((key) =>
+      VERSIONED_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)) &&
+      !currentCaches.has(key)
     );
+    await Promise.all(staleOwnedCaches.map((key) => caches.delete(key)));
 
     // Pre-warm critical CDN images in background
     const CDN_PREWARM = [

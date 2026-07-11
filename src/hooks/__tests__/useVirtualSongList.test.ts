@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useVirtualSongList } from '../useVirtualSongList';
 
@@ -21,6 +21,10 @@ class MockIntersectionObserver {
 beforeEach(() => {
   (global as any).IntersectionObserver = MockIntersectionObserver;
   MockIntersectionObserver.instances = [];
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('useVirtualSongList', () => {
@@ -60,5 +64,14 @@ describe('useVirtualSongList', () => {
 
     act(() => { result.current.observe(1, null); });
     expect(obs.observed).not.toContain(el);
+  });
+
+  it('does not reveal an unobserved card after an arbitrary timeout', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useVirtualSongList({ initialVisibleCount: 0 }));
+    const el = document.createElement('div');
+    act(() => { result.current.observe(99, el); });
+    act(() => { vi.advanceTimersByTime(3000); });
+    expect(result.current.isRevealed(99)).toBe(false);
   });
 });

@@ -116,11 +116,13 @@ export function SongListLite(props: SongListProps) {
         <div className="nl-songs-lite__grid" role="list">
           {filteredSongs.map((song, i) => {
             const isActive = song.id === activeId;
+            const isRevealed = isCardRevealed ? isCardRevealed(song.id) : true;
             return (
               <div
                 key={song.id}
                 role="listitem"
                 className={`nl-song-cell${isActive ? ' is-active' : ''}`}
+                data-song-revealed={isRevealed ? 'true' : 'false'}
               >
                 <SongCardLite
                   song={song}
@@ -148,8 +150,10 @@ export function SongListLite(props: SongListProps) {
                   currentLyricLine={isActive ? currentLyricLine : null}
                   onAmbientColorChange={onAmbientColorChange}
                   observeCard={observeCard}
-                  isRevealed={isCardRevealed ? isCardRevealed(song.id) : true}
+                  isRevealed={isRevealed}
                   onHoverPrefetchLrc={onHoverPrefetchLrc}
+                  resolvedTheme={theme}
+                  isMobileViewport={isMobile}
                 />
               </div>
             );

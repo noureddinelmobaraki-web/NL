@@ -41,6 +41,10 @@ export function useVirtualSongList(
 
   // sticky set of revealed ids
   const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
+  const revealedRef = useRef(revealed);
+  const supportsObserverRef = useRef(
+    typeof window !== 'undefined' && 'IntersectionObserver' in window,
+  );
   const observerRef = useRef<IntersectionObserver | null>(null);
   const elementToIdRef = useRef<WeakMap<Element, string>>(new WeakMap());
   const idToElementRef = useRef<Map<string, HTMLElement>>(new Map());
@@ -53,17 +57,11 @@ export function useVirtualSongList(
 
   // Initialize observer once
   useEffect(() => {
-    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) {
-      // SSR / very old browsers: reveal كل شيء
-      setRevealed((prev) => {
-        const next = new Set(prev);
-        idToElementRef.current.forEach((_, id) => {
-          next.add(id);
-        });
-        return next;
-      });
-      return;
-    }
+    revealedRef.current = revealed;
+  }, [revealed]);
+
+  useEffect(() => {
+    if (!supportsObserverRef.current) return;
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -113,20 +111,6 @@ export function useVirtualSongList(
     return () => cancelAnimationFrame(id);
   }, [initialVisibleCount]);
 
-  // ── Hard safety net: اكشف كل الكروت بعد 2.5s مهما كان ──
-  // يطابق سلوك useFadeInOnView. يمنع "المساحة الفارغة" إذا فشل الـ observer.
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      setRevealed((prev) => {
-        const next = new Set(prev);
-        observeOrderRef.current.forEach((id) => next.add(id));
-        idToElementRef.current.forEach((_, id) => next.add(id));
-        return next;
-      });
-    }, 2500);
-    return () => window.clearTimeout(t);
-  }, []);
-
   // Safe effect to trigger callbacks for revealed IDs asynchronously
   const lastTriggeredRef = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -156,9 +140,19 @@ export function useVirtualSongList(
     if (!observeOrderRef.current.includes(sid)) {
       observeOrderRef.current.push(sid);
     }
-    if (revealed.has(sid)) return;
+    if (!supportsObserverRef.current) {
+      setRevealed((prev) => {
+        if (prev.has(sid)) return prev;
+        const next = new Set(prev);
+        next.add(sid);
+        revealedRef.current = next;
+        return next;
+      });
+      return;
+    }
+    if (revealedRef.current.has(sid)) return;
     observerRef.current?.observe(el);
-  }, [revealed]);
+  }, []);
 
   const isRevealed = useCallback(
     (id: number | string) => {

@@ -22,10 +22,13 @@ import type { SongCardProps } from './SongCard';
 import { SongCardHeaderAero } from './SongCardHeaderAero';
 import { SongCardControls } from './SongCardControls';
 import { useSongLyricsStore } from '../../features/songLyrics';
-import { useDeviceType } from '../../hooks/useDeviceType';
-import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 
 const noop = () => {};
+
+interface SongCardLiteProps extends SongCardProps {
+  resolvedTheme: string;
+  isMobileViewport: boolean;
+}
 
 /** True if the event originated inside the transport/lyrics area or a control. */
 function isInteractiveTarget(target: EventTarget | null): boolean {
@@ -37,7 +40,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   );
 }
 
-function SongCardLiteInner(props: SongCardProps) {
+function SongCardLiteInner(props: SongCardLiteProps) {
   const {
     song,
     index,
@@ -57,10 +60,12 @@ function SongCardLiteInner(props: SongCardProps) {
     observeCard,
     isRevealed,
     onHoverPrefetchLrc,
+    resolvedTheme,
+    isMobileViewport,
   } = props;
 
-  const theme = useResolvedTheme();
-  const { isMobile } = useDeviceType();
+  const theme = resolvedTheme;
+  const isMobile = isMobileViewport;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const revealed = isRevealed !== false;
 

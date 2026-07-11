@@ -90,10 +90,10 @@ describe('SongCard — smoke', () => {
     unmount();
   });
 
-  it('renders the "lyrics not available" placeholder when song.lrc is null AND lyrics open', () => {
-    const unmount = mount({ isActive: true, isLyricsOpen: true });
-    // The placeholder text appears either inline or in the popover wrapper.
-    expect(container.textContent).toContain('Lyrics unavailable');
+  it('does not render the lyrics button when song.lrc is null', () => {
+    const unmount = mount({ isActive: true });
+    const lyricsBtn = container.querySelector('.lyrics-btn-compact');
+    expect(lyricsBtn).toBeFalsy();
     unmount();
   });
 });

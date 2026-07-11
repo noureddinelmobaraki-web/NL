@@ -15,6 +15,17 @@ interface SongApiRow {
   bgIndex?: number;
 }
 
+export function shouldUseAggressiveSongPreload(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const mobile = window.matchMedia('(max-width: 767px)').matches;
+  const saveData = navigator.connection?.saveData === true;
+  const slowNetwork = navigator.connection?.effectiveType === '2g'
+    || navigator.connection?.effectiveType === 'slow-2g';
+  const lowEnd = (navigator.hardwareConcurrency ?? 4) <= 2
+    || (navigator.deviceMemory ?? 4) <= 1;
+  return !mobile && !saveData && !slowNetwork && !lowEnd;
+}
+
 export function useSongsData(opts: { visibleIds?: Set<number | string> } = {}) {
   const [songs, setSongs] = useState<Song[]>([]);
   const [error, setError] = useState(false);
@@ -62,6 +73,7 @@ export function useSongsData(opts: { visibleIds?: Set<number | string> } = {}) {
               if (!mounted || !observer || !entries[0].isIntersecting) return;
               observer.disconnect();
               observer = null;
+              if (!shouldUseAggressiveSongPreload()) return;
               localTimers.push(setTimeout(() => {
                 if (!mounted) return;
                 mapped.slice(0, 3).forEach((s) => preloadSong(s.url));

@@ -42,6 +42,9 @@ export const MySongs = ({
 
   const { prefetchLrc } = useLrcHoverPreload(state.songs);
 
+  // Card reveal is only a rendering/HLS-priority signal. Do not turn viewport
+  // observation (or the virtual-list safety reveal) into an LRC network burst.
+  // Lyrics still preload on explicit pointer intent and for active/adjacent songs.
   const handleCardRevealed = useCallback((id: number | string) => {
     setVisibleIds((prev) => {
       if (prev.has(id)) return prev;
@@ -49,8 +52,7 @@ export const MySongs = ({
       next.add(id);
       return next;
     });
-    prefetchLrc(Number(id));
-  }, [prefetchLrc]);
+  }, []);
 
   const playback = useMySongsPlayback({
     songs: state.songs,

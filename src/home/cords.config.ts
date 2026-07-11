@@ -137,7 +137,7 @@ const SONGS_LINKS: CordLink[] = [
     kind: 'chain',
     station: 'songs',
     containerSel: '.nl-songs-lite__grid',
-    itemSel: '.nl-song-cell',
+    itemSel: '.nl-song-cell[data-song-revealed="true"]',
     sag: 0.12,
   },
 ];
