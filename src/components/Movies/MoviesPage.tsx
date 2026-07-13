@@ -911,6 +911,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   useEffect(() => {
     if (slideshowSlidesLength <= 1) return;
     const interval = setInterval(() => {
+      // Pause hero rotation while the tab is hidden: avoids needless re-renders
+      // and wasted work in a background tab (NL-PRI-0376).
+      if (document.hidden) return;
       setHeroIndex(prev => (prev + 1) % slideshowSlidesLength);
     }, 8000);
     return () => clearInterval(interval);

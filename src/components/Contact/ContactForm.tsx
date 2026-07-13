@@ -145,44 +145,23 @@ export const ContactForm = () => {
 
   if (isBlocked) {
     return (
-      <section dir="rtl" style={styles.section}>
-        <div className="manga-panel" style={{
-          ...styles.card,
-          border: '4px solid var(--ink-color)',
-          boxShadow: '8px 8px 0 var(--manga-shadow-color), 14px 14px 0 rgba(var(--bg-page-rgb), 0.15)'
-        }}>
-          {/* MacOS traffic light buttons */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }} aria-hidden="true">
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', border: '1px solid var(--border-subtle)' }} />
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', border: '1px solid var(--border-subtle)' }} />
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', border: '1px solid var(--border-subtle)' }} />
-          </div>
-          <p style={styles.blocked}>{t('contact.blocked')}</p>
+      <section className="nl-contact-section">
+        <div className="nl-contact-card is-blocked">
+          <p className="nl-contact-blocked">{t('contact.blocked')}</p>
         </div>
       </section>
     );
   }
 
   return (
-    <section dir="rtl" style={styles.section}>
+    <section className="nl-contact-section">
       <form 
-        className="manga-panel nl-contact-frameless"
+        className="nl-contact-card"
         onSubmit={(e) => { e.preventDefault(); handleSend(); }}
         noValidate
-        style={{
-          ...styles.card,
-          border: '4px solid var(--ink-color)',
-          boxShadow: '8px 8px 0 var(--manga-shadow-color), 14px 14px 0 rgba(var(--bg-page-rgb), 0.15)'
-        }}
       >
-        {/* MacOS traffic light buttons */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }} aria-hidden="true">
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', border: '1px solid var(--border-subtle)' }} />
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', border: '1px solid var(--border-subtle)' }} />
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', border: '1px solid var(--border-subtle)' }} />
-        </div>
-
-        <h2 style={styles.title}>{t('contact.title')}</h2>
+        <h2 className="nl-contact-title">{t('contact.title')}</h2>
+        <div className="nl-contact-divider" aria-hidden="true" />
 
         {/* بطاقات التواصل المباشر */}
         <ContactMethods />

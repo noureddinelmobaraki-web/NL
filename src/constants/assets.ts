@@ -36,7 +36,7 @@ export const getLocalAssetUrl = (filename: string): string => {
 const CDN_BIT = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn';
 // Bit-theme image overrides — same CDN, _bit suffix
 const BIT_IMAGES = {
-  profile:       `${CDN_BIT}/profile_img_bit.webp`,
+  profile:       `${CDN_BIT}/optimized/profile_img_bit.webp`,
   photo:         `${CDN_BIT}/photo_bit.webp`,
   headerBg:      `${CDN_BIT}/header_bg_bit.webp`,
   heroBg:        `${CDN_BIT}/hero_bg_bit.webp`,
@@ -46,7 +46,7 @@ const BIT_IMAGES = {
 } as const;
 
 const DARK_IMAGES = {
-  profile:       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imgdark.webp',
+  profile:       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/optimized/profile_imgdark.webp',
   photo:         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photodark.webp',
   headerBg:      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bgdark.webp',
   heroBg:        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bgdark.webp',
@@ -56,7 +56,7 @@ const DARK_IMAGES = {
 } as const;
 
 const LIGHT_IMAGES = {
-  profile:       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imglight.webp',
+  profile:       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/optimized/profile_imglight.webp',
   photo:         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photolight.webp',
   headerBg:      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bglight.webp',
   heroBg:        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bgdarklight.webp',
@@ -65,8 +65,8 @@ const LIGHT_IMAGES = {
   ytHighlights:  'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightslight.webp',
 } as const;
 
-export const LIGHT_PROFILE_OPENING = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imglightopenin.webp';
-export const LIGHT_PROFILE_MAIN    = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imglight.webp';
+export const LIGHT_PROFILE_OPENING = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/optimized/profile_imglightopenin.webp';
+export const LIGHT_PROFILE_MAIN    = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/optimized/profile_imglight.webp';
 
 
 // Per-theme background music URLs
@@ -112,7 +112,7 @@ export const INTRO_MUSIC_SRC = 'https://noureddinelmobaraki-web.github.io/nl-aud
 
 export const ASSETS = {
   profile: {
-    main:      `${CDN}/profile_img.webp`,
+    main:      `${CDN}/optimized/profile_img.webp`,
     photo:     `${CDN}/photo.webp`,
     headerBg:  `${CDN}/header_bg.webp`,
     heroBg:    `${CDN}/hero_bg.webp`,

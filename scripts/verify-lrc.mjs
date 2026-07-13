@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { assertItemsHaveFields } from './build-data-validation.mjs';
 
 const songsPath = path.join(process.cwd(), 'public/data/songs.json');
 const lrcDir = path.join(process.cwd(), 'public/lrc');
@@ -10,6 +11,7 @@ if (!fs.existsSync(songsPath)) {
 }
 
 const songs = JSON.parse(fs.readFileSync(songsPath, 'utf8'));
+assertItemsHaveFields(songs, ['id', 'title'], 'public/data/songs.json');
 const files = fs.readdirSync(lrcDir);
 
 console.log('Available LRC files on disk:');

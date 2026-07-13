@@ -4,12 +4,11 @@
 // Writes into dist/ (SEO_OUT_DIR overrides) and mirrors sitemap + search-index into public/.
 import fs from 'fs';
 import path from 'path';
+import { resolveBuildDate } from './build-metadata.mjs';
+import { assertItemsHaveFields, assertArray, assertObject } from './build-data-validation.mjs';
+import { ORIGIN, BASE, DOMAIN, ARTIST } from './build-constants.mjs';
 
-const ORIGIN = 'https://noureddinelmobaraki-web.github.io';
-const BASE = '/NL';
-const DOMAIN = ORIGIN + BASE;
-const NOW = new Date().toISOString();
-const ARTIST = 'Noureddin El Mobaraki';
+const BUILD_DATE = resolveBuildDate();
 const CWD = process.cwd();
 const OUT = process.env.SEO_OUT_DIR ? path.resolve(process.env.SEO_OUT_DIR) : path.resolve(CWD, 'dist');
 const PUB = path.resolve(CWD, 'public');
@@ -50,6 +49,13 @@ const fv = read(path.join(DATA, 'nl-music-fv.json'));
 const videos = read(path.join(DATA, 'videos.json'));
 const gamesDoc = read(path.join(DATA, 'games.json'));
 const games = Array.isArray(gamesDoc) ? gamesDoc : (gamesDoc.games || []);
+
+// Fail fast with a clear message if any build-data file has an unexpected shape.
+assertItemsHaveFields(songs, ['id', 'title'], 'public/data/songs.json');
+assertObject(ytMap, 'public/data/song-youtube.json');
+assertArray(fv, 'public/data/nl-music-fv.json');
+assertArray(videos, 'public/data/videos.json');
+assertArray(games, 'public/data/games.json (.games)');
 
 // ---------- per-song static pages ----------
 const usedSlugs = new Set();
@@ -118,8 +124,9 @@ const urls = [
   ...songUrls.map((s) => ({ loc: s.loc, priority: '0.8', changefreq: 'monthly', image: s.image, title: s.title })),
   ...hubUrls.map((u) => ({ loc: u, priority: '0.7', changefreq: 'weekly' })),
 ];
+const lastmod = BUILD_DATE ? '\n    <lastmod>' + BUILD_DATE + '</lastmod>' : '';
 const sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' +
-  urls.map((u) => '  <url>\n    <loc>' + u.loc + '</loc>\n    <lastmod>' + NOW + '</lastmod>\n    <changefreq>' + u.changefreq + '</changefreq>\n    <priority>' + u.priority + '</priority>' + (u.image ? '\n    <image:image><image:loc>' + u.image + '</image:loc><image:title>' + esc(u.title) + ' — NL</image:title></image:image>' : '') + '\n  </url>').join('\n') +
+  urls.map((u) => '  <url>\n    <loc>' + u.loc + '</loc>' + lastmod + '\n    <changefreq>' + u.changefreq + '</changefreq>\n    <priority>' + u.priority + '</priority>' + (u.image ? '\n    <image:image><image:loc>' + u.image + '</image:loc><image:title>' + esc(u.title) + ' — NL</image:title></image:image>' : '') + '\n  </url>').join('\n') +
   '\n</urlset>\n';
 write('sitemap.xml', sm);
 fs.writeFileSync(path.join(PUB, 'sitemap.xml'), sm);

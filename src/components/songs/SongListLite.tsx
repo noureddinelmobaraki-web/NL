@@ -21,6 +21,7 @@ import { SongsToolbar } from './SongsToolbar';
 import { useSongsFilter } from './hooks/useSongsFilter';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
+import { useSongLyricsStore } from '../../features/songLyrics';
 import '../../styles/components/song-lite.css';
 
 type SongItem = SongListProps['songs'][number];
@@ -43,7 +44,6 @@ export function SongListLite(props: SongListProps) {
     onPlayPause,
     onPrev,
     onNext,
-    lyricsOpen,
     setLyricsOpen,
     lrcCache,
     karaokeMode,
@@ -87,6 +87,10 @@ export function SongListLite(props: SongListProps) {
     useSongsFilter(songs);
 
   const activeId = currentSong?.id ?? null;
+
+  /* Single subscription for the whole list (was one per card). The lyrics
+     store stays the source of truth; each card gets a plain boolean prop. */
+  const openLyricsId = useSongLyricsStore((s) => s.song?.id ?? null);
 
   const rootClass = [
     'nl-songs-lite',
@@ -138,7 +142,7 @@ export function SongListLite(props: SongListProps) {
                   onPrev={onPrev}
                   onNext={onNext}
                   setLyricsOpen={setLyricsOpen ?? noop}
-                  isLyricsOpen={isActive ? lyricsOpen : false}
+                  isLyricsOpen={openLyricsId === song.id}
                   lyrics={isActive ? lrcCache?.[song.id] : undefined}
                   currentTime={isActive ? currentTime : undefined}
                   duration={isActive ? duration : durationCache?.[song.id]}

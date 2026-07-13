@@ -1,9 +1,24 @@
 import { useState, useEffect, useRef, memo } from 'react';
+import type { CSSProperties } from 'react';
 import Hls from 'hls.js';
 import { Heart } from 'lucide-react';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { OsWindow } from '../OsWindow';
 import { VideoData } from './types';
+
+// Windowing placeholder styles: an off-window slide keeps an identical-height
+// wrapper so the scroll-snap container geometry is byte-for-byte the same.
+const POSTER_SLIDE_STYLE: CSSProperties = {
+  width: '100%',
+  height: '100dvh',
+  scrollSnapAlign: 'start',
+  scrollSnapStop: 'always',
+};
+const POSTER_IMG_STYLE: CSSProperties = {
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+};
 
 export const VideoCard = memo(({
   video, index, activeIndex, isMobileView, isMuted, total, onRef, onLikeToggle
@@ -21,6 +36,8 @@ export const VideoCard = memo(({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const isActive = index === activeIndex;
+  // Windowing: only mount the real <video> for slides near the active one.
+  const inWindow = Math.abs(index - activeIndex) <= 3;
   const [shouldLoad, setShouldLoad] = useState(() => Math.abs(index - activeIndex) <= 2);
   const resolvedTheme = useResolvedTheme();
 
@@ -185,6 +202,28 @@ export const VideoCard = memo(({
 
   // ── MOBILE/TABLET FULLSCREEN LAYOUT ──────────────────────────────────────
   if (isMobileView) {
+    // Off-window slide: keep an identical-height wrapper (scroll-snap /
+    // data-index / IntersectionObserver stay intact) but render only a poster.
+    if (!inWindow) {
+      return (
+        <div
+          ref={containerRef}
+          className="relative flex items-center justify-center bg-black video-card-wrapper genie-surface"
+          data-index={index}
+          style={POSTER_SLIDE_STYLE}
+        >
+          <img
+            src={video.poster}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+            style={POSTER_IMG_STYLE}
+          />
+        </div>
+      );
+    }
     return (
       <div
         ref={containerRef}

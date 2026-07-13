@@ -83,16 +83,14 @@ export function useSongsData(opts: { visibleIds?: Set<number | string> } = {}) {
                 const visible = visibleIdsRef.current;
                 const prioritized = visible
                   ? mapped.filter(s => visible.has(s.id) || visible.has(String(s.id))).map(s => s.url)
-                  : mapped.slice(0, 8).map(s => s.url);
-                const rest = mapped.filter(s => !visible?.has(s.id) && !visible?.has(String(s.id))).map(s => s.url);
+                  : mapped.slice(0, 6).map(s => s.url);
 
+                // Preload ONLY the first few visible songs. The remaining streams
+                // load on demand (on selection) via useHlsAudio, so we no longer
+                // saturate the network by prefetching all ~48 HLS streams.
                 localTimers.push(setTimeout(() => {
                   if (!mounted) return;
-                  preloadAllSongs(prioritized.slice(0, 8), 8, 2, 300);
-                  localTimers.push(setTimeout(() => {
-                    if (!mounted) return;
-                    preloadAllSongs(rest, 8, 1, 800);
-                  }, 3000));
+                  preloadAllSongs(prioritized.slice(0, 6), 8, 2, 300);
                 }, 5000));
               };
               if (typeof window.requestIdleCallback === 'function') {

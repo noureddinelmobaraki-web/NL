@@ -15,8 +15,9 @@
 //  - 'chain': node -> first item, then item[i] -> item[i+1] corner-to-corner for
 //    every item matching `itemSel` inside `#station-<station> containerSel`.
 //    Corners are chosen from live geometry so it zig-zags correctly on any layout.
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useHomeMapState } from './useHomeMapState';
+import type { HomeMotionMode } from './motion/homeMotion.types';
 
 export type CordAnchor =
   | { kind: 'node'; station: string }
@@ -74,9 +75,10 @@ interface CordState {
 interface HomeCordsProps {
   links: CordLink[];
   nodes: CordNode[];
+  motionMode: HomeMotionMode;
 }
 
-export const HomeCords = memo(function HomeCords({ links, nodes }: HomeCordsProps) {
+export const HomeCords = memo(function HomeCords({ links, nodes, motionMode }: HomeCordsProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const activeStation = useHomeMapState((s) => s.activeStationId);
   const [state, setState] = useState<CordState>({ w: 0, h: 0, paths: [], dots: [] });
@@ -188,6 +190,7 @@ export const HomeCords = memo(function HomeCords({ links, nodes }: HomeCordsProp
 
   useEffect(() => {
     let raf = 0;
+
     const schedule = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(measure);
@@ -249,6 +252,7 @@ export const HomeCords = memo(function HomeCords({ links, nodes }: HomeCordsProp
       viewBox={`0 0 ${Math.max(1, state.w)} ${Math.max(1, state.h)}`}
       preserveAspectRatio="none"
       aria-hidden="true"
+      data-motion-mode={motionMode}
     >
       <defs>
         <radialGradient id="nlNodeIdle">
@@ -265,8 +269,23 @@ export const HomeCords = memo(function HomeCords({ links, nodes }: HomeCordsProp
       </defs>
       {state.paths.map((p) => {
         const active = !!p.station && p.station === activeStation;
+        const node = state.dots.find((dot) => dot.id === p.station);
+        const groupStyle: CSSProperties | undefined = node
+          ? { transformOrigin: `${node.x}px ${node.y}px` }
+          : undefined;
+        const className = [
+          'nl-cord',
+          active ? 'nl-cord--active' : '',
+          motionMode === 'a777' && p.station ? 'nl-cord--physical' : '',
+        ].filter(Boolean).join(' ');
+
         return (
-          <g key={p.id} className={active ? 'nl-cord nl-cord--active' : 'nl-cord'}>
+          <g
+            key={p.id}
+            className={className}
+            data-station={p.station}
+            style={groupStyle}
+          >
             <path d={p.d} className="nl-cord-glow" />
             <path d={p.d} className="nl-cord-core" />
           </g>

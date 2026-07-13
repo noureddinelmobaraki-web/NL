@@ -26,10 +26,14 @@ const SKETCH_CSS = `
   fill: none;
   stroke: rgba(255, 255, 255, 0.92);
   stroke-width: 0.6px;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
   animation: nld-sketch-array 4s ease-in-out infinite,
              nld-sketch-offset 4s linear infinite;
+  animation-play-state: paused;
 }
+.nld-window-sketch[data-active="true"] path {
+  animation-play-state: running;
+}
+body.low-perf .nld-window-sketch path { animation: none; }
 @keyframes nld-sketch-array {
   0% { stroke-dasharray: 0 1 359 0; }
   50% { stroke-dasharray: 0 359 1 0; }
@@ -103,7 +107,7 @@ export const DrawingsWindow = ({ onOpen }: DrawingsWindowProps) => {
               <style>{SKETCH_CSS}</style>
 
               {seen && (
-                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="nld-window-sketch" aria-hidden="true" focusable="false">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="nld-window-sketch" data-active={active ? 'true' : 'false'} aria-hidden="true" focusable="false">
                   <path pathLength="360" d="M 56.3752 2 H 7.6248 C 7.2797 2 6.9999 2.268 6.9999 2.5985 V 61.4015 C 6.9999 61.7321 7.2797 62 7.6248 62 H 56.3752 C 56.7203 62 57.0001 61.7321 57.0001 61.4015 V 2.5985 C 57.0001 2.268 56.7203 2 56.3752 2 Z"></path>
                   <path pathLength="360" d="M 55.7503 60.803 H 8.2497 V 3.1971 H 55.7503 V 60.803 Z"></path>
                   <path pathLength="360" d="M 29.7638 47.6092 C 29.4971 47.3997 29.1031 47.4368 28.8844 47.6925 C 28.6656 47.9481 28.7046 48.3253 28.9715 48.5348 L 32.8768 51.6023 C 32.9931 51.6936 33.1333 51.738 33.2727 51.738 C 33.4533 51.738 33.6328 51.6634 33.7562 51.519 C 33.975 51.2634 33.936 50.8862 33.6692 50.6767 L 29.7638 47.6092 Z"></path>

@@ -59,6 +59,7 @@ function SongCardLiteInner(props: SongCardLiteProps) {
     onVolumeChange,
     observeCard,
     isRevealed,
+    isLyricsOpen = false,
     onHoverPrefetchLrc,
     resolvedTheme,
     isMobileViewport,
@@ -80,8 +81,6 @@ function SongCardLiteInner(props: SongCardLiteProps) {
 
   const currentTimeRef = useRef(currentTime ?? 0);
   currentTimeRef.current = currentTime ?? 0;
-
-  const lyricsOpen = useSongLyricsStore((s) => s.song?.id === song.id);
 
   const time = currentTime ?? 0;
 
@@ -159,7 +158,7 @@ function SongCardLiteInner(props: SongCardLiteProps) {
             isActive={isActive}
             isPlaying={isPlaying}
             isWaiting={isWaiting}
-            isLyricsOpen={lyricsOpen}
+            isLyricsOpen={isLyricsOpen}
             duration={duration}
             onPlayPauseClick={handlePlayPause}
             onLyricsClick={handleLyrics}

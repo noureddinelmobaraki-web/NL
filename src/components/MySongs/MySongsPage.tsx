@@ -7,13 +7,6 @@ import { useMySongsPlayback } from './hooks/useMySongsPlayback';
 import { useLrcHoverPreload } from './hooks/useLrcHoverPreload';
 import { useMediaSession } from '../../hooks/useMediaSession';
 import { MySongsList } from './MySongsList';
-import {
-  SUBTITLE_STYLE_DESKTOP,
-  SUBTITLE_STYLE_MOBILE,
-  TRACKS_CONTAINER_STYLE_MOBILE,
-  TRACKS_NUMBER_STYLE_MOBILE,
-} from './MySongsPage.styles';
-import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { useStructuredData } from '../../hooks/useStructuredData';
 import '../../styles/components/mySongs.css';
 
@@ -30,7 +23,6 @@ export const MySongs = ({
 }) => {
   // إعلان "سطح أغنية معروض" (My Songs) → النوتش يعرض الاسم فقط هنا.
   useEffect(() => songSurfaceBus.enter(), []);
-  const isDesktop = useIsDesktop();
 
   useStructuredData('songs-jsonld.json', 'songs-jsonld');
 
@@ -140,50 +132,23 @@ export const MySongs = ({
           </div>
         ) : (
           <>
-            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-20">
-          <div className="space-y-2">
-            <h2 className="text-fluid-title font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)]">
-              MY SONGS
-            </h2>
-            <div
-              style={isDesktop ? {
-                marginLeft: '-4px'
-              } : {}}
-              className="flex items-center gap-3 flex-wrap"
-            >
-              <div
-                style={isDesktop ? {
-                  marginLeft: '-16px'
-                } : {
-                  marginTop: '56px'
-                }}
-                className="h-1 w-12 bg-[var(--accent-indigo)]"
-              />
-              <p
-                style={isDesktop ? SUBTITLE_STYLE_DESKTOP : SUBTITLE_STYLE_MOBILE}
-                className="text-[var(--text-muted)] font-medium tracking-[0.2em] text-xs uppercase text-nowrap"
-              >
-                Curated Soundscape
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div
-              style={isDesktop ? undefined : TRACKS_CONTAINER_STYLE_MOBILE}
-              className="flex items-baseline gap-2"
-            >
-              <span
-                style={isDesktop ? undefined : TRACKS_NUMBER_STYLE_MOBILE}
-                className="text-[var(--accent-indigo)] font-mono text-4xl font-bold tracking-tighter"
-              >
-                {state.songs.length}
-              </span>
-              <span className="text-[var(--text-muted)] text-sm font-medium uppercase tracking-[0.3em] pb-1">
-                Tracks
-              </span>
-            </div>
-          </div>
-        </header>
+            <header className="nl-songs-heading">
+              <div className="nl-songs-heading__art" aria-hidden="true">
+                <span className="nl-songs-heading__disc" />
+                <span className="nl-songs-heading__needle" />
+              </div>
+              <div className="nl-songs-heading__identity">
+                <p className="nl-songs-heading__eyebrow">CURATED SOUNDSCAPE</p>
+                <h2 className="nl-songs-heading__title">
+                  <span>MY</span>
+                  <strong>SONGS</strong>
+                </h2>
+              </div>
+              <div className="nl-songs-heading__count" aria-label={`${state.songs.length} tracks`}>
+                <span className="nl-songs-heading__number">{state.songs.length}</span>
+                <span className="nl-songs-heading__label">TRACKS</span>
+              </div>
+            </header>
 
         <MySongsList
           songs={state.songs}

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
+import { assertItemsHaveFields } from './build-data-validation.mjs';
 
 console.log('🚀 Starting project quality verification checks...');
 
@@ -79,6 +80,7 @@ if (!fs.existsSync(songsPath)) {
 } else {
   try {
     const songs = JSON.parse(fs.readFileSync(songsPath, 'utf8'));
+    assertItemsHaveFields(songs, ['id', 'title'], 'public/data/songs.json');
     const files = fs.readdirSync(lrcDir);
     const nfcFiles = files.map(f => f.normalize('NFC'));
     

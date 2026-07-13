@@ -2,7 +2,7 @@
 // Custom 250x250 brand icons for the Home streaming/social lattice windows.
 // Keyed by the SAME ids used in src/config/streaming.ts so the map stays in sync.
 const ICON_BASE =
-  'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/streaming.socia.licons';
+  'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/optimized/streaming.socia.licons';
 
 export const SOCIAL_ICON_URLS: Record<string, string> = {
   spotify: `${ICON_BASE}/spotify.webp`,

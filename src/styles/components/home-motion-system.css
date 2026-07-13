@@ -1,0 +1,116 @@
+.nl-motion-switch-wrap {
+  position: relative;
+  z-index: 50;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: min(210px, 72vw);
+  margin: 18px auto 22px;
+  color: rgba(235, 250, 255, .76);
+}
+.nl-motion-switch-caption {
+  margin: 0;
+  font: 600 9px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.nl-motion-switch {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  width: 178px;
+  height: 38px;
+  padding: 3px;
+  overflow: hidden;
+  color: rgba(230, 245, 250, .56);
+  background: linear-gradient(180deg, rgba(22, 45, 53, .72), rgba(5, 15, 22, .78));
+  border: 1px solid rgba(196, 245, 250, .34);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.23), 0 8px 20px rgba(0,0,0,.25);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.nl-motion-switch::before {
+  content: "";
+  position: absolute;
+  inset: 1px 10px auto;
+  height: 44%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.20), transparent);
+  pointer-events: none;
+}
+.nl-motion-switch-slider {
+  position: absolute;
+  z-index: -1;
+  inset: 3px auto 3px 3px;
+  width: calc(50% - 3px);
+  border: 1px solid rgba(255,255,255,.58);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff9183 0%, #d72d37 48%, #8e101d 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 3px 10px rgba(197,22,39,.38);
+  transition: transform .28s cubic-bezier(.2,.8,.2,1);
+}
+.nl-motion-switch.is-a777 .nl-motion-switch-slider { transform: translateX(100%); }
+.nl-motion-switch-label {
+  position: relative;
+  z-index: 2;
+  font: 800 11px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .08em;
+  transition: color .2s ease;
+}
+.nl-motion-switch:not(.is-a777) .nl-motion-switch-label:first-of-type,
+.nl-motion-switch.is-a777 .nl-motion-switch-label:last-of-type { color: #fff; }
+.nl-motion-switch:focus-visible { outline: 2px solid #b9fbff; outline-offset: 3px; }
+.nl-motion-switch:active .nl-motion-switch-slider { filter: brightness(.92); }
+.nl-motion-switch-status {
+  min-height: 11px;
+  font: 600 8px/1.2 ui-monospace, monospace;
+  letter-spacing: .08em;
+  color: rgba(168, 232, 232, .62);
+  text-align: center;
+}
+
+.nl-home-map[data-motion-mode="a777"] .nl-home-stage {
+  transform-origin: 50% 0;
+  transform: translate3d(var(--nl-hang-shift, 0px), 0, 0) rotate(var(--nl-hang-angle, 0deg));
+  will-change: transform;
+}
+.nl-cord--physical {
+  transform-box: view-box;
+  transform: rotate(var(--nl-hang-angle, 0deg));
+  will-change: transform;
+}
+.nl-home-map[data-motion-mode="normal"] .nl-home-stage,
+.nl-home-map[data-motion-mode="normal"] .nl-cord { will-change: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-motion-switch-slider { transition-duration: .01ms; }
+  .nl-home-map[data-motion-mode="a777"] .nl-home-stage,
+  .nl-cord--physical { --nl-hang-shift: 0px; }
+}
+@media (max-width: 480px) {
+  .nl-motion-switch-wrap { margin-top: 12px; margin-bottom: 18px; }
+}
+
+/* P7: independent A777 bodies; individual transform properties preserve the
+   component's existing transform animations and hover behavior. */
+.nl-home-map[data-motion-mode="a777"] .nl-a777-body {
+  transform-origin: 50% 0;
+  translate: var(--nl-local-shift, 0px) 0;
+  rotate: var(--nl-local-angle, 0deg);
+  will-change: translate, rotate;
+}
+.nl-home-map[data-motion-mode="normal"] .nl-a777-body {
+  translate: none;
+  rotate: none;
+  will-change: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nl-home-map[data-motion-mode="a777"] .nl-a777-body {
+    --nl-local-shift: 0px;
+    --nl-local-angle: 0deg;
+  }
+}

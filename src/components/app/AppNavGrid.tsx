@@ -29,7 +29,7 @@ export function AppNavGrid({
   return (
     <motion.div 
       variants={itemVariants} 
-      className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-start sm:gap-5 md:gap-6 mb-4"
+      className="nl-top-nav"
     >
       <NavButton 
         icon={Camera} 

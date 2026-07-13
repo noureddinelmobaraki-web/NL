@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { audioManager } from "../audio/audioManager";
 import { ensureAutoplay } from "../audio/ensureAutoplay";
 import { soundGovernor } from "../audio/soundGovernor";
-import Hls from "hls.js";
+import type Hls from "hls.js";
 
 type MusicKey =
   | "bg"
@@ -91,22 +91,33 @@ export function useSharedBackgroundMusic(
 
     audio.addEventListener("canplay", tryPlay);
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({ startPosition: -1 });
-      hlsRef.current = hls;
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        console.error(
-          `[SharedBackgroundMusic:${key}] HLS error:`,
-          data.type,
-          data.details,
-        );
-      });
-      hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
-      hls.loadSource(url);
-      hls.attachMedia(audio);
-    } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
-      audio.src = url;
-    }
+    // ── hls.js is now imported DYNAMICALLY so it is no longer part of the
+    //    initial/Home bundle graph. It was previously a static (eager) import
+    //    that pulled the ~160 KB hls chunk into the critical path and delayed
+    //    LCP. Setup still runs inside this post-mount effect, so the runtime
+    //    behavior (autoplay, native-HLS fallback, isSupported-first priority)
+    //    is preserved exactly — only the download timing moves past first paint.
+    let cancelled = false;
+    void (async () => {
+      const { default: Hls } = await import("hls.js");
+      if (cancelled) return;
+      if (Hls.isSupported()) {
+        const hls = new Hls({ startPosition: -1 });
+        hlsRef.current = hls;
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          console.error(
+            `[SharedBackgroundMusic:${key}] HLS error:`,
+            data.type,
+            data.details,
+          );
+        });
+        hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
+        hls.loadSource(url);
+        hls.attachMedia(audio);
+      } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
+        audio.src = url;
+      }
+    })();
 
     const cleanupAutoplay = ensureAutoplay(key);
     readyRef.current = true;
@@ -152,9 +163,12 @@ export function useSharedBackgroundMusic(
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("volumechange", onVolumeChange);
 
+      cancelled = true;
       if (hlsRef.current) {
         try {
-          hlsRef.current.off(Hls.Events.MANIFEST_PARSED, tryPlay);
+          // hls.destroy() removes all attached listeners internally, so the
+          // previous explicit off(MANIFEST_PARSED) is redundant. It is removed
+          // here because Hls is now a type-only import (no runtime Events).
           hlsRef.current.stopLoad();
           hlsRef.current.detachMedia();
           hlsRef.current.destroy();

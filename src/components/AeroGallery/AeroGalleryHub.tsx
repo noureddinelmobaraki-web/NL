@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
-import Hls from 'hls.js';
+import type Hls from 'hls.js';
 import { ACCOUNTS_BG_HLS } from '../../config/media';
 import { audioManager } from '../../audio/audioManager';
 import '../../styles/aero-gallery.css';
@@ -90,22 +90,33 @@ export function AeroGalleryHub({
   const [videoEnabled] = useState(() => !shouldSkipVideo());
 
   // Background video: same source + hls.js setup as AccountsBackgroundVideo.
+  // hls.js is imported DYNAMICALLY (previously a static/eager import that forced
+  // the hls chunk into the initial App bundle via App.tsx). It now loads only
+  // when the gallery actually opens. Native-HLS (Safari) never downloads it.
   useEffect(() => {
     if (!open || !videoEnabled) return;
     const video = videoRef.current;
     if (!video) return;
     let hls: Hls | null = null;
+    let cancelled = false;
     const url = ACCOUNTS_BG_HLS;
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = url;
-    } else if (Hls.isSupported()) {
-      hls = new Hls({ enableWorker: true, maxBufferLength: 8, backBufferLength: 8, maxBufferSize: 0 });
-      hls.loadSource(url);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.ERROR, (_e, d) => { if (d.fatal) { hls?.destroy(); hls = null; } });
+      video.play().catch(() => {/* autoplay may be blocked - fine */});
+    } else {
+      void (async () => {
+        const { default: Hls } = await import('hls.js');
+        if (cancelled) return;
+        if (Hls.isSupported()) {
+          hls = new Hls({ enableWorker: true, maxBufferLength: 8, backBufferLength: 8, maxBufferSize: 0 });
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.ERROR, (_e, d) => { if (d.fatal) { hls?.destroy(); hls = null; } });
+        }
+        video.play().catch(() => {/* autoplay may be blocked - fine */});
+      })();
     }
-    video.play().catch(() => {/* autoplay may be blocked - fine */});
-    return () => { if (hls) { hls.stopLoad(); hls.detachMedia(); hls.destroy(); } };
+    return () => { cancelled = true; if (hls) { hls.stopLoad(); hls.detachMedia(); hls.destroy(); } };
   }, [open, videoEnabled]);
 
   // Play the album song while the hub is open; pause both on close.

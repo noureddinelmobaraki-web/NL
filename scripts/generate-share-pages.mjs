@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { assertArray } from './build-data-validation.mjs';
+import { DOMAIN, BASE, PLAYLIST_COVER } from './build-constants.mjs';
 
 function escapeHtml(unsafe) {
   if (!unsafe) return '';
@@ -29,12 +31,15 @@ if (!fs.existsSync(songsJsonPath)) {
 
 try {
   const songsData = JSON.parse(fs.readFileSync(songsJsonPath, 'utf8'));
-  
-  if (!fs.existsSync(sharePagesDir)) {
-    fs.mkdirSync(sharePagesDir, { recursive: true });
-  }
+  assertArray(songsData, 'public/data/nl-music-fv.json');
 
-  const fallbackCover = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_cover.webp';
+  // Remove stale share pages from a previous build before regenerating so that
+  // songs deleted from the data source do not leave orphaned s/<id>/ folders.
+  // On a fresh dist/ (clean CI build) this is a harmless no-op.
+  fs.rmSync(sharePagesDir, { recursive: true, force: true });
+  fs.mkdirSync(sharePagesDir, { recursive: true });
+
+  const fallbackCover = PLAYLIST_COVER;
   let count = 0;
 
   for (const song of songsData) {
@@ -50,8 +55,8 @@ try {
     const escapedArtist = escapeHtml(artist);
 
     // الرابط النظيف (المجلّد) هو canonical للمشاركة
-    const cleanUrl = 'https://noureddinelmobaraki-web.github.io/NL/s/' + sid + '/';
-    const target = '/NL/?song=fv-' + sid;
+    const cleanUrl = DOMAIN + '/s/' + sid + '/';
+    const target = BASE + '/?song=fv-' + sid;
 
     const htmlContent =
 '<!DOCTYPE html>\n' +

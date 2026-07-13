@@ -44,7 +44,7 @@ describe('HomeCords lifecycle', () => {
   it('does not subscribe geometry measurement to viewport scrolling', () => {
     const addSpy = vi.spyOn(window, 'addEventListener');
 
-    render(<HomeCords links={[]} nodes={[]} />);
+    render(<HomeCords links={[]} nodes={[]} motionMode="normal" />);
 
     const registeredEvents = addSpy.mock.calls.map(([type]) => type);
     expect(registeredEvents).toContain('resize');
@@ -57,7 +57,7 @@ describe('HomeCords lifecycle', () => {
 
   it('keeps resize and load cleanup balanced without a scroll cleanup', () => {
     const removeSpy = vi.spyOn(window, 'removeEventListener');
-    const view = render(<HomeCords links={[]} nodes={[]} />);
+    const view = render(<HomeCords links={[]} nodes={[]} motionMode="normal" />);
 
     view.unmount();
 
@@ -86,6 +86,7 @@ describe('HomeCords lifecycle', () => {
             itemSel: '.nl-song-cell[data-song-revealed="true"]',
           }]}
           nodes={[]}
+          motionMode="normal"
         />
       </div>,
     );

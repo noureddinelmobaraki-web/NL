@@ -2,8 +2,10 @@ import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
 import pLimit from 'p-limit';
+import { assertArray } from './build-data-validation.mjs';
 
 const inputData = JSON.parse(fs.readFileSync('public/data/videos.json', 'utf8'));
+assertArray(inputData, 'public/data/videos.json');
 const outputDir = 'public/images/posters';
 
 if (!fs.existsSync(outputDir)) {

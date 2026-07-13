@@ -36,9 +36,15 @@
 
     <!-- CDN preconnect — critical for first paint -->
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin>
+    <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io">
     <link rel="dns-prefetch" href="https://noureddinelmobaraki-web.github.io">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- LCP: preload the hero background for the default (midnight) theme.
+         Must byte-match --hero-bg-image-url in src/styles/themes/midnight.css.
+         No crossorigin: CSS background-image fetches are no-CORS and must match. -->
+    <link rel="preload" as="image" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp" fetchpriority="high">
     <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), interest-cohort=()">
 

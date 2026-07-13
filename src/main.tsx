@@ -14,6 +14,8 @@ import './styles/components/mobile-modals.css';
 import './styles/components/profile-mobile-fit.css';
 import './styles/components/perf-lite.css';
 import './styles/mobile-no-backdrop-filter.css';
+import './styles/components/home-motion-system.css';
+import './styles/components/home-polish.css';
 import { registerServiceWorker } from './utils/registerSW';
 import { reportWebVitals } from './utils/vitals';
 import { isAutomatedEnv } from './utils/env';

@@ -1,12 +1,15 @@
 import fs from 'fs';
 import path from 'path';
+import { resolveBuildDate } from './build-metadata.mjs';
+import { assertItemsHaveFields } from './build-data-validation.mjs';
+import { DOMAIN } from './build-constants.mjs';
 
-const DOMAIN = 'https://noureddinelmobaraki-web.github.io/NL';
-const NOW_ISO = new Date().toISOString();
+const BUILD_DATE = resolveBuildDate();
 
 // Songs are still read so we can keep songs-jsonld.json in sync.
 const songsPath = path.resolve(process.cwd(), 'public', 'data', 'songs.json');
 const songs = JSON.parse(fs.readFileSync(songsPath, 'utf8'));
+assertItemsHaveFields(songs, ['id', 'title', 'url'], 'public/data/songs.json');
 
 /**
  * SITEMAP POLICY (important for SEO):
@@ -17,6 +20,8 @@ const songs = JSON.parse(fs.readFileSync(songsPath, 'utf8'));
  * ONLY the canonical home URL.
  */
 function generateSitemap() {
+  const generatedLine = BUILD_DATE ? `       Source date: ${BUILD_DATE}\n` : '       Deterministic build: source date unavailable; lastmod omitted.\n';
+  const lastmodLine = BUILD_DATE ? `    <lastmod>${BUILD_DATE}</lastmod>\n` : '';
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset
   xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -25,13 +30,13 @@ function generateSitemap() {
   <!-- ===========================================================
        SITEMAP - NL | Noureddin El Mobaraki
        ${DOMAIN}/
-       Generated: ${NOW_ISO}
+${generatedLine}
        Canonical-only sitemap (SPA): single indexable URL.
        =========================================================== -->
 
   <url>
     <loc>${DOMAIN}/</loc>
-    <lastmod>${NOW_ISO}</lastmod>
+${lastmodLine}
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>

@@ -30,22 +30,21 @@ export const NavButton = ({
   onMouseEnter,
   onPointerDown,
 }: NavButtonProps) => {
-  const useRoughFilter = theme !== 'dark' && theme !== 'light' && theme !== 'midnight';
   return (
     <button
       onClick={(e) => onClick(e)}
       onMouseEnter={onMouseEnter}
       onPointerDown={onPointerDown}
-      className={`${THEME_STYLES[theme] ?? THEME_STYLES.dark} ${fullWidthOnMobile ? 'col-span-2 sm:col-span-auto' : ''}`}
+      className={`nl-top-nav__button ${THEME_STYLES[theme] ?? THEME_STYLES.dark} ${fullWidthOnMobile ? 'col-span-2 sm:col-span-auto' : ''}`}
       style={THEME_STYLES_INLINE[theme]}
       type="button"
+      data-theme-variant={theme}
     >
       <Icon
-        className="w-5 h-5"
-        style={useRoughFilter ? { filter: 'url(#rough)' } : {}}
+        className="nl-top-nav__icon"
         aria-hidden="true"
       />
-      {label}
+      <span className="nl-top-nav__label">{label}</span>
     </button>
   );
 };

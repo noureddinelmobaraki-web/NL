@@ -6,6 +6,7 @@ import { useStageSize } from '../components/launcher/useStageSize';
 import { StationConnector } from './StationConnector';
 import { StationWindow, type StationWeight } from './StationWindow';
 import { useHomeMapState } from './useHomeMapState';
+import type { HomeMotionMode } from './motion/homeMotion.types';
 
 interface StationProps {
   id: string;
@@ -14,6 +15,7 @@ interface StationProps {
   lite: boolean;
   bare?: boolean;
   children: ReactNode;
+  motionMode: HomeMotionMode;
 }
 
 export const Station = memo(function Station({
@@ -23,6 +25,7 @@ export const Station = memo(function Station({
   lite,
   bare,
   children,
+  motionMode,
 }: StationProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const { ref: stageRef, size } = useStageSize<HTMLDivElement>();
@@ -40,6 +43,7 @@ export const Station = memo(function Station({
       id={`station-${id}`}
       data-station={id}
       data-active={isActive ? 'true' : undefined}
+      data-motion-mode={motionMode}
       className="nl-home-station"
       aria-label={title}
     >

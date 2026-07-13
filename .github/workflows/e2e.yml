@@ -5,6 +5,10 @@ on:
   pull_request:
     branches: [ main, master ]
 
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     timeout-minutes: 30

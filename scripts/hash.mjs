@@ -2,6 +2,10 @@ import fs from 'fs';
 import crypto from 'crypto';
 
 const htmlPath = 'index.html';
+if (!fs.existsSync(htmlPath)) {
+  console.error(`Error: ${htmlPath} not found; cannot compute CSP hashes.`);
+  process.exit(1);
+}
 let html = fs.readFileSync(htmlPath, 'utf8');
 
 // التقط فقط السكربتات inline بلا سمات (تلك التي تحتاج هاش في CSP)
