@@ -35,6 +35,8 @@ export interface PlacedNode {
 
 export interface Edge {
   id: string;
+  fromId: string;
+  toId: string;
   path: string; // svg cubic bezier "M .. C .. .. .."
   depth: 1 | 2;
 }
@@ -180,7 +182,13 @@ export function computeGraph(
       compact: false,
       hasChildren: !!c.children?.length,
     });
-    edges.push({ id: `${activeRoot.id}->${c.id}`, path: curve(rootPt, pos), depth: 1 });
+    edges.push({
+      id: `${activeRoot.id}->${c.id}`,
+      fromId: activeRoot.id,
+      toId: c.id,
+      path: curve(rootPt, pos),
+      depth: 1,
+    });
   });
 
   if (!activeBranchId) return { nodes, edges };
@@ -206,7 +214,13 @@ export function computeGraph(
       compact: false,
       hasChildren: false,
     });
-    edges.push({ id: `${branch.id}->${leaf.id}`, path: curve(branchPt, pos), depth: 2 });
+    edges.push({
+      id: `${branch.id}->${leaf.id}`,
+      fromId: branch.id,
+      toId: leaf.id,
+      path: curve(branchPt, pos),
+      depth: 2,
+    });
   });
 
   return { nodes, edges };

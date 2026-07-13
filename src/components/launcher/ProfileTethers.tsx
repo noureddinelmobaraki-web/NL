@@ -172,7 +172,6 @@ export function ProfileTethers() {
   const [geom, setGeom] = useState<TetherGeom | null>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
-  const rafRef = useRef<number>(0);
 
   useEffect(() => {
     if (!open) return;
@@ -200,14 +199,11 @@ export function ProfileTethers() {
     };
 
     update();
-    // Short measurement burst so the rays follow the window's entrance, then stop.
-    const start = performance.now();
-    const burst = () => {
-      if (!alive) return;
-      update();
-      if (performance.now() - start < 1000) rafRef.current = requestAnimationFrame(burst);
-    };
-    rafRef.current = requestAnimationFrame(burst);
+    const measurementTimers = [0, 80, 180, 320, 520, 800].map((delay) =>
+      window.setTimeout(() => {
+        if (alive) update();
+      }, delay),
+    );
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, true);
     let ro: ResizeObserver | null = null;
@@ -218,7 +214,7 @@ export function ProfileTethers() {
     }
     return () => {
       alive = false;
-      cancelAnimationFrame(rafRef.current);
+      measurementTimers.forEach((timer) => window.clearTimeout(timer));
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
       ro?.disconnect();

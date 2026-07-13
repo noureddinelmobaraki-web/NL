@@ -418,3 +418,130 @@ body.low-perf .nl-node { background: #080808; }
   .nl-node { background: #080808; }
 }
 
+/* ======================================================================
+   P8 — launcher critical-path/compositor optimization
+   ====================================================================== */
+
+/* Full-screen video: veil supplies the grading; avoid a per-frame CSS filter. */
+.nl-launcher-bg-media {
+  opacity: 0;
+  filter: none !important;
+  transform: translateZ(0);
+  transition: opacity .32s ease;
+}
+.nl-launcher-bg-media.is-ready { opacity: 1; }
+.nl-launcher-bg-still { opacity: 1; }
+
+/* Nodes fake glass with static gradients. Never sample moving video behind them. */
+.nl-node {
+  background:
+    radial-gradient(90px 24px at 22% 8%, rgba(255,255,255,.17), transparent 74%),
+    linear-gradient(180deg, rgba(60,70,74,.94) 0%, rgba(22,26,29,.96) 48%, rgba(7,8,9,.98) 100%) !important;
+  border-color: rgba(255,255,255,.20);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.54),
+    inset 0 -5px 10px rgba(0,0,0,.34),
+    0 8px 18px rgba(0,0,0,.34) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: border-color .16s ease, box-shadow .16s ease, color .16s ease;
+}
+.nl-node::before {
+  top: 1px;
+  right: 5%;
+  bottom: 52%;
+  left: 5%;
+  border-radius: 999px 999px 40% 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,.20), transparent);
+  transition: opacity .16s ease, transform .16s ease;
+}
+.nl-node::after {
+  top: 3px;
+  right: 9%;
+  bottom: auto;
+  left: 9%;
+  height: 34%;
+  background: radial-gradient(70% 100% at 30% 0%, rgba(255,255,255,.20), transparent 75%);
+  box-shadow: none;
+  transition: opacity .16s ease;
+}
+.nl-node:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.65),
+    inset 0 -5px 10px rgba(0,0,0,.30),
+    0 10px 22px rgba(0,0,0,.38) !important;
+}
+.nl-node.is-active {
+  border-color: rgba(122,240,180,.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.62),
+    inset 0 -5px 10px rgba(0,0,0,.28),
+    0 0 0 1px rgba(122,240,180,.20),
+    0 9px 22px rgba(0,0,0,.38) !important;
+}
+.nl-node.is-dim { filter: none; opacity: .52; }
+.nl-node-anchor { will-change: auto; }
+
+/* Home leaf remains recognizably midnight, but no infinite box-shadow repaint. */
+.nl-node.nl-tint-midnight {
+  animation: none !important;
+  background:
+    radial-gradient(90px 28px at 25% 5%, rgba(188,206,255,.18), transparent 72%),
+    linear-gradient(180deg, rgba(57,72,153,.92), rgba(24,29,83,.95) 50%, rgba(9,11,34,.98)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.46),
+    inset 0 -6px 12px rgba(5,7,25,.42),
+    0 8px 20px rgba(0,0,0,.40) !important;
+}
+
+/* Topbar/sound: one small desktop blur at most; touch uses static fake glass. */
+.nl-topbar-btn,
+.nl-sound-btn {
+  background:
+    radial-gradient(75px 20px at 24% 0%, rgba(255,255,255,.18), transparent 74%),
+    linear-gradient(180deg, rgba(38,57,66,.78), rgba(9,18,27,.82));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.34),
+    0 6px 16px rgba(0,0,0,.28);
+  backdrop-filter: blur(6px) saturate(1.12);
+  -webkit-backdrop-filter: blur(6px) saturate(1.12);
+}
+@media (hover: none), (max-width: 767px) {
+  .nl-topbar-btn,
+  .nl-sound-btn {
+    background: linear-gradient(180deg, rgba(38,57,66,.94), rgba(9,18,27,.96));
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Equalizer uses cheap compositor-only CSS instead of Framer's JS loop. */
+.nl-sound-eq i {
+  transform: scaleY(.38);
+  animation: nl-launcher-eq .9s ease-in-out infinite alternate;
+}
+.nl-sound-eq i:nth-child(2) { animation-delay: -.30s; }
+.nl-sound-eq i:nth-child(3) { animation-delay: -.60s; }
+@keyframes nl-launcher-eq {
+  from { transform: scaleY(.30); }
+  to { transform: scaleY(1); }
+}
+
+/* Tethers keep double-stroke depth without filters or permanent pulse repaint. */
+.nl-tether-glow {
+  filter: none !important;
+  animation: none !important;
+  stroke: rgba(122,240,190,.18);
+  stroke-width: 7;
+}
+.nl-tether-core {
+  filter: none !important;
+  animation: none !important;
+  stroke-width: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-launcher-bg-media { transition: none; }
+  .nl-sound-eq i { animation: none; transform: scaleY(.65); }
+}
+

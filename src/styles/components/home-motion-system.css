@@ -114,3 +114,60 @@
     --nl-local-angle: 0deg;
   }
 }
+
+/* P10: elastic tactile glass switch inspired by the supplied neumorphic toggle,
+   adapted to the dark Frutiger Aero surface without its costly large shadows. */
+.nl-motion-switch {
+  width: 188px;
+  height: 44px;
+  padding: 4px;
+  background:
+    radial-gradient(80px 22px at 24% 4%,rgba(255,255,255,.16),transparent 72%),
+    linear-gradient(180deg,rgba(34,64,72,.74),rgba(4,15,25,.84));
+  border: 1px solid rgba(190,246,242,.38);
+  box-shadow:
+    inset 3px 3px 7px rgba(0,0,0,.46),
+    inset -2px -2px 5px rgba(184,247,241,.10),
+    0 5px 14px rgba(0,0,0,.25);
+}
+.nl-motion-switch-slider,
+.nl-motion-switch-indicator {
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border: 1px solid rgba(239,255,253,.70);
+  background:
+    radial-gradient(50px 14px at 30% 8%,rgba(255,255,255,.72),transparent 70%),
+    linear-gradient(180deg,#8feee7 0%,#329eaa 46%,#123b52 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,.82),
+    inset 0 -6px 10px rgba(2,35,49,.28),
+    0 3px 8px rgba(0,0,0,.34);
+  transition: transform .42s cubic-bezier(.85,.05,.18,1.35);
+}
+.nl-motion-switch[data-state="a777"] .nl-motion-switch-slider,
+.nl-motion-switch[data-state="a777"] .nl-motion-switch-indicator {
+  transform: translate3d(100%,0,0);
+  background:
+    radial-gradient(50px 14px at 30% 8%,rgba(255,255,255,.72),transparent 70%),
+    linear-gradient(180deg,#ff8d88 0%,#d82c43 48%,#79101f 100%);
+}
+.nl-motion-switch-label {
+  color: rgba(220,241,242,.52);
+  font-size: 10px;
+  letter-spacing: .10em;
+}
+.nl-motion-switch[data-state="normal"] .nl-motion-switch-label.is-normal,
+.nl-motion-switch[data-state="a777"] .nl-motion-switch-label.is-a777-label {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,.38);
+}
+.nl-motion-switch:active .nl-motion-switch-slider,
+.nl-motion-switch:active .nl-motion-switch-indicator {
+  scale: .97 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nl-motion-switch-slider,
+  .nl-motion-switch-indicator { transition-duration: .01ms; }
+}

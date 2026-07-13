@@ -1,37 +1,22 @@
-// src/components/launcher/LauncherGraph.tsx
-// The interactive radial mind-map. Holds the open-path state (one root open at
-// a time; one branch open within it), computes geometry from the measured
-// stage size, and renders the glass rays + node pills.
-//
-// Behaviour (per spec):
-//  - Tap a root  -> its children fan out on curved rays. Tapping another root
-//    collapses the previous one back to a single pill.
-//  - Tap a branch (level 1) -> its remaining choices fan out; siblings dim.
-//  - Tap a leaf  -> genie-navigate into the matching full-screen page / theme.
-
-import { useMemo, useState } from "react";
-import { AnimatePresence } from "framer-motion";
-import { useAppContext } from "../../context/AppContext";
-import { setGenieOriginFromElement } from "../../transitions/genieOrigin";
-import { useReducedMotion } from "../../motion/tokens";
-import type { Theme } from "../../utils/userPrefs";
-import { ROOTS, type NodeAction, type OpenHandler } from "./graph.config";
-import { introAudioController } from "../../audio/introAudioController";
-import { computeGraph, type Layout, type PlacedNode } from "./graph.geometry";
-import { useStageSize } from "./useStageSize";
-import { ConnectorLayer } from "./ConnectorLayer";
-import { NodePill } from "./NodePill";
-
-// NOTE: the launcher intentionally makes NO sound of its own. It used to call
-// audioManager.play('lens') / play('mebit') as "click cues", but those keys are
-// full looping gallery/ME tracks -- so every node tap started the Lens gallery
-// song across the whole app. Navigation targets start their own audio; the
-// launcher must stay silent.
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import { useAppContext } from '../../context/AppContext';
+import { setGenieOriginFromElement } from '../../transitions/genieOrigin';
+import { useReducedMotion } from '../../motion/tokens';
+import type { Theme } from '../../utils/userPrefs';
+import { ROOTS, type NodeAction, type OpenHandler } from './graph.config';
+import { introAudioController } from '../../audio/introAudioController';
+import { computeGraph, type Layout, type PlacedNode } from './graph.geometry';
+import { useStageSize } from './useStageSize';
+import { ConnectorLayer } from './ConnectorLayer';
+import { NodePill } from './NodePill';
+import { warmLauncherAction } from './launcher.prefetch';
+import { useMotionProfile } from '../../quality/motion/useMotionProfile';
 
 export function LauncherGraph() {
   const { ref, size } = useStageSize<HTMLDivElement>();
   const reduced = useReducedMotion();
-
+  const motionProfile = useMotionProfile();
   const {
     setTheme,
     setLoaded,
@@ -43,75 +28,98 @@ export function LauncherGraph() {
     openGames,
     openAccounts,
   } = useAppContext();
-
   const [activeRoot, setActiveRoot] = useState<string | null>(null);
   const [activeBranch, setActiveBranch] = useState<string | null>(null);
+  const layout: Layout = size.w > 0 && size.w < 768 ? 'mobile' : 'desktop';
 
-  const layout: Layout = size.w > 0 && size.w < 768 ? "mobile" : "desktop";
-
-  const { nodes, edges } = useMemo(
+  const graph = useMemo(
     () => computeGraph(size, layout, ROOTS, activeRoot, activeBranch),
     [size, layout, activeRoot, activeBranch],
   );
 
-  const navMap: Record<OpenHandler, () => void> = {
-    openMusic,
-    openMovies,
-    openTv,
-    openXp,
-    openRetro,
-    openGames,
-    openAccounts,
-  };
-
-  const runAction = (action: NodeAction) => {
-    // Entering the app from the reception screen: stop the welcome/intro
-    // background music so it never keeps playing inside the app pages.
+  const runAction = useCallback((action: NodeAction) => {
+    const handlers: Record<OpenHandler, () => void> = {
+      openMusic,
+      openMovies,
+      openTv,
+      openXp,
+      openRetro,
+      openGames,
+      openAccounts,
+    };
     introAudioController.fadeOut(600);
-    if (action.kind === "open") {
-      navMap[action.handler]?.();
-      setTheme("midnight");
+    if (action.kind === 'open') {
+      handlers[action.handler]?.();
+      setTheme('midnight');
       setLoaded(true);
-    } else if (action.kind === "me") {
-      setTheme("midnight");
+    } else if (action.kind === 'me') {
+      setTheme('midnight');
       setLoaded(true);
-    } else if (action.kind === "theme") {
+    } else if (action.kind === 'theme') {
       setTheme(action.theme as Theme);
       setLoaded(true);
     }
-  };
+  }, [
+    openAccounts,
+    openGames,
+    openMovies,
+    openMusic,
+    openRetro,
+    openTv,
+    openXp,
+    setLoaded,
+    setTheme,
+  ]);
 
-  const handleNodeClick = (
-    e: React.MouseEvent<HTMLButtonElement>,
+  const handleNodeClick = useCallback((
+    event: React.MouseEvent<HTMLButtonElement>,
     placed: PlacedNode,
   ) => {
     const { node, level } = placed;
-
-    // Expandable node -> toggle its branch open/closed.
     if (node.children?.length) {
       if (level === 0) {
         setActiveBranch(null);
-        setActiveRoot((prev) => (prev === node.id ? null : node.id));
+        setActiveRoot((previous) => previous === node.id ? null : node.id);
       } else if (level === 1) {
-        setActiveBranch((prev) => (prev === node.id ? null : node.id));
+        setActiveBranch((previous) => previous === node.id ? null : node.id);
       }
       return;
     }
-
-    // Leaf -> navigate, capturing the genie origin from the tapped pill.
-    setGenieOriginFromElement(e.currentTarget);
+    setGenieOriginFromElement(event.currentTarget);
     runAction(node.action);
-  };
+  }, [runAction]);
+
+  const handleIntent = useCallback((placed: PlacedNode) => {
+    if (!placed.hasChildren) warmLauncherAction(placed.node.action);
+  }, []);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || graph.edges.length === 0) return;
+    void import('../../quality/diagnostics/connectionDiagnostics').then(({ reportConnectionDiagnostics }) => {
+      reportConnectionDiagnostics({
+        surface: 'launcher',
+        nodeIds: graph.nodes.map((placed) => placed.node.id),
+        connectionIds: graph.edges.map((edge) => edge.id),
+      });
+    });
+  }, [graph.edges, graph.nodes]);
 
   return (
     <div ref={ref} className="nl-graph-stage">
-      <ConnectorLayer edges={edges} size={size} reduced={reduced} />
-      <AnimatePresence>
-        {nodes.map((placed) => (
+      <ConnectorLayer
+        edges={graph.edges}
+        size={size}
+        reduced={reduced}
+        motionProfile={motionProfile.name}
+      />
+      <AnimatePresence initial={false}>
+        {graph.nodes.map((placed) => (
           <NodePill
             key={placed.node.id}
             placed={placed}
             onClick={handleNodeClick}
+            onIntent={handleIntent}
+            motionProfile={motionProfile.name}
           />
         ))}
       </AnimatePresence>

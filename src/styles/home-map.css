@@ -496,6 +496,13 @@
 /* Give each hanging name room. Names are static (no sway) for light mobile perf. */
 .nl-lattice-row { gap: 22px 18px; }
 
+/* P11: Home cords are part of the permanent visual structure. Never hide the
+   whole topology behind JS readiness; geometry code already omits missing ends. */
+.nl-cords .nl-cord,
+.nl-cords .nl-cord-node {
+  opacity: 1;
+}
+
 /* Phase 6H — hanging names are fully STATIC (no sway, no glow) for light
    mobile performance: just icon + name, like an ordinary page. The 4 thin
    strings remain as static hairlines. */

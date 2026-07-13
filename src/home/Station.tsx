@@ -7,6 +7,7 @@ import { StationConnector } from './StationConnector';
 import { StationWindow, type StationWeight } from './StationWindow';
 import { useHomeMapState } from './useHomeMapState';
 import type { HomeMotionMode } from './motion/homeMotion.types';
+import { useStationConnectionReady } from './useStationConnectionReady';
 
 interface StationProps {
   id: string;
@@ -32,6 +33,7 @@ export const Station = memo(function Station({
   const motionValues = useStationProgress(sectionRef);
   const setActiveStation = useHomeMapState((s) => s.setActiveStation);
   const isActive = useHomeMapState((s) => s.activeStationId === id);
+  const connectionReady = useStationConnectionReady(sectionRef);
 
   useMotionValueEvent(motionValues.progress, 'change', (v) => {
     if (v > 0.35 && v < 0.65) setActiveStation(id);
@@ -44,6 +46,7 @@ export const Station = memo(function Station({
       data-station={id}
       data-active={isActive ? 'true' : undefined}
       data-motion-mode={motionMode}
+      data-connection-ready={connectionReady ? 'true' : 'false'}
       className="nl-home-station"
       aria-label={title}
     >

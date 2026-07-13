@@ -542,3 +542,268 @@
 }
 .nl-songs-lite.is-reduced-motion .nl-eq span { animation: none; transform: scaleY(.7); }
 .nl-songs-lite.is-reduced-motion .nl-spin { animation: none; }
+
+/* ========================================================================
+   P9 — six-song Rescue Hoist / Cargo Hook rope ladder
+   ===================================================================== */
+.nl-song-ladder {
+  position: relative;
+  width: min(100%, 700px);
+  margin-inline: auto;
+  padding-top: 58px;
+  isolation: isolate;
+}
+
+/* Central fixed hook: target for HomeCords' one external song rope. */
+.nl-song-ladder__hook {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 4;
+  width: 28px;
+  height: 28px;
+  transform: translateX(-50%);
+}
+.nl-song-ladder__hook-pin {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255,255,255,.85);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fff, #a9bccb 48%, #344754 100%);
+  box-shadow: 0 0 10px rgba(222,245,255,.62);
+}
+.nl-song-ladder__hook-ring {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 20px;
+  height: 18px;
+  transform: translateX(-50%);
+  border: 3px solid rgba(218,235,244,.88);
+  border-top-color: transparent;
+  border-radius: 4px 4px 12px 12px;
+  box-shadow: inset 0 -1px 1px rgba(255,255,255,.55), 0 2px 4px rgba(0,0,0,.32);
+}
+
+/* Two load lines fan from the hook to the first card's upper corners. */
+.nl-song-ladder__crown {
+  position: absolute;
+  top: 24px;
+  left: 12%;
+  right: 12%;
+  height: 35px;
+  z-index: 0;
+  pointer-events: none;
+}
+.nl-song-ladder__crown span {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 2px;
+  transform-origin: left center;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,.82), #edf8ff 48%, rgba(92,116,132,.74));
+  box-shadow: 0 0 4px rgba(220,241,255,.38);
+}
+/* Lines begin at the central hook and reach the first card's side clamps. */
+.nl-song-ladder__crown .is-left { transform: rotate(173deg); }
+.nl-song-ladder__crown .is-right { transform: rotate(7deg); }
+
+/* Authoritative ladder layout: one vertical column on every viewport. */
+.nl-song-ladder .nl-songs-lite__grid {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+.nl-song-ladder .nl-song-cell {
+  position: relative;
+  min-width: 0;
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+  transform-origin: 50% 0;
+}
+.nl-song-ladder .nl-song-cell.is-active { grid-column: auto; }
+
+/* Every rung after the first is suspended from the previous card by two ropes. */
+.nl-song-ladder .nl-song-cell:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -18px;
+  left: 10%;
+  right: 10%;
+  height: 18px;
+  background:
+    linear-gradient(90deg,
+      transparent 0 3%,
+      rgba(225,239,248,.82) 3% 3.45%,
+      transparent 3.45% 96.55%,
+      rgba(225,239,248,.82) 96.55% 97%,
+      transparent 97% 100%);
+  filter: drop-shadow(0 0 2px rgba(210,235,250,.32));
+  pointer-events: none;
+}
+
+/* Small metal clamps where each rope meets the card. */
+.nl-song-ladder .nl-song-cell::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  top: -3px;
+  left: 10%;
+  right: 10%;
+  height: 6px;
+  background:
+    radial-gradient(circle at 3% 50%, #edf6fa 0 2.8px, transparent 3px),
+    radial-gradient(circle at 97% 50%, #edf6fa 0 2.8px, transparent 3px);
+  filter: drop-shadow(0 0 2px rgba(255,255,255,.58));
+  pointer-events: none;
+}
+
+/* Retract bottom-to-top, like a ladder being pulled into the hoist. */
+.nl-song-ladder.is-retracting .nl-song-cell {
+  animation: nl-ladder-retract 220ms cubic-bezier(.55,.04,.88,.32) both;
+  animation-delay: calc(var(--nl-rung-reverse-index) * 7ms);
+}
+@keyframes nl-ladder-retract {
+  from { transform: translate3d(0,0,0) scale(1); opacity: 1; }
+  to { transform: translate3d(0,-38px,0) scale(.94,.78); opacity: 0; }
+}
+
+/* Deploy top-to-bottom with one restrained kinetic-load absorption bounce. */
+.nl-song-ladder.is-deploying .nl-song-cell {
+  animation: nl-ladder-deploy 520ms cubic-bezier(.18,.78,.22,1) both;
+  animation-delay: calc(var(--nl-rung-index) * 42ms);
+}
+@keyframes nl-ladder-deploy {
+  0% { transform: translate3d(0,-46px,0) scale(.95,.76); opacity: 0; }
+  68% { transform: translate3d(0,4px,0) scale(1,1.025); opacity: 1; }
+  84% { transform: translate3d(0,-2px,0) scale(1,.99); opacity: 1; }
+  100% { transform: translate3d(0,0,0) scale(1); opacity: 1; }
+}
+
+.nl-song-ladder__controls {
+  position: relative;
+  min-height: 128px;
+  margin-top: 0;
+  opacity: 1;
+}
+.nl-song-ladder__control-harness {
+  position: absolute;
+  top: 0;
+  left: 8%;
+  width: 84%;
+  height: 78px;
+  overflow: visible;
+  fill: none;
+  stroke: rgba(226,241,249,.88);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 2px rgba(210,236,250,.32));
+}
+.nl-song-ladder__control-harness .is-beam {
+  stroke-width: 4;
+  stroke: rgba(190,210,222,.92);
+}
+.nl-song-ladder__control-deck {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px minmax(82px,auto) 64px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 76px;
+}
+.nl-song-ladder__controls.is-first-page .nl-song-ladder__control-deck {
+  grid-template-columns: minmax(82px,auto) 64px;
+}
+.nl-song-ladder__page-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-inline: auto;
+  padding: 0;
+  color: #fff;
+  background:
+    radial-gradient(30px 12px at 28% 10%, rgba(255,255,255,.58), transparent 72%),
+    linear-gradient(180deg, #ff8589 0%, #d51d35 48%, #7d0918 100%);
+  border: 1px solid rgba(255,225,228,.84);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.72),
+    inset 0 -8px 13px rgba(58,0,8,.30),
+    0 6px 14px rgba(0,0,0,.32);
+  font: 500 30px/1 ui-sans-serif,system-ui,sans-serif;
+  cursor: pointer;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.nl-song-ladder__page-button::after {
+  content: "";
+  position: absolute;
+  inset: 3px 8px 54%;
+  border-radius: 999px;
+  background: linear-gradient(180deg,rgba(255,255,255,.30),transparent);
+  pointer-events: none;
+}
+.nl-song-ladder__page-button:hover { transform: translateY(-1px); }
+.nl-song-ladder__page-button:active { transform: translateY(1px) scale(.96); }
+.nl-song-ladder__page-button:focus-visible { outline: 2px solid #c9f7ff; outline-offset: 3px; }
+.nl-song-ladder__page-button:disabled { opacity: .32; cursor: not-allowed; }
+.nl-song-ladder__page-status {
+  color: var(--aero-dim);
+  font: 700 10px/1.2 ui-monospace,monospace;
+  letter-spacing: .08em;
+  text-align: center;
+  white-space: nowrap;
+}
+.nl-song-ladder[aria-busy="true"] .nl-song-ladder__controls {
+  pointer-events: none;
+  opacity: 0;
+}
+.nl-song-ladder.is-deploying .nl-song-ladder__controls {
+  animation: nl-ladder-controls-arrive 220ms ease both;
+  animation-delay: 410ms;
+}
+@keyframes nl-ladder-controls-arrive {
+  from { transform: translateY(-12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* The crown and inter-card ropes inherit the same finite reveal as their cards. */
+.nl-song-ladder.is-retracting .nl-song-ladder__crown { opacity: 0; transition: opacity 100ms ease; }
+.nl-song-ladder.is-deploying .nl-song-ladder__crown {
+  animation: nl-ladder-crown-arrive 180ms ease both;
+}
+@keyframes nl-ladder-crown-arrive {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 480px) {
+  .nl-song-ladder { width: 100%; padding-top: 52px; }
+  .nl-song-ladder__crown { left: 15%; right: 15%; height: 30px; }
+  .nl-song-ladder__crown span { width: 50%; }
+  .nl-song-ladder__crown .is-left { transform: rotate(170deg); }
+  .nl-song-ladder__crown .is-right { transform: rotate(10deg); }
+  .nl-song-ladder .nl-songs-lite__grid { gap: 16px; }
+  .nl-song-ladder__page-button { width: 46px; height: 46px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-song-ladder.is-retracting .nl-song-cell,
+  .nl-song-ladder.is-deploying .nl-song-cell {
+    animation: none !important;
+  }
+}

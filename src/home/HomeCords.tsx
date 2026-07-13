@@ -189,6 +189,17 @@ export const HomeCords = memo(function HomeCords({ links, nodes, motionMode }: H
   }, [links, nodes]);
 
   useEffect(() => {
+    if (!import.meta.env.DEV || state.paths.length === 0) return;
+    void import('../quality/diagnostics/connectionDiagnostics').then(({ reportConnectionDiagnostics }) => {
+      reportConnectionDiagnostics({
+        surface: 'home',
+        nodeIds: state.dots.map((dot) => dot.id),
+        connectionIds: state.paths.map((path) => path.id),
+      });
+    });
+  }, [state.dots, state.paths]);
+
+  useEffect(() => {
     let raf = 0;
 
     const schedule = () => {
@@ -286,15 +297,18 @@ export const HomeCords = memo(function HomeCords({ links, nodes, motionMode }: H
             data-station={p.station}
             style={groupStyle}
           >
-            <path d={p.d} className="nl-cord-glow" />
-            <path d={p.d} className="nl-cord-core" />
+            <path d={p.d} className="nl-cord-glow" pathLength="1" />
+            <path d={p.d} className="nl-cord-core" pathLength="1" />
           </g>
         );
       })}
       {state.dots.map((d) => {
         const active = d.id === activeStation;
         return (
-          <g key={d.id} className={active ? 'nl-cord-node nl-cord-node--active' : 'nl-cord-node'}>
+          <g
+            key={d.id}
+            className={active ? 'nl-cord-node nl-cord-node--active' : 'nl-cord-node'}
+          >
             <circle
               cx={d.x}
               cy={d.y}

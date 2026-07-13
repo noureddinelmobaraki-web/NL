@@ -130,15 +130,21 @@ const GALLERY_LINKS: CordLink[] = [
   },
 ];
 
-// Songs: dynamic zig-zag ladder across the responsive songs grid.
+// Songs: Home's global rope ends at one central Cargo Hook. The six-card
+// deployment ladder and inter-card ropes are internal to SongListLite/CSS.
 const SONGS_LINKS: CordLink[] = [
   {
-    id: 'songs-ladder',
-    kind: 'chain',
+    id: 'songs-cargo-hook',
     station: 'songs',
-    containerSel: '.nl-songs-lite__grid',
-    itemSel: '.nl-song-cell[data-song-revealed="true"]',
-    sag: 0.12,
+    from: { kind: 'node', station: 'songs' },
+    to: {
+      kind: 'stationEl',
+      station: 'songs',
+      sel: '.nl-song-ladder__hook',
+      ax: 0.5,
+      ay: 0.5,
+    },
+    sag: 0.08,
   },
 ];
 
