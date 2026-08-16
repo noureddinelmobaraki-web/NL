@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
 import { useNowPlaying } from '../hooks/useNowPlaying';
 import { LyricsPanel } from './LyricsPanel';
@@ -188,7 +188,7 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
         </button>
         
         {/* Play/Pause — animated, professional */}
-        <motion.button
+        <m.button
           onClick={() => actions.togglePlay()}
           aria-label={isPlaying ? 'Pause' : 'Play'}
           whileHover={hoverScale}
@@ -199,7 +199,7 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
           {/* soft pulsing ring while playing */}
           <AnimatePresence>
             {isPlaying && (
-              <motion.span
+              <m.span
                 key="ring"
                 className="absolute inset-0 rounded-full border-2 border-white/50"
                 initial={ringInit}
@@ -213,7 +213,7 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
           {/* morphing icon */}
           <AnimatePresence mode="wait" initial={false}>
             {isPlaying ? (
-              <motion.span
+              <m.span
                 key="pause"
                 className="absolute flex items-center justify-center"
                 initial={inFromLeft}
@@ -222,9 +222,9 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
                 transition={iconSpring}
               >
                 <Pause size={34} fill="currentColor" className="drop-shadow-lg" />
-              </motion.span>
+              </m.span>
             ) : (
-              <motion.span
+              <m.span
                 key="play"
                 className="absolute flex items-center justify-center"
                 initial={inFromRight}
@@ -233,10 +233,10 @@ export function PlayerScreen({ onClose }: { onClose?: () => void }) {
                 transition={iconSpring}
               >
                 <Play size={34} fill="currentColor" className="ml-1 drop-shadow-lg" />
-              </motion.span>
+              </m.span>
             )}
           </AnimatePresence>
-        </motion.button>
+        </m.button>
 
         <button onClick={() => actions.next()} className="text-slate-700 hover:text-slate-900 hover:scale-110 transition-all drop-shadow-md active:scale-95">
           <SkipForward size={32} fill="currentColor" />

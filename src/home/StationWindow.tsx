@@ -1,7 +1,7 @@
 // src/home/StationWindow.tsx
 // نافذة فضّية معدنية مثبّتة عند رأسها (top:28%) لتتصل بالخيوط.
 import { memo, type ReactNode } from 'react';
-import { motion, type MotionValue } from 'framer-motion';
+import { m, type MotionValue } from 'framer-motion';
 
 export type StationWeight = 'sm' | 'md' | 'lg';
 
@@ -30,16 +30,16 @@ export const StationWindow = memo(function StationWindow({
     const bareStyle = { opacity, y };
     return (
       <div className="nl-home-anchor">
-        <motion.div className="nl-home-bare" style={bareStyle}>
+        <m.div className="nl-home-bare" style={bareStyle}>
           {children}
-        </motion.div>
+        </m.div>
       </div>
     );
   }
 
   return (
     <div className="nl-home-anchor">
-      <motion.div
+      <m.div
         className={`nl-home-window nl-home-window--${weight}`}
         style={windowStyle}
       >
@@ -50,7 +50,7 @@ export const StationWindow = memo(function StationWindow({
           </div>
           <div className="nl-home-window-body">{children}</div>
         </div>
-      </motion.div>
+      </m.div>
     </div>
   );
 });

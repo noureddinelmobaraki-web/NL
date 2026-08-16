@@ -1,21 +1,14 @@
+import '@fontsource-variable/readex-pro/index.css';
+import '@fontsource/cairo/arabic-400.css';
+import '@fontsource/cairo/arabic-700.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import App from './App.tsx';
+import { LazyMotion, domMax } from 'framer-motion';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 import './index.css';
-import './styles/aero-theme.css';
-import './transitions/genie.css';
-import './styles/page-mode-layer.css';
-import './styles/home-map.css';
-import './styles/aero-redesign.css';
-import './styles/components/mobile-modals.css';
-import './styles/components/profile-mobile-fit.css';
-import './styles/components/perf-lite.css';
-import './styles/mobile-no-backdrop-filter.css';
-import './styles/components/home-motion-system.css';
-import './styles/components/home-polish.css';
 import { registerServiceWorker } from './utils/registerSW';
 import { reportWebVitals } from './utils/vitals';
 import { isAutomatedEnv } from './utils/env';
@@ -52,7 +45,12 @@ createRoot(rootElement).render(
   <StrictMode>
     <SectionErrorBoundary sectionName="App">
       <AuthProvider>
-        <App />
+        {/* domMax مطلوب وليس اختيارياً: domAnimation لا يحمل محرك التخطيط،
+        والمشروع يستعمل layoutId في 7 مواضع (SongCard، Lens، MeBit، Movies، AeroGallery).
+        قبل أي رجوع إلى domAnimation: grep -rn 'layoutId' src وتأكد أن الناتج صفر. */}
+        <LazyMotion features={domMax} strict>
+          <App />
+        </LazyMotion>
       </AuthProvider>
     </SectionErrorBoundary>
   </StrictMode>,

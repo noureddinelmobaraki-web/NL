@@ -12,7 +12,7 @@
  * Visual contract: external props unchanged, every class/style preserved.
  */
 import { memo, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import './lyricsReveal.css';
 import { Song, LyricLine } from '../../types';
 import { SONG_BG_FALLBACK } from '../../constants/assets';
@@ -114,7 +114,7 @@ export const SongCard = memo(({
 
   const renderContent = () => {
     return (
-    <motion.div
+    <m.div
       ref={setRefs}
       id={`song-card-${song.id}`}
       layout
@@ -281,7 +281,7 @@ export const SongCard = memo(({
           />
         </div>
       )}
-    </motion.div>
+    </m.div>
     );
   };
 

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { getThemedImage } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
 
@@ -9,11 +9,13 @@ import { useFadeInOnView } from '../../hooks/useFadeInOnView';
 import { useDevCSSVarCheck } from '../../utils/dev/cssVarCheck';
 import { REQUIRED_HERO_VARS } from '../../constants/cssVarLists';
 import { useLightProfileImage } from '../../hooks/useLightProfileImage';
+import { useAppContext } from '../../context/AppContext';
 import siteData from '../../../metadata.json';
 
 import { isAutomatedEnv } from '../../utils/env';
 
 export const HeroSection = memo(() => {
+  const { openPortrait } = useAppContext();
   const resolvedTheme = useResolvedTheme();
   const { isMobile } = useDeviceType(); // MOBILE-ONLY
   const isAutomated = isAutomatedEnv();
@@ -104,7 +106,7 @@ export const HeroSection = memo(() => {
           }`} />
           
           {/* Stable Native Hero Title animation envelope */}
-          <motion.div
+          <m.div
              initial={isAutomated ? { opacity: 1, y: 0 } : { opacity: 0, y: 15 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: isAutomated ? 0 : 0.6, ease: [0.16, 1, 0.3, 1], delay: isAutomated ? 0 : 0.1 }}
@@ -115,7 +117,7 @@ export const HeroSection = memo(() => {
             >
               {siteData.fullName}
             </h1>
-          </motion.div>
+          </m.div>
           
           {/* Divider and Location Block */}
           <div className="mt-6 flex items-center gap-4 text-[var(--text-primary)] font-bold uppercase divider-top-refactored pt-4">
@@ -146,16 +148,35 @@ export const HeroSection = memo(() => {
       </div>
 
       {/* Unified Profile Card Element */}
-      <div className="hero-profile-container hero-profile-image" data-cord-id="hero-profile">
-        <ResponsiveImage 
-          src={activeProfileImg} 
-          alt={`${siteData.fullName} — ${siteData.location} based rap artist (${siteData.aliases.join(' / ')})`} 
-          width={400}
-          height={400}
-          className="w-full h-full object-cover" 
-          loading="eager"
-          fetchPriority="high"
-        />
+      <div
+        className="hero-profile-container hero-profile-image nl-hero-open"
+        data-cord-id="hero-profile"
+        role="button"
+        tabIndex={0}
+        aria-label="Open portrait"
+        onClick={openPortrait}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openPortrait();
+          }
+        }}
+      >
+        {/* Inner wrapper carries the scale so the container's measured box
+            stays put and the rope renderer does not follow the hover. */}
+        <span className="nl-hero-open__inner">
+          <ResponsiveImage
+            src={activeProfileImg}
+            alt={`${siteData.fullName} — ${siteData.location} based rap artist (${siteData.aliases.join(' / ')})`}
+            width={400}
+            height={400}
+            className="w-full h-full object-cover"
+            loading="eager"
+            fetchPriority="high"
+          />
+          <span className="nl-hero-open__veil" aria-hidden="true" />
+          <span className="nl-hero-open__label" aria-hidden="true">open</span>
+        </span>
       </div>
     </header>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Star, Loader2 } from 'lucide-react';
-import { getFvTracks } from '../../music/data/loadSongs';
+import { useMusicStore } from '../../music/store/musicStore';
 import { getInitials } from '../../music/utils/cover';
 import {
   FEATURED_MAX, fetchSongFavorites, setSongFeatured, type SongFavRow,
@@ -16,11 +16,12 @@ export function FeaturedPicker({ userId, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const allTracks = useMusicStore((s) => s.tracks);
   const catalog = useMemo(() => {
     const m = new Map<string, Track>();
-    for (const t of getFvTracks()) m.set(t.id, t);
+    for (const t of allTracks) m.set(t.id, t);
     return m;
-  }, []);
+  }, [allTracks]);
 
   useEffect(() => {
     fetchSongFavorites(userId)

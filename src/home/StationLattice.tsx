@@ -7,7 +7,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { m, useScroll, useTransform } from 'framer-motion';
 
 export interface LatticeItem {
   id: string;
@@ -95,7 +95,7 @@ export const StationLattice = memo(function StationLattice({
         {paths.map((d, i) => {
           const cls = lite ? 'nl-lattice-ray nl-lattice-ray--lite' : 'nl-lattice-ray';
           return (
-            <motion.path key={i} d={d} className={cls} strokeLinecap="round" style={drawStyle} />
+            <m.path key={i} d={d} className={cls} strokeLinecap="round" style={drawStyle} />
           );
         })}
       </svg>

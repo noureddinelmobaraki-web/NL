@@ -27,15 +27,15 @@ export function PlaylistsPanel({ onOpenPlayer, online }: { onOpenPlayer?: () => 
   const dlSet = useMemo(() => new Set(downloaded), [downloaded]);
 
   // Resolve a playlist's track IDs into Track objects (reactive to playlist edits).
+  const allTracks = useMusicStore((s) => s.tracks);
   const tracksFor = useMemo(() => {
     return (id: string): Track[] => {
-      const st = useMusicStore.getState();
-      const map = new Map(st.tracks.map((t) => [t.id, t] as const));
-      const pl = st.playlists.find((p) => p.id === id);
+      const map = new Map(allTracks.map((t) => [t.id, t] as const));
+      const pl = playlists.find((p) => p.id === id);
       if (!pl) return [];
       return pl.trackIds.map((tid) => map.get(tid)).filter((t): t is Track => !!t);
     };
-  }, []);
+  }, [allTracks, playlists]);
 
   const openPlaylist = playlists.find((p) => p.id === openId) || null;
   const openTracks = useMemo(

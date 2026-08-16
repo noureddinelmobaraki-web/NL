@@ -1,7 +1,7 @@
 // src/transitions/GenieSurface.tsx
 import type { ReactNode, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useGenieTransition } from './useGenieTransition';
 
 interface GenieSurfaceProps {
@@ -33,7 +33,7 @@ export const GenieSurface = ({
   const tree = (
     <AnimatePresence onExitComplete={onExitComplete}>
       {open && (
-        <motion.div
+        <m.div
           role={role}
           aria-modal={ariaModal || undefined}
           aria-label={ariaLabel}
@@ -45,7 +45,7 @@ export const GenieSurface = ({
           style={{ ...genie.style, ...style }}
         >
           {children}
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

@@ -16,10 +16,19 @@ export default tseslint.config(
     },
     plugins: {
       'react-hooks': reactHooks,
+      '@typescript-eslint': tseslint.plugin,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      ...tseslint.configs.recommended[1].rules,
+      '@typescript-eslint/no-explicit-any': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-restricted-syntax': ['warn', {
+        selector: "CallExpression[callee.object.name='useMusicStore'][callee.property.name='getState']",
+        message: 'R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات.',
+      }],
+      
     },
   },
   {

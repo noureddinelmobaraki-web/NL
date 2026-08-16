@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, AlertCircle } from 'lucide-react';
 
 export interface PlaySource {
@@ -133,7 +133,7 @@ export const MovieSourcesModal: React.FC<MovieSourcesModalProps> = ({ isOpen, on
           {/* Backdrop Click */}
           <div className="absolute inset-0 cursor-default" onClick={onClose} />
 
-          <motion.div
+          <m.div
             ref={modalRef}
             role="dialog"
             aria-modal="true"
@@ -202,7 +202,7 @@ export const MovieSourcesModal: React.FC<MovieSourcesModalProps> = ({ isOpen, on
                 Opens safely in a new tab
               </span>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       )}
     </AnimatePresence>

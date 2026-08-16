@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { X, Youtube } from 'lucide-react';
 import { useYoutubeVideos } from './useYoutubeVideos';
 import { getChannelUrl } from './loadYoutube';
@@ -64,7 +64,7 @@ export function YouTubePortal({ open, initialVideoId, onClose }: YouTubePortalPr
   return createPortal(
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <m.div
           className="nl-tube-backdrop"
           initial={backdropAnim.initial}
           animate={backdropAnim.animate}
@@ -72,7 +72,7 @@ export function YouTubePortal({ open, initialVideoId, onClose }: YouTubePortalPr
           transition={backdropTrans}
           onClick={onClose}
         >
-          <motion.div
+          <m.div
             className="nl-tube-root"
             initial={panelAnim.initial}
             animate={panelAnim.animate}
@@ -172,8 +172,8 @@ export function YouTubePortal({ open, initialVideoId, onClose }: YouTubePortalPr
 
               {error ? <p className="nl-tube-error">Could not load videos.</p> : null}
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       ) : null}
     </AnimatePresence>,
     document.body,

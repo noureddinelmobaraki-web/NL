@@ -1,0 +1,412 @@
+/*
+ * Portrait page styles.
+ *
+ * Imported directly by PortraitPage.tsx rather than registered in the global
+ * style graph. cssCodeSplit is true in vite.config.ts, so these rules ship in
+ * the portrait chunk and cost nothing on any other page.
+ */
+
+.nl-portrait-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+  overscroll-behavior: contain;
+  touch-action: none; /* the stage owns every gesture */
+}
+
+/*
+ * THE LAYER LOCK.
+ *
+ * The stage is a square sized to the largest square that fits the viewport.
+ * Both plates are natively 1:1, so stage aspect == image aspect and every
+ * normalised coordinate maps exactly, at every screen size, forever.
+ *
+ * Do not change aspect-ratio. Do not switch the layers to object-fit: cover.
+ * On a 390x844 phone, cover shows only x [0.269, 0.731] and clips the lamp,
+ * whose left edge is at 0.2388.
+ */
+.nl-portrait-stage {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: min(100dvw, 100dvh);
+  max-width: 100dvw;
+  max-height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+  cursor: crosshair;
+}
+
+/* Shared geometry for every full-bleed layer. */
+.nl-portrait-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* identical to fill here; robust if a plate ever changes */
+  object-position: center;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.nl-portrait-layer--bg {
+  z-index: 1;
+}
+
+/* ── 3D orbit rig ────────────────────────────────────────────────────────── */
+
+/* Zero-sized so it is a pure coordinate origin. z-index is rewritten by the
+   depth tracker during the orbit; 2 keeps it between bg (1) and subject (3). */
+.nl-portrait-orbit-anchor {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 2;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.nl-portrait-orbit-plane,
+.nl-portrait-orbit-arm {
+  position: absolute;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.nl-portrait-video {
+  position: absolute;
+  /* Sized from the stage, not from the zero-width anchor. */
+  width: calc(var(--nl-stage, 100vmin) * var(--nl-video-w, 0.42));
+  aspect-ratio: 16 / 9;
+  transform-origin: 50% 50%;
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  pointer-events: auto;
+  backface-visibility: visible;
+}
+
+.nl-portrait-video__el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-portrait-video { transition-duration: 1ms; }
+}
+
+/* The erasable subject, painted to a canvas.
+
+   The video shrink arrives as --nl-subject-scale rather than as an inline
+   style, so that the poem-mode rule further down can override the transform
+   outright. Anything inline here would silently win against it. */
+.nl-portrait-layer--subject {
+  z-index: 3;
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: 50% 100%; /* shrink toward the feet, never float */
+  transform: scale(var(--nl-subject-scale, 1));
+}
+
+/* Interaction layer above everything visual. */
+.nl-portrait-lamp {
+  position: absolute;
+  z-index: 4;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nl-portrait-lamp:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.nl-portrait-lamp[data-debug='true'] {
+  background: rgba(255, 210, 0, 0.28);
+  outline: 1px dashed rgba(255, 210, 0, 0.9);
+}
+
+.nl-portrait-close {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-portrait-layer--subject {
+    transition-duration: 1ms;
+  }
+}
+
+/* ── Poem ──────────────────────────────────────────────────────────────── */
+
+/* The CSP is `font-src 'self' data:` — Google Fonts is blocked and always will
+   be unless the CSP changes. Self-host instead: drop Amiri-Regular.woff2 into
+   public/fonts/ and this rule activates. Until then the stack below falls
+   through to whatever Naskh face the OS ships, which is still a proper Arabic
+   serif on every current platform. Do not add a Google Fonts <link>. */
+@font-face {
+  font-family: 'Amiri';
+  src: url('/NL/fonts/Amiri-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.nl-poem {
+  position: absolute;
+  /* The left band of the frame. The subject occupies 0% of columns x<0.30 and
+     only 7.98% of the 0.30-0.40 band, so text here is never fighting his face.
+     Anything that overflows past 42% slides behind him, which is the effect
+     the owner asked for. */
+  left: 2%;
+  right: 58%;
+  bottom: 6%;
+  top: 12%;
+  z-index: 2; /* background 1 · poem 2 · subject 3 */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+  overflow: hidden;
+  /* A whisper of a scrim. Enough to hold contrast over the bright wall, not
+     enough to read as a panel. */
+  -webkit-mask-image: linear-gradient(to top, #000 62%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 62%, transparent 100%);
+}
+
+.nl-poem__stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  will-change: transform;
+}
+
+.nl-poem__line {
+  margin: 0 0 0.42em;
+  font-family: 'Amiri', 'Noto Naskh Arabic', 'Scheherazade New',
+    'Traditional Arabic', 'Times New Roman', serif;
+  font-size: calc(var(--nl-stage, 100vmin) * 0.032);
+  line-height: 1.62;
+  font-weight: 400;
+  color: #f6f2e8;
+  text-align: right;
+  /* Layered shadow, not a box: keeps the words legible against both the pale
+     wall and the dark desk without putting a rectangle on the picture. */
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.95),
+    0 2px 10px rgba(0, 0, 0, 0.8),
+    0 0 30px rgba(0, 0, 0, 0.6);
+  transition: opacity 520ms ease;
+}
+
+/* Four readable lines, the fifth on its way out. */
+.nl-poem__line:nth-last-child(1) { opacity: 1; }
+.nl-poem__line:nth-last-child(2) { opacity: 0.9; }
+.nl-poem__line:nth-last-child(3) { opacity: 0.68; }
+.nl-poem__line:nth-last-child(4) { opacity: 0.42; }
+.nl-poem__line:nth-last-child(n + 5) { opacity: 0; }
+
+@media (max-width: 767px) {
+  .nl-poem { left: 3%; right: 40%; }
+  .nl-poem__line { font-size: calc(var(--nl-stage, 100vmin) * 0.038); }
+}
+
+/* ── Toggle (Uiverse.io by vinodjangid07, scoped) ──────────────────────────── */
+
+.nl-poem-toggle {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  z-index: 10; /* above every stage layer, beside the close button */
+  /* The switch is authored in fixed px. Scale rather than rewrite it. */
+  transform: scale(var(--nl-toggle-scale, 1));
+  transform-origin: top left;
+  /* translateX(100%) on the knob assumes a left-to-right track. The page is
+     dir="rtl", so pin the direction here. */
+  direction: ltr;
+}
+
+.nl-poem-toggle__input { display: none; }
+
+.nl-poem-toggle__track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 80px;
+  height: 40px;
+  background-color: rgb(199, 199, 199);
+  border-radius: 20px;
+  cursor: pointer;
+  transition-duration: 0.3s;
+}
+
+.nl-poem-toggle__track::after {
+  content: '';
+  position: absolute;
+  height: 40px;
+  width: 40px;
+  left: 0px;
+  background: conic-gradient(
+    rgb(104, 104, 104),
+    white,
+    rgb(104, 104, 104),
+    white,
+    rgb(104, 104, 104)
+  );
+  border-radius: 50%;
+  transition-duration: 0.3s;
+  box-shadow: 5px 2px 7px rgba(8, 8, 8, 0.308);
+}
+
+.nl-poem-toggle__input:checked + .nl-poem-toggle__track::after {
+  transform: translateX(100%);
+  transition-duration: 0.3s;
+}
+
+.nl-poem-toggle__input:checked + .nl-poem-toggle__track {
+  background-color: rgb(153, 197, 151);
+  transition-duration: 0.3s;
+}
+
+.nl-poem-toggle__input:focus-visible + .nl-poem-toggle__track {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+@media (max-width: 767px) {
+  .nl-poem-toggle { --nl-toggle-scale: 0.78; }
+}
+
+/* ── Poem cinematic mode ──────────────────────────────────────────
+ *
+ * Active only while the toggle is on. The 1:1 layer lock in the block at the
+ * top of this file still governs normal mode; it is relaxed here because the
+ * erase mask, the lamp hotspot and the orbit are all disabled during the
+ * recital, so nothing depends on stage coordinates.
+ *
+ * min(100dvw, 100dvh) and the full-viewport box have the same min() edge, so
+ * --nl-stage does not change value between the two modes and the subject
+ * canvas is never reallocated.
+ */
+
+.nl-portrait-root--poem .nl-portrait-stage {
+  width: 100dvw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
+  cursor: default;
+}
+
+/* The background is an <img> with object-fit: cover, so a non-square box
+   fills the screen on its own. The blur and the dim are what make 55px of
+   text readable over a lit wall without putting a panel on the picture. */
+.nl-portrait-root--poem .nl-portrait-layer--bg {
+  filter: blur(2.5px) saturate(0.9) brightness(0.62);
+  transform: scale(1.05); /* hides the soft edge the blur leaves at the frame */
+  transition:
+    filter var(--nl-poem-ms, 900ms) ease,
+    transform var(--nl-poem-ms, 900ms) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The subject is a <canvas>; object-fit does not apply to its backing store,
+   so it must keep a square CSS box or he stretches. Pinned to the centre of
+   the viewport and moved with one composited transform.
+
+   translate(-50%, -50%) resolves against the element's own S x S box, so the
+   net mapping is: viewport centre + (dx, dy) + zoom * offset-from-plate-centre.
+   That is exactly the arithmetic in usePoemStage. */
+.nl-portrait-root--poem .nl-portrait-layer--subject {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: var(--nl-stage, 100vmin);
+  height: var(--nl-stage, 100vmin);
+  transform-origin: 50% 50%;
+  transform:
+    translate(-50%, -50%)
+    translate(var(--nl-poem-dx, 0px), var(--nl-poem-dy, 0px))
+    scale(var(--nl-poem-zoom, 1));
+  transition: transform var(--nl-poem-ms, 900ms) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Sized against the viewport by usePoemStage, not against the square stage. */
+.nl-portrait-root--poem .nl-poem {
+  left: var(--nl-poem-left, 4vw);
+  right: var(--nl-poem-right, 4vw);
+  top: var(--nl-poem-top, 8vh);
+  bottom: var(--nl-poem-bottom, 7vh);
+}
+
+.nl-portrait-root--poem .nl-poem__line {
+  font-size: var(--nl-poem-font, 30px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-portrait-root--poem .nl-portrait-layer--bg,
+  .nl-portrait-root--poem .nl-portrait-layer--subject {
+    transition-duration: 1ms;
+  }
+}
+
+/* Karaoke reveal. transform needs inline-block: it does not apply to a
+   non-replaced inline box. */
+.nl-poem__word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.16em);
+  filter: blur(4px);
+  transition:
+    opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Word gap. inline-end is the left side in RTL, which is where the next
+   word goes. */
+.nl-poem__word:not(:last-child) {
+  margin-inline-end: 0.3em;
+}
+
+.nl-poem__word[data-lit='true'] {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-poem__word {
+    transition-duration: 1ms;
+    transform: none;
+    filter: none;
+  }
+}

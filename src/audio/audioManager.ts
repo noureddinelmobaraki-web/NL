@@ -4,6 +4,8 @@ type AudioSource =
   | 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro'
   | 'games' | 'movies' | 'series' | 'tv' | 'retro' | 'xp'
   | 'profile'   // أغنية بروفيل المستخدم (ThemeSongBar)
+  | 'portrait'  // خلفية صفحة البورتريه المستقلة (PortraitPage)
+  | 'poem'      // قصيدة صفحة البورتريه (metxtbg)
   | 'preview'   // معاينة أغنية داخل النوافذ (useSongPreview)
   | 'preview_clip'; // معاينة مقطع لضبط أغنية الثيم (ThemeSongClipSelector)
 
@@ -457,6 +459,8 @@ class AudioManager {
       'tv': 6,
       'retro': 6,
       'xp': 6,
+      'portrait': 6,
+      'poem': 7, // فوق portrait (6) حتى يوقف الخلفية عند التشغيل
       'video': 5,
       'bg': 1
     };
@@ -966,7 +970,7 @@ class AudioManager {
       const startVol = el.volume;
       if (startVol <= 0) { el.volume = 0; return resolve(); }
       const startTime = performance.now();
-      let cancelled = false;
+      const cancelled = false;
       const tick = (now: number) => {
         if (cancelled || !this.fadeIntervals.has(el)) { resolve(); return; }
         const progress = Math.max(0, Math.min((now - startTime) / ms, 1));
@@ -991,7 +995,7 @@ class AudioManager {
       if (el.volume >= safeTarget) return resolve();
       const startVol = el.volume;
       const startTime = performance.now();
-      let cancelled = false;
+      const cancelled = false;
       const tick = (now: number) => {
         if (cancelled || !this.fadeIntervals.has(el)) { resolve(); return; }
         const progress = Math.max(0, Math.min((now - startTime) / ms, 1));

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ResponsiveImage } from '../ResponsiveImage';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
@@ -148,7 +148,7 @@ export const MeBitMainImage = ({
 
       {imageUrl ? (
         <AnimatePresence mode="wait">
-          <motion.div
+          <m.div
             key={selectedIndex}
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -157,7 +157,7 @@ export const MeBitMainImage = ({
             className={`flex items-center justify-center
               ${(isMobile || isTablet) ? 'w-[100dvw] h-[100dvh] p-0' : 'w-full h-full p-4 sm:p-8 cursor-zoom-in'}`}
           >
-            <motion.div
+            <m.div
               style={{
                 x: pan.x,
                 y: pan.y,
@@ -184,7 +184,7 @@ export const MeBitMainImage = ({
                 draggable={false}
                 style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
               />
-            </motion.div>
+            </m.div>
 
             {/* Desktop nav arrows */}
             {!isMobile && !isTablet && (
@@ -205,7 +205,7 @@ export const MeBitMainImage = ({
                 </button>
               </div>
             )}
-          </motion.div>
+          </m.div>
         </AnimatePresence>
       ) : (
         <div className="text-zinc-600 font-manga text-3xl animate-pulse tracking-widest">

@@ -1,0 +1,78 @@
+/* ============================================================
+   image-stability.css - منع Cumulative Layout Shift للصور
+   ------------------------------------------------------------
+   تحديث R03: النسخة الأولى كانت تستهدف 16 فئة، 10 منها
+   غير موجودة في المشروع. المشروع يعتمد Tailwind
+   (w-full h-full object-cover) داخل حاويات محددة الأبعاد،
+   وهذا يمنع CLS أصلاً. لذلك نكتفي هنا بـ:
+     1) أساس متجاوب عام
+     2) الفئات المؤكد وجودها فقط
+   قبل إضافة أي محدّد هنا، شغّل:
+     grep -rn 'CLASSNAME' src --include=*.tsx | wc -l
+   ولا تضفه إن كان الناتج 0.
+   ============================================================ */
+
+@layer base {
+  /* أساس متجاوب: يسمح بإضافة السمات لاحقاً بأمان */
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* منع الوميض الأبيض قبل وجود مصدر */
+  img:not([src]),
+  img[src=""] {
+    visibility: hidden;
+  }
+
+  /* حماية عامة: أي صورة بسمات width و height صريحة تحافظ على
+     نسبتها حتى مع max-width. هذا يجعل إضافة السمات لاحقاً
+     مربحاً بلا تغيير CSS إضافي. */
+  img[width][height] {
+    height: auto;
+    aspect-ratio: attr(width) / attr(height);
+  }
+}
+
+@layer components {
+  /* ملصقات TMDB - دائماً 2:3. مؤكد: 2 استعمال */
+  .nl-poster {
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    background-color: var(--nl-skeleton, #1a1d27);
+  }
+
+  /* مصغرات الألعاب - مطبقة على <img> مباشرة في GamesPage.tsx:115 */
+  .nl-game-thumb {
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background-color: var(--nl-skeleton, #1a1d27);
+  }
+
+  /* غلاف الأغنية - مربع. مؤكد: 1 استعمال */
+  .song-cover {
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    background-color: var(--nl-skeleton, #1a1d27);
+  }
+
+  /* الصور داخل البطاقات: نستهدف الـimg لا الحاوية.
+     وضع aspect-ratio على .song-card نفسها يقطع نص العنوان. */
+  .song-card img {
+    background-color: var(--nl-skeleton, #1a1d27);
+  }
+
+  .video-card img {
+    background-color: var(--nl-skeleton, #1a1d27);
+  }
+
+  /* صور البروفايل: object-fit فقط.
+     لا نفرض aspect-ratio لأن .profile-avatar تُستعمل أحياناً
+     على حاوية تحمل بديلاً نصياً (.profile-noavatar). */
+  img.profile-avatar {
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    background-color: var(--nl-skeleton, #1a1d27);
+  }
+}

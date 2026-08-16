@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import type { Edge } from './graph.geometry';
 import type { Size } from './useStageSize';
 import type { MotionProfileName } from '../../quality/motion/motionProfile.types';
@@ -50,14 +50,14 @@ export const ConnectorLayer = memo(function ConnectorLayer({
 
       <AnimatePresence initial={false}>
         {edges.map((edge) => (
-          <motion.g
+          <m.g
             key={edge.id}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={groupExit}
             transition={transition}
           >
-            <motion.path
+            <m.path
               d={edge.path}
               className="nl-ray-glow"
               stroke="url(#nlRayGrad)"
@@ -68,7 +68,7 @@ export const ConnectorLayer = memo(function ConnectorLayer({
               exit={rayExit}
               transition={transition}
             />
-            <motion.path
+            <m.path
               d={edge.path}
               className="nl-ray-core"
               stroke="#eafff5"
@@ -79,7 +79,7 @@ export const ConnectorLayer = memo(function ConnectorLayer({
               exit={rayExit}
               transition={transition}
             />
-          </motion.g>
+          </m.g>
         ))}
       </AnimatePresence>
     </svg>

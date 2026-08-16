@@ -139,7 +139,7 @@ export function useSongPlayer({
       album: (currentSong as any).album || 'NL Archive',
       artwork: [{
         src: (currentSong as any).coverUrl || currentSong.cover ||
-             'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp',
+             'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp',
         sizes: '512x512',
         type: 'image/webp',
       }],

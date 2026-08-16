@@ -165,7 +165,7 @@ if (!fs.existsSync(assetsTsPath)) {
       processed = processed.replace(/(?<!:)\/\/+/g, '/'); // collapse double slashes
       // Option B: Map any bare CDN root directory URLs to the first verified asset file to prevent index 404
       if (processed === 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn' || processed === 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/') {
-        return 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp';
+        return 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp';
       }
       return processed;
     });

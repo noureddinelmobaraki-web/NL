@@ -20,6 +20,7 @@ export default function MusicPage() {
 
   const hasCurrent = useMusicStore((s) => Boolean(s.currentId));
   const currentId = useMusicStore((s) => s.currentId);
+  const allTracks = useMusicStore((s) => s.tracks);
 
   const [isMobile, setIsMobile] = useState(false);
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
@@ -31,7 +32,7 @@ export default function MusicPage() {
     apply();
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
-  }, []);
+  }, [allTracks]); // Re-run when allTracks arrive
 
   useEffect(() => {
     let cancelled = false;
@@ -39,7 +40,7 @@ export default function MusicPage() {
       await ensurePersistentStorage();
       const urls = await listSavedUrls();
       if (cancelled) return;
-      const tracks = useMusicStore.getState().tracks;
+      const tracks = allTracks;
       const ids = tracks
         .filter((t) => urls.includes(t.src) || (t.srcFallback && urls.includes(t.srcFallback)))
         .map((t) => t.id);
@@ -51,19 +52,19 @@ export default function MusicPage() {
   // Layer 1 (reliable): whenever the current track changes, fetch its lyrics now.
   useEffect(() => {
     if (!currentId) return;
-    const track = useMusicStore.getState().tracks.find((t) => t.id === currentId);
+    const track = allTracks.find((t) => t.id === currentId);
     if (track) fetchLyrics(track);
-  }, [currentId]);
+  }, [currentId, allTracks]);
 
   // Layer 2: on open, prefetch lyrics for songs the user interacts with
   // (favorites + recently played). Bounded set — do NOT prefetch the whole catalog.
   useEffect(() => {
     const s = useMusicStore.getState();
-    const byId = new Map(s.tracks.map((t) => [t.id, t]));
+    const byId = new Map(allTracks.map((t) => [t.id, t]));
     const ids = Array.from(new Set([...s.favorites, ...s.history]));
-    const interacted = ids.map((id) => byId.get(id)).filter(Boolean) as typeof s.tracks;
+    const interacted = ids.map((id) => byId.get(id)).filter(Boolean) as typeof allTracks;
     if (interacted.length) prefetchMany(interacted);
-  }, []);
+  }, [allTracks]);
 
   return (
     <div className={'nl-music-root h-[100dvh] w-full overflow-hidden bg-gradient-to-br from-[#FFE8D6] via-[#FFF4EC] to-[#E8FBF2] ' + styles['nlp-root']}>

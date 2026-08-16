@@ -65,7 +65,7 @@ self.addEventListener('activate', (event) => {
     // Pre-warm critical CDN images in background
     const CDN_PREWARM = [
       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp',
-      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp',
+      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp',
       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp',
       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_cover.webp',
     ];

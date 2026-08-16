@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, X, Volume2, VolumeX } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { VideoData } from './types';
 import { VideoCard } from './VideoCard';
 
@@ -26,7 +26,7 @@ export const DrawingsCarousel = ({
 }: DrawingsCarouselProps) => {
   return (
     <AnimatePresence>
-      <motion.div
+      <m.div
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 'auto' }}
         exit={{ opacity: 0, height: 0 }}
@@ -98,7 +98,7 @@ export const DrawingsCarousel = ({
             </span>
           </div>
         </div>
-      </motion.div>
+      </m.div>
     </AnimatePresence>
   );
 };

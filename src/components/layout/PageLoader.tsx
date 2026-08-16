@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
 interface PageLoaderProps {
@@ -122,7 +122,7 @@ export function PageLoader({ pageType }: PageLoaderProps) {
   };
 
   return (
-    <motion.div
+    <m.div
       {...overlayMotion}
       className="fixed inset-0 w-full h-full bg-[#0d0d0d] flex flex-col items-center justify-center gap-6 select-none font-sans"
     >
@@ -130,12 +130,12 @@ export function PageLoader({ pageType }: PageLoaderProps) {
 
       <LoaderVariant variant={variant} />
 
-      <motion.p
+      <m.p
         {...labelMotion}
         className="text-[11px] uppercase tracking-widest text-zinc-400 font-mono"
       >
         {getPageTitle()}
-      </motion.p>
-    </motion.div>
+      </m.p>
+    </m.div>
   );
 }

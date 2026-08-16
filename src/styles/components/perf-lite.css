@@ -1,31 +1,26 @@
-/* perf-lite.css — تحسينات خفّة آمنة (إضافات فقط) */
+/* perf-lite.css - تحسينات خفة آمنة (إضافات فقط) */
 
-@media (hover: none) {
-  /* تخطّي رسم الملصقات خارج الشاشة */
-  .nl-poster {
-    content-visibility: auto;
-    contain-intrinsic-size: 150px 225px;
+@layer mobile {
+  @media (hover: none) {
+    /* تخطي رسم الملصقات خارج الشاشة */
+    .song-card,
+    .video-card,
+    .lens-slide,
+    .nl-poster {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 240px;
+    }
   }
-  /* تخفيف الضباب على اللمس (الحاسوب يبقى كما هو) */
-  .ios-chrome-bar {
-    -webkit-backdrop-filter: blur(8px) saturate(140%);
-    backdrop-filter: blur(8px) saturate(140%);
-  }
-  .notch-island {
-    -webkit-backdrop-filter: blur(12px) saturate(160%);
-    backdrop-filter: blur(12px) saturate(160%);
-  }
-  .auth-modal {
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    backdrop-filter: blur(14px) saturate(160%);
-  }
-  .auth-launcher {
-    -webkit-backdrop-filter: blur(10px) saturate(160%);
-    backdrop-filter: blur(10px) saturate(160%);
-  }
-}
 
-/* احترام تفضيل تقليل الحركة */
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto !important; }
+  /* احترام تفضيل تقليل الحركة - إلزامي لإمكانية الوصول */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }

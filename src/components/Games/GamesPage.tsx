@@ -113,6 +113,7 @@ export function GamesPage({ onClose }: GamesPageProps) {
               onClick={() => setSelectedId(g.id)}
             >
               <img className="nl-game-thumb" src={buildUrl(g.dir, g.poster)}
+                width={320} height={180}
                 alt="" loading="lazy" decoding="async" draggable={false} />
               <span className="nl-game-name">{g.title}</span>
             </button>

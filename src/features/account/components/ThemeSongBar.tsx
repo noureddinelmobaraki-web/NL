@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Play, Pause, X } from 'lucide-react';
-import { getFvTracks } from '../../music/data/loadSongs';
+import { useMusicStore } from '../../music/store/musicStore';
 import { getInitials } from '../../music/utils/cover';
 import { audioManager } from '../../../audio/audioManager';
 import { nowPlayingBus, type NowPlayingControls } from '../../../audio/nowPlayingBus';
 
-import { useMusicStore } from '../../music/store/musicStore';
 
 const FULL_VOL = 0.85;   // مستوى صوت أغنية البروفايل
 
@@ -28,7 +27,7 @@ export function ThemeSongBar({
       (s) => (songId ? s.tracks.find((t) => t.id === songId) ?? null : null),
       [songId],
     ),
-  ) ?? (songId ? getFvTracks().find((t) => t.id === songId) ?? null : null);
+  ) ?? (songId ? useMusicStore.getState().tracks.find((t) => t.id === songId) ?? null : null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);

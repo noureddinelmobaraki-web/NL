@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Check } from 'lucide-react';
 
 const OPTIONS = [
@@ -34,11 +34,11 @@ export function VizSelect({ value, onChange }: { value: string; onChange: (v: st
         className="flex items-center gap-2 py-2 px-4 rounded-full text-sm font-semibold text-slate-800 bg-white/40 border border-white/60 shadow-[0_4px_14px_rgba(255,122,26,0.15),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md hover:bg-white/60 transition-all focus:outline-none"
       >
         {current.label}
-        <motion.span animate={{ rotate: open ? 180 : 0 }}><ChevronDown size={16} /></motion.span>
+        <m.span animate={{ rotate: open ? 180 : 0 }}><ChevronDown size={16} /></m.span>
       </button>
       <AnimatePresence>
         {open && (
-          <motion.ul
+          <m.ul
             initial={{ opacity: 0, y: 8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.96 }}
@@ -63,7 +63,7 @@ export function VizSelect({ value, onChange }: { value: string; onChange: (v: st
                 </li>
               );
             })}
-          </motion.ul>
+          </m.ul>
         )}
       </AnimatePresence>
     </div>

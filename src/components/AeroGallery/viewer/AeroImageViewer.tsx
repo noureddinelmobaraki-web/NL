@@ -24,7 +24,7 @@
  */
 
 import type React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X, Volume2, VolumeX } from "lucide-react";
 import { audioManager } from "../../../audio/audioManager";
@@ -212,7 +212,7 @@ export function AeroImageViewer(props: AeroImageViewerProps) {
       >
         <div className="nlav-frame" style={frameStyle}>
           <AnimatePresence initial={false}>
-            <motion.div
+            <m.div
               key={safeIndex}
               className="nlav-slide"
               variants={slideVariants}
@@ -230,7 +230,7 @@ export function AeroImageViewer(props: AeroImageViewerProps) {
                   decoding="async"
                 />
               </div>
-            </motion.div>
+            </m.div>
           </AnimatePresence>
         </div>
       </div>

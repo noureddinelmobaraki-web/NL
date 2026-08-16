@@ -3,7 +3,7 @@
 // identity actions floating in the top-right corner.
 // motion props are single-brace variables (no inline double braces).
 
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { LogIn, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppContext } from '../../context/AppContext';
@@ -35,7 +35,7 @@ export function LauncherHeader() {
 
   return (
     <div className="nl-launcher-topbar">
-      <motion.button
+      <m.button
         type="button"
         whileHover={hover}
         whileTap={tap}
@@ -48,10 +48,10 @@ export function LauncherHeader() {
       >
         <Users size={14} className="nl-topbar-ico" />
         <span className="nl-topbar-label">Accounts</span>
-      </motion.button>
+      </m.button>
 
       {!user && (
-        <motion.button
+        <m.button
           type="button"
           whileHover={hover}
           whileTap={tap}
@@ -61,12 +61,12 @@ export function LauncherHeader() {
         >
           <LogIn size={14} />
           <span className="nl-topbar-label">Login</span>
-        </motion.button>
+        </m.button>
       )}
 
-      <motion.div whileHover={orbHover} whileTap={orbTap} transition={spring.snappy} className="nl-topbar-orb">
+      <m.div whileHover={orbHover} whileTap={orbTap} transition={spring.snappy} className="nl-topbar-orb">
         <ProfileOrb variant="welcome" />
-      </motion.div>
+      </m.div>
     </div>
   );
 }

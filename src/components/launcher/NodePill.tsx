@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import {
   Sun,
   Moon,
@@ -88,7 +88,7 @@ export const NodePill = memo(function NodePill({
   ].filter(Boolean).join(' ');
 
   return (
-    <motion.div
+    <m.div
       className="nl-node-anchor"
       initial={false}
       animate={{ x: pos.x, y: pos.y }}
@@ -97,7 +97,7 @@ export const NodePill = memo(function NodePill({
         `${generated} translate(-50%, -50%)`
       }
     >
-      <motion.button
+      <m.button
         type="button"
         className={className}
         initial={{
@@ -139,7 +139,7 @@ export const NodePill = memo(function NodePill({
             aria-hidden="true"
           />
         ) : null}
-      </motion.button>
-    </motion.div>
+      </m.button>
+    </m.div>
   );
 });

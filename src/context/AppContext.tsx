@@ -16,6 +16,7 @@ const VIEW_TO_NAV: Record<string, { page: PageId; cinemaTab?: CinemaTab }> = {
   xp:       { page: 'xp' },
   music:    { page: 'music' },
   accounts: { page: 'accounts' },
+  portrait: { page: 'portrait' },
 };
 
 function navToView(page: PageId, cinemaTab: CinemaTab): string {
@@ -102,6 +103,10 @@ interface AppContextType {
   isAccountsOpen: boolean;
   openAccounts: () => void;
   closeAccounts: () => void;
+  // ── صفحة البورتريه Portrait ────────────────────────────
+  isPortraitOpen: boolean;
+  openPortrait: () => void;
+  closePortrait: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -129,6 +134,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isXpOpen     = nav.activePage === 'xp';
   const isMusicOpen  = nav.activePage === 'music';
   const isAccountsOpen = nav.activePage === 'accounts';
+  const isPortraitOpen = nav.activePage === 'portrait';
 
   const [isGameActive, setGameActive] = useState(false);
   const gameBackRef = useRef<(() => void) | null>(null);
@@ -203,6 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (prev === 'xp')     { try { audioManager.releaseBg('xp_mode'); audioManager.stop('xp'); } catch {} }
     if (prev === 'music')  { try { audioManager.releaseBg('music_mode'); } catch {} }
     if (prev === 'accounts') { /* no audio channel */ }
+    if (prev === 'portrait') { try { audioManager.releaseBg('portrait_mode'); audioManager.stop('portrait'); } catch {} }
 
     // دخول صفحة جديدة: أوقف موسيقى الثيم (bg) + علّقها
     if (page !== 'home' && page !== 'accounts') {
@@ -268,6 +275,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeMusic  = useCallback(() => navigateTo('home'), [navigateTo]);
   const openAccounts  = useCallback(() => navigateTo('accounts'), [navigateTo]);
   const closeAccounts = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openPortrait  = useCallback(() => navigateTo('portrait'), [navigateTo]);
+  const closePortrait = useCallback(() => navigateTo('home'), [navigateTo]);
 
   const returnToWelcome = useCallback(() => {
     gameBackRef.current = null;  setGameActive(false);
@@ -318,6 +327,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isXpOpen, openXp, closeXp,
         isMusicOpen, openMusic, closeMusic,
         isAccountsOpen, openAccounts, closeAccounts,
+        isPortraitOpen, openPortrait, closePortrait,
       }}
     >
       {children}

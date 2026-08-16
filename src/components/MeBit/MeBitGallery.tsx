@@ -1,5 +1,5 @@
 import { X, Maximize2, Volume2, VolumeX } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useGenieTransition } from '../../transitions/useGenieTransition';
 import { useEffect, useState } from 'react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -139,7 +139,7 @@ export const MeBitGallery = ({
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
-        <motion.div
+        <m.div
           ref={galleryRef}
           role="dialog"
           aria-modal="true"
@@ -223,7 +223,7 @@ export const MeBitGallery = ({
 
             {/* Desktop footer bar — unchanged */}
             {!isMobile && !isTablet && (
-              <motion.div
+              <m.div
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 className="p-8 manga-border border-[var(--ink-color)] shadow-[12px_12px_0px_var(--manga-shadow-color)] flex flex-col md:flex-row justify-between items-center gap-6"
@@ -255,10 +255,10 @@ export const MeBitGallery = ({
                     LEAVE THEATER
                   </button>
                 </div>
-              </motion.div>
+              </m.div>
             )}
           </div>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useGenieTransition } from '../../transitions/useGenieTransition';
 
 interface GenieLayerProps {
@@ -14,7 +14,7 @@ export function GenieLayer({ isOpen, children, className = "" }: GenieLayerProps
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <m.div
           initial={genie.initial}
           animate={genie.animate}
           exit={genie.exit}
@@ -23,7 +23,7 @@ export function GenieLayer({ isOpen, children, className = "" }: GenieLayerProps
           className={`w-full h-full ${className}`}
         >
           {children}
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

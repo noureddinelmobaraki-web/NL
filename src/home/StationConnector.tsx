@@ -1,7 +1,7 @@
 // src/home/StationConnector.tsx
 // ثلاثة خيوط (يسار/يمين/عمود) تزحف إلى رأس النافذة مع السكرول (pathLength).
 import { memo } from 'react';
-import { motion, type MotionValue } from 'framer-motion';
+import { m, type MotionValue } from 'framer-motion';
 import { computeStationRays } from '../components/launcher/graph.geometry';
 import type { Size } from '../components/launcher/useStageSize';
 
@@ -46,17 +46,17 @@ export const StationConnector = memo(function StationConnector({
 
       {!lite && (
         <>
-          <motion.path d={rays.left} className="nl-home-ray-glow" strokeWidth={8} strokeLinecap="round" style={drawStyle} />
-          <motion.path d={rays.right} className="nl-home-ray-glow" strokeWidth={8} strokeLinecap="round" style={drawStyle} />
-          <motion.path d={rays.stem} className="nl-home-ray-glow" strokeWidth={8} strokeLinecap="round" style={drawStyle} />
+          <m.path d={rays.left} className="nl-home-ray-glow" strokeWidth={8} strokeLinecap="round" style={drawStyle} />
+          <m.path d={rays.right} className="nl-home-ray-glow" strokeWidth={8} strokeLinecap="round" style={drawStyle} />
+          <m.path d={rays.stem} className="nl-home-ray-glow" strokeWidth={8} strokeLinecap="round" style={drawStyle} />
         </>
       )}
 
-      <motion.path d={rays.left} className="nl-home-ray-core" stroke={coreStroke} strokeWidth={2.4} strokeLinecap="round" style={drawStyle} />
-      <motion.path d={rays.right} className="nl-home-ray-core" stroke={coreStroke} strokeWidth={2.4} strokeLinecap="round" style={drawStyle} />
-      <motion.path d={rays.stem} className="nl-home-ray-core" stroke={coreStroke} strokeWidth={2.4} strokeLinecap="round" style={drawStyle} />
+      <m.path d={rays.left} className="nl-home-ray-core" stroke={coreStroke} strokeWidth={2.4} strokeLinecap="round" style={drawStyle} />
+      <m.path d={rays.right} className="nl-home-ray-core" stroke={coreStroke} strokeWidth={2.4} strokeLinecap="round" style={drawStyle} />
+      <m.path d={rays.stem} className="nl-home-ray-core" stroke={coreStroke} strokeWidth={2.4} strokeLinecap="round" style={drawStyle} />
 
-      <motion.circle cx={rays.head.x} cy={rays.head.y} r={5} className="nl-home-socket" style={socketStyle} />
+      <m.circle cx={rays.head.x} cy={rays.head.y} r={5} className="nl-home-socket" style={socketStyle} />
     </svg>
   );
 });

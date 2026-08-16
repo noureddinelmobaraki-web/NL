@@ -45,7 +45,7 @@ ${lastmodLine}
       <image:caption>Artist profile of NL, independent rap artist from Casablanca, Morocco</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp</image:loc>
+      <image:loc>https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp</image:loc>
       <image:title>NL — Noureddin El Mobaraki Portrait</image:title>
     </image:image>
     <image:image>

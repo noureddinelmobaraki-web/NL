@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { 
   X, Play, Trash2, MailOpen, Calendar, MessageSquare, Music, Loader2 
 } from 'lucide-react';
@@ -176,7 +176,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
             const track = tracks.find((t) => t.id === actualId);
             
             return (
-              <motion.div
+              <m.div
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -253,7 +253,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
                     )}
                   </div>
                 </div>
-              </motion.div>
+              </m.div>
             );
           })
         )}

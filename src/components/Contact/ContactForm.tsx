@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import emailjs from '@emailjs/browser';
+
 import { styles } from './ContactForm.styles';
 import { ContactMethods } from './ContactMethods';
 import { ContactMessageForm } from './ContactMessageForm';
@@ -111,6 +111,7 @@ export const ContactForm = () => {
     setErrorMsg('');
 
     try {
+      const { default: emailjs } = await import('@emailjs/browser');
       await emailjs.send(
         EMAILJS_SERVICE,
         EMAILJS_TEMPLATE,

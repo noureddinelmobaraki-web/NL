@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { useTouchGestures } from '../../hooks/useTouchGestures';
 import { useGalleryThemeSkin } from '../../hooks/useGalleryThemeSkin';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 
 interface LensMobileViewProps {
   photos: string[];
@@ -172,7 +172,7 @@ export const LensMobileView = ({
                 className="grid-photo-btn"
                 aria-label={`Open Image ${i + 1}`}
               >
-                <motion.img
+                <m.img
                   layoutId={i === selectedIndex ? "lens-img-active" : undefined}
                   src={src}
                   alt={`Lens photo ${i + 1}`}
@@ -253,7 +253,7 @@ export const LensMobileView = ({
                 className="w-full h-full flex items-center justify-center p-4 bg-black"
                 style={{ touchAction: zoom > 1 ? 'none' : 'pan-y' }}
               >
-                <motion.img
+                <m.img
                   layoutId="lens-img-active"
                   src={src}
                   alt={`Photo ${selectedIndex + 1}`}

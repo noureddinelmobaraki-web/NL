@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { spring } from '../../motion/tokens';
 
 interface MeButtonProps {
@@ -48,7 +48,7 @@ export function MeButton({ onClick, imageUrl }: MeButtonProps) {
         className="relative z-10 cursor-pointer group"
         style={{ perspective: 1000 }}
       >
-        <motion.div
+        <m.div
           animate={{
             rotateX: tilt.x,
             rotateY: tilt.y,
@@ -69,7 +69,7 @@ export function MeButton({ onClick, imageUrl }: MeButtonProps) {
 
           {/* Liquid highlight gloss overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-        </motion.div>
+        </m.div>
       </div>
     </div>
   );

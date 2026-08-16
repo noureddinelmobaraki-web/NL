@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Monitor, Joystick, Gamepad2, LucideIcon } from 'lucide-react';
 import { LeafItem } from './launcher.config';
 import { spring, stagger } from '../../motion/tokens';
@@ -38,7 +38,7 @@ export function CategoryCluster({ label, tagline, items, onItemClick }: Category
   };
 
   return (
-    <motion.div
+    <m.div
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -55,7 +55,7 @@ export function CategoryCluster({ label, tagline, items, onItemClick }: Category
         {items.map((item) => {
           const IconComponent = iconMap[item.icon] || Monitor;
           return (
-            <motion.button
+            <m.button
               key={item.id}
               variants={itemVariants}
               whileHover={{ translateY: -4, scale: 1.03 }}
@@ -70,10 +70,10 @@ export function CategoryCluster({ label, tagline, items, onItemClick }: Category
                 <IconComponent size={24} />
               </div>
               <span>{item.label}</span>
-            </motion.button>
+            </m.button>
           );
         })}
       </div>
-    </motion.div>
+    </m.div>
   );
 }

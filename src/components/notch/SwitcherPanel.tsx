@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { Palette, Compass, ChevronDown } from 'lucide-react';
 import type { SwitcherMode, SwitcherDest, SwitcherBranch } from './notch.types';
 import type { Theme } from '../../utils/userPrefs';
@@ -48,7 +48,7 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
             </button>
             <AnimatePresence initial={false}>
               {isOpen && (
-                <motion.div
+                <m.div
                   key={rt.id + '-grid'}
                   className="notch-tree__grid"
                   role="menu"
@@ -91,7 +91,7 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
                           </button>
                         ))}
                   </div>
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
           </div>

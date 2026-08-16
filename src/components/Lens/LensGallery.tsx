@@ -356,8 +356,8 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
           }}>
             {[-3,-2,-1,0,1,2,3].map(offset => {
               const photoIndex = (activeIndex + offset + PHOTOS.length) % PHOTOS.length;
-              let scale = getSlotScale(offset);
-              let opacity = getSlotOpacity(offset);
+              const scale = getSlotScale(offset);
+              const opacity = getSlotOpacity(offset);
               const isCenter = offset === 0;
               const thumbWidth = Math.round(56 * scale);
               const thumbHeight = Math.round(72 * scale);

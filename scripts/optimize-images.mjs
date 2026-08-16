@@ -124,13 +124,10 @@ async function generateLqipManifest() {
   const manifest = {};
 
   const imagesToProcess = [
-    { key: 'profile_img.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp' },
+    { key: 'nordine_portrait.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp' },
     { key: 'photo.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photo.webp' },
-    { key: 'profile_imgdark.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imgdark.webp' },
     { key: 'photodark.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photodark.webp' },
-    { key: 'profile_imglight.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imglight.webp' },
     { key: 'photolight.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photolight.webp' },
-    { key: 'profile_imglightopenin.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_imglightopenin.webp' },
     { key: 'playlist_cover.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_cover.webp' },
     { key: 'playlist_coverdark.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_coverdark.webp' },
     { key: 'playlist_coverlight.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_coverlight.webp' },

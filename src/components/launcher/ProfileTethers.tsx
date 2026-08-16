@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
 interface Corner { x: number; y: number; }
@@ -140,7 +140,7 @@ function TetherSvg({ geom }: { geom: TetherGeom }) {
         const st = pulseStyle(i);
         return (
           <g key={i}>
-            <motion.path
+            <m.path
               className="nl-tether-glow"
               d={d}
               style={st}
@@ -149,7 +149,7 @@ function TetherSvg({ geom }: { geom: TetherGeom }) {
               exit={drawExit}
               transition={drawTrans(i)}
             />
-            <motion.path
+            <m.path
               className="nl-tether-core"
               d={d}
               style={st}

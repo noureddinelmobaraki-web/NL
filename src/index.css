@@ -1,5 +1,10 @@
-/* إعلان ترتيب الـlayers — من الأقل لـالأعلى أولوية */
-@layer base, components, utilities, overrides, midnight;
+/* ============================================================
+   ترتيب طبقات CSS - من الأقل للأعلى أولوية.
+   كل طبقة مستعملة في المشروع يجب أن تُذكر هنا صراحة،
+   وإلا أضافها المتصفح في النهاية (أعلى أولوية) بشكل غير متوقع.
+   الأنماط بلا طبقة (unlayered) تتفوق على كل ما سبق - تجنبها.
+   ============================================================ */
+@layer base, theme, components, features, utilities, overrides, midnight, mobile;
 
 @import "tailwindcss";
 @import "./styles/themes/_base.css" layer(theme);
@@ -10,11 +15,14 @@
 @import "./styles/themes/lite.css" layer(theme);
 @import "./styles/themes/retro.css" layer(theme);
 @import "./styles/themes/midnight-skin.css" layer(midnight);
-@import "./styles/mobile-overrides.css" layer(theme);
-@import "./styles/touch-fixes.css" layer(theme);
+@import "./styles/mobile-overrides.css" layer(mobile);
+@import "./styles/touch-fixes.css" layer(mobile);
+
 @import "./styles/base.css" layer(base);
 @import "./styles/theme-transition.css" layer(base);
 @import "./styles/typography.css" layer(base);
+@import "./styles/base/image-stability.css";
+
 @import "./styles/components/manga.css" layer(components);
 @import "./styles/components/retro.css" layer(components);
 @import "./styles/components/glitch.css" layer(components);
@@ -24,18 +32,30 @@
 @import "./styles/components/streaming.css" layer(components);
 @import "./styles/components/song-card.css" layer(components);
 @import "./styles/components/sw-toast.css" layer(components);
-/* Music Mood feature removed — musicMood.css deleted */
 @import "./styles/components/notch-aero.css" layer(components);
 @import "./styles/components/mobile-gallery.css" layer(components);
 @import "./styles/components/xp.css" layer(components);
 @import "./styles/components/skeleton.css" layer(components);
 @import "./styles/components/launcher.css" layer(components);
+
 @import "./styles/animations.css" layer(utilities);
 @import "./styles/touch-gestures.css" layer(utilities);
 @import "./styles/utilities/typography.css" layer(utilities);
 @import "./styles/utilities/controls.css" layer(utilities);
 @import "./styles/utilities/decorations.css" layer(utilities);
 @import "./styles/utilities/sections.css" layer(utilities);
+
+/* ملفات كانت مستوردة من main.tsx بلا طبقة.
+   نُقلت إلى هنا بطبقات صريحة حتى لا يحسمها ترتيب الاستيراد. */
+@import "./styles/aero-theme.css"                    layer(features);
+@import "./styles/aero-redesign.css"                 layer(features);
+@import "./transitions/genie.css"                    layer(features);
+@import "./styles/page-mode-layer.css"               layer(features);
+@import "./styles/home-map.css"                      layer(features);
+@import "./styles/components/home-motion-system.css" layer(features);
+@import "./styles/components/home-polish.css"        layer(features);
+@import "./styles/components/mobile-modals.css"      layer(mobile);
+@import "./styles/components/profile-mobile-fit.css" layer(mobile);
 
 /* MOBILE-ONLY GALLERY AND LENS IMMERSIVE STYLES */
 body.gallery-immersive nav[aria-label="Mobile Navigation"],
@@ -176,3 +196,5 @@ html.nl-modal-open body {
 }
 
 
+@import "./styles/components/perf-lite.css"   layer(mobile);
+@import "./styles/mobile/backdrop-policy.css" layer(mobile);

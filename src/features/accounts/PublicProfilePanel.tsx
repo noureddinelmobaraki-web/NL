@@ -7,11 +7,12 @@ import { isAdmin } from '../../config/admin';
 import { AvatarFrame } from '../account/components/AvatarFrame';
 import { RoleBadgeChips } from '../account/roleBadge';
 import { useProfileRating } from './useProfileRating';
-import { getFvTracks } from '../music/data/loadSongs';
+import { useMusicStore } from '../music/store/musicStore';
 import { getInitials } from '../music/utils/cover';
 import { ThemeSongBar } from '../account/components/ThemeSongBar';
 import { fetchPublicProfile, invalidateProfile } from './profileCache';
 import { useSongPreview } from '../music/hooks/useSongPreview';
+import type { Track } from '../music/engine/types';
 
 interface PubProfile {
   id: string; display_name: string | null; avatar_url: string | null; bio: string | null;
@@ -48,13 +49,14 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
     };
   }, []);
 
+  const allTracks = useMusicStore((s) => s.tracks);
   const songMap = useMemo(() => {
-    const m = new Map<string, { title: string; artist: string }>();
+    const m = new Map<string, Track>();
     try {
-      for (const t of getFvTracks()) m.set(t.id, { title: t.title, artist: t.artist });
+      for (const t of allTracks) m.set(t.id, t);
     } catch { /* ignore */ }
     return m;
-  }, []);
+  }, [allTracks]);
 
   const fetchProfile = useCallback(async (force = false) => {
     try {
@@ -181,16 +183,15 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
               {(data?.songs?.length ?? 0) > 0 ? (
                 <div className="nl-pub__songs-grid">
                   {data!.songs.map((s) => {
-                    const trackObj = getFvTracks().find((t) => t.id === s.song_id);
+                    const trackObj = songMap.get(s.song_id);
                     const isPlaying = trackObj ? preview.isPlaying(trackObj.id) : false;
-                    const meta = songMap.get(s.song_id);
                     return (
                       <div key={s.song_id} className={`nl-pub-song-card${isPlaying ? ' is-playing' : ''}`}>
                         <span className="nl-pub-song-cover">
                           {trackObj?.coverUrl ? (
                             <img src={trackObj.coverUrl} alt="" loading="lazy" decoding="async" />
                           ) : (
-                            <span>{getInitials(meta ? meta.title : s.song_id)}</span>
+                            <span>{getInitials(trackObj ? trackObj.title : s.song_id)}</span>
                           )}
                           {trackObj && (
                             <button
@@ -203,8 +204,8 @@ export function PublicProfilePanel({ id, onClose, onChanged }: { id: string; onC
                             </button>
                           )}
                         </span>
-                        <span className="nl-pub-song-title" title={meta ? meta.title : s.song_id}>
-                          {first3Words(meta ? meta.title : s.song_id)}
+                        <span className="nl-pub-song-title" title={trackObj ? trackObj.title : s.song_id}>
+                          {first3Words(trackObj ? trackObj.title : s.song_id)}
                         </span>
                       </div>
                     );

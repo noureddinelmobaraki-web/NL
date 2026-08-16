@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Shuffle } from 'lucide-react';
 import { useMusicStore } from '../store/musicStore';
 import styles from '../music.module.css';
@@ -14,7 +14,7 @@ export function ShuffleBubble() {
   };
 
   return (
-    <motion.button
+    <m.button
       onClick={playRandom}
       aria-label="Play random song"
       className={styles['nlp-shuffle-bubble']}
@@ -25,6 +25,6 @@ export function ShuffleBubble() {
     >
       <span className={styles['nlp-shuffle-bubble__sheen']} aria-hidden />
       <Shuffle size={22} className="relative z-10" />
-    </motion.button>
+    </m.button>
   );
 }

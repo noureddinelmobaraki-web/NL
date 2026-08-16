@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { useAdminUser } from './useAdminUser';
 import { AvatarFrame, FRAME_IDS, FRAME_LABELS, type FrameId } from '../account/components/AvatarFrame';
-import { getFvTracks } from '../music/data/loadSongs';
+import { useMusicStore } from '../music/store/musicStore';
 import {
   ROLE_OPTIONS, BADGE_OPTIONS, ROLE_DEFS, BADGE_DEFS, RoleBadgeChips,
 } from '../account/roleBadge';
@@ -36,11 +36,12 @@ export function UserDetailPanel({ userId, onClose, onDeleted }: Props) {
   }, [p?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // song_id -> "Title — Artist" (names, no cover)
+  const allTracks = useMusicStore((s) => s.tracks);
   const songNames = useMemo(() => {
     const m = new Map<string, string>();
-    for (const t of getFvTracks()) m.set(t.id, `${t.title} — ${t.artist}`);
+    for (const t of allTracks) m.set(t.id, `${t.title} — ${t.artist}`);
     return m;
-  }, []);
+  }, [allTracks]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true); setErr(null);

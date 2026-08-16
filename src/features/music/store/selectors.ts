@@ -6,7 +6,7 @@ import { Track } from '../engine/types';
  * يجب استخدامه دائمًا عبر useMusicStore(useShallow(selector))
  * وإلا تحدث حلقة إعادة عرض لا نهائية (Maximum update depth exceeded).
  */
-let trackMapCache = new WeakMap<Track[], Map<string, Track>>();
+const trackMapCache = new WeakMap<Track[], Map<string, Track>>();
 function getTrackMap(tracks: Track[]): Map<string, Track> {
   let map = trackMapCache.get(tracks);
   if (!map) {

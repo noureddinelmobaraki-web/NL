@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX } from 'lucide-react';
 import { useIntroMusic } from '../../hooks/useIntroMusic';
 import { spring } from '../../motion/tokens';
@@ -25,7 +25,7 @@ export function LauncherSound() {
   const label = isIntroPlaying ? 'Sound on' : 'Tap for sound';
 
   return (
-    <motion.button
+    <m.button
       type="button"
       className={`nl-sound-btn ${isIntroPlaying ? 'is-on' : ''}`}
       onClick={toggleIntro}
@@ -47,7 +47,7 @@ export function LauncherSound() {
       </span>
       <span className="nl-sound-textwrap">
         <AnimatePresence mode="wait" initial={false}>
-          <motion.span
+          <m.span
             key={label}
             className="nl-sound-label"
             initial={labelInit}
@@ -56,9 +56,9 @@ export function LauncherSound() {
             transition={labelTrans}
           >
             {label}
-          </motion.span>
+          </m.span>
         </AnimatePresence>
       </span>
-    </motion.button>
+    </m.button>
   );
 }

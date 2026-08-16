@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useMeBitPrefetch } from "../MeBit/useMeBitPrefetch";
 import { useCenterSpotlight } from "../../hooks/useCenterSpotlight";
 import { useDeviceType } from "../../hooks/useDeviceType";
-import { motion, Variants } from "framer-motion";
+import { m, Variants } from "framer-motion";
 import { Maximize2 } from "lucide-react";
 import { ASSETS, getThemedImage, getLocalAssetUrl } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
@@ -45,7 +45,7 @@ export const GallerySection = ({
   return (
     <>
       {/* ME bit Interactive Gallery - Moved out of grid to be more prominent */}
-      <motion.section 
+      <m.section 
         variants={itemVariants}
         className="flex flex-col gap-4 mt-8"
         id="me-bit-gallery"
@@ -103,9 +103,9 @@ export const GallerySection = ({
             <Maximize2 className="w-7 h-7 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.55)]" aria-hidden="true" />
           </div>
         </div>
-      </motion.section>
+      </m.section>
 
-      <motion.section
+      <m.section
         variants={itemVariants}
         className="flex flex-col gap-4 mt-4"
         id="lens-section"
@@ -167,7 +167,7 @@ export const GallerySection = ({
             <span>click to view</span>
           </div>
         </div>
-      </motion.section>
+      </m.section>
     </>
   );
 };

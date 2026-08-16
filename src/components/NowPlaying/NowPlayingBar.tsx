@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { ActiveSong } from "../../types";
 import { useDeviceType } from "../../hooks/useDeviceType";
 import { formatTime } from "../songs/formatTime";
@@ -62,7 +62,7 @@ export const NowPlayingBar = ({
   return (
     <AnimatePresence>
       {activeSong && (
-        <motion.div
+        <m.div
           key="now-playing-bar"
           className="mid-player-shell"
           onMouseEnter={() => setIsHovered(true)}
@@ -206,7 +206,7 @@ export const NowPlayingBar = ({
            border-radius: 50%;
         }
       `}</style>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

@@ -24,7 +24,7 @@
  * [ ] No hover-stuck states on touch
  */
 
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useEffect, useState, Suspense, useCallback, useRef, lazy } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
@@ -82,6 +82,10 @@ const MusicPage = lazyWithRetry(
 const AccountsPage = lazyWithRetry(
   () => import('./features/accounts/AccountsPage').then(m => ({ default: m.default })),
   'AccountsPage',
+);
+const PortraitPage = lazyWithRetry(
+  () => import('./features/portrait/PortraitPage'),
+  'portrait',
 );
 const LauncherPage = lazyWithRetry(
   () => import('./components/launcher/LauncherPage').then(m => ({ default: m.default })),
@@ -144,7 +148,7 @@ const NL_ENTER_FADE = { opacity: 0 } as const;
 const YouTubePortal = lazy(() => import('./features/youtube/YouTubePortal'));
 
 function AppInner() {
-  const { theme, loaded, setLoaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, endTransition, openMusic } = useAppContext();
+  const { theme, loaded, setLoaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, isPortraitOpen, endTransition, openMusic } = useAppContext();
   const isAutomated = isAutomatedEnv();
   // عند الدخول من رابط مشاركة، لا تبدأ العرض عند opacity:0 حتى لا يبقى المحتوى غير مرسوم حتى إعادة الرسم
   const bootedFromDeepLink = useRef(readPendingSong() !== null).current;
@@ -164,7 +168,7 @@ function AppInner() {
     openMusic();
   }, [loaded, openMusic, setLoaded]);
 
-  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen || isXpOpen || isMusicOpen || isAccountsOpen;
+  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen || isXpOpen || isMusicOpen || isAccountsOpen || isPortraitOpen;
 
   useEffect(() => {
     if (isAnyPageActive) {
@@ -192,7 +196,9 @@ function AppInner() {
                 ? 'music'
                 : isAccountsOpen
                   ? 'accounts'
-                  : 'home'
+                  : isPortraitOpen
+                    ? 'portrait'
+                    : 'home'
 
   useEffect(() => {
     document.documentElement.setAttribute('data-active-page', activePageKey)
@@ -209,7 +215,7 @@ function AppInner() {
       )}
       <AnimatePresence mode="wait" onExitComplete={endTransition}>
         {loaded && isGamesOpen ? (
-          <motion.div
+          <m.div
             key="games-screen"
             data-mode={theme}
             initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
@@ -223,9 +229,9 @@ function AppInner() {
                 <GamesPage onClose={closeGames} />
               </Suspense>
             </SectionErrorBoundary>
-          </motion.div>
+          </m.div>
         ) : loaded && isTvOpen ? (
-          <motion.div
+          <m.div
             key="tv-screen"
             data-mode={theme}
             initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
@@ -239,9 +245,9 @@ function AppInner() {
                 <NlTvPage onClose={closeTv} />
               </Suspense>
             </SectionErrorBoundary>
-          </motion.div>
+          </m.div>
         ) : loaded && (isMoviesOpen || isSeriesOpen) ? (
-          <motion.div
+          <m.div
             key="cinema-screen"
             data-mode={theme}
             initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
@@ -258,9 +264,9 @@ function AppInner() {
                 />
               </Suspense>
             </SectionErrorBoundary>
-          </motion.div>
+          </m.div>
         ) : loaded && isRetroOpen ? (
-          <motion.div
+          <m.div
             key="retro-screen"
             data-mode={theme}
             initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
@@ -274,9 +280,9 @@ function AppInner() {
                 <RetroWorldPage onClose={closeRetro} />
               </Suspense>
             </SectionErrorBoundary>
-          </motion.div>
+          </m.div>
         ) : loaded && isXpOpen ? (
-          <motion.div
+          <m.div
             key="xp-screen"
             data-mode={theme}
             initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
@@ -290,9 +296,9 @@ function AppInner() {
                 <WindowsXpPage onClose={closeXp} />
               </Suspense>
             </SectionErrorBoundary>
-          </motion.div>
+          </m.div>
         ) : loaded && isMusicOpen ? (
-          <motion.div
+          <m.div
             key="music-screen"
             data-mode={theme}
             initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
@@ -306,9 +312,9 @@ function AppInner() {
                 <MusicPage />
               </Suspense>
             </SectionErrorBoundary>
-          </motion.div>
+          </m.div>
         ) : loaded && isAccountsOpen ? (
-          <motion.div
+          <m.div
             key="accounts-screen"
             data-mode={theme}
             initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
@@ -322,9 +328,24 @@ function AppInner() {
                 <AccountsPage onClose={closeAccounts} />
               </Suspense>
             </SectionErrorBoundary>
-          </motion.div>
+          </m.div>
+        ) : loaded && isPortraitOpen ? (
+          <m.div
+            key="portrait"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-50"
+          >
+            <SectionErrorBoundary sectionName="portrait">
+              <Suspense fallback={<PageLoader pageType="retro" />}>
+                <PortraitPage />
+              </Suspense>
+            </SectionErrorBoundary>
+          </m.div>
         ) : (
-          <motion.div
+          <m.div
             key="main-app-screen"
             initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
@@ -332,7 +353,7 @@ function AppInner() {
             transition={{ duration: 0.35, ease: "easeOut" }}
           >
             <MainApp />
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </>
@@ -672,7 +693,7 @@ function MainApp() {
             onPrefetchMeBit={ensureMeBitLoaded}
           />
 
-          <motion.div 
+          <m.div 
             variants={containerVariants}
             initial={isAutomated ? "visible" : "hidden"}
             animate="visible"
@@ -779,7 +800,7 @@ function MainApp() {
                 ]}
               />
             </div>
-          </motion.div>
+          </m.div>
         </div>
       </div>
 

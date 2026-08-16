@@ -27,16 +27,24 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    esbuild: {
+      pure: mode === 'production' 
+        ? ['console.log', 'console.debug', 'console.info', 'console.trace'] 
+        : [],
+      legalComments: 'none',
+    },
     build: {
       outDir: 'dist',
       emptyOutDir: true,
       target: 'es2020',
       cssCodeSplit: true,
       minify: 'esbuild',
-      sourcemap: 'hidden',
+      // لا توجد أداة تتبّع أخطاء تستهلك الخرائط، ولا خطوة ترفعها ثم تحذفها.
+    // 'hidden' كان ينتج 7MB خرائط تُنشر للعموم على GitHub Pages.
+    sourcemap: false,
       reportCompressedSize: true,
       chunkSizeWarningLimit: 800,
-      assetsInlineLimit: 0,
+      assetsInlineLimit: 2048,
       modulePreload: {
         polyfill: false
       },
@@ -54,8 +62,8 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules/hls.js'))         return 'hls';
             if (id.includes('src/components/Drawings/'))    return 'drawings';
             if (id.includes('src/components/lyrics/'))      return 'lyrics';
-            if (id.includes('src/components/MusicMood/'))   return 'music-mood';
             if (id.includes('src/components/songs/'))       return 'songs-ui';
+            if (id.includes('src/features/portrait/'))     return 'portrait';
             return undefined;
           }
         }
@@ -66,6 +74,7 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
       exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', '**/e2e/**'],
       coverage: {
         provider: 'v8',

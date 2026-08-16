@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 
 export interface QueuePopoverProps {
   nextSongs: { id: number; title: string; cover?: string }[];
@@ -10,7 +10,7 @@ export const QueuePopover = ({ nextSongs, isMobile, onClose }: QueuePopoverProps
   if (!nextSongs || nextSongs.length === 0) return null;
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -69,6 +69,6 @@ export const QueuePopover = ({ nextSongs, isMobile, onClose }: QueuePopoverProps
           </div>
         ))}
       </div>
-    </motion.div>
+    </m.div>
   );
 };

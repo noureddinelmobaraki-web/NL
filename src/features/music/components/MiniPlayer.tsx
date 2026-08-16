@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { Play, Pause, SkipForward, SkipBack } from 'lucide-react';
 import { useMusicStore } from '../store/musicStore';
 import { selectCurrentTrack } from '../store/selectors';
@@ -45,7 +45,7 @@ export function MiniPlayer({ onOpen }: MiniPlayerProps) {
         >
           <SkipBack size={20} fill="currentColor" />
         </button>
-        <motion.button 
+        <m.button 
           onClick={actions.togglePlay} 
           whileTap={{ scale: 0.9 }}
           className="w-12 h-12 flex items-center justify-center rounded-full text-white shadow-sm border border-white/40 transition-transform overflow-hidden relative shrink-0"
@@ -57,16 +57,16 @@ export function MiniPlayer({ onOpen }: MiniPlayerProps) {
         >
           <AnimatePresence mode="wait" initial={false}>
             {isPlaying ? (
-              <motion.span key="pause" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0 }}>
+              <m.span key="pause" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0 }}>
                 <Pause size={20} fill="currentColor" />
-              </motion.span>
+              </m.span>
             ) : (
-              <motion.span key="play" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0 }}>
+              <m.span key="play" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0 }}>
                 <Play size={20} fill="currentColor" className="ml-0.5" />
-              </motion.span>
+              </m.span>
             )}
           </AnimatePresence>
-        </motion.button>
+        </m.button>
         <button 
           onClick={actions.next} 
           className="w-10 h-10 flex items-center justify-center rounded-full text-slate-700 hover:text-slate-900 active:scale-90 transition-transform"

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, type Variants } from 'framer-motion';
+import { AnimatePresence, m, type Variants } from 'framer-motion';
 import type Hls from 'hls.js';
 import { ACCOUNTS_BG_HLS } from '../../config/media';
 import { audioManager } from '../../audio/audioManager';
@@ -200,7 +200,7 @@ export function AeroGalleryHub({
       <div className="nlag-stage">
         <AnimatePresence mode="wait">
           {open && (
-            <motion.div
+            <m.div
               key={album}
               className="nlag-pyramid"
               variants={pyramidVariants}
@@ -215,7 +215,7 @@ export function AeroGalleryHub({
                     {row.map((src, c) => {
                       const index = base + c;
                       return (
-                        <motion.button
+                        <m.button
                           type="button"
                           className="nlag-frame"
                           key={src}
@@ -227,13 +227,13 @@ export function AeroGalleryHub({
                           aria-label={`Open image ${index + 1}`}
                         >
                           <img src={src} alt="" loading="lazy" draggable={false} />
-                        </motion.button>
+                        </m.button>
                       );
                     })}
                   </div>
                 );
               })}
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>
@@ -251,7 +251,7 @@ export function AeroGalleryHub({
               onClick={() => onSwitchAlbum(id)}
             >
               {album === id && (
-                <motion.span
+                <m.span
                   layoutId="nlag-seg"
                   className="nlag-seg"
                   transition={{ type: 'spring', stiffness: 420, damping: 34 }} 

@@ -5,7 +5,7 @@ import { useAdminStats } from './useAdminStats';
 import { useAuth }       from '../../context/AuthContext';
 import { isAdmin }       from '../../config/admin';
 import { UserDetailPanel } from './UserDetailPanel';
-import { getFvTracks } from '../music/data/loadSongs';
+import { useMusicStore } from '../music/store/musicStore';
 import { RoleBadgeChips } from '../account/roleBadge';
 
 interface AdminDashboardProps { onClose: () => void; }
@@ -68,11 +68,12 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     }
   }, [tab]);
 
+  const allTracks = useMusicStore((s) => s.tracks);
   const songNames = useMemo(() => {
     const m = new Map<string, string>();
-    for (const t of getFvTracks()) m.set(t.id, `${t.title} — ${t.artist}`);
+    for (const t of allTracks) m.set(t.id, `${t.title} — ${t.artist}`);
     return m;
-  }, []);
+  }, [allTracks]);
 
   const ov = {
     total_users:           stats?.total_users           ?? users.length,

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { MODES } from './launcher.config';
 import type { Theme } from '../../utils/userPrefs';
 import { spring } from '../../motion/tokens';
@@ -15,7 +15,7 @@ export function ModePicker({ onSelectTheme }: ModePickerProps) {
       </span>
       <div className="nl-mode-picker-chips">
         {MODES.map((mode) => (
-          <motion.button
+          <m.button
             key={mode.id}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
@@ -32,7 +32,7 @@ export function ModePicker({ onSelectTheme }: ModePickerProps) {
               }} 
             />
             <span>{mode.label}</span>
-          </motion.button>
+          </m.button>
         ))}
       </div>
     </div>

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   object-src 'none';
-  script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-kwOTmlDcJErA+Ke+b7qQhRE5zYpCBEZcekVyFNpQhW0=' https://cdn.emailjs.com https://plausible.io https://www.google.com https://www.gstatic.com https://www.youtube.com;
+  script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-kwOTmlDcJErA+Ke+b7qQhRE5zYpCBEZcekVyFNpQhW0=' https://plausible.io https://www.google.com https://www.gstatic.com https://www.youtube.com;
   frame-src 'self' https://noureddinelmobaraki-web.github.io https://www.google.com https://recaptcha.google.com https://www.youtube.com https://www.youtube-nocookie.com;
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  style-src 'self' 'unsafe-inline';
+  style-src-elem 'self' 'unsafe-inline';
   style-src-attr 'unsafe-inline';
   img-src 'self' data: blob: https:
     https://noureddinelmobaraki-web.github.io
@@ -17,7 +17,7 @@
     https://image.tmdb.org
     https://m.media-amazon.com;
   media-src 'self' blob: https: https://noureddinelmobaraki-web.github.io;
-  font-src 'self' data: https://fonts.gstatic.com;
+  font-src 'self' data:;
   connect-src 'self' https: https://iptv-org.github.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com https://*.supabase.co wss://*.supabase.co;
   worker-src 'self' blob:;
   manifest-src 'self';
@@ -38,14 +38,11 @@
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin>
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io">
     <link rel="dns-prefetch" href="https://noureddinelmobaraki-web.github.io">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <!-- LCP: preload the hero background for the default (midnight) theme.
          Must byte-match --hero-bg-image-url in src/styles/themes/midnight.css.
          No crossorigin: CSS background-image fetches are no-CORS and must match. -->
     <link rel="preload" as="image" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp" fetchpriority="high">
-    <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), interest-cohort=()">
 
 
@@ -183,7 +180,7 @@
       }
     }
     </script>
-    <link rel="icon" type="image/webp" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp" />
+    <link rel="icon" type="image/webp" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp" />
     <link rel="icon" href="/NL/favicon.ico" sizes="any" />
     <link rel="manifest" href="/NL/manifest.webmanifest">
     
@@ -197,11 +194,12 @@
     <link 
       rel="preload" 
       as="image" 
-      href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp"
+      href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp"
       fetchpriority="high"
-      imagesrcset="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/profile_img.webp"
+      imagesrcset="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp"
       type="image/webp"
       crossorigin
+      referrerpolicy="no-referrer"
     >
     <link 
       rel="preload" 
@@ -215,11 +213,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script
-      src="https://cdn.emailjs.com/sdk/4.4.1/email.min.js"
-      integrity="sha384-mdbrFEj5dVNAmY4milkN30ioerhgkEeyH6gwWvJFTQCuVpxiFJx+9uDWqtjk+NnQ"
-      crossorigin="anonymous"
-    ></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

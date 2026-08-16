@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Moon,
   Sun,
@@ -330,7 +330,7 @@ function NotchIslandInner() {
       data-device={device}
       data-page={pageKey}
     >
-      <motion.div
+      <m.div
         ref={surfaceRef}
         data-state={state}
         data-live={state === "live" ? "true" : "false"}
@@ -394,7 +394,7 @@ function NotchIslandInner() {
 
         <AnimatePresence>
           {state === "open" && (
-            <motion.div
+            <m.div
               key="panel"
               className="notch-panel"
               role="menu"
@@ -470,10 +470,10 @@ function NotchIslandInner() {
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </m.div>
 
       {conflict.active && state !== "open" && (
         <div className="notch-fork" role="group" aria-label="Audio conflict">

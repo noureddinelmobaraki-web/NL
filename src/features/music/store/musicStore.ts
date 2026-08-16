@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { Track } from '../engine/types';
 import { audioEngine } from '../engine/audioEngine';
 import { EQ_PRESETS } from '../engine/eqPresets';
-import { getFvTracks, getFvInitialOrder } from '../data/loadSongs';
+import { getFvTracksSync, loadFvTracks, buildInitialOrder } from '../data/loadSongs';
 import { saveTrackOffline, removeTrackOffline } from '../data/offline';
 import { logPlay } from '../data/playTracking';
 
@@ -21,6 +21,8 @@ export interface MusicState {
   displayOrder: string[]; // Random presentation order of all track IDs
   status: 'idle' | 'loading' | 'ready' | 'error';
   error?: string;
+  hydrateTracks: () => Promise<void>;
+    
   currentId?: string;
   isPlaying: boolean;
   currentTime: number;
@@ -59,7 +61,10 @@ export interface MusicState {
   sleepTimer: number | null; // remaining seconds
 
   // Setters/Actions
-  actions: {
+      
+  
+      
+      actions: {
     setTracks: (tracks: Track[]) => void;
     setStatus: (status: 'idle' | 'loading' | 'ready' | 'error', error?: string) => void;
     playTrack: (id: string, startAutoplay?: boolean) => Promise<void>;
@@ -120,9 +125,9 @@ const DEFAULT_EQ = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 export const useMusicStore = create<MusicState>()(
   persist(
     (set, get) => ({
-      tracks: getFvTracks(),
-      displayOrder: getFvInitialOrder(),
-      status: 'ready',
+      tracks: getFvTracksSync(),
+      displayOrder: [],
+      status: 'loading',
       isPlaying: false,
       currentTime: 0,
       duration: 0,
@@ -155,6 +160,27 @@ export const useMusicStore = create<MusicState>()(
       loopStart: null,
       loopEnd: null,
       sleepTimer: null,
+
+      
+
+      hydrateTracks: async () => {
+        if (get().status === "ready") return;
+        try {
+          const tracks = await loadFvTracks();
+          const valid = new Set(tracks.map((t) => t.id));
+          const prev = get();
+          set({
+            tracks,
+            displayOrder: buildInitialOrder(tracks),
+            queue: (prev.queue ?? []).filter((id) => valid.has(id)),
+            currentId:
+              prev.currentId && valid.has(prev.currentId) ? prev.currentId : undefined,
+            status: "ready",
+          });
+        } catch (e) {
+          set({ status: "error", error: (e as Error).message });
+        }
+      },
 
       actions: {
         setTracks: (tracks) => set((s) => {
@@ -367,7 +393,7 @@ export const useMusicStore = create<MusicState>()(
           const nextQueue = queue.filter((id) => id !== trackId);
           const nextShuffleQueue = shuffleQueue.filter((id) => id !== trackId);
 
-          let nextIdx = nextQueue.indexOf(currentId || '');
+          const nextIdx = nextQueue.indexOf(currentId || '');
           set({
             queue: nextQueue,
             shuffleQueue: nextShuffleQueue,

@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Tv, HelpCircle } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 
 import { useIdle } from "../../hooks/useIdle";
 import { useTvRecorder } from "../../hooks/useTvRecorder";
@@ -260,7 +260,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
       {/* 3. Top navigation header dock (auto hides on idle) */}
       <AnimatePresence>
         {!hideOverlays && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -295,14 +295,14 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
             >
               <X size={18} />
             </button>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 
       {/* 4. Left/Right Navigation Sidebar Column (Countries or Channels) */}
       <AnimatePresence>
         {!hideOverlays && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, x: isRtl ? 40 : -40 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: isRtl ? 40 : -40 }}
@@ -344,7 +344,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
                 onPickCountry={handleSelectCountry}
               />
             )}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 
@@ -411,21 +411,21 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
       {/* 6. Live floating Recorder error log toasts */}
       <AnimatePresence>
         {!hideOverlays && recordErr && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 15 }}
             className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-red-600/90 text-white rounded-xl px-5 py-3 shadow-xl z-50 text-xs text-center border border-red-500/35 backdrop-blur-md max-w-sm pointer-events-auto"
           >
             <p className="font-semibold">{recordErr}</p>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 
       {/* 7. Bottom glass controls bar (auto hides on idle) */}
       <AnimatePresence>
         {!hideOverlays && selectedChannel && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 30 }}
@@ -452,7 +452,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
               onToggleRecording={handleToggleRecording}
               recordingSupported={true}
             />
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

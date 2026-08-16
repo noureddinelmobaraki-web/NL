@@ -70,7 +70,7 @@ export function useFullscreenManager(
   // 2) Orientation lock (best-effort, silent fail)
   useEffect(() => {
     if (!enabled || !isOpen || !lockOrientation) return;
-    let cancelled = false;
+    const cancelled = false;
     try {
       const sor = (screen as any).orientation;
       if (sor && typeof sor.lock === 'function') {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Check, Share2, Send, Music, Search, Loader2, X, User
 } from 'lucide-react';
@@ -185,7 +185,7 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
       <div className="absolute inset-0 bg-black/15 backdrop-blur-[2px]" onClick={onClose} />
 
       {/* Staggered Glass Bars */}
-      <motion.div 
+      <m.div 
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -193,7 +193,7 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
         className="relative z-10 w-full max-w-sm mx-auto space-y-3"
       >
         {BARS.map((bar) => (
-          <motion.button
+          <m.button
             key={bar.id}
             variants={itemVariants}
             whileHover={{ scale: 1.02 }}
@@ -203,16 +203,16 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
           >
             <span className="font-bold text-sm tracking-wide">{bar.label}</span>
             <bar.icon size={18} className="text-white/80" />
-          </motion.button>
+          </m.button>
         ))}
-      </motion.div>
+      </m.div>
 
       {/* Modals & Dialogs */}
       <AnimatePresence>
         {/* Status Feedback Modal */}
         {statusMsg && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
-            <motion.div 
+            <m.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -247,14 +247,14 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
               >
                 OK
               </button>
-            </motion.div>
+            </m.div>
           </div>
         )}
 
         {/* Login Prompt Modal */}
         {activeModal === 'login-prompt' && !statusMsg && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
-            <motion.div 
+            <m.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -283,14 +283,14 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
               >
                 Log In
               </button>
-            </motion.div>
+            </m.div>
           </div>
         )}
 
         {/* Add to Playlist Modal */}
         {activeModal === 'playlist' && !statusMsg && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
-            <motion.div 
+            <m.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -361,14 +361,14 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           </div>
         )}
 
         {/* Send Modal */}
         {activeModal === 'send' && !statusMsg && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
-            <motion.div 
+            <m.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -478,7 +478,7 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
                   </div>
                 )}
               </div>
-            </motion.div>
+            </m.div>
           </div>
         )}
       </AnimatePresence>

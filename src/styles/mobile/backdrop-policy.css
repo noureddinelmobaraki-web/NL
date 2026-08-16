@@ -1,0 +1,56 @@
+/* ============================================================
+   backdrop-policy.css - المصدر الوحيد لسياسة backdrop-filter
+   ------------------------------------------------------------
+   يدمج ما كان موزعاً بين:
+     - styles/components/perf-lite.css        (كان يفعل blur خفيف)
+     - styles/mobile-no-backdrop-filter.css   (كان يلغيه كلياً)
+
+   السبب الأصلي للإلغاء (محفوظ من التعليق القديم):
+   معالج رسوميات الهاتف يُفسد التركيب مع أي backdrop-filter / blur،
+   والتلف يتراكم ويبقى بعد الإغلاق.
+
+   الحدود الآن صريحة ولا تتداخل:
+     <= 768px            -> إلغاء تام (هواتف)
+     769px-1024px + لمس  -> blur خفيف (تابلت - GPU أقوى، شاشة أكبر)
+     > 1024px            -> زجاجية كاملة (سطح المكتب، بلا قيود)
+   ============================================================ */
+
+@layer mobile {
+  /* الهواتف: إلغاء تام */
+  @media (max-width: 768px) {
+    *,
+    *::before,
+    *::after {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+
+    /* تعويض الزجاجية المفقودة بخلفية معتمة - وإلا صار النص غير مقروء */
+    .ios-chrome-bar,
+    .notch-island,
+    .auth-modal,
+    .auth-launcher {
+      background-color: color-mix(in srgb, var(--nl-surface, #12141c) 92%, transparent);
+    }
+  }
+
+  /* التابلت باللمس: blur خفيف مقبول */
+  @media (hover: none) and (min-width: 769px) and (max-width: 1024px) {
+    .ios-chrome-bar {
+      -webkit-backdrop-filter: blur(8px) saturate(140%);
+      backdrop-filter: blur(8px) saturate(140%);
+    }
+    .notch-island {
+      -webkit-backdrop-filter: blur(12px) saturate(160%);
+      backdrop-filter: blur(12px) saturate(160%);
+    }
+    .auth-modal {
+      -webkit-backdrop-filter: blur(14px) saturate(160%);
+      backdrop-filter: blur(14px) saturate(160%);
+    }
+    .auth-launcher {
+      -webkit-backdrop-filter: blur(10px) saturate(160%);
+      backdrop-filter: blur(10px) saturate(160%);
+    }
+  }
+}

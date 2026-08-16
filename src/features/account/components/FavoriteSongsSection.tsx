@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Play, Music2, Star } from 'lucide-react';
 import { useMusicStore } from '../../music/store/musicStore';
-import { getFvTracks } from '../../music/data/loadSongs';
 import { getInitials } from '../../music/utils/cover';
 import { fetchSongFavorites, type SongFavRow } from '../profileFeatured';
 import type { Track } from '../../music/engine/types';
@@ -15,11 +14,14 @@ export function FavoriteSongsSection({ userId }: Props) {
   const setQueue = useMusicStore((s) => s.actions.setQueue);
 
   // Local catalog map: song_id -> Track
+  // نشترك في s.tracks فقط: مرجع ثابت لا يتغير مع currentTime،
+  // ويتغير مرة واحدة فقط عند اكتمال hydrateTracks.
+  const allTracks = useMusicStore((s) => s.tracks);
   const catalog = useMemo(() => {
     const m = new Map<string, Track>();
-    for (const t of getFvTracks()) m.set(t.id, t);
+    for (const t of allTracks) m.set(t.id, t);
     return m;
-  }, []);
+  }, [allTracks]);
 
   useEffect(() => {
     let alive = true;

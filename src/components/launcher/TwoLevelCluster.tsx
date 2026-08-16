@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { Headphones, Play, Music, Film, Tv, ArrowLeft, LucideIcon } from 'lucide-react';
 import { Branch, LeafItem } from './launcher.config';
 import { spring } from '../../motion/tokens';
@@ -61,7 +61,7 @@ export function TwoLevelCluster({ label, tagline, branches, onItemClick }: TwoLe
         <AnimatePresence mode="wait" initial={false} custom={activeBranchId ? 1 : -1}>
           {!activeBranchId ? (
             /* LEVEL 1: Sub-branches ("Listen", "Watch") */
-            <motion.div
+            <m.div
               key="level1"
               custom={-1}
               variants={slideVariants}
@@ -73,7 +73,7 @@ export function TwoLevelCluster({ label, tagline, branches, onItemClick }: TwoLe
               {branches.map((branch) => {
                 const IconComponent = iconMap[branch.icon] || Headphones;
                 return (
-                  <motion.button
+                  <m.button
                     key={branch.id}
                     whileHover={{ scale: 1.02, x: 4 }}
                     whileTap={{ scale: 0.98 }}
@@ -85,13 +85,13 @@ export function TwoLevelCluster({ label, tagline, branches, onItemClick }: TwoLe
                       <span>{branch.label}</span>
                     </div>
                     <span className="text-white/40 text-xs font-mono select-none">Explore &rsaquo;</span>
-                  </motion.button>
+                  </m.button>
                 );
               })}
-            </motion.div>
+            </m.div>
           ) : (
             /* LEVEL 2: Leaves (NL Music, Movies, NL TV) */
-            <motion.div
+            <m.div
               key="level2"
               custom={1}
               variants={slideVariants}
@@ -114,7 +114,7 @@ export function TwoLevelCluster({ label, tagline, branches, onItemClick }: TwoLe
                 {activeBranch?.items.map((item) => {
                   const LeafIcon = iconMap[item.icon] || Music;
                   return (
-                    <motion.button
+                    <m.button
                       key={item.id}
                       whileHover={{ translateY: -3, scale: 1.02 }}
                       whileTap={{ scale: 0.96 }}
@@ -128,11 +128,11 @@ export function TwoLevelCluster({ label, tagline, branches, onItemClick }: TwoLe
                         <LeafIcon size={24} />
                       </div>
                       <span>{item.label}</span>
-                    </motion.button>
+                    </m.button>
                   );
                 })}
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { createPortal } from "react-dom";
 import { X, Search, Volume2, VolumeX, Play, Info, ChevronLeft, ChevronRight, Star, Film, Tv, Heart, Eye, Bookmark } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useAppContext } from "../../context/AppContext";
 import { useMovieItems } from "../../features/account/useMovieItems";
 import { useAuth } from "../../context/AuthContext";
@@ -233,7 +233,7 @@ const MoviePosterCard = React.memo(({
 
       <AnimatePresence>
         {hovered && activeHoverId === item.id && !isTouch && (
-          <motion.div
+          <m.div
             layoutId={`cinema-hover-${item.id}`}
             initial={{ opacity: 0, scale: 0.94, y: 10 }}
             animate={{ opacity: 1, scale: 1.05, y: -6 }}
@@ -265,7 +265,7 @@ const MoviePosterCard = React.memo(({
                 </span>
               </div>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
@@ -1013,7 +1013,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 </div>
               ) : (
                 <div className="flex items-center">
-                  <motion.div animate={{ width: searchOpen ? "200px" : "0px" }} transition={{ ease: "easeOut", duration: 0.25 }} className="overflow-hidden">
+                  <m.div animate={{ width: searchOpen ? "200px" : "0px" }} transition={{ ease: "easeOut", duration: 0.25 }} className="overflow-hidden">
                     <input
                       type="search"
                       placeholder={activeTab === 'movies' ? t("movies.search") || "Search..." : t("series.search") || "Search..."}
@@ -1021,7 +1021,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="px-3 py-1 bg-zinc-900/90 border border-zinc-700 border-r-0 text-white rounded-l text-xs outline-none focus:ring-1 focus:ring-red-600 tracking-tight"
                     />
-                  </motion.div>
+                  </m.div>
                   <button onClick={() => setSearchOpen(!searchOpen)} className="p-1.5 rounded-r bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-white cursor-pointer">
                     <Search size={14} />
                   </button>
@@ -1272,7 +1272,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 <p className="text-zinc-400 text-xs font-mono">{t("movies.meta.resolving")}</p>
               </div>
             ) : (
-              <motion.div
+              <m.div
                 ref={detailDialogRef}
                 role="dialog"
                 aria-modal="true"
@@ -1459,7 +1459,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </m.div>
             )}
           </div>
         )}

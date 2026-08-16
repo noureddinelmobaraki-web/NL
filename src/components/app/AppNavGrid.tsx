@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Camera, Music2, Pencil, Aperture, Gamepad2, Clapperboard, Tv, Monitor, AudioLines, Users } from 'lucide-react';
 import { NavButton } from '../NavButton';
 import { audioManager } from '../../audio/audioManager';
@@ -27,7 +27,7 @@ export function AppNavGrid({
       : "Movies & Series");
 
   return (
-    <motion.div 
+    <m.div 
       variants={itemVariants} 
       className="nl-top-nav"
     >
@@ -151,6 +151,6 @@ export function AppNavGrid({
         }}
         theme={resolvedTheme} 
       />
-    </motion.div>
+    </m.div>
   );
 }
