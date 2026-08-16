@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import {
   PORTRAIT_ASSETS,
+  PORTRAIT_PREWARM,
   PORTRAIT_SOURCE_SIZE,
   SUBJECT_BOX,
   SUBJECT_CENTER,
@@ -18,10 +19,13 @@ import { usePortraitAudio } from './hooks/usePortraitAudio';
 import { usePoemPlayback } from './hooks/usePoemPlayback';
 import { usePoemStage } from './hooks/usePoemStage';
 import { usePrefersReducedMotion } from './hooks/usePrefersReducedMotion';
+import { usePortraitHints } from './hooks/usePortraitHints';
+import { HintArrows, HintToggleArrow } from './components/HintArrows';
 import { LampHotspot } from './components/LampHotspot';
 import { OrbitVideo } from './components/OrbitVideo';
 import { PoemOverlay } from './components/PoemOverlay';
 import { PoemToggle } from './components/PoemToggle';
+import { isAutomatedEnv } from '../../utils/env';
 import './portrait.css';
 
 type VideoPhase = 'idle' | 'resting' | 'orbiting';
@@ -45,6 +49,7 @@ export default function PortraitPage() {
   const [poemOn, setPoemOn] = useState(false);
   const poem = usePoemPlayback(poemOn);
   const poemVars = usePoemStage(poemOn);
+  const hints = usePortraitHints();
 
   const erase = useEraseMask({
     canvasRef,
@@ -105,6 +110,58 @@ export default function PortraitPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [closePortrait]);
 
+  /**
+   * Warm the assets that are fetched only on demand, so the first press of the
+   * switch and the first press of the lamp are instant on the next visit.
+   *
+   * Not done in the service worker's activate handler on purpose: activate runs
+   * during whichever page load registered the worker, including the home page
+   * that Lighthouse CI audits at /NL/?lh=1, and pulling multi-megabyte media
+   * there competes with LCP for bandwidth.
+   */
+  useEffect(() => {
+    if (isAutomatedEnv()) return undefined;
+
+    const conn = (navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string };
+    }).connection;
+    if (conn?.saveData) return undefined;
+    if (conn?.effectiveType === '2g' || conn?.effectiveType === 'slow-2g') return undefined;
+
+    const targets: string[] = [];
+    if (PORTRAIT_PREWARM.poemTrack) targets.push(PORTRAIT_ASSETS.poemTrack);
+    if (PORTRAIT_PREWARM.video) targets.push(PORTRAIT_ASSETS.video);
+    if (targets.length === 0) return undefined;
+
+    let idleHandle = 0;
+    const run = () => {
+      for (const href of targets) {
+        // A plain GET is enough: the service worker intercepts it and stores it
+        // in the portrait cache (section 3.3). Failures are irrelevant here.
+        void fetch(href, { mode: 'cors', credentials: 'omit' }).catch(() => undefined);
+      }
+    };
+
+    const timer = window.setTimeout(() => {
+      const w = window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      };
+      if (typeof w.requestIdleCallback === 'function') {
+        idleHandle = w.requestIdleCallback(run, { timeout: 4000 });
+      } else {
+        run();
+      }
+    }, PORTRAIT_PREWARM.delayMs);
+
+    return () => {
+      window.clearTimeout(timer);
+      const w = window as Window & { cancelIdleCallback?: (handle: number) => void };
+      if (idleHandle && typeof w.cancelIdleCallback === 'function') {
+        w.cancelIdleCallback(idleHandle);
+      }
+    };
+  }, []);
+
   // ── pointer -> normalised stage coordinates ───────────────────────────────
   const toStage = useCallback((e: React.PointerEvent) => {
     const el = e.currentTarget as HTMLElement;
@@ -114,18 +171,20 @@ export default function PortraitPage() {
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
+      hints.dismiss(); // first real gesture retires the arrows for good
       const { nx, ny } = toStage(e);
       erase.eraseAt(nx, ny);
     },
-    [toStage, erase],
+    [toStage, erase, hints.dismiss],
   );
 
   // ── video lifecycle ───────────────────────────────────────────────────────
   const openVideo = useCallback(() => {
+    hints.dismiss();
     if (phase !== 'idle') return;
     setPhase('resting');
     audio.duckForVideo();
-  }, [phase, audio]);
+  }, [phase, audio, hints.dismiss]);
 
   const closeVideo = useCallback(() => {
     if (phase === 'idle') return;
@@ -146,6 +205,7 @@ export default function PortraitPage() {
   // ── poem toggle ───────────────────────────────────────────────────────────
   const togglePoem = useCallback(
     (next: boolean) => {
+      hints.dismiss();
       setPoemOn(next);
       if (next) {
         closeVideo();
@@ -156,7 +216,7 @@ export default function PortraitPage() {
         void audio.playAmbience();
       }
     },
-    [closeVideo, audio],
+    [closeVideo, audio, hints.dismiss],
   );
 
   // The recital ended on its own — return the switch and the ambience.
@@ -172,6 +232,7 @@ export default function PortraitPage() {
    */
   const handleStageClick = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      hints.dismiss(); // must run BEFORE the guard below
       if (phase === 'idle') return;
       // pointerdown precedes click, and the video sits inside SUBJECT_BOX at
       // (0.638, 0.597). Without this guard the stage closes the video before
@@ -194,7 +255,7 @@ export default function PortraitPage() {
         closeVideo();
       }
     },
-    [phase, toStage, closeVideo],
+    [phase, toStage, closeVideo, hints.dismiss],
   );
 
   const subjectScale = phase === 'idle' ? 1 : videoCfg.subjectShrink;
@@ -253,6 +314,9 @@ export default function PortraitPage() {
         />
 
         {phase === 'idle' && !poemOn && <LampHotspot onActivate={openVideo} />}
+        {hints.visible && phase === 'idle' && !poemOn && (
+          <HintArrows leaving={hints.leaving} />
+        )}
       </div>
 
       {/* Single src, no <source> children: the .m4a twin never existed and its
@@ -273,6 +337,9 @@ export default function PortraitPage() {
       />
 
       <PoemToggle checked={poemOn} onChange={togglePoem} />
+      {hints.visible && phase === 'idle' && !poemOn && (
+        <HintToggleArrow leaving={hints.leaving} />
+      )}
 
       <button
         type="button"
@@ -286,3 +353,4 @@ export default function PortraitPage() {
     </div>
   );
 }
+

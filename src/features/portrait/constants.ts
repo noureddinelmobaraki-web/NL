@@ -260,3 +260,70 @@ export const POEM_STAGE = {
   transitionMs: 900,
 } as const;
 
+/**
+ * First-visit affordance arrows.
+ *
+ * Anchors are normalised stage coordinates, identical in meaning to
+ * LAMP_HOTSPOT and SUBJECT_BOX: the stage is locked to the plates' 1:1 aspect,
+ * so a percentage is pixel-accurate at every viewport size.
+ */
+export const PORTRAIT_HINTS = {
+  /**
+   * Own localStorage key, deliberately NOT a new field on 'nl-prefs-v1'.
+   * loadPrefs() merges DEFAULTS into whatever it reads, and userPrefs.test.ts
+   * asserts on that shape; widening the shared interface for a portrait-only
+   * flag would put an unrelated unit test at risk for no benefit.
+   */
+  storageKey: 'nl-portrait-hints-v1',
+  /** Bump to re-show the hints to everyone after a UX change. */
+  storageVersion: 1,
+
+  /** How long they stay before fading on their own. */
+  visibleMs: 3000,
+  /** Fade-out duration. Must match --nl-hint-fade in portrait.css. */
+  fadeMs: 320,
+
+  /** Set false to show bare arrows with no words. */
+  showLabels: true,
+  lampLabel: 'اضغط المصباح',
+  toggleLabel: 'القصيدة',
+  subjectLabel: 'مرّر للمسح',
+
+  /**
+   * Head anchor. PERSON_HEAD_CX is 0.55737 and SUBJECT_BOX.top is 0.05176,
+   * so y = 0.14 lands on his head rather than above it.
+   */
+  subject: { x: 0.5574, y: 0.14 },
+
+  /**
+   * Drop of the toggle arrow below the switch, in px. The switch box is 40px
+   * tall and scales from its top-left corner, so the visual bottom edge is at
+   * 40 * scale: 40px on desktop, 31.2px at --nl-toggle-scale 0.78.
+   */
+  toggleDropPx: 50,
+  toggleDropNarrowPx: 40,
+} as const;
+
+/**
+ * Warm-up of the two on-demand portrait assets, so the second visit — and the
+ * first press of the poem switch — start instantly.
+ *
+ * Deliberately NOT done in the service worker's activate handler: activate runs
+ * during whatever page load happens to register the worker, including the home
+ * page that Lighthouse CI audits. Pulling media there competes with LCP for
+ * bandwidth. Warming belongs on the portrait page, where the user has already
+ * committed to this content.
+ */
+export const PORTRAIT_PREWARM = {
+  /** Wait this long after mount so the ambience download is not starved. */
+  delayMs: 2500,
+  /** The poem track is small and is needed the moment the switch is flipped. */
+  poemTrack: true,
+  /**
+   * The orbit video is several MB and many visitors never press the lamp.
+   * Opt in only if you want it warmed unconditionally.
+   */
+  video: false,
+} as const;
+
+

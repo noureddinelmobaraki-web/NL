@@ -410,3 +410,105 @@
     filter: none;
   }
 }
+
+/* First-visit hint arrows ================================================= */
+/*
+ * Three arrows, 3 seconds, once per browser. They are decoration with a job:
+ * they must never be able to eat a pointer event, because the erase trail and
+ * the lamp both live under them.
+ */
+
+.nl-hint-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 9; /* above the lamp (4); below the root-level switch (10) */
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--nl-hint-fade, 320ms) ease;
+}
+.nl-hint-layer[data-leaving='true'] { opacity: 0; }
+
+.nl-hint {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  pointer-events: none;
+  color: #fff;
+  opacity: 1;
+  transition: opacity var(--nl-hint-fade, 320ms) ease;
+  /* The document is dir="rtl". Without this, flex order flips and the arrow
+     lands on the wrong side of its label. Same fix as .nl-poem-toggle. */
+  direction: ltr;
+  will-change: opacity;
+}
+.nl-hint[data-leaving='true'] { opacity: 0; }
+
+.nl-hint__svg {
+  width: clamp(30px, 5.4vmin, 46px);
+  height: auto;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.65));
+  /* Independent transform properties, so the nudge animation below can move the
+     arrow without clobbering the per-hint rotation. */
+  translate: 0 0;
+  animation: nl-hint-nudge 1.15s ease-in-out infinite;
+}
+
+.nl-hint__label {
+  font-family: 'Cairo', 'Readex Pro', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 1.7vmin, 15px);
+  line-height: 1;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  direction: rtl; /* Arabic label inside an ltr flex row */
+}
+
+/* Lamp: sits to the left of the measured shade centre, tip on the anchor.
+   Everything left of x = 0.34 is background (SUBJECT_BOX.left), so this cannot
+   land on top of him. */
+.nl-hint--lamp {
+  transform: translate(-100%, -50%);
+}
+
+/* Him: tip on the head anchor, body of the hint out over the background. */
+.nl-hint--subject {
+  transform: translate(-100%, -50%);
+}
+
+/* The switch: root-anchored, directly under it, pointing back up.
+   Keep these two numbers in sync with PORTRAIT_HINTS.toggleDropPx and
+   toggleDropNarrowPx. The switch box is 40px tall and scales from its top-left
+   corner, so its visual bottom edge is 40px on desktop and 31.2px at 0.78. */
+.nl-hint--toggle {
+  --nl-hint-toggle-drop: 50px;
+  top: calc(max(14px, env(safe-area-inset-top)) + var(--nl-hint-toggle-drop));
+  left: max(14px, env(safe-area-inset-left));
+  z-index: 9;
+}
+.nl-hint--toggle .nl-hint__svg {
+  /* Base path points right and slightly down; aim it up at the switch. */
+  rotate: -115deg;
+}
+
+@media (max-width: 767px) {
+  .nl-hint--toggle { --nl-hint-toggle-drop: 40px; }
+  .nl-hint__label { padding: 5px 9px; }
+}
+
+@keyframes nl-hint-nudge {
+  0%, 100% { translate: 0 0; }
+  50% { translate: -6px -3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-hint__svg { animation: none; translate: 0 0; }
+  .nl-hint, .nl-hint-layer { transition-duration: 1ms; }
+}
+

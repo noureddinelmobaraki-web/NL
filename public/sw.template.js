@@ -4,12 +4,17 @@ const CACHE_IMAGES = `nl-images-${VERSION}`;
 const CACHE_HLS = `nl-hls-${VERSION}`;
 const CACHE_AUDIO = `nl-audio-${VERSION}`;
 const CACHE_FONTS = `nl-fonts-${VERSION}`;
+// Portrait page media. Its own cache because nl-audio is capped at 15 entries
+// and shared with the song library: a handful of songs evicts the ambience and
+// the orbit video, and the page then re-downloads them on every single visit.
+const CACHE_PORTRAIT = `nl-portrait-${VERSION}`;
 const VERSIONED_CACHE_PREFIXES = [
   'nl-shell-',
   'nl-images-',
   'nl-hls-',
   'nl-audio-',
   'nl-fonts-',
+  'nl-portrait-',
 ];
 // Persistent library for user-saved songs. NOT version-suffixed, so it
 // survives redeploys. Never trimmed (not present in LIMITS).
@@ -21,6 +26,17 @@ const PRECACHE_URLS = [
 ];
 
 const HLS_ORIGIN = 'noureddinelmobaraki-web.github.io';
+
+// Pathnames are compared percent-encoded, exactly as URL.pathname reports them
+// and exactly as PORTRAIT_ASSETS in src/features/portrait/constants.ts spells
+// them. Do not tidy the %20 sequences.
+const PORTRAIT_MEDIA = new Set([
+  '/nl-audio-cdn/just%20Bg.jpeg',
+  '/nl-audio-cdn/me%20no%20bg.png',
+  '/nl-audio-cdn/MESROUR%20SALAH%20EDDINE%20BG.webm',
+  '/nl-audio-cdn/MO_web.mp4',
+  '/nl-audio-cdn/metxtbg.m4a',
+]);
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
@@ -54,6 +70,7 @@ self.addEventListener('activate', (event) => {
       CACHE_HLS,
       CACHE_AUDIO,
       CACHE_FONTS,
+      CACHE_PORTRAIT,
     ]);
     const keys = await caches.keys();
     const staleOwnedCaches = keys.filter((key) =>
@@ -133,6 +150,9 @@ const LIMITS = {
   'nl-images': { max: 80 },
   'nl-hls': { max: 30 },
   'nl-audio': { max: 15 },
+  // Five portrait assets today; the headroom absorbs a variant without letting
+  // this cache grow into a storage problem.
+  'nl-portrait': { max: 8 },
 };
 
 async function trimCache(cacheName) {
@@ -176,6 +196,55 @@ self.addEventListener('fetch', (event) => {
     }
   }
 
+  // Portrait page media: cache-first in a dedicated cache, so nothing here
+  // competes with the song library for the 15 slots in nl-audio.
+  {
+    const portraitUrl = new URL(request.url);
+    if (portraitUrl.hostname === HLS_ORIGIN && PORTRAIT_MEDIA.has(portraitUrl.pathname)) {
+      event.respondWith((async () => {
+        const cache = await caches.open(CACHE_PORTRAIT);
+        // Cache.match keys on URL, not on headers, so this also hits for a
+        // Range request and lets us slice locally.
+        const cached = await cache.match(request, { ignoreVary: true });
+        const range = request.headers.get('range');
+
+        if (cached) {
+          return range ? handleRangeRequest(request, cached) : cached;
+        }
+
+        if (range) {
+          // Cache.put rejects a 206, so a ranged miss cannot populate the cache
+          // from this response. Fetch the whole file alongside it instead: the
+          // next play is then served locally and sliced by handleRangeRequest.
+          event.waitUntil((async () => {
+            try {
+              const full = await fetch(portraitUrl.href, { mode: 'cors', credentials: 'omit' });
+              if (full.status === 200) {
+                await cache.put(portraitUrl.href, full.clone());
+                await trimCache(CACHE_PORTRAIT);
+              }
+            } catch {
+              // Offline, or a CDN hiccup. The media element still has its own
+              // network response; warming is best-effort by design.
+            }
+          })());
+          return fetch(request);
+        }
+
+        const response = await fetch(request);
+        // An opaque cross-origin response reports status 0 and ok === false but
+        // is still storable, which matters on a localhost preview where this CDN
+        // is not same-origin.
+        if (response.status === 200 || response.type === 'opaque') {
+          await cache.put(request, response.clone());
+          event.waitUntil(trimCache(CACHE_PORTRAIT));
+        }
+        return response;
+      })());
+      return;
+    }
+  }
+
   // ⭐ Saved/offline songs (.m4a, any origin): cache-first from the persistent
   //    user library, then the rolling audio cache, then network (no auto-cache).
   //    We return the cached response AS-IS (no Range slicing) so cross-origin
@@ -190,7 +259,15 @@ self.addEventListener('fetch', (event) => {
         const roll = await caches.open(CACHE_AUDIO);
         const fromRoll = await roll.match(request, { ignoreVary: true });
         if (fromRoll) return fromRoll;
-        return fetch(request);
+        const response = await fetch(request);
+        // Range requests come back 206 and cannot be stored; skip them rather
+        // than let cache.put reject and reintroduce the old behaviour anyway.
+        if (!request.headers.get('range') &&
+            (response.status === 200 || response.type === 'opaque')) {
+          await roll.put(request, response.clone());
+          event.waitUntil(trimCache(CACHE_AUDIO));
+        }
+        return response;
       })());
       return;
     }
@@ -217,7 +294,7 @@ self.addEventListener('fetch', (event) => {
   const sameOrigin = url.origin === self.location.origin;
 
   // 0. CDN images and media (non-HLS)
-  if (url.hostname === HLS_ORIGIN && /\.(webp|gif|jpg|png)$/i.test(url.pathname)) {
+  if (url.hostname === HLS_ORIGIN && /\.(webp|gif|jpg|jpeg|png|avif)$/i.test(url.pathname)) {
     event.respondWith(
       (async () => {
         // Saved covers live in the persistent library and must survive redeploys.
