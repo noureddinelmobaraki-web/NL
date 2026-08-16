@@ -4,5 +4,6 @@
 User-agent: *
 Allow: /
 
-# Absolute sitemap URL (required by Google). Must be the /NL/ sub-path.
+# Absolute sitemap URLs. This file is served at /NL/robots.txt; see PROMPT 09 section 6.
 Sitemap: https://noureddinelmobaraki-web.github.io/NL/sitemap.xml
+Sitemap: https://noureddinelmobaraki-web.github.io/NL/sitemap-index.xml

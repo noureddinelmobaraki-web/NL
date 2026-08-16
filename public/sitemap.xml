@@ -2,319 +2,373 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/tri9-tbawe9/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/b04JzAbcjyo/hqdefault.jpg</image:loc><image:title>TRI9 TBAWE9 — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/b04JzAbcjyo/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/veto/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/XB9fSmREVyA/hqdefault.jpg</image:loc><image:title>VETO — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/XB9fSmREVyA/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/total/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/Iu8jrFnMZ88/hqdefault.jpg</image:loc><image:title>TOTAL — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/Iu8jrFnMZ88/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/7chaychi-dimo9rati/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/SISZCEUuglM/hqdefault.jpg</image:loc><image:title>7CHAYCHI DIMO9RATI — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/SISZCEUuglM/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/a-lot/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/Ue32w-0mlcM/hqdefault.jpg</image:loc><image:title>A Lot — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/Ue32w-0mlcM/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/beautiful/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/m4sIBLydH7A/hqdefault.jpg</image:loc><image:title>BEAUTIFUL — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/m4sIBLydH7A/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/bouh/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/4t2q8gPvR7w/hqdefault.jpg</image:loc><image:title>Bouh — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/4t2q8gPvR7w/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/brain-damage/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/dCfUmW1qpzk/hqdefault.jpg</image:loc><image:title>Brain Damage — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/dCfUmW1qpzk/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/deal-with-the-devil/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/kMV9eDsSmRI/hqdefault.jpg</image:loc><image:title>Deal With The Devil — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/kMV9eDsSmRI/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/dokhana-v2/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/zIzSoKs97ZI/hqdefault.jpg</image:loc><image:title>Dokhana V2 — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/zIzSoKs97ZI/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/gourou/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/HmKP9pWjzco/hqdefault.jpg</image:loc><image:title>GOUROU — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/HmKP9pWjzco/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/itchy-w-scratchy/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/CIvpJDtZue8/hqdefault.jpg</image:loc><image:title>ITCHY W SCRATCHY — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/CIvpJDtZue8/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/koun-nadi/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/Kilg7TAG7PQ/hqdefault.jpg</image:loc><image:title>KOUN NADI — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/Kilg7TAG7PQ/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/lai-could-never/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/86U9V65pDK4/hqdefault.jpg</image:loc><image:title>L&#039;AI Could Never — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/86U9V65pDK4/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/lbayda-mon-amour/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/LeWyv5SV9Gw/hqdefault.jpg</image:loc><image:title>L&#039;bayda Mon Amour — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/LeWyv5SV9Gw/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/let-the-rhythm-hit-em/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/dmVATSCmn7c/hqdefault.jpg</image:loc><image:title>Let The Rhythm Hit &#039;em — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/dmVATSCmn7c/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/lmorphiniya-31/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/DkObudHGVBY/hqdefault.jpg</image:loc><image:title>LMORPHINIYA 31 — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/DkObudHGVBY/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/lmorphiniya-33/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/cMeH3-K7uMY/hqdefault.jpg</image:loc><image:title>LMORPHINIYA 33 — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/cMeH3-K7uMY/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/lmorphiniya-1013/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/QpqT66o7hfM/hqdefault.jpg</image:loc><image:title>LMORPHINIYA 1013 — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/QpqT66o7hfM/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/lmorphinya-19-v2/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/U4fWqWy9bK8/hqdefault.jpg</image:loc><image:title>Lmorphinya 19 V2 — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/U4fWqWy9bK8/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/magneto/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/uHlqVh4umsA/hqdefault.jpg</image:loc><image:title>MAGNETO — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/uHlqVh4umsA/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/none-shall-pass/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/m0irW9Tqh-o/hqdefault.jpg</image:loc><image:title>None Shall Pass — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/m0irW9Tqh-o/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/ohio/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/ARzD54029T4/hqdefault.jpg</image:loc><image:title>Ohio — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/ARzD54029T4/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/ostora/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/nI-PNDYVB8s/hqdefault.jpg</image:loc><image:title>Ostora — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/nI-PNDYVB8s/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/tromso/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/z5ZH7WAN_-Y/hqdefault.jpg</image:loc><image:title>Tromso — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/z5ZH7WAN_-Y/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/2-salopards/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/ZtHxFOkX8A8/hqdefault.jpg</image:loc><image:title>2 Salopards — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/ZtHxFOkX8A8/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/al-rihla/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/ycWat1clv_8/hqdefault.jpg</image:loc><image:title>AL RIHLA — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/ycWat1clv_8/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/ay9ona-2/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/kHITfqtohvo/hqdefault.jpg</image:loc><image:title>Ay9ona 2 — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/kHITfqtohvo/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/bad-guy/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/NFMkZQ_WRds/hqdefault.jpg</image:loc><image:title>Bad Guy — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/NFMkZQ_WRds/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/captcha/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/irmtlpkPjoY/hqdefault.jpg</image:loc><image:title>CAPTCHA — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/irmtlpkPjoY/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/couteau-suisse/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/3lLZUDmfn48/hqdefault.jpg</image:loc><image:title>Couteau Suisse — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/3lLZUDmfn48/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/euphoria/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/2R-U08v4eZg/hqdefault.jpg</image:loc><image:title>euphoria — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/2R-U08v4eZg/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/groundhog-day-112/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/VZz224Chy0s/hqdefault.jpg</image:loc><image:title>Groundhog Day 112 — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/VZz224Chy0s/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/ink/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/9sbkfd12gI4/hqdefault.jpg</image:loc><image:title>ink — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/9sbkfd12gI4/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/lmorphiniya-25/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/nnQ00Vuu6rg/hqdefault.jpg</image:loc><image:title>Lmorphiniya 25 — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/nnQ00Vuu6rg/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/luis-clos/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/UeuEsW8i74g/hqdefault.jpg</image:loc><image:title>Luis Clos — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/UeuEsW8i74g/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/lyam/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/nSl2b56FUZg/hqdefault.jpg</image:loc><image:title>LYAM — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/nSl2b56FUZg/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/mural/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/kRieC91OtKE/hqdefault.jpg</image:loc><image:title>Mural — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/kRieC91OtKE/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/nirvana/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/4Az6vczQGN4/hqdefault.jpg</image:loc><image:title>Nirvana — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/4Az6vczQGN4/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/none-shall-pass-40/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/m0irW9Tqh-o/hqdefault.jpg</image:loc><image:title>None Shall Pass — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/m0irW9Tqh-o/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/nordine-gb-couteau-suisse/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/3lLZUDmfn48/hqdefault.jpg</image:loc><image:title>Nordine GB - Couteau Suisse — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/3lLZUDmfn48/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/nordine-gb-lucky-you/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/U85cfOuR43g/hqdefault.jpg</image:loc><image:title>Nordine GB - Lucky You! — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/U85cfOuR43g/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/ouroboros/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/aEBUJTkhNdI/hqdefault.jpg</image:loc><image:title>OUROBOROS — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/aEBUJTkhNdI/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/sparadra/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/OtwX2pMyUu8/hqdefault.jpg</image:loc><image:title>Sparadra — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/OtwX2pMyUu8/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/supernova/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/SAEgsWr7FkU/hqdefault.jpg</image:loc><image:title>Supernova — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/SAEgsWr7FkU/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/the-way-i-am/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/0-8H1EeLGiE/hqdefault.jpg</image:loc><image:title>The Way I Am — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/0-8H1EeLGiE/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/vvs/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/mPm6yIKjKqY/hqdefault.jpg</image:loc><image:title>VVS — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/mPm6yIKjKqY/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/عبلة/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/XfO0HVtJEmU/hqdefault.jpg</image:loc><image:title>عبلة — NL</image:title></image:image>
+    <image:image><image:loc>https://i.ytimg.com/vi/XfO0HVtJEmU/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/music/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/movies/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/videos/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/games/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/about/</loc>
+    <lastmod>2026-08-16T13:43:52Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

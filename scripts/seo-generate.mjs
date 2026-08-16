@@ -150,12 +150,20 @@ const urls = [
   ...songUrls.map((s) => ({ loc: s.loc, priority: '0.8', changefreq: 'monthly', image: s.image, title: s.title })),
   ...hubUrls.map((u) => ({ loc: u, priority: '0.7', changefreq: 'weekly' })),
 ];
-const lastmod = BUILD_DATE ? '\n    <lastmod>' + BUILD_DATE + '</lastmod>' : '';
+const lastmod = BUILD_DATE ? '\n    <lastmod>' + String(BUILD_DATE).replace(/\.\d{3}Z$/, 'Z') + '</lastmod>' : '';
 const sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' +
-  urls.map((u) => '  <url>\n    <loc>' + u.loc + '</loc>' + lastmod + '\n    <changefreq>' + u.changefreq + '</changefreq>\n    <priority>' + u.priority + '</priority>' + (u.image ? '\n    <image:image><image:loc>' + u.image + '</image:loc><image:title>' + esc(u.title) + ' — NL</image:title></image:image>' : '') + '\n  </url>').join('\n') +
+  urls.map((u) => '  <url>\n    <loc>' + u.loc + '</loc>' + lastmod + '\n    <changefreq>' + u.changefreq + '</changefreq>\n    <priority>' + u.priority + '</priority>' + (u.image ? '\n    <image:image><image:loc>' + u.image + '</image:loc></image:image>' : '') + '\n  </url>').join('\n') +
   '\n</urlset>\n';
 write('sitemap.xml', sm);
 fs.writeFileSync(path.join(PUB, 'sitemap.xml'), sm);
+
+// ---------- sitemap-index.xml (fresh URL for Search Console) ----------
+const smi = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+  '  <sitemap>\n    <loc>' + DOMAIN + '/sitemap.xml</loc>' + lastmod + '\n  </sitemap>\n' +
+  '</sitemapindex>\n';
+write('sitemap-index.xml', smi);
+fs.writeFileSync(path.join(PUB, 'sitemap-index.xml'), smi);
 
 // ---------- search-index.json (unified, lightweight) ----------
 const index = [];
