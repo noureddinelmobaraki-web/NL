@@ -107,5 +107,10 @@ function generateSongsJsonLd() {
   }
 }
 
-generateSitemap();
+// SITEMAP POLICY:
+// sitemap.xml is now owned and written by seo-generate.mjs.
+// Do not call generateSitemap() here, otherwise it will overwrite the full sitemap.
+
+// function generateSitemap() { ... }
+
 generateSongsJsonLd();

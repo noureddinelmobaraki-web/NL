@@ -31,10 +31,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '22.14.0'
+          cache: 'npm'
+
 
       - name: Install Dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Run Linter
         run: npm run lint

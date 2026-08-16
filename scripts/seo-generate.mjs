@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { resolveBuildDate } from './build-metadata.mjs';
 import { assertItemsHaveFields, assertArray, assertObject } from './build-data-validation.mjs';
-import { ORIGIN, BASE, DOMAIN, ARTIST } from './build-constants.mjs';
+import { ORIGIN, BASE, DOMAIN, ARTIST, ARTIST_ALIASES, ARTIST_SAMEAS } from './build-constants.mjs';
 
 const BUILD_DATE = resolveBuildDate();
 const CWD = process.cwd();
@@ -73,7 +73,7 @@ for (const s of songs) {
   const ld = {
     '@context': 'https://schema.org', '@type': 'MusicRecording',
     name: s.title,
-    byArtist: { '@type': 'MusicGroup', name: 'NL', '@id': DOMAIN + '/#musicgroup' },
+    byArtist: { '@type': 'MusicGroup', name: 'NL', '@id': DOMAIN + '/#musicgroup', alternateName: ARTIST_ALIASES },
     inLanguage: 'ar', url: pageUrl, image: cover,
     ...(ytid ? { sameAs: 'https://www.youtube.com/watch?v=' + ytid } : {}),
     potentialAction: { '@type': 'ListenAction', target: DOMAIN + '/?song=' + s.id },
@@ -116,6 +116,32 @@ hubUrls.push(hubPage({
   desc: 'العب ' + games.length + ' لعبة ريترو كلاسيكية داخل موقع NL.',
   deepPath: '?games=1', listHtml: gameList,
   ld: { '@context': 'https://schema.org', '@type': 'ItemList', numberOfItems: games.length, itemListElement: games.map((g, i) => ({ '@type': 'ListItem', position: i + 1, name: g.title })) },
+}));
+
+hubUrls.push(hubPage({
+  slug: 'about',
+  title: 'Nordine GB (NL) - ' + ARTIST + ' | من هو',
+  desc: 'نور الدين المباركي، المعروف فنياً بـ Nordine GB ويصدر أعماله تحت اسم NL. فنان راب ومنتج موسيقي مستقل من الدار البيضاء، المغرب.',
+  deepPath: '?about=1',
+  listHtml: '<h2>أسماء وألقاب أخرى / Also known as</h2>'
+    + '<p>Nordine GB, NORDINE GB, Nourdine GB, NL, NL MUSIC, NL GB, '
+    + 'Noureddin El Mobaraki, Noureddine El Moubaraki, Nourdine El Mobaraki, '
+    + 'Nordine Lmbarki, Nordine Lembarki, Nordine Mbarki, Noureddine Mbarki, '
+    + 'نور الدين المباركي, نورالدين المباركي, نوردين المباركي, نوردين جي بي.</p>'
+    + '<h2>المنصات الرسمية</h2><ul>'
+    + ARTIST_SAMEAS.map((u) => '<li><a href="' + u + '" rel="me">' + u + '</a></li>').join('')
+    + '</ul>',
+  ld: {
+    '@context': 'https://schema.org', '@type': 'ProfilePage',
+    url: DOMAIN + '/about/',
+    inLanguage: 'ar',
+    mainEntity: {
+      '@type': 'Person', '@id': DOMAIN + '/#person',
+      name: ARTIST, alternateName: ARTIST_ALIASES, sameAs: ARTIST_SAMEAS,
+      jobTitle: 'Rap Artist & Music Producer',
+      homeLocation: { '@type': 'Place', name: 'Casablanca, Morocco' },
+    },
+  },
 }));
 
 // ---------- sitemap.xml ----------

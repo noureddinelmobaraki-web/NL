@@ -1,10 +1,10 @@
 {
   "name": "NL",
-  "description": "Noureddin El Mobaraki (NL) | Official Website & Music Archive",
+  "description": "Nordine GB (NL) - Noureddin El Mobaraki | Official Website & Music Archive",
   "fullName": "Noureddin El Mobaraki",
   "location": "Casablanca, Morocco",
-  "aliases": ["NL", "NL MUSIC"],
-  "bio": "AKA Nordine GB, I release under NL.(24)y, I'm a simple person. I love living and kinda don't want to belong to society anymore. Even with these dark things in mind. That's it.",
+  "aliases": ["NL", "NL MUSIC", "Nordine GB"],
+  "bio": "AKA Nordine GB - also written Nourdine GB, Nordine Lmbarki or Noureddine Mbarki. I release under NL.(24)y, I'm a simple person. I love living and kinda don't want to belong to society anymore. Even with these dark things in mind. That's it.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
