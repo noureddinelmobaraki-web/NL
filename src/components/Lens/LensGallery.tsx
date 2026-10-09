@@ -7,6 +7,7 @@ import { useButtonContext } from '../layout/ButtonOrchestrator';
 import { useLensGestures } from '../../hooks/useLensGestures';
 import { LensSlide, getSlotScale, getSlotOpacity } from './LensSlide';
 import { LensChrome } from './LensChrome';
+import ImageEditorModal from '../ImageEditorModal';
 import { useAutoHideUI } from '../../hooks/useAutoHideUI';
 import { useOrientationListener } from '../../hooks/useOrientationListener';
 import { useFullscreenManager } from '../../hooks/useFullscreenManager';
@@ -31,6 +32,9 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
   const [wipeProgress, setWipeProgress] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const slides = PHOTOS.map(src => ({ src }));
+  const currentIndex = activeIndex;
   
   // MOBILE-ONLY: two-stage mode (grid → view)
   const [mobileMode, setMobileMode] = useState<'grid' | 'view'>('grid');
@@ -271,6 +275,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
             totalPhotos={PHOTOS.length}
             isMobile={false}
             visible={true}
+            onOpenEditor={() => setIsEditorOpen(true)}
           />
 
           {/* MAIN PHOTO VIEWER (DESKTOP) */}
@@ -392,6 +397,12 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
           </div>
         </>
       )}
+
+      <ImageEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        imageUrl={slides[currentIndex]?.src || null}
+      />
     </div>
   );
 };

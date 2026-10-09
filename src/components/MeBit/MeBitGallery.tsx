@@ -11,6 +11,8 @@ import { MeBitThumbnails } from './MeBitThumbnails';
 import { useFullscreenManager } from '../../hooks/useFullscreenManager';
 import { MeBitMobileView } from './MeBitMobileView';
 import { useMeBitPrefetch } from '../../hooks/useMeBitPrefetch';
+import ImageEditorModal from '../ImageEditorModal';
+import { useTranslation } from 'react-i18next';
 
 export interface MeBitGalleryProps {
   isOpen: boolean;
@@ -39,6 +41,10 @@ export const MeBitGallery = ({
   onSelectIndex,
   onToggleAudio,
 }: MeBitGalleryProps) => {
+  const { t } = useTranslation();
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const selectedImage = selectedIndex !== null && images[selectedIndex] ? { url: images[selectedIndex] } : null;
+
   const galleryRef = useFocusTrap(isOpen);
   useMeBitSession(isOpen);
   useMeBitPrefetch(images, selectedIndex ?? 0);
@@ -61,6 +67,24 @@ export const MeBitGallery = ({
   // Register MeBit custom buttons in the portaled orchestrator (DESKTOP ONLY)
   useEffect(() => {
     if (!isOpen || isMobile || isTablet) return;
+
+    registerButton({
+      id: 'mebitEdit',
+      priority: 0,
+      allowedContexts: ['mebit'],
+      slot: 'topRight',
+      render: () => (
+        <button
+          onClick={() => setIsEditorOpen(true)}
+          className="fab-button flex items-center justify-center"
+          style={{ touchAction: 'manipulation' }}
+          title={t('mebit.edit_image', 'تعديل في Image95')}
+          aria-label={t('mebit.edit_image', 'تعديل في Image95')}
+        >
+          <img src="/image95/assets/icons8-windows-95-144.png" alt="" className="w-5 h-5 object-contain" />
+        </button>
+      )
+    });
 
     registerButton({
       id: 'mebitAudio',
@@ -101,10 +125,11 @@ export const MeBitGallery = ({
     });
 
     return () => {
+      unregisterButton('mebitEdit');
       unregisterButton('mebitAudio');
       unregisterButton('mebitClose');
     };
-  }, [isOpen, isMeBitPlaying, onClose, onToggleAudio, registerButton, unregisterButton, isMobile, isTablet]);
+  }, [isOpen, isMeBitPlaying, onClose, onToggleAudio, registerButton, unregisterButton, isMobile, isTablet, t]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -242,7 +267,15 @@ export const MeBitGallery = ({
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-4 justify-center">
+                <div className="flex flex-wrap gap-4 justify-center items-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditorOpen(true)}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#1a1a24] hover:bg-[#252535] border border-white/10 rounded text-xs text-neutral-200 transition-colors"
+                  >
+                    <img src="/image95/assets/icons8-windows-95-144.png" alt="" className="w-4 h-4 object-contain" />
+                    <span>{t('mebit.edit_image', 'تعديل في Image95')}</span>
+                  </button>
                   <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[var(--bg-glass)] rounded-full text-[var(--text-muted)] font-mono text-xs uppercase tracking-widest">
                     <span>Arrows to navigate</span>
                     <div className="w-1 h-1 bg-[var(--border-subtle)] rounded-full" />
@@ -258,6 +291,12 @@ export const MeBitGallery = ({
               </m.div>
             )}
           </div>
+
+          <ImageEditorModal
+            isOpen={isEditorOpen}
+            onClose={() => setIsEditorOpen(false)}
+            imageUrl={selectedImage?.url || null}
+          />
         </m.div>
       )}
     </AnimatePresence>

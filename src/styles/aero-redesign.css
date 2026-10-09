@@ -1,80 +1,200 @@
 /* ==========================================================================
-   aero-redesign.css — المرحلة 1: إزالة النوافذ البيضاء وإعادة تشكيلها
-   Frutiger Aero خفيف/ذكي. CSS فقط — لا يمسّ أي زر أو محتوى أو معرّف.
-   يُستورد بعد home-map.css ليتجاوز أنماط النافذة الفضّية القديمة.
+   aero-redesign.css — iOS 18 / Apple Liquid Glass Architecture
+   زجاج تفاعلي فائق النقاء مع تعتيم خفيف وانعكاسات سائلة (Liquid Sheen & Specular Refraction)
+   أداء عالي وسلس معزز بالعتاد (GPU Composited) وخفيف جداً على المتصفح.
    ========================================================================== */
 
-/* 1) إزالة شريط العنوان الأبيض (النقاط + الاسم) من كل المحطّات */
+/* 1) إزالة شريط العنوان القديم */
 .nl-home-window-titlebar { display: none !important; }
 
-/* 2) تحويل الإطار الأبيض الفضّي الثقيل إلى لوح زجاجي Aero فاتح وخفيف
-      (نُبقيه فاتحًا حتى يبقى النص الداكن الحالي مقروءًا — بلا كسر تباين) */
+/* 2) تحويل النوافذ الرئيسية إلى زجاج iOS 18 الحقيقي الفاخر */
 .nl-home-window-glass {
-  border-radius: 24px;
-  color: #12202e;
+  position: relative;
+  border-radius: 26px;
+  color: #f2f6fc;
   background:
-    linear-gradient(180deg,
-      rgba(255, 255, 255, 0.58) 0%,
-      rgba(236, 247, 255, 0.34) 46%,
-      rgba(214, 240, 255, 0.30) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.62);
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(240, 248, 255, 0.08) 35%,
+      rgba(16, 28, 46, 0.48) 75%,
+      rgba(8, 16, 28, 0.68) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.32);
   box-shadow:
-    0 16px 40px rgba(20, 72, 112, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  /* خفيف: لا ضبابة افتراضيًا (تُفعّل على الديسكتوب القادر فقط أدناه) */
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+    0 24px 64px -12px rgba(0, 0, 0, 0.45),
+    0 8px 24px -4px rgba(0, 0, 0, 0.25),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 2px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(28px) saturate(190%) contrast(102%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%) contrast(102%);
+  overflow: hidden;
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
+  transition: transform 340ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 340ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 340ms cubic-bezier(0.16, 1, 0.3, 1),
+              background 340ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* لمعان علوي رفيع (glass sheen) بدل التدرّج الأبيض الكثيف */
+/* انعكاس سائل علوي (Liquid Glass Specular Highlight) */
 .nl-home-window-glass::before {
-  height: 42% !important;
-  border-radius: 24px 24px 0 0;
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.42),
-    rgba(255, 255, 255, 0)) !important;
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 48% !important;
+  border-radius: 26px 26px 0 0;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.06) 45%,
+    transparent 85%) !important;
+  pointer-events: none;
+  opacity: 0.95;
+  transition: opacity 340ms ease, transform 340ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* حافة جسم النافذة تتبع الاستدارة الجديدة */
-.nl-home-window-body { border-radius: 0 0 24px 24px; }
-
-/* 3) ضبابة زجاجية خفيفة — على الأجهزة القادرة فقط (ماوس + شاشة كبيرة) */
-@media (hover: hover) and (min-width: 900px) {
-  .nl-home-map:not([data-lite="true"]) .nl-home-window-glass {
-    backdrop-filter: blur(8px) saturate(1.15);
-    -webkit-backdrop-filter: blur(8px) saturate(1.15);
-  }
-}
-
-/* 4) عُقد الشبكة (Lattice) تنسجم مع الزجاج الفاتح الجديد */
-.nl-lattice-node {
-  border-radius: 18px;
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.66),
-    rgba(224, 242, 255, 0.42));
-  border: 1px solid rgba(255, 255, 255, 0.7);
+/* طبقة تعتيم وانكسار سائلة داخلية عند الحركة */
+.nl-home-window:hover .nl-home-window-glass {
+  background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(240, 248, 255, 0.10) 35%,
+      rgba(14, 26, 42, 0.54) 75%,
+      rgba(6, 14, 24, 0.76) 100%);
+  border-color: rgba(255, 255, 255, 0.46);
   box-shadow:
-    0 8px 20px rgba(20, 72, 112, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 32px 76px -12px rgba(0, 0, 0, 0.54),
+    0 12px 32px -4px rgba(0, 0, 0, 0.3),
+    inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -1px 2px 0 rgba(255, 255, 255, 0.2);
+}
+.nl-home-window:hover .nl-home-window-glass::before {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+/* حافة جسم النافذة */
+.nl-home-window-body { border-radius: 0 0 26px 26px; }
+
+/* توافق النمط الفاتح (Light Theme) بأناقة زجاج آبل */
+[data-theme="light"] .nl-home-window-glass {
+  color: #1a2434;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.82) 0%,
+    rgba(242, 248, 255, 0.60) 45%,
+    rgba(220, 234, 250, 0.50) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 20px 52px -10px rgba(18, 45, 80, 0.18),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.98);
+}
+
+/* 3) عُقد الشبكة (Lattice Nodes) بشكل زجاجي سائل */
+.nl-lattice-node {
+  border-radius: 20px;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(15, 25, 40, 0.60) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: #f2f6fc;
+  box-shadow:
+    0 12px 28px -6px rgba(0, 0, 0, 0.35),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 260ms ease;
 }
 .nl-lattice-node:hover {
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.55);
   box-shadow:
-    0 12px 26px rgba(20, 72, 112, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    0 18px 38px -6px rgba(0, 0, 0, 0.45),
+    inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.9);
 }
 
-/* 5) العمود الفقري والعُقدة: نبرة أزرق-أكوا Aero بدل الفضّي البارد */
+/* 4) بطاقات Highlights (The Vault & YouTube) بزجاج سائل راقٍ */
+#vault-playlist {
+  border-radius: 22px !important;
+  border: 1px solid rgba(255, 255, 255, 0.34) !important;
+  box-shadow: 0 18px 44px -8px rgba(0, 0, 0, 0.42), inset 0 1.5px 1px rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  transform: translateZ(0);
+}
+.nl-hl-player {
+  border-radius: 22px !important;
+  border: 1px solid rgba(255, 255, 255, 0.34) !important;
+  box-shadow: 0 18px 44px -8px rgba(0, 0, 0, 0.42), inset 0 1.5px 1px rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  transform: translateZ(0);
+  overflow: hidden;
+}
+
+/* 5) العمود الفقري والعُقد */
 .nl-home-spine {
   background: linear-gradient(to bottom,
     transparent,
-    rgba(120, 200, 255, 0.55) 8%,
-    rgba(90, 175, 240, 0.75) 92%,
+    rgba(120, 200, 255, 0.45) 8%,
+    rgba(90, 175, 240, 0.65) 92%,
     transparent) !important;
-  box-shadow: 0 0 12px rgba(120, 200, 255, 0.5) !important;
+  box-shadow: 0 0 14px rgba(120, 200, 255, 0.45) !important;
 }
 .nl-home-station::before {
   background: radial-gradient(circle at 35% 30%, #ffffff, #6fbdf0) !important;
   box-shadow:
     0 0 0 4px rgba(120, 200, 255, 0.22),
-    0 0 16px rgba(150, 215, 255, 0.9) !important;
+    0 0 16px rgba(150, 215, 255, 0.85) !important;
+}
+
+/* 6) بطاقات المعرض (Gallery - ME Bit & Through The Lens) */
+.me-bit-cta,
+.nl-lens-cta {
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.34) !important;
+  box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.42), inset 0 1.5px 1px rgba(255, 255, 255, 0.75), inset 0 -1px 2px rgba(0, 0, 0, 0.2) !important;
+  backdrop-filter: blur(24px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(185%) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(20, 35, 55, 0.52) 45%, rgba(10, 18, 30, 0.72) 100%) !important;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1), border-color 320ms ease !important;
+  transform: translateZ(0);
+}
+.me-bit-cta:hover,
+.nl-lens-cta:hover {
+  transform: translateY(-3px) scale(1.008) !important;
+  border-color: rgba(255, 255, 255, 0.52) !important;
+  box-shadow: 0 28px 60px -10px rgba(0, 0, 0, 0.52), inset 0 2px 1.5px rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 7) نافذة الرسومات التفاعلية (Drawings Window) */
+.nld-glass-window {
+  border-radius: 26px !important;
+  border: 1px solid rgba(255, 255, 255, 0.34) !important;
+  box-shadow: 0 24px 54px -10px rgba(0, 0, 0, 0.48), inset 0 1.5px 1px rgba(255, 255, 255, 0.8), inset 0 -1px 2px rgba(0, 0, 0, 0.2) !important;
+  backdrop-filter: blur(26px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(190%) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(24, 38, 56, 0.52) 45%, rgba(10, 18, 28, 0.72) 100%) !important;
+  transition: transform 340ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 340ms cubic-bezier(0.16, 1, 0.3, 1), border-color 340ms ease !important;
+  transform: translateZ(0);
+}
+.nld-glass-window:hover {
+  transform: translateY(-4px) scale(1.02) !important;
+  border-color: rgba(255, 255, 255, 0.52) !important;
+  box-shadow: 0 32px 66px -12px rgba(0, 0, 0, 0.58), inset 0 2px 1.5px rgba(255, 255, 255, 0.92) !important;
+}
+
+/* وضع الأداء المنخفض / lite mode */
+.nl-home-map[data-lite="true"] .nl-home-window-glass,
+body.low-perf .nl-home-window-glass,
+.nl-home-map[data-lite="true"] .nl-lattice-node,
+body.low-perf .nl-lattice-node,
+.nl-home-map[data-lite="true"] .me-bit-cta,
+body.low-perf .me-bit-cta,
+.nl-home-map[data-lite="true"] .nl-lens-cta,
+body.low-perf .nl-lens-cta,
+.nl-home-map[data-lite="true"] .nld-glass-window,
+body.low-perf .nld-glass-window {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }

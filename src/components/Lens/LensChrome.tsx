@@ -1,4 +1,5 @@
 import { useViewportSize } from '../../hooks/useViewportSize';
+import { useTranslation } from 'react-i18next';
 
 export interface LensChromeProps {
   onClose: () => void;
@@ -8,6 +9,7 @@ export interface LensChromeProps {
   totalPhotos: number;
   isMobile?: boolean;
   visible: boolean;
+  onOpenEditor?: () => void;
 }
 
 export const LensChrome = ({
@@ -18,7 +20,9 @@ export const LensChrome = ({
   totalPhotos,
   isMobile = false,
   visible = true,
+  onOpenEditor,
 }: LensChromeProps) => {
+  const { t } = useTranslation();
   const viewport = useViewportSize();
   
   const isLandscape = (isMobile || isMobile === undefined) && viewport.isLandscape;
@@ -90,6 +94,16 @@ export const LensChrome = ({
 
         {/* Top Right Actions */}
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={onOpenEditor}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono rounded bg-white/10 hover:bg-white/20 text-white transition-colors"
+            title={t('lens.edit_photo', 'تعديل في Image95')}
+          >
+            <img src="/image95/assets/icons8-windows-95-144.png" alt="" className="w-4 h-4 object-contain" />
+            <span className="hidden sm:inline">{t('lens.edit', 'Image95')}</span>
+          </button>
+
           {isMobile && (
             <button
               onClick={onToggleMute}

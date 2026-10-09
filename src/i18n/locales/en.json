@@ -150,5 +150,12 @@
     "sameAlbum": "Same Album",
     "all": "All",
     "lyricsTab": "Lyrics"
+  },
+  "lens": {
+    "edit": "Edit",
+    "edit_photo": "Edit in Image95"
+  },
+  "mebit": {
+    "edit_image": "Edit Image"
   }
 }

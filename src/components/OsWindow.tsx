@@ -8,9 +8,20 @@ interface OsWindowProps {
   style?: React.CSSProperties;
   contentPadding?: string | number;
   overflow?: 'visible' | 'hidden';
+  icon?: string;
+  onClose?: () => void;
 }
 
-export function OsWindow({ title, children, className = '', style, contentPadding, overflow = 'hidden' }: OsWindowProps) {
+export function OsWindow({
+  title,
+  children,
+  className = '',
+  style,
+  contentPadding,
+  overflow = 'hidden',
+  icon,
+  onClose,
+}: OsWindowProps) {
   const resolvedTheme = useResolvedTheme();
 
   return (
@@ -36,10 +47,17 @@ export function OsWindow({ title, children, className = '', style, contentPaddin
           flexShrink: 0,
         }}
       >
+        {icon && (
+          <img src={icon} alt="" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
+        )}
         {resolvedTheme === 'light' ? (
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
             {/* Colored dots */}
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' }} />
+            <div
+              style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E', cursor: onClose ? 'pointer' : 'default' }}
+              onClick={onClose}
+              title={onClose ? 'Close' : undefined}
+            />
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' }} />
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#27C93F', border: '0.5px solid #1AAB29' }} />
             {/* Unicode minimize and maximize */}
@@ -51,7 +69,11 @@ export function OsWindow({ title, children, className = '', style, contentPaddin
         ) : (
           /* Close / Minimize dots */
           <div style={{ display: 'flex', gap: '6px' }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E' }} />
+            <div
+              style={{ width: 10, height: 10, borderRadius: '50%', background: '#FF5F56', border: '0.5px solid #E0443E', cursor: onClose ? 'pointer' : 'default' }}
+              onClick={onClose}
+              title={onClose ? 'Close' : undefined}
+            />
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FFBD2E', border: '0.5px solid #DEA123' }} />
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#27C93F', border: '0.5px solid #1AAB29' }} />
           </div>
@@ -71,6 +93,17 @@ export function OsWindow({ title, children, className = '', style, contentPaddin
         >
           {title}
         </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center justify-center w-4 h-4 text-xs font-bold text-black/70 hover:text-black hover:bg-black/10 rounded transition-colors ml-auto flex-shrink-0"
+            title="Close"
+            aria-label="Close window"
+          >
+            ✕
+          </button>
+        )}
       </div>
       {/* Content */}
       <div className={`flex-1 ${overflow === 'visible' ? 'overflow-visible' : 'overflow-hidden'}`} style={{ padding: contentPadding !== undefined ? contentPadding : '12px' }}>
@@ -130,3 +163,5 @@ export function OsClockDisplay() {
     </span>
   );
 }
+
+export default OsWindow;

@@ -46,7 +46,7 @@ const BIT_IMAGES = {
 } as const;
 
 const DARK_IMAGES = {
-  profile:       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp',
+  profile:       'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp',
   photo:         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photodark.webp',
   headerBg:      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bgdark.webp',
   heroBg:        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bgdark.webp',
@@ -56,7 +56,7 @@ const DARK_IMAGES = {
 } as const;
 
 const LIGHT_IMAGES = {
-  profile:       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp',
+  profile:       'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp',
   photo:         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photolight.webp',
   headerBg:      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bglight.webp',
   heroBg:        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bgdarklight.webp',
@@ -65,8 +65,8 @@ const LIGHT_IMAGES = {
   ytHighlights:  'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightslight.webp',
 } as const;
 
-export const LIGHT_PROFILE_OPENING = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp';
-export const LIGHT_PROFILE_MAIN    = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp';
+export const LIGHT_PROFILE_OPENING = 'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp';
+export const LIGHT_PROFILE_MAIN    = 'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp';
 
 
 // Per-theme background music URLs
@@ -112,7 +112,7 @@ export const INTRO_MUSIC_SRC = 'https://noureddinelmobaraki-web.github.io/nl-aud
 
 export const ASSETS = {
   profile: {
-    main:      `${CDN}/nordine_portrait.webp`,
+    main:      'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp',
     photo:     `${CDN}/photo.webp`,
     headerBg:  `${CDN}/header_bg.webp`,
     heroBg:    `${CDN}/hero_bg.webp`,

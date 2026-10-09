@@ -184,19 +184,22 @@ body.low-perf .nl-bottom-nav { backdrop-filter: none; -webkit-backdrop-filter: n
   align-items: center;
   gap: 16px;
   margin: 0 0 28px;
-  padding: 16px 18px;
+  padding: 16px 20px;
   overflow: hidden;
   color: var(--aero-text);
-  background: linear-gradient(145deg, rgba(18,42,52,.74), rgba(6,17,28,.72));
-  border: 1px solid rgba(186,248,241,.34);
-  border-radius: 18px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 12px 30px rgba(0,0,0,.22);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(24, 38, 54, 0.58) 45%, rgba(10, 18, 28, 0.78) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 22px;
+  box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.42), inset 0 1.5px 1px rgba(255, 255, 255, 0.7), inset 0 -1px 2px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  transform: translateZ(0);
 }
 #station-songs .nl-songs-heading::before {
   content: "";
   position: absolute;
-  inset: 0 0 52%;
-  background: linear-gradient(180deg, rgba(255,255,255,.15), transparent);
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.04) 40%, transparent 70%);
   pointer-events: none;
 }
 .nl-songs-heading__art { position: relative; width: 62px; height: 62px; }
@@ -255,11 +258,11 @@ body.low-perf .nl-bottom-nav { backdrop-filter: none; -webkit-backdrop-filter: n
 .nl-songs-heading__number { color: #ff5360; font: 850 34px/.9 ui-monospace, monospace; }
 .nl-songs-heading__label { color: rgba(220,247,247,.66); font: 700 9px/1.2 ui-monospace, monospace; letter-spacing: .18em; }
 #station-songs .nl-song-card {
-  border-radius: 12px;
-  border-color: color-mix(in srgb, var(--aero-edge) 72%, transparent);
-  box-shadow: inset 0 1px 0 var(--aero-inner-hi), 0 4px 12px rgba(0,0,0,.20);
+  border-radius: 18px;
+  border-color: rgba(255, 255, 255, 0.30);
+  box-shadow: inset 0 1px 1px var(--aero-inner-hi), 0 8px 24px -4px rgba(0,0,0,.32);
 }
-#station-songs .nl-song-card.is-active { box-shadow: inset 3px 0 0 var(--aero-accent), 0 7px 18px rgba(0,0,0,.26); }
+#station-songs .nl-song-card.is-active { box-shadow: inset 3px 0 0 var(--aero-accent), 0 12px 28px rgba(0,0,0,.36); }
 #station-songs .nl-aero-btn { width: 34px; height: 34px; }
 #station-songs .nl-aero-btn--primary { width: 39px; height: 39px; }
 @media (max-width: 560px) {
@@ -270,22 +273,23 @@ body.low-perf .nl-bottom-nav { backdrop-filter: none; -webkit-backdrop-filter: n
   .nl-songs-heading__number { font-size: 25px; }
 }
 
-/* ===== Contact — Frutiger Aero communication console ==================== */
+/* ===== Contact — iOS 18 Liquid Glass communication console ==================== */
 .nl-contact-section { width: 100%; max-width: 640px; margin: 0 auto; padding: 16px 8px; }
 .nl-contact-card {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: clamp(16px, 4vw, 28px);
+  padding: clamp(18px, 4vw, 32px);
   overflow: hidden;
-  color: #efffff;
-  background: linear-gradient(150deg, rgba(27,67,72,.76), rgba(5,20,34,.84) 58%, rgba(8,33,43,.80));
-  border: 1px solid rgba(191,252,245,.46);
-  border-radius: 22px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.30), inset 0 -18px 40px rgba(0,0,0,.12), 0 18px 44px rgba(0,0,0,.34);
-  backdrop-filter: blur(10px) saturate(125%);
-  -webkit-backdrop-filter: blur(10px) saturate(125%);
+  color: #f2f7fc;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(18, 38, 56, 0.58) 45%, rgba(8, 20, 32, 0.78) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 26px;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.45), inset 0 1.5px 1px rgba(255, 255, 255, 0.75), inset 0 -1px 2px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+  transform: translateZ(0);
 }
 .nl-contact-card::before {
   content: "";
@@ -297,22 +301,22 @@ body.low-perf .nl-bottom-nav { backdrop-filter: none; -webkit-backdrop-filter: n
 .nl-contact-title { position: relative; margin: 0; color: #f7ffff; font: 850 clamp(24px,6vw,38px)/1 ui-sans-serif,system-ui,sans-serif; letter-spacing: -.035em; text-align: left; }
 .nl-contact-divider { width: 72px; height: 3px; margin: 10px 0 22px; border-radius: 4px; background: linear-gradient(90deg,#d8fffb,#44d4c6,transparent); box-shadow: 0 0 8px rgba(67,207,195,.45); }
 .nl-contact-message { display: flex; flex-direction: column; gap: 14px; }
-.nl-contact-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: rgba(2,12,22,.52); border: 1px solid rgba(178,240,236,.24); border-radius: 14px; }
-.nl-contact-mode__button { min-height: 44px; color: rgba(220,244,245,.62); background: transparent; border: 1px solid transparent; border-radius: 11px; font: 750 13px/1 ui-sans-serif,system-ui,sans-serif; cursor: pointer; }
-.nl-contact-mode__button.is-active { color: #073137; background: linear-gradient(180deg,#efffff 0%,#a9eee8 48%,#63c9c1 100%); border-color: rgba(255,255,255,.72); box-shadow: inset 0 1px 0 #fff,0 3px 9px rgba(0,0,0,.22); }
+.nl-contact-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.20); border-radius: 16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.nl-contact-mode__button { min-height: 44px; color: rgba(240, 246, 255, 0.65); background: transparent; border: 1px solid transparent; border-radius: 13px; font: 750 13px/1 ui-sans-serif,system-ui,sans-serif; cursor: pointer; transition: all 0.24s ease; }
+.nl-contact-mode__button.is-active { color: #ffffff; background: linear-gradient(135deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.12) 100%); border-color: rgba(255, 255, 255, 0.45); box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 4px 14px rgba(0, 0, 0, 0.25); }
 .nl-contact-field { position: relative; }
 .nl-contact-input,
-.nl-contact-textarea { box-sizing: border-box; width: 100%; color: #f3ffff; background: linear-gradient(180deg,rgba(2,12,22,.58),rgba(8,29,40,.54)); border: 1px solid rgba(178,240,236,.28); border-radius: 14px; outline: none; font: 500 16px/1.5 ui-sans-serif,system-ui,sans-serif; box-shadow: inset 0 1px 5px rgba(0,0,0,.28); }
-.nl-contact-input { min-height: 48px; padding: 11px 14px; }
-.nl-contact-textarea { min-height: 152px; padding: 14px 14px 34px; resize: vertical; }
+.nl-contact-textarea { box-sizing: border-box; width: 100%; color: #f5f9fc; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.20); border-radius: 16px; outline: none; font: 500 16px/1.5 ui-sans-serif,system-ui,sans-serif; box-shadow: inset 0 1.5px 4px rgba(0, 0, 0, 0.35); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease; }
+.nl-contact-input { min-height: 48px; padding: 12px 16px; }
+.nl-contact-textarea { min-height: 152px; padding: 14px 16px 34px; resize: vertical; }
 .nl-contact-input::placeholder,
-.nl-contact-textarea::placeholder { color: rgba(211,239,241,.46); }
+.nl-contact-textarea::placeholder { color: rgba(220, 235, 245, 0.45); }
 .nl-contact-input:focus,
-.nl-contact-textarea:focus { border-color: #8aeee5; box-shadow: 0 0 0 3px rgba(67,207,195,.16), inset 0 1px 5px rgba(0,0,0,.24); }
-.nl-contact-counter { position: absolute; right: 13px; bottom: 10px; color: rgba(204,238,239,.45); font: 600 10px/1 ui-monospace,monospace; }
-.nl-contact-submit { display: grid; place-items: center; width: 100%; min-height: 49px; color: #fff; background: linear-gradient(180deg,#ff847c 0%,#cf2537 48%,#8d0d1c 100%); border: 1px solid rgba(255,226,224,.72); border-radius: 14px; box-shadow: inset 0 1px 0 rgba(255,255,255,.62),0 6px 15px rgba(150,12,28,.30); font: 850 13px/1 ui-sans-serif,system-ui,sans-serif; letter-spacing: .10em; cursor: pointer; transition: transform .12s ease,filter .12s ease; }
-.nl-contact-submit:hover { filter: brightness(1.06); }
-.nl-contact-submit:active { transform: translateY(1px) scale(.99); }
+.nl-contact-textarea:focus { border-color: rgba(255, 255, 255, 0.6); background: rgba(0, 0, 0, 0.35); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14), inset 0 1.5px 4px rgba(0, 0, 0, 0.4); }
+.nl-contact-counter { position: absolute; right: 13px; bottom: 10px; color: rgba(220, 235, 245, 0.45); font: 600 10px/1 ui-monospace,monospace; }
+.nl-contact-submit { display: grid; place-items: center; width: 100%; min-height: 49px; color: #fff; background: linear-gradient(135deg, #ff575c 0%, #d8202e 55%, #8f0e1a 100%); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 16px; box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, 0.7), 0 8px 24px -4px rgba(216, 32, 46, 0.45); font: 850 13px/1 ui-sans-serif,system-ui,sans-serif; letter-spacing: .10em; cursor: pointer; transition: transform .2s cubic-bezier(0.16, 1, 0.3, 1), filter .2s ease, box-shadow .2s ease; transform: translateZ(0); }
+.nl-contact-submit:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: inset 0 2px 1.5px rgba(255, 255, 255, 0.85), 0 12px 30px -4px rgba(216, 32, 46, 0.6); }
+.nl-contact-submit:active { transform: translateY(0) scale(.99); }
 .nl-contact-submit:disabled { opacity: .56; cursor: wait; }
 .nl-contact-remaining { margin: 0; color: rgba(210,238,240,.48); font: 600 10px/1.4 ui-monospace,monospace; text-align: center; }
 .nl-contact-error { margin: 0; color: #ff9a9f; font-size: 12px; text-align: center; }
