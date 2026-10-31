@@ -128,7 +128,7 @@ export function InboxPanel({ onClose, onRefreshCount }: InboxPanelProps) {
   };
 
   return (
-    <div className="absolute inset-0 z-[100] flex flex-col bg-slate-950/98 text-white p-6 justify-between select-none" dir="rtl">
+    <div className="nl-inbox-panel absolute inset-0 z-[100] flex flex-col bg-slate-950/98 text-white p-6 justify-between select-none" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 pb-4 shrink-0">
         <div className="flex items-center gap-2">

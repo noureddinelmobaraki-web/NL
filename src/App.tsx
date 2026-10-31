@@ -705,11 +705,13 @@ function MainApp() {
             className="relative z-10 w-full max-w-7xl flex flex-col gap-14"
             style={{ paddingBottom: (isMobile || isTablet) ? '80px' : undefined }}
           >
-            <AppNavGrid
-              resolvedTheme={resolvedTheme}
-              onScrollToSection={scrollToSection}
-              onOpenLens={() => setHubAlbum('lens')}
-            />
+            {!isMobile && (
+              <AppNavGrid
+                resolvedTheme={resolvedTheme}
+                onScrollToSection={scrollToSection}
+                onOpenLens={() => setHubAlbum('lens')}
+              />
+            )}
 
             <div id="main-content" className="flex flex-col gap-14" tabIndex={-1}>
               <HomeInteractiveMap

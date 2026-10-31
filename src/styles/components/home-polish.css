@@ -9,72 +9,11 @@
   --nl-aero-red: #c2172b;
 }
 
-/* ===== Top navigation =================================================== */
-.nl-top-nav {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
-  margin: 0 0 18px;
-}
-.nl-top-nav__button {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 9px;
-  min-width: 0;
-  min-height: 46px;
-  padding: 7px 12px;
-  overflow: hidden;
-  color: rgba(244,255,255,.9) !important;
-  background: linear-gradient(180deg, rgba(26,60,68,.66), rgba(4,18,29,.72)) !important;
-  border: 1px solid var(--nl-aero-edge) !important;
-  border-radius: 14px !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.26), 0 7px 18px rgba(0,0,0,.20) !important;
-  backdrop-filter: blur(9px) saturate(125%);
-  -webkit-backdrop-filter: blur(9px) saturate(125%);
-  text-transform: none !important;
-  letter-spacing: .02em !important;
-  cursor: pointer;
-  transition: transform .16s ease, border-color .16s ease, background-color .16s ease !important;
-}
-.nl-top-nav__button::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 52%;
-  z-index: -1;
-  background: linear-gradient(180deg, rgba(255,255,255,.18), transparent);
-  pointer-events: none;
-}
-.nl-top-nav__button:hover { transform: translateY(-1px); border-color: rgba(208,255,251,.72) !important; }
-.nl-top-nav__button:active { transform: scale(.985); }
-.nl-top-nav__button:focus-visible { outline: 2px solid var(--nl-aero-cyan); outline-offset: 2px; }
-.nl-top-nav__icon {
-  flex: 0 0 auto;
-  width: 29px;
-  height: 29px;
-  padding: 6px;
-  color: var(--nl-aero-white);
-  border: 1px solid rgba(255,255,255,.34);
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 25%, #fff, #8bded9 38%, #246f79 100%);
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,.24));
-}
-.nl-top-nav__label {
-  min-width: 0;
-  overflow: hidden;
-  font: 750 11px/1.15 ui-sans-serif, system-ui, sans-serif;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-@media (min-width: 680px) {
-  .nl-top-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-@media (min-width: 1100px) {
-  .nl-top-nav { display: flex; flex-wrap: wrap; gap: 10px; }
-  .nl-top-nav__button { width: auto !important; min-width: 132px; }
+/* ===== Top navigation (managed by aero-redesign.css worm tube) ========== */
+@media (max-width: 767px) {
+  .nl-top-nav {
+    display: none !important;
+  }
 }
 
 /* ===== Bottom navigation — floating Frutiger glass ====================== */
@@ -334,23 +273,7 @@ body.low-perf .nl-contact-card { backdrop-filter: none; -webkit-backdrop-filter:
    يتكيف مع جميع الثيمات ويعمل بسلاسة 60fps على الهواتف والأجهزة.
    ===================================================================== */
 
-/* Top navigation: luminous crystal orb icon */
-.nl-top-nav__icon {
-  color: #073b44 !important;
-  stroke-width: 2.15;
-  background:
-    radial-gradient(circle at 31% 24%, rgba(255,255,255,.98) 0 14%, transparent 15%),
-    radial-gradient(circle at 48% 38%, #e4fffc 0%, #8cebe2 45%, #2ca2a6 72%, #0e4956 100%) !important;
-  border-color: rgba(235,255,253,.84) !important;
-  box-shadow:
-    inset 0 1.5px 2px rgba(255,255,255,.95),
-    inset 0 -5px 9px rgba(4,55,65,.32),
-    0 3px 8px rgba(0,0,0,.28) !important;
-  filter: none !important;
-}
-
 /* Shared upper crystal meniscus + subtle dark lower vignette */
-.nl-top-nav__button::after,
 .nl-bottom-nav::after,
 #station-songs .nl-songs-heading::after,
 .nl-contact-card::after {
@@ -369,35 +292,11 @@ body.low-perf .nl-contact-card { backdrop-filter: none; -webkit-backdrop-filter:
 }
 
 /* Keep actual content above optical pseudo-elements */
-.nl-top-nav__button > *,
 .nl-bottom-nav__rail,
 #station-songs .nl-songs-heading > *,
 .nl-contact-card > * {
   position: relative;
   z-index: 2;
-}
-
-/* Top navigation buttons — Liquid Crystal Glass with specular rim & darkened base */
-.nl-top-nav__button {
-  color: var(--lc-text-main, #f4f8fd) !important;
-  background: var(--lc-glass-pill, linear-gradient(180deg, rgba(255,255,255,.20) 0%, rgba(190,228,255,.08) 42%, rgba(12,22,36,.66) 76%, rgba(5,10,18,.86) 100%)) !important;
-  border-top: 1px solid var(--lc-border-top, rgba(255,255,255,.46)) !important;
-  border-left: 1px solid var(--lc-border-side, rgba(255,255,255,.24)) !important;
-  border-right: 1px solid var(--lc-border-side, rgba(255,255,255,.24)) !important;
-  border-bottom: 1px solid var(--lc-border-bottom, rgba(6,12,22,.78)) !important;
-  border-radius: 16px !important;
-  box-shadow:
-    inset 0 1.5px 1px rgba(255,255,255,.68),
-    inset 0 -8px 16px -4px rgba(2,6,14,.55),
-    0 10px 24px -6px rgba(0,0,0,.34) !important;
-  transform: translateZ(0);
-}
-
-[data-theme="light"] .nl-top-nav__button {
-  box-shadow:
-    inset 0 1.5px 1px rgba(255,255,255,.96),
-    inset 0 -8px 16px -4px rgba(20,45,82,.15),
-    0 10px 22px -6px rgba(18,42,76,.16) !important;
 }
 
 /* Floating Mobile Bottom Nav — Liquid Crystal Dock */

@@ -38,9 +38,9 @@ export function DeleteAccountModal({ onClose, onDeleted }: DeleteAccountModalPro
       role="dialog"
       aria-modal="true"
       aria-label="Delete account confirmation"
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm"
+      className="nl-delete-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm"
     >
-      <div className="relative w-full max-w-md rounded-2xl bg-zinc-900 border border-red-900/50 shadow-2xl p-6">
+      <div className="nl-delete-modal relative w-full max-w-md rounded-2xl bg-zinc-900 border border-red-900/50 shadow-2xl p-6">
 
         {/* Close button */}
         <button

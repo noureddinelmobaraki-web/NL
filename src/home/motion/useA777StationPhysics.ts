@@ -95,11 +95,15 @@ export function useA777StationPhysics(
     if (!enabled || !root) return;
 
     const mobile = window.matchMedia('(max-width: 767px)').matches;
-    const stationMaxAngle = mobile ? 0.060 : 0.092;
-    const childMaxAngle = mobile ? 0.032 : 0.052;
-    const ropeMaxAngle = mobile ? 0.041 : 0.064;
-    const stationMaxVelocity = mobile ? 0.58 : 0.76;
-    const childMaxVelocity = mobile ? 0.72 : 0.94;
+    if (mobile) {
+      // Static Home layout on mobile devices for smooth, stable performance
+      return;
+    }
+    const stationMaxAngle = 0.092;
+    const childMaxAngle = 0.052;
+    const ropeMaxAngle = 0.064;
+    const stationMaxVelocity = 0.76;
+    const childMaxVelocity = 0.94;
 
     const stations: StationBody[] = Array.from(
       root.querySelectorAll<HTMLElement>('.nl-home-station[data-station]'),

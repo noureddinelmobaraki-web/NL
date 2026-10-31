@@ -417,26 +417,50 @@ a[href][data-liquid-rebound="true"],
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   3) شريط الأقسام العلوي كأنبوب زجاجي سائل متصل (Connected Liquid Glass Worm Tube)
-   في الوضع العادي: أيقونات فقط بدون لون أزرق داخل أنبوب زجاجي متصل كدودة سائلة
-   وعند التفاعل: تتوسع خانة الزر ككبسولة/مستطيل زجاجي ليظهر اسم القسم مع تكبير الأيقونة
+   3) شريط الأقسام العلوي كأنبوب زجاجي سائل واحد متصل (Single Connected Liquid Glass Worm Tube)
+   أنبوب زجاجي واحد ممتد ينحني ويضيق ويتسع حول الأيقونة وعند تمرير الماوس يتوسع أكثر
+   ويظهر اسم الأيقونة التي يتفاعل معها الماوس وهو شفاف وداخله دخان خفيف باللون الأحمر الملكي
    ══════════════════════════════════════════════════════════════════════════ */
 
-@keyframes nl-worm-undulate {
+@keyframes nl-worm-smoke-drift-1 {
   0%, 100% {
-    transform: translateY(0) scale3d(1, 1, 1);
+    transform: translate3d(-18px, -2px, 0) scale(1, 0.94);
+    opacity: 0.72;
   }
   50% {
-    transform: translateY(-1.8px) scale3d(1.015, 0.988, 1);
+    transform: translate3d(26px, 3px, 0) scale(1.18, 1.08);
+    opacity: 0.95;
   }
 }
 
-@keyframes nl-worm-bridge-pulse {
+@keyframes nl-worm-smoke-drift-2 {
   0%, 100% {
-    transform: translateY(-50%) scaleY(0.88);
+    transform: translate3d(22px, 2px, 0) scale(1.12, 1);
+    opacity: 0.68;
   }
   50% {
-    transform: translateY(-50%) scaleY(1.08);
+    transform: translate3d(-24px, -3px, 0) scale(0.92, 1.12);
+    opacity: 0.92;
+  }
+}
+
+@keyframes nl-worm-smoke-drift-3 {
+  0%, 100% {
+    transform: translate3d(-14px, 3px, 0) scale(0.96, 1.05);
+    opacity: 0.64;
+  }
+  50% {
+    transform: translate3d(18px, -2px, 0) scale(1.14, 0.95);
+    opacity: 0.90;
+  }
+}
+
+@keyframes nl-worm-tube-breathe {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
   }
 }
 
@@ -452,75 +476,95 @@ a[href][data-liquid-rebound="true"],
   z-index: 12;
 }
 
+/* إخفاء شريط الأقسام العلوي تماماً على الهاتف لأن الهاتف يعرض شريط التنقل السفلي */
+@media (max-width: 767px) {
+  .nl-top-nav,
+  .nl-top-nav--worm {
+    display: none !important;
+  }
+}
+
 .nl-top-nav__grid {
   position: relative;
+  isolation: isolate;
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 0 !important;
-  padding: 6px 10px;
+  gap: 8px !important;
+  padding: 5px 8px;
   border-radius: 999px;
   max-width: 100%;
-  /* هالة زجاجية خلفية خفيفة تجمع غرف الدودة كأنبوب واحد متصل */
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(255, 255, 255, 0.02) 50%,
-    rgba(0, 0, 0, 0.16) 100%
-  );
-  box-shadow:
-    0 18px 40px -12px rgba(0, 0, 0, 0.48),
-    inset 0 1px 0 rgba(255, 255, 255, 0.32);
-  backdrop-filter: blur(12px) saturate(170%);
-  -webkit-backdrop-filter: blur(12px) saturate(170%);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: nl-worm-tube-breathe 4.6s ease-in-out infinite;
 }
 
-[data-theme="light"] .nl-top-nav__grid {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.55) 0%,
-    rgba(251, 207, 232, 0.25) 55%,
-    rgba(167, 243, 208, 0.30) 100%
-  );
-  box-shadow:
-    0 16px 34px -10px rgba(157, 23, 77, 0.14),
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.88);
+/* طبقة الأنبوب الزجاجي السائل الواحد المتصل (SVG Single Undulating Tube) */
+.nl-top-nav__tube-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+  filter:
+    drop-shadow(0 14px 28px rgba(0, 0, 0, 0.52))
+    drop-shadow(0 0 18px rgba(225, 29, 72, 0.24));
 }
 
-/* كل خانة في الدودة الزجاجية (Bulge Chamber) */
+.nl-worm-smoke__wisp {
+  transform-box: fill-box;
+  transform-origin: center;
+  mix-blend-mode: screen;
+}
+
+.nl-worm-smoke__wisp--1 {
+  animation: nl-worm-smoke-drift-1 7.2s ease-in-out infinite;
+}
+
+.nl-worm-smoke__wisp--2 {
+  animation: nl-worm-smoke-drift-2 8.6s ease-in-out infinite;
+}
+
+.nl-worm-smoke__wisp--3 {
+  animation: nl-worm-smoke-drift-3 6.8s ease-in-out infinite;
+}
+
+/* كل زر داخل الأنبوب الزجاجي بدون أي مربع داخلي أو إطار منفصل */
 .nl-top-nav__button,
 [data-theme="midnight"] .mid-nav-tab,
 [data-theme="bit"] .manga-paper-tab {
   --lx: 50%;
   --ly: 25%;
   position: relative;
-  isolation: isolate;
+  z-index: 2;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 0 !important;
-  min-width: 48px !important;
+  min-width: 46px !important;
   width: auto !important;
-  height: 48px !important;
-  min-height: 48px !important;
-  padding: 0 13px !important;
-  margin: 0 4px !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
   border-radius: 999px !important;
   overflow: visible !important;
-  color: var(--lc-text-main) !important;
+  color: var(--lc-text-main, #fff5f7) !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   cursor: pointer;
-  animation: nl-worm-undulate 3.8s ease-in-out infinite;
-  animation-delay: calc(var(--worm-idx, 0) * -0.32s);
   transition:
-    padding 380ms cubic-bezier(0.22, 1, 0.36, 1),
-    margin 380ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    padding 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
 .nl-top-nav__button::before,
@@ -529,107 +573,7 @@ a[href][data-liquid-rebound="true"],
   content: none !important;
 }
 
-/* الأنبوب الزجاجي الضيق الذي يربط كل أيقونة بجارتها (Narrow Connecting Tube Bridge) */
-.nl-top-nav__bridge {
-  position: absolute;
-  top: 50%;
-  left: -13px;
-  width: 18px;
-  height: 22px;
-  transform: translateY(-50%);
-  z-index: 0;
-  pointer-events: none;
-  border-radius: 8px;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.42) 0%,
-      rgba(255, 255, 255, 0.14) 36%,
-      rgba(12, 16, 28, 0.58) 78%,
-      rgba(4, 6, 14, 0.82) 100%
-    );
-  border-top: 1px solid var(--lc-border-top);
-  border-bottom: 1px solid var(--lc-border-bottom);
-  box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.78),
-    inset 0 -4px 8px rgba(0, 0, 0, 0.42),
-    0 6px 14px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(16px) saturate(185%);
-  -webkit-backdrop-filter: blur(16px) saturate(185%);
-  animation: nl-worm-bridge-pulse 3.8s ease-in-out infinite;
-  animation-delay: calc(var(--worm-idx, 0) * -0.32s);
-}
-
-[dir="rtl"] .nl-top-nav__bridge {
-  left: auto;
-  right: -13px;
-}
-
-/* أول عنصر في السطر لا يحتاج جسراً قبله */
-.nl-top-nav__button:first-child .nl-top-nav__bridge {
-  display: none;
-}
-
-[data-theme="light"] .nl-top-nav__bridge {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(251, 207, 232, 0.72) 52%,
-    rgba(167, 243, 208, 0.78) 100%
-  );
-  box-shadow:
-    inset 0 1.5px 1px #ffffff,
-    0 4px 10px rgba(157, 23, 77, 0.12);
-}
-
-/* الحجرة الزجاجية المنتفخة حول كل أيقونة (Swollen Liquid Glass Chamber) */
-.nl-top-nav__chamber {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: 999px;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      95px circle at var(--lx, 50%) var(--ly, 25%),
-      rgba(255, 255, 255, 0.36) 0%,
-      color-mix(in srgb, var(--lc-accent-1) 16%, transparent) 46%,
-      transparent 78%
-    ),
-    var(--lc-glass-pill);
-  border-top: 1.2px solid var(--lc-border-top);
-  border-left: 1px solid var(--lc-border-side);
-  border-right: 1px solid var(--lc-border-side);
-  border-bottom: 1.2px solid var(--lc-border-bottom);
-  box-shadow:
-    0 12px 26px -6px rgba(0, 0, 0, 0.42),
-    inset 0 2px 1.5px rgba(255, 255, 255, 0.85),
-    inset 0 -8px 16px -4px rgba(2, 6, 16, 0.52);
-  backdrop-filter: blur(20px) saturate(190%);
-  -webkit-backdrop-filter: blur(20px) saturate(190%);
-  transition:
-    border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1),
-    background 280ms ease,
-    box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 240ms ease;
-}
-
-[data-theme="light"] .nl-top-nav__chamber {
-  background:
-    radial-gradient(
-      95px circle at var(--lx, 50%) var(--ly, 25%),
-      rgba(255, 255, 255, 0.96) 0%,
-      rgba(251, 207, 232, 0.42) 48%,
-      transparent 78%
-    ),
-    var(--lc-glass-pill);
-  box-shadow:
-    0 10px 24px -6px rgba(157, 23, 77, 0.16),
-    inset 0 2px 1.5px rgba(255, 255, 255, 0.98),
-    inset 0 -8px 14px -4px rgba(16, 185, 129, 0.14);
-}
-
-/* الأيقونة الصافية بدون أي دائرة سماوية أو خلفية زرقاء قديمة */
+/* الأيقونة الصافية تماماً بدون أي خلفية سماوية أو دائرة ملونة */
 .nl-top-nav__icon-wrap {
   position: relative;
   z-index: 2;
@@ -639,6 +583,9 @@ a[href][data-liquid-rebound="true"],
   width: 22px;
   height: 22px;
   flex-shrink: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .nl-top-nav__icon {
@@ -646,13 +593,15 @@ a[href][data-liquid-rebound="true"],
   height: 20px !important;
   padding: 0 !important;
   margin: 0 !important;
-  color: var(--lc-text-main) !important;
-  background: transparent !important;
+  color: rgba(255, 245, 248, 0.94) !important;
+  background: none !important;
+  background-image: none !important;
+  background-color: transparent !important;
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  stroke-width: 2.15 !important;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.38)) !important;
+  stroke-width: 2.1 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.52)) !important;
   transition:
     transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1),
     color 240ms ease,
@@ -660,14 +609,13 @@ a[href][data-liquid-rebound="true"],
 }
 
 [data-theme="light"] .nl-top-nav__icon {
-  color: #1f162b !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.9)) !important;
+  color: #2b1321 !important;
+  background: none !important;
+  background-image: none !important;
+  filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.85)) !important;
 }
 
-/* النص مخفي تماماً في الوضع العادي (Icons Only Default) ويتمدد بسلاسة عند التفاعل */
+/* النص مخفي في الوضع العادي ويظهر بسلاسة داخل توسع الأنبوب عند تمرير الماوس */
 .nl-top-nav__label {
   position: relative;
   z-index: 2;
@@ -678,13 +626,15 @@ a[href][data-liquid-rebound="true"],
   overflow: hidden;
   white-space: nowrap;
   font: 750 11.5px/1.1 ui-sans-serif, system-ui, -apple-system, sans-serif;
-  letter-spacing: 0.04em;
-  color: var(--lc-text-main);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.38);
+  letter-spacing: 0.045em;
+  color: #fff5f7;
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.65),
+    0 0 12px rgba(255, 42, 84, 0.45);
   transform: translateX(-4px) scale(0.92);
   transition:
-    max-width 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 280ms ease,
+    max-width 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 240ms ease,
     margin-inline-start 340ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -694,88 +644,31 @@ a[href][data-liquid-rebound="true"],
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-/* عند التفاعل مع أي زر: تتوسع خانته على شكل مستطيل/كبسولة زجاجية ويظهر اسمه وتكبر أيقونته */
+/* عند تمرير الماوس: يتسع الأنبوب الزجاجي حول الأيقونة ويظهر اسمها */
 .nl-top-nav__button:hover,
 .nl-top-nav__button:focus-visible,
 .nl-top-nav__button.is-expanded {
-  padding: 0 17px !important;
+  padding: 0 18px !important;
   z-index: 4;
-}
-
-.nl-top-nav__button:hover .nl-top-nav__chamber,
-.nl-top-nav__button:focus-visible .nl-top-nav__chamber,
-.nl-top-nav__button.is-expanded .nl-top-nav__chamber {
-  border-radius: 16px;
-  border-top-color: #ffffff;
-  background:
-    radial-gradient(
-      120px circle at var(--lx, 50%) var(--ly, 25%),
-      rgba(255, 255, 255, 0.46) 0%,
-      color-mix(in srgb, var(--lc-accent-1) 28%, transparent) 48%,
-      transparent 80%
-    ),
-    var(--lc-glass-surface-hover);
-  box-shadow:
-    0 18px 36px -6px rgba(0, 0, 0, 0.52),
-    0 0 22px -4px color-mix(in srgb, var(--lc-accent-1) 52%, transparent),
-    inset 0 2px 1.5px rgba(255, 255, 255, 0.95),
-    inset 0 -8px 16px -4px rgba(2, 6, 16, 0.56);
 }
 
 .nl-top-nav__button:hover .nl-top-nav__icon,
 .nl-top-nav__button:focus-visible .nl-top-nav__icon,
 .nl-top-nav__button.is-expanded .nl-top-nav__icon {
-  transform: scale(1.18);
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--lc-accent-1) 75%, #ffffff)) !important;
+  transform: scale(1.2);
+  color: #ffffff !important;
+  filter:
+    drop-shadow(0 0 9px rgba(255, 62, 104, 0.92))
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)) !important;
 }
 
 .nl-top-nav__button:hover .nl-top-nav__label,
 .nl-top-nav__button:focus-visible .nl-top-nav__label,
 .nl-top-nav__button.is-expanded .nl-top-nav__label {
-  max-width: 175px;
+  max-width: 180px;
   opacity: 1;
   margin-inline-start: 8px;
   transform: translateX(0) scale(1);
-}
-
-/* تقسيم الأنبوب الزجاجي المتصل إلى صفين متصلين في الهواتف فقط (< 640px) */
-@media (max-width: 639px) {
-  .nl-top-nav__grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    row-gap: 8px !important;
-    border-radius: 28px;
-    padding: 8px 8px;
-    max-width: 96vw;
-  }
-
-  .nl-top-nav__button {
-    min-width: 44px !important;
-    height: 44px !important;
-    min-height: 44px !important;
-    padding: 0 11px !important;
-    margin: 0 3px !important;
-  }
-
-  /* العنصر السادس (بداية الصف الثاني على الهاتف) يبدأ أنبوب الصف الثاني بدون جسر أفقي خاطئ */
-  .nl-top-nav__button:nth-child(6) .nl-top-nav__bridge {
-    display: none;
-  }
-
-  .nl-top-nav__button:hover,
-  .nl-top-nav__button:focus-visible,
-  .nl-top-nav__button.is-expanded {
-    padding: 0 13px !important;
-  }
-
-  .nl-top-nav__button:hover .nl-top-nav__label,
-  .nl-top-nav__button:focus-visible .nl-top-nav__label,
-  .nl-top-nav__button.is-expanded .nl-top-nav__label {
-    max-width: 132px;
-    font-size: 10.5px;
-    margin-inline-start: 6px;
-  }
 }
 
 /* شريط التنقل السفلي العائم للموبايل (Prompt 2 Cool Iridescent Dock) */
@@ -2151,79 +2044,429 @@ a[href][data-liquid-rebound="true"],
     inset 0 -5px 10px rgba(0, 0, 0, 0.35) !important;
 }
 
+/* ── F) خلفية فيديو السيرة الذاتية (Hero Bio Background Video) + خط سيريف فاخر باللون الأحمر الملكي ── */
+#header-card.hero-header-card {
+  position: relative !important;
+  isolation: isolate !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+
+#header-card > .hero-bio-video-wrap,
+#header-card > div:nth-of-type(1) {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  background-image: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+#header-card .hero-bio-video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  display: block !important;
+  pointer-events: none !important;
+}
+
+#header-card > .hero-overlay-element,
+#header-card > div:nth-of-type(2) {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  background: linear-gradient(
+    180deg,
+    rgba(12, 2, 6, 0.16) 0%,
+    rgba(10, 1, 4, 0.48) 100%
+  ) !important;
+}
+
+#header-card > p.hero-bio,
+.hero-bio-royal,
+[data-theme="midnight"] #header-card .hero-bio,
+[data-theme="dark"] #header-card .hero-bio,
+[data-theme="bit"] #header-card .hero-bio,
+[data-theme="lite"] #header-card .hero-bio,
+[data-theme="light"] #header-card .hero-bio {
+  font-family: 'Playfair Display', 'Cormorant Garamond', 'Bodoni Moda', 'Cinzel', Georgia, 'Times New Roman', serif !important;
+  font-style: italic !important;
+  font-weight: 600 !important;
+  font-size: clamp(1.06rem, 1.55vw, 1.34rem) !important;
+  line-height: 1.68 !important;
+  letter-spacing: 0.02em !important;
+  color: #ff2a54 !important;
+  background: linear-gradient(135deg, #ff8fa3 0%, #ff2a54 46%, #e11d48 82%, #ff5c7c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow:
+    0 2px 14px rgba(225, 29, 72, 0.48),
+    0 0 28px rgba(255, 42, 84, 0.28) !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65));
+}
+
+[data-theme="light"] #header-card > p.hero-bio,
+[data-theme="light"] .hero-bio-royal {
+  color: #be123c !important;
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 55%, #881337 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 12px rgba(225, 29, 72, 0.25) !important;
+  filter: none;
+}
+
+/* ── G) أزرار الصوت والعودة للأعلى وزر Login العائم (3D Liquid Glass Buttons) ── */
+.fab-button,
+div#orchestrator-portal-root > div:nth-of-type(2) > button:nth-of-type(1) {
+  --lx: 50%;
+  --ly: 25%;
+  color: var(--lc-text-main, #fff5f7) !important;
+  background:
+    radial-gradient(
+      64px circle at var(--lx, 50%) var(--ly, 25%),
+      rgba(255, 255, 255, 0.44) 0%,
+      color-mix(in srgb, var(--lc-accent-1) 24%, transparent) 48%,
+      transparent 78%
+    ),
+    var(--lc-glass-pill) !important;
+  border-top: 1.25px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1.25px solid var(--lc-border-bottom) !important;
+  border-radius: 999px !important;
+  box-shadow:
+    var(--lc-shadow-card),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
+}
+
+.fab-button::before {
+  background: var(--lc-glass-sheen) !important;
+  opacity: 0.88 !important;
+}
+
+.fab-button:hover:not(:disabled) {
+  transform: translateY(-3px) scale3d(1.06, 0.96, 1) !important;
+  border-top-color: #ffffff !important;
+  box-shadow:
+    0 18px 36px -6px rgba(0, 0, 0, 0.56),
+    0 0 22px -4px color-mix(in srgb, var(--lc-accent-1) 52%, transparent),
+    var(--lc-specular-inset) !important;
+}
+
+.auth-launcher {
+  --lx: 50%;
+  --ly: 25%;
+  color: var(--lc-text-main, #fff5f7) !important;
+  background:
+    radial-gradient(
+      95px circle at var(--lx, 50%) var(--ly, 25%),
+      rgba(255, 255, 255, 0.38) 0%,
+      color-mix(in srgb, var(--lc-accent-1) 22%, transparent) 48%,
+      transparent 78%
+    ),
+    var(--lc-glass-pill) !important;
+  border-top: 1.25px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1.25px solid var(--lc-border-bottom) !important;
+  border-radius: 999px !important;
+  box-shadow:
+    var(--lc-shadow-card),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
+}
+
+.auth-launcher::before {
+  background: var(--lc-glass-sheen) !important;
+  opacity: 0.85 !important;
+}
+
+.auth-launcher:hover {
+  transform: translateY(-2px) scale3d(1.04, 0.97, 1) !important;
+  border-top-color: #ffffff !important;
+  box-shadow:
+    0 18px 36px -6px rgba(0, 0, 0, 0.56),
+    0 0 22px -4px color-mix(in srgb, var(--lc-accent-1) 52%, transparent),
+    var(--lc-specular-inset) !important;
+}
+
+/* ── H) نافذة البروفايل للحساب وكل الأزرار والنوافذ الفرعية داخلها (Account Profile 3D Liquid Glass) ── */
+.profile-overlay,
+.picker-overlay,
+.nl-tsp-overlay,
+.nl-crop-overlay,
+.udp-overlay,
+.nl-delete-overlay {
+  background:
+    radial-gradient(
+      80% 60% at 50% 18%,
+      color-mix(in srgb, var(--lc-accent-1) 22%, transparent) 0%,
+      rgba(4, 3, 10, 0.76) 100%
+    ) !important;
+  backdrop-filter: blur(18px) saturate(175%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(175%) !important;
+}
+
+.profile-shell,
+.picker-panel,
+.nl-tsp,
+.nl-avpick__shelf,
+.nl-crop,
+.udp-panel,
+.nl-delete-modal,
+.nl-inbox-panel {
+  --lx: 50%;
+  --ly: 18%;
+  color: var(--lc-text-main) !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1.25px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1.25px solid var(--lc-border-bottom) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+}
+
+.profile-shell::before,
+.picker-panel::before,
+.nl-tsp::before,
+.udp-panel::before {
+  background:
+    var(--lc-glass-sheen),
+    var(--lc-glass-bottom-vignette) !important;
+  opacity: 0.90 !important;
+}
+
+.profile-card,
+.profile-section,
+.profile-theme-edit,
+.nl-theme-song,
+.picker-card,
+.nl-tsp__row,
+.nl-tsp__preview,
+.udp-row,
+.nl-inbox-panel [class*="bg-white/5"],
+.nl-inbox-panel [class*="bg-teal-500/10"] {
+  --lx: 50%;
+  --ly: 25%;
+  color: var(--lc-text-main) !important;
+  background:
+    radial-gradient(95px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.24) 0%, transparent 76%),
+    var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  border-radius: 20px !important;
+  box-shadow:
+    var(--lc-shadow-card),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
+}
+
+.profile-field input,
+.profile-field textarea,
+.nl-tsp__search input,
+.nl-delete-modal input {
+  color: var(--lc-text-main) !important;
+  background: rgba(0, 0, 0, 0.28) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-top) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.36) !important;
+}
+
+[data-theme="light"] .profile-field input,
+[data-theme="light"] .profile-field textarea,
+[data-theme="light"] .nl-tsp__search input,
+[data-theme="light"] .nl-delete-modal input {
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #1f162b !important;
+}
+
+.profile-shell .btn-accent,
+.nl-tsp__save,
+.nl-tsp__row.is-selected .nl-tsp__choose {
+  --lx: 50%;
+  --ly: 25%;
+  color: #ffffff !important;
+  background:
+    radial-gradient(95px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.38) 0%, transparent 72%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--lc-accent-1) 84%, #ffffff) 0%,
+      var(--lc-accent-2) 60%,
+      color-mix(in srgb, var(--lc-accent-2) 82%, #090d16) 100%
+    ) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.90) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.48) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.48) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.55) !important;
+  border-radius: 999px !important;
+  box-shadow:
+    0 12px 26px -6px color-mix(in srgb, var(--lc-accent-1) 52%, rgba(0, 0, 0, 0.5)),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.90),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+.profile-shell .btn-ghost,
+.profile-shell .icon-btn,
+.profile-close,
+.profile-cam,
+.nl-theme-song__vol,
+.nl-theme-song__remove,
+.nl-tsp__choose,
+.nl-tsp__back,
+.nl-avpick__arrow,
+.nl-avpick__close,
+.nl-avpick__icon,
+.udp-close {
+  --lx: 50%;
+  --ly: 25%;
+  color: var(--lc-text-main) !important;
+  background:
+    radial-gradient(80px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.30) 0%, transparent 75%),
+    var(--lc-glass-pill) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    0 8px 18px -4px rgba(0, 0, 0, 0.36),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
+}
+
+.profile-shell .btn-danger {
+  --lx: 50%;
+  --ly: 25%;
+  color: #ffe4e8 !important;
+  background:
+    radial-gradient(85px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 180, 195, 0.34) 0%, transparent 75%),
+    linear-gradient(145deg, rgba(225, 29, 72, 0.42) 0%, rgba(136, 19, 55, 0.68) 100%) !important;
+  border-top: 1px solid rgba(255, 194, 209, 0.75) !important;
+  border-left: 1px solid rgba(255, 117, 143, 0.42) !important;
+  border-right: 1px solid rgba(255, 117, 143, 0.42) !important;
+  border-bottom: 1px solid rgba(24, 2, 7, 0.85) !important;
+  border-radius: 999px !important;
+  box-shadow:
+    0 10px 22px -6px rgba(225, 29, 72, 0.42),
+    inset 0 1.5px 1px rgba(255, 240, 243, 0.82) !important;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
-   13) الأداء الفائق على الهواتف والأجهزة المختلفة (Mobile 60fps Liquid Glass)
+   13) الأداء الفائق على الهواتف الذكية (Mobile Static Home + 24fps + Lighter Blur)
    ══════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
   :root,
   [data-theme="dark"] {
-    --lc-blur-window: blur(12px) saturate(160%);
-    --lc-blur-card: blur(10px) saturate(155%);
+    --lc-blur-window: blur(6px) saturate(135%);
+    --lc-blur-card: blur(5px) saturate(130%);
     --lc-glass-surface: linear-gradient(
       165deg,
-      rgba(96, 165, 250, 0.28) 0%,
-      rgba(168, 85, 247, 0.20) 34%,
-      rgba(14, 18, 38, 0.86) 70%,
-      rgba(4, 6, 14, 0.96) 100%
+      rgba(96, 165, 250, 0.30) 0%,
+      rgba(168, 85, 247, 0.22) 34%,
+      rgba(14, 18, 38, 0.90) 70%,
+      rgba(4, 6, 14, 0.97) 100%
     );
     --lc-glass-card: linear-gradient(
       160deg,
-      rgba(96, 165, 250, 0.24) 0%,
-      rgba(236, 72, 153, 0.16) 36%,
-      rgba(12, 16, 34, 0.88) 72%,
-      rgba(4, 6, 14, 0.96) 100%
+      rgba(96, 165, 250, 0.26) 0%,
+      rgba(236, 72, 153, 0.18) 36%,
+      rgba(12, 16, 34, 0.92) 72%,
+      rgba(4, 6, 14, 0.98) 100%
     );
   }
 
   [data-theme="light"] {
-    --lc-blur-window: blur(12px) saturate(150%);
-    --lc-blur-card: blur(10px) saturate(145%);
+    --lc-blur-window: blur(6px) saturate(130%);
+    --lc-blur-card: blur(5px) saturate(125%);
     --lc-glass-surface: linear-gradient(
       165deg,
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(255, 228, 242, 0.86) 44%,
-      rgba(209, 250, 229, 0.84) 80%,
-      rgba(187, 247, 208, 0.92) 100%
+      rgba(255, 255, 255, 0.96) 0%,
+      rgba(255, 228, 242, 0.88) 44%,
+      rgba(209, 250, 229, 0.88) 80%,
+      rgba(187, 247, 208, 0.94) 100%
     );
     --lc-glass-card: linear-gradient(
       160deg,
-      rgba(255, 255, 255, 0.94) 0%,
-      rgba(253, 232, 243, 0.84) 46%,
-      rgba(209, 250, 229, 0.84) 82%,
-      rgba(182, 238, 212, 0.92) 100%
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(253, 232, 243, 0.88) 46%,
+      rgba(209, 250, 229, 0.88) 82%,
+      rgba(182, 238, 212, 0.94) 100%
     );
   }
 
   [data-theme="midnight"] {
-    --lc-blur-window: blur(12px) saturate(165%);
-    --lc-blur-card: blur(10px) saturate(155%);
+    --lc-blur-window: blur(6px) saturate(140%);
+    --lc-blur-card: blur(5px) saturate(135%);
     --lc-glass-surface: linear-gradient(
       165deg,
-      rgba(255, 92, 124, 0.30) 0%,
-      rgba(217, 4, 41, 0.22) 34%,
-      rgba(42, 4, 12, 0.86) 70%,
-      rgba(14, 1, 4, 0.96) 100%
+      rgba(255, 92, 124, 0.32) 0%,
+      rgba(217, 4, 41, 0.24) 34%,
+      rgba(42, 4, 12, 0.90) 70%,
+      rgba(14, 1, 4, 0.98) 100%
     );
     --lc-glass-card: linear-gradient(
       160deg,
-      rgba(255, 92, 124, 0.26) 0%,
-      rgba(225, 29, 72, 0.18) 36%,
-      rgba(38, 4, 11, 0.88) 72%,
-      rgba(12, 1, 4, 0.96) 100%
+      rgba(255, 92, 124, 0.28) 0%,
+      rgba(225, 29, 72, 0.20) 36%,
+      rgba(38, 4, 11, 0.92) 72%,
+      rgba(12, 1, 4, 0.98) 100%
     );
   }
 
   [data-theme="bit"] {
-    --lc-blur-window: blur(12px) saturate(155%);
-    --lc-blur-card: blur(10px) saturate(150%);
+    --lc-blur-window: blur(6px) saturate(130%);
+    --lc-blur-card: blur(5px) saturate(125%);
     --lc-glass-surface: linear-gradient(
       165deg,
-      rgba(110, 231, 183, 0.26) 0%,
-      rgba(214, 200, 180, 0.16) 34%,
-      rgba(12, 34, 28, 0.86) 70%,
-      rgba(6, 18, 15, 0.96) 100%
+      rgba(110, 231, 183, 0.28) 0%,
+      rgba(214, 200, 180, 0.18) 34%,
+      rgba(12, 34, 28, 0.90) 70%,
+      rgba(6, 18, 15, 0.98) 100%
     );
+  }
+
+  /* تثبيت الصفحة الرئيسية في الهاتف وإيقاف التأرجح وتقليل استهلاك GPU */
+  .nl-home-station,
+  .nl-home-stage,
+  .nl-a777-body,
+  .nl-home-window-glass {
+    transform: none !important;
+    translate: none !important;
+    rotate: none !important;
+    will-change: auto !important;
+  }
+
+  /* ضبط الرسوم المتحركة المستمرة على 24 إطاراً في الثانية على الهواتف الذكية */
+  .siri-liquid-orb,
+  .siri-liquid-orb__smoke,
+  .siri-liquid-orb__smoke--secondary {
+    animation-timing-function: steps(24, end) !important;
   }
 
   .nl-home-window-glass {
@@ -2254,7 +2497,8 @@ a[href][data-liquid-rebound="true"],
   .nl-tv-sidebar,
   .nl-games-window,
   .nl-public-card,
-  .auth-modal {
+  .auth-modal,
+  .profile-shell {
     background: var(--lc-glass-surface) !important;
   }
 }

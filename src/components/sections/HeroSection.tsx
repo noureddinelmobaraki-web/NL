@@ -1,6 +1,6 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { m } from "framer-motion";
-import { getThemedImage } from "../../constants/assets";
+import { getLocalAssetUrl, getThemedImage } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
 
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
@@ -18,6 +18,19 @@ export const HeroSection = memo(() => {
   const { isMobile } = useDeviceType(); // MOBILE-ONLY
   const isAutomated = isAutomatedEnv();
   const headerRef = useFadeInOnView<HTMLElement>();
+  const bioVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = bioVideoRef.current;
+    if (!video) return;
+    video.defaultMuted = true;
+    video.muted = true;
+    video.playsInline = true;
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {});
+    }
+  }, []);
 
   // Light theme profile switching logic
   const lightProfileSrc = useLightProfileImage(resolvedTheme);
@@ -34,6 +47,10 @@ export const HeroSection = memo(() => {
     retro: getThemedImage('profile', 'retro'),
   };
   const activeProfileImg = profileImages[resolvedTheme] || profileImages['dark'];
+
+  const bioPosterUrl = getLocalAssetUrl('bioBG_poster.webp');
+  const bioWebmUrl = getLocalAssetUrl('bio_web.webm');
+  const bioMp4Url = getLocalAssetUrl('bioBG_web.mp4');
 
   return (
     <header 
@@ -88,23 +105,38 @@ export const HeroSection = memo(() => {
           }`}
           id="header-card"
         >
-          {/* Header Background Image with Zoom & Pan Hover Effect */}
+          {/* Bio Background Video with First-Frame Poster (WebM primary, MP4 fallback) */}
           <div 
-            className={`absolute inset-0 z-[-1] bg-cover bg-center transition-all duration-700 blur-[3px] hero-bg-image-refactored ${
+            className={`hero-bio-video-wrap absolute inset-0 z-0 overflow-hidden pointer-events-none transition-transform duration-700 ${
               isMobile 
-                ? 'group-active:blur-0 group-active:scale-125 group-active:translate-y-[-10%]' // MOBILE-ONLY
-                : 'group-hover:blur-0 group-hover:scale-125 group-hover:translate-y-[-10%]'
+                ? 'group-active:scale-105' // MOBILE-ONLY
+                : 'group-hover:scale-105'
             }`}
-            style={{ backgroundImage: 'var(--hero-bg-image-url)' }}
-          />
+          >
+            <video
+              ref={bioVideoRef}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              poster={bioPosterUrl}
+              className="hero-bio-video"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            >
+              <source src={bioWebmUrl} type="video/webm" />
+              <source src={bioMp4Url} type="video/mp4" />
+            </video>
+          </div>
 
-          {/* Dark Overlay for Text Legibility */}
-          <div className={`absolute inset-0 z-[-1] transition-opacity hero-overlay-element ${
-            isMobile ? 'group-active:opacity-30' : 'group-hover:opacity-30' // MOBILE-ONLY
+          {/* Subtle Glass Overlay for Text Legibility */}
+          <div className={`absolute inset-0 z-[1] pointer-events-none transition-opacity hero-overlay-element ${
+            isMobile ? 'group-active:opacity-20' : 'group-hover:opacity-20' // MOBILE-ONLY
           }`} />
           
           {/* Stable Native Hero Title animation envelope */}
           <m.div
+             className="relative z-[2]"
              initial={isAutomated ? { opacity: 1, y: 0 } : { opacity: 0, y: 15 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: isAutomated ? 0 : 0.6, ease: [0.16, 1, 0.3, 1], delay: isAutomated ? 0 : 0.1 }}
@@ -118,7 +150,7 @@ export const HeroSection = memo(() => {
           </m.div>
           
           {/* Divider and Location Block */}
-          <div className="mt-6 flex items-center gap-4 text-[var(--text-primary)] font-bold uppercase divider-top-refactored pt-4">
+          <div className="relative z-[2] mt-6 flex items-center gap-4 text-[var(--text-primary)] font-bold uppercase divider-top-refactored pt-4">
             <span className="hero-location-text text-[var(--hero-loc-size)] font-[var(--hero-loc-font)] font-bold tracking-tight" style={{ textShadow: 'var(--hero-loc-shadow)' }}>
               {siteData.location}
             </span>
@@ -132,7 +164,7 @@ export const HeroSection = memo(() => {
           {/* BIO Paragraph */}
           <p 
             lang="en"
-            className="hero-bio mt-4 hero-bio-refactored hero-bio-text text-[var(--text-primary)] leading-tight max-w-xl"
+            className="relative z-[2] hero-bio hero-bio-royal mt-4 hero-bio-refactored hero-bio-text leading-relaxed max-w-2xl"
           >
             {siteData.bio}
           </p>

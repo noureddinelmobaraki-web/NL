@@ -49,8 +49,6 @@ export const NavButton = ({
       aria-label={label}
       style={{ ['--worm-idx' as string]: index }}
     >
-      <span className="nl-top-nav__bridge" aria-hidden="true" />
-      <span className="nl-top-nav__chamber" aria-hidden="true" />
       <span className="nl-top-nav__icon-wrap">
         <Icon className="nl-top-nav__icon" aria-hidden="true" />
       </span>

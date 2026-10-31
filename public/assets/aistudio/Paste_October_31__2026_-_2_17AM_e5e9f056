@@ -1,0 +1,352 @@
+"7s
+15s
+Run npm run lint
+
+> nl-noureddin-website@0.0.0 lint
+> tsc --noEmit && eslint src
+
+
+/home/runner/work/NL/NL/src/audio/NowPlayingBridge.tsx
+Warning:   13:21  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   14:19  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   15:19  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   16:19  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   20:17  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+
+/home/runner/work/NL/NL/src/audio/audioManager.test.ts
+Warning:   294:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   323:93  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   339:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/audio/audioManager.ts
+Warning:     59:47   warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:     74:64   warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+Warning:     77:59   warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+Warning:     78:49   warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+Warning:    202:104  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:   1028:14   warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/AeroGallery/AeroGalleryHub.tsx
+Warning:   33:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/Games/GameScreen.tsx
+Warning:   62:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/Games/GamesPage.tsx
+Warning:   64:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/Games/TouchControls.tsx
+Warning:   20:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   29:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/Games/useRuffle.ts
+Warning:   12:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/Lens/__tests__/LensMobileView.test.tsx
+Warning:    8:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   12:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   24:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/MeBit/__tests__/MeBitMobileView.test.tsx
+Warning:    8:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   12:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   24:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/Movies/MoviesPage.tsx
+Warning:    30:6    warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    35:105  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    91:18   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    97:36   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   100:52   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   102:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   105:35   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   132:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   135:66   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   157:85   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   158:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   275:138  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   325:42   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   384:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   393:52   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   637:62   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   643:62   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   649:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   655:60   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   661:60   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   667:59   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   673:59   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   732:62   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   738:62   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   744:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   750:60   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   756:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   762:59   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   768:63   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   813:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   935:24   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/MySongs/hooks/useSongsData.ts
+Warning:   118:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   119:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/NlTv/iptvHelper.ts
+Warning:   42:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   43:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   48:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   48:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/NlTv/useTvSearchIndex.ts
+Warning:    40:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    46:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   147:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   176:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   177:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   193:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   194:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/NowPlaying/NowPlayingBarDesktop.tsx
+Warning:    67:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    69:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   189:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/NowPlaying/NowPlayingBarMobile.tsx
+Warning:   321:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/NowPlaying/QueuePopover.tsx
+Warning:   55:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/RetroWorld/RetroWorldPage.tsx
+Warning:   81:30  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:   87:11  warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+
+/home/runner/work/NL/NL/src/components/dev/MobileQAOverlay.tsx
+Warning:   33:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/lyrics/LyricsWindowContent.tsx
+Warning:   266:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   267:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   268:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/lyrics/parseLRC.test.ts
+Warning:   74:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   79:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/songs/SongCard.test.tsx
+Warning:   13:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   27:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   46:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   50:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   72:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/songs/SongCardHeader.tsx
+Warning:   59:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+
+/home/runner/work/NL/NL/src/components/songs/SongPlayer.tsx
+Warning:   105:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   139:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   141:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/songs/__tests__/SongPlayer.lifecycle.test.tsx
+Warning:   20:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   47:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   56:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   66:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/components/songs/__tests__/SongPlayer.mediaSession.test.tsx
+Warning:    8:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   12:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   17:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   17:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   32:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   37:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   38:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   50:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   66:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/context/AppContext.tsx
+Warning:   290:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/context/AuthContext.tsx
+Warning:   174:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+
+/home/runner/work/NL/NL/src/features/account/ProfilePage.tsx
+Warning:    87:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   429:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/account/__tests__/ProfilePage.test.tsx
+Warning:   43:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   43:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/account/components/InboxPanel.tsx
+Warning:   20:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   22:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   50:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   89:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/account/components/ThemeSongBar.tsx
+Warning:   30:18  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+
+/home/runner/work/NL/NL/src/features/account/hooks/useInboxNotifications.ts
+Warning:   63:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   74:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   84:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/account/sync/musicPlaylistsSync.ts
+Warning:    34:28  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:    35:31  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:    36:29  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:    64:33  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:    96:35  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:    98:36  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:   100:38  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:   124:30  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات           no-restricted-syntax
+Warning:   127:23  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+Warning:   326:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+Warning:   343:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+Warning:   356:23  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات           no-restricted-syntax
+Warning:   384:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+
+/home/runner/work/NL/NL/src/features/accounts/AccountsBackgroundVideo.tsx
+Warning:   8:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/accounts/profileCache.ts
+Warning:    3:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    9:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   15:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   21:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   28:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   52:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   61:91  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/admin/AdminDashboard.tsx
+Warning:   32:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   41:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/admin/UserDetailPanel.tsx
+Warning:   26:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/admin/useAdminStats.ts
+Warning:   42:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   47:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/MusicPage.tsx
+Warning:   47:7   warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات                                      no-restricted-syntax
+Warning:   50:6   warning  React Hook useEffect has a missing dependency: 'allTracks'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+Warning:   62:15  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات                                      no-restricted-syntax
+
+/home/runner/work/NL/NL/src/features/music/components/MiniPlayer.tsx
+Warning:   20:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/components/NowPlayingMenu.tsx
+Warning:    55:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    57:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   129:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/components/PlayerScreen.tsx
+Warning:   58:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/components/Visualizer2D.tsx
+Warning:   61:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   64:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   67:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/data/lyrics.ts
+Warning:   107:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/data/playTracking.ts
+Warning:   25:41  warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+
+/home/runner/work/NL/NL/src/features/music/data/portable.ts
+Warning:    7:16  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+Warning:   18:17  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   62:38  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/data/readTags.ts
+Warning:   13:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   20:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   53:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/data/shareSong.ts
+Warning:   23:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/engine/audioEngine.ts
+Warning:   149:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/engine/audioGraph.ts
+Warning:    50:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    52:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   109:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   120:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   128:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/music/hooks/useHotkeys.ts
+Warning:   19:21  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+
+/home/runner/work/NL/NL/src/features/music/hooks/useMusicEngine.ts
+Warning:    14:19  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:    68:19  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   104:24  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   117:19  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   121:24  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   143:24  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+
+/home/runner/work/NL/NL/src/features/music/store/musicStore.ts
+Warning:    10:25  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+Warning:   563:34  warning  R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات  no-restricted-syntax
+Warning:   572:25  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/features/portrait/PortraitPage.tsx
+Warning:   178:5  warning  React Hook useCallback has a missing dependency: 'hints'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+Warning:   36:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+
+/home/runner/work/NL/NL/src/utils/extractColors.ts
+Warning:   8:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/utils/lang.ts
+Warning:   5:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/utils/lazyWithRetry.ts
+Warning:   33:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/utils/liquidGlassPhysics.ts
+Error:   86:7  error  'activePressedElements' is never reassigned. Use 'const' instead  prefer-const
+
+/home/runner/work/NL/NL/src/utils/registerSW.ts
+Warning:   3:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/utils/ruffleLoader.ts
+Warning:    2:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    4:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    5:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:    6:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   12:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   18:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   25:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   25:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   26:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   26:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   27:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/utils/safeFetch.ts
+Warning:   47:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/utils/sessionState.ts
+Warning:   8:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/utils/userPrefs.ts
+Warning:   38:48   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Warning:   38:135  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/NL/NL/src/utils/vitals.ts
+Warning:   20:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+
+✖ 260 problems (1 error, 259 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+Error: Process completed with exit code 1.
+""Run npx playwright install --with-deps chromium
+BEWARE: your OS is not officially supported by Playwright; installing dependencies for ubuntu26.04-x64 as a fallback.
+Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.60.0!
+Failed to install browsers
+Error: ERROR: Playwright does not support chromium on ubuntu26.04-x64
+Error: Process completed with exit code 1.

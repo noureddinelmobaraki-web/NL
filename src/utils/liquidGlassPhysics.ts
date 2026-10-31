@@ -1,14 +1,17 @@
 /**
  * Interactive iOS 26 / iPhone 18 Liquid Glass Physics Engine
- * Provides 60fps GPU-friendly pointer/touch specular light tracking (--lx, --ly)
- * and elastic liquid squish/stretch states (data-liquid-pressed, data-liquid-hover)
- * across all buttons, cards, windows, lattice nodes, and the floating NotchIsland droplet.
+ * Provides GPU-friendly pointer/touch specular light tracking (--lx, --ly)
+ * with a smart 24fps throttle on mobile devices (< 768px) and 60fps on desktop,
+ * plus elastic liquid squish/stretch states (data-liquid-pressed, data-liquid-rebound)
+ * across all buttons, cards, windows, lattice nodes, profile modals, and floating controls.
  */
 
 const LIQUID_SELECTOR = [
   'button',
   'a[href]',
   '[role="button"]',
+  '.fab-button',
+  '.auth-launcher',
   '.nl-home-window-glass',
   '.os-window-glass',
   '.nl-lattice-glass',
@@ -19,6 +22,7 @@ const LIQUID_SELECTOR = [
   '.notch-pill',
   '.notch-tree__root',
   '.notch-tree__leaf',
+  '.notch-tool',
   '.nl-top-nav__button',
   '.nl-bottom-nav__item',
   '.nl-youtube-drawer-card',
@@ -51,6 +55,29 @@ const LIQUID_SELECTOR = [
   '.auth-modal',
   '.auth-oauth-btn',
   '.auth-primary',
+  '.profile-shell',
+  '.profile-card',
+  '.profile-section',
+  '.profile-theme-edit',
+  '.profile-cam',
+  '.nl-theme-song',
+  '.btn-accent',
+  '.btn-ghost',
+  '.btn-danger',
+  '.icon-btn',
+  '.fav-card',
+  '.picker-panel',
+  '.picker-card',
+  '.nl-tsp',
+  '.nl-tsp__row',
+  '.nl-tsp__choose',
+  '.nl-tsp__save',
+  '.nl-avpick__icon',
+  '.nl-avpick__arrow',
+  '.nl-crop',
+  '.udp-panel',
+  '.nl-delete-modal',
+  '.nl-inbox-panel',
   '.nl-cta',
   '.nl-chip'
 ].join(', ');
@@ -59,6 +86,7 @@ const LIQUID_SURFACE_SELECTOR = [
   '.nl-home-window-glass',
   '.os-window-glass',
   '.notch-island',
+  '.nl-top-nav--worm',
   '.nl-lattice-glass',
   '.manga-card',
   '.song-card',
@@ -73,8 +101,19 @@ const LIQUID_SURFACE_SELECTOR = [
   '.nl-music-player-panel',
   '.nl-acct-card',
   '.nl-public-card',
-  '.auth-modal'
+  '.auth-modal',
+  '.profile-shell',
+  '.profile-card',
+  '.profile-section',
+  '.picker-panel',
+  '.nl-tsp',
+  '.nl-crop',
+  '.udp-panel',
+  '.nl-delete-modal',
+  '.nl-inbox-panel'
 ].join(', ');
+
+const MOBILE_FRAME_MS = 1000 / 24; // 24 FPS cap on mobile for smooth battery/GPU performance
 
 export function initLiquidGlassPhysics(): () => void {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -83,7 +122,8 @@ export function initLiquidGlassPhysics(): () => void {
 
   let rafId: number | null = null;
   let lastPointerEvent: PointerEvent | null = null;
-  let activePressedElements = new Set<HTMLElement>();
+  let lastProcessTime = 0;
+  const activePressedElements = new Set<HTMLElement>();
 
   const updateLightPosition = (el: HTMLElement, clientX: number, clientY: number) => {
     const rect = el.getBoundingClientRect();
@@ -102,9 +142,15 @@ export function initLiquidGlassPhysics(): () => void {
     el.style.setProperty('--ltilt-y', tiltY);
   };
 
-  const processPointerMove = () => {
+  const processPointerMove = (now: number) => {
     rafId = null;
     if (!lastPointerEvent) return;
+
+    const isMobile = window.innerWidth < 768;
+    if (isMobile && now - lastProcessTime < MOBILE_FRAME_MS) {
+      return;
+    }
+    lastProcessTime = now;
 
     const { clientX, clientY, target } = lastPointerEvent;
     if (!(target instanceof Element)) return;
