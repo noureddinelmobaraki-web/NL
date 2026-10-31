@@ -329,25 +329,27 @@ body.low-perf .nl-contact-card { backdrop-filter: none; -webkit-backdrop-filter:
 }
 
 /* ========================================================================
-   P7 — lightweight optical glass refinement
+   P7 — Theme-Adaptive Liquid Crystal Glass Refinement
+   زجاج كريستالي سائل مع انعكاس ضوئي بالحواف وقليل من الدكانة في الأسفل
+   يتكيف مع جميع الثيمات ويعمل بسلاسة 60fps على الهواتف والأجهزة.
    ===================================================================== */
 
-/* Top navigation: dark icon glyph on a luminous aqua orb, never white-on-white. */
+/* Top navigation: luminous crystal orb icon */
 .nl-top-nav__icon {
-  color: #0a4750 !important;
+  color: #073b44 !important;
   stroke-width: 2.15;
   background:
-    radial-gradient(circle at 31% 24%, rgba(255,255,255,.98) 0 13%, transparent 14%),
-    radial-gradient(circle at 48% 38%, #d9fffb 0%, #88e8df 46%, #2b9da0 72%, #135664 100%) !important;
-  border-color: rgba(225,255,252,.76) !important;
+    radial-gradient(circle at 31% 24%, rgba(255,255,255,.98) 0 14%, transparent 15%),
+    radial-gradient(circle at 48% 38%, #e4fffc 0%, #8cebe2 45%, #2ca2a6 72%, #0e4956 100%) !important;
+  border-color: rgba(235,255,253,.84) !important;
   box-shadow:
-    inset 0 1px 2px rgba(255,255,255,.92),
-    inset 0 -5px 9px rgba(4,67,77,.24),
-    0 2px 6px rgba(0,0,0,.26) !important;
+    inset 0 1.5px 2px rgba(255,255,255,.95),
+    inset 0 -5px 9px rgba(4,55,65,.32),
+    0 3px 8px rgba(0,0,0,.28) !important;
   filter: none !important;
 }
 
-/* Shared upper meniscus: colored at the top, fades at the midpoint. */
+/* Shared upper crystal meniscus + subtle dark lower vignette */
 .nl-top-nav__button::after,
 .nl-bottom-nav::after,
 #station-songs .nl-songs-heading::after,
@@ -355,17 +357,18 @@ body.low-perf .nl-contact-card { backdrop-filter: none; -webkit-backdrop-filter:
   content: "";
   position: absolute;
   z-index: 0;
-  inset: 1px 1px 49%;
+  inset: 1px 1px 46%;
   border-radius: inherit;
   background:
-    radial-gradient(70px 20px at 18% 18%, rgba(255,255,255,.22), transparent 72%),
-    radial-gradient(95px 26px at 78% 8%, rgba(109,242,228,.16), transparent 74%),
-    linear-gradient(180deg, rgba(86,210,205,.20) 0%, rgba(38,130,143,.09) 54%, transparent 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+    radial-gradient(80px 22px at 20% 14%, rgba(255,255,255,.28), transparent 74%),
+    radial-gradient(105px 28px at 80% 8%, rgba(130,235,255,.18), transparent 76%),
+    linear-gradient(180deg, rgba(255,255,255,.22) 0%, rgba(120,210,240,.07) 52%, transparent 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.32);
   pointer-events: none;
+  transition: transform 220ms ease, opacity 220ms ease;
 }
 
-/* Keep actual content above optical pseudo-elements. */
+/* Keep actual content above optical pseudo-elements */
 .nl-top-nav__button > *,
 .nl-bottom-nav__rail,
 #station-songs .nl-songs-heading > *,
@@ -374,69 +377,127 @@ body.low-perf .nl-contact-card { backdrop-filter: none; -webkit-backdrop-filter:
   z-index: 2;
 }
 
-/* Lower half stays genuinely transparent instead of becoming a flat blue slab. */
+/* Top navigation buttons — Liquid Crystal Glass with specular rim & darkened base */
 .nl-top-nav__button {
-  background:
-    radial-gradient(90px 34px at 92% 88%, rgba(91,230,217,.07), transparent 70%),
-    linear-gradient(180deg, rgba(18,70,76,.62) 0%, rgba(10,43,54,.38) 50%, rgba(2,13,24,.24) 51%, rgba(2,10,18,.34) 100%) !important;
+  color: var(--lc-text-main, #f4f8fd) !important;
+  background: var(--lc-glass-pill, linear-gradient(180deg, rgba(255,255,255,.20) 0%, rgba(190,228,255,.08) 42%, rgba(12,22,36,.66) 76%, rgba(5,10,18,.86) 100%)) !important;
+  border-top: 1px solid var(--lc-border-top, rgba(255,255,255,.46)) !important;
+  border-left: 1px solid var(--lc-border-side, rgba(255,255,255,.24)) !important;
+  border-right: 1px solid var(--lc-border-side, rgba(255,255,255,.24)) !important;
+  border-bottom: 1px solid var(--lc-border-bottom, rgba(6,12,22,.78)) !important;
+  border-radius: 16px !important;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.34),
-    inset 0 0 0 1px rgba(87,212,205,.08),
-    0 6px 16px rgba(0,0,0,.19) !important;
-}
-.nl-bottom-nav {
-  background:
-    radial-gradient(120px 42px at 12% 110%, rgba(67,220,206,.10), transparent 72%),
-    radial-gradient(150px 42px at 84% -10%, rgba(209,255,250,.12), transparent 74%),
-    linear-gradient(180deg, rgba(29,91,94,.68) 0%, rgba(12,50,61,.43) 49%, rgba(2,14,26,.34) 50%, rgba(2,10,20,.48) 100%) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.38),
-    inset 0 -1px 0 rgba(80,204,198,.16),
-    0 10px 26px rgba(0,0,0,.32) !important;
-}
-#station-songs .nl-songs-heading,
-.nl-contact-card {
-  background:
-    radial-gradient(160px 54px at 10% 8%, rgba(218,255,251,.12), transparent 72%),
-    radial-gradient(130px 64px at 92% 95%, rgba(42,199,188,.07), transparent 74%),
-    linear-gradient(180deg, rgba(24,81,86,.64) 0%, rgba(9,44,56,.42) 49%, rgba(2,16,28,.34) 50%, rgba(3,13,23,.52) 100%) !important;
-  border-color: rgba(190,250,246,.43) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.34),
-    inset 0 0 0 1px rgba(61,193,185,.08),
-    0 14px 34px rgba(0,0,0,.27) !important;
+    inset 0 1.5px 1px rgba(255,255,255,.68),
+    inset 0 -8px 16px -4px rgba(2,6,14,.55),
+    0 10px 24px -6px rgba(0,0,0,.34) !important;
+  transform: translateZ(0);
 }
 
-/* Tiny static caustic marks: no animation and no blur/filter. */
+[data-theme="light"] .nl-top-nav__button {
+  box-shadow:
+    inset 0 1.5px 1px rgba(255,255,255,.96),
+    inset 0 -8px 16px -4px rgba(20,45,82,.15),
+    0 10px 22px -6px rgba(18,42,76,.16) !important;
+}
+
+/* Floating Mobile Bottom Nav — Liquid Crystal Dock */
+.nl-bottom-nav {
+  background: var(--lc-glass-surface, linear-gradient(180deg, rgba(255,255,255,.18) 0%, rgba(16,28,44,.72) 55%, rgba(4,9,18,.92) 100%)) !important;
+  border-top: 1px solid var(--lc-border-top, rgba(255,255,255,.46)) !important;
+  border-left: 1px solid var(--lc-border-side, rgba(255,255,255,.24)) !important;
+  border-right: 1px solid var(--lc-border-side, rgba(255,255,255,.24)) !important;
+  border-bottom: 1px solid var(--lc-border-bottom, rgba(4,8,16,.84)) !important;
+  border-radius: 22px !important;
+  box-shadow:
+    inset 0 1.5px 1px rgba(255,255,255,.72),
+    inset 0 -10px 20px -4px rgba(2,6,14,.62),
+    0 16px 36px -6px rgba(0,0,0,.46) !important;
+  transform: translateZ(0);
+}
+
+[data-theme="light"] .nl-bottom-nav__item {
+  color: rgba(18, 36, 62, 0.72);
+}
+
+[data-theme="light"] .nl-bottom-nav__item.is-active {
+  color: #0b192c;
+  background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(190,214,240,.55));
+}
+
+/* My Songs Heading & Contact Console — Liquid Crystal Glass */
+#station-songs .nl-songs-heading,
+.nl-contact-card {
+  color: var(--lc-text-main, #f4f8fd) !important;
+  background: var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top, rgba(255,255,255,.44)) !important;
+  border-left: 1px solid var(--lc-border-side, rgba(255,255,255,.22)) !important;
+  border-right: 1px solid var(--lc-border-side, rgba(255,255,255,.22)) !important;
+  border-bottom: 1px solid var(--lc-border-bottom, rgba(6,12,22,.76)) !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+}
+
+[data-theme="light"] .nl-songs-heading__title,
+[data-theme="light"] .nl-songs-heading__title strong,
+[data-theme="light"] .nl-contact-title {
+  color: #0f1b2d !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,.85);
+}
+
+[data-theme="light"] .nl-songs-heading__eyebrow,
+[data-theme="light"] .nl-songs-heading__label,
+[data-theme="light"] .nl-contact-remaining {
+  color: rgba(20, 40, 68, 0.72) !important;
+}
+
+[data-theme="light"] .nl-contact-input,
+[data-theme="light"] .nl-contact-textarea {
+  color: #0f1b2d;
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(140, 168, 202, 0.55);
+  box-shadow: inset 0 1.5px 3px rgba(18, 42, 76, 0.10);
+}
+
+[data-theme="light"] .nl-contact-input::placeholder,
+[data-theme="light"] .nl-contact-textarea::placeholder {
+  color: rgba(25, 48, 78, 0.48);
+}
+
+/* Tiny static caustic marks: no animation and no blur/filter */
 .nl-bottom-nav__item.is-active,
 .nl-contact-mode__button.is-active,
 .nl-contact-submit,
 .nl-motion-switch-slider {
   background-image:
-    radial-gradient(26px 9px at 26% 10%, rgba(255,255,255,.42), transparent 72%),
-    linear-gradient(180deg, rgba(255,255,255,.14), transparent 48%);
+    radial-gradient(26px 9px at 26% 10%, rgba(255,255,255,.45), transparent 72%),
+    linear-gradient(180deg, rgba(255,255,255,.16), transparent 48%);
   background-blend-mode: screen, normal;
 }
 
-/* Glass controls receive a subtle inner rim and transparent lower hemisphere. */
+/* Glass controls receive a crisp top rim and subtle darkened lower base */
 .nl-bottom-nav__item.is-active,
 .nl-contact-mode__button.is-active,
 .nl-contact-submit {
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.58),
-    inset 0 -7px 12px rgba(0,34,43,.15),
-    0 3px 9px rgba(0,0,0,.23);
+    inset 0 1.5px 1px rgba(255,255,255,.68),
+    inset 0 -7px 14px rgba(0,18,28,.28),
+    0 6px 16px rgba(0,0,0,.28);
 }
 
-/* Fine-device hover reflection; transform/opacity only. */
+/* Fine-device hover reflection; transform/opacity only */
 @media (hover: hover) and (pointer: fine) {
+  .nl-top-nav__button:hover {
+    transform: translateY(-2px);
+    border-top-color: rgba(255,255,255,.78) !important;
+  }
   .nl-top-nav__button:hover::after {
     transform: translateX(2px);
-    opacity: .92;
+    opacity: .96;
   }
 }
 
-/* Low-performance fallback keeps the layered gradients but removes live blur. */
+/* Low-performance fallback keeps the layered gradients but removes live blur */
 body.low-perf .nl-top-nav__button,
 body.low-perf .nl-bottom-nav,
 body.low-perf .nl-contact-card {

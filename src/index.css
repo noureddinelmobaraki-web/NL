@@ -4,7 +4,7 @@
    وإلا أضافها المتصفح في النهاية (أعلى أولوية) بشكل غير متوقع.
    الأنماط بلا طبقة (unlayered) تتفوق على كل ما سبق - تجنبها.
    ============================================================ */
-@layer base, theme, components, features, utilities, overrides, midnight, mobile;
+@layer base, theme, components, features, utilities, overrides, midnight, mobile, liquid;
 
 @import "tailwindcss";
 @import "./styles/themes/_base.css" layer(theme);
@@ -48,12 +48,12 @@
 /* ملفات كانت مستوردة من main.tsx بلا طبقة.
    نُقلت إلى هنا بطبقات صريحة حتى لا يحسمها ترتيب الاستيراد. */
 @import "./styles/aero-theme.css"                    layer(features);
-@import "./styles/aero-redesign.css"                 layer(features);
 @import "./transitions/genie.css"                    layer(features);
 @import "./styles/page-mode-layer.css"               layer(features);
 @import "./styles/home-map.css"                      layer(features);
 @import "./styles/components/home-motion-system.css" layer(features);
 @import "./styles/components/home-polish.css"        layer(features);
+@import "./styles/aero-redesign.css"                 layer(liquid);
 @import "./styles/components/mobile-modals.css"      layer(mobile);
 @import "./styles/components/profile-mobile-fit.css" layer(mobile);
 
@@ -108,14 +108,6 @@ body.standalone-app {
 }
 
 /* Focus Mode CSS targeting edit */
-div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) {
-  width: 124px;
-  height: 61px;
-  margin-left: 0px;
-  margin-right: -13px;
-  margin-bottom: 0px;
-  margin-top: -23px;
-}
 
 div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(6) {
   grid-column: span 2 / span 2;

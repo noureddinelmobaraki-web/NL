@@ -1,19 +1,29 @@
 .hero-window {
-  border: var(--window-border);
-  box-shadow: var(--window-shadow);
-  background-color: var(--window-bg);
+  position: relative;
+  border-radius: 26px;
+  background: var(--lc-glass-surface, var(--window-bg));
+  border-top: 1px solid var(--lc-border-top, rgba(255, 255, 255, 0.42));
+  border-left: 1px solid var(--lc-border-side, rgba(255, 255, 255, 0.22));
+  border-right: 1px solid var(--lc-border-side, rgba(255, 255, 255, 0.22));
+  border-bottom: 1px solid var(--lc-border-bottom, rgba(8, 16, 28, 0.72));
+  box-shadow: var(--lc-shadow-ambient, var(--window-shadow)), var(--lc-specular-inset, inset 0 1.5px 1px rgba(255, 255, 255, 0.72));
+  backdrop-filter: var(--lc-blur-window, blur(22px) saturate(180%));
+  -webkit-backdrop-filter: var(--lc-blur-window, blur(22px) saturate(180%));
+  overflow: hidden;
+  transform: translateZ(0);
 }
 
 .hero-titlebar-dots {
   display: flex;
-  gap: 4px;
+  gap: 5px;
   align-items: center;
 }
 
 .hero-titlebar-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65), 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 
 .hero-titlebar-dot.red {
@@ -35,18 +45,19 @@
   font-family: Geneva, monospace;
   font-size: 10px;
   font-weight: bold;
-  color: #555;
-  margin-left: 2px;
+  color: var(--lc-text-sub, rgba(224, 238, 252, 0.76));
+  margin-left: 4px;
   cursor: pointer;
   display: flex;
-  gap: 3px;
+  gap: 4px;
 }
 
 .hero-titlebar-text {
   font-family: Geneva, "Lucida Sans Unicode", sans-serif;
   font-size: 11px;
-  font-weight: bold;
-  color: #000;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--lc-text-main, #f4f8fd);
   flex: 1;
   text-align: center;
   overflow: hidden;
@@ -56,35 +67,74 @@
 
 .hero-titlebar-main {
   display: var(--window-chrome-display);
-  background: linear-gradient(180deg, #CCCCCC 0%, #AAAAAA 100%);
-  border-bottom: 1px solid #999;
-  padding: 3px 6.5px;
+  background: var(--lc-glass-header, linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(12, 20, 34, 0.68) 100%));
+  border-bottom: 1px solid var(--lc-border-side, rgba(255, 255, 255, 0.22));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  padding: 5px 12px;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   user-select: none;
-  height: 24px;
+  height: 30px;
   flex-shrink: 0;
 }
 
 .hero-menubar {
   display: var(--window-chrome-display);
-  height: 18px;
-  background-color: #E0E0E0;
-  border-bottom: 1px solid #999;
+  height: 22px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(10, 18, 30, 0.42) 100%
+  );
+  border-bottom: 1px solid var(--lc-border-side, rgba(255, 255, 255, 0.18));
   align-items: center;
-  gap: 12px;
-  padding-left: 8px;
+  gap: 14px;
+  padding-left: 12px;
   user-select: none;
   font-family: Geneva, "Lucida Sans Unicode", sans-serif;
   font-size: 11px;
-  font-weight: bold;
-  color: #000;
+  font-weight: 600;
+  color: var(--lc-text-sub, rgba(224, 238, 252, 0.85));
+}
+
+[data-theme="light"] .hero-menubar {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(216, 230, 246, 0.68) 100%
+  );
 }
 
 .hero-header-card {
-  background-color: var(--hero-card-bg);
-  border: var(--hero-card-border);
-  box-shadow: var(--hero-card-shadow);
+  position: relative;
+  border-radius: 22px;
+  background: var(--lc-glass-card, var(--hero-card-bg));
+  border-top: 1px solid var(--lc-border-top, rgba(255, 255, 255, 0.44));
+  border-left: 1px solid var(--lc-border-side, rgba(255, 255, 255, 0.22));
+  border-right: 1px solid var(--lc-border-side, rgba(255, 255, 255, 0.22));
+  border-bottom: 1px solid var(--lc-border-bottom, rgba(6, 12, 22, 0.76));
+  box-shadow:
+    var(--lc-shadow-card, 0 16px 38px -8px rgba(0, 0, 0, 0.46)),
+    var(--lc-specular-inset, inset 0 1.5px 1px rgba(255, 255, 255, 0.72));
+  backdrop-filter: var(--lc-blur-card, blur(16px) saturate(175%));
+  -webkit-backdrop-filter: var(--lc-blur-card, blur(16px) saturate(175%));
+}
+
+.hero-header-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    var(--lc-glass-sheen, linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0%, transparent 65%)),
+    var(--lc-glass-bottom-vignette, linear-gradient(180deg, transparent 52%, rgba(2, 6, 14, 0.48) 100%));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-header-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .hero-title {
@@ -105,28 +155,41 @@
 
 .hero-statusbar {
   display: var(--window-chrome-display);
-  height: 16px;
-  background: linear-gradient(180deg, #BBBBBB 0%, #999999 100%);
-  border-top: 1px solid #888;
+  height: 22px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(4, 9, 18, 0.65) 100%
+  );
+  border-top: 1px solid var(--lc-border-side, rgba(255, 255, 255, 0.18));
   align-items: center;
   justify-content: space-between;
-  padding-left: 6px;
-  padding-right: 22px;
+  padding-left: 12px;
+  padding-right: 24px;
   user-select: none;
-  font-size: 9px;
+  font-size: 9.5px;
   font-family: Geneva, "Lucida Sans Unicode", sans-serif;
-  color: #000;
+  color: var(--lc-text-sub, rgba(224, 238, 252, 0.78));
   flex-shrink: 0;
   position: relative;
 }
 
+[data-theme="light"] .hero-statusbar {
+  background: linear-gradient(
+    180deg,
+    rgba(240, 247, 255, 0.78) 0%,
+    rgba(192, 212, 236, 0.85) 100%
+  );
+}
+
 .hero-resize-grip {
   position: absolute;
-  right: 2px;
-  bottom: 1px;
-  width: 12px;
-  height: 12px;
-  background: linear-gradient(135deg, transparent 45%, #777 45%, #777 55%, transparent 55%, transparent 70%, #777 70%, #777 80%, transparent 80%, transparent 95%, #777 95%, #777 100%);
+  right: 6px;
+  bottom: 4px;
+  width: 11px;
+  height: 11px;
+  background: linear-gradient(135deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%, transparent 70%, currentColor 70%, currentColor 80%, transparent 80%, transparent 95%, currentColor 95%, currentColor 100%);
+  opacity: 0.45;
   pointer-events: none;
 }
 

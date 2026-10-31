@@ -4,7 +4,12 @@ import { Palette, Compass, ChevronDown } from 'lucide-react';
 import type { SwitcherMode, SwitcherDest, SwitcherBranch } from './notch.types';
 import type { Theme } from '../../utils/userPrefs';
 
-const easeOut = [0.22, 0.61, 0.36, 1] as const;
+const springExpand = {
+  type: 'spring' as const,
+  stiffness: 420,
+  damping: 30,
+  mass: 0.75,
+};
 
 interface Props {
   modes: SwitcherMode[];
@@ -22,12 +27,10 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
     { id: 'modes' as const, label: 'Modes', icon: Palette },
     { id: 'dest' as const, label: 'Go to', icon: Compass },
   ];
-  const dur = reduceMotion ? 0 : 0.16;
-  // خصائص الحركة كثوابت (بدون double-brace داخل JSX).
-  const gridInitial = reduceMotion ? false : { opacity: 0, height: 0 };
-  const gridAnimate = reduceMotion ? {} : { opacity: 1, height: 'auto' };
-  const gridExit = reduceMotion ? {} : { opacity: 0, height: 0 };
-  const gridTransition = { duration: dur, ease: easeOut };
+  const gridInitial = reduceMotion ? false : { opacity: 0, height: 0, scale: 0.96 };
+  const gridAnimate = reduceMotion ? {} : { opacity: 1, height: 'auto', scale: 1 };
+  const gridExit = reduceMotion ? {} : { opacity: 0, height: 0, scale: 0.96 };
+  const gridTransition = reduceMotion ? { duration: 0 } : springExpand;
 
   return (
     <div className={`notch-tree ${isMobile ? 'is-mobile' : 'is-desktop'}`} dir="ltr" role="none">
@@ -44,6 +47,9 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
             >
               <span className="notch-tree__ico"><RootIcon size={16} /></span>
               <span className="notch-tree__label">{rt.label}</span>
+              <span className={`notch-toggle-track ${isOpen ? 'is-on' : ''}`} aria-hidden="true">
+                <span className="notch-toggle-thumb" />
+              </span>
               <ChevronDown className={`notch-tree__caret ${isOpen ? 'is-open' : ''}`} size={14} aria-hidden="true" />
             </button>
             <AnimatePresence initial={false}>
@@ -59,20 +65,28 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
                 >
                   <div className="notch-tree__grid-inner">
                     {rt.id === 'modes'
-                      ? modes.map((m) => {
-                          const MIcon = m.icon;
+                      ? modes.map((mItem) => {
+                          const MIcon = mItem.icon;
+                          const isActive = theme === mItem.id;
                           return (
                             <button
-                              key={m.id}
+                              key={mItem.id}
                               type="button"
-                              role="menuitem"
-                              className={`notch-tree__leaf ${theme === m.id ? 'is-active' : ''}`}
-                              onClick={(e) => { e.stopPropagation(); onMode(m.id); }}
-                              aria-label={m.label}
-                              title={m.label}
+                              role="menuitemcheckbox"
+                              aria-checked={isActive}
+                              className={`notch-tree__leaf notch-tree__leaf--mode ${isActive ? 'is-active' : ''}`}
+                              data-mode-id={mItem.id}
+                              onClick={(e) => { e.stopPropagation(); onMode(mItem.id); }}
+                              aria-label={isActive ? `${mItem.label} (Active — click to turn off & return to Home)` : mItem.label}
+                              title={isActive ? `${mItem.label} — Turn off to return to Home` : mItem.label}
                             >
-                              <span className="notch-tree__ico"><MIcon size={15} /></span>
-                              <span className="notch-tree__label">{m.label}</span>
+                              <span className="notch-leaf-header">
+                                <span className="notch-tree__ico"><MIcon size={15} /></span>
+                                <span className={`notch-mini-switch ${isActive ? 'is-on' : ''}`} aria-hidden="true">
+                                  <span className="notch-mini-switch__knob" />
+                                </span>
+                              </span>
+                              <span className="notch-tree__label">{mItem.label}</span>
                             </button>
                           );
                         })

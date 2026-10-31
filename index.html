@@ -18,10 +18,9 @@
     https://m.media-amazon.com;
   media-src 'self' blob: https: https://noureddinelmobaraki-web.github.io;
   font-src 'self' data:;
-  connect-src 'self' https: https://iptv-org.github.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com https://*.supabase.co wss://*.supabase.co;
+  connect-src 'self' https: ws: wss: https://iptv-org.github.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com https://*.supabase.co wss://*.supabase.co;
   worker-src 'self' blob:;
   manifest-src 'self';
-  frame-ancestors 'none';
   base-uri 'self';
   form-action 'self';
   upgrade-insecure-requests;

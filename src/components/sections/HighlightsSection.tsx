@@ -18,7 +18,7 @@ const S = {
 };
 
 export const HighlightsSection = memo(function HighlightsSection({
-  vaultPlaylistCoverUrl: _v,
+  vaultPlaylistCoverUrl,
   youtubeHighlightsBgUrl: _y,
   onOpenTube,
 }: HighlightsSectionProps) {
@@ -27,13 +27,17 @@ export const HighlightsSection = memo(function HighlightsSection({
 
   useDevCSSVarCheck(REQUIRED_HIGHLIGHTS_VARS, resolvedTheme, 'Highlights Check');
 
+  const vaultBgStyle = {
+    backgroundImage: `var(--vault-playlist-bg, url('${vaultPlaylistCoverUrl || '/images/vault-playlist.webp'}'))`,
+  };
+
   return (
     <section
       ref={sectionRef}
       className="fade-in-section grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch"
     >
       <div className="flex flex-col gap-4">
-        <h3 lang="en" className="font-manga text-xl font-bold bg-[var(--paper-color)] text-[var(--ink-color)] inline-block px-4 py-1 manga-border w-fit -rotate-2 shadow-[3px_3px_0px_var(--manga-shadow-color)] border-[var(--ink-color)]">
+        <h3 lang="en" className="nl-lc-badge font-manga text-lg font-bold w-fit">
           ■ THE VAULT
         </h3>
         <a
@@ -41,24 +45,25 @@ export const HighlightsSection = memo(function HighlightsSection({
           target="_blank"
           rel="noreferrer"
           id="vault-playlist"
-          className="group relative overflow-hidden border-[3px] border-[var(--ink-color)] transition-all duration-300 hover:scale-[1.02] flex-1 min-h-[220px] highlights-vault-link"
+          className="group relative overflow-hidden transition-all duration-300 flex-1 min-h-[220px] highlights-vault-link"
         >
           <div
-            className="absolute inset-0 bg-cover bg-center filter brightness-[0.8] group-hover:brightness-100 transition-all"
-            style={S.VAULT_BG}
+            className="nl-vault-cover-bg absolute inset-0 bg-cover bg-center filter brightness-[0.86] group-hover:brightness-100 group-hover:scale-[1.04] transition-all duration-500"
+            style={vaultBgStyle}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-page)]/80 to-transparent flex flex-col justify-end p-4">
-            <span className="font-hand text-3xl text-[var(--text-primary)]">NL fv songs of all time</span>
-            <div className="flex items-center gap-2 mt-1">
-              <Music2 className="w-5 h-5 text-[#1DB954]" />
-              <span className="text-sm text-[var(--text-muted)] uppercase font-manga tracking-widest">Listen on Spotify</span>
+          <div className="nl-vault-content-overlay absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent flex flex-col justify-end p-5">
+            <span className="font-hand text-3xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]">NL fv songs of all time</span>
+            <div className="flex items-center gap-2 mt-1.5">
+              <Music2 className="w-5 h-5 text-[#1DB954] drop-shadow-[0_0_8px_rgba(29,185,84,0.5)]" />
+              <span className="text-sm text-white/85 uppercase font-manga tracking-widest">Listen on Spotify</span>
             </div>
           </div>
         </a>
       </div>
 
+
       <div className="flex flex-col gap-4">
-        <h3 lang="en" className="font-manga text-xl font-bold bg-[var(--ink-color)] text-[var(--text-inverse)] inline-block px-4 py-1 manga-border w-fit rotate-1 shadow-[3px_3px_0px_var(--manga-shadow-color)] border-[var(--border-strong)]">
+        <h3 lang="en" className="nl-lc-badge font-manga text-lg font-bold w-fit">
           ■ VIDEOS
         </h3>
         <button

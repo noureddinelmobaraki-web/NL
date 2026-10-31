@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { LucideIcon } from 'lucide-react';
 
 interface NavButtonProps {
@@ -8,43 +9,53 @@ interface NavButtonProps {
   fullWidthOnMobile?: boolean;
   onMouseEnter?: () => void;
   onPointerDown?: () => void;
+  index?: number;
 }
-
-const THEME_STYLES: Record<string, string> = {
-  dark: 'font-mono text-[0.7rem] sm:text-[0.65rem] tracking-wider sm:tracking-[0.2em] uppercase text-white border border-white/10 px-3 py-3 sm:px-4 sm:py-2 w-full sm:w-auto justify-center sm:justify-start hover:border-[#B8FF3F] hover:text-[#B8FF3F] transition-all duration-300 flex items-center gap-2',
-  light: 'font-["Geneva",sans-serif] text-[0.7rem] text-black border border-[#999] px-3 py-3 sm:py-1 w-full sm:w-auto text-center justify-center sm:justify-start bg-[#F0EBE3] hover:bg-[#DDDDDD] active:bg-[#CCCCCC] flex items-center gap-2',
-  bit: 'manga-paper-tab',
-  midnight: 'mid-nav-tab',
-};
-
-const THEME_STYLES_INLINE: Record<string, React.CSSProperties> = {
-  light: { boxShadow: 'inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000' },
-};
 
 export const NavButton = ({
   icon: Icon,
   label,
   onClick,
   theme,
-  fullWidthOnMobile = false,
   onMouseEnter,
   onPointerDown,
+  index = 0,
 }: NavButtonProps) => {
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <button
-      onClick={(e) => onClick(e)}
-      onMouseEnter={onMouseEnter}
-      onPointerDown={onPointerDown}
-      className={`nl-top-nav__button ${THEME_STYLES[theme] ?? THEME_STYLES.dark} ${fullWidthOnMobile ? 'col-span-2 sm:col-span-auto' : ''}`}
-      style={THEME_STYLES_INLINE[theme]}
+      onClick={(e) => {
+        setExpanded(true);
+        onClick(e);
+      }}
+      onMouseEnter={() => {
+        setExpanded(true);
+        onMouseEnter?.();
+      }}
+      onMouseLeave={() => {
+        setExpanded(false);
+      }}
+      onFocus={() => setExpanded(true)}
+      onBlur={() => setExpanded(false)}
+      onPointerDown={() => {
+        setExpanded(true);
+        onPointerDown?.();
+      }}
+      className={`nl-top-nav__button nl-liquid-interactive${expanded ? ' is-expanded' : ''}`}
       type="button"
       data-theme-variant={theme}
+      data-expanded={expanded ? 'true' : 'false'}
+      aria-label={label}
+      style={{ ['--worm-idx' as string]: index }}
     >
-      <Icon
-        className="nl-top-nav__icon"
-        aria-hidden="true"
-      />
+      <span className="nl-top-nav__bridge" aria-hidden="true" />
+      <span className="nl-top-nav__chamber" aria-hidden="true" />
+      <span className="nl-top-nav__icon-wrap">
+        <Icon className="nl-top-nav__icon" aria-hidden="true" />
+      </span>
       <span className="nl-top-nav__label">{label}</span>
     </button>
   );
 };
+

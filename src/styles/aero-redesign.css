@@ -1,200 +1,2261 @@
 /* ==========================================================================
-   aero-redesign.css — iOS 18 / Apple Liquid Glass Architecture
-   زجاج تفاعلي فائق النقاء مع تعتيم خفيف وانعكاسات سائلة (Liquid Sheen & Specular Refraction)
-   أداء عالي وسلس معزز بالعتاد (GPU Composited) وخفيف جداً على المتصفح.
+   aero-redesign.css — iOS 26 / iPhone 18 Interactive Liquid Glass System
+   Layer: liquid (أعلى طبقة أولوية في المشروع)
+   يدمج البرومتات السبعة (7 Prompts) في أماكنها المخصّصة عبر الثيمات والأقسام
+   مع فيزياء الزجاج السائل التفاعلي (تتبع الإضاءة --lx/--ly + تمدد وانضغاط مرن).
    ========================================================================== */
 
-/* 1) إزالة شريط العنوان القديم */
-.nl-home-window-titlebar { display: none !important; }
+/* ══════════════════════════════════════════════════════════════════════════
+   1) توزيع البرومتات السبعة على الثيمات ومتغيرات الزجاج السائل (7 Prompts Tokens)
+   ══════════════════════════════════════════════════════════════════════════ */
 
-/* 2) تحويل النوافذ الرئيسية إلى زجاج iOS 18 الحقيقي الفاخر */
-.nl-home-window-glass {
-  position: relative;
-  border-radius: 26px;
-  color: #f2f6fc;
-  background:
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.18) 0%,
-      rgba(240, 248, 255, 0.08) 35%,
-      rgba(16, 28, 46, 0.48) 75%,
-      rgba(8, 16, 28, 0.68) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  box-shadow:
-    0 24px 64px -12px rgba(0, 0, 0, 0.45),
-    0 8px 24px -4px rgba(0, 0, 0, 0.25),
-    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.75),
-    inset 0 -1px 2px 0 rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(28px) saturate(190%) contrast(102%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%) contrast(102%);
-  overflow: hidden;
-  transform: translateZ(0);
-  will-change: transform, box-shadow;
-  transition: transform 340ms cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 340ms cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 340ms cubic-bezier(0.16, 1, 0.3, 1),
-              background 340ms cubic-bezier(0.16, 1, 0.3, 1);
+/* ── Prompt 4: Dark Theme — 3D Render Glossy Finish on Deep Black with Iridescent Blue, Purple & Pink ── */
+:root,
+[data-theme="dark"] {
+  --lx: 50%;
+  --ly: 20%;
+  --lc-accent-1: #60a5fa;
+  --lc-accent-2: #a855f7;
+  --lc-accent-3: #ec4899;
+  --lc-pointer-glare: radial-gradient(
+    240px circle at var(--lx, 50%) var(--ly, 20%),
+    rgba(192, 132, 252, 0.24) 0%,
+    rgba(96, 165, 250, 0.12) 42%,
+    transparent 76%
+  );
+  --lc-glass-surface: linear-gradient(
+    165deg,
+    rgba(96, 165, 250, 0.20) 0%,
+    rgba(168, 85, 247, 0.12) 32%,
+    rgba(14, 18, 36, 0.68) 68%,
+    rgba(4, 6, 14, 0.90) 100%
+  );
+  --lc-glass-surface-hover: linear-gradient(
+    165deg,
+    rgba(147, 197, 253, 0.26) 0%,
+    rgba(192, 132, 252, 0.16) 34%,
+    rgba(16, 20, 42, 0.72) 68%,
+    rgba(4, 5, 12, 0.92) 100%
+  );
+  --lc-glass-card: linear-gradient(
+    160deg,
+    rgba(96, 165, 250, 0.18) 0%,
+    rgba(236, 72, 153, 0.10) 36%,
+    rgba(12, 16, 32, 0.70) 72%,
+    rgba(4, 6, 14, 0.90) 100%
+  );
+  --lc-glass-header: linear-gradient(
+    90deg,
+    rgba(96, 165, 250, 0.22) 0%,
+    rgba(168, 85, 247, 0.18) 50%,
+    rgba(236, 72, 153, 0.18) 100%
+  );
+  --lc-glass-pill: linear-gradient(
+    145deg,
+    rgba(147, 197, 253, 0.24) 0%,
+    rgba(192, 132, 252, 0.14) 46%,
+    rgba(12, 16, 32, 0.76) 80%,
+    rgba(5, 7, 16, 0.90) 100%
+  );
+  --lc-glass-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.34) 0%,
+    rgba(192, 132, 252, 0.10) 38%,
+    transparent 76%
+  );
+  --lc-glass-bottom-vignette: linear-gradient(
+    180deg,
+    transparent 52%,
+    rgba(6, 4, 18, 0.42) 82%,
+    rgba(2, 2, 8, 0.72) 100%
+  );
+  --lc-border-top: rgba(216, 180, 254, 0.58);
+  --lc-border-side: rgba(147, 197, 253, 0.28);
+  --lc-border-bottom: rgba(8, 6, 22, 0.85);
+  --lc-specular-inset:
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.80),
+    inset 1px 0 1px 0 rgba(147, 197, 253, 0.26),
+    inset -1px 0 1px 0 rgba(244, 114, 182, 0.22),
+    inset 0 -12px 24px -6px rgba(2, 3, 10, 0.72);
+  --lc-shadow-ambient:
+    0 26px 60px -12px rgba(0, 0, 0, 0.68),
+    0 8px 24px -4px rgba(168, 85, 247, 0.18);
+  --lc-shadow-card:
+    0 18px 42px -8px rgba(0, 0, 0, 0.58),
+    0 6px 18px -4px rgba(96, 165, 250, 0.16);
+  --lc-text-main: #f8fafc;
+  --lc-text-sub: rgba(226, 232, 240, 0.80);
+  --lc-blur-window: blur(24px) saturate(190%);
+  --lc-blur-card: blur(18px) saturate(185%);
 }
 
-/* انعكاس سائل علوي (Liquid Glass Specular Highlight) */
+/* ── Prompt 1: Light Theme — Serene Pastel Pink & Mint-Green Frosted/Glossy Glass UI ── */
+[data-theme="light"] {
+  --lc-accent-1: #ec4899;
+  --lc-accent-2: #10b981;
+  --lc-accent-3: #f472b6;
+  --lc-pointer-glare: radial-gradient(
+    240px circle at var(--lx, 50%) var(--ly, 20%),
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(251, 207, 232, 0.36) 44%,
+    transparent 78%
+  );
+  --lc-glass-surface: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.90) 0%,
+    rgba(255, 228, 242, 0.72) 42%,
+    rgba(209, 250, 229, 0.68) 78%,
+    rgba(187, 247, 208, 0.78) 100%
+  );
+  --lc-glass-surface-hover: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 220, 238, 0.78) 42%,
+    rgba(198, 246, 224, 0.74) 78%,
+    rgba(167, 243, 208, 0.84) 100%
+  );
+  --lc-glass-card: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(253, 232, 243, 0.72) 45%,
+    rgba(209, 250, 229, 0.68) 82%,
+    rgba(182, 238, 212, 0.78) 100%
+  );
+  --lc-glass-header: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(252, 231, 243, 0.82) 50%,
+    rgba(209, 250, 229, 0.84) 100%
+  );
+  --lc-glass-pill: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(252, 231, 243, 0.78) 48%,
+    rgba(209, 250, 229, 0.78) 84%,
+    rgba(176, 236, 208, 0.86) 100%
+  );
+  --lc-glass-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(255, 255, 255, 0.32) 44%,
+    transparent 82%
+  );
+  --lc-glass-bottom-vignette: linear-gradient(
+    180deg,
+    transparent 56%,
+    rgba(219, 39, 119, 0.06) 84%,
+    rgba(16, 185, 129, 0.12) 100%
+  );
+  --lc-border-top: rgba(255, 255, 255, 0.98);
+  --lc-border-side: rgba(255, 255, 255, 0.84);
+  --lc-border-bottom: rgba(244, 114, 182, 0.34);
+  --lc-specular-inset:
+    inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.98),
+    inset 1px 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset -1px 0 1px 0 rgba(209, 250, 229, 0.72),
+    inset 0 -10px 20px -6px rgba(236, 72, 153, 0.12);
+  --lc-shadow-ambient:
+    0 22px 48px -12px rgba(157, 23, 77, 0.15),
+    0 8px 22px -4px rgba(16, 185, 129, 0.12);
+  --lc-shadow-card:
+    0 14px 32px -8px rgba(157, 23, 77, 0.13),
+    0 5px 14px -3px rgba(16, 185, 129, 0.10);
+  --lc-text-main: #1f162b;
+  --lc-text-sub: rgba(45, 32, 64, 0.76);
+}
+
+/* ── Default Home Mode (midnight) — Bright Royal Red with Dark Edge Vignette & Ruby Crystal Glass ── */
+[data-theme="midnight"] {
+  --lc-accent-1: #ff2a54;
+  --lc-accent-2: #e11d48;
+  --lc-accent-3: #fb7185;
+  --lc-pointer-glare: radial-gradient(
+    250px circle at var(--lx, 50%) var(--ly, 20%),
+    rgba(255, 117, 143, 0.30) 0%,
+    rgba(239, 35, 60, 0.16) 44%,
+    transparent 78%
+  );
+  --lc-glass-surface: linear-gradient(
+    165deg,
+    rgba(255, 92, 124, 0.24) 0%,
+    rgba(217, 4, 41, 0.15) 34%,
+    rgba(42, 4, 12, 0.72) 70%,
+    rgba(14, 1, 4, 0.92) 100%
+  );
+  --lc-glass-surface-hover: linear-gradient(
+    165deg,
+    rgba(255, 128, 150, 0.30) 0%,
+    rgba(225, 29, 72, 0.20) 35%,
+    rgba(48, 5, 14, 0.76) 70%,
+    rgba(12, 1, 4, 0.94) 100%
+  );
+  --lc-glass-card: linear-gradient(
+    160deg,
+    rgba(255, 92, 124, 0.22) 0%,
+    rgba(225, 29, 72, 0.13) 36%,
+    rgba(38, 4, 11, 0.74) 72%,
+    rgba(12, 1, 4, 0.92) 100%
+  );
+  --lc-glass-header: linear-gradient(
+    90deg,
+    rgba(255, 77, 109, 0.28) 0%,
+    rgba(217, 4, 41, 0.22) 50%,
+    rgba(158, 8, 36, 0.24) 100%
+  );
+  --lc-glass-pill: linear-gradient(
+    145deg,
+    rgba(255, 117, 143, 0.28) 0%,
+    rgba(225, 29, 72, 0.18) 46%,
+    rgba(40, 4, 12, 0.78) 80%,
+    rgba(14, 1, 4, 0.92) 100%
+  );
+  --lc-glass-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.36) 0%,
+    rgba(255, 143, 163, 0.12) 38%,
+    transparent 76%
+  );
+  --lc-glass-bottom-vignette: linear-gradient(
+    180deg,
+    transparent 50%,
+    rgba(24, 2, 7, 0.46) 80%,
+    rgba(8, 0, 2, 0.78) 100%
+  );
+  --lc-border-top: rgba(255, 194, 209, 0.62);
+  --lc-border-side: rgba(255, 117, 143, 0.34);
+  --lc-border-bottom: rgba(18, 1, 5, 0.88);
+  --lc-specular-inset:
+    inset 0 1.5px 1px 0 rgba(255, 240, 243, 0.86),
+    inset 1px 0 1px 0 rgba(255, 143, 163, 0.30),
+    inset -1px 0 1px 0 rgba(225, 29, 72, 0.26),
+    inset 0 -12px 24px -6px rgba(10, 1, 3, 0.78);
+  --lc-shadow-ambient:
+    0 26px 58px -12px rgba(10, 0, 3, 0.72),
+    0 8px 26px -4px rgba(217, 4, 41, 0.24);
+  --lc-shadow-card:
+    0 18px 40px -8px rgba(10, 0, 3, 0.64),
+    0 6px 18px -4px rgba(225, 29, 72, 0.22);
+  --lc-text-main: #fff5f7;
+  --lc-text-sub: rgba(255, 224, 230, 0.84);
+}
+
+/* ── Prompt 6: Bit Theme — Calming Green & Earthy Frosted Glass Panels ── */
+[data-theme="bit"] {
+  --lc-accent-1: #34d399;
+  --lc-accent-2: #d6c8b4;
+  --lc-accent-3: #10b981;
+  --lc-pointer-glare: radial-gradient(
+    230px circle at var(--lx, 50%) var(--ly, 20%),
+    rgba(110, 231, 183, 0.24) 0%,
+    rgba(214, 200, 180, 0.12) 45%,
+    transparent 76%
+  );
+  --lc-glass-surface: linear-gradient(
+    165deg,
+    rgba(110, 231, 183, 0.18) 0%,
+    rgba(214, 200, 180, 0.10) 32%,
+    rgba(12, 34, 28, 0.68) 68%,
+    rgba(6, 18, 15, 0.90) 100%
+  );
+  --lc-glass-surface-hover: linear-gradient(
+    165deg,
+    rgba(167, 243, 208, 0.24) 0%,
+    rgba(214, 200, 180, 0.14) 34%,
+    rgba(14, 38, 32, 0.74) 68%,
+    rgba(5, 16, 13, 0.92) 100%
+  );
+  --lc-glass-card: linear-gradient(
+    160deg,
+    rgba(110, 231, 183, 0.16) 0%,
+    rgba(214, 200, 180, 0.09) 36%,
+    rgba(11, 31, 26, 0.72) 72%,
+    rgba(5, 15, 12, 0.90) 100%
+  );
+  --lc-glass-header: linear-gradient(
+    90deg,
+    rgba(52, 211, 153, 0.22) 0%,
+    rgba(214, 200, 180, 0.16) 100%
+  );
+  --lc-glass-pill: linear-gradient(
+    145deg,
+    rgba(110, 231, 183, 0.22) 0%,
+    rgba(214, 200, 180, 0.12) 46%,
+    rgba(11, 31, 26, 0.78) 80%,
+    rgba(5, 16, 13, 0.92) 100%
+  );
+  --lc-border-top: rgba(167, 243, 208, 0.54);
+  --lc-border-side: rgba(214, 200, 180, 0.28);
+  --lc-border-bottom: rgba(4, 14, 11, 0.85);
+  --lc-specular-inset:
+    inset 0 1.5px 1px 0 rgba(209, 250, 229, 0.78),
+    inset 1px 0 1px 0 rgba(110, 231, 183, 0.24),
+    inset -1px 0 1px 0 rgba(214, 200, 180, 0.22),
+    inset 0 -12px 24px -6px rgba(3, 10, 8, 0.72);
+  --lc-text-main: #ecfdf5;
+  --lc-text-sub: rgba(214, 200, 180, 0.86);
+}
+
+/* ── Prompt 7: Lite Theme — Sleek Dark Monochromatic Liquid Glass with Subtle Highlights ── */
+[data-theme="lite"] {
+  --lc-accent-1: #f8fafc;
+  --lc-accent-2: #cbd5e1;
+  --lc-accent-3: #94a3b8;
+  --lc-pointer-glare: radial-gradient(
+    220px circle at var(--lx, 50%) var(--ly, 20%),
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(255, 255, 255, 0.05) 45%,
+    transparent 76%
+  );
+  --lc-glass-surface: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(38, 43, 54, 0.56) 36%,
+    rgba(14, 17, 23, 0.82) 74%,
+    rgba(6, 7, 10, 0.94) 100%
+  );
+  --lc-glass-surface-hover: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(46, 52, 64, 0.62) 36%,
+    rgba(16, 19, 26, 0.86) 74%,
+    rgba(6, 7, 10, 0.96) 100%
+  );
+  --lc-glass-card: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.13) 0%,
+    rgba(32, 37, 46, 0.60) 40%,
+    rgba(12, 15, 20, 0.84) 76%,
+    rgba(5, 6, 9, 0.94) 100%
+  );
+  --lc-glass-pill: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(36, 42, 52, 0.64) 48%,
+    rgba(10, 12, 17, 0.90) 100%
+  );
+  --lc-border-top: rgba(255, 255, 255, 0.48);
+  --lc-border-side: rgba(255, 255, 255, 0.20);
+  --lc-border-bottom: rgba(0, 0, 0, 0.88);
+  --lc-specular-inset:
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.72),
+    inset 1px 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset -1px 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -10px 22px -6px rgba(0, 0, 0, 0.76);
+  --lc-text-main: #f8fafc;
+  --lc-text-sub: rgba(203, 213, 225, 0.78);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2) فيزياء الزجاج السائل التفاعلي (Interactive Liquid Physics — Squish / Stretch / Glare)
+   لا يبقى أي زر أو بطاقة أو نافذة ثابتاً عند التفاعل بالماوس أو اللمس!
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes nl-liquid-rebound-spring {
+  0%   { transform: scale3d(0.94, 1.05, 1); }
+  45%  { transform: scale3d(1.03, 0.975, 1); }
+  75%  { transform: scale3d(0.992, 1.008, 1); }
+  100% { transform: scale3d(1, 1, 1); }
+}
+
+@keyframes nl-liquid-window-rebound {
+  0%   { transform: scale3d(0.985, 1.015, 1); }
+  50%  { transform: scale3d(1.008, 0.994, 1); }
+  100% { transform: scale3d(1, 1, 1); }
+}
+
+/* الأزرار والعناصر التفاعلية: انضغاط وتمدد سائل حقيقي عند اللمس أو النقر */
+button:not(:disabled),
+a[href],
+[role="button"],
+.nl-top-nav__button,
+.nl-bottom-nav__item,
+.nl-lattice-glass,
+.manga-button,
+.mid-nav-tab {
+  --lx: 50%;
+  --ly: 25%;
+  transition:
+    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 240ms ease,
+    border-color 240ms ease !important;
+}
+
+button:not(:disabled)[data-liquid-pressed="true"],
+a[href][data-liquid-pressed="true"],
+.nl-top-nav__button[data-liquid-pressed="true"],
+.nl-bottom-nav__item[data-liquid-pressed="true"],
+.nl-lattice-glass[data-liquid-pressed="true"],
+.manga-button[data-liquid-pressed="true"],
+.mid-nav-tab[data-liquid-pressed="true"],
+button:not(:disabled):active,
+.nl-top-nav__button:active,
+.nl-lattice-glass:active {
+  transform: scale3d(0.92, 1.06, 1) translateY(1px) !important;
+}
+
+button:not(:disabled)[data-liquid-rebound="true"],
+a[href][data-liquid-rebound="true"],
+.nl-top-nav__button[data-liquid-rebound="true"],
+.nl-lattice-glass[data-liquid-rebound="true"] {
+  animation: nl-liquid-rebound-spring 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* البطاقات والنوافذ: استجابة سائلة مرنة عند التفاعل */
+.nl-home-window-glass[data-liquid-pressed="true"],
+.os-window-glass[data-liquid-pressed="true"],
+.manga-card[data-liquid-pressed="true"],
+.song-card[data-liquid-pressed="true"] {
+  transform: scale3d(0.986, 1.012, 1) !important;
+}
+
+.nl-home-window-glass[data-liquid-rebound="true"],
+.os-window-glass[data-liquid-rebound="true"],
+.manga-card[data-liquid-rebound="true"],
+.song-card[data-liquid-rebound="true"] {
+  animation: nl-liquid-window-rebound 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3) شريط الأقسام العلوي كأنبوب زجاجي سائل متصل (Connected Liquid Glass Worm Tube)
+   في الوضع العادي: أيقونات فقط بدون لون أزرق داخل أنبوب زجاجي متصل كدودة سائلة
+   وعند التفاعل: تتوسع خانة الزر ككبسولة/مستطيل زجاجي ليظهر اسم القسم مع تكبير الأيقونة
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes nl-worm-undulate {
+  0%, 100% {
+    transform: translateY(0) scale3d(1, 1, 1);
+  }
+  50% {
+    transform: translateY(-1.8px) scale3d(1.015, 0.988, 1);
+  }
+}
+
+@keyframes nl-worm-bridge-pulse {
+  0%, 100% {
+    transform: translateY(-50%) scaleY(0.88);
+  }
+  50% {
+    transform: translateY(-50%) scaleY(1.08);
+  }
+}
+
+.nl-top-nav,
+.nl-top-nav--worm {
+  position: relative;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 4px auto 22px !important;
+  padding: 4px 0;
+  z-index: 12;
+}
+
+.nl-top-nav__grid {
+  position: relative;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 !important;
+  padding: 6px 10px;
+  border-radius: 999px;
+  max-width: 100%;
+  /* هالة زجاجية خلفية خفيفة تجمع غرف الدودة كأنبوب واحد متصل */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 50%,
+    rgba(0, 0, 0, 0.16) 100%
+  );
+  box-shadow:
+    0 18px 40px -12px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(12px) saturate(170%);
+  -webkit-backdrop-filter: blur(12px) saturate(170%);
+}
+
+[data-theme="light"] .nl-top-nav__grid {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(251, 207, 232, 0.25) 55%,
+    rgba(167, 243, 208, 0.30) 100%
+  );
+  box-shadow:
+    0 16px 34px -10px rgba(157, 23, 77, 0.14),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.88);
+}
+
+/* كل خانة في الدودة الزجاجية (Bulge Chamber) */
+.nl-top-nav__button,
+[data-theme="midnight"] .mid-nav-tab,
+[data-theme="bit"] .manga-paper-tab {
+  --lx: 50%;
+  --ly: 25%;
+  position: relative;
+  isolation: isolate;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  min-width: 48px !important;
+  width: auto !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 0 13px !important;
+  margin: 0 4px !important;
+  border-radius: 999px !important;
+  overflow: visible !important;
+  color: var(--lc-text-main) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  cursor: pointer;
+  animation: nl-worm-undulate 3.8s ease-in-out infinite;
+  animation-delay: calc(var(--worm-idx, 0) * -0.32s);
+  transition:
+    padding 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    margin 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.nl-top-nav__button::before,
+.nl-top-nav__button::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* الأنبوب الزجاجي الضيق الذي يربط كل أيقونة بجارتها (Narrow Connecting Tube Bridge) */
+.nl-top-nav__bridge {
+  position: absolute;
+  top: 50%;
+  left: -13px;
+  width: 18px;
+  height: 22px;
+  transform: translateY(-50%);
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0.14) 36%,
+      rgba(12, 16, 28, 0.58) 78%,
+      rgba(4, 6, 14, 0.82) 100%
+    );
+  border-top: 1px solid var(--lc-border-top);
+  border-bottom: 1px solid var(--lc-border-bottom);
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.42),
+    0 6px 14px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px) saturate(185%);
+  -webkit-backdrop-filter: blur(16px) saturate(185%);
+  animation: nl-worm-bridge-pulse 3.8s ease-in-out infinite;
+  animation-delay: calc(var(--worm-idx, 0) * -0.32s);
+}
+
+[dir="rtl"] .nl-top-nav__bridge {
+  left: auto;
+  right: -13px;
+}
+
+/* أول عنصر في السطر لا يحتاج جسراً قبله */
+.nl-top-nav__button:first-child .nl-top-nav__bridge {
+  display: none;
+}
+
+[data-theme="light"] .nl-top-nav__bridge {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(251, 207, 232, 0.72) 52%,
+    rgba(167, 243, 208, 0.78) 100%
+  );
+  box-shadow:
+    inset 0 1.5px 1px #ffffff,
+    0 4px 10px rgba(157, 23, 77, 0.12);
+}
+
+/* الحجرة الزجاجية المنتفخة حول كل أيقونة (Swollen Liquid Glass Chamber) */
+.nl-top-nav__chamber {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 999px;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      95px circle at var(--lx, 50%) var(--ly, 25%),
+      rgba(255, 255, 255, 0.36) 0%,
+      color-mix(in srgb, var(--lc-accent-1) 16%, transparent) 46%,
+      transparent 78%
+    ),
+    var(--lc-glass-pill);
+  border-top: 1.2px solid var(--lc-border-top);
+  border-left: 1px solid var(--lc-border-side);
+  border-right: 1px solid var(--lc-border-side);
+  border-bottom: 1.2px solid var(--lc-border-bottom);
+  box-shadow:
+    0 12px 26px -6px rgba(0, 0, 0, 0.42),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.85),
+    inset 0 -8px 16px -4px rgba(2, 6, 16, 0.52);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  transition:
+    border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 280ms ease,
+    box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 240ms ease;
+}
+
+[data-theme="light"] .nl-top-nav__chamber {
+  background:
+    radial-gradient(
+      95px circle at var(--lx, 50%) var(--ly, 25%),
+      rgba(255, 255, 255, 0.96) 0%,
+      rgba(251, 207, 232, 0.42) 48%,
+      transparent 78%
+    ),
+    var(--lc-glass-pill);
+  box-shadow:
+    0 10px 24px -6px rgba(157, 23, 77, 0.16),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.98),
+    inset 0 -8px 14px -4px rgba(16, 185, 129, 0.14);
+}
+
+/* الأيقونة الصافية بدون أي دائرة سماوية أو خلفية زرقاء قديمة */
+.nl-top-nav__icon-wrap {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.nl-top-nav__icon {
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: var(--lc-text-main) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  stroke-width: 2.15 !important;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.38)) !important;
+  transition:
+    transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 240ms ease,
+    filter 240ms ease !important;
+}
+
+[data-theme="light"] .nl-top-nav__icon {
+  color: #1f162b !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.9)) !important;
+}
+
+/* النص مخفي تماماً في الوضع العادي (Icons Only Default) ويتمدد بسلاسة عند التفاعل */
+.nl-top-nav__label {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  margin-inline-start: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font: 750 11.5px/1.1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--lc-text-main);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.38);
+  transform: translateX(-4px) scale(0.92);
+  transition:
+    max-width 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 280ms ease,
+    margin-inline-start 340ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme="light"] .nl-top-nav__label {
+  color: #1f162b;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* عند التفاعل مع أي زر: تتوسع خانته على شكل مستطيل/كبسولة زجاجية ويظهر اسمه وتكبر أيقونته */
+.nl-top-nav__button:hover,
+.nl-top-nav__button:focus-visible,
+.nl-top-nav__button.is-expanded {
+  padding: 0 17px !important;
+  z-index: 4;
+}
+
+.nl-top-nav__button:hover .nl-top-nav__chamber,
+.nl-top-nav__button:focus-visible .nl-top-nav__chamber,
+.nl-top-nav__button.is-expanded .nl-top-nav__chamber {
+  border-radius: 16px;
+  border-top-color: #ffffff;
+  background:
+    radial-gradient(
+      120px circle at var(--lx, 50%) var(--ly, 25%),
+      rgba(255, 255, 255, 0.46) 0%,
+      color-mix(in srgb, var(--lc-accent-1) 28%, transparent) 48%,
+      transparent 80%
+    ),
+    var(--lc-glass-surface-hover);
+  box-shadow:
+    0 18px 36px -6px rgba(0, 0, 0, 0.52),
+    0 0 22px -4px color-mix(in srgb, var(--lc-accent-1) 52%, transparent),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.95),
+    inset 0 -8px 16px -4px rgba(2, 6, 16, 0.56);
+}
+
+.nl-top-nav__button:hover .nl-top-nav__icon,
+.nl-top-nav__button:focus-visible .nl-top-nav__icon,
+.nl-top-nav__button.is-expanded .nl-top-nav__icon {
+  transform: scale(1.18);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--lc-accent-1) 75%, #ffffff)) !important;
+}
+
+.nl-top-nav__button:hover .nl-top-nav__label,
+.nl-top-nav__button:focus-visible .nl-top-nav__label,
+.nl-top-nav__button.is-expanded .nl-top-nav__label {
+  max-width: 175px;
+  opacity: 1;
+  margin-inline-start: 8px;
+  transform: translateX(0) scale(1);
+}
+
+/* تقسيم الأنبوب الزجاجي المتصل إلى صفين متصلين في الهواتف فقط (< 640px) */
+@media (max-width: 639px) {
+  .nl-top-nav__grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 8px !important;
+    border-radius: 28px;
+    padding: 8px 8px;
+    max-width: 96vw;
+  }
+
+  .nl-top-nav__button {
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 11px !important;
+    margin: 0 3px !important;
+  }
+
+  /* العنصر السادس (بداية الصف الثاني على الهاتف) يبدأ أنبوب الصف الثاني بدون جسر أفقي خاطئ */
+  .nl-top-nav__button:nth-child(6) .nl-top-nav__bridge {
+    display: none;
+  }
+
+  .nl-top-nav__button:hover,
+  .nl-top-nav__button:focus-visible,
+  .nl-top-nav__button.is-expanded {
+    padding: 0 13px !important;
+  }
+
+  .nl-top-nav__button:hover .nl-top-nav__label,
+  .nl-top-nav__button:focus-visible .nl-top-nav__label,
+  .nl-top-nav__button.is-expanded .nl-top-nav__label {
+    max-width: 132px;
+    font-size: 10.5px;
+    margin-inline-start: 6px;
+  }
+}
+
+/* شريط التنقل السفلي العائم للموبايل (Prompt 2 Cool Iridescent Dock) */
+.nl-bottom-nav {
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  border-radius: 24px !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4) النوافذ الرئيسية للمحطات والبطاقات (.nl-home-window-glass, .manga-card)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.nl-home-window-titlebar {
+  display: none !important;
+}
+
+.nl-home-window-glass,
+.manga-card,
+.manga-panel {
+  --lx: 50%;
+  --ly: 20%;
+  position: relative;
+  border-radius: 28px !important;
+  color: var(--lc-text-main) !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: var(--lc-shadow-ambient), var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+  overflow: hidden;
+  transform: translateZ(0);
+  transition:
+    transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 280ms ease !important;
+}
+
 .nl-home-window-glass::before {
   content: "";
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 48% !important;
-  border-radius: 26px 26px 0 0;
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 255, 255, 0.06) 45%,
-    transparent 85%) !important;
-  pointer-events: none;
-  opacity: 0.95;
-  transition: opacity 340ms ease, transform 340ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* طبقة تعتيم وانكسار سائلة داخلية عند الحركة */
-.nl-home-window:hover .nl-home-window-glass {
+  inset: 0;
+  border-radius: inherit;
   background:
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(240, 248, 255, 0.10) 35%,
-      rgba(14, 26, 42, 0.54) 75%,
-      rgba(6, 14, 24, 0.76) 100%);
-  border-color: rgba(255, 255, 255, 0.46);
-  box-shadow:
-    0 32px 76px -12px rgba(0, 0, 0, 0.54),
-    0 12px 32px -4px rgba(0, 0, 0, 0.3),
-    inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.92),
-    inset 0 -1px 2px 0 rgba(255, 255, 255, 0.2);
-}
-.nl-home-window:hover .nl-home-window-glass::before {
-  opacity: 1;
-  transform: translateY(-1px);
+    var(--lc-glass-sheen),
+    var(--lc-glass-bottom-vignette) !important;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.96;
 }
 
-/* حافة جسم النافذة */
-.nl-home-window-body { border-radius: 0 0 26px 26px; }
-
-/* توافق النمط الفاتح (Light Theme) بأناقة زجاج آبل */
-[data-theme="light"] .nl-home-window-glass {
-  color: #1a2434;
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.82) 0%,
-    rgba(242, 248, 255, 0.60) 45%,
-    rgba(220, 234, 250, 0.50) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  box-shadow:
-    0 20px 52px -10px rgba(18, 45, 80, 0.18),
-    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.98);
+.nl-home-window-body {
+  position: relative;
+  z-index: 1;
+  border-radius: 28px !important;
+  background: transparent !important;
 }
 
-/* 3) عُقد الشبكة (Lattice Nodes) بشكل زجاجي سائل */
-.nl-lattice-node {
-  border-radius: 20px;
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(15, 25, 40, 0.60) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  color: #f2f6fc;
-  box-shadow:
-    0 12px 28px -6px rgba(0, 0, 0, 0.35),
-    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 260ms ease;
-}
-.nl-lattice-node:hover {
-  transform: translateY(-3px) scale(1.02);
-  border-color: rgba(255, 255, 255, 0.55);
-  box-shadow:
-    0 18px 38px -6px rgba(0, 0, 0, 0.45),
-    inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.9);
+@media (hover: hover) and (pointer: fine) {
+  .nl-home-window:hover .nl-home-window-glass,
+  .manga-card:hover {
+    background:
+      var(--lc-pointer-glare),
+      var(--lc-glass-surface-hover) !important;
+    border-top-color: rgba(255, 255, 255, 0.85) !important;
+  }
 }
 
-/* 4) بطاقات Highlights (The Vault & YouTube) بزجاج سائل راقٍ */
-#vault-playlist {
+/* ══════════════════════════════════════════════════════════════════════════
+   5) Prompt 5: Dynamic Clear & Iridescent 3D Layered Elements (Lattice, Buttons, Modals)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.nl-lattice-glass,
+.manga-button {
+  --lx: 50%;
+  --ly: 25%;
+  position: relative;
   border-radius: 22px !important;
-  border: 1px solid rgba(255, 255, 255, 0.34) !important;
-  box-shadow: 0 18px 44px -8px rgba(0, 0, 0, 0.42), inset 0 1.5px 1px rgba(255, 255, 255, 0.7) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  background:
+    radial-gradient(
+      95px circle at var(--lx, 50%) var(--ly, 25%),
+      rgba(255, 255, 255, 0.32) 0%,
+      rgba(168, 85, 247, 0.12) 45%,
+      transparent 76%
+    ),
+    var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: var(--lc-shadow-card), var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
   transform: translateZ(0);
 }
-.nl-hl-player {
-  border-radius: 22px !important;
-  border: 1px solid rgba(255, 255, 255, 0.34) !important;
-  box-shadow: 0 18px 44px -8px rgba(0, 0, 0, 0.42), inset 0 1.5px 1px rgba(255, 255, 255, 0.7) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  transform: translateZ(0);
-  overflow: hidden;
+
+.nl-lattice-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.38) 0%, rgba(125, 211, 252, 0.10) 38%, transparent 72%),
+    linear-gradient(180deg, transparent 54%, rgba(2, 6, 16, 0.42) 100%) !important;
+  pointer-events: none;
 }
 
-/* 5) العمود الفقري والعُقد */
-.nl-home-spine {
-  background: linear-gradient(to bottom,
-    transparent,
-    rgba(120, 200, 255, 0.45) 8%,
-    rgba(90, 175, 240, 0.65) 92%,
-    transparent) !important;
-  box-shadow: 0 0 14px rgba(120, 200, 255, 0.45) !important;
+[data-theme="light"] .nl-lattice-glass::before {
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.92) 0%, rgba(251, 207, 232, 0.30) 44%, transparent 75%),
+    linear-gradient(180deg, transparent 58%, rgba(16, 185, 129, 0.12) 100%) !important;
 }
-.nl-home-station::before {
-  background: radial-gradient(circle at 35% 30%, #ffffff, #6fbdf0) !important;
+
+.nl-lattice-node-label {
+  background: var(--lc-glass-pill) !important;
+  color: var(--lc-text-main) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
   box-shadow:
-    0 0 0 4px rgba(120, 200, 255, 0.22),
-    0 0 16px rgba(150, 215, 255, 0.85) !important;
+    0 6px 16px -4px rgba(0, 0, 0, 0.36),
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.75),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.26) !important;
+  border-radius: 999px !important;
+  padding: 3.5px 11px !important;
 }
 
-/* 6) بطاقات المعرض (Gallery - ME Bit & Through The Lens) */
+@media (hover: hover) and (pointer: fine) {
+  .nl-lattice-node:hover .nl-lattice-glass,
+  .manga-button:hover {
+    transform: translateY(-5px) scale3d(1.055, 0.965, 1) !important;
+    border-top-color: rgba(255, 255, 255, 0.92) !important;
+    box-shadow:
+      0 24px 48px -8px rgba(0, 0, 0, 0.56),
+      0 0 24px -4px color-mix(in srgb, var(--lc-accent-1) 48%, transparent),
+      inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.92),
+      inset 0 -10px 20px -4px rgba(2, 6, 14, 0.62) !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6) قسم Highlights (THE VAULT & NL YOUTUBE) & YouTube Glass Drawer/Modal
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.nl-lc-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px !important;
+  border-radius: 999px !important;
+  color: var(--lc-text-main) !important;
+  background: var(--lc-glass-pill) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    0 10px 24px -6px rgba(0, 0, 0, 0.38),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.30) !important;
+  backdrop-filter: var(--lc-blur-card);
+  -webkit-backdrop-filter: var(--lc-blur-card);
+  letter-spacing: 0.06em;
+}
+
+#vault-playlist,
+.nl-hl-player,
 .me-bit-cta,
-.nl-lens-cta {
-  border-radius: 24px !important;
-  border: 1px solid rgba(255, 255, 255, 0.34) !important;
-  box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.42), inset 0 1.5px 1px rgba(255, 255, 255, 0.75), inset 0 -1px 2px rgba(0, 0, 0, 0.2) !important;
-  backdrop-filter: blur(24px) saturate(185%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(185%) !important;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(20, 35, 55, 0.52) 45%, rgba(10, 18, 30, 0.72) 100%) !important;
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1), border-color 320ms ease !important;
-  transform: translateZ(0);
-}
-.me-bit-cta:hover,
-.nl-lens-cta:hover {
-  transform: translateY(-3px) scale(1.008) !important;
-  border-color: rgba(255, 255, 255, 0.52) !important;
-  box-shadow: 0 28px 60px -10px rgba(0, 0, 0, 0.52), inset 0 2px 1.5px rgba(255, 255, 255, 0.9) !important;
-}
-
-/* 7) نافذة الرسومات التفاعلية (Drawings Window) */
+.nl-lens-cta,
 .nld-glass-window {
+  --lx: 50%;
+  --ly: 25%;
+  position: relative;
   border-radius: 26px !important;
-  border: 1px solid rgba(255, 255, 255, 0.34) !important;
-  box-shadow: 0 24px 54px -10px rgba(0, 0, 0, 0.48), inset 0 1.5px 1px rgba(255, 255, 255, 0.8), inset 0 -1px 2px rgba(0, 0, 0, 0.2) !important;
-  backdrop-filter: blur(26px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(26px) saturate(190%) !important;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(24, 38, 56, 0.52) 45%, rgba(10, 18, 28, 0.72) 100%) !important;
-  transition: transform 340ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 340ms cubic-bezier(0.16, 1, 0.3, 1), border-color 340ms ease !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: var(--lc-shadow-card), var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
   transform: translateZ(0);
-}
-.nld-glass-window:hover {
-  transform: translateY(-4px) scale(1.02) !important;
-  border-color: rgba(255, 255, 255, 0.52) !important;
-  box-shadow: 0 32px 66px -12px rgba(0, 0, 0, 0.58), inset 0 2px 1.5px rgba(255, 255, 255, 0.92) !important;
+  overflow: hidden !important;
+  transition:
+    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 260ms ease !important;
 }
 
-/* وضع الأداء المنخفض / lite mode */
-.nl-home-map[data-lite="true"] .nl-home-window-glass,
-body.low-perf .nl-home-window-glass,
-.nl-home-map[data-lite="true"] .nl-lattice-node,
-body.low-perf .nl-lattice-node,
-.nl-home-map[data-lite="true"] .me-bit-cta,
-body.low-perf .me-bit-cta,
-.nl-home-map[data-lite="true"] .nl-lens-cta,
-body.low-perf .nl-lens-cta,
-.nl-home-map[data-lite="true"] .nld-glass-window,
-body.low-perf .nld-glass-window {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+/* إصلاح عرض صورة الغلاف داخل بطاقة The Vault (#vault-playlist) مع الحفاظ على الزجاج السائل */
+#vault-playlist {
+  background: rgba(10, 8, 18, 0.35) !important;
 }
+
+#vault-playlist .nl-vault-cover-bg {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+#vault-playlist .nl-vault-content-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+}
+
+#vault-playlist::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.06) 28%, transparent 52%),
+    linear-gradient(180deg, transparent 52%, rgba(3, 8, 18, 0.45) 84%, rgba(2, 5, 12, 0.76) 100%);
+  box-shadow: inset 0 2px 1.5px rgba(255, 255, 255, 0.82);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ── تصميم الزجاج السائل ثلاثي الأبعاد لمعرضي ME bit و Through The Lens ── */
+.nl-me-bit-thumb {
+  border-radius: 18px !important;
+  padding: 4px !important;
+  background: var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    0 10px 24px -6px rgba(0, 0, 0, 0.46),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78) !important;
+  transition:
+    transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 260ms ease,
+    border-color 220ms ease !important;
+}
+
+.nl-me-bit-thumb:hover {
+  transform: translateY(-4px) scale3d(1.03, 0.98, 1) !important;
+  border-top-color: #ffffff !important;
+  box-shadow:
+    0 18px 34px -6px rgba(0, 0, 0, 0.56),
+    0 0 18px -4px color-mix(in srgb, var(--lc-accent-1) 48%, transparent),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.92) !important;
+}
+
+.nl-me-bit-thumb__sheen {
+  border-radius: inherit;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.04) 36%,
+    transparent 65%
+  );
+}
+
+.nl-gallery-orb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.48) 0%, transparent 68%),
+    var(--lc-glass-pill);
+  border-top: 1.2px solid rgba(255, 255, 255, 0.90);
+  border-left: 1px solid rgba(255, 255, 255, 0.48);
+  border-right: 1px solid rgba(255, 255, 255, 0.48);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.48),
+    0 0 20px -4px color-mix(in srgb, var(--lc-accent-1) 52%, transparent),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.92),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(16px) saturate(185%);
+  -webkit-backdrop-filter: blur(16px) saturate(185%);
+}
+
+.nl-hl-chrome {
+  background: var(--lc-glass-header) !important;
+  border-bottom: 1px solid var(--lc-border-side) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+  color: var(--lc-text-main) !important;
+}
+
+.nl-hl-chrome-title {
+  color: var(--lc-text-main) !important;
+}
+
+.nl-hl-controls {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 28, 52, 0.66) 0%,
+    rgba(6, 10, 22, 0.90) 100%
+  ) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.24) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="light"] .nl-hl-controls {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 245, 250, 0.88) 0%,
+    rgba(209, 250, 229, 0.92) 100%
+  ) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.92) !important;
+  color: #1f162b !important;
+}
+
+.nl-hl-play {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.38) 0%,
+    color-mix(in srgb, var(--lc-accent-1) 32%, rgba(255, 255, 255, 0.16)) 48%,
+    rgba(8, 14, 28, 0.76) 100%
+  ) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.48),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.92),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.38) !important;
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .me-bit-cta:hover,
+  .nl-lens-cta:hover,
+  #vault-playlist:hover,
+  .nl-hl-player:hover,
+  .nld-glass-window:hover {
+    transform: translateY(-4px) scale3d(1.016, 0.992, 1) !important;
+    border-top-color: rgba(255, 255, 255, 0.88) !important;
+    box-shadow:
+      0 28px 60px -10px rgba(0, 0, 0, 0.56),
+      0 0 28px -6px color-mix(in srgb, var(--lc-accent-1) 38%, transparent),
+      var(--lc-specular-inset) !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7) بطاقات الأغاني والمشغل (My Songs Cards & Euphoria/Liquid Player)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+#station-songs .nl-song-card,
+.song-card {
+  --lx: 50%;
+  --ly: 25%;
+  position: relative;
+  border-radius: 22px !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: var(--lc-shadow-card), var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
+  transform: translateZ(0);
+  transition:
+    transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 240ms ease !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #station-songs .nl-song-card:hover,
+  .song-card:hover {
+    transform: translateY(-3px) scale3d(1.015, 0.99, 1) !important;
+    border-top-color: rgba(255, 255, 255, 0.85) !important;
+  }
+}
+
+/* تحديث زر التشغيل في المشغل السفلي ليتماشى مع الأحمر الملكي السائل في الوضع الافتراضي Home */
+[data-theme="midnight"] .mid-player button[aria-label="Play"],
+[data-theme="midnight"] .mid-player button[aria-label="Pause"],
+[data-theme="midnight"] .mid-player button[aria-label="تشغيل"],
+[data-theme="midnight"] .mid-player button[aria-label="إيقاف"] {
+  background: linear-gradient(135deg, #ff4d6d 0%, #ef233c 55%, #b5071f 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 214, 224, 0.85) !important;
+  box-shadow:
+    0 8px 24px rgba(239, 35, 60, 0.56),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.90) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8) نوافذ النظام العامة (OsWindow Liquid Crystal Upgrade)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.nl-os-window-glass,
+.os-window-glass {
+  --lx: 50%;
+  --ly: 20%;
+  position: relative;
+  border-radius: 26px !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  color: var(--lc-text-main) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: var(--lc-shadow-ambient), var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.nl-os-window-titlebar {
+  background: var(--lc-glass-header) !important;
+  border-bottom: 1px solid var(--lc-border-side) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+  color: var(--lc-text-main) !important;
+  padding: 8px 14px !important;
+  height: 38px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.nl-os-window-statusbar {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(4, 10, 20, 0.48) 100%
+  ) !important;
+  border-top: 1px solid var(--lc-border-side) !important;
+  color: var(--lc-text-sub) !important;
+  height: 24px !important;
+  padding: 0 12px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9) العمود الفقري الضوئي والعُقد (Spine & Station Nodes)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.nl-home-spine {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--lc-accent-1) 65%, #ffffff) 10%,
+    color-mix(in srgb, var(--lc-accent-2) 72%, #ffffff) 90%,
+    transparent
+  ) !important;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--lc-accent-1) 52%, transparent) !important;
+}
+
+.nl-home-station::before {
+  background: radial-gradient(circle at 35% 30%, #ffffff, var(--lc-accent-1)) !important;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--lc-accent-1) 26%, transparent),
+    0 0 18px color-mix(in srgb, var(--lc-accent-1) 85%, #ffffff) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10) نافذة مقاطع اليوتيوب (NL YouTube Portal & Video Cards — 3D Liquid Glass)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.nl-tube-overlay,
+.nl-tube-backdrop {
+  background:
+    radial-gradient(80% 60% at 50% 20%, color-mix(in srgb, var(--lc-accent-1) 22%, transparent) 0%, rgba(4, 3, 10, 0.78) 100%) !important;
+  backdrop-filter: blur(22px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(185%) !important;
+}
+
+.nl-tube-panel,
+.nl-tube-root {
+  --lx: 50%;
+  --ly: 18%;
+  color: var(--lc-text-main) !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  border-radius: 30px !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+}
+
+.nl-tube-panel::before,
+.nl-tube-root::before {
+  background:
+    var(--lc-glass-sheen),
+    var(--lc-glass-bottom-vignette) !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  opacity: 0.92 !important;
+}
+
+.nl-tube-head,
+.nl-tube-header {
+  background: var(--lc-glass-header) !important;
+  border-bottom: 1px solid var(--lc-border-side) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62) !important;
+}
+
+.nl-tube-brand-title,
+.nl-tube-title {
+  color: var(--lc-text-main) !important;
+}
+
+.nl-tube-brand-sub,
+.nl-tube-submeta,
+.nl-tube-grid-title,
+.nl-tube-card-meta {
+  color: var(--lc-text-sub) !important;
+}
+
+.nl-tube-tabs {
+  background: rgba(0, 0, 0, 0.14) !important;
+  border-bottom: 1px solid var(--lc-border-side) !important;
+}
+
+[data-theme="light"] .nl-tube-tabs {
+  background: rgba(255, 255, 255, 0.45) !important;
+}
+
+.nl-tube-tab,
+.nl-tube-close,
+.nl-tube-ctl,
+.nl-tube-more {
+  --lx: 50%;
+  --ly: 25%;
+  color: var(--lc-text-main) !important;
+  background:
+    radial-gradient(75px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.28) 0%, transparent 75%),
+    var(--lc-glass-pill) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    0 6px 16px -4px rgba(0, 0, 0, 0.34),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+}
+
+.nl-tube-tab.is-active {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--lc-accent-1) 75%, #ffffff) 0%,
+    var(--lc-accent-2) 100%
+  ) !important;
+  color: #ffffff !important;
+  border-top-color: #ffffff !important;
+  box-shadow:
+    0 8px 22px -4px color-mix(in srgb, var(--lc-accent-1) 55%, rgba(0, 0, 0, 0.5)),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.92) !important;
+}
+
+.nl-tube-card {
+  --lx: 50%;
+  --ly: 25%;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(120px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.24) 0%, transparent 76%),
+    var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: var(--lc-shadow-card), var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
+  transition:
+    transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 240ms ease !important;
+}
+
+.nl-tube-card-title {
+  color: var(--lc-text-main) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nl-tube-card:hover {
+    transform: translateY(-5px) scale3d(1.02, 0.988, 1) !important;
+    border-top-color: rgba(255, 255, 255, 0.92) !important;
+    box-shadow:
+      0 22px 44px -8px rgba(0, 0, 0, 0.55),
+      0 0 22px -4px color-mix(in srgb, var(--lc-accent-1) 42%, transparent),
+      var(--lc-specular-inset) !important;
+  }
+}
+
+.nl-tube-card[data-liquid-pressed="true"] {
+  transform: scale3d(0.95, 1.04, 1) !important;
+}
+
+.nl-tube-player {
+  border-radius: 22px !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: var(--lc-shadow-card), var(--lc-specular-inset) !important;
+}
+
+.nl-tube-controls {
+  background: var(--lc-glass-header) !important;
+  border-top: 1px solid var(--lc-border-side) !important;
+  backdrop-filter: blur(18px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(185%) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   11) بطاقة "صارحني / Be Honest With Me" (#contact-section — 3D Liquid Glass)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+#contact-section .nl-contact-card,
+.nl-contact-card {
+  --lx: 50%;
+  --ly: 20%;
+  position: relative;
+  border-radius: 28px !important;
+  color: var(--lc-text-main) !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.nl-contact-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    var(--lc-glass-sheen),
+    var(--lc-glass-bottom-vignette) !important;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.nl-contact-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.nl-contact-title {
+  color: var(--lc-text-main) !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.28) !important;
+}
+
+[data-theme="light"] .nl-contact-title {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+/* أزرار التواصل الاجتماعي (Gmail / WhatsApp / Telegram) داخل صارحني */
+.nl-contact-chip {
+  --lx: 50%;
+  --ly: 25%;
+  position: relative;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(85px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.30) 0%, transparent 76%),
+    var(--lc-glass-pill) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    var(--lc-shadow-card),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.80),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
+  color: var(--lc-text-main) !important;
+}
+
+.nl-contact-chip span {
+  color: var(--lc-text-main) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nl-contact-chip:hover {
+    transform: translateY(-4px) scale3d(1.045, 0.97, 1) !important;
+    border-top-color: rgba(255, 255, 255, 0.95) !important;
+    box-shadow:
+      0 18px 36px -6px rgba(0, 0, 0, 0.48),
+      0 0 22px -4px color-mix(in srgb, var(--lc-accent-1) 45%, transparent),
+      inset 0 2px 1.5px rgba(255, 255, 255, 0.92) !important;
+  }
+}
+
+/* مفتاح التبديل Anonymous / By Me */
+.nl-contact-mode {
+  background: rgba(0, 0, 0, 0.24) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.34) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 999px !important;
+  padding: 5px !important;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.42) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+[data-theme="light"] .nl-contact-mode {
+  background: rgba(255, 255, 255, 0.52) !important;
+  border-color: rgba(236, 72, 153, 0.24) !important;
+  box-shadow: inset 0 2px 6px rgba(157, 23, 77, 0.10) !important;
+}
+
+.nl-contact-mode__button {
+  border-radius: 999px !important;
+  color: var(--lc-text-sub) !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  font-weight: 700 !important;
+}
+
+.nl-contact-mode__button.is-active {
+  color: #ffffff !important;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--lc-accent-1) 82%, #ffffff) 0%,
+    var(--lc-accent-2) 100%
+  ) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.88) !important;
+  box-shadow:
+    0 6px 18px color-mix(in srgb, var(--lc-accent-1) 46%, rgba(0, 0, 0, 0.4)),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.90) !important;
+}
+
+/* حقول الإدخال والرسالة الزجاجية داخل صارحني */
+.nl-contact-input,
+.nl-contact-textarea {
+  border-radius: 20px !important;
+  color: var(--lc-text-main) !important;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(6, 10, 20, 0.42) 0%,
+      rgba(12, 18, 34, 0.28) 100%
+    ) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-top) !important;
+  box-shadow:
+    inset 0 3px 10px rgba(0, 0, 0, 0.38),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(14px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(165%) !important;
+}
+
+[data-theme="light"] .nl-contact-input,
+[data-theme="light"] .nl-contact-textarea {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.78) 0%,
+      rgba(253, 238, 246, 0.65) 100%
+    ) !important;
+  border-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow:
+    inset 0 2px 6px rgba(157, 23, 77, 0.08),
+    0 4px 12px rgba(16, 185, 129, 0.06) !important;
+}
+
+.nl-contact-input::placeholder,
+.nl-contact-textarea::placeholder {
+  color: var(--lc-text-sub) !important;
+  opacity: 0.72 !important;
+}
+
+.nl-contact-input:focus,
+.nl-contact-textarea:focus {
+  border-color: var(--lc-accent-1) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--lc-accent-1) 30%, transparent),
+    inset 0 2px 8px rgba(0, 0, 0, 0.30) !important;
+}
+
+/* زر الإرسال السائل ثلاثي الأبعاد (Send →) */
+.nl-contact-submit {
+  --lx: 50%;
+  --ly: 25%;
+  border-radius: 999px !important;
+  color: #ffffff !important;
+  background:
+    radial-gradient(110px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.42) 0%, transparent 72%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--lc-accent-1) 86%, #ffffff) 0%,
+      var(--lc-accent-2) 55%,
+      color-mix(in srgb, var(--lc-accent-2) 80%, #090d16) 100%
+    ) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.90) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.50) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.50) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.55) !important;
+  box-shadow:
+    0 14px 32px -6px color-mix(in srgb, var(--lc-accent-1) 52%, rgba(0, 0, 0, 0.5)),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.92),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.35) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nl-contact-submit:hover:not(:disabled) {
+    transform: translateY(-3px) scale3d(1.03, 0.98, 1) !important;
+    filter: brightness(1.08);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   12) الصفحات والنوافذ الكاملة (TV, Games, Music, Accounts, Login Modal)
+   تتكيف تلقائياً مع كل ثيم (Royal Red Home, Dark, Light, Bit, Lite)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── A) صفحة التلفاز (NL TV — 3D Liquid Glass) ── */
+.nl-tv-badge,
+.nl-tv-close,
+.nl-tv-sidebar,
+.nl-tv-empty-card,
+.nl-tv-controls-bar {
+  --lx: 50%;
+  --ly: 20%;
+  color: var(--lc-text-main) !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+}
+
+.nl-tv-sidebar-head {
+  background: var(--lc-glass-header) !important;
+  border-bottom: 1px solid var(--lc-border-side) !important;
+}
+
+.nl-tv-search {
+  background: rgba(0, 0, 0, 0.28) !important;
+  border: 1px solid var(--lc-border-side) !important;
+  color: var(--lc-text-main) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="light"] .nl-tv-search {
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #1f162b !important;
+}
+
+.nl-tv-country-item,
+.nl-tv-channel-card,
+.nl-tv-back-btn {
+  --lx: 50%;
+  --ly: 25%;
+  color: var(--lc-text-main) !important;
+  background:
+    radial-gradient(85px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.24) 0%, transparent 76%),
+    var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    0 8px 20px -6px rgba(0, 0, 0, 0.38),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.72) !important;
+  transition:
+    transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 240ms ease,
+    border-color 220ms ease !important;
+}
+
+.nl-tv-country-item.is-selected,
+.nl-tv-channel-card.is-selected {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--lc-accent-1) 44%, rgba(255, 255, 255, 0.28)) 0%,
+    color-mix(in srgb, var(--lc-accent-2) 34%, rgba(16, 12, 28, 0.84)) 100%
+  ) !important;
+  border-top-color: #ffffff !important;
+  box-shadow:
+    0 12px 26px -4px color-mix(in srgb, var(--lc-accent-1) 45%, rgba(0, 0, 0, 0.5)),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.90) !important;
+}
+
+.nl-tv-country-item[data-liquid-pressed="true"],
+.nl-tv-channel-card[data-liquid-pressed="true"] {
+  transform: scale3d(0.94, 1.05, 1) !important;
+}
+
+/* ── B) صفحة الألعاب (NL Games — 3D Liquid Glass) ── */
+.nl-games-window {
+  --lx: 50%;
+  --ly: 18%;
+  color: var(--lc-text-main) !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+}
+
+.nl-games-titlebar {
+  background: var(--lc-glass-header) !important;
+  border-bottom: 1px solid var(--lc-border-side) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+}
+
+.nl-games-title,
+.nl-screen-title {
+  color: var(--lc-text-main) !important;
+}
+
+.nl-games-sidebar {
+  background: var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--lc-shadow-card), var(--lc-specular-inset) !important;
+}
+
+.nl-game-item,
+.nl-games-close,
+.nl-screen-btn,
+.nl-touch-btn {
+  --lx: 50%;
+  --ly: 25%;
+  color: var(--lc-text-main) !important;
+  background:
+    radial-gradient(80px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.28) 0%, transparent 76%),
+    var(--lc-glass-pill) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  border-radius: 14px !important;
+  box-shadow:
+    0 8px 18px -4px rgba(0, 0, 0, 0.36),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.30) !important;
+}
+
+.nl-game-item.is-selected,
+.nl-screen-btn:not(.nl-screen-btn--ghost) {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--lc-accent-1) 76%, #ffffff) 0%,
+    var(--lc-accent-2) 100%
+  ) !important;
+  color: #ffffff !important;
+  border-top-color: #ffffff !important;
+  box-shadow:
+    0 10px 24px -4px color-mix(in srgb, var(--lc-accent-1) 50%, rgba(0, 0, 0, 0.5)),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.90) !important;
+}
+
+/* ── C) صفحة الموسيقى (NL Music — Theme-Adaptive 3D Liquid Glass) ── */
+.nl-music-root,
+.nl-music-overlay {
+  position: relative;
+  color: var(--lc-text-main) !important;
+  background:
+    radial-gradient(65% 55% at 20% 18%, color-mix(in srgb, var(--lc-accent-1) 34%, transparent) 0%, transparent 68%),
+    radial-gradient(60% 52% at 82% 24%, color-mix(in srgb, var(--lc-accent-2) 30%, transparent) 0%, transparent 68%),
+    radial-gradient(70% 58% at 50% 85%, color-mix(in srgb, var(--lc-accent-3) 26%, transparent) 0%, transparent 72%),
+    var(--bg-page, #160206) !important;
+}
+
+[data-theme="midnight"] .nl-music-root,
+[data-theme="midnight"] .nl-music-overlay {
+  background:
+    radial-gradient(62% 54% at 50% 36%, rgba(239, 35, 60, 0.72) 0%, rgba(217, 4, 41, 0.45) 45%, rgba(100, 5, 22, 0.22) 74%, transparent 100%),
+    radial-gradient(ellipse 80% 74% at 50% 46%, transparent 32%, rgba(24, 2, 6, 0.68) 76%, rgba(8, 0, 2, 0.94) 100%),
+    linear-gradient(180deg, #3b040e 0%, #6e081b 46%, #240207 85%, #0c0103 100%) !important;
+}
+
+[data-theme="light"] .nl-music-root,
+[data-theme="light"] .nl-music-overlay {
+  background:
+    radial-gradient(62% 52% at 16% 18%, rgba(255, 194, 222, 0.72) 0%, transparent 66%),
+    radial-gradient(58% 50% at 84% 24%, rgba(167, 243, 208, 0.68) 0%, transparent 66%),
+    linear-gradient(160deg, #fff5f9 0%, #f2fdf7 48%, #fdf2f8 100%) !important;
+}
+
+.nl-music-list-panel,
+.nl-music-player-panel,
+.nl-music-root [class*="nlp-mini"] {
+  --lx: 50%;
+  --ly: 20%;
+  color: var(--lc-text-main) !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+}
+
+.nl-music-root h2,
+.nl-music-root h4,
+.nl-music-overlay h2 {
+  color: var(--lc-text-main) !important;
+}
+
+.nl-music-root p,
+.nl-music-overlay p {
+  color: var(--lc-text-sub) !important;
+}
+
+.nl-music-root input[type="text"],
+.nl-music-root input:not([type]) {
+  background: var(--lc-glass-pill) !important;
+  color: var(--lc-text-main) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+}
+
+.nl-music-root input::placeholder {
+  color: var(--lc-text-sub) !important;
+}
+
+.nl-music-root [class*="nlp-row"] {
+  background: var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    0 6px 16px -4px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.58) !important;
+}
+
+/* ── D) صفحة الحسابات والبروفايل العام (Accounts & Public Profile — 3D Liquid Glass) ── */
+.nl-accounts {
+  background:
+    radial-gradient(64% 52% at 50% 24%, color-mix(in srgb, var(--lc-accent-1) 28%, transparent) 0%, transparent 70%),
+    var(--bg-page, #140206) !important;
+  color: var(--lc-text-main) !important;
+}
+
+.nl-accounts__bg-glass {
+  background:
+    radial-gradient(64% 54% at 50% 34%, color-mix(in srgb, var(--lc-accent-1) 36%, transparent) 0%, transparent 72%),
+    linear-gradient(180deg, rgba(16, 4, 8, 0.42), rgba(8, 2, 5, 0.78)) !important;
+}
+
+[data-theme="light"] .nl-accounts__bg-glass {
+  background:
+    radial-gradient(64% 54% at 50% 34%, rgba(251, 207, 232, 0.62) 0%, rgba(167, 243, 208, 0.52) 68%, rgba(255, 245, 250, 0.78) 100%) !important;
+}
+
+.nl-accounts__bar {
+  background: var(--lc-glass-header) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  border-radius: 22px !important;
+  padding: 12px 18px !important;
+  margin-top: 10px !important;
+  box-shadow: var(--lc-shadow-card), var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
+}
+
+.nl-accounts__title,
+.nl-acc-card__name,
+.nl-pub__name {
+  color: var(--lc-text-main) !important;
+}
+
+.nl-accounts__search {
+  background: var(--lc-glass-pill) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  border-radius: 999px !important;
+  color: var(--lc-text-main) !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.28) !important;
+}
+
+.nl-accounts__search input {
+  color: var(--lc-text-main) !important;
+}
+
+.nl-accounts__close,
+.nl-pub__close {
+  background: var(--lc-glass-pill) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  color: var(--lc-text-main) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.32),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78) !important;
+}
+
+.nl-accounts .nl-acct-card,
+.nl-acc-card {
+  --lx: 50%;
+  --ly: 25%;
+  border-radius: 22px !important;
+  color: var(--lc-text-main) !important;
+  background:
+    radial-gradient(110px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.26) 0%, transparent 75%),
+    var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: var(--lc-shadow-card), var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-card) !important;
+  -webkit-backdrop-filter: var(--lc-blur-card) !important;
+}
+
+.nl-accounts .nl-acct-card[data-liquid-pressed="true"],
+.nl-acc-card[data-liquid-pressed="true"] {
+  transform: scale3d(0.94, 1.05, 1) !important;
+}
+
+.nl-public-card,
+.nl-pub {
+  --lx: 50%;
+  --ly: 20%;
+  border-radius: 28px !important;
+  color: var(--lc-text-main) !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+}
+
+.nl-pub__bio-box,
+.nl-pub__star,
+.nl-pub-song-cover {
+  background: var(--lc-glass-card) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, 0.65) !important;
+}
+
+/* ── E) نافذة تسجيل الدخول والحساب (Login / Auth Modal — 3D Liquid Glass) ── */
+.auth-overlay {
+  background:
+    radial-gradient(85% 65% at 50% 18%, color-mix(in srgb, var(--lc-accent-1) 24%, transparent) 0%, rgba(4, 3, 10, 0.72) 100%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+}
+
+.auth-modal {
+  --lx: 50%;
+  --ly: 20%;
+  border-radius: 28px !important;
+  color: var(--lc-text-main) !important;
+  background:
+    var(--lc-pointer-glare),
+    var(--lc-glass-surface) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    var(--lc-shadow-ambient),
+    var(--lc-specular-inset) !important;
+  backdrop-filter: var(--lc-blur-window) !important;
+  -webkit-backdrop-filter: var(--lc-blur-window) !important;
+}
+
+.auth-modal::before {
+  background:
+    var(--lc-glass-sheen),
+    var(--lc-glass-bottom-vignette) !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  opacity: 0.92 !important;
+}
+
+.auth-title {
+  color: var(--lc-text-main) !important;
+}
+
+.auth-close {
+  background: var(--lc-glass-pill) !important;
+  color: var(--lc-text-main) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.32),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78) !important;
+}
+
+.auth-tabs {
+  background: rgba(0, 0, 0, 0.24) !important;
+  border: 1px solid var(--lc-border-side) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.38) !important;
+}
+
+[data-theme="light"] .auth-tabs {
+  background: rgba(255, 255, 255, 0.55) !important;
+}
+
+.auth-tabs button {
+  color: var(--lc-text-sub) !important;
+  border-radius: 12px !important;
+}
+
+.auth-tabs button.active {
+  color: #ffffff !important;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--lc-accent-1) 82%, #ffffff) 0%,
+    var(--lc-accent-2) 100%
+  ) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.88) !important;
+  box-shadow:
+    0 6px 16px color-mix(in srgb, var(--lc-accent-1) 44%, rgba(0, 0, 0, 0.4)),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.90) !important;
+}
+
+.auth-oauth-btn {
+  --lx: 50%;
+  --ly: 25%;
+  border-radius: 16px !important;
+  color: var(--lc-text-main) !important;
+  background:
+    radial-gradient(95px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.26) 0%, transparent 75%),
+    var(--lc-glass-pill) !important;
+  border-top: 1px solid var(--lc-border-top) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-bottom) !important;
+  box-shadow:
+    0 8px 20px -6px rgba(0, 0, 0, 0.38),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78) !important;
+}
+
+.auth-oauth-btn.google {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 245, 249, 0.88) 100%) !important;
+  color: #0f172a !important;
+  border-top: 1px solid #ffffff !important;
+}
+
+.auth-form input {
+  border-radius: 16px !important;
+  color: var(--lc-text-main) !important;
+  background: rgba(0, 0, 0, 0.26) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.20) !important;
+  border-left: 1px solid var(--lc-border-side) !important;
+  border-right: 1px solid var(--lc-border-side) !important;
+  border-bottom: 1px solid var(--lc-border-top) !important;
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.36) !important;
+}
+
+[data-theme="light"] .auth-form input {
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #1f162b !important;
+}
+
+.auth-form input::placeholder {
+  color: var(--lc-text-sub) !important;
+}
+
+.auth-primary {
+  --lx: 50%;
+  --ly: 25%;
+  border-radius: 16px !important;
+  color: #ffffff !important;
+  background:
+    radial-gradient(110px circle at var(--lx, 50%) var(--ly, 25%), rgba(255, 255, 255, 0.38) 0%, transparent 72%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--lc-accent-1) 84%, #ffffff) 0%,
+      var(--lc-accent-2) 60%,
+      color-mix(in srgb, var(--lc-accent-2) 82%, #090d16) 100%
+    ) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.90) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.45) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.45) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.55) !important;
+  box-shadow:
+    0 12px 28px -6px color-mix(in srgb, var(--lc-accent-1) 52%, rgba(0, 0, 0, 0.5)),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.90),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   13) الأداء الفائق على الهواتف والأجهزة المختلفة (Mobile 60fps Liquid Glass)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  :root,
+  [data-theme="dark"] {
+    --lc-blur-window: blur(12px) saturate(160%);
+    --lc-blur-card: blur(10px) saturate(155%);
+    --lc-glass-surface: linear-gradient(
+      165deg,
+      rgba(96, 165, 250, 0.28) 0%,
+      rgba(168, 85, 247, 0.20) 34%,
+      rgba(14, 18, 38, 0.86) 70%,
+      rgba(4, 6, 14, 0.96) 100%
+    );
+    --lc-glass-card: linear-gradient(
+      160deg,
+      rgba(96, 165, 250, 0.24) 0%,
+      rgba(236, 72, 153, 0.16) 36%,
+      rgba(12, 16, 34, 0.88) 72%,
+      rgba(4, 6, 14, 0.96) 100%
+    );
+  }
+
+  [data-theme="light"] {
+    --lc-blur-window: blur(12px) saturate(150%);
+    --lc-blur-card: blur(10px) saturate(145%);
+    --lc-glass-surface: linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 228, 242, 0.86) 44%,
+      rgba(209, 250, 229, 0.84) 80%,
+      rgba(187, 247, 208, 0.92) 100%
+    );
+    --lc-glass-card: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.94) 0%,
+      rgba(253, 232, 243, 0.84) 46%,
+      rgba(209, 250, 229, 0.84) 82%,
+      rgba(182, 238, 212, 0.92) 100%
+    );
+  }
+
+  [data-theme="midnight"] {
+    --lc-blur-window: blur(12px) saturate(165%);
+    --lc-blur-card: blur(10px) saturate(155%);
+    --lc-glass-surface: linear-gradient(
+      165deg,
+      rgba(255, 92, 124, 0.30) 0%,
+      rgba(217, 4, 41, 0.22) 34%,
+      rgba(42, 4, 12, 0.86) 70%,
+      rgba(14, 1, 4, 0.96) 100%
+    );
+    --lc-glass-card: linear-gradient(
+      160deg,
+      rgba(255, 92, 124, 0.26) 0%,
+      rgba(225, 29, 72, 0.18) 36%,
+      rgba(38, 4, 11, 0.88) 72%,
+      rgba(12, 1, 4, 0.96) 100%
+    );
+  }
+
+  [data-theme="bit"] {
+    --lc-blur-window: blur(12px) saturate(155%);
+    --lc-blur-card: blur(10px) saturate(150%);
+    --lc-glass-surface: linear-gradient(
+      165deg,
+      rgba(110, 231, 183, 0.26) 0%,
+      rgba(214, 200, 180, 0.16) 34%,
+      rgba(12, 34, 28, 0.86) 70%,
+      rgba(6, 18, 15, 0.96) 100%
+    );
+  }
+
+  .nl-home-window-glass {
+    border-radius: 24px !important;
+  }
+
+  .nl-home-window-body {
+    border-radius: 24px !important;
+  }
+
+  .nl-lattice-glass {
+    border-radius: 18px !important;
+  }
+}
+
+/* توافق تام مع المتصفحات التي لا تدعم backdrop-filter */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nl-home-window-glass,
+  .nl-lattice-glass,
+  #vault-playlist,
+  .nl-hl-player,
+  .me-bit-cta,
+  .nl-lens-cta,
+  .nld-glass-window,
+  .nl-os-window-glass,
+  .nl-tube-root,
+  .nl-contact-card,
+  .nl-tv-sidebar,
+  .nl-games-window,
+  .nl-public-card,
+  .auth-modal {
+    background: var(--lc-glass-surface) !important;
+  }
+}
+

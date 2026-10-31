@@ -54,10 +54,10 @@ export function CountryGrid({
   }, [countries, searchTerm]);
 
   return (
-    <div className="flex flex-col h-full w-full max-w-sm pointer-events-auto bg-neutral-950/45 backdrop-blur-lg border border-white/10 rounded-3xl overflow-hidden shadow-2xl transition-all duration-300">
+    <div className="nl-tv-sidebar flex flex-col h-full w-full max-w-sm pointer-events-auto bg-neutral-950/45 backdrop-blur-lg border border-white/10 rounded-3xl overflow-hidden shadow-2xl transition-all duration-300">
       
       {/* Sidebar Header */}
-      <div className="p-4 border-b border-white/5 flex flex-col gap-3">
+      <div className="nl-tv-sidebar-head p-4 border-b border-white/5 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Globe className="w-5 h-5 text-red-500" />
           <h3 className="text-base font-bold text-zinc-100 tracking-wide font-sans">
@@ -73,7 +73,7 @@ export function CountryGrid({
             placeholder={t("nltv.searchCountry") || "Search countries..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-900/80 border border-white/5 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 transition-all font-sans"
+            className="nl-tv-search w-full pl-9 pr-4 py-2 text-xs bg-neutral-900/80 border border-white/5 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 transition-all font-sans"
           />
           <TvAutocomplete
             searchTerm={searchTerm}
@@ -117,9 +117,9 @@ export function CountryGrid({
                     onSelectCountry(c);
                   }
                 }}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-left cursor-pointer transition-all duration-300 select-none ${
+                className={`nl-tv-country-item w-full flex items-center justify-between px-4 py-3 rounded-xl border text-left cursor-pointer transition-all duration-300 select-none ${
                   isSelected
-                    ? "bg-red-500/10 border-red-500/40 text-white"
+                    ? "is-selected bg-red-500/10 border-red-500/40 text-white"
                     : "bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10 text-zinc-300 hover:text-white"
                 }`}
               >

@@ -4,33 +4,33 @@
    ===================================================================== */
 
 [data-theme="midnight"] {
-  /* خلفيات زجاجية */
-  --m-surface:      rgba(34, 42, 78, 0.45);
-  --m-surface-2:    rgba(46, 56, 100, 0.55);
-  --m-surface-soft: rgba(28, 36, 66, 0.35);
-  --m-shell:        linear-gradient(135deg, rgba(48,58,104,0.45), rgba(18,24,50,0.55));
+  /* خلفيات زجاجية — Prompt 3: 3D Glassmorphism with Vibrant Neon Accents */
+  --m-surface:      rgba(22, 32, 68, 0.48);
+  --m-surface-2:    rgba(34, 46, 94, 0.58);
+  --m-surface-soft: rgba(18, 28, 60, 0.38);
+  --m-shell:        linear-gradient(135deg, rgba(36, 52, 104, 0.52), rgba(14, 20, 48, 0.68));
 
   /* حواف ولمعان */
-  --glass-border:        rgba(180, 196, 255, 0.16);
-  --glass-border-strong: rgba(198, 210, 255, 0.30);
-  --glass-hi: linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.05) 32%, rgba(255,255,255,0) 60%);
+  --glass-border:        rgba(125, 211, 252, 0.24);
+  --glass-border-strong: rgba(192, 132, 252, 0.42);
+  --glass-hi: linear-gradient(135deg, rgba(255,255,255,0.24) 0%, rgba(125,211,252,0.08) 36%, rgba(255,255,255,0) 65%);
 
   /* نيومورفيزم (مصدر ضوء مزدوج) */
-  --neu-dark: rgba(0,0,0,0.50);
-  --neu-light: rgba(120,140,220,0.10);
+  --neu-dark: rgba(2, 4, 14, 0.55);
+  --neu-light: rgba(56, 189, 248, 0.14);
   --neu:    6px 6px 16px var(--neu-dark), -5px -5px 14px var(--neu-light);
   --neu-sm: 3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light);
   --neu-inset: inset 4px 4px 10px var(--neu-dark), inset -3px -3px 8px var(--neu-light);
 
-  /* أنصاف أقطار بنمط iOS */
-  --r-xl: 30px; --r-lg: 24px; --r-md: 18px; --r-sm: 13px; --r-pill: 999px;
+  /* أنصاف أقطار بنمط iOS 26 */
+  --r-xl: 30px; --r-lg: 24px; --r-md: 18px; --r-sm: 14px; --r-pill: 999px;
 
-  /* ألوان */
-  --m-accent: #FF8C42; --m-accent-rgb: 255,140,66;
-  --m-accent-soft: #FFB066; --m-accent-2: #8b94ff;
-  --m-text: #eef1ff;
-  --m-text-2: rgba(208,216,248,0.72);
-  --m-text-3: rgba(172,184,226,0.45);
+  /* ألوان نيون مشرقة متناغمة (Prompt 3) */
+  --m-accent: #38bdf8; --m-accent-rgb: 56, 189, 248;
+  --m-accent-soft: #a855f7; --m-accent-2: #f472b6;
+  --m-text: #f4f7ff;
+  --m-text-2: rgba(214, 226, 255, 0.78);
+  --m-text-3: rgba(165, 180, 228, 0.52);
 
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
 }

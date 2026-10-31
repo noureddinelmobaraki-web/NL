@@ -1,81 +1,82 @@
 [data-theme="bit"] {
-  --bg-page:             #080816;
-  --bg-page-rgb:         8, 8, 22;
-  --bg-glass:            rgba(8, 8, 22, 0.88);
-  --bg-glass-strong:     rgba(8, 8, 22, 0.97);
-  --paper-color:         #12122a;
-  --ink-color:           #00ff88;
-  --text-primary:        #00ff88;
-  --text-secondary:      #ff00cc;
-  --text-muted:          #5566aa;
-  --text-inverse:        #080816;
-  --border-subtle:       #00ff88;
-  --manga-shadow-color:  #ff00cc;
-  --hero-overlay:        linear-gradient(to bottom, rgba(8,8,22,0.55) 0%, rgba(8,8,22,0.96) 100%);
-  --halftone-color:       rgba(0, 255, 136, 0.07);
-  --font-manga:          'Press Start 2P', monospace;
-  --font-hand:           'Press Start 2P', monospace;
-  --lyric-active-color:  #ffff00;
-  --lyric-active-shadow: rgba(255, 255, 0, 0.7);
-  --accent-indigo:       #00ccff;
-  --accent-red:          #ff0044;
+  /* === PROMPT 6: CALMING GREEN & EARTHY FROSTED GLASS PANELS === */
+  --bg-page:             #071411;
+  --bg-page-rgb:         7, 20, 17;
+  --bg-glass:            rgba(16, 42, 35, 0.64);
+  --bg-glass-strong:     rgba(12, 34, 28, 0.82);
+  --paper-color:         #0d231e;
+  --ink-color:           #6ee7b7;
+  --text-primary:        #ecfdf5;
+  --text-secondary:      #d6c8b4;
+  --text-muted:          rgba(167, 243, 208, 0.62);
+  --text-inverse:        #071411;
+  --border-subtle:       rgba(110, 231, 183, 0.28);
+  --manga-shadow-color:  rgba(16, 185, 129, 0.22);
+  --hero-overlay:        linear-gradient(to bottom, rgba(7, 20, 17, 0.45) 0%, rgba(7, 20, 17, 0.88) 100%);
+  --halftone-color:      rgba(52, 211, 153, 0.06);
+  --font-manga:          -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --font-hand:           -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --lyric-active-color:  #34d399;
+  --lyric-active-shadow: rgba(52, 211, 153, 0.55);
+  --accent-indigo:       #34d399;
+  --accent-red:          #d6c8b4;
 
-  /* === THEMED SECTION REFACTOR — BIT === */
+  /* === THEMED SECTION REFACTOR — CALMING GREEN & EARTHY GLASS === */
   --window-chrome-display: none;
   --window-border: none;
   --window-shadow: none;
   --window-bg: transparent;
 
   --hero-header-align: flex-end;
-  --hero-card-bg: transparent;
-  --hero-card-border: 4px solid var(--ink-color);
-  --hero-card-shadow: none;
+  --hero-card-bg: rgba(12, 34, 28, 0.48);
+  --hero-card-border: 1px solid rgba(110, 231, 183, 0.30);
+  --hero-card-shadow: 0 20px 44px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.24);
   --hero-bg-image-url: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg_bit.webp');
-  --hero-bg-filter: blur(3px);
-  --hero-bg-opacity: 1;
+  --hero-bg-filter: blur(2px) saturate(0.95);
+  --hero-bg-opacity: 0.65;
   --hero-bg-blend: normal;
-  --hero-overlay-bg: rgba(8,8,22,0.4);
+  --hero-overlay-bg: rgba(7, 20, 17, 0.48);
 
   --hero-title-font: var(--font-manga);
-  --hero-title-weight: 900;
-  --hero-title-color: var(--text-primary);
-  --hero-title-size: clamp(2rem, 6vw, 5rem);
-  --hero-title-shadow: 0 0 6px currentColor, 0 0 12px currentColor, 0 0 24px rgba(0, 255, 136, 0.4);
+  --hero-title-weight: 800;
+  --hero-title-color: #ecfdf5;
+  --hero-title-size: clamp(2rem, 6vw, 4.6rem);
+  --hero-title-shadow: 0 4px 24px rgba(16, 185, 129, 0.28);
   --hero-title-style: normal;
-  --hero-title-lines: 1;
-  --hero-title-transform: uppercase;
+  --hero-title-lines: 1.05;
+  --hero-title-transform: none;
 
-  --hero-divider-top: 2px solid var(--border-subtle);
-  --hero-divider-style: italic;
+  --hero-divider-top: 1px solid rgba(110, 231, 183, 0.26);
+  --hero-divider-style: normal;
 
   --hero-loc-font: var(--font-manga);
-  --hero-loc-size: 1.25rem;
-  --hero-loc-weight: bold;
-  --hero-loc-shadow: 2px 2px 0px var(--manga-shadow-color);
-  --hero-loc-prefix: "";
-  --hero-loc-suffix: " 📍";
+  --hero-loc-size: 1.15rem;
+  --hero-loc-weight: 600;
+  --hero-loc-shadow: none;
+  --hero-loc-prefix: "🌿 ";
+  --hero-loc-suffix: "";
 
-  --hero-alias-bg: var(--ink-color);
-  --hero-alias-border: 1px solid var(--border-subtle);
-  --hero-alias-color: var(--text-inverse);
-  --hero-alias-size: 0.875rem;
-  --hero-alias-tracking: normal;
+  --hero-alias-bg: rgba(52, 211, 153, 0.16);
+  --hero-alias-border: 1px solid rgba(214, 200, 180, 0.38);
+  --hero-alias-color: #d1fae5;
+  --hero-alias-size: 0.8rem;
+  --hero-alias-tracking: 0.03em;
   --hero-alias-transform: none;
   --hero-alias-font: var(--font-manga);
   --hero-alias-deco: none;
-  --hero-alias-padding: 0.25rem 0.75rem;
+  --hero-alias-padding: 0.28rem 0.8rem;
 
   --hero-bio-font: var(--font-hand);
-  --hero-bio-size: 1.5rem;
-  --hero-bio-shadow: 2px 2px 4px var(--manga-shadow-color), 0 0 20px var(--lyric-active-shadow);
-  --hero-bio-filter: drop-shadow(2px 2px 2px var(--manga-shadow-color));
+  --hero-bio-size: 1.2rem;
+  --hero-bio-shadow: none;
+  --hero-bio-filter: none;
   --hero-bio-style: normal;
 
   --hero-profile-width: 12rem;
-  --hero-profile-border: 3px solid var(--ink-color);
-  --hero-profile-shadow: none;
-  --hero-profile-transform: rotate(2deg);
-  --hero-profile-hover-transform: rotate(0deg);
+  --hero-profile-border: 2px solid rgba(110, 231, 183, 0.42);
+  --hero-profile-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+  --hero-profile-transform: none;
+  --hero-profile-hover-transform: none;
   --hero-profile-display: none;
 
   --streaming-titlebar-display: none;
@@ -97,12 +98,12 @@
   --social-content-dark-display: none;
   --social-content-light-display: none;
   --social-content-default-display: flex;
-  --social-card-rotate: 0.5deg;
-  --social-card-radius: 8px 15px 5px 22px / 22px 5px 15px 8px;
+  --social-card-rotate: 0deg;
+  --social-card-radius: 22px;
   --social-card-shadow: none;
 
   --yt-highlights-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlights_bit.webp');
   --vault-playlist-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_cover_bit.webp');
-  --highlights-vault-radius: 0px;
-  --highlights-yt-radius: 0px;
+  --highlights-vault-radius: 24px;
+  --highlights-yt-radius: 24px;
 }

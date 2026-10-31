@@ -45,7 +45,7 @@ export function TvControls({
 
   return (
     <div className="w-full max-w-xl mx-auto px-4 pointer-events-auto">
-      <div className="bg-neutral-950/75 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-4 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 transition-all duration-300">
+      <div className="nl-tv-controls-bar bg-neutral-950/75 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-4 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 transition-all duration-300">
         
         {/* Flag and Channel Name */}
         <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">

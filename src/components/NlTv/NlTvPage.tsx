@@ -268,7 +268,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
             className="absolute top-0 inset-x-0 p-5 flex items-center justify-between z-[40] pointer-events-none"
           >
             {/* Branding title & indicator */}
-            <div className="flex items-center gap-3 bg-neutral-950/45 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl">
+            <div className="nl-tv-badge flex items-center gap-3 bg-neutral-950/45 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl pointer-events-auto">
               <Tv className="w-5 h-5 text-red-500" />
               <div className="text-left">
                 <h1 className="text-sm font-black text-zinc-100 tracking-wide font-sans">
@@ -291,7 +291,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
               role="button"
               aria-label={t("movies.close") || "Close"}
               tabIndex={0}
-              className="p-3 bg-neutral-950/45 hover:bg-red-600/20 hover:border-red-600/40 border border-white/10 rounded-full text-zinc-400 hover:text-white transition duration-300 pointer-events-auto active:scale-95 cursor-pointer backdrop-blur-md"
+              className="nl-tv-close p-3 bg-neutral-950/45 hover:bg-red-600/20 hover:border-red-600/40 border border-white/10 rounded-full text-zinc-400 hover:text-white transition duration-300 pointer-events-auto active:scale-95 cursor-pointer backdrop-blur-md"
             >
               <X size={18} />
             </button>
@@ -392,7 +392,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
       {/* 5. Center display notice if no channel is active */}
       {!selectedChannel && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 px-6">
-          <div className="bg-neutral-950/65 backdrop-blur-md border border-white/5 p-8 rounded-3xl max-w-sm text-center shadow-2xl">
+          <div className="nl-tv-empty-card bg-neutral-950/65 backdrop-blur-md border border-white/5 p-8 rounded-3xl max-w-sm text-center shadow-2xl">
             <Tv className="w-16 h-16 text-zinc-650 mx-auto mb-4 animate-pulse" />
             <h2 className="text-xl font-bold text-zinc-100 mb-2">
               {t("nltv.title") || "NL TV"}

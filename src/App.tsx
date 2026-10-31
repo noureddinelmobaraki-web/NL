@@ -131,6 +131,7 @@ import { MobileQAOverlay } from "./components/dev/MobileQAOverlay";
 import SearchOverlay from './features/search/SearchOverlay'
 import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
+import { initLiquidGlassPhysics } from './utils/liquidGlassPhysics';
 
 const PENDING_SONG_KEY = 'nl:pending-song';
 function readPendingSong(): string | null {
@@ -157,6 +158,10 @@ function AppInner() {
     applyThemeUtil(theme);
     savePrefs({ theme });
   }, [theme]);
+
+  useEffect(() => {
+    return initLiquidGlassPhysics();
+  }, []);
 
   useEffect(() => {
     const pending = readPendingSong();

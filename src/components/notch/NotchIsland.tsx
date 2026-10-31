@@ -142,6 +142,7 @@ function NotchIslandInner() {
   const {
     offset,
     dragging,
+    autoDodging,
     movedRef,
     onPointerDown,
     onPointerMove,
@@ -315,13 +316,19 @@ function NotchIslandInner() {
 
   const surfaceTransition = reduceMotion
     ? { duration: 0 }
-    : { type: "spring" as const, stiffness: 320, damping: 30, mass: 0.9 };
+    : { type: "spring" as const, stiffness: 410, damping: 26, mass: 0.82 };
   const panelInitial = reduceMotion
     ? { opacity: 0 }
-    : { opacity: 0, scale: 0.94 };
-  const panelAnimate = reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 };
-  const panelExit = reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94 };
-  const panelTransition = reduceMotion ? { duration: 0 } : { duration: 0.18 };
+    : { opacity: 0, scale: 0.88, y: -6 };
+  const panelAnimate = reduceMotion
+    ? { opacity: 1 }
+    : { opacity: 1, scale: 1, y: 0 };
+  const panelExit = reduceMotion
+    ? { opacity: 0 }
+    : { opacity: 0, scale: 0.9, y: -4 };
+  const panelTransition = reduceMotion
+    ? { duration: 0 }
+    : { type: "spring" as const, stiffness: 440, damping: 28, mass: 0.72 };
 
   return createPortal(
     <div
@@ -337,7 +344,8 @@ function NotchIslandInner() {
         data-theme-skin={theme}
         data-page={pageKey}
         data-light={lightPanel ? "true" : "false"}
-        className={`notch-island ${device === "desktop" ? "is-desktop" : "is-mobile"}${dragging ? " is-dragging" : ""}`}
+        data-dodging={autoDodging ? "true" : "false"}
+        className={`notch-island nl-notch-island ${device === "desktop" ? "is-desktop" : "is-mobile"}${dragging ? " is-dragging" : ""}${autoDodging ? " is-dodging" : ""}`}
         style={styleVars}
         transition={surfaceTransition}
         onPointerDown={onPointerDown}
@@ -376,6 +384,11 @@ function NotchIslandInner() {
           }
         }}
       >
+        <span className="notch-island__smoke" aria-hidden="true">
+          <span className="notch-island__smoke-wisp notch-island__smoke-wisp--1" />
+          <span className="notch-island__smoke-wisp notch-island__smoke-wisp--2" />
+          <span className="notch-island__smoke-core" />
+        </span>
         <span className="notch-island__gloss" aria-hidden="true" />
 
         {state === "live" &&
@@ -391,6 +404,7 @@ function NotchIslandInner() {
             <OrbIcon size={18} strokeWidth={2.2} />
           </span>
         )}
+
 
         <AnimatePresence>
           {state === "open" && (
@@ -413,7 +427,8 @@ function NotchIslandInner() {
                   branch={branch}
                   onBranch={selectBranch}
                   onMode={(id: Theme) => {
-                    setTheme(id);
+                    const nextTheme: Theme = theme === id ? "midnight" : id;
+                    setTheme(nextTheme);
                     close();
                     vibrate();
                   }}

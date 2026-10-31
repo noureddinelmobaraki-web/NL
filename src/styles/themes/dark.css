@@ -1,119 +1,119 @@
 [data-theme="dark"] {
-  /* === EDITORIAL VOID === */
-  --bg-primary:        #000000;
-  --bg-secondary:      #0a0a0a;
-  --bg-card:           rgba(255, 255, 255, 0.015);
-  --bg-card-hover:     rgba(255, 255, 255, 0.05);
-  --border-primary:    rgba(255, 255, 255, 0.04);
-  --border-accent:     #B8FF3F;
-  --bg-page:           #000000;
-  --bg-glass:          rgba(0, 0, 0, 0.88);
-  --bg-glass-strong:   rgba(0, 0, 0, 0.97);
-  --paper-color:       #0a0a0a;
-  --ink-color:         #B8FF3F;
+  /* === PROMPT 4: 3D RENDER GLOSSY FINISH ON DEEP BLACK — IRIDESCENT BLUE, PURPLE & PINK === */
+  --bg-primary:        #03040a;
+  --bg-secondary:      #080b16;
+  --bg-card:           rgba(96, 165, 250, 0.08);
+  --bg-card-hover:     rgba(168, 85, 247, 0.14);
+  --border-primary:    rgba(192, 132, 252, 0.24);
+  --border-accent:     #a855f7;
+  --bg-page:           #03040a;
+  --bg-glass:          rgba(12, 16, 32, 0.62);
+  --bg-glass-strong:   rgba(16, 20, 42, 0.78);
+  --paper-color:       #080b16;
+  --ink-color:         #c084fc;
   
-  --text-primary:      #FFFFFF;
-  --text-secondary:    #888888;
-  --text-muted:        #888888;
-  --text-accent:       #B8FF3F;
-  --text-inverse:      #000000;
+  --text-primary:      #f8fafc;
+  --text-secondary:    rgba(226, 232, 240, 0.78);
+  --text-muted:        rgba(148, 163, 184, 0.65);
+  --text-accent:       #c084fc;
+  --text-inverse:      #03040a;
   
-  --accent:            #B8FF3F;
-  --accent-hover:      #CCFF5A;
-  --accent-glow:       rgba(184, 255, 63, 0.15);
+  --accent:            #a855f7;
+  --accent-hover:      #ec4899;
+  --accent-glow:       rgba(168, 85, 247, 0.32);
   
-  --name-font:         Georgia, "Times New Roman", serif;
-  --name-font-size:    clamp(3.5rem, 10vw, 8rem);
-  --name-font-style:   italic;
-  --name-font-weight:  900;
-  --name-letter-spacing: -0.02em;
-  --name-line-height:  0.9;
+  --name-font:         -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --name-font-size:    clamp(3.2rem, 9vw, 6.5rem);
+  --name-font-style:   normal;
+  --name-font-weight:  800;
+  --name-letter-spacing: -0.025em;
+  --name-line-height:  0.96;
   
-  --nav-font:          'Share Tech Mono', monospace;
-  --nav-size:          0.7rem;
-  --nav-letter-spacing: 0.15em;
+  --nav-font:          -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --nav-size:          0.74rem;
+  --nav-letter-spacing: 0.04em;
   
-  --tag-bg:            transparent;
-  --tag-border:        var(--accent);
-  --tag-text:          var(--accent);
+  --tag-bg:            rgba(168, 85, 247, 0.14);
+  --tag-border:        rgba(192, 132, 252, 0.42);
+  --tag-text:          #e9d5ff;
   
-  --btn-bg:            transparent;
-  --btn-border:        var(--text-primary);
-  --btn-text:          var(--text-primary);
-  --btn-hover-bg:      var(--text-primary);
-  --btn-hover-text:    #000000;
+  --btn-bg:            rgba(96, 165, 250, 0.12);
+  --btn-border:        rgba(192, 132, 252, 0.38);
+  --btn-text:          #f8fafc;
+  --btn-hover-bg:      rgba(168, 85, 247, 0.28);
+  --btn-hover-text:    #ffffff;
   
-  --hero-bg:           #000000;
-  --hero-image-filter: grayscale(100%) contrast(1.1);
+  --hero-bg:           #03040a;
+  --hero-image-filter: contrast(1.08) saturate(1.15);
   
-  --grain-opacity:     0.18;
+  --grain-opacity:     0.04;
   --grain-url:         url("data:image/svg+xml,%3Csvg viewBox='0 0 128 128' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
  
-  --transition-speed:  0.4s;
-  --transition-ease:   cubic-bezier(0.16, 1, 0.3, 1);
-  --manga-shadow-color:  rgba(184, 255, 63, 0.08);
-  --border-subtle:       rgba(255, 255, 255, 0.04);
-  --lyric-active-color:  #B8FF3F;
-  --lyric-active-shadow: rgba(184, 255, 63, 0.6);
-  --accent-indigo:       #B8FF3F;
-  --accent-red:          #ff2d78;
+  --transition-speed:  0.36s;
+  --transition-ease:   cubic-bezier(0.22, 1, 0.36, 1);
+  --manga-shadow-color:  rgba(168, 85, 247, 0.18);
+  --border-subtle:       rgba(192, 132, 252, 0.18);
+  --lyric-active-color:  #ec4899;
+  --lyric-active-shadow: rgba(236, 72, 153, 0.65);
+  --accent-indigo:       #60a5fa;
+  --accent-red:          #ec4899;
  
-  /* === THEMED SECTION REFACTOR — DARK === */
+  /* === THEMED SECTION REFACTOR — DARK IRIDESCENT GLASS === */
   --window-chrome-display: none;
   --window-border: none;
   --window-shadow: none;
   --window-bg: transparent;
  
   --hero-header-align: flex-end;
-  --hero-card-bg: rgba(0,0,0,0.92);
-  --hero-card-border: 1px solid rgba(184,255,63,0.2);
-  --hero-card-shadow: 0 0 40px rgba(184,255,63,0.05), inset 0 0 30px rgba(0,0,0,0.5);
+  --hero-card-bg: rgba(8, 11, 24, 0.56);
+  --hero-card-border: 1px solid rgba(192, 132, 252, 0.28);
+  --hero-card-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 40px rgba(168, 85, 247, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.28);
   --hero-bg-image-url: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bgdark.webp');
-  --hero-bg-filter: blur(3px) grayscale(1) contrast(1.1);
-  --hero-bg-opacity: 0.4;
-  --hero-bg-blend: luminosity;
-  --hero-overlay-bg: rgba(0,0,0,0.6);
+  --hero-bg-filter: blur(2px) saturate(1.2) contrast(1.08);
+  --hero-bg-opacity: 0.45;
+  --hero-bg-blend: normal;
+  --hero-overlay-bg: linear-gradient(180deg, rgba(3, 4, 10, 0.35) 0%, rgba(3, 4, 10, 0.78) 100%);
  
-  --hero-title-font: Georgia, "Times New Roman", serif;
-  --hero-title-weight: 900;
+  --hero-title-font: var(--name-font);
+  --hero-title-weight: 800;
   --hero-title-color: #ffffff;
-  --hero-title-size: clamp(2.5rem, 11vw, 3.75rem);
-  --hero-title-shadow: 0 0 30px rgba(184,255,63,0.4), 0 0 60px rgba(184,255,63,0.2), 4px 4px 0px rgba(0,0,0,0.8);
-  --hero-title-style: italic;
-  --hero-title-lines: 0.9;
+  --hero-title-size: clamp(2.4rem, 9vw, 4.2rem);
+  --hero-title-shadow: 0 0 28px rgba(96, 165, 250, 0.42), 0 0 56px rgba(236, 72, 153, 0.28);
+  --hero-title-style: normal;
+  --hero-title-lines: 1.02;
   --hero-title-transform: none;
  
-  --hero-divider-top: 2px solid var(--border-subtle);
-  --hero-divider-style: italic;
+  --hero-divider-top: 1px solid rgba(192, 132, 252, 0.24);
+  --hero-divider-style: normal;
  
-  --hero-loc-font: var(--font-mono, monospace);
-  --hero-loc-size: 1.25rem;
-  --hero-loc-weight: bold;
+  --hero-loc-font: var(--name-font);
+  --hero-loc-size: 1.1rem;
+  --hero-loc-weight: 600;
   --hero-loc-shadow: none;
   --hero-loc-prefix: "";
   --hero-loc-suffix: " 📍";
  
-  --hero-alias-bg: transparent;
-  --hero-alias-border: 1px solid #B8FF3F;
-  --hero-alias-color: #B8FF3F;
-  --hero-alias-size: 0.6rem;
-  --hero-alias-tracking: 0.2em;
+  --hero-alias-bg: rgba(168, 85, 247, 0.16);
+  --hero-alias-border: 1px solid rgba(236, 72, 153, 0.42);
+  --hero-alias-color: #f5d0fe;
+  --hero-alias-size: 0.72rem;
+  --hero-alias-tracking: 0.08em;
   --hero-alias-transform: uppercase;
-  --hero-alias-font: var(--font-mono, monospace);
+  --hero-alias-font: var(--nav-font);
   --hero-alias-deco: none;
-  --hero-alias-padding: 0.25rem 0.75rem;
+  --hero-alias-padding: 0.3rem 0.85rem;
  
-  --hero-bio-font: var(--font-hand);
-  --hero-bio-size: 1.5rem;
-  --hero-bio-shadow: 2px 2px 4px var(--manga-shadow-color), 0 0 20px var(--lyric-active-shadow);
-  --hero-bio-filter: drop-shadow(2px 2px 2px var(--manga-shadow-color));
+  --hero-bio-font: var(--name-font);
+  --hero-bio-size: 1.15rem;
+  --hero-bio-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+  --hero-bio-filter: none;
   --hero-bio-style: normal;
  
   --hero-profile-width: 12rem;
-  --hero-profile-border: 3px solid var(--ink-color);
-  --hero-profile-shadow: none;
-  --hero-profile-transform: rotate(2deg);
-  --hero-profile-hover-transform: rotate(0deg);
+  --hero-profile-border: 2px solid rgba(192, 132, 252, 0.45);
+  --hero-profile-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  --hero-profile-transform: none;
+  --hero-profile-hover-transform: none;
   --hero-profile-display: none;
  
   --streaming-titlebar-display: none;
@@ -136,7 +136,7 @@
   --social-content-light-display: none;
   --social-content-default-display: none;
   --social-card-rotate: 0deg;
-  --social-card-radius: 0px;
+  --social-card-radius: 22px;
   --social-card-shadow: none;
  
   color-scheme: dark;
@@ -148,6 +148,6 @@
  
   --yt-highlights-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightsdark.webp');
   --vault-playlist-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_coverdark.webp');
-  --highlights-vault-radius: 0px;
-  --highlights-yt-radius: 0px;
+  --highlights-vault-radius: 24px;
+  --highlights-yt-radius: 24px;
 }

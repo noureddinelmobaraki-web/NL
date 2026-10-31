@@ -64,16 +64,16 @@ export function ChannelGrid({
   }, [channels, searchTerm]);
 
   return (
-    <div className="flex flex-col h-full w-full pointer-events-auto bg-neutral-950/45 backdrop-blur-lg border border-white/10 rounded-3xl overflow-hidden shadow-2xl transition-all duration-300">
+    <div className="nl-tv-sidebar flex flex-col h-full w-full pointer-events-auto bg-neutral-950/45 backdrop-blur-lg border border-white/10 rounded-3xl overflow-hidden shadow-2xl transition-all duration-300">
       
       {/* Search Header */}
-      <div className="p-4 border-b border-white/5 flex flex-col gap-3">
+      <div className="nl-tv-sidebar-head p-4 border-b border-white/5 flex flex-col gap-3">
         
         {/* Navigation & Title Group */}
         <div className="flex items-center gap-2 justify-between">
           <button
             onClick={onBack}
-            className="p-1 px-2.5 bg-white/5 hover:bg-white/10 active:scale-95 border border-white/5 rounded-lg text-zinc-300 hover:text-white transition cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+            className="nl-tv-back-btn p-1 px-2.5 bg-white/5 hover:bg-white/10 active:scale-95 border border-white/5 rounded-lg text-zinc-300 hover:text-white transition cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
           >
             {isRtl ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
             <span>{t("nltv.back") || "Back"}</span>
@@ -97,7 +97,7 @@ export function ChannelGrid({
             placeholder={t("nltv.searchChannel") || "Search channels..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-900/80 border border-white/5 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 transition-all font-sans"
+            className="nl-tv-search w-full pl-9 pr-4 py-2 text-xs bg-neutral-900/80 border border-white/5 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 transition-all font-sans"
           />
           <TvAutocomplete
             searchTerm={searchTerm}
@@ -143,9 +143,9 @@ export function ChannelGrid({
                       onSelectChannel(c);
                     }
                   }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-3 rounded-2xl border text-center transition-all duration-300 select-none cursor-pointer h-[105px] overflow-hidden group ${
+                  className={`nl-tv-channel-card flex flex-col items-center justify-center gap-2.5 p-3 rounded-2xl border text-center transition-all duration-300 select-none cursor-pointer h-[105px] overflow-hidden group ${
                     isSelected
-                      ? "bg-red-500/15 border-red-500/60 shadow-lg text-white"
+                      ? "is-selected bg-red-500/15 border-red-500/60 shadow-lg text-white"
                       : "bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10 text-zinc-300 hover:text-white"
                   }`}
                 >

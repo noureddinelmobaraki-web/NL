@@ -29,128 +29,143 @@ export function AppNavGrid({
   return (
     <m.div 
       variants={itemVariants} 
-      className="nl-top-nav"
+      className="nl-top-nav nl-top-nav--worm"
+      role="navigation"
+      aria-label="Primary Sections"
     >
-      <NavButton 
-        icon={Camera} 
-        label={t('nav.mebit').toUpperCase()} 
-        onClick={(e) => {
-          setGenieOriginFromElement(e.currentTarget);
-          onScrollToSection('me-bit-gallery');
-        }} 
-        theme={resolvedTheme} 
-      />
-      <NavButton 
-        icon={Music2} 
-        label={t('nav.songs').toUpperCase()} 
-        onClick={(e) => {
-          setGenieOriginFromElement(e.currentTarget);
-          onScrollToSection('my-songs-section');
-        }} 
-        theme={resolvedTheme} 
-      />
-      <NavButton 
-        icon={Pencil} 
-        label={t('nav.drawings').toUpperCase()} 
-        onClick={(e) => {
-          setGenieOriginFromElement(e.currentTarget);
-          onScrollToSection('drawings-section');
-        }} 
-        theme={resolvedTheme} 
-      />
-      <NavButton 
-        icon={Aperture} 
-        label={t('nav.lens').toUpperCase()} 
-        onClick={(e) => { 
-          setGenieOriginFromElement(e.currentTarget);
-          audioManager.play('lens'); 
-          onOpenLens(); 
-        }} 
-        theme={resolvedTheme} 
-      />
-      <NavButton 
-        icon={Gamepad2} 
-        label={t('nav.games').toUpperCase()} 
-        onClick={(e) => {
-          setGenieOriginFromElement(e.currentTarget);
-          openGames();
-        }} 
-        onMouseEnter={() => {
-          import('../Games/GamesPage').catch(() => {});
-        }}
-        onPointerDown={() => {
-          import('../Games/GamesPage').catch(() => {});
-        }}
-        theme={resolvedTheme} 
-      />
-      <NavButton 
-        icon={Clapperboard} 
-        label={moviesSeriesLabel.toUpperCase()} 
-        onClick={(e) => {
-          setGenieOriginFromElement(e.currentTarget);
-          openMovies();
-        }} 
-        onMouseEnter={() => {
-          import('../Movies/MoviesPage').catch(() => {});
-        }}
-        onPointerDown={() => {
-          import('../Movies/MoviesPage').catch(() => {});
-        }}
-        theme={resolvedTheme} 
-      />
-      <NavButton
-        icon={Users}
-        label={(i18n.exists('nav.accounts') ? t('nav.accounts') : 'Accounts').toUpperCase()}
-        onClick={(e) => { setGenieOriginFromElement(e.currentTarget); openAccounts(); }}
-        onMouseEnter={() => { import('../../features/accounts/AccountsPage').catch(() => {}); }}
-        onPointerDown={() => { import('../../features/accounts/AccountsPage').catch(() => {}); }}
-        theme={resolvedTheme}
-      />
-      <NavButton 
-        icon={Tv} 
-        label={t('nav.nltv').toUpperCase()} 
-        onClick={(e) => {
-          setGenieOriginFromElement(e.currentTarget);
-          openTv();
-        }} 
-        onMouseEnter={() => {
-          import('../NlTv/NlTvPage').catch(() => {});
-        }}
-        onPointerDown={() => {
-          import('../NlTv/NlTvPage').catch(() => {});
-        }}
-        theme={resolvedTheme} 
-      />
-      <NavButton 
-        icon={Monitor} 
-        label={t('xp.nav').toUpperCase()} 
-        onClick={(e) => {
-          setGenieOriginFromElement(e.currentTarget);
-          openXp();
-        }} 
-        onMouseEnter={() => {
-          import('../WindowsXp/WindowsXpPage').catch(() => {});
-        }}
-        onPointerDown={() => {
-          import('../WindowsXp/WindowsXpPage').catch(() => {});
-        }}
-        theme={resolvedTheme} 
-      />
-      <NavButton 
-        icon={AudioLines} 
-        label={t('nav.music').toUpperCase()} 
-        onClick={(e) => {
-          setGenieOriginFromElement(e.currentTarget);
-          openMusic();
-        }} 
-        onMouseEnter={() => {
-          import('../../features/music/MusicPage').catch(() => {});
-        }}
-        onPointerDown={() => {
-          import('../../features/music/MusicPage').catch(() => {});
-        }}
-        theme={resolvedTheme} 
-      />
+      <div className="nl-top-nav__grid">
+        <NavButton 
+          index={0}
+          icon={Camera} 
+          label={t('nav.mebit').toUpperCase()} 
+          onClick={(e) => {
+            setGenieOriginFromElement(e.currentTarget);
+            onScrollToSection('me-bit-gallery');
+          }} 
+          theme={resolvedTheme} 
+        />
+        <NavButton 
+          index={1}
+          icon={Music2} 
+          label={t('nav.songs').toUpperCase()} 
+          onClick={(e) => {
+            setGenieOriginFromElement(e.currentTarget);
+            onScrollToSection('my-songs-section');
+          }} 
+          theme={resolvedTheme} 
+        />
+        <NavButton 
+          index={2}
+          icon={Pencil} 
+          label={t('nav.drawings').toUpperCase()} 
+          onClick={(e) => {
+            setGenieOriginFromElement(e.currentTarget);
+            onScrollToSection('drawings-section');
+          }} 
+          theme={resolvedTheme} 
+        />
+        <NavButton 
+          index={3}
+          icon={Aperture} 
+          label={t('nav.lens').toUpperCase()} 
+          onClick={(e) => { 
+            setGenieOriginFromElement(e.currentTarget);
+            audioManager.play('lens'); 
+            onOpenLens(); 
+          }} 
+          theme={resolvedTheme} 
+        />
+        <NavButton 
+          index={4}
+          icon={Gamepad2} 
+          label={t('nav.games').toUpperCase()} 
+          onClick={(e) => {
+            setGenieOriginFromElement(e.currentTarget);
+            openGames();
+          }} 
+          onMouseEnter={() => {
+            import('../Games/GamesPage').catch(() => {});
+          }}
+          onPointerDown={() => {
+            import('../Games/GamesPage').catch(() => {});
+          }}
+          theme={resolvedTheme} 
+        />
+        <NavButton 
+          index={5}
+          icon={Clapperboard} 
+          label={moviesSeriesLabel.toUpperCase()} 
+          onClick={(e) => {
+            setGenieOriginFromElement(e.currentTarget);
+            openMovies();
+          }} 
+          onMouseEnter={() => {
+            import('../Movies/MoviesPage').catch(() => {});
+          }}
+          onPointerDown={() => {
+            import('../Movies/MoviesPage').catch(() => {});
+          }}
+          theme={resolvedTheme} 
+        />
+        <NavButton
+          index={6}
+          icon={Users}
+          label={(i18n.exists('nav.accounts') ? t('nav.accounts') : 'Accounts').toUpperCase()}
+          onClick={(e) => { setGenieOriginFromElement(e.currentTarget); openAccounts(); }}
+          onMouseEnter={() => { import('../../features/accounts/AccountsPage').catch(() => {}); }}
+          onPointerDown={() => { import('../../features/accounts/AccountsPage').catch(() => {}); }}
+          theme={resolvedTheme}
+        />
+        <NavButton 
+          index={7}
+          icon={Tv} 
+          label={t('nav.nltv').toUpperCase()} 
+          onClick={(e) => {
+            setGenieOriginFromElement(e.currentTarget);
+            openTv();
+          }} 
+          onMouseEnter={() => {
+            import('../NlTv/NlTvPage').catch(() => {});
+          }}
+          onPointerDown={() => {
+            import('../NlTv/NlTvPage').catch(() => {});
+          }}
+          theme={resolvedTheme} 
+        />
+        <NavButton 
+          index={8}
+          icon={Monitor} 
+          label={t('xp.nav').toUpperCase()} 
+          onClick={(e) => {
+            setGenieOriginFromElement(e.currentTarget);
+            openXp();
+          }} 
+          onMouseEnter={() => {
+            import('../WindowsXp/WindowsXpPage').catch(() => {});
+          }}
+          onPointerDown={() => {
+            import('../WindowsXp/WindowsXpPage').catch(() => {});
+          }}
+          theme={resolvedTheme} 
+        />
+        <NavButton 
+          index={9}
+          icon={AudioLines} 
+          label={t('nav.music').toUpperCase()} 
+          onClick={(e) => {
+            setGenieOriginFromElement(e.currentTarget);
+            openMusic();
+          }} 
+          onMouseEnter={() => {
+            import('../../features/music/MusicPage').catch(() => {});
+          }}
+          onPointerDown={() => {
+            import('../../features/music/MusicPage').catch(() => {});
+          }}
+          theme={resolvedTheme} 
+        />
+      </div>
     </m.div>
   );
 }
+

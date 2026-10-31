@@ -67,13 +67,13 @@ export default function MusicPage() {
   }, [allTracks]);
 
   return (
-    <div className={'nl-music-root h-[100dvh] w-full overflow-hidden bg-gradient-to-br from-[#FFE8D6] via-[#FFF4EC] to-[#E8FBF2] ' + styles['nlp-root']}>
+    <div className={'nl-music-root h-[100dvh] w-full overflow-hidden ' + styles['nlp-root']}>
       {/* سطح مكتبي: عمودان — القائمة يساراً، المشغّل يميناً */}
       <div className="hidden lg:grid grid-cols-[minmax(360px,1fr)_minmax(380px,520px)] gap-4 h-full p-4">
-        <div className="h-full min-h-0">
+        <div className="nl-music-list-panel h-full min-h-0 p-3 rounded-3xl overflow-hidden">
           <SongList />
         </div>
-        <div className="h-full bg-white/20 backdrop-blur-xl border border-white/40 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="nl-music-player-panel h-full rounded-3xl overflow-hidden shadow-2xl">
           <PlayerScreen />
         </div>
       </div>

@@ -8,111 +8,52 @@ interface AppBackgroundFxProps {
 }
 
 /**
- * Themes whose full-page hero background is drawn purely in CSS/SVG ("coded")
- * instead of loading a hero image:
- *   - midnight (the default "home" theme): animated starry night sky
- *   - light: hand-drawn ocean + islands backdrop
- * All other themes (dark, bit, lite, retro, ...) keep the original image.
+ * Full-page ambient Liquid Glass backdrops aligned with the 7 Prompts:
+ *   - midnight (Prompt 3): 3D glassmorphism deep space with vibrant neon cyan, violet & magenta ambient blooms
+ *   - light (Prompt 1): Serene pastel pink & mint-green frosted/glossy ambient atmosphere
+ *   - dark (Prompt 4): Dramatic deep black canvas with iridescent blue, purple & pink reflections
+ *   - bit (Prompt 6): Calming emerald/sage green & warm earthy frosted glass ambient depth
+ *   - lite (Prompt 7): Sleek dark monochromatic liquid glass with subtle silver-obsidian highlights
  */
 const CODED_BG_THEMES = new Set(['midnight', 'light']);
 
-/* Scoped under .nl-cbg-midnight / .nl-cbg-light so nothing leaks into the app.
-   Keyframes are namespaced nl-cbg-*. */
 const CODED_BG_CSS = `
 .nl-cbg { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; }
 
-/* ===== Midnight sky — Uiverse.io by kiranmayee-abbireddy ===== */
-.nl-cbg-midnight { background-color: #050505; }
-.nl-cbg-midnight .sky-canvas { position: absolute; inset: 0; background: #050505; }
-.nl-cbg-midnight .stars { position: absolute; inset: 0; background-repeat: repeat; }
-.nl-cbg-midnight .stars-1 {
-  background-image:
-    radial-gradient(1px 1px at 10% 10%, #fff, transparent),
-    radial-gradient(1px 1px at 30% 20%, #fff, transparent),
-    radial-gradient(1px 1px at 50% 50%, #fff, transparent),
-    radial-gradient(1px 1px at 70% 30%, #fff, transparent),
-    radial-gradient(1px 1px at 90% 10%, #fff, transparent);
-  background-size: 200px 200px;
-  animation: nl-cbg-twinkle 3s ease-in-out infinite;
+/* ===== Default Home Mode (midnight): Bright Royal Red with Dark Edge Vignette ===== */
+.nl-cbg-midnight { background-color: #160206; }
+.nl-cbg-midnight .royal-red-canvas {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(62% 54% at 50% 38%, rgba(239, 35, 60, 0.78) 0%, rgba(217, 4, 41, 0.52) 42%, rgba(120, 6, 26, 0.24) 72%, transparent 100%),
+    radial-gradient(48% 42% at 20% 22%, rgba(255, 77, 109, 0.44) 0%, transparent 66%),
+    radial-gradient(50% 44% at 82% 28%, rgba(225, 29, 72, 0.42) 0%, transparent 68%),
+    radial-gradient(58% 48% at 50% 82%, rgba(190, 18, 60, 0.38) 0%, transparent 70%),
+    linear-gradient(180deg, #3b040e 0%, #7a091e 45%, #2b0208 84%, #0f0103 100%);
 }
-.nl-cbg-midnight .stars-2 {
-  background-image:
-    radial-gradient(1.5px 1.5px at 20% 40%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 60% 85%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 85% 65%, #fff, transparent);
-  background-size: 300px 300px;
-  animation: nl-cbg-twinkle 5s ease-in-out infinite 1s;
-}
-.nl-cbg-midnight .stars-3 {
-  background-image:
-    radial-gradient(2px 2px at 40% 70%, #fff, transparent),
-    radial-gradient(2px 2px at 10% 80%, #fff, transparent),
-    radial-gradient(2px 2px at 80% 40%, #fff, transparent);
-  background-size: 400px 400px;
-  animation: nl-cbg-twinkle 7s ease-in-out infinite 2s;
-}
-.nl-cbg-midnight .meteor {
-  position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%;
-  box-shadow: 0 0 10px 2px rgba(255,255,255,0.5); opacity: 0;
-}
-.nl-cbg-midnight .meteor::after {
-  content: ""; position: absolute; top: 50%; transform: translateY(-50%);
-  width: 80px; height: 1px; background: linear-gradient(90deg, #fff, transparent);
-}
-.nl-cbg-midnight .m1 { top: 10%; left: 110%; animation: nl-cbg-shoot 8s linear infinite; }
-.nl-cbg-midnight .m2 { top: 30%; left: 110%; animation: nl-cbg-shoot 12s linear infinite 4s; }
-.nl-cbg-midnight .m3 { top: 50%; left: 110%; animation: nl-cbg-shoot 10s linear infinite 2s; }
-.nl-cbg-midnight .moon {
-  position: absolute; top: 15%; right: 15%; width: 80px; height: 80px; border-radius: 50%;
-  background: transparent; box-shadow: 15px 15px 0 0 #fdfbd3;
-  filter: drop-shadow(0 0 15px rgba(253,251,211,0.4)); z-index: 10;
-}
-@keyframes nl-cbg-twinkle { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
-@keyframes nl-cbg-shoot {
-  0% { transform: translateX(0) translateY(0) rotate(-35deg); opacity: 0; }
-  5% { opacity: 1; }
-  15% { transform: translateX(-1500px) translateY(1000px) rotate(-35deg); opacity: 0; }
-  100% { transform: translateX(-1500px) translateY(1000px) rotate(-35deg); opacity: 0; }
+.nl-cbg-midnight .royal-red-vignette {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 78% 72% at 50% 46%, transparent 32%, rgba(28, 2, 7, 0.62) 74%, rgba(8, 0, 2, 0.92) 100%);
+  box-shadow: inset 0 0 130px rgba(5, 0, 2, 0.85);
 }
 
-/* ===== Light ocean + islands — Uiverse.io by AatreyuShau ===== */
+/* ===== Prompt 1: Light Theme — Serene Pastel Pink & Mint-Green Ambient Glass ===== */
 .nl-cbg-light .ocean-backdrop {
-  --ocean-deep: #0b3a57; --ocean: #0f4e72;
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, var(--ocean) 75%, var(--ocean-deep) 100%);
-  background-repeat: no-repeat;
+  background:
+    radial-gradient(62% 52% at 16% 18%, rgba(255, 194, 222, 0.72) 0%, transparent 66%),
+    radial-gradient(58% 50% at 84% 24%, rgba(167, 243, 208, 0.68) 0%, transparent 66%),
+    radial-gradient(65% 56% at 48% 84%, rgba(253, 226, 243, 0.65) 0%, transparent 70%),
+    radial-gradient(52% 44% at 72% 76%, rgba(187, 247, 208, 0.58) 0%, transparent 68%),
+    linear-gradient(160deg, #fff5f9 0%, #f2fdf7 48%, #fdf2f8 100%);
 }
 .nl-cbg-light .island-backdrop {
-  filter: url(#handDrawnNoise);
-  --ocean-deep: #194f71; --ocean: #216a94; --shallow: #3ec8cfb1; --foam: #ffffffa3;
-  --sand: #f6e7b4; --dune: #ecd899; --land: #93c66b; --land-dark: #79ab4f;
   position: absolute; inset: 0;
   background-image:
-    radial-gradient(ellipse 8vmin 10vmin at 20% 25%, var(--land-dark) 0 70%, transparent 71%),
-    radial-gradient(ellipse 16vmin 12vmin at 20% 25%, var(--land) 0 70%, transparent 71%),
-    radial-gradient(ellipse 18vmin 14vmin at 20% 25%, var(--dune) 0 70%, transparent 71%),
-    radial-gradient(ellipse 20vmin 16vmin at 20% 25%, var(--sand) 0 70%, transparent 71%),
-    radial-gradient(ellipse 22vmin 18vmin at 20% 25%, var(--foam) 0 70%, transparent 71%),
-    radial-gradient(ellipse 24vmin 20vmin at 20% 25%, var(--shallow) 0 70%, transparent 71%),
-    radial-gradient(ellipse 6vmin 11vmin at 75% 30%, var(--land-dark) 0 70%, transparent 71%),
-    radial-gradient(ellipse 17vmin 13vmin at 75% 30%, var(--land) 0 70%, transparent 71%),
-    radial-gradient(ellipse 19vmin 15vmin at 75% 30%, var(--dune) 0 70%, transparent 71%),
-    radial-gradient(ellipse 21vmin 17vmin at 75% 30%, var(--sand) 0 70%, transparent 71%),
-    radial-gradient(ellipse 23vmin 19vmin at 75% 30%, var(--foam) 0 70%, transparent 71%),
-    radial-gradient(ellipse 25vmin 21vmin at 75% 30%, var(--shallow) 0 70%, transparent 71%),
-    radial-gradient(ellipse 6vmin 10vmin at 50% 75%, var(--land-dark) 0 70%, transparent 71%),
-    radial-gradient(ellipse 15vmin 12vmin at 50% 75%, var(--land) 0 70%, transparent 71%),
-    radial-gradient(ellipse 17vmin 14vmin at 50% 75%, var(--dune) 0 70%, transparent 71%),
-    radial-gradient(ellipse 19vmin 16vmin at 50% 75%, var(--sand) 0 70%, transparent 71%),
-    radial-gradient(ellipse 21vmin 18vmin at 50% 75%, var(--foam) 0 70%, transparent 71%),
-    radial-gradient(ellipse 23vmin 20vmin at 50% 75%, var(--shallow) 0 70%, transparent 71%),
-    linear-gradient(180deg, var(--ocean) 0%, var(--ocean-deep) 80%);
-  background-repeat: repeat;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nl-cbg-midnight .stars,
-  .nl-cbg-midnight .meteor { animation: none !important; }
+    radial-gradient(circle 28vmin at 22% 28%, rgba(255, 255, 255, 0.65) 0%, rgba(251, 207, 232, 0.28) 48%, transparent 74%),
+    radial-gradient(circle 32vmin at 78% 32%, rgba(255, 255, 255, 0.62) 0%, rgba(167, 243, 208, 0.30) 50%, transparent 75%),
+    radial-gradient(circle 30vmin at 52% 76%, rgba(255, 255, 255, 0.58) 0%, rgba(199, 210, 254, 0.24) 52%, transparent 76%);
 }
 `;
 
@@ -125,31 +66,53 @@ export function AppBackgroundFx({
   const usesCodedBg = CODED_BG_THEMES.has(resolvedTheme);
 
   const svgHiddenStyle: React.CSSProperties = { position: 'absolute' };
+
+  // Prompt 4: Dark theme dramatic lighting against deep black with iridescent blue, purple & pink
   const darkVignetteStyle: React.CSSProperties = {
-    background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%)',
+    background:
+      'radial-gradient(55% 45% at 20% 18%, rgba(59, 130, 246, 0.20) 0%, transparent 62%), ' +
+      'radial-gradient(52% 44% at 82% 26%, rgba(236, 72, 153, 0.18) 0%, transparent 62%), ' +
+      'radial-gradient(60% 50% at 50% 85%, rgba(168, 85, 247, 0.20) 0%, transparent 66%), ' +
+      'radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(2, 3, 8, 0.86) 100%)',
     contain: 'strict',
     willChange: 'opacity',
   };
+
   const scanLineStyle: React.CSSProperties = {
-    background: 'rgba(184,255,63,0.1)',
-    animation: 'scan-line 7s linear infinite',
-    boxShadow: '0 0 8px rgba(184,255,63,0.3)',
+    background: 'linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.22), rgba(168, 85, 247, 0.28), rgba(236, 72, 153, 0.22), transparent)',
+    animation: 'scan-line 9s linear infinite',
+    boxShadow: '0 0 14px rgba(168, 85, 247, 0.35)',
   };
-  const liteFillStyle: React.CSSProperties = { backgroundColor: '#000000' };
+
+  // Prompt 6: Bit theme calming green and earthy ambient glow
+  const bitAmbientStyle: React.CSSProperties = {
+    background:
+      'radial-gradient(58% 48% at 18% 20%, rgba(52, 211, 153, 0.20) 0%, transparent 64%), ' +
+      'radial-gradient(54% 46% at 82% 76%, rgba(214, 200, 180, 0.16) 0%, transparent 64%), ' +
+      'radial-gradient(60% 50% at 50% 50%, rgba(16, 185, 129, 0.10) 0%, rgba(7, 19, 16, 0.88) 100%)',
+    contain: 'strict',
+  };
+
+  // Prompt 7: Lite theme sleek dark monochromatic liquid glass ambient lighting
+  const liteFillStyle: React.CSSProperties = {
+    background:
+      'radial-gradient(50% 40% at 50% 12%, rgba(255, 255, 255, 0.08) 0%, transparent 65%), ' +
+      'linear-gradient(180deg, #090a0f 0%, #040507 100%)',
+  };
 
   const parallaxStyle: React.CSSProperties = {
     backgroundImage:
       resolvedTheme === 'lite' || usesCodedBg ? 'none' : `url('${heroBgUrl}')`,
-    backgroundColor: resolvedTheme === 'lite' ? '#000000' : undefined,
+    backgroundColor: resolvedTheme === 'lite' ? '#050608' : undefined,
   };
 
   const ambientStyle: React.CSSProperties = {
     backgroundImage: ambientColor
-      ? `radial-gradient(circle at 2px 2px, var(--halftone-color) 1px, transparent 0), linear-gradient(to bottom, ${ambientColor}18 0%, var(--hero-overlay) 40%)`
+      ? `radial-gradient(circle at 2px 2px, var(--halftone-color) 1px, transparent 0), linear-gradient(to bottom, ${ambientColor}22 0%, var(--hero-overlay) 45%)`
       : 'radial-gradient(circle at 2px 2px, var(--halftone-color) 1px, transparent 0)',
     backgroundColor: ambientColor ? undefined : 'var(--hero-overlay)',
     backgroundSize: ambientColor ? '40px 40px, auto' : '40px 40px',
-    transition: 'background-color 1.5s ease, background-image 1.5s ease',
+    transition: 'background-color 1.2s ease, background-image 1.2s ease',
     willChange: 'auto',
   };
 
@@ -177,22 +140,22 @@ export function AppBackgroundFx({
         </>
       )}
 
+      {resolvedTheme === 'bit' && (
+        <div
+          className="fixed inset-0 z-[var(--z-bg-effects)] pointer-events-none"
+          style={bitAmbientStyle}
+        />
+      )}
+
       {resolvedTheme === 'lite' && (
         <div className="fixed inset-0 z-[-1] pointer-events-none" style={liteFillStyle} />
       )}
 
-      {/* Coded (CSS/SVG) full-page backgrounds that replace the hero image */}
       {usesCodedBg && <style>{CODED_BG_CSS}</style>}
       {resolvedTheme === 'midnight' && (
         <div className="nl-cbg nl-cbg-midnight" aria-hidden="true">
-          <div className="sky-canvas">
-            <div className="stars stars-1" />
-            <div className="stars stars-2" />
-            <div className="stars stars-3" />
-            <div className="meteor m1" />
-            <div className="meteor m2" />
-            <div className="meteor m3" />
-            <div className="moon" />
+          <div className="royal-red-canvas">
+            <div className="royal-red-vignette" />
           </div>
         </div>
       )}
@@ -201,12 +164,6 @@ export function AppBackgroundFx({
           <div className="ocean-backdrop">
             <div className="island-backdrop" />
           </div>
-          <svg height="0" width="0">
-            <filter id="handDrawnNoise">
-              <feTurbulence result="noise" numOctaves="5" baseFrequency="0.0065" type="fractalNoise" />
-              <feDisplacementMap yChannelSelector="G" xChannelSelector="R" scale="900" in2="noise" in="SourceGraphic" />
-            </filter>
-          </svg>
         </div>
       )}
 

@@ -1,136 +1,138 @@
 [data-theme="light"] {
-  /* === POOLSUITE OS — macOS Classic === */
-  --bg-primary:        #F6D5D5;
-  --bg-secondary:      #EDD5C3;
-  --bg-card:           #F0EBE3;
-  --bg-card-hover:     #E8E0D8;
-  --bg-titlebar:       linear-gradient(180deg, #CCCCCC 0%, #AAAAAA 100%);
-  --bg-titlebar-inactive: #DDDDDD;
+  /* === PROMPT 1: SERENE PASTEL PINK & MINT-GREEN FROSTED/GLOSSY GLASS UI === */
+  --bg-primary:        #fff5f9;
+  --bg-secondary:      #eefdf5;
+  --bg-card:           rgba(255, 255, 255, 0.72);
+  --bg-card-hover:     rgba(255, 255, 255, 0.86);
+  --bg-titlebar:       linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(252, 231, 243, 0.78) 100%);
+  --bg-titlebar-inactive: rgba(255, 255, 255, 0.65);
   
-  --border-primary:    #999999;
-  --border-inset-light: #FFFFFF;
-  --border-inset-dark:  #555555;
-  --border-accent:     #0000AA;
+  --border-primary:    rgba(244, 114, 182, 0.28);
+  --border-inset-light: rgba(255, 255, 255, 0.96);
+  --border-inset-dark:  rgba(16, 185, 129, 0.18);
+  --border-accent:     #ec4899;
   
-  --text-primary:      #000000;
-  --text-secondary:    #333333;
-  --text-muted:        #777777;
-  --text-accent:       #0000CC;
-  --text-titlebar:     #000000;
-  --text-inverse:      #FFFFFF;
+  --text-primary:      #1f162b;
+  --text-secondary:    #4a3b5c;
+  --text-muted:        #7b6b8e;
+  --text-accent:       #db2777;
+  --text-titlebar:     #1f162b;
+  --text-inverse:      #ffffff;
   
-  --accent:            #0000CC;
-  --accent-hover:      #0000AA;
+  --accent:            #ec4899;
+  --accent-hover:      #10b981;
   
   --shadow-btn: 
-    inset 1px 1px 0px #FFFFFF,
-    inset -1px -1px 0px #555555,
-    1px 1px 0px #000000;
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.96),
+    inset 0 -6px 12px rgba(236, 72, 153, 0.08),
+    0 8px 20px -4px rgba(131, 24, 67, 0.12);
   --shadow-window:
-    2px 2px 0px #999999,
-    4px 4px 0px #777777;
-  --shadow-os: 3px 3px 0px #666, 5px 5px 0px #444;
+    0 22px 48px -12px rgba(131, 24, 67, 0.14),
+    0 8px 22px -6px rgba(16, 185, 129, 0.10);
+  --shadow-os:
+    0 20px 44px -10px rgba(131, 24, 67, 0.14),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.95);
   
-  --name-font:         'Geneva', 'Lucida Sans Unicode', 'Lucida Grande', sans-serif;
-  --name-font-size:    clamp(1.8rem, 4vw, 3.5rem);
+  --name-font:         -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --name-font-size:    clamp(2rem, 4.5vw, 3.6rem);
   --name-font-style:   normal;
-  --name-font-weight:  bold;
-  --name-letter-spacing: 0.01em;
-  --name-line-height:  1.2;
+  --name-font-weight:  800;
+  --name-letter-spacing: -0.02em;
+  --name-line-height:  1.12;
   
-  --nav-font:          'Geneva', monospace;
+  --nav-font:          -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --nav-size:          0.75rem;
-  --nav-letter-spacing: 0em;
+  --nav-letter-spacing: 0.01em;
   
   --bg-pattern: 
-    radial-gradient(circle, #C4A0A0 1.5px, transparent 1.5px);
-  --bg-pattern-size: 18px 18px;
+    radial-gradient(circle, rgba(236, 72, 153, 0.12) 1.5px, transparent 1.5px);
+  --bg-pattern-size: 22px 22px;
   
-  --window-radius:     0px;
-  --btn-radius:        0px;
+  --window-radius:     24px;
+  --btn-radius:        16px;
 
-  --bg-page:           #F6D5D5;
-  --bg-glass:          rgba(240, 235, 227, 0.9);
-  --bg-glass-strong:   rgba(240, 235, 227, 0.98);
-  --paper-color:       #F0EBE3;
-  --ink-color:         #000000;
+  --bg-page:           #fff5f9;
+  --bg-glass:          rgba(255, 248, 252, 0.68);
+  --bg-glass-strong:   rgba(255, 252, 254, 0.84);
+  --paper-color:       rgba(255, 255, 255, 0.78);
+  --ink-color:         #1f162b;
   
-  --manga-shadow-color:  #999999;
-  --border-subtle:       #999999;
-  --lyric-active-color:  #0000CC;
-  --lyric-active-shadow: rgba(0, 0, 204, 0.4);
-  --accent-indigo:       #0000CC;
-  --accent-red:          #CC0000;
+  --manga-shadow-color:  rgba(236, 72, 153, 0.14);
+  --border-subtle:       rgba(244, 114, 182, 0.24);
+  --lyric-active-color:  #db2777;
+  --lyric-active-shadow: rgba(236, 72, 153, 0.35);
+  --accent-indigo:       #10b981;
+  --accent-red:          #ec4899;
 
-  /* === THEMED SECTION REFACTOR — LIGHT === */
-  --window-chrome-display: flex;
-  --window-border: 1px solid #999;
-  --window-shadow: 3px 3px 0px #666, 5px 5px 0px #444;
-  --window-bg: #F0EBE3;
+  /* === THEMED SECTION REFACTOR — SERENE PASTEL PINK & MINT-GREEN === */
+  --window-chrome-display: none;
+  --window-border: 1px solid rgba(255, 255, 255, 0.92);
+  --window-shadow: var(--shadow-window);
+  --window-bg: rgba(255, 250, 253, 0.72);
 
   --hero-header-align: flex-start;
-  --hero-card-bg: transparent;
-  --hero-card-border: none;
-  --hero-card-shadow: none;
+  --hero-card-bg: rgba(255, 255, 255, 0.45);
+  --hero-card-border: 1px solid rgba(255, 255, 255, 0.88);
+  --hero-card-shadow: 0 18px 40px -10px rgba(236, 72, 153, 0.12), inset 0 1.5px 1px rgba(255, 255, 255, 0.96);
   --hero-bg-image-url: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bglight.webp');
-  --hero-bg-filter: blur(3px) grayscale(1);
-  --hero-bg-opacity: 0.3;
-  --hero-bg-blend: multiply;
-  --hero-overlay-bg: transparent;
+  --hero-bg-filter: blur(2px) saturate(1.1);
+  --hero-bg-opacity: 0.22;
+  --hero-bg-blend: soft-light;
+  --hero-overlay-bg: linear-gradient(135deg, rgba(255, 228, 242, 0.42) 0%, rgba(209, 250, 229, 0.38) 100%);
 
-  --hero-title-font: 'Geneva', 'Lucida Sans Unicode', sans-serif;
-  --hero-title-weight: bold;
-  --hero-title-color: #000000;
-  --hero-title-size: clamp(1.875rem, 5.5vw, 3.75rem);
-  --hero-title-shadow: none;
+  --hero-title-font: var(--name-font);
+  --hero-title-weight: 800;
+  --hero-title-color: #1f162b;
+  --hero-title-size: clamp(2rem, 5.5vw, 3.8rem);
+  --hero-title-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
   --hero-title-style: normal;
-  --hero-title-lines: 1.2;
+  --hero-title-lines: 1.15;
   --hero-title-transform: none;
 
-  --hero-divider-top: 1px solid #999;
+  --hero-divider-top: 1px solid rgba(244, 114, 182, 0.24);
   --hero-divider-style: normal;
 
-  --hero-loc-font: "Geneva", sans-serif;
+  --hero-loc-font: var(--name-font);
   --hero-loc-size: 1rem;
-  --hero-loc-weight: bold;
+  --hero-loc-weight: 600;
   --hero-loc-shadow: none;
-  --hero-loc-prefix: "🖥️ ";
+  --hero-loc-prefix: "✨ ";
   --hero-loc-suffix: "";
 
-  --hero-alias-bg: #ffffff;
-  --hero-alias-border: 1px solid #999;
-  --hero-alias-color: #0000CC;
-  --hero-alias-size: 0.65rem;
-  --hero-alias-tracking: normal;
+  --hero-alias-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(209, 250, 229, 0.72));
+  --hero-alias-border: 1px solid rgba(255, 255, 255, 0.95);
+  --hero-alias-color: #047857;
+  --hero-alias-size: 0.72rem;
+  --hero-alias-tracking: 0.02em;
   --hero-alias-transform: none;
-  --hero-alias-font: 'Geneva', sans-serif;
-  --hero-alias-deco: underline;
-  --hero-alias-padding: 0.125rem 0.5rem;
+  --hero-alias-font: var(--nav-font);
+  --hero-alias-deco: none;
+  --hero-alias-padding: 0.25rem 0.75rem;
 
-  --hero-bio-font: "Geneva", sans-serif;
-  --hero-bio-size: clamp(0.875rem, 2.2vw, 1rem);
+  --hero-bio-font: var(--name-font);
+  --hero-bio-size: clamp(0.95rem, 2.2vw, 1.08rem);
   --hero-bio-shadow: none;
   --hero-bio-filter: none;
-  --hero-bio-style: italic;
+  --hero-bio-style: normal;
 
-  --hero-profile-width: 200px;
-  --hero-profile-border: 1px solid #999;
-  --hero-profile-shadow: 2px 2px 0px #999, 4px 4px 0px #777;
+  --hero-profile-width: 196px;
+  --hero-profile-border: 2px solid rgba(255, 255, 255, 0.94);
+  --hero-profile-shadow: 0 16px 36px -8px rgba(236, 72, 153, 0.18), inset 0 1px 1px #fff;
   --hero-profile-transform: none;
-  --hero-profile-hover-transform: none;
+  --hero-profile-hover-transform: scale(1.02);
   --hero-profile-display: block;
 
-  --streaming-titlebar-display: flex;
-  --streaming-h2-display: none;
-  --streaming-divider-display: none;
-  --social-titlebar-display: inline-block;
-  --social-h2-display: none;
+  --streaming-titlebar-display: none;
+  --streaming-h2-display: inline-block;
+  --streaming-divider-display: block;
+  --social-titlebar-display: none;
+  --social-h2-display: inline-block;
 
-  --stream-card-border: 1px solid #999;
-  --stream-card-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #555, 2px 2px 0px #999;
-  --stream-card-bg: #F0EBE3;
+  --stream-card-border: 1px solid rgba(255, 255, 255, 0.92);
+  --stream-card-shadow: var(--shadow-btn);
+  --stream-card-bg: rgba(255, 255, 255, 0.74);
   --stream-card-flex-dir: column;
-  --stream-mini-titlebar-display: flex;
+  --stream-mini-titlebar-display: none;
 
   --stream-content-dark-display: none;
   --stream-content-light-display: flex;
@@ -140,13 +142,13 @@
   --social-content-light-display: flex;
   --social-content-default-display: none;
   --social-card-rotate: 0deg;
-  --social-card-radius: 0px;
-  --social-card-shadow: inset 1px 1px 0px #FFF, inset -1px -1px 0px #555, 1px 1px 0px #000;
+  --social-card-radius: 22px;
+  --social-card-shadow: var(--shadow-btn);
 
   color-scheme: light;
 
   --yt-highlights-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightslight.webp');
   --vault-playlist-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_coverlight.webp');
-  --highlights-vault-radius: 0px;
-  --highlights-yt-radius: 0px;
+  --highlights-vault-radius: 24px;
+  --highlights-yt-radius: 24px;
 }

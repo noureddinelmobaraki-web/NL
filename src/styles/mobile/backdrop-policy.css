@@ -16,7 +16,7 @@
    ============================================================ */
 
 @layer mobile {
-  /* الهواتف: إلغاء تام */
+  /* الهواتف: إلغاء backdrop-filter لأداء 60fps فائق الخفة مع تعويضه بطبقات زجاج كريستالي ضوئي */
   @media (max-width: 768px) {
     *,
     *::before,
@@ -25,17 +25,38 @@
       backdrop-filter: none !important;
     }
 
-    /* تعويض الزجاجية المفقودة بخلفية معتمة - وإلا صار النص غير مقروء */
+    /* تعويض الزجاجية المفقودة بطبقات كريستالية متعددة التدرج مع انعكاس علوي ودكانة سفلية */
     .ios-chrome-bar,
     .notch-island,
     .auth-modal,
     .auth-launcher {
-      background-color: color-mix(in srgb, var(--nl-surface, #12141c) 92%, transparent);
+      background: var(
+        --lc-glass-surface,
+        linear-gradient(
+          180deg,
+          rgba(56, 78, 108, 0.84) 0%,
+          rgba(26, 40, 62, 0.88) 35%,
+          rgba(14, 22, 36, 0.94) 70%,
+          rgba(5, 10, 18, 0.98) 100%
+        )
+      );
+      box-shadow:
+        0 16px 36px -8px rgba(0, 0, 0, 0.48),
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.65),
+        inset 0 -8px 16px -4px rgba(2, 6, 14, 0.58);
     }
   }
 
-  /* التابلت باللمس: blur خفيف مقبول */
+  /* التابلت باللمس: blur خفيف مقبول وموزون للأداء */
   @media (hover: none) and (min-width: 769px) and (max-width: 1024px) {
+    .nl-home-window-glass,
+    .hero-window,
+    .nld-glass-window,
+    .nl-os-window-glass,
+    .nl-contact-card {
+      -webkit-backdrop-filter: blur(12px) saturate(155%) !important;
+      backdrop-filter: blur(12px) saturate(155%) !important;
+    }
     .ios-chrome-bar {
       -webkit-backdrop-filter: blur(8px) saturate(140%);
       backdrop-filter: blur(8px) saturate(140%);

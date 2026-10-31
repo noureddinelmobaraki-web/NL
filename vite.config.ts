@@ -11,6 +11,16 @@ export default defineConfig(({ mode }) => {
     base: process.env.VITE_BASE_PATH ?? '/NL/',
     assetsInclude: ['**/*.xml'],
     plugins: [
+      {
+        name: 'dev-csp-relax',
+        apply: 'serve' as const,
+        transformIndexHtml(html: string) {
+          return html.replace(
+            /script-src\s+'self'/,
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+          );
+        },
+      },
       react({
         babel: { plugins: [['babel-plugin-react-compiler', { target: '19' }]] }
       }),

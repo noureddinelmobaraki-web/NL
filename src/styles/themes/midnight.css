@@ -1,59 +1,59 @@
 [data-theme="midnight"] {
-  /* Surfaces — warm deep indigo */
-  --bg-page: #080a14;
-  --bg-page-rgb: 8, 10, 20;
-  --bg-elevated: #161929;
-  --bg-overlay: rgba(16, 18, 32, 0.55);
-  --bg-glass: rgba(100, 110, 180, 0.15);
-  --bg-glass-strong: rgba(120, 130, 200, 0.25);
+  /* === DEFAULT HOME MODE: BRIGHT ROYAL RED WITH DARK EDGE VIGNETTE & LIQUID CRYSTAL GLASS === */
+  --bg-page: #180206;
+  --bg-page-rgb: 24, 2, 6;
+  --bg-elevated: #2c040b;
+  --bg-overlay: rgba(28, 3, 8, 0.56);
+  --bg-glass: rgba(239, 35, 60, 0.16);
+  --bg-glass-strong: rgba(217, 4, 41, 0.26);
 
   /* Text */
-  --text-primary: #e8eaf6;
-  --text-primary-rgb: 232, 234, 246;
-  --text-secondary: rgba(200, 210, 240, 0.75);
-  --text-muted: rgba(160, 170, 210, 0.45);
-  --text-inverse: #0d0f1a;
+  --text-primary: #fff5f7;
+  --text-primary-rgb: 255, 245, 247;
+  --text-secondary: rgba(255, 224, 230, 0.84);
+  --text-muted: rgba(251, 182, 196, 0.62);
+  --text-inverse: #180206;
 
-  /* Borders — indigo-tinted */
-  --border-subtle: rgba(120, 130, 220, 0.14);
-  --border-strong: rgba(140, 160, 240, 0.28);
-  --ink-color: #c8d0f0;
-  --paper-color: #161929;
+  /* Borders — luminous royal ruby & crystal white */
+  --border-subtle: rgba(255, 143, 163, 0.24);
+  --border-strong: rgba(255, 77, 109, 0.42);
+  --ink-color: rgba(255, 204, 213, 0.28);
+  --paper-color: #28030a;
 
   /* Shadows */
-  --manga-shadow-color: rgba(100, 120, 220, 0.5);
-  --manga-shadow: 8px 8px 0 var(--manga-shadow-color);
+  --manga-shadow-color: rgba(0, 0, 0, 0);
+  --manga-shadow: none;
 
-  /* Accents — more saturated/warm */
-  --accent-indigo: #818cf8;
-  --accent-purple: #c084fc;
-  --accent-gold: #fbbf24;
-  --accent-red: #f87171;
+  /* Accents — Royal Crimson, Ruby & Rose Gold */
+  --accent-indigo: #ff2a54;
+  --accent-purple: #e11d48;
+  --accent-gold: #fb7185;
+  --accent-red: #ef233c;
 
-  --halftone-color: rgba(120, 130, 200, 0.08);
-  --hero-overlay: rgba(13, 15, 26, 0.55);
-  --noise-opacity: 0.04;
+  --halftone-color: rgba(255, 77, 109, 0.05);
+  --hero-overlay: rgba(20, 2, 6, 0.34);
+  --noise-opacity: 0.025;
   --backdrop-blur: 28px;
 
-  /* LYRIC COLORS — golden-orange for half-moon */
-  --lyric-active-color: #FF8C42;
-  --lyric-active-shadow: rgba(255, 140, 66, 0.65);
-  --lyric-inactive-color: rgba(200, 210, 240, 0.45);
-  --card-control-bg: rgba(120, 130, 200, 0.08);
-  --card-control-border: rgba(140, 160, 240, 0.15);
-  --card-control-text: rgba(200, 210, 240, 0.7);
-  --card-border-line: rgba(120, 130, 200, 0.12);
-  --seek-track-bg: rgba(120, 130, 200, 0.2);
+  /* LYRIC COLORS — luminous ruby crystal */
+  --lyric-active-color: #ff4d6d;
+  --lyric-active-shadow: rgba(239, 35, 60, 0.72);
+  --lyric-inactive-color: rgba(255, 214, 224, 0.48);
+  --card-control-bg: rgba(239, 35, 60, 0.14);
+  --card-control-border: rgba(255, 143, 163, 0.28);
+  --card-control-text: rgba(255, 240, 243, 0.90);
+  --card-border-line: rgba(255, 143, 163, 0.18);
+  --seek-track-bg: rgba(255, 143, 163, 0.24);
 
   /* GALLERY VARS */
-  --gallery-strip-bg: linear-gradient(180deg, transparent 0%, rgba(13,15,26,0.92) 40%, rgba(13,15,26,0.98) 100%);
-  --gallery-strip-border: rgba(120,130,200,0.14);
+  --gallery-strip-bg: linear-gradient(180deg, transparent 0%, rgba(28, 3, 8, 0.90) 40%, rgba(16, 1, 4, 0.98) 100%);
+  --gallery-strip-border: rgba(255, 143, 163, 0.22);
 
   /* SONG TITLES */
-  --song-title-color: #fbbf24;
-  --song-title-shadow: rgba(251, 191, 36, 0.6);
+  --song-title-color: #ffccd5;
+  --song-title-shadow: rgba(239, 35, 60, 0.58);
 
-  /* === THEMED SECTION REFACTOR — MIDNIGHT === */
+  /* === THEMED SECTION REFACTOR — MIDNIGHT (HOME) === */
   --window-chrome-display: none;
   --window-border: none;
   --window-shadow: none;
@@ -61,54 +61,58 @@
 
   --hero-header-align: flex-end;
   --hero-card-bg: transparent;
-  --hero-card-border: 4px solid var(--ink-color);
+  --hero-card-border: none;
   --hero-card-shadow: none;
   --hero-bg-image-url: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp');
-  --hero-bg-filter: blur(0px) brightness(0.7);
+  --hero-bg-filter: blur(0px) brightness(0.76) saturate(1.18);
   --hero-bg-opacity: 1;
   --hero-bg-blend: normal;
-  --hero-overlay-bg: linear-gradient(180deg, rgba(8,10,20,0.2) 0%, rgba(8,10,20,0.75) 100%);
+  --hero-overlay-bg: linear-gradient(180deg, rgba(28, 2, 7, 0.18) 0%, rgba(18, 1, 5, 0.72) 100%);
 
-  --hero-title-font: var(--font-manga);
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-manga: var(--font-ui);
+  --font-hand: var(--font-ui);
+
+  --hero-title-font: var(--font-ui);
   --hero-title-weight: 800;
   --hero-title-color: var(--text-primary);
   --hero-title-size: clamp(2rem, 6vw, 5rem);
-  --hero-title-shadow: 2px 2px 0px var(--manga-shadow-color);
+  --hero-title-shadow: 0 0 28px rgba(239, 35, 60, 0.45), 0 0 54px rgba(190, 18, 60, 0.28);
   --hero-title-style: normal;
   --hero-title-lines: 1;
-  --hero-title-transform: uppercase;
+  --hero-title-transform: none;
 
-  --hero-divider-top: 2px solid var(--border-subtle);
-  --hero-divider-style: italic;
+  --hero-divider-top: 1px solid rgba(255, 143, 163, 0.28);
+  --hero-divider-style: normal;
 
-  --hero-loc-font: var(--font-manga);
-  --hero-loc-size: 1.25rem;
-  --hero-loc-weight: bold;
-  --hero-loc-shadow: 2px 2px 0px var(--manga-shadow-color);
+  --hero-loc-font: var(--font-ui);
+  --hero-loc-size: 1.2rem;
+  --hero-loc-weight: 700;
+  --hero-loc-shadow: none;
   --hero-loc-prefix: "";
   --hero-loc-suffix: "";
 
-  --hero-alias-bg: var(--ink-color);
-  --hero-alias-border: 1px solid var(--glass-border, rgba(160,178,255,0.18));
-  --hero-alias-color: var(--text-inverse);
-  --hero-alias-size: 0.875rem;
-  --hero-alias-tracking: normal;
+  --hero-alias-bg: rgba(239, 35, 60, 0.18);
+  --hero-alias-border: 1px solid rgba(255, 143, 163, 0.38);
+  --hero-alias-color: #fff0f3;
+  --hero-alias-size: 0.85rem;
+  --hero-alias-tracking: 0.02em;
   --hero-alias-transform: none;
-  --hero-alias-font: var(--font-manga);
+  --hero-alias-font: var(--font-ui);
   --hero-alias-deco: none;
   --hero-alias-padding: 0.35rem 0.9rem;
 
-  --hero-bio-font: var(--font-hand);
-  --hero-bio-size: 1.5rem;
-  --hero-bio-shadow: 2px 2px 4px var(--manga-shadow-color), 0 0 20px var(--lyric-active-shadow);
-  --hero-bio-filter: drop-shadow(2px 2px 2px var(--manga-shadow-color));
+  --hero-bio-font: var(--font-ui);
+  --hero-bio-size: 1.35rem;
+  --hero-bio-shadow: none;
+  --hero-bio-filter: none;
   --hero-bio-style: normal;
 
   --hero-profile-width: 12rem;
-  --hero-profile-border: 2px solid rgba(255,255,255,0.2);
+  --hero-profile-border: 2px solid rgba(255, 143, 163, 0.40);
   --hero-profile-shadow: none;
-  --hero-profile-transform: rotate(2deg);
-  --hero-profile-hover-transform: rotate(0deg);
+  --hero-profile-transform: none;
+  --hero-profile-hover-transform: none;
   --hero-profile-display: none;
 
   --streaming-titlebar-display: none;
@@ -130,88 +134,30 @@
   --social-content-dark-display: none;
   --social-content-light-display: none;
   --social-content-default-display: flex;
-  --social-card-rotate: 0.5deg;
-  --social-card-radius: 8px 15px 5px 22px / 22px 5px 15px 8px;
+  --social-card-rotate: 0deg;
+  --social-card-radius: 22px;
   --social-card-shadow: none;
 
   color-scheme: dark;
 
   --yt-highlights-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlights.webp');
   --vault-playlist-bg: url('https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_cover.webp');
-  --highlights-shadow-color: rgba(100, 120, 220, 0.5);
-  --highlights-vault-radius: 12px 5px 18px 8px / 8px 18px 5px 12px;
-  --highlights-yt-radius: 5px 15px 8px 20px / 15px 8px 20px 5px;
-
-  /* === NEUMORPH+GLASS OVERRIDE (midnight) === */
-  --ink-color: rgba(150,170,255,0.18);
-  --manga-shadow-color: rgba(0,0,0,0.0);
-  --manga-shadow: none;
-
-  --hero-card-border: none;
-  --hero-title-shadow: none;
-  --hero-loc-shadow: none;
-  --hero-title-transform: none;
-  --hero-profile-transform: none;
-  --hero-profile-hover-transform: none;
-  --hero-alias-bg: rgba(255,255,255,0.06);
-  --hero-alias-color: var(--text-primary);
-  --social-card-rotate: 0deg;
-  --social-card-radius: 22px;
-  --highlights-vault-radius: 22px;
-  --highlights-yt-radius: 22px;
+  --highlights-shadow-color: rgba(239, 35, 60, 0.40);
+  --highlights-vault-radius: 24px;
+  --highlights-yt-radius: 24px;
 }
 
-:root:not([data-page-active="true"]) [data-theme="midnight"] body::before{
-  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+:root:not([data-page-active="true"]) [data-theme="midnight"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
-    radial-gradient(60% 40% at 18% 12%, rgba(139,148,255,0.22), transparent 60%),
-    radial-gradient(50% 38% at 85% 20%, rgba(255,140,66,0.16), transparent 60%),
-    radial-gradient(70% 50% at 50% 100%, rgba(70,224,192,0.12), transparent 60%),
-    linear-gradient(180deg, #070a14, #0b1024);
-}
-
-/* === v12: APPLE GLASS FONT + VAR OVERRIDES (midnight only) === */
-[data-theme="midnight"] {
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
-
-  /* اقتل خطوط المانغا/اليد في كل العناصر التي تستهلكها تحت الميدنايت */
-  --font-manga: var(--font-ui);
-  --font-hand: var(--font-ui);
-
-  /* عناوين الهيرو */
-  --hero-title-font: var(--font-ui);
-  --hero-loc-font: var(--font-ui);
-  --hero-alias-font: var(--font-ui);
-  --hero-bio-font: var(--font-ui);
-  --hero-title-weight: 700;
-  --hero-title-transform: none;
-  --hero-alias-transform: none;
-  --hero-title-shadow: none;
-  --hero-loc-shadow: none;
-  --hero-bio-shadow: none;
-  --hero-bio-filter: none;
-  --hero-card-border: none;
-  --hero-card-shadow: none;
-  --hero-profile-transform: none;
-  --hero-profile-hover-transform: none;
-
-  /* لا ظلال مانغا، لا حواف ممزقة */
-  --manga-shadow: none;
-  --manga-shadow-color: rgba(0,0,0,0);
-  --ink-color: rgba(180,196,255,0.16);
-  --social-card-rotate: 0deg;
-  --social-card-radius: 22px;
-  --highlights-vault-radius: 22px;
-  --highlights-yt-radius: 22px;
-
-  /* متغيّرات تستهلكها حاوية المشغّل (inline) — نجعلها زجاجية */
-  --bg-glass-strong: rgba(34, 42, 78, 0.55);
-  --border-strong: rgba(195, 208, 255, 0.28);
-  --border-subtle: rgba(170, 184, 255, 0.16);
-
-  /* ألوان الكلمات (كاريوكي) — برتقالي Euphoria */
-  --lyric-active-color: #FF8C42;
-  --lyric-active-shadow: rgba(255, 140, 66, 0.65);
-  --lyric-inactive-color: rgba(200, 210, 240, 0.42);
+    radial-gradient(64% 54% at 50% 38%, rgba(239, 35, 60, 0.72) 0%, rgba(217, 4, 41, 0.46) 44%, rgba(100, 5, 22, 0.22) 74%, transparent 100%),
+    radial-gradient(48% 42% at 18% 20%, rgba(255, 77, 109, 0.36), transparent 64%),
+    radial-gradient(50% 42% at 84% 26%, rgba(225, 29, 72, 0.36), transparent 64%),
+    radial-gradient(ellipse 80% 74% at 50% 46%, transparent 32%, rgba(24, 2, 6, 0.68) 76%, rgba(8, 0, 2, 0.94) 100%),
+    linear-gradient(180deg, #3b040e 0%, #6e081b 46%, #240207 85%, #0c0103 100%);
 }
 
