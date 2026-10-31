@@ -51,7 +51,7 @@ export const HomeInteractiveMap = memo(function HomeInteractiveMap({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const { effectiveMode } = useHomeMotionMode();
 
-  useA777StationPhysics(rootRef, true);
+  useA777StationPhysics(rootRef, false);
 
   return (
     <div

@@ -17,6 +17,7 @@ const VIEW_TO_NAV: Record<string, { page: PageId; cinemaTab?: CinemaTab }> = {
   music:    { page: 'music' },
   accounts: { page: 'accounts' },
   portrait: { page: 'portrait' },
+  liquidGlass: { page: 'liquidGlass' },
 };
 
 function navToView(page: PageId, cinemaTab: CinemaTab): string {
@@ -107,6 +108,10 @@ interface AppContextType {
   isPortraitOpen: boolean;
   openPortrait: () => void;
   closePortrait: () => void;
+  // ── صفحة الزجاج السائل Liquid Glass ────────────────────
+  isLiquidGlassOpen: boolean;
+  openLiquidGlass: () => void;
+  closeLiquidGlass: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -135,6 +140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isMusicOpen  = nav.activePage === 'music';
   const isAccountsOpen = nav.activePage === 'accounts';
   const isPortraitOpen = nav.activePage === 'portrait';
+  const isLiquidGlassOpen = nav.activePage === 'liquidGlass';
 
   const [isGameActive, setGameActive] = useState(false);
   const gameBackRef = useRef<(() => void) | null>(null);
@@ -210,6 +216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (prev === 'music')  { try { audioManager.releaseBg('music_mode'); } catch {} }
     if (prev === 'accounts') { /* no audio channel */ }
     if (prev === 'portrait') { try { audioManager.releaseBg('portrait_mode'); audioManager.stop('portrait'); } catch {} }
+    if (prev === 'liquidGlass') { try { audioManager.releaseBg('liquidGlass_mode'); audioManager.stop('liquidGlass'); } catch {} }
 
     // دخول صفحة جديدة: أوقف موسيقى الثيم (bg) + علّقها
     if (page !== 'home' && page !== 'accounts') {
@@ -277,6 +284,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeAccounts = useCallback(() => navigateTo('home'), [navigateTo]);
   const openPortrait  = useCallback(() => navigateTo('portrait'), [navigateTo]);
   const closePortrait = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openLiquidGlass  = useCallback(() => navigateTo('liquidGlass'), [navigateTo]);
+  const closeLiquidGlass = useCallback(() => navigateTo('home'), [navigateTo]);
 
   const returnToWelcome = useCallback(() => {
     gameBackRef.current = null;  setGameActive(false);
@@ -286,7 +295,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'RESET' });
     prevPageRef.current = 'home';
     try {
-      ['bg','song','lens','mebit','video','intro','games','movies','series','tv','retro','xp'].forEach(
+      ['bg','song','lens','mebit','video','intro','games','movies','series','tv','retro','xp','portrait','liquidGlass'].forEach(
         (s) => audioManager.stop(s as any),
       );
     } catch {}
@@ -328,6 +337,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isMusicOpen, openMusic, closeMusic,
         isAccountsOpen, openAccounts, closeAccounts,
         isPortraitOpen, openPortrait, closePortrait,
+        isLiquidGlassOpen, openLiquidGlass, closeLiquidGlass,
       }}
     >
       {children}

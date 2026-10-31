@@ -1,9 +1,9 @@
 /* ===================================================================
-   NL Launcher v2 — Radial Branching Glass Mind-Map
-   Single full-screen page · no scroll · no hero bleed · no product name
+   NL Launcher v2 — Radial Branching Glass Mind-Map (Layout & Geometry)
+   Appearance, glass layers, and tier rules live in liquid-glass.css
    =================================================================== */
 
-/* Full-screen, self-contained shell (overrides the old bento container) */
+/* Full-screen, self-contained shell */
 .nl-launcher-container {
   position: fixed;
   inset: 0;
@@ -20,181 +20,245 @@
 }
 
 /* ---- Background: opaque base + video + uniform veil ---- */
-.nl-launcher-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.nl-launcher-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
 .nl-launcher-bg-base {
-  position: absolute; inset: 0;
-  background:
-    radial-gradient(140% 120% at 20% 0%, #10233a 0%, #0a1626 45%, #060d16 100%);
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(140% 120% at 20% 0%, #10233a 0%, #0a1626 45%, #060d16 100%);
 }
 .nl-launcher-bg-media {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  filter: saturate(1.08) brightness(0.72);
+  opacity: 0;
+  filter: none;
+  transform: translateZ(0);
+  transition: opacity 0.32s ease;
+}
+.nl-launcher-bg-media.is-ready {
+  opacity: 1;
 }
 .nl-launcher-bg-still {
   background: radial-gradient(120% 100% at 50% 10%, #16324f 0%, #0a1626 60%, #060d16 100%);
+  opacity: 1;
 }
-.nl-launcher-bg-veil { position: absolute; inset: 0; }
+.nl-launcher-bg-veil {
+  position: absolute;
+  inset: 0;
+}
 
-/* ---- Slim top bar (no brand name) ---- */
+/* ---- Slim top bar (layout only) ---- */
 .nl-launcher-topbar {
   position: absolute;
   top: max(env(safe-area-inset-top, 14px), 14px);
-  right: 16px;
+  inset-inline-end: 16px;
   z-index: 30;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 .nl-topbar-btn {
-  display: inline-flex; align-items: center; gap: 7px;
-  height: 36px; padding: 0 14px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04));
-  border: 1px solid rgba(255,255,255,0.22);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.35), 0 6px 18px rgba(0,0,0,0.35);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  min-width: 44px;
+  padding-block: 0;
+  padding-inline: 14px;
+  border-radius: var(--glass-radius, 999px);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
+  overflow: hidden;
 }
-.nl-topbar-btn.is-primary { color: #7ef0b4; border-color: rgba(60,220,130,0.4); }
-.nl-topbar-ico { color: #3cdc82; }
-.nl-topbar-orb { width: 36px; height: 36px; border-radius: 999px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
-@media (max-width: 480px) { .nl-topbar-label { display: none; } .nl-topbar-btn { padding: 0 10px; } }
+.nl-topbar-orb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.nl-topbar-orb .profile-orb,
+.nl-topbar-orb .profile-orb--welcome {
+  width: 100%;
+  height: 100%;
+}
+@media (max-width: 480px) {
+  .nl-topbar-label {
+    display: none;
+  }
+  .nl-topbar-btn {
+    padding-inline: 10px;
+  }
+  .nl-topbar-orb {
+    width: 46px;
+    height: 46px;
+  }
+}
 
-/* ---- Signature (not a product name) ---- */
+/* ---- Signature ---- */
 .nl-launcher-sign {
-  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 10px) + 8px);
-  z-index: 20; text-align: center;
-  font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.35em;
-  text-transform: uppercase; color: rgba(255,255,255,0.28); pointer-events: none;
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(env(safe-area-inset-bottom, 10px) + 8px);
+  z-index: 20;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.28);
+  pointer-events: none;
 }
 
 /* ---- The radial stage ---- */
-.nl-graph-stage { position: absolute; inset: 0; z-index: 10; overflow: hidden; }
-.nl-graph-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 11; }
-.nl-ray-glow, .nl-ray-core { fill: none; }
+.nl-graph-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+}
+.nl-graph-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 11;
+}
+.nl-ray-glow,
+.nl-ray-core,
+.nl-ray-spec,
+.nl-ray-pulse {
+  fill: none;
+}
 
-/* ---- Node anchor (centre positioned; animated left/top) ---- */
-.nl-node-anchor { position: absolute; top: 0; left: 0; z-index: 12; will-change: transform; }
+/* ---- Node anchor (centre positioned; animated x/y) ---- */
+.nl-node-anchor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 12;
+  will-change: auto;
+}
 
-/* ---- The glass pill button (hugs its text; never a window) ---- */
-/* ---- New glossy pill shape (Uiverse-by-marcelodolza look) ----
-   Only the *appearance* changed: same layout box, same sizes (l0/l1/l2),
-   same DOM, same framer-motion behaviour. */
+/* ---- Node pill layout & sizing ---- */
 .nl-node {
   position: relative;
-  display: inline-flex; align-items: center; gap: 10px;
-  width: max-content; max-width: min(72vw, 320px);
-  padding: 10px 16px;
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: min(72vw, 320px);
+  min-height: 44px;
+  min-width: 44px;
+  padding-block: 10px;
+  padding-inline: 16px;
+  border-radius: var(--glass-radius, 999px);
   white-space: nowrap;
   cursor: pointer;
-  color: rgba(255,255,255,0.88);
-  background-color: #080808;
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow:
-    inset 0 0.3rem 0.9rem rgba(255,255,255,0.30),
-    inset 0 -0.1rem 0.3rem rgba(0,0,0,0.70),
-    inset 0 -0.4rem 0.9rem rgba(255,255,255,0.50),
-    0 3rem 3rem rgba(0,0,0,0.30),
-    0 1rem 1rem -0.6rem rgba(0,0,0,0.80);
   overflow: hidden;
-  transition: all 0.2s ease;
 }
-/* soft inner dome highlight */
-.nl-node::before {
-  content: ""; position: absolute;
-  left: -15%; right: -15%; top: -100%; bottom: 25%;
-  border-radius: 50%;
-  background-color: rgba(255,255,255,0.12);
-  pointer-events: none;
-  transition: all 0.3s ease;
+
+.nl-node-ico,
+.nl-node-text,
+.nl-node-caret {
+  position: relative;
+  z-index: 2;
 }
-/* top sheen */
-.nl-node::after {
-  content: ""; position: absolute;
-  left: 6%; right: 6%; top: 12%; bottom: 40%;
-  border-radius: 22px 22px 0 0;
-  box-shadow: inset 0 10px 8px -10px rgba(255,255,255,0.80);
-  background: linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0) 100%);
-  pointer-events: none;
-  transition: all 0.3s ease;
-}
-/* keep icon/label/caret above the gloss layers */
-.nl-node-ico, .nl-node-text, .nl-node-caret { position: relative; z-index: 2; }
-/* hover / press sheen (framer-motion still drives the scale) */
-.nl-node:hover {
-  box-shadow:
-    inset 0 0.3rem 0.5rem rgba(255,255,255,0.40),
-    inset 0 -0.1rem 0.3rem rgba(0,0,0,0.70),
-    inset 0 -0.4rem 0.9rem rgba(255,255,255,0.70),
-    0 3rem 3rem rgba(0,0,0,0.30),
-    0 1rem 1rem -0.6rem rgba(0,0,0,0.80);
-}
-.nl-node:hover::before { transform: translateY(-5%); }
-.nl-node:hover::after { opacity: 0.4; transform: translateY(5%); }
-.nl-node:active::after { opacity: 0.5; }
-.nl-node.is-active {
-  border-color: rgba(122,240,180,0.6);
-  box-shadow:
-    inset 0 1px 1px rgba(255,255,255,0.6),
-    0 0 0 1px rgba(122,240,180,0.35),
-    0 14px 40px rgba(0,0,0,0.5),
-    0 0 26px rgba(60,220,130,0.35);
-}
-.nl-node.is-dim { filter: saturate(0.7); }
 
 .nl-node-ico {
-  position: relative; display: inline-flex; align-items: center; justify-content: center;
-  flex: none; border-radius: 50%; overflow: hidden;
-  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.5), rgba(255,255,255,0.06));
-  box-shadow: inset 0 1px 2px rgba(255,255,255,0.6), 0 3px 8px rgba(0,0,0,0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
 }
-.nl-node-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.nl-node-glyph { color: #eafff5; width: 60%; height: 60%; }
-.nl-node-text { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
-.nl-node-label { font-weight: 700; letter-spacing: 0.01em; }
+.nl-node-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.nl-node-glyph {
+  color: #eafff5;
+  width: 60%;
+  height: 60%;
+}
+.nl-node-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+  min-width: 0;
+  text-align: start;
+}
+.nl-node-label {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
 .nl-node-tag {
-  margin-top: 3px; font-size: 10px; font-weight: 500; letter-spacing: 0.06em;
-  text-transform: uppercase; color: rgba(255,255,255,0.62);
+  margin-block-start: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.68);
 }
-.nl-node-caret { color: rgba(255,255,255,0.55); flex: none; }
+.nl-node-caret {
+  color: rgba(255, 255, 255, 0.62);
+  flex: none;
+}
 
 /* Level sizing */
-.nl-node-l0 { padding: 12px 20px; gap: 13px; }
-.nl-node-l0 .nl-node-ico { width: 46px; height: 46px; }
-.nl-node-l0 .nl-node-label { font-size: 1.35rem; }
-.nl-node-l1 { padding: 10px 16px; }
-.nl-node-l1 .nl-node-ico { width: 34px; height: 34px; }
-.nl-node-l1 .nl-node-label { font-size: 1.02rem; }
-.nl-node-l2 { padding: 9px 15px; }
-.nl-node-l2 .nl-node-ico { width: 30px; height: 30px; }
-.nl-node-l2 .nl-node-label { font-size: 0.95rem; }
-
-@media (max-width: 767px) {
-  .nl-node-l0 { padding: 10px 16px; gap: 11px; }
-  .nl-node-l0 .nl-node-ico { width: 40px; height: 40px; }
-  .nl-node-l0 .nl-node-label { font-size: 1.15rem; }
-  .nl-node-l0 .nl-node-tag { display: none; }
-  .nl-node { max-width: 80vw; }
+.nl-node-l0 {
+  padding-block: 12px;
+  padding-inline: 20px;
+  gap: 13px;
 }
-
-/* Low-perf / touch fallback: drop expensive backdrop blur */
-body.low-perf .nl-node,
-body.low-perf .nl-topbar-btn {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: rgba(12, 24, 38, 0.9);
+.nl-node-l0 .nl-node-ico {
+  width: 46px;
+  height: 46px;
 }
-@media (hover: none) {
-  .nl-node { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.nl-node-l0 .nl-node-label {
+  font-size: 1.35rem;
 }
-
-/* ===================================================================
-   NL Launcher v2.1 — mobile fit + compact chips + bigger orb + sound btn
-   =================================================================== */
+.nl-node-l1 {
+  padding-block: 10px;
+  padding-inline: 16px;
+}
+.nl-node-l1 .nl-node-ico {
+  width: 34px;
+  height: 34px;
+}
+.nl-node-l1 .nl-node-label {
+  font-size: 1.02rem;
+}
+.nl-node-l2 {
+  padding-block: 9px;
+  padding-inline: 15px;
+}
+.nl-node-l2 .nl-node-ico {
+  width: 30px;
+  height: 30px;
+}
+.nl-node-l2 .nl-node-label {
+  font-size: 0.95rem;
+}
 
 /* ---- Compact icon-only chip (collapsed inactive root on mobile) ---- */
 .nl-node.is-compact {
@@ -205,71 +269,126 @@ body.low-perf .nl-topbar-btn {
   justify-content: center;
 }
 .nl-node.is-compact .nl-node-ico {
-  width: 34px; height: 34px;
-}
-.nl-node.is-compact::before { height: 55%; }
-
-/* ---- Bigger profile orb in the launcher (both devices) ---- */
-.nl-topbar-orb { width: 48px; height: 48px; }
-.profile-orb--welcome { width: 48px !important; height: 48px !important; }
-.nl-topbar-orb .profile-orb { width: 100%; height: 100%; }
-@media (max-width: 480px) {
-  .nl-topbar-orb { width: 46px; height: 46px; }
-  .profile-orb--welcome { width: 46px !important; height: 46px !important; }
+  width: 34px;
+  height: 34px;
 }
 
-/* ---- Enable-sound / intro-music glass button ---- */
+/* ---- Enable-sound / intro-music button layout ---- */
 .nl-sound-btn {
   position: absolute;
-  left: 16px;
+  inset-inline-start: 16px;
   bottom: calc(env(safe-area-inset-bottom, 12px) + 18px);
   z-index: 30;
-  display: inline-flex; align-items: center; gap: 9px;
-  height: 40px; padding: 0 15px 0 12px;
-  border-radius: 999px;
-  color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 44px;
+  min-height: 44px;
+  min-width: 44px;
+  padding-block: 0;
+  padding-inline: 12px 15px;
+  border-radius: var(--glass-radius, 999px);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  background: linear-gradient(150deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04));
-  border: 1px solid rgba(255,255,255,0.26);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.45), 0 8px 22px rgba(0,0,0,0.4);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
   overflow: hidden;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
 }
-.nl-sound-btn::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 52%;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.34), rgba(255,255,255,0));
-  pointer-events: none;
+.nl-sound-ico {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
-.nl-sound-btn.is-on {
-  color: #7ef0b4;
-  border-color: rgba(122,240,180,0.55);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.5), 0 0 20px rgba(60,220,130,0.32), 0 8px 22px rgba(0,0,0,0.4);
+.nl-sound-textwrap {
+  position: relative;
+  z-index: 2;
+  display: inline-grid;
 }
-.nl-sound-ico { display: inline-flex; align-items: center; gap: 6px; }
-.nl-sound-textwrap { position: relative; display: inline-grid; }
-.nl-sound-label { grid-area: 1 / 1; white-space: nowrap; }
-.nl-sound-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.nl-sound-label {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+.nl-sound-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
 .nl-sound-eq i {
-  width: 2.5px; height: 100%; border-radius: 2px; transform-origin: bottom;
-  background: currentColor; display: block;
+  width: 2.5px;
+  height: 100%;
+  border-radius: 2px;
+  transform-origin: bottom;
+  background: currentColor;
+  display: block;
+  transform: scaleY(0.38);
+  animation: nl-launcher-eq 0.9s ease-in-out infinite alternate;
 }
+.nl-sound-eq i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.nl-sound-eq i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+@keyframes nl-launcher-eq {
+  from {
+    transform: scaleY(0.3);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
 @media (max-width: 480px) {
-  .nl-sound-btn { left: 12px; height: 38px; padding: 0 13px 0 11px; font-size: 11px; }
+  .nl-sound-btn {
+    inset-inline-start: 12px;
+    padding-inline: 11px 13px;
+    font-size: 11px;
+  }
 }
 
 /* ---- Mobile pill tuning: keep everything inside a narrow screen ---- */
 @media (max-width: 767px) {
-  .nl-node { max-width: 74vw; }
-  .nl-node-l0 { padding: 9px 15px; gap: 10px; }
-  .nl-node-l0 .nl-node-ico { width: 36px; height: 36px; }
-  .nl-node-l0 .nl-node-label { font-size: 1.05rem; }
-  .nl-node-l1 { padding: 8px 13px; }
-  .nl-node-l1 .nl-node-ico { width: 30px; height: 30px; }
-  .nl-node-l1 .nl-node-label { font-size: 0.92rem; }
-  .nl-node-l2 { padding: 7px 12px; gap: 8px; }
-  .nl-node-l2 .nl-node-ico { width: 27px; height: 27px; }
+  .nl-node {
+    max-width: 74vw;
+  }
+  .nl-node-l0 {
+    padding-block: 9px;
+    padding-inline: 15px;
+    gap: 10px;
+  }
+  .nl-node-l0 .nl-node-ico {
+    width: 36px;
+    height: 36px;
+  }
+  .nl-node-l0 .nl-node-label {
+    font-size: 1.05rem;
+  }
+  .nl-node-l0 .nl-node-tag {
+    display: none;
+  }
+  .nl-node-l1 {
+    padding-block: 8px;
+    padding-inline: 13px;
+  }
+  .nl-node-l1 .nl-node-ico {
+    width: 30px;
+    height: 30px;
+  }
+  .nl-node-l1 .nl-node-label {
+    font-size: 0.92rem;
+  }
+  .nl-node-l2 {
+    padding-block: 7px;
+    padding-inline: 12px;
+    gap: 8px;
+  }
+  .nl-node-l2 .nl-node-ico {
+    width: 27px;
+    height: 27px;
+  }
   .nl-node-l2 .nl-node-label {
     font-size: 0.82rem;
     white-space: normal;
@@ -280,22 +399,17 @@ body.low-perf .nl-topbar-btn {
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .nl-launcher-sign { font-size: 9px; letter-spacing: 0.28em; }
+  .nl-launcher-sign {
+    font-size: 9px;
+    letter-spacing: 0.28em;
+  }
 }
 
-/* ===================================================================
-   BATCH 3 — profile "tether" rays + midnight default skin (v3)
-   =================================================================== */
-
-/* Glass tether rays: shoot from the profile orb, tie a small knot around each
-   corner of the window and trail off BEHIND it. The layer is injected INTO the
-   window overlay at z-index:-1, so it sits above the dark backdrop but behind the
-   translucent glass panel (the panel's own blur softens the rays => they look
-   like they grip the window from behind). Only these four rays are styled. */
+/* ---- Profile tether rays ---- */
 .nl-tether-box {
   position: fixed;
   inset: 0;
-  z-index: -1;               /* behind the glass panel, above the dark backdrop */
+  z-index: -1;
   pointer-events: none;
   overflow: visible;
 }
@@ -306,242 +420,24 @@ body.low-perf .nl-topbar-btn {
 }
 .nl-tether-glow {
   fill: none;
-  stroke: rgba(122, 240, 190, 0.3);
-  stroke-width: 6;
+  stroke: rgba(122, 240, 190, 0.18);
+  stroke-width: 7;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: blur(3.5px);
-  animation: nl-tether-pulse 2.8s ease-in-out infinite;
 }
 .nl-tether-core {
   fill: none;
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 3px rgba(150, 245, 205, 0.6));
-  animation: nl-tether-pulse 2.8s ease-in-out infinite;
-}
-/* Gentle, tasteful brightness pulse (opacity only => cheap, no layout/paint
-   thrash). Brightness rises then falls once the ray has curled the corner. */
-@keyframes nl-tether-pulse {
-  0%, 100% { stroke-opacity: 0.58; }
-  50%      { stroke-opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .nl-tether-glow, .nl-tether-core { animation: none; filter: none; }
-}
-
-/* Midnight = the DEFAULT "Me" skin: a deep midnight gradient with a soft,
-   perpetual glow that signals it is the primary / default choice. The other four
-   skins are intentionally left untouched. */
-.nl-node.nl-tint-midnight {
-  background:
-    linear-gradient(150deg,
-      rgba(66, 92, 190, 0.55) 0%,
-      rgba(38, 46, 118, 0.5) 45%,
-      rgba(12, 15, 42, 0.62) 100%);
-  border-color: rgba(150, 170, 255, 0.5);
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.5),
-    inset 0 -8px 18px rgba(8, 10, 30, 0.55),
-    0 0 18px rgba(86, 116, 255, 0.35),
-    0 12px 30px rgba(0, 0, 0, 0.5);
-  animation: nl-midnight-glow 4.5s ease-in-out infinite;
-}
-.nl-node.nl-tint-midnight .nl-node-ico {
-  background:
-    radial-gradient(circle at 32% 28%,
-      rgba(188, 206, 255, 0.6),
-      rgba(40, 50, 120, 0.25));
-  box-shadow: inset 0 0 10px rgba(120, 150, 255, 0.45);
-}
-.nl-node.nl-tint-midnight .nl-node-glyph { color: #eaf0ff; }
-.nl-node.nl-tint-midnight:hover { border-color: rgba(180, 196, 255, 0.7); }
-@keyframes nl-midnight-glow {
-  0%, 100% {
-    box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.5),
-      inset 0 -8px 18px rgba(8, 10, 30, 0.55),
-      0 0 16px rgba(86, 116, 255, 0.3),
-      0 12px 30px rgba(0, 0, 0, 0.5);
-  }
-  50% {
-    box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.55),
-      inset 0 -8px 18px rgba(8, 10, 30, 0.6),
-      0 0 26px rgba(110, 140, 255, 0.5),
-      0 12px 34px rgba(0, 0, 0, 0.55);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .nl-node.nl-tint-midnight { animation: none; }
-}
-
-/* ===================================================================
-      MOBILE / TOUCH PERFORMANCE (root cause of the phone freeze):
-   Stacking several `backdrop-filter: blur()` glass elements ON TOP of a
-   continuously-repainting background <video> forces the GPU to re-sample and
-   re-blur the moving video behind every pill on EVERY video frame. On phones
-   this saturates the compositor, so the page grows sluggish and then locks up
-   the moment anything else needs to paint (a tap, a node animation).
-   Fix: on touch devices drop backdrop-filter entirely and fake the frosted
-   glass with a solid translucent fill. The video keeps playing; the glass just
-   no longer samples it per-frame => smooth on mobile. Desktop is untouched. */
-@media (hover: none) {
-  .nl-node,
-  .nl-topbar-btn,
-  .nl-sound-btn {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  .nl-node {
-    background: linear-gradient(150deg, rgba(30, 48, 70, 0.82), rgba(16, 28, 44, 0.82));
-  }
-  .nl-topbar-btn {
-    background: linear-gradient(135deg, rgba(30, 48, 70, 0.85), rgba(16, 28, 44, 0.85));
-  }
-  .nl-sound-btn {
-    background: linear-gradient(150deg, rgba(30, 48, 70, 0.85), rgba(16, 28, 44, 0.85));
-  }
-}
-
-@media (hover: none) {
-  .nl-launcher-bg-media { filter: none !important; }
-  .nl-node.nl-tint-midnight { animation: none !important; }
-  .nl-tether-glow,
-  .nl-tether-core { animation: none !important; filter: none !important; }
-}
-
-/* === New glossy-black node pill: keep it on touch / low-perf too (does NOT touch topbar/sound buttons) === */
-body.low-perf .nl-node { background: #080808; }
-@media (hover: none) {
-  .nl-node { background: #080808; }
-}
-
-/* ======================================================================
-   P8 — launcher critical-path/compositor optimization
-   ====================================================================== */
-
-/* Full-screen video: veil supplies the grading; avoid a per-frame CSS filter. */
-.nl-launcher-bg-media {
-  opacity: 0;
-  filter: none !important;
-  transform: translateZ(0);
-  transition: opacity .32s ease;
-}
-.nl-launcher-bg-media.is-ready { opacity: 1; }
-.nl-launcher-bg-still { opacity: 1; }
-
-/* Nodes fake glass with static gradients. Never sample moving video behind them. */
-.nl-node {
-  background:
-    radial-gradient(90px 24px at 22% 8%, rgba(255,255,255,.17), transparent 74%),
-    linear-gradient(180deg, rgba(60,70,74,.94) 0%, rgba(22,26,29,.96) 48%, rgba(7,8,9,.98) 100%) !important;
-  border-color: rgba(255,255,255,.20);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.54),
-    inset 0 -5px 10px rgba(0,0,0,.34),
-    0 8px 18px rgba(0,0,0,.34) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  transition: border-color .16s ease, box-shadow .16s ease, color .16s ease;
-}
-.nl-node::before {
-  top: 1px;
-  right: 5%;
-  bottom: 52%;
-  left: 5%;
-  border-radius: 999px 999px 40% 40%;
-  background: linear-gradient(180deg, rgba(255,255,255,.20), transparent);
-  transition: opacity .16s ease, transform .16s ease;
-}
-.nl-node::after {
-  top: 3px;
-  right: 9%;
-  bottom: auto;
-  left: 9%;
-  height: 34%;
-  background: radial-gradient(70% 100% at 30% 0%, rgba(255,255,255,.20), transparent 75%);
-  box-shadow: none;
-  transition: opacity .16s ease;
-}
-.nl-node:hover {
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.65),
-    inset 0 -5px 10px rgba(0,0,0,.30),
-    0 10px 22px rgba(0,0,0,.38) !important;
-}
-.nl-node.is-active {
-  border-color: rgba(122,240,180,.58);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.62),
-    inset 0 -5px 10px rgba(0,0,0,.28),
-    0 0 0 1px rgba(122,240,180,.20),
-    0 9px 22px rgba(0,0,0,.38) !important;
-}
-.nl-node.is-dim { filter: none; opacity: .52; }
-.nl-node-anchor { will-change: auto; }
-
-/* Home leaf remains recognizably midnight, but no infinite box-shadow repaint. */
-.nl-node.nl-tint-midnight {
-  animation: none !important;
-  background:
-    radial-gradient(90px 28px at 25% 5%, rgba(188,206,255,.18), transparent 72%),
-    linear-gradient(180deg, rgba(57,72,153,.92), rgba(24,29,83,.95) 50%, rgba(9,11,34,.98)) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.46),
-    inset 0 -6px 12px rgba(5,7,25,.42),
-    0 8px 20px rgba(0,0,0,.40) !important;
-}
-
-/* Topbar/sound: one small desktop blur at most; touch uses static fake glass. */
-.nl-topbar-btn,
-.nl-sound-btn {
-  background:
-    radial-gradient(75px 20px at 24% 0%, rgba(255,255,255,.18), transparent 74%),
-    linear-gradient(180deg, rgba(38,57,66,.78), rgba(9,18,27,.82));
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.34),
-    0 6px 16px rgba(0,0,0,.28);
-  backdrop-filter: blur(6px) saturate(1.12);
-  -webkit-backdrop-filter: blur(6px) saturate(1.12);
-}
-@media (hover: none), (max-width: 767px) {
-  .nl-topbar-btn,
-  .nl-sound-btn {
-    background: linear-gradient(180deg, rgba(38,57,66,.94), rgba(9,18,27,.96));
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
-
-/* Equalizer uses cheap compositor-only CSS instead of Framer's JS loop. */
-.nl-sound-eq i {
-  transform: scaleY(.38);
-  animation: nl-launcher-eq .9s ease-in-out infinite alternate;
-}
-.nl-sound-eq i:nth-child(2) { animation-delay: -.30s; }
-.nl-sound-eq i:nth-child(3) { animation-delay: -.60s; }
-@keyframes nl-launcher-eq {
-  from { transform: scaleY(.30); }
-  to { transform: scaleY(1); }
-}
-
-/* Tethers keep double-stroke depth without filters or permanent pulse repaint. */
-.nl-tether-glow {
-  filter: none !important;
-  animation: none !important;
-  stroke: rgba(122,240,190,.18);
-  stroke-width: 7;
-}
-.nl-tether-core {
-  filter: none !important;
-  animation: none !important;
-  stroke-width: 1.7;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nl-launcher-bg-media { transition: none; }
-  .nl-sound-eq i { animation: none; transform: scaleY(.65); }
+  .nl-launcher-bg-media {
+    transition: none;
+  }
+  .nl-sound-eq i {
+    animation: none;
+    transform: scaleY(0.65);
+  }
 }
-

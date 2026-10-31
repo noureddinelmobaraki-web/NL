@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import { setGenieOriginFromElement } from '../../transitions/genieOrigin';
@@ -6,17 +6,38 @@ import { useReducedMotion } from '../../motion/tokens';
 import type { Theme } from '../../utils/userPrefs';
 import { ROOTS, type NodeAction, type OpenHandler } from './graph.config';
 import { introAudioController } from '../../audio/introAudioController';
-import { computeGraph, type Layout, type PlacedNode } from './graph.geometry';
+import { computeGraph, type Layout, type PlacedNode, type Pt } from './graph.geometry';
 import { useStageSize } from './useStageSize';
 import { ConnectorLayer } from './ConnectorLayer';
 import { NodePill } from './NodePill';
 import { warmLauncherAction } from './launcher.prefetch';
 import { useMotionProfile } from '../../quality/motion/useMotionProfile';
+import { LiquidGlassFilter } from './glass/LiquidGlassFilter';
+import { supportsRefraction, useGlassTier, type GlassTier } from './glass/useGlassTier';
+import { useGlassPointer } from './glass/useGlassPointer';
 
-export function LauncherGraph() {
+interface LauncherGraphProps {
+  glassTier?: GlassTier;
+  refract?: boolean;
+}
+
+export function LauncherGraph({ glassTier: propTier, refract: propRefract }: LauncherGraphProps = {}) {
   const { ref, size } = useStageSize<HTMLDivElement>();
+  const pointerRootRef = useRef<HTMLElement | null>(null);
   const reduced = useReducedMotion();
   const motionProfile = useMotionProfile();
+  const hookTier = useGlassTier();
+  const glassTier = propTier ?? hookTier;
+  const canRefract = propRefract ?? (glassTier === 'liquid' && supportsRefraction());
+
+  useEffect(() => {
+    const stageEl = ref.current;
+    pointerRootRef.current =
+      stageEl?.closest<HTMLElement>('.nl-launcher-container') ?? stageEl ?? null;
+  }, [ref]);
+
+  useGlassPointer(pointerRootRef, glassTier);
+
   const {
     setTheme,
     setLoaded,
@@ -37,57 +58,89 @@ export function LauncherGraph() {
     [size, layout, activeRoot, activeBranch],
   );
 
-  const runAction = useCallback((action: NodeAction) => {
-    const handlers: Record<OpenHandler, () => void> = {
-      openMusic,
+  const { siblingIndexByNodeId, edgeStaggerMap, nodePositions } = useMemo(() => {
+    const nodeIdxMap = new Map<string, number>();
+    const posMap = new Map<string, Pt>();
+    let l1Idx = 0;
+    let l2Idx = 0;
+
+    for (const placed of graph.nodes) {
+      posMap.set(placed.node.id, placed.pos);
+      if (placed.level === 1) {
+        nodeIdxMap.set(placed.node.id, l1Idx++);
+      } else if (placed.level === 2) {
+        nodeIdxMap.set(placed.node.id, l2Idx++);
+      } else {
+        nodeIdxMap.set(placed.node.id, 0);
+      }
+    }
+
+    const edgeMap = new Map<string, number>();
+    for (const edge of graph.edges) {
+      edgeMap.set(edge.id, nodeIdxMap.get(edge.toId) ?? 0);
+    }
+
+    return {
+      siblingIndexByNodeId: nodeIdxMap,
+      edgeStaggerMap: edgeMap,
+      nodePositions: posMap,
+    };
+  }, [graph.edges, graph.nodes]);
+
+  const runAction = useCallback(
+    (action: NodeAction) => {
+      const handlers: Record<OpenHandler, () => void> = {
+        openMusic,
+        openMovies,
+        openTv,
+        openXp,
+        openRetro,
+        openGames,
+        openAccounts,
+      };
+      introAudioController.fadeOut(600);
+      if (action.kind === 'open') {
+        handlers[action.handler]?.();
+        setTheme('midnight');
+        setLoaded(true);
+      } else if (action.kind === 'me') {
+        setTheme('midnight');
+        setLoaded(true);
+      } else if (action.kind === 'theme') {
+        setTheme(action.theme as Theme);
+        setLoaded(true);
+      }
+    },
+    [
+      openAccounts,
+      openGames,
       openMovies,
+      openMusic,
+      openRetro,
       openTv,
       openXp,
-      openRetro,
-      openGames,
-      openAccounts,
-    };
-    introAudioController.fadeOut(600);
-    if (action.kind === 'open') {
-      handlers[action.handler]?.();
-      setTheme('midnight');
-      setLoaded(true);
-    } else if (action.kind === 'me') {
-      setTheme('midnight');
-      setLoaded(true);
-    } else if (action.kind === 'theme') {
-      setTheme(action.theme as Theme);
-      setLoaded(true);
-    }
-  }, [
-    openAccounts,
-    openGames,
-    openMovies,
-    openMusic,
-    openRetro,
-    openTv,
-    openXp,
-    setLoaded,
-    setTheme,
-  ]);
+      setLoaded,
+      setTheme,
+    ],
+  );
 
-  const handleNodeClick = useCallback((
-    event: React.MouseEvent<HTMLButtonElement>,
-    placed: PlacedNode,
-  ) => {
-    const { node, level } = placed;
-    if (node.children?.length) {
-      if (level === 0) {
-        setActiveBranch(null);
-        setActiveRoot((previous) => previous === node.id ? null : node.id);
-      } else if (level === 1) {
-        setActiveBranch((previous) => previous === node.id ? null : node.id);
+  const handleNodeClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>, placed: PlacedNode) => {
+      const { node, level } = placed;
+      if (node.children?.length) {
+        if (level === 0) {
+          setActiveBranch(null);
+          setActiveRoot((previous) => (previous === node.id ? null : node.id));
+        } else if (level === 1) {
+          setActiveBranch((previous) => (previous === node.id ? null : node.id));
+        }
+        return;
       }
-      return;
-    }
-    setGenieOriginFromElement(event.currentTarget);
-    runAction(node.action);
-  }, [runAction]);
+      setGenieOriginFromElement(event.currentTarget);
+      runAction(node.action);
+    },
+    [runAction],
+  );
 
   const handleIntent = useCallback((placed: PlacedNode) => {
     if (!placed.hasChildren) warmLauncherAction(placed.node.action);
@@ -95,22 +148,30 @@ export function LauncherGraph() {
 
   useEffect(() => {
     if (!import.meta.env.DEV || graph.edges.length === 0) return;
-    void import('../../quality/diagnostics/connectionDiagnostics').then(({ reportConnectionDiagnostics }) => {
-      reportConnectionDiagnostics({
-        surface: 'launcher',
-        nodeIds: graph.nodes.map((placed) => placed.node.id),
-        connectionIds: graph.edges.map((edge) => edge.id),
-      });
-    });
+    void import('../../quality/diagnostics/connectionDiagnostics').then(
+      ({ reportConnectionDiagnostics }) => {
+        reportConnectionDiagnostics({
+          surface: 'launcher',
+          nodeIds: graph.nodes.map((placed) => placed.node.id),
+          connectionIds: graph.edges.map((edge) => edge.id),
+        });
+      },
+    );
   }, [graph.edges, graph.nodes]);
 
+  const l2RefractAttr = graph.nodes.length > 10 ? '0' : '1';
+
   return (
-    <div ref={ref} className="nl-graph-stage">
+    <div ref={ref} className="nl-graph-stage" data-l2-refract={l2RefractAttr}>
+      {canRefract ? <LiquidGlassFilter /> : null}
       <ConnectorLayer
         edges={graph.edges}
         size={size}
         reduced={reduced}
         motionProfile={motionProfile.name}
+        glassTier={glassTier}
+        edgeStaggerMap={edgeStaggerMap}
+        nodePositions={nodePositions}
       />
       <AnimatePresence initial={false}>
         {graph.nodes.map((placed) => (
@@ -120,6 +181,8 @@ export function LauncherGraph() {
             onClick={handleNodeClick}
             onIntent={handleIntent}
             motionProfile={motionProfile.name}
+            glassTier={glassTier}
+            siblingIndex={siblingIndexByNodeId.get(placed.node.id) ?? 0}
           />
         ))}
       </AnimatePresence>

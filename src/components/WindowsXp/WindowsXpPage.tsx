@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DesktopViewportProvider } from '../DesktopViewportProvider';
@@ -12,6 +12,23 @@ const XP_SRC = 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/index.
 export const WindowsXpPage: React.FC<WindowsXpPageProps> = ({ onClose }) => {
   const { t } = useTranslation();
   const [showNotice, setShowNotice] = useState(true);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const handleLoad = useCallback(() => {
+    const base = import.meta.env.BASE_URL || './';
+    fetch(`${base}data/songs.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((songs) => {
+        if (!Array.isArray(songs)) return;
+        try {
+          iframeRef.current?.contentWindow?.postMessage(
+            { type: 'NL_SONGS_UPDATE', songs },
+            '*'
+          );
+        } catch {}
+      })
+      .catch(() => {});
+  }, []);
 
   // قفل تمرير الموقع خلف المحاكي + كلاس للتحكم في CSS
   useEffect(() => {
@@ -47,7 +64,9 @@ export const WindowsXpPage: React.FC<WindowsXpPageProps> = ({ onClose }) => {
 
         {/* المحاكي داخل iframe معزول من نفس النطاق */}
         <iframe
+          ref={iframeRef}
           src={XP_SRC}
+          onLoad={handleLoad}
           title="Windows XP Simulator"
           className="xp-iframe"
           allow="autoplay; fullscreen; clipboard-read; clipboard-write; gamepad; pointer-lock"

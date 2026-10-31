@@ -73,18 +73,15 @@
   text-align: center;
 }
 
-.nl-home-map[data-motion-mode="a777"] .nl-home-stage {
-  transform-origin: 50% 0;
-  transform: translate3d(var(--nl-hang-shift, 0px), 0, 0) rotate(var(--nl-hang-angle, 0deg));
-  will-change: transform;
-}
-.nl-cord--physical {
-  transform-box: view-box;
-  transform: rotate(var(--nl-hang-angle, 0deg));
-  will-change: transform;
-}
+.nl-home-map[data-motion-mode="a777"] .nl-home-stage,
 .nl-home-map[data-motion-mode="normal"] .nl-home-stage,
-.nl-home-map[data-motion-mode="normal"] .nl-cord { will-change: auto; }
+.nl-cord--physical,
+.nl-home-map[data-motion-mode="normal"] .nl-cord {
+  transform: none !important;
+  translate: none !important;
+  rotate: none !important;
+  will-change: auto !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .nl-motion-switch-slider { transition-duration: .01ms; }
@@ -95,35 +92,13 @@
   .nl-motion-switch-wrap { margin-top: 12px; margin-bottom: 18px; }
 }
 
-/* P7: independent A777 bodies; individual transform properties preserve the
-   component's existing transform animations and hover behavior. */
-.nl-home-map[data-motion-mode="a777"] .nl-a777-body {
-  transform-origin: 50% 0;
-  translate: var(--nl-local-shift, 0px) 0;
-  rotate: var(--nl-local-angle, 0deg);
-  will-change: translate, rotate;
-}
+/* Static Normal layout across desktop and mobile */
+.nl-home-map[data-motion-mode="a777"] .nl-a777-body,
 .nl-home-map[data-motion-mode="normal"] .nl-a777-body {
-  translate: none;
-  rotate: none;
-  will-change: auto;
-}
-@media (prefers-reduced-motion: reduce) {
-  .nl-home-map[data-motion-mode="a777"] .nl-a777-body {
-    --nl-local-shift: 0px;
-    --nl-local-angle: 0deg;
-  }
-}
-
-@media (max-width: 767px) {
-  .nl-home-map[data-motion-mode="a777"] .nl-home-stage,
-  .nl-home-map[data-motion-mode="a777"] .nl-a777-body,
-  .nl-cord--physical {
-    transform: none !important;
-    translate: none !important;
-    rotate: none !important;
-    will-change: auto !important;
-  }
+  transform: none !important;
+  translate: none !important;
+  rotate: none !important;
+  will-change: auto !important;
 }
 
 /* P10: elastic tactile glass switch inspired by the supplied neumorphic toggle,

@@ -175,13 +175,60 @@ function hasObstacleAtBox(
   return false;
 }
 
+function snapToMobileTopEdge(
+  rawX: number,
+  dx: number,
+  baseX: number,
+  vw: number,
+  bw = 52,
+): Pos {
+  const margin = 12;
+  const halfW = Math.max(24, bw / 2);
+  const leftX = Math.round(margin + halfW - vw / 2);
+  const centerX = 0;
+  const rightX = Math.round(vw / 2 - margin - halfW);
+
+  // Pulling slightly to the right -> snaps to right (or center if nudged from far left)
+  if (dx > 12) {
+    if (baseX < leftX * 0.45 && baseX + dx < 18 && dx < vw * 0.26) {
+      return { x: centerX, y: 0 };
+    }
+    return { x: rightX, y: 0 };
+  }
+
+  // Pulling slightly to the left -> snaps to left (or center if nudged from far right)
+  if (dx < -12) {
+    if (baseX > rightX * 0.45 && baseX + dx > -18 && dx > -vw * 0.26) {
+      return { x: centerX, y: 0 };
+    }
+    return { x: leftX, y: 0 };
+  }
+
+  // Otherwise snap to nearest of [leftX, centerX, rightX]
+  const slots = [leftX, centerX, rightX];
+  let best = centerX;
+  let bestDist = Infinity;
+  for (const s of slots) {
+    const d = Math.abs(rawX - s);
+    if (d < bestDist) {
+      bestDist = d;
+      best = s;
+    }
+  }
+  return { x: best, y: 0 };
+}
+
 function readSaved(): Pos {
   if (typeof window === 'undefined') return { x: 0, y: 0 };
+  const isMobileViewport = window.innerWidth < 768;
   try {
     const s = localStorage.getItem(KEY);
     if (!s) return { x: 0, y: 0 };
     const p = JSON.parse(s);
     if (typeof p?.x === 'number' && typeof p?.y === 'number') {
+      if (isMobileViewport) {
+        return snapToMobileTopEdge(p.x, 0, p.x, window.innerWidth, 52);
+      }
       return snapToPerimeterFrame({ x: p.x, y: p.y }, window.innerWidth, window.innerHeight, 52, 46);
     }
   } catch {
@@ -192,9 +239,10 @@ function readSaved(): Pos {
 
 export function useSwitcherDrag(opts: {
   disabled: boolean;
+  isMobile?: boolean;
   surfaceRef: React.RefObject<HTMLElement | null>;
 }) {
-  const { disabled, surfaceRef } = opts;
+  const { disabled, isMobile = false, surfaceRef } = opts;
   const [offset, setOffset] = useState<Pos>(readSaved);
   const [dragging, setDragging] = useState(false);
   const [autoDodging, setAutoDodging] = useState(false);
@@ -205,8 +253,19 @@ export function useSwitcherDrag(opts: {
   const offsetRef = useRef<Pos>(offset);
   offsetRef.current = offset;
 
-  // Smart obstacle detection & perimeter auto-dodge
+  // On mobile, ensure the collapsed bubble always stays at the top of the screen (y = 0)
+  useEffect(() => {
+    if (!isMobile && window.innerWidth >= 768) return;
+    const cur = offsetRef.current;
+    const snapped = snapToMobileTopEdge(cur.x, 0, cur.x, window.innerWidth, 52);
+    if (cur.x !== snapped.x || cur.y !== 0) {
+      setOffset(snapped);
+    }
+  }, [isMobile]);
+
+  // Smart obstacle detection & perimeter auto-dodge (Desktop only — disabled on mobile)
   const checkAndDodge = useCallback(() => {
+    if (isMobile || window.innerWidth < 768) return;
     if (disabled || activeRef.current) return;
     const el = surfaceRef.current;
     if (!el) return;
@@ -253,11 +312,13 @@ export function useSwitcherDrag(opts: {
         return;
       }
     }
-  }, [disabled, surfaceRef]);
+  }, [disabled, isMobile, surfaceRef]);
 
-  // When panel opens, clamp offset so the expanded panel (330x340) never clips off-screen
+  // When panel opens on DESKTOP, clamp offset so the expanded panel (330x340) never clips off-screen.
+  // On MOBILE, the expanded panel is a centered Control Center modal, so we preserve the top-edge orb offset.
   useEffect(() => {
     if (!disabled) return; // disabled === true means `open === true`
+    if (isMobile || window.innerWidth < 768) return;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const panelW = Math.min(vw * 0.92, 340);
@@ -276,9 +337,21 @@ export function useSwitcherDrag(opts: {
     if (safeX !== cur.x || safeY !== cur.y) {
       setOffset({ x: safeX, y: safeY });
     }
-  }, [disabled]);
+  }, [disabled, isMobile]);
 
   useEffect(() => {
+    if (isMobile || window.innerWidth < 768) {
+      const onMobileResize = () => {
+        const cur = offsetRef.current;
+        const snapped = snapToMobileTopEdge(cur.x, 0, cur.x, window.innerWidth, 52);
+        if (cur.x !== snapped.x || cur.y !== 0) {
+          setOffset(snapped);
+        }
+      };
+      window.addEventListener('resize', onMobileResize, { passive: true });
+      return () => window.removeEventListener('resize', onMobileResize);
+    }
+
     let rafId = 0;
     let timerId = 0;
     const scheduleCheck = () => {
@@ -301,7 +374,7 @@ export function useSwitcherDrag(opts: {
       window.removeEventListener('scroll', scheduleCheck, true);
       window.removeEventListener('resize', scheduleCheck);
     };
-  }, [checkAndDodge]);
+  }, [checkAndDodge, isMobile]);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -316,20 +389,29 @@ export function useSwitcherDrag(opts: {
     [disabled],
   );
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!activeRef.current) return;
-    const dx = e.clientX - startRef.current.x;
-    const dy = e.clientY - startRef.current.y;
-    if (!movedRef.current && Math.hypot(dx, dy) > 6) movedRef.current = true;
-    if (movedRef.current) {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const margin = 10;
-      const nextX = Math.max(-vw / 2 + 28, Math.min(vw / 2 - 28, baseRef.current.x + dx));
-      const nextY = Math.max(-8, Math.min(vh - 64 - margin, baseRef.current.y + dy));
-      setOffset({ x: Math.round(nextX), y: Math.round(nextY) });
-    }
-  }, []);
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!activeRef.current) return;
+      const dx = e.clientX - startRef.current.x;
+      const dy = e.clientY - startRef.current.y;
+      const mobileMode = isMobile || window.innerWidth < 768;
+      const dist = mobileMode ? Math.abs(dx) : Math.hypot(dx, dy);
+      if (!movedRef.current && dist > 6) movedRef.current = true;
+      if (movedRef.current) {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const margin = 10;
+        const nextX = Math.max(-vw / 2 + 28, Math.min(vw / 2 - 28, baseRef.current.x + dx));
+        if (mobileMode) {
+          setOffset({ x: Math.round(nextX), y: 0 });
+        } else {
+          const nextY = Math.max(-8, Math.min(vh - 64 - margin, baseRef.current.y + dy));
+          setOffset({ x: Math.round(nextX), y: Math.round(nextY) });
+        }
+      }
+    },
+    [isMobile],
+  );
 
   const onPointerUp = useCallback(
     (e: React.PointerEvent) => {
@@ -348,6 +430,19 @@ export function useSwitcherDrag(opts: {
       const rect = surfaceRef.current?.getBoundingClientRect();
       const bw = rect ? rect.width : 48;
       const bh = rect ? rect.height : 46;
+      const mobileMode = isMobile || vw < 768;
+
+      if (mobileMode) {
+        const dx = e.clientX - startRef.current.x;
+        const final = snapToMobileTopEdge(offsetRef.current.x, dx, baseRef.current.x, vw, bw);
+        setOffset(final);
+        try {
+          localStorage.setItem(KEY, JSON.stringify(final));
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
 
       const final = snapToPerimeterFrame(offsetRef.current, vw, vh, bw, bh);
       setOffset(final);
@@ -358,7 +453,7 @@ export function useSwitcherDrag(opts: {
       }
       window.setTimeout(checkAndDodge, 180);
     },
-    [checkAndDodge, surfaceRef],
+    [checkAndDodge, isMobile, surfaceRef],
   );
 
   return {
@@ -371,4 +466,5 @@ export function useSwitcherDrag(opts: {
     onPointerUp,
   };
 }
+
 

@@ -1,35 +1,50 @@
-# خطة التنفيذ: تطوير الأنبوب الزجاجي المتصل، تحسين أداء الهاتف، إصلاح اختبارات GitHub، وتعميم الزجاج السائل
+# خطة إضافة الأغاني الـ 14 الجديدة وإعادة ترتيب القائمة
 
-## 1. إخفاء شريط الأقسام العلوي على الهواتف الذكية
-- **إلغاء عرض الشريط العلوي في الهواتف**: تحديث `src/App.tsx` و`src/components/app/AppNavGrid.tsx` وملفات التنسيق (`src/styles/aero-redesign.css` و`src/styles/components/home-polish.css`) لإخفاء شريط الأقسام العلوي (`.nl-top-nav`) تماماً على شاشات الهواتف (`< 768px`) اكتفاءً بشريط التنقل السفلي العائم (`AppMobileNav`).
+## نظرة عامة
+إضافة **14 أغنية جديدة** في صدارة قائمة الأغاني الخاصة بالموقع مع استبدال النسخة القديمة من أغنية **`ink`** (التي كانت في المرتبة 34 بنفس رابط يوتيوب `9sbkfd12gI4`) بالنسخة الجديدة **`INK`** في المرتبة 6 لمنع التكرار، ليصبح إجمالي الأغاني **61 أغنية** مرتبة من `1` إلى `61`، مع توفير ملفات الترجمة الزمنية (`.sbv`) وروابط يوتيوب وبيانات الفهرسة والبحث.
 
-## 2. إعادة هندسة شريط الأقسام العلوي على الحاسوب كأنبوب زجاجي سائل واحد متصل بدخان أحمر
-- **إزالة الخلفية السماوية والمربعات المزدوجة نهائياً**:
-  - إزالة قواعد `!important` القديمة في `src/styles/components/home-polish.css` (التي كانت داخل طبقة `layer(features)` وتتفوق على طبقة `layer(liquid)` فتُظهر الدائرة السماوية `#8cebe2` حول `.nl-top-nav__icon` والإطار المربع حول `.nl-top-nav__button`).
-  - إزالة الحاوية الخارجية المربعة والجسور المنفصلة لتجنب مظهر "مربع داخل مربع".
-- **بناء أنبوب زجاجي سائل موحد (`Single Continuous SVG Liquid Glass Tube`)**:
-  - تحديث `src/components/app/AppNavGrid.tsx` و`src/components/NavButton.tsx` لرسم مسار منحنٍ واحد متصل (`<svg className="nl-top-nav__tube-svg">`) يحيط بجميع الأيقونات كجسم زجاجي واحد ينحني ويضيق بانسيابية بين الأيقونات ويتسع حول كل أيقونة.
-  - إضافة طبقة **دخان أحمر ملكي خفيف متحرك** (`Crimson Smoke Wisps`) داخل القناع الزجاجي الشفاف للأنبوب مع لمعة حواف ثلاثية الأبعاد (`Specular Rim`).
-  - عند تمرير الماوس أو التركيز على أي أيقونة، يتمدد الجزء الخاص بها داخل نفس الأنبوب الزجاجي المتصل بسلاسة ليظهر اسم القسم بجانب الأيقونة المكبرة.
+---
 
-## 3. تحديث نص السيرة الذاتية (Bio) بخط سيريف سينمائي ولون أحمر ملكي متوهج
-- **تحديث النص الأساسي**: تعديل السيرة الذاتية في `metadata.json` و`src/components/sections/HeroSection.tsx` (العنصر المحدد `#header-card > p.hero-bio`) لتصبح:
-  `"I appreciate the simplest things in the universe and try never to get too used to life. I don't care much for society or what people think—I just do what I love, and this is my website"`
-- **التنسيق البصري الاحترافي**: تطبيق خط سيريف سينمائي فاخر (`'Playfair Display', 'Cormorant Garamond', Georgia, serif`) مع تدرج وتوهج باللون **الأحمر الملكي (Royal Red)** يمنح النص حضوراً فنياً واضحاً ومقروئية عالية.
+## الترتيب الجديد للأغاني في المقدمة (1 إلى 14)
 
-## 4. إصلاح فشل الاختبارين في GitHub Actions CI
-- **إصلاح اختبار `Code Quality & Integrity CI / Build & Validate`**:
-  - تعديل المتغير `activePressedElements` في `src/utils/liquidGlassPhysics.ts` (السطر 86) من `let` إلى `const` لحل خطأ ESLint (`prefer-const`).
-- **إصلاح اختبار `Playwright E2E Tests / test`**:
-  - تحديث `.github/workflows/e2e.yml` (وبقية ملفات Workflows التي تستخدم `ubuntu-latest` مع Playwright) لتثبيت بيئة التشغيل على `runs-on: ubuntu-24.04` بدلاً من `ubuntu-latest` (الذي انتقل إلى `ubuntu-26.04` غير المدعوم في `playwright install --with-deps` للإصدار الحالي).
+| الترتيب (`id`) | اسم الأغنية (`title`) | رابط البث الصوتي (`url`) | ملف الترجمة (`lrcFile`) | معرف يوتيوب (`song-youtube.json`) |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | `100 ans` | `.../songs/song_01/index.m3u8` | `100 ans.sbv` | `-sDZtcRZEag` |
+| **2** | `20260916 184153275` | `.../songs/song_02/index.m3u8` | `20260916 184153275.sbv` | `lfnKMMFeu5k` |
+| **3** | `Apologize for my weird mix` | `.../songs/song_03/index.m3u8` | `Apologize for my weird mix.sbv` | `DufbYqHpJP8` |
+| **4** | `Dekhla` | `.../songs/song_04/index.m3u8` | `Dekhla.sbv` | `yyejPkrXBeI` |
+| **5** | `gha Noel` | `.../songs/song_05/index.m3u8` | `gha Noel.sbv` | `QvhkgA3cN4Y` |
+| **6** | `INK` | `.../songs/song_06/index.m3u8` | `INK.sbv` | `9sbkfd12gI4` |
+| **7** | `L’Morphiniya 35` | `.../songs/song_07/index.m3u8` | `L’Morphiniya 35.sbv` | `vLSuVXtcq-s` |
+| **8** | `Money Call` | `.../songs/song_08/index.m3u8` | `Money Call.sbv` | `8YCr-D18FrI` |
+| **9** | `Pyramid` | `.../songs/song_09/index.m3u8` | `Pyramid.sbv` | `Wy6OjKvXkYE` |
+| **10** | `Python` | `.../songs/song_10/index.m3u8` | `Python.sbv` | `0llIMet7IN0` |
+| **11** | `Warner brothers` | `.../songs/song_11/index.m3u8` | `Warner brothers.sbv` | `JttVnQPRM_E` |
+| **12** | `ألا كل ماشية الخيزلى` | `.../songs/song_12/index.m3u8` | `ألا كل ماشية الخيزلى.sbv` | `9S9R872FJaM` |
+| **13** | `بث تجريبي` | `.../songs/song_13/index.m3u8` | `بث تجريبي.sbv` | `pCZVGsM2Ywk` |
+| **14** | `غَيْرُ مُجْدٍ فِي مِلَّتِي وَاعْتِقَادِي` | `.../songs/song_14/index.m3u8` | `غَيْرُ مُجْدٍ فِي مِلَّتِي وَاعْتِقَادِي.sbv` | `w_PFK6wS_84` |
 
-## 5. تحسين سرعة وأداء الصفحة الرئيسية (Home) على الهواتف الذكية
-- **تثبيت التأرجح على الهاتف**: تحديث `src/home/motion/useA777StationPhysics.ts` و`src/styles/components/home-motion-system.css` لإيقاف حركة البندول والتأرجح الفيزيائي على شاشات الهواتف (`< 768px`) بحيث تبقى نوافذ وبطاقات الصفحة الرئيسية ثابتة ومستقرة تماماً أثناء التصفح باللمس، مع بقاء التأرجح كاملاً على الحاسوب.
-- **ضبط سقف الإطارات على 24 إطاراً بالثانية (24 FPS) وتخفيف الضبابية**:
-  - تحديد معدل التحديث الحركي على الهواتف بـ `24 FPS` (`~41.6ms` لكل إطار) في حلقات الحركة (`liquidGlassPhysics.ts` و`NotchIsland.tsx`) وتخفيف طبقات الضبابية والظلال الثقيلة على الهواتف لضمان سلاسة فائقة.
+- الأغاني الـ 47 المتبقية (بعد إزالة النسخة القديمة المكررة من `ink`) ستُعاد فهرستها بالتسلسل من **`id: 15`** إلى **`id: 61`** بنفس ترتيبها الأصلي مع الحفاظ على روابطها وخلفياتها (`bgIndex`) وملفات ترجمتها وروابط يوتيوب الخاصة بها.
 
-## 6. تعميم الزجاج السائل المتقدم على أزرار الصوت وزر Login ونافذة البروفايل الكاملة
-- **أزرار الصوت والطفو (`.fab-button`)**: تحديث زر كتم/تشغيل الصوت العائم (`#orchestrator-portal-root` المحدد) وزر الصعود للأعلى في `src/styles/components/floating-buttons.css` و`src/styles/aero-redesign.css` و`src/styles/themes/midnight-skin.css` ليعملا بنمط الزجاج السائل ثلاثي الأبعاد مع تتبع الإضاءة والتمدد المرن.
-- **زر تسجيل الدخول العائم (`.auth-launcher`)**: تحويل زر `Login` الذي يظهر لغير المسجلين (`src/styles/components/auth-launcher.css` و`src/styles/aero-redesign.css`) إلى كبسولة زجاجية سائلة ثلاثية الأبعاد تتكيف مع الثيم النشط وتستجيب للماوس واللمس.
-- **نافذة عرض وتعديل البروفايل (`ProfilePage` وجميع نوافذها الفرعية والأزرار)**:
-  - تطبيق الزجاج السائل المتقدم على `.profile-overlay`، `.profile-shell`، `.profile-card`، `.profile-section`، حقول الإدخال، شريط أغنية البروفايل (`.nl-theme-song`)، وجميع الأزرار (`.btn-accent`، `.btn-ghost`، `.btn-danger`، `.icon-btn`، `.profile-cam`، `.profile-theme-edit`) بالإضافة إلى النوافذ المنبثقة التابعة لها (`DeleteAccountModal`، `FeaturedPicker`، `ThemeSongPicker`، `InboxPanel`، `AvatarPickerModal`، `AvatarCropModal`، و`AdminDashboard`).
+---
+
+## الخطوات التنفيذية والملفات المستهدفة
+
+### 1. ملفات الترجمة الزمنية (`/public/lrc/*.sbv` ودعم الروابط المباشرة)
+- جلب وحفظ ملفات الترجمة الـ 14 (`sub.sbv`) من خادم R2 (`https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/songs/song_01..14/sub.sbv`) داخل مجلد `/public/lrc/` بأسماء الأغاني المقابلة لضمان عمل محرك الكلمات (`LyricsEngine`) واجتياز فحص البناء (`scripts/verify-lrc.mjs`).
+- تحديث خطافات تحميل الكلمات (`/src/hooks/useSongLyrics.ts`، `/src/components/MySongs/hooks/useSongsData.ts`، `/src/components/MySongs/hooks/useLrcHoverPreload.ts`) لدعم روابط الترجمة المباشرة أو المحلية بسلاسة تامة.
+
+### 2. تحديث قائمة الأغاني وروابط يوتيوب في الصفحة الرئيسية (`Home`) وبيانات XP
+- **`/public/data/songs.json`**:
+  - وضع الأغاني الـ 14 الجديدة في المقدمة (`id: 1` إلى `id: 14`) مع تفعيل `hasLrc: true` وربط `lrcFile` وتوزيع `bgIndex` بشكل متناسق.
+  - إعادة ترقيم الأغاني الـ 47 السابقة من `id: 15` إلى `id: 61` (مع استبعاد `ink` القديمة رقم 34 منعاً للتكرار).
+- **`/public/data/song-youtube.json`**:
+  - ربط المعرفات `"1"` إلى `"14"` بمعرفات يوتيوب الجديدة، وتحديث مفاتيح الأغاني `"15"` إلى `"61"` لتطابق الترقيم الجديد لكل أغنية بدقة.
+- **مزامنة بيانات Windows XP (`VLC` و `My Music`)**:
+  - تمرير القائمة المحدثة (`songs.json` وملفات الترجمة) عبر قناة الاتصال (`postMessage`) في `/src/components/WindowsXp/WindowsXpPage.tsx` وتحديث ملفات البيانات المشتركة بحيث تتوفر القائمة الجديدة بالترتيب نفسه.
+
+### 3. تحديث الفهرسة والبحث (`Search Index` & `SEO Data`)
+- إعادة توليد وتحديث `/public/data/search-index.json` و `/public/songs-jsonld.json` و `/public/sitemap.xml` عبر سكريبتات البناء (`scripts/seo-generate.mjs`) ليظهر الترتيب الجديد (`own-1` إلى `own-61`) بصور مصغرات يوتيوب وروابط الاستماع المباشرة.
+
+### 4. التحقق والاختبار
+- تشغيل `scripts/verify-lrc.mjs` و `compile_applet` و `lint_applet` للتأكد من سلامة جميع الروابط والملفات وعدم وجود أي أخطاء برمجية.

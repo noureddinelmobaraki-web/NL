@@ -12,6 +12,7 @@ interface SongApiRow {
   url: string;
   hasLrc?: boolean;
   lrcFile?: string | null;
+  lrcUrl?: string | null;
   bgIndex?: number;
 }
 

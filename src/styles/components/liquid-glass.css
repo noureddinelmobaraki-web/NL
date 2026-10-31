@@ -1,0 +1,435 @@
+/* ===================================================================
+   NL Launcher — iOS 26 / visionOS Three-Tier Liquid Glass System
+   Tiers: data-glass="liquid" | "frost" | "lite"
+   Refraction: data-refract="1" | "0"
+   =================================================================== */
+
+/* ---- 1. Design Tokens on Container ---- */
+.nl-launcher-container {
+  --glass-tint: rgba(12, 16, 22, 0.30);
+  --glass-tint-strong: rgba(12, 16, 22, 0.55);
+  --glass-rim: rgba(255, 255, 255, 0.55);
+  --glass-rim-soft: rgba(255, 255, 255, 0.10);
+  --glass-accent: 126 240 180;
+  --glass-radius: 999px;
+  --gx: 30%;
+  --gy: 0%;
+  --rim-angle: 200deg;
+  --mx: 0px;
+  --my: 0px;
+}
+
+/* ---- 2. Shared Base & Foreground Contrast ---- */
+.nl-node,
+.nl-topbar-btn,
+.nl-sound-btn {
+  border: none;
+  color: rgba(255, 255, 255, 0.94);
+  border-radius: var(--glass-radius);
+}
+
+.nl-node-ico,
+.nl-node-text,
+.nl-node-caret,
+.nl-topbar-ico,
+.nl-topbar-label,
+.nl-sound-ico,
+.nl-sound-textwrap {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.nl-topbar-ico {
+  color: #3cdc82;
+}
+
+.nl-node-ico {
+  background: radial-gradient(
+    circle at 32% 28%,
+    rgba(255, 255, 255, 0.44),
+    rgba(255, 255, 255, 0.06) 72%
+  );
+  box-shadow:
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.55),
+    0 3px 8px rgba(0, 0, 0, 0.32);
+}
+
+/* ---- 3. Pseudo-Element Layer Model (Rim ::before + Specular ::after) ---- */
+.nl-node::before,
+.nl-node::after,
+.nl-topbar-btn::before,
+.nl-topbar-btn::after,
+.nl-sound-btn::before,
+.nl-sound-btn::after,
+.nl-topbar-orb::before,
+.nl-topbar-orb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Specular RIM: 1px conic-gradient border with subtle iridescence */
+.nl-node::before,
+.nl-topbar-btn::before,
+.nl-sound-btn::before,
+.nl-topbar-orb::before {
+  padding: 1px;
+  background: conic-gradient(
+    from var(--rim-angle, 200deg) at 50% 50%,
+    rgba(255, 255, 255, 0.85) 0deg,
+    rgba(138, 214, 255, 0.42) 65deg,
+    rgba(126, 240, 180, 0.36) 120deg,
+    var(--glass-rim-soft) 180deg,
+    rgba(232, 168, 255, 0.34) 245deg,
+    rgba(146, 212, 255, 0.40) 305deg,
+    rgba(255, 255, 255, 0.85) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+/* Specular HIGHLIGHT + upper 45% lens sheen */
+.nl-node::after,
+.nl-topbar-btn::after,
+.nl-sound-btn::after,
+.nl-topbar-orb::after {
+  background:
+    radial-gradient(
+      120px 60px at var(--gx, 30%) var(--gy, 0%),
+      rgba(255, 255, 255, 0.28),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.20) 0%,
+      rgba(255, 255, 255, 0.04) 32%,
+      transparent 45%
+    );
+}
+
+/* ---- 4. Tier: LIQUID (Desktop fine pointer + full motion) ---- */
+.nl-launcher-container[data-glass="liquid"] .nl-node,
+.nl-launcher-container[data-glass="liquid"] .nl-topbar-btn,
+.nl-launcher-container[data-glass="liquid"] .nl-sound-btn {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.12),
+      rgba(255, 255, 255, 0.03) 55%,
+      rgba(255, 255, 255, 0.06)
+    ),
+    var(--glass-tint);
+  backdrop-filter: blur(8px) saturate(1.7) brightness(1.06);
+  -webkit-backdrop-filter: blur(8px) saturate(1.7) brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.12),
+    0 10px 30px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.20);
+  translate: var(--mx, 0px) var(--my, 0px);
+  transition:
+    translate 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.nl-launcher-container[data-glass="liquid"] .nl-node::after,
+.nl-launcher-container[data-glass="liquid"] .nl-topbar-btn::after,
+.nl-launcher-container[data-glass="liquid"] .nl-sound-btn::after,
+.nl-launcher-container[data-glass="liquid"] .nl-topbar-orb::after {
+  mix-blend-mode: screen;
+}
+
+/* Real SVG displacement refraction on Chromium desktop */
+.nl-launcher-container[data-glass="liquid"][data-refract="1"] .nl-node,
+.nl-launcher-container[data-glass="liquid"][data-refract="1"] .nl-topbar-btn,
+.nl-launcher-container[data-glass="liquid"][data-refract="1"] .nl-sound-btn {
+  backdrop-filter: url(#nl-liquid-refract) blur(4px) saturate(1.7) brightness(1.06);
+  -webkit-backdrop-filter: url(#nl-liquid-refract) blur(4px) saturate(1.7) brightness(1.06);
+}
+
+/* Cap refraction: when > 10 nodes are visible, drop SVG refraction on level-2 nodes */
+.nl-launcher-container[data-glass="liquid"][data-refract="1"] .nl-graph-stage[data-l2-refract="0"] .nl-node-l2 {
+  backdrop-filter: blur(8px) saturate(1.7) brightness(1.06);
+  -webkit-backdrop-filter: blur(8px) saturate(1.7) brightness(1.06);
+}
+
+.nl-launcher-container[data-glass="liquid"] .nl-node:hover,
+.nl-launcher-container[data-glass="liquid"] .nl-topbar-btn:hover,
+.nl-launcher-container[data-glass="liquid"] .nl-sound-btn:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.18),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.20),
+    0 14px 34px rgba(0, 0, 0, 0.34),
+    0 3px 8px rgba(0, 0, 0, 0.22);
+}
+
+/* ---- 5. Tier: FROST (Mobile / Tablet / Touch — ZERO backdrop-filter) ---- */
+.nl-launcher-container[data-glass="frost"] .nl-node,
+.nl-launcher-container[data-glass="frost"] .nl-topbar-btn,
+.nl-launcher-container[data-glass="frost"] .nl-sound-btn {
+  --gx: 28%;
+  --gy: 0%;
+  --rim-angle: 200deg;
+  background:
+    radial-gradient(120% 90% at 25% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
+    linear-gradient(
+      180deg,
+      rgba(58, 68, 78, 0.92),
+      rgba(20, 24, 30, 0.95) 55%,
+      rgba(10, 12, 16, 0.97)
+    );
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.28),
+    0 8px 20px rgba(0, 0, 0, 0.32);
+  transition: box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+/* ---- 6. Tier: LITE (Reduced motion / weak device / saveData — flat & fast) ---- */
+.nl-launcher-container[data-glass="lite"] .nl-node,
+.nl-launcher-container[data-glass="lite"] .nl-topbar-btn,
+.nl-launcher-container[data-glass="lite"] .nl-sound-btn {
+  background: linear-gradient(180deg, rgba(32, 38, 46, 0.90), rgba(16, 20, 26, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  translate: none;
+  transition: opacity 0.15s ease;
+}
+
+.nl-launcher-container[data-glass="lite"] .nl-node::before,
+.nl-launcher-container[data-glass="lite"] .nl-node::after,
+.nl-launcher-container[data-glass="lite"] .nl-topbar-btn::before,
+.nl-launcher-container[data-glass="lite"] .nl-topbar-btn::after,
+.nl-launcher-container[data-glass="lite"] .nl-sound-btn::before,
+.nl-launcher-container[data-glass="lite"] .nl-sound-btn::after,
+.nl-launcher-container[data-glass="lite"] .nl-topbar-orb::before,
+.nl-launcher-container[data-glass="lite"] .nl-topbar-orb::after {
+  display: none;
+}
+
+/* ---- 7. Profile Orb Glass Layers ---- */
+.nl-topbar-orb {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 8px 22px rgba(0, 0, 0, 0.38);
+}
+.nl-topbar-orb .profile-orb {
+  filter: none;
+}
+.nl-topbar-orb .profile-orb-ring {
+  display: none;
+}
+.nl-topbar-orb::before {
+  padding: 1.5px;
+  z-index: 3;
+}
+.nl-topbar-orb::after {
+  z-index: 3;
+  background:
+    radial-gradient(
+      42px 32px at var(--gx, 30%) var(--gy, 0%),
+      rgba(255, 255, 255, 0.32),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.28) 0%,
+      rgba(255, 255, 255, 0.04) 36%,
+      transparent 48%
+    );
+}
+.nl-launcher-container[data-glass="liquid"] .nl-topbar-orb {
+  translate: var(--mx, 0px) var(--my, 0px);
+  transition:
+    translate 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s ease;
+}
+.nl-launcher-container[data-glass="frost"] .nl-topbar-orb {
+  --gx: 28%;
+  --gy: 0%;
+  --rim-angle: 200deg;
+}
+.nl-launcher-container[data-glass="lite"] .nl-topbar-orb {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+/* ---- 8. Active, Primary & Sound-On Mint Rim States (All Tiers) ---- */
+.nl-node.is-active::before,
+.nl-sound-btn.is-on::before,
+.nl-topbar-btn.is-primary::before {
+  background: conic-gradient(
+    from var(--rim-angle, 200deg) at 50% 50%,
+    rgb(var(--glass-accent)) 0deg,
+    rgba(126, 240, 180, 0.62) 70deg,
+    rgba(111, 208, 255, 0.42) 130deg,
+    rgba(126, 240, 180, 0.18) 180deg,
+    rgba(216, 170, 255, 0.35) 245deg,
+    rgba(126, 240, 180, 0.62) 305deg,
+    rgb(var(--glass-accent)) 360deg
+  );
+}
+
+.nl-sound-btn.is-on,
+.nl-topbar-btn.is-primary {
+  color: #7ef0b4;
+}
+
+.nl-launcher-container[data-glass="liquid"] .nl-node.is-active,
+.nl-launcher-container[data-glass="liquid"] .nl-sound-btn.is-on,
+.nl-launcher-container[data-glass="liquid"] .nl-topbar-btn.is-primary {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgb(var(--glass-accent) / 0.25),
+    0 0 22px rgb(var(--glass-accent) / 0.28),
+    0 10px 30px rgba(0, 0, 0, 0.28);
+}
+
+.nl-launcher-container[data-glass="frost"] .nl-node.is-active,
+.nl-launcher-container[data-glass="frost"] .nl-sound-btn.is-on,
+.nl-launcher-container[data-glass="frost"] .nl-topbar-btn.is-primary {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.50),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgb(var(--glass-accent) / 0.25),
+    0 0 22px rgb(var(--glass-accent) / 0.28),
+    0 8px 20px rgba(0, 0, 0, 0.32);
+}
+
+.nl-launcher-container[data-glass="lite"] .nl-node.is-active,
+.nl-launcher-container[data-glass="lite"] .nl-sound-btn.is-on,
+.nl-launcher-container[data-glass="lite"] .nl-topbar-btn.is-primary {
+  border-color: rgb(var(--glass-accent) / 0.65);
+  box-shadow:
+    0 0 0 1px rgb(var(--glass-accent) / 0.25),
+    0 0 22px rgb(var(--glass-accent) / 0.28);
+}
+
+/* ---- 9. Dim State (Opacity only — NO filter:saturate) ---- */
+.nl-node.is-dim {
+  opacity: 0.5;
+}
+
+/* ---- 10. Midnight Variant (.nl-tint-midnight) ---- */
+.nl-node.nl-tint-midnight {
+  --glass-tint: rgba(20, 30, 82, 0.44);
+}
+.nl-node.nl-tint-midnight::before {
+  background: conic-gradient(
+    from var(--rim-angle, 200deg) at 50% 50%,
+    rgba(218, 230, 255, 0.92) 0deg,
+    rgba(130, 165, 255, 0.56) 70deg,
+    rgba(126, 240, 180, 0.36) 130deg,
+    rgba(120, 150, 255, 0.16) 180deg,
+    rgba(210, 160, 255, 0.44) 245deg,
+    rgba(130, 165, 255, 0.56) 305deg,
+    rgba(218, 230, 255, 0.92) 360deg
+  );
+}
+.nl-node.nl-tint-midnight .nl-node-ico {
+  background: radial-gradient(
+    circle at 32% 28%,
+    rgba(188, 206, 255, 0.62),
+    rgba(40, 50, 120, 0.28)
+  );
+  box-shadow:
+    inset 0 1px 1.5px rgba(210, 225, 255, 0.65),
+    inset 0 0 10px rgba(120, 150, 255, 0.38);
+}
+.nl-node.nl-tint-midnight .nl-node-glyph {
+  color: #eaf0ff;
+}
+
+.nl-launcher-container[data-glass="frost"] .nl-node.nl-tint-midnight {
+  background:
+    radial-gradient(120% 90% at 25% 0%, rgba(188, 206, 255, 0.25), transparent 55%),
+    linear-gradient(
+      180deg,
+      rgba(54, 70, 150, 0.92),
+      rgba(22, 28, 82, 0.95) 55%,
+      rgba(9, 12, 36, 0.97)
+    );
+}
+
+.nl-launcher-container[data-glass="lite"] .nl-node.nl-tint-midnight {
+  background: linear-gradient(180deg, rgba(42, 56, 124, 0.92), rgba(16, 22, 64, 0.95));
+  border-color: rgba(155, 180, 255, 0.35);
+}
+
+/* ---- 11. Connector Light Pulse (Liquid only, one-shot) ---- */
+.nl-ray-pulse {
+  stroke-dasharray: 0.12 1;
+  stroke-dashoffset: 1.12;
+  animation: nl-ray-pulse-travel 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.12s 1 forwards;
+}
+
+@keyframes nl-ray-pulse-travel {
+  0% {
+    stroke-dashoffset: 1.12;
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.95;
+  }
+  88% {
+    opacity: 0.95;
+  }
+  100% {
+    stroke-dashoffset: -0.12;
+    opacity: 0;
+  }
+}
+
+/* ---- 12. Accessibility: Focus Ring & Reduced Transparency ---- */
+.nl-node:focus-visible,
+.nl-topbar-btn:focus-visible,
+.nl-sound-btn:focus-visible,
+.nl-topbar-orb .profile-orb:focus-visible {
+  outline: 2px solid rgb(var(--glass-accent));
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .nl-launcher-container .nl-node,
+  .nl-launcher-container .nl-topbar-btn,
+  .nl-launcher-container .nl-sound-btn {
+    background: linear-gradient(180deg, rgba(32, 38, 46, 0.94), rgba(16, 20, 26, 0.97));
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+    translate: none;
+    transition: opacity 0.15s ease;
+  }
+  .nl-launcher-container .nl-node::before,
+  .nl-launcher-container .nl-node::after,
+  .nl-launcher-container .nl-topbar-btn::before,
+  .nl-launcher-container .nl-topbar-btn::after,
+  .nl-launcher-container .nl-sound-btn::before,
+  .nl-launcher-container .nl-sound-btn::after,
+  .nl-launcher-container .nl-topbar-orb::before,
+  .nl-launcher-container .nl-topbar-orb::after {
+    display: none;
+  }
+  .nl-launcher-container .nl-node.nl-tint-midnight {
+    background: linear-gradient(180deg, rgba(42, 56, 124, 0.95), rgba(16, 22, 64, 0.98));
+    border-color: rgba(155, 180, 255, 0.38);
+  }
+}

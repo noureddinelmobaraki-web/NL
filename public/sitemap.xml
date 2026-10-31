@@ -6,6 +6,90 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/100-ans/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/-sDZtcRZEag/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/20260916-184153275/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/lfnKMMFeu5k/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/apologize-for-my-weird-mix/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/DufbYqHpJP8/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/dekhla/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/yyejPkrXBeI/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/gha-noel/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/QvhkgA3cN4Y/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/ink/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/9sbkfd12gI4/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/lmorphiniya-35/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/vLSuVXtcq-s/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/money-call/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/8YCr-D18FrI/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/pyramid/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/Wy6OjKvXkYE/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/python/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/0llIMet7IN0/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/warner-brothers/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/JttVnQPRM_E/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/ألا-كل-ماشية-الخيزلى/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/9S9R872FJaM/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/بث-تجريبي/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/pCZVGsM2Ywk/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/غَيْرُ-مُجْدٍ-فِي-مِلَّتِي-وَاعْتِقَادِي/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://i.ytimg.com/vi/w_PFK6wS_84/hqdefault.jpg</image:loc></image:image>
+  </url>
+  <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/tri9-tbawe9/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -204,12 +288,6 @@
     <image:image><image:loc>https://i.ytimg.com/vi/VZz224Chy0s/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/song/ink/</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/9sbkfd12gI4/hqdefault.jpg</image:loc></image:image>
-  </url>
-  <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/lmorphiniya-25/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -240,7 +318,7 @@
     <image:image><image:loc>https://i.ytimg.com/vi/4Az6vczQGN4/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/song/none-shall-pass-40/</loc>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/none-shall-pass-53/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <image:image><image:loc>https://i.ytimg.com/vi/m0irW9Tqh-o/hqdefault.jpg</image:loc></image:image>

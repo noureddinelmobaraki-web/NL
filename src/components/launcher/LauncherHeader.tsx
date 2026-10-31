@@ -1,7 +1,6 @@
 // src/components/launcher/LauncherHeader.tsx
 // Slim launcher top bar. Intentionally NO product name / build label — just the
 // identity actions floating in the top-right corner.
-// motion props are single-brace variables (no inline double braces).
 
 import { m } from 'framer-motion';
 import { LogIn, Users } from 'lucide-react';
@@ -9,20 +8,26 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppContext } from '../../context/AppContext';
 import { setGenieOriginFromElement } from '../../transitions/genieOrigin';
 import { ProfileOrb } from '../../features/account/ProfileOrb';
-import { spring } from '../../motion/tokens';
+import { useGlassTier } from './glass/useGlassTier';
 
-const hover = { scale: 1.06 };
-const tap = { scale: 0.95 };
-const orbHover = { scale: 1.08 };
-const orbTap = { scale: 0.94 };
+const LIQUID_HOVER = { scale: 1.03 };
+const LIQUID_TAP = { scaleX: 1.045, scaleY: 0.93 };
+const LIQUID_SPRING = { type: 'spring' as const, stiffness: 520, damping: 24, mass: 0.6 };
+
+const FROST_TAP = { scale: 0.97 };
+const FROST_TWEEN = { type: 'tween' as const, duration: 0.12 };
+
+const LITE_TAP = { opacity: 0.8 };
+const LITE_TWEEN = { type: 'tween' as const, duration: 0.08 };
+
+const ORB_LIQUID_HOVER = { scale: 1.06 };
+const ORB_LIQUID_TAP = { scale: 0.94 };
 
 export function LauncherHeader() {
   const { user, openAuthModal } = useAuth();
   const { openAccounts, setLoaded } = useAppContext();
+  const glassTier = useGlassTier();
 
-  // FIX: the launcher only renders while !loaded, and <AccountsPage> only renders
-  // while loaded. So navigating to "accounts" alone did nothing. We must also hand
-  // control to the main app (setLoaded true), exactly like the graph's leaf nav.
   const onAccounts = (e: React.MouseEvent<HTMLButtonElement>) => {
     setGenieOriginFromElement(e.currentTarget);
     openAccounts();
@@ -33,13 +38,23 @@ export function LauncherHeader() {
     import('../../features/accounts/AccountsPage').catch(() => {});
   };
 
+  const hoverProps = glassTier === 'liquid' ? LIQUID_HOVER : undefined;
+  const tapProps =
+    glassTier === 'liquid' ? LIQUID_TAP : glassTier === 'frost' ? FROST_TAP : LITE_TAP;
+  const transitionProps =
+    glassTier === 'liquid' ? LIQUID_SPRING : glassTier === 'frost' ? FROST_TWEEN : LITE_TWEEN;
+
+  const orbHoverProps = glassTier === 'liquid' ? ORB_LIQUID_HOVER : undefined;
+  const orbTapProps =
+    glassTier === 'liquid' ? ORB_LIQUID_TAP : glassTier === 'frost' ? FROST_TAP : LITE_TAP;
+
   return (
     <div className="nl-launcher-topbar">
       <m.button
         type="button"
-        whileHover={hover}
-        whileTap={tap}
-        transition={spring.snappy}
+        whileHover={hoverProps}
+        whileTap={tapProps}
+        transition={transitionProps}
         onClick={onAccounts}
         onMouseEnter={warmAccounts}
         onPointerDown={warmAccounts}
@@ -53,9 +68,9 @@ export function LauncherHeader() {
       {!user && (
         <m.button
           type="button"
-          whileHover={hover}
-          whileTap={tap}
-          transition={spring.snappy}
+          whileHover={hoverProps}
+          whileTap={tapProps}
+          transition={transitionProps}
           onClick={openAuthModal}
           className="nl-topbar-btn is-primary"
         >
@@ -64,7 +79,12 @@ export function LauncherHeader() {
         </m.button>
       )}
 
-      <m.div whileHover={orbHover} whileTap={orbTap} transition={spring.snappy} className="nl-topbar-orb">
+      <m.div
+        whileHover={orbHoverProps}
+        whileTap={orbTapProps}
+        transition={transitionProps}
+        className="nl-topbar-orb"
+      >
         <ProfileOrb variant="welcome" />
       </m.div>
     </div>

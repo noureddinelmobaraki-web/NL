@@ -84,7 +84,8 @@ html[data-active-page="music"] .auth-launcher .auth-launcher__dot {
 /* ─ تجارب ملء الشاشة: إخفاء ─ */
 html[data-active-page="games"] .auth-launcher,
 html[data-active-page="xp"] .auth-launcher,
-html[data-active-page="retro"] .auth-launcher {
+html[data-active-page="retro"] .auth-launcher,
+html[data-active-page="liquidGlass"] .auth-launcher {
   display: none;
 }
 

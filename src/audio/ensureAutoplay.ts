@@ -3,7 +3,7 @@ import { audioManager } from './audioManager';
 type Src =
   | 'bg' | 'song' | 'lens' | 'video' | 'mebit' | 'intro'
   | 'games' | 'movies' | 'series' | 'tv' | 'retro' | 'xp'
-  | 'profile' | 'portrait' | 'poem';
+  | 'profile' | 'portrait' | 'poem' | 'liquidGlass';
 
 type Options = {
   /**

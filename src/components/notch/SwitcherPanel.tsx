@@ -23,6 +23,100 @@ interface Props {
 }
 
 function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile, branch, onBranch, onMode }: Props) {
+  if (isMobile) {
+    return (
+      <div className="notch-cc" dir="ltr" role="none">
+        {/* Module 1: Visual Modes (2x2 iOS Control Center Plinths) */}
+        <section className="notch-cc__module" aria-label="Visual Modes">
+          <header className="notch-cc__module-head">
+            <span className="notch-cc__module-ico">
+              <Palette size={13} />
+            </span>
+            <span className="notch-cc__module-title">Visual Modes</span>
+            <span className="notch-cc__module-badge">
+              {theme === 'midnight' ? 'Default' : theme.toUpperCase()}
+            </span>
+          </header>
+          <div className="notch-cc__modes-grid" role="group" aria-label="Modes">
+            {modes.map((mItem) => {
+              const MIcon = mItem.icon;
+              const isActive = theme === mItem.id;
+              return (
+                <button
+                  key={mItem.id}
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={isActive}
+                  className={`notch-cc__mode-tile ${isActive ? 'is-active' : ''}`}
+                  data-mode-id={mItem.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMode(mItem.id);
+                  }}
+                  aria-label={
+                    isActive
+                      ? `${mItem.label} (Active — tap to return to default)`
+                      : mItem.label
+                  }
+                >
+                  <span className="notch-cc__mode-top">
+                    <span className="notch-cc__mode-orb">
+                      <MIcon size={16} strokeWidth={2.2} />
+                    </span>
+                    <span
+                      className={`notch-mini-switch ${isActive ? 'is-on' : ''}`}
+                      aria-hidden="true"
+                    >
+                      <span className="notch-mini-switch__knob" />
+                    </span>
+                  </span>
+                  <span className="notch-cc__mode-meta">
+                    <span className="notch-cc__mode-name">{mItem.label}</span>
+                    <span className="notch-cc__mode-state">
+                      {isActive ? 'On' : 'Off'}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Module 2: Destinations / Go To (4x2 iOS Control Center App Plinths) */}
+        <section className="notch-cc__module" aria-label="Destinations">
+          <header className="notch-cc__module-head">
+            <span className="notch-cc__module-ico">
+              <Compass size={13} />
+            </span>
+            <span className="notch-cc__module-title">Go To</span>
+            <span className="notch-cc__module-badge">
+              {destinations.length} Apps
+            </span>
+          </header>
+          <div className="notch-cc__dest-grid" role="group" aria-label="Destinations">
+            {destinations.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                role="menuitem"
+                className={`notch-cc__dest-tile ${d.isActive ? 'is-active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  d.onClick();
+                }}
+                aria-label={d.ariaLabel ?? d.label}
+                title={d.title ?? d.label}
+              >
+                <span className="notch-cc__dest-orb">{d.icon}</span>
+                <span className="notch-cc__dest-label">{d.label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   const roots = [
     { id: 'modes' as const, label: 'Modes', icon: Palette },
     { id: 'dest' as const, label: 'Go to', icon: Compass },
@@ -117,3 +211,4 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
 
 export const SwitcherPanel = memo(SwitcherPanelBase);
 export default SwitcherPanel;
+

@@ -12,8 +12,10 @@ import { useLightProfileImage } from '../../hooks/useLightProfileImage';
 import siteData from '../../../metadata.json';
 
 import { isAutomatedEnv } from '../../utils/env';
+import { useAppContext } from '../../context/AppContext';
 
 export const HeroSection = memo(() => {
+  const { openLiquidGlass } = useAppContext();
   const resolvedTheme = useResolvedTheme();
   const { isMobile } = useDeviceType(); // MOBILE-ONLY
   const isAutomated = isAutomatedEnv();
@@ -149,22 +151,10 @@ export const HeroSection = memo(() => {
             </h1>
           </m.div>
           
-          {/* Divider and Location Block */}
-          <div className="relative z-[2] mt-6 flex items-center gap-4 text-[var(--text-primary)] font-bold uppercase divider-top-refactored pt-4">
-            <span className="hero-location-text text-[var(--hero-loc-size)] font-[var(--hero-loc-font)] font-bold tracking-tight" style={{ textShadow: 'var(--hero-loc-shadow)' }}>
-              {siteData.location}
-            </span>
-            <span className="px-3 py-1 truncate hero-alias-refactored">
-              {siteData.aliases.map((a: string, i: number) => (
-                <span key={i}>{a}{i < siteData.aliases.length - 1 ? ' | ' : ''}</span>
-              ))}
-            </span>
-          </div>
-
           {/* BIO Paragraph */}
           <p 
             lang="en"
-            className="relative z-[2] hero-bio hero-bio-royal mt-4 hero-bio-refactored hero-bio-text leading-relaxed max-w-2xl"
+            className="relative z-[2] hero-bio hero-bio-royal mt-6 hero-bio-refactored hero-bio-text leading-relaxed max-w-2xl"
           >
             {siteData.bio}
           </p>
@@ -179,8 +169,9 @@ export const HeroSection = memo(() => {
 
       {/* Unified Profile Card Element */}
       <div
-        className="hero-profile-container hero-profile-image"
+        className="hero-profile-container hero-profile-image cursor-pointer"
         data-cord-id="hero-profile"
+        onClick={openLiquidGlass}
       >
         <ResponsiveImage
           src={activeProfileImg}

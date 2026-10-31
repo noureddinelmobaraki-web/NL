@@ -5,6 +5,7 @@ type AudioSource =
   | 'games' | 'movies' | 'series' | 'tv' | 'retro' | 'xp'
   | 'profile'   // أغنية بروفيل المستخدم (ThemeSongBar)
   | 'portrait'  // خلفية صفحة البورتريه المستقلة (PortraitPage)
+  | 'liquidGlass' // خلفية صفحة الزجاج السائل المستقلة (LiquidGlassPortalPage)
   | 'poem'      // قصيدة صفحة البورتريه (metxtbg)
   | 'preview'   // معاينة أغنية داخل النوافذ (useSongPreview)
   | 'preview_clip'; // معاينة مقطع لضبط أغنية الثيم (ThemeSongClipSelector)
@@ -184,6 +185,7 @@ class AudioManager {
     lens: 'Lens Gallery', mebit: 'ME', games: 'Games', movies: 'Cinema',
     series: 'Series', tv: 'TV', retro: 'Retro', video: 'Video',
     intro: 'Intro', preview: 'Preview', preview_clip: 'Preview', xp: 'Windows XP',
+    liquidGlass: 'Liquid Glass',
   };
 
   /** ينشر تحكّمًا عالميًا في النوتش لأي مصدر شغّال ليس له ناشر غنيّ. */
@@ -460,6 +462,7 @@ class AudioManager {
       'retro': 6,
       'xp': 6,
       'portrait': 6,
+      'liquidGlass': 6,
       'poem': 7, // فوق portrait (6) حتى يوقف الخلفية عند التشغيل
       'video': 5,
       'bg': 1

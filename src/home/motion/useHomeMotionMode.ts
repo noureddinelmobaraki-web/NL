@@ -5,17 +5,17 @@ import {
 } from './homeMotion.types';
 
 /**
- * Permanently locked to 'a777' mode per user specification.
+ * Permanently locked to static 'normal' mode on both desktop and mobile per user specification.
  */
 export function useHomeMotionMode() {
-  const mode: HomeMotionMode = 'a777';
+  const mode: HomeMotionMode = 'normal';
 
   const setMode = useCallback((_next: HomeMotionMode) => {
-    // Locked to 'a777'
+    // Locked to 'normal'
   }, []);
 
   const toggleMode = useCallback(() => {
-    // Locked to 'a777'
+    // Locked to 'normal'
   }, []);
 
   const capability: HomeMotionCapability = {
