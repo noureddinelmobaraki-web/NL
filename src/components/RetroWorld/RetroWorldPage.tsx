@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import Hls from 'hls.js';
-import { PersonalPhotoFloater } from './PersonalPhotoFloater';
 import { audioManager } from '../../audio/audioManager';
 import { ensureAutoplay } from '../../audio/ensureAutoplay';
 import { RetroViewportProvider } from '../RetroViewportProvider';
@@ -16,8 +15,6 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const floaterRef = useRef<HTMLDivElement | null>(null);
-  const handleScrollRef = useRef<(() => void) | null>(null);
 
   const [isAudioMuted, setIsAudioMuted] = useState(false);
 
@@ -30,17 +27,8 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
     if (isRetroOpen) {
       document.body.classList.add('retro-active');
     }
-    const currentIframe = iframeRef.current;
     return () => {
       document.body.classList.remove('retro-active');
-      const handler = handleScrollRef.current;
-      if (currentIframe && handler) {
-        try {
-          currentIframe.contentWindow?.removeEventListener('scroll', handler);
-          currentIframe.contentDocument?.removeEventListener('scroll', handler);
-        } catch {}
-      }
-      handleScrollRef.current = null;
     };
   }, [isRetroOpen]);
 
@@ -136,55 +124,6 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
     }
   }, [isAudioMuted]);
 
-  // الدالة السحرية: التقاط التمرير من داخل الـ iframe وتعديل الـ transform مباشرة وبسرعة فائقة
-  const handleIframeLoad = () => {
-    const iframe = iframeRef.current;
-    if (iframe && iframe.contentWindow) {
-      try {
-        if (iframe.contentWindow.document.readyState !== 'complete') {
-          iframe.addEventListener('load', () => handleIframeLoad());
-          return;
-        }
-      } catch (e) {
-        // Ignored or logged if cross-origin
-      }
-
-      try {
-        const cw = iframe.contentWindow;
-        const cd = iframe.contentDocument;
-
-        let ticked = false;
-        const handleScroll = () => {
-          if (!ticked) {
-            window.requestAnimationFrame(() => {
-              const sy = cw.scrollY || cd?.documentElement?.scrollTop || cd?.body?.scrollTop || 0;
-              // Compensate for mobile viewport scaling: iframe internal coords
-              // are in 880px space, visually scaled to match outer viewport.
-              const iframeEl = iframeRef.current;
-              const iframeVisualWidth = iframeEl ? iframeEl.clientWidth : 880;
-              const scaleFactor = Math.min(1, iframeVisualWidth / 880);
-              const adjustedSy = sy * scaleFactor;
-              if (floaterRef.current) {
-                floaterRef.current.style.transform = `translate3d(0, -${adjustedSy}px, 0)`;
-              }
-              ticked = false;
-            });
-            ticked = true;
-          }
-        };
-
-        handleScrollRef.current = handleScroll;
-
-        // استماع للتمرير داخل الـ iframe
-        cw.addEventListener('scroll', handleScroll, { passive: true });
-        cd?.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll(); // تحديث أولي
-      } catch (e) {
-        console.error('[RetroWorld] Iframe scroll tracking failed:', e);
-      }
-    }
-  };
-
   if (!isRetroOpen) return null;
 
   return (
@@ -227,12 +166,8 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
         <X size={18} />
       </button>
 
-      {/* الصور الشخصية: نمرر لها الـ ref للتحديث المباشر للـ DOM */}
-      <PersonalPhotoFloater wrapperRef={floaterRef} />
-
       <iframe
         ref={iframeRef}
-        onLoad={handleIframeLoad}
         src={`${import.meta.env.BASE_URL}retro/index.html`}
         loading="lazy"
         style={{ width: '100%', height: '100%', border: 'none', backgroundColor: '#000', position: 'absolute', top: 0, left: 0, zIndex: 1 }}

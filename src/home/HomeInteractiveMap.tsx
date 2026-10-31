@@ -1,12 +1,9 @@
 // src/home/HomeInteractiveMap.tsx
 import { memo, type ReactNode, useRef } from 'react';
 import { Station } from './Station';
-import { HomeCords } from './HomeCords';
-import { CORD_LINKS, CORD_NODES } from './cords.config';
 import type { StationWeight } from './StationWindow';
 import { useAdaptivePerformance } from '../hooks/useAdaptivePerformance';
 import { useHomeMotionMode } from './motion/useHomeMotionMode';
-import { useA777StationPhysics } from './motion/useA777StationPhysics';
 
 export interface HomeStationInput {
   id: string;
@@ -31,11 +28,11 @@ const TITLES: Record<string, string> = {
 };
 
 const WEIGHTS: Record<string, StationWeight> = {
-  profile: 'sm',
+  profile: 'lg',
   bio: 'lg',
   streaming: 'lg',
   social: 'md',
-  highlights: 'md',
+  highlights: 'lg',
   gallery: 'lg',
   songs: 'lg',
   contact: 'md',
@@ -51,25 +48,22 @@ export const HomeInteractiveMap = memo(function HomeInteractiveMap({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const { effectiveMode } = useHomeMotionMode();
 
-  useA777StationPhysics(rootRef, false);
-
   return (
     <div
       ref={rootRef}
-      className="nl-home-map"
+      className="nl-home-map nl-home-spatial"
       data-lite={lite ? 'true' : 'false'}
       data-motion-mode={effectiveMode}
     >
-      <div className="nl-home-spine" aria-hidden="true" />
-      <HomeCords links={CORD_LINKS} nodes={CORD_NODES} motionMode={effectiveMode} />
-      {stations.map((s) => (
+      {stations.map((s, idx) => (
         <Station
           key={s.id}
           id={s.id}
+          index={idx + 1}
           title={TITLES[s.id] ?? s.id}
-          weight={WEIGHTS[s.id] ?? 'md'}
+          weight={WEIGHTS[s.id] ?? 'lg'}
           lite={lite}
-          bare
+          bare={s.bare ?? true}
           motionMode={effectiveMode}
         >
           {s.node}
@@ -78,4 +72,5 @@ export const HomeInteractiveMap = memo(function HomeInteractiveMap({
     </div>
   );
 });
+
 

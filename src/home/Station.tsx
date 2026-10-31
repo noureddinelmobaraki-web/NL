@@ -1,14 +1,11 @@
-import { memo, useRef, type ReactNode } from 'react';
-import { useMotionValueEvent } from 'framer-motion';
-import { useStationProgress } from './useStationProgress';
-import { useStageSize } from '../components/launcher/useStageSize';
-import { StationConnector } from './StationConnector';
+import { memo, useEffect, useRef, type ReactNode } from 'react';
 import { StationWindow, type StationWeight } from './StationWindow';
 import { useHomeMapState } from './useHomeMapState';
 import type { HomeMotionMode } from './motion/homeMotion.types';
 
 interface StationProps {
   id: string;
+  index?: number;
   title: string;
   weight: StationWeight;
   lite: boolean;
@@ -19,43 +16,49 @@ interface StationProps {
 
 export const Station = memo(function Station({
   id,
+  index,
   title,
   weight,
-  lite,
   bare,
   children,
   motionMode,
 }: StationProps) {
   const sectionRef = useRef<HTMLElement>(null);
-  const { ref: stageRef, size } = useStageSize<HTMLDivElement>();
-  const motionValues = useStationProgress(sectionRef);
   const setActiveStation = useHomeMapState((s) => s.setActiveStation);
   const isActive = useHomeMapState((s) => s.activeStationId === id);
 
-  useMotionValueEvent(motionValues.progress, 'change', (v) => {
-    if (v > 0.35 && v < 0.65) setActiveStation(id);
-  });
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveStation(id);
+          }
+        }
+      },
+      { rootMargin: '-25% 0px -25% 0px', threshold: 0.05 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [id, setActiveStation]);
 
   return (
     <section
       ref={sectionRef}
       id={`station-${id}`}
       data-station={id}
+      data-station-index={index}
       data-active={isActive ? 'true' : undefined}
       data-motion-mode={motionMode}
-      className="nl-home-station"
+      className={`nl-home-station nl-home-station--${id}`}
       aria-label={title}
     >
-      <div ref={stageRef} className="nl-home-stage">
-        {!bare && (
-          <StationConnector id={id} size={size} draw={motionValues.draw} lite={lite} />
-        )}
+      <div className="nl-home-stage">
         <StationWindow
           title={title}
           weight={weight}
-          scale={motionValues.windowScale}
-          opacity={motionValues.windowOpacity}
-          y={motionValues.windowY}
           bare={bare}
         >
           {children}
@@ -64,3 +67,4 @@ export const Station = memo(function Station({
     </section>
   );
 });
+

@@ -2503,3 +2503,223 @@ div#orchestrator-portal-root > div:nth-of-type(2) > button:nth-of-type(1) {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   14) نظام التصميم الشامل لصفحة Home (14 Prompts Master System)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Prompt 11: Top Navigation — Serene Greens & Blues Liquid Glass Buttons ── */
+.nl-top-nav.nl-top-nav--serene-dock .nl-top-nav__grid {
+  background: linear-gradient(
+    135deg,
+    rgba(56, 189, 248, 0.22) 0%,
+    rgba(16, 185, 129, 0.18) 50%,
+    rgba(10, 22, 36, 0.74) 100%
+  ) !important;
+  border: 1px solid rgba(167, 243, 208, 0.48) !important;
+  border-radius: 999px !important;
+  box-shadow:
+    0 18px 42px -12px rgba(4, 47, 46, 0.45),
+    0 6px 20px -6px rgba(14, 165, 233, 0.28),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.78),
+    inset 0 -8px 18px rgba(4, 47, 46, 0.32) !important;
+}
+
+.nl-top-nav.nl-top-nav--serene-dock .nl-top-nav__button {
+  background: linear-gradient(
+    155deg,
+    rgba(186, 230, 253, 0.24) 0%,
+    rgba(167, 243, 208, 0.18) 52%,
+    rgba(12, 28, 42, 0.62) 100%
+  ) !important;
+  border-top: 1px solid rgba(224, 242, 254, 0.75) !important;
+  border-left: 1px solid rgba(125, 211, 252, 0.36) !important;
+  border-right: 1px solid rgba(110, 231, 183, 0.36) !important;
+  border-bottom: 1px solid rgba(6, 78, 59, 0.72) !important;
+}
+
+/* ── Prompts 3, 13, 14: Gallery & Highlights — Cool & Vibrant Blues and Greens Glass Panels ── */
+#station-gallery .me-bit-cta,
+#station-gallery .nl-lens-cta,
+#station-highlights #vault-playlist,
+#station-highlights .nl-hl-player {
+  background: linear-gradient(
+    155deg,
+    rgba(56, 189, 248, 0.24) 0%,
+    rgba(16, 185, 129, 0.20) 46%,
+    rgba(8, 24, 38, 0.80) 100%
+  ) !important;
+  border-top: 1.5px solid rgba(167, 243, 208, 0.78) !important;
+  border-left: 1px solid rgba(125, 211, 252, 0.44) !important;
+  border-right: 1px solid rgba(110, 231, 183, 0.44) !important;
+  border-bottom: 1.5px solid rgba(6, 78, 59, 0.82) !important;
+  box-shadow:
+    0 24px 54px -12px rgba(4, 47, 46, 0.56),
+    0 8px 24px -6px rgba(14, 165, 233, 0.28),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.84),
+    inset 0 -10px 24px rgba(4, 47, 46, 0.38) !important;
+}
+
+/* ── Prompt 8: My Songs & Song Cards — Frosted Glass Panels with Vibrant Citrus Palette ── */
+#station-songs .nl-songs-heading {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 158, 44, 0.32) 0%,
+    rgba(250, 204, 21, 0.20) 48%,
+    rgba(42, 18, 6, 0.82) 100%
+  ) !important;
+  border-top: 1.5px solid rgba(254, 215, 170, 0.85) !important;
+  border-left: 1px solid rgba(251, 146, 60, 0.48) !important;
+  border-right: 1px solid rgba(250, 204, 21, 0.45) !important;
+  border-bottom: 1.5px solid rgba(67, 20, 7, 0.88) !important;
+  box-shadow:
+    0 22px 48px -12px rgba(234, 88, 12, 0.36),
+    inset 0 1.5px 1px rgba(255, 247, 237, 0.88) !important;
+}
+
+#station-songs .nl-song-card,
+#station-songs .song-card {
+  background:
+    radial-gradient(120px circle at var(--lx, 50%) var(--ly, 25%), rgba(254, 240, 138, 0.22) 0%, transparent 76%),
+    linear-gradient(
+      160deg,
+      rgba(255, 154, 46, 0.24) 0%,
+      rgba(250, 204, 21, 0.12) 38%,
+      rgba(28, 14, 6, 0.78) 76%,
+      rgba(12, 6, 3, 0.92) 100%
+    ) !important;
+  border-top: 1.25px solid rgba(254, 215, 170, 0.68) !important;
+  border-left: 1px solid rgba(251, 146, 60, 0.38) !important;
+  border-right: 1px solid rgba(250, 204, 21, 0.34) !important;
+  border-bottom: 1.25px solid rgba(45, 14, 4, 0.88) !important;
+  box-shadow:
+    0 16px 36px -8px rgba(0, 0, 0, 0.52),
+    0 6px 18px -4px rgba(249, 115, 22, 0.22),
+    inset 0 1.5px 1px rgba(255, 247, 237, 0.72) !important;
+}
+
+#station-songs .nl-song-card.is-active,
+#station-songs .song-card.active {
+  border-top: 1.5px solid rgba(254, 240, 138, 0.96) !important;
+  border-left: 1.5px solid rgba(251, 146, 60, 0.76) !important;
+  border-right: 1.5px solid rgba(250, 204, 21, 0.76) !important;
+  box-shadow:
+    0 24px 52px -10px rgba(249, 115, 22, 0.48),
+    0 0 28px -4px rgba(250, 204, 21, 0.38),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.92) !important;
+}
+
+/* ── Prompt 6: Dark Theme — Monochromatic Black & Clear 3D Glossy Render ── */
+[data-theme="dark"] {
+  --lc-accent-1: #e2e8f0;
+  --lc-accent-2: #94a3b8;
+  --lc-accent-3: #ffffff;
+  --lc-glass-surface: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(30, 32, 38, 0.68) 42%,
+    rgba(6, 6, 8, 0.92) 100%
+  );
+  --lc-glass-card: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(24, 26, 32, 0.72) 48%,
+    rgba(4, 4, 6, 0.94) 100%
+  );
+  --lc-border-top: rgba(255, 255, 255, 0.82);
+  --lc-border-side: rgba(255, 255, 255, 0.26);
+  --lc-border-bottom: rgba(0, 0, 0, 0.95);
+}
+
+/* ── Prompt 5 & 12: Light Theme — Cheerful Retro Computer Interface with Primary Colors & Clean Pixel/Flat Finish ── */
+[data-theme="light"] {
+  --lc-accent-1: #2563eb;
+  --lc-accent-2: #ef4444;
+  --lc-accent-3: #facc15;
+  --lc-text-main: #0f172a;
+  --lc-text-sub: #334155;
+}
+
+[data-theme="light"] #station-profile .hero-window,
+[data-theme="light"] .nl-platform-dock,
+[data-theme="light"] #station-gallery .me-bit-cta,
+[data-theme="light"] #station-gallery .nl-lens-cta,
+[data-theme="light"] #station-highlights #vault-playlist,
+[data-theme="light"] #station-highlights .nl-hl-player,
+[data-theme="light"] #station-songs #my-songs-section,
+[data-theme="light"] .nl-contact-card,
+[data-theme="light"] .nld-glass-window {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 2.5px solid #0f172a !important;
+  border-radius: 18px !important;
+  box-shadow: 6px 6px 0px #2563eb, inset 0 4px 0px #facc15 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-theme="light"] #station-profile .hero-header-card {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 60%, #10b981 100%) !important;
+  border-bottom: 2.5px solid #0f172a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .nl-top-nav.nl-top-nav--serene-dock .nl-top-nav__grid {
+  background: #fef9c3 !important;
+  border: 2.5px solid #0f172a !important;
+  border-radius: 16px !important;
+  box-shadow: 5px 5px 0px #0f172a !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-theme="light"] .nl-top-nav.nl-top-nav--serene-dock .nl-top-nav__button {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 2px solid #0f172a !important;
+  border-radius: 10px !important;
+  box-shadow: 2px 2px 0px #2563eb !important;
+}
+
+[data-theme="light"] .nl-top-nav.nl-top-nav--serene-dock .nl-top-nav__button:hover {
+  background: #facc15 !important;
+  color: #0f172a !important;
+  box-shadow: 4px 4px 0px #ef4444 !important;
+}
+
+[data-theme="light"] .nl-lattice .nl-lattice-node {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border: 2px solid #0f172a !important;
+  border-radius: 14px !important;
+  box-shadow: 3px 3px 0px var(--node-accent, #2563eb) !important;
+}
+
+[data-theme="light"] .nl-lattice .nl-lattice-node:hover {
+  background: #fef08a !important;
+  box-shadow: 5px 5px 0px #ef4444 !important;
+}
+
+[data-theme="light"] #station-songs .nl-songs-heading {
+  background: linear-gradient(90deg, #facc15 0%, #fb923c 55%, #ef4444 100%) !important;
+  border: 2.5px solid #0f172a !important;
+  border-radius: 16px !important;
+  box-shadow: 5px 5px 0px #0f172a !important;
+}
+
+[data-theme="light"] #station-songs .nl-song-card,
+[data-theme="light"] #station-songs .song-card {
+  background: #fffbeb !important;
+  color: #0f172a !important;
+  border: 2px solid #0f172a !important;
+  border-radius: 16px !important;
+  box-shadow: 4px 4px 0px #f97316 !important;
+}
+
+[data-theme="light"] #station-songs .nl-song-card.is-active,
+[data-theme="light"] #station-songs .song-card.active {
+  background: #fef08a !important;
+  border: 2.5px solid #0f172a !important;
+  box-shadow: 6px 6px 0px #2563eb !important;
+}
+
+

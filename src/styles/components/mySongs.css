@@ -1,7 +1,7 @@
 /* src/styles/components/mySongs.css */
 
 :root {
-  --primary-rgb: 99, 102, 241;
+  --primary-rgb: 249, 115, 22;
 }
 
 @keyframes slow-zoom {
@@ -24,14 +24,14 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 4px rgba(139, 92, 246, 0.3); }
-  50%      { box-shadow: 0 0 12px rgba(139, 92, 246, 0.7); }
+  0%, 100% { box-shadow: 0 0 6px rgba(249, 115, 22, 0.35); }
+  50%      { box-shadow: 0 0 16px rgba(250, 204, 21, 0.72); }
 }
 
 .lyrics-btn {
-  background: rgba(139, 92, 246, 0.2);
-  border: 1px solid rgba(139, 92, 246, 0.6);
-  color: #a78bfa;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.28), rgba(250, 204, 21, 0.20));
+  border: 1px solid rgba(253, 186, 116, 0.72);
+  color: #fef08a;
   padding: 6px 14px;
   border-radius: 20px;
   font-size: 11px;
@@ -47,14 +47,14 @@
 }
 
 .lyrics-btn:hover {
-  background: rgba(139, 92, 246, 0.4);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.48), rgba(250, 204, 21, 0.36));
   transform: scale(1.05);
 }
 
 .lyrics-btn-active {
-  background: rgba(139, 92, 246, 0.5);
-  border-color: rgba(139, 92, 246, 1);
-  color: white;
+  background: linear-gradient(135deg, #f97316, #eab308);
+  border-color: #fef08a;
+  color: #0f172a;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -98,9 +98,9 @@
   padding: 2px;
   background: conic-gradient(
     from var(--angle, 0deg),
-    rgba(139, 92, 246, 0.5),
+    rgba(249, 115, 22, 0.65),
     transparent 40%,
-    rgba(139, 92, 246, 0.5)
+    rgba(250, 204, 21, 0.65)
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
           mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);

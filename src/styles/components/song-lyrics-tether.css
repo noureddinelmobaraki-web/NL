@@ -10,25 +10,39 @@
 }
 @keyframes nl-lyr-scrim-in { from { opacity: 0; } to { opacity: 1; } }
 
-/* Curved red rope (halo pass + core pass). */
+/* Curved citrus-amber rope (halo pass + core pass). */
 .nl-lyr-rope {
-  stroke: #c40000;
+  stroke: #f97316;
   stroke-width: 2.4;
   stroke-linecap: round;
   fill: none;
 }
 .nl-lyr-rope--halo {
-  stroke: rgba(196, 0, 0, 0.4);
+  stroke: rgba(251, 146, 60, 0.45);
   stroke-width: 7;
   filter: blur(3px);
 }
 
-/* Frameless box shell — FULLY OPAQUE matte black. */
+/* Frosted Citrus Liquid Glass Lyrics Shell (Prompt 8). */
 .nl-lyr-tetherbox {
-  background: #060606;
-  border-radius: 16px;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 154, 46, 0.24) 0%,
+    rgba(36, 16, 6, 0.86) 55%,
+    rgba(12, 6, 2, 0.94) 100%
+  );
+  border-radius: 22px;
+  border-top: 1.5px solid rgba(254, 215, 170, 0.78);
+  border-left: 1px solid rgba(251, 146, 60, 0.42);
+  border-right: 1px solid rgba(250, 204, 21, 0.42);
+  border-bottom: 1.5px solid rgba(45, 14, 4, 0.92);
   overflow: hidden;
-  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 222, 58, 0.12);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.72),
+    0 0 28px -4px rgba(249, 115, 22, 0.34),
+    inset 0 1.5px 1px rgba(255, 247, 237, 0.75);
+  backdrop-filter: blur(18px) saturate(175%);
+  -webkit-backdrop-filter: blur(18px) saturate(175%);
   animation: nl-lyr-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
   transform-origin: center;
 }
@@ -37,18 +51,18 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Matte OPAQUE black surface — no blur → cheap to paint. */
+/* Citrus Frosted Glass Surface */
 .nl-lyr-box {
-  --lyr-dim: #a98f24;   /* clearly readable inactive words */
-  --lyr-on: #ffde3a;    /* vivid active yellow */
-  --lyr-shadow: rgba(255, 222, 58, 0.4);
+  --lyr-dim: #fdba74;   /* warm citrus peach for inactive words */
+  --lyr-on: #fef08a;    /* vivid lemon-gold for active words */
+  --lyr-shadow: rgba(249, 115, 22, 0.55);
   box-sizing: border-box;
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  background: #060606;
+  background: transparent;
   color: var(--lyr-dim);
-  padding: 16px;
+  padding: 18px;
   font-weight: 700;
   text-align: center;
   -webkit-overflow-scrolling: touch;

@@ -1,248 +1,136 @@
-/* src/styles/home-map.css — خريطة Home (فضّي معدني) */
-.nl-home-map { position: relative; width: 100%; }
+/* ==========================================================================
+   src/styles/home-map.css — Spatial Liquid Glass & Multi-Theme Home Architecture
+   Replaces the legacy metallic branch/cord system with a high-FPS spatial
+   layout integrating all 14 visual prompts across sections and themes.
+   ========================================================================== */
 
-.nl-home-spine {
-  position: absolute; top: 0; bottom: 0; left: 50%;
-  width: 3px; transform: translateX(-50%);
-  background: linear-gradient(to bottom,
-    transparent,
-    rgba(224, 232, 242, 0.75) 8%,
-    rgba(198, 210, 224, 0.9) 92%,
-    transparent);
-  box-shadow: 0 0 10px rgba(210, 225, 245, 0.5);
-  pointer-events: none; z-index: 0;
+/* ── 1. Core Spatial Home Layout (Prompts 1 & 7: Minimalist Frosted Glass, Balanced Depth, Flowing Shapes) ── */
+.nl-home-map {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(36px, 5.5vh, 68px);
+  padding-bottom: clamp(32px, 5vh, 64px);
+}
+
+/* Legacy spine & cords completely disabled for 60fps performance */
+.nl-home-spine,
+.nl-cords,
+.nl-home-filament,
+.nl-lattice-svg,
+.nl-lattice-bus,
+.nl-lattice-strings {
+  display: none !important;
 }
 
 .nl-home-station {
   position: relative;
+  width: 100%;
   min-height: auto;
-  padding: clamp(48px, 9vh, 120px) 0;
+  padding: 0;
+  contain: layout style;
+}
+
+.nl-home-station::before,
+.nl-home-station::after {
+  content: none !important;
 }
 
 .nl-home-stage {
-  position: static;
+  position: relative;
+  width: 100%;
   height: auto;
   overflow: visible;
 }
 
-.nl-home-filament {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  pointer-events: none; z-index: 1; overflow: visible;
-}
-.nl-home-ray-glow { stroke: rgba(230, 240, 252, 0.5); filter: blur(2px); }
-.nl-home-socket { fill: #f7fbff; stroke: rgba(180, 195, 214, 0.9); stroke-width: 1; }
-
 .nl-home-anchor {
-  position: static;
-  transform: none;
-  width: min(940px, 92vw);
+  position: relative;
+  width: min(1080px, 94vw);
   margin: 0 auto;
   z-index: 2;
 }
 
-.nl-home-window { will-change: transform, opacity; transform-origin: top center; }
-.nl-home-window--sm { width: min(560px, 88vw); margin: 0 auto; }
-.nl-home-window--md { width: min(760px, 92vw); margin: 0 auto; }
-.nl-home-window--lg { width: 100%; }
+.nl-home-bare {
+  width: 100%;
+}
 
-.nl-home-window-glass {
+.nl-home-hub {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(22px, 3.5vh, 36px);
+}
+
+/* ── 2. Top Navigation Bar — Serene Greens & Blues Liquid Glass Dock (Prompt 11) ── */
+.nl-top-nav.nl-top-nav--serene-dock {
   position: relative;
-  border-radius: 16px;
-  color: #17202e;
-  background: linear-gradient(180deg,
-    rgba(255,255,255,0.95) 0%,
-    rgba(232,238,246,0.82) 16%,
-    rgba(188,199,212,0.72) 52%,
-    rgba(205,215,228,0.8) 82%,
-    rgba(232,239,247,0.9) 100%);
-  border: 1px solid rgba(255,255,255,0.9);
-  box-shadow:
-    0 14px 44px rgba(18,28,48,0.4),
-    inset 0 1px 0 rgba(255,255,255,0.95),
-    inset 0 -16px 32px rgba(120,140,166,0.34);
-  backdrop-filter: blur(10px) saturate(1.4);
-  -webkit-backdrop-filter: blur(10px) saturate(1.4);
-  overflow: hidden;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
 }
-.nl-home-window-glass::before {
-  content: ""; position: absolute; inset: 0 0 auto 0; height: 46%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
-  pointer-events: none;
-}
-.nl-home-window-titlebar {
+
+.nl-top-nav--serene-dock .nl-top-nav__grid {
   position: relative;
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 14px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(210,220,232,0.5));
-  border-bottom: 1px solid rgba(255,255,255,0.7);
-}
-.nl-home-window-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #ffffff, #9fb0c4);
-  box-shadow: 0 0 6px rgba(255,255,255,0.8);
-}
-.nl-home-window-title {
-  font: 600 12px/1 ui-monospace, monospace;
-  letter-spacing: 0.08em; color: #33445c; opacity: 0.9;
-}
-.nl-home-window-body {
-  position: relative;
-  padding: clamp(14px, 3vw, 26px);
-  max-height: none; overflow: visible;
-}
-
-.nl-home-bare { width: 100%; }
-.nl-home-hub { display: flex; flex-direction: column; gap: 22px; }
-
-.nl-home-map[data-lite="true"] .nl-home-window-glass {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .nl-home-window-glass { backdrop-filter: none; -webkit-backdrop-filter: none; }
-}
-
-/* شبكة التفرّع */
-.nl-lattice { position: relative; width: 100%; margin-top: 8px; }
-.nl-lattice-bus {
-  width: 42px; height: 2px; margin: 0 auto 26px;
-  background: linear-gradient(90deg, transparent, rgba(210,222,236,0.9), transparent);
-}
-.nl-lattice-svg { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: visible; }
-.nl-lattice-ray { stroke: #cdd8e6; stroke-width: 2; }
-.nl-lattice-ray--lite { stroke-width: 1.5; }
-.nl-lattice-row {
-  position: relative; z-index: 1;
-  display: flex; flex-wrap: wrap; gap: 14px;
-  justify-content: center; align-items: stretch;
-}
-.nl-lattice-node {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  min-width: 118px; padding: 14px 16px;
-  border-radius: 14px; cursor: pointer;
-  color: #1b2534; text-decoration: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(206,217,230,0.8));
-  border: 1px solid rgba(255,255,255,0.9);
-  box-shadow: 0 8px 22px rgba(18,28,48,0.28), inset 0 1px 0 rgba(255,255,255,0.9);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.nl-lattice-node:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 30px rgba(18,28,48,0.34), inset 0 1px 0 rgba(255,255,255,0.95);
-}
-.nl-lattice-node-glyph {
-  display: grid; place-items: center;
-  width: 40px; height: 40px; border-radius: 10px;
-  color: var(--node-accent, #33445c);
-  background: radial-gradient(circle at 30% 30%, #ffffff, rgba(220,228,238,0.8));
-  border: 1px solid rgba(255,255,255,0.8);
-}
-.nl-lattice-node-label {
-  font: 600 12px/1 ui-monospace, monospace; letter-spacing: 0.04em; color: #33445c;
-}
-
-/* ===== Phase 6D: gallery windows stack vertically and hang, roped corner-to-corner ===== */
-/* Windows keep the default .nl-home-hub column flow (one below the other). The ropes
-   defined in cords.config.ts hang the ME bit window from the node by its two top
-   corners, and the Lens window from the ME bit window's two bottom corners. We only
-   open up the vertical gap so the hanging ropes between them have room to droop. */
-#station-gallery .nl-home-hub { gap: clamp(40px, 7vh, 96px); }
-
-/* إعادة تصميم my songs داخل الخريطة */
-.nl-home-songs :where(.song-card, .mysongs-card) {
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(210,220,232,0.78)) !important;
-  color: #1b2534 !important;
-  border: 1px solid rgba(255,255,255,0.85) !important;
-  box-shadow: 0 6px 18px rgba(18,28,48,0.22), inset 0 1px 0 rgba(255,255,255,0.9) !important;
-}
-
-.nl-home-fallback { width: 100%; }
-
-@media (prefers-reduced-motion: reduce) {
-  .nl-home-station { min-height: auto; }
-  .nl-home-stage { position: static; height: auto; }
-  .nl-home-anchor { position: static; transform: none; width: 100%; }
-}
-
-[dir="rtl"] .nl-lattice-node-label,
-[dir="rtl"] .nl-home-window-title { letter-spacing: 0; }
-
-/* === مرحلة 1: الهيكل العظمي المرئي (عمود + عُقد) === */
-
-/* إخفاء خيوط SVG الزخرفية القديمة (تُستبدل بعُقد CSS نظيفة) */
-.nl-home-filament { display: none; }
-
-/* تأكيد أن كل محطّة حاوية نسبية للعُقد */
-.nl-home-station { position: relative; }
-
-/* العُقدة: نقطة متوهّجة على العمود في أعلى كل محطّة */
-.nl-home-station::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffffff, #9fb0c4);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    rgba(56, 189, 248, 0.18) 0%,
+    rgba(16, 185, 129, 0.15) 48%,
+    rgba(15, 23, 42, 0.68) 100%
+  );
+  border: 1px solid rgba(167, 243, 208, 0.38);
   box-shadow:
-    0 0 0 4px rgba(180, 200, 225, 0.22),
-    0 0 14px rgba(210, 228, 248, 0.85);
-  z-index: 3;
+    0 18px 42px -12px rgba(6, 78, 59, 0.35),
+    0 6px 20px -6px rgba(14, 165, 233, 0.22),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.72),
+    inset 0 -8px 18px rgba(4, 47, 46, 0.28);
+  backdrop-filter: blur(18px) saturate(165%);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
 }
 
-/* خط نزول قصير من العُقدة نحو النافذة */
-.nl-home-station::after {
-  content: "";
-  position: absolute;
-  top: 0; left: 50%;
-  transform: translateX(-50%);
-  width: 2px; height: clamp(28px, 6vh, 64px);
-  background: linear-gradient(to bottom, rgba(200, 214, 230, 0.9), transparent);
-  z-index: 2;
-}
-
-/* === مرحلة 2: عُقدة profile — إبقاء نافذة Hero الريترو وإخفاء الزجاج الخارجي === */
-
-/* إخفاء شريط عنوان الزجاج الخارجي (المكرّر) */
-#station-profile .nl-home-window-titlebar { display: none; }
-
-/* تجريد الزجاج الخارجي: بلا خلفية/حدود/ظل — تبقى نافذة Hero وحدها */
-#station-profile .nl-home-window-glass {
-  background: none;
-  border: none;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border-radius: 0;
-  overflow: visible;
-}
-#station-profile .nl-home-window-glass::before { display: none; }
-
-/* إلغاء حشوة/قص جسم الزجاج حتى تملأ نافذة Hero المساحة */
-#station-profile .nl-home-window-body {
-  padding: 0;
-  max-height: none;
-  overflow: visible;
-}
-
-/* توسيع عرض العُقدة ليناسب تخطيط العمودين (نافذة + صورة) */
-#station-profile .nl-home-window--sm {
-  width: min(940px, 94vw);
-}
-
-/* إبراز عُقدة البداية قليلًا (أول محطّة) */
-#station-profile::before {
-  width: 20px; height: 20px;
+.nl-top-nav--serene-dock .nl-top-nav__button {
+  border-radius: 999px !important;
+  background: linear-gradient(
+    160deg,
+    rgba(224, 242, 254, 0.20) 0%,
+    rgba(167, 243, 208, 0.14) 52%,
+    rgba(15, 23, 42, 0.48) 100%
+  ) !important;
+  border: 1px solid rgba(186, 230, 253, 0.36) !important;
   box-shadow:
-    0 0 0 6px rgba(180, 200, 225, 0.25),
-    0 0 22px rgba(210, 228, 248, 0.95);
+    0 6px 16px -4px rgba(2, 44, 34, 0.28),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.65) !important;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, border-color 0.22s ease !important;
 }
 
-/* === مرحلة 2.1: ضبط الصورة فوق البطاقة (الشاشات الصغيرة فقط) === */
+.nl-top-nav--serene-dock .nl-top-nav__button:hover {
+  transform: translateY(-2px) scale(1.03) !important;
+  border-color: rgba(110, 231, 183, 0.78) !important;
+  box-shadow:
+    0 12px 24px -6px rgba(16, 185, 129, 0.35),
+    0 0 16px -2px rgba(56, 189, 248, 0.32),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.88) !important;
+}
+
+/* ── 3. Hero Profile Layout Refinement ── */
+#station-profile .hero-profile-container {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+#station-profile .hero-profile-container::before,
+#station-profile .hero-window::before {
+  content: none !important;
+  background-image: none !important;
+}
 
 @media (max-width: 1023px) {
-  /* 1) الصورة دائمًا فوق البطاقة + تمركز + منع الفيضان الأفقي */
   #station-profile .hero-layout-grid {
     display: flex !important;
     flex-direction: column-reverse !important;
@@ -250,192 +138,131 @@
     justify-content: flex-start !important;
     gap: 24px !important;
     width: 100% !important;
-    max-width: 100% !important;
   }
-
-  /* 2) تحجيم آمن يمنع اختفاء الجانب الأيمن */
-  #station-profile .nl-home-window--sm {
-    width: 94vw !important;
-    max-width: 100% !important;
-    margin: 0 auto !important;
-  }
-  #station-profile .hero-window {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 auto !important;
-    overflow: visible !important;
-  }
-  #station-profile .hero-header-card { width: 100% !important; }
-
-  /* 3) صورة البروفايل: مرئية ومتمركزة وفوق البطاقة، مع مسافة لأسلاك التعليق */
   #station-profile .hero-profile-container {
+    display: flex !important;
     width: min(240px, 66vw) !important;
     max-width: min(240px, 66vw) !important;
-    height: auto !important;
     aspect-ratio: 1 / 1 !important;
-    margin: 48px auto 8px !important;
-    overflow: visible !important;
-    position: relative !important;
-  }
-
-  /* 4) أسلاك التعليق: خطّان من العقدة مباشرة إلى زوايا الصورة */
-  #station-profile .hero-profile-container::before {
-    content: "" !important;
-    position: absolute !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 100% !important;
-    height: 48px !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 0 L3 100' stroke='%23c8d6e6' stroke-width='1.4' vector-effect='non-scaling-stroke' fill='none'/%3E%3Cpath d='M50 0 L97 100' stroke='%23c8d6e6' stroke-width='1.4' vector-effect='non-scaling-stroke' fill='none'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-size: 100% 100% !important;
-    pointer-events: none !important;
-    z-index: 4 !important;
-  }
-
-  /* إخفاء أسلاك البطاقة حتى لا تتداخل مع الصورة */
-  #station-profile .hero-window::before {
-    content: none !important;
+    margin: 16px auto 8px !important;
   }
 }
 
-/* ===== Phase 6A: dynamic white rope cords + node dots ===== */
-/* Neutralize legacy CSS nodes & drop-lines (now drawn dynamically by HomeCords) */
-.nl-home-station::before,
-.nl-home-station::after { content: none !important; }
-/* Legacy profile hanging-wire pseudo (superseded by dynamic cords) */
-#station-profile .hero-profile-container::before { content: none !important; background-image: none !important; }
-
-.nl-cords {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  pointer-events: none; z-index: 0; overflow: visible;
-}
-.nl-cord-glow { fill: none; stroke: rgba(255,255,255,0.34); stroke-width: 5; stroke-linecap: round; }
-.nl-cord-core { fill: none; stroke: rgba(255,255,255,0.92); stroke-width: 1.6; stroke-linecap: round; }
-.nl-home-map[data-lite="true"] .nl-cord-glow { display: none; }
-.nl-cord-node-halo { fill: rgba(200,224,255,0.22); }
-.nl-cord-node-core { fill: #eef6ff; stroke: rgba(255,255,255,0.9); stroke-width: 1; }
-
-/* Profile hero: image centered on top, identity window full-width below (hanging look) */
-#station-profile .hero-profile-container { margin-left: auto !important; margin-right: auto !important; }
-@media (max-width: 1023px) {
-  #station-profile .hero-profile-container { display: flex !important; }
+/* ── 4. Streaming & Social Interactive Liquid Glass Dock (Prompt 9: Playful Geometric Shapes, Bold Contrasts, Glossy Accents) ── */
+.nl-platform-dock {
+  position: relative;
+  width: 100%;
+  padding: clamp(20px, 3vw, 28px);
+  border-radius: 28px;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(30, 41, 59, 0.46) 48%,
+    rgba(9, 13, 24, 0.72) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    0 22px 50px -14px rgba(0, 0, 0, 0.48),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.55),
+    inset 0 -10px 24px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(18px) saturate(165%);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
 }
 
-
-/* ===== Phase 6A.1: active-node highlight + red flow along ACTIVE cords only ===== */
-:root { --nl-cord-highlight: #ffcf3f; } /* warm yellow lighting for the active cord */
-
-/* Active cord: keep the white line, wrap it in a soft YELLOW halo as "lighting".
-   Reuse the .nl-cord-glow path (hidden for idle cords in lite mode) and turn it
-   into a warm glow ONLY for the active cord, forcing it visible even in lite mode.
-   Only one cord is active at a time, so this stays cheap. */
-.nl-cord--active .nl-cord-core { stroke: #ffffff; }
-.nl-home-map .nl-cord--active .nl-cord-glow,
-.nl-home-map[data-lite="true"] .nl-cord--active .nl-cord-glow {
-  display: block;
-  stroke-width: 6;
-  stroke-linecap: round;
-  animation: nl-cord-halo-cycle 2.6s ease-in-out infinite;
-}
-/* Active line glow smoothly cycles between blood red and golden yellow */
-@keyframes nl-cord-halo-cycle {
-  0%, 100% {
-    stroke: #c11626;
-    opacity: 0.5;
-    filter: drop-shadow(0 0 4px rgba(193,22,38,0.9)) drop-shadow(0 0 10px rgba(193,22,38,0.5));
-  }
-  50% {
-    stroke: #ffcf3f;
-    opacity: 0.65;
-    filter: drop-shadow(0 0 5px rgba(255,207,63,0.95)) drop-shadow(0 0 12px rgba(255,207,63,0.6));
-  }
-}
-/* Streaming/social lattice rays: keep the white line, add the same red<->gold glow when the section is active */
-.nl-home-station[data-active="true"] .nl-lattice-ray {
-  animation: nl-line-halo-cycle 2.6s ease-in-out infinite;
-}
-@keyframes nl-line-halo-cycle {
-  0%, 100% { filter: drop-shadow(0 0 2px rgba(193,22,38,0.9)) drop-shadow(0 0 6px rgba(193,22,38,0.5)); }
-  50%      { filter: drop-shadow(0 0 3px rgba(255,207,63,0.95)) drop-shadow(0 0 8px rgba(255,207,63,0.6)); }
-}
-.nl-cord-node-glow { pointer-events: none; }
-.nl-cord-node-core { fill: #ffffff; stroke: none; }
-.nl-cord-node--active .nl-cord-node-glow {
-  animation: nl-cord-node-pulse 2s ease-in-out infinite;
-}
-@keyframes nl-cord-node-pulse {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .nl-cord--active .nl-cord-glow,
-  .nl-home-station[data-active="true"] .nl-lattice-ray,
-  .nl-cord-node--active .nl-cord-node-glow { animation: none; }
+.nl-platform-dock__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
-/* ===== Phase 6B: unify streaming/social branch rays with the white rope look ===== */
-.nl-lattice-ray { stroke: rgba(255, 255, 255, 0.9); stroke-width: 1.6; }
-.nl-lattice-ray--lite { stroke-width: 1.4; }
+.nl-platform-dock__eyebrow {
+  font: 700 11px/1 ui-monospace, SFMono-Regular, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lc-text-main, #f8fafc);
+  opacity: 0.86;
+  white-space: nowrap;
+}
 
-/* ===== Phase 6G: streaming/social icons become square glass windows; the name
-   hangs below on 4 thin strings and gently sways (pure CSS, no JS) ===== */
+.nl-platform-dock__line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+}
 
-/* Vertical unit: square icon window on top, hanging name below. */
+.nl-platform-dock__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 16px;
+  justify-items: center;
+  align-items: stretch;
+}
+
 .nl-lattice-node-unit {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.nl-lattice .nl-lattice-node {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-/* Frameless interactive node — the old white padded box is removed. */
-.nl-lattice .nl-lattice-node {
-  display: block;
-  min-width: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-  color: inherit;
+  gap: 10px;
+  padding: 14px 10px 12px;
+  border-radius: 22px;
   text-decoration: none;
   cursor: pointer;
-  transition: transform 0.18s ease;
-}
-.nl-lattice .nl-lattice-node:hover { transform: translateY(-3px); box-shadow: none; }
-.nl-lattice .nl-lattice-node:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.85);
-  outline-offset: 3px;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    color-mix(in srgb, var(--node-accent, #38bdf8) 16%, rgba(15, 23, 42, 0.55)) 60%,
+    rgba(8, 12, 22, 0.78) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--node-accent, #ffffff) 42%, rgba(255, 255, 255, 0.28));
+  box-shadow:
+    0 12px 26px -8px rgba(0, 0, 0, 0.42),
+    0 0 18px -6px color-mix(in srgb, var(--node-accent, #38bdf8) 38%, transparent),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.68);
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s ease, border-color 0.24s ease;
 }
 
-/* The square glass window; the brand image fills it edge-to-edge. Square is set
-   with equal width/height (no aspect-ratio) so it works on old iOS Safari too. */
+.nl-lattice .nl-lattice-node:hover {
+  transform: translateY(-5px) scale(1.03);
+  border-color: color-mix(in srgb, var(--node-accent, #ffffff) 82%, #ffffff);
+  box-shadow:
+    0 18px 34px -8px rgba(0, 0, 0, 0.52),
+    0 0 26px -2px color-mix(in srgb, var(--node-accent, #38bdf8) 62%, transparent),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.90);
+}
+
 .nl-lattice-glass {
   position: relative;
   display: block;
-  width: clamp(58px, 15vw, 82px);
-  height: clamp(58px, 15vw, 82px);
-  border-radius: 16px;
+  width: clamp(56px, 12vw, 72px);
+  height: clamp(56px, 12vw, 72px);
+  border-radius: 18px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(180, 210, 240, 0.10));
+  border: 1px solid rgba(255, 255, 255, 0.65);
   box-shadow:
-    0 6px 16px rgba(18, 28, 48, 0.30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+    0 6px 16px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
-/* Glyph slot now fills the whole square (was a 40x40 chip). */
 .nl-lattice .nl-lattice-node-glyph {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
-  border: none;
-  border-radius: 0;
-  background: none;
 }
+
 .nl-lattice-img,
 .nl-lattice .nl-lattice-node-glyph img {
   width: 100%;
@@ -444,65 +271,318 @@
   display: block;
 }
 
-/* Light glass gloss — pure gradient, NO backdrop-filter (cheap on weak phones). */
 .nl-lattice-glass-gloss {
   position: absolute;
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
   background: linear-gradient(
-    158deg,
-    rgba(255, 255, 255, 0.55) 0%,
-    rgba(255, 255, 255, 0.14) 26%,
-    rgba(255, 255, 255, 0) 52%
+    150deg,
+    rgba(255, 255, 255, 0.52) 0%,
+    rgba(255, 255, 255, 0.12) 30%,
+    transparent 56%
   );
 }
 
-/* The name dangles from the icon on 4 thin strings and sways gently. */
-.nl-lattice-hanger {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.nl-lattice-strings {
-  display: block;
-  width: 46px;
-  height: 16px;
-  overflow: visible;
-}
-.nl-lattice-strings line {
-  stroke: rgba(255, 255, 255, 0.85);
-  stroke-width: 0.8; /* half of the 1.6 branch rays */
-  vector-effect: non-scaling-stroke;
-  stroke-linecap: round;
-}
-
-/* Name tag (text content unchanged) styled as a small hanging sign. */
 .nl-lattice .nl-lattice-node-label {
-  font: 600 12px/1 ui-monospace, monospace;
-  letter-spacing: 0.04em;
-  color: #eef4ff;
-  padding: 4px 9px;
-  border-radius: 9px;
+  font: 600 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--lc-text-main, #f8fafc);
+  text-align: center;
   white-space: nowrap;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(150, 190, 230, 0.12));
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ── 5. Gallery & Highlights — Cool & Vibrant Blues and Greens Glassmorphism (Prompts 3, 13, 14) ── */
+#station-gallery .me-bit-cta,
+#station-gallery .nl-lens-cta,
+#station-highlights #vault-playlist,
+#station-highlights .nl-hl-player {
+  border-radius: 26px !important;
+  background: linear-gradient(
+    155deg,
+    rgba(56, 189, 248, 0.22) 0%,
+    rgba(16, 185, 129, 0.18) 45%,
+    rgba(12, 28, 44, 0.76) 100%
+  ) !important;
+  border-top: 1.5px solid rgba(167, 243, 208, 0.72) !important;
+  border-left: 1px solid rgba(125, 211, 252, 0.42) !important;
+  border-right: 1px solid rgba(110, 231, 183, 0.42) !important;
+  border-bottom: 1.5px solid rgba(6, 78, 59, 0.75) !important;
   box-shadow:
-    0 3px 8px rgba(18, 28, 48, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    0 24px 54px -12px rgba(4, 47, 46, 0.52),
+    0 8px 26px -6px rgba(14, 165, 233, 0.28),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.82),
+    inset 0 -10px 24px rgba(4, 47, 46, 0.36) !important;
 }
 
-/* Give each hanging name room. Names are static (no sway) for light mobile perf. */
-.nl-lattice-row { gap: 22px 18px; }
-
-/* P11: Home cords are part of the permanent visual structure. Never hide the
-   whole topology behind JS readiness; geometry code already omits missing ends. */
-.nl-cords .nl-cord,
-.nl-cords .nl-cord-node {
-  opacity: 1;
+#station-gallery .nl-lc-badge,
+#station-highlights .nl-lc-badge {
+  background: linear-gradient(
+    135deg,
+    rgba(56, 189, 248, 0.26) 0%,
+    rgba(16, 185, 129, 0.22) 100%
+  ) !important;
+  border-color: rgba(167, 243, 208, 0.58) !important;
+  color: #ecfeff !important;
 }
 
-/* Phase 6H — hanging names are fully STATIC (no sway, no glow) for light
-   mobile performance: just icon + name, like an ordinary page. The 4 thin
-   strings remain as static hairlines. */
+/* ── 6. My Songs Section — Frosted Glass Panels with Vibrant Citrus Palette (Prompt 8) ── */
+#station-songs #my-songs-section {
+  border-radius: 32px;
+  padding: clamp(24px, 4vw, 44px) clamp(16px, 3.5vw, 36px) !important;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 138, 24, 0.22) 0%, rgba(250, 204, 21, 0.08) 45%, transparent 75%),
+    linear-gradient(165deg, rgba(255, 154, 60, 0.14) 0%, rgba(36, 18, 8, 0.62) 52%, rgba(14, 8, 4, 0.84) 100%) !important;
+  border: 1px solid rgba(253, 186, 116, 0.36);
+  box-shadow:
+    0 28px 64px -16px rgba(0, 0, 0, 0.58),
+    0 8px 28px -8px rgba(249, 115, 22, 0.24),
+    inset 0 1.5px 1px rgba(255, 237, 213, 0.65);
+  backdrop-filter: blur(20px) saturate(175%);
+  -webkit-backdrop-filter: blur(20px) saturate(175%);
+}
+
+#station-songs .nl-songs-heading {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 168, 52, 0.28) 0%,
+    rgba(245, 158, 11, 0.18) 46%,
+    rgba(42, 18, 6, 0.78) 100%
+  ) !important;
+  border-top: 1.5px solid rgba(254, 215, 170, 0.78) !important;
+  border-left: 1px solid rgba(251, 146, 60, 0.45) !important;
+  border-right: 1px solid rgba(250, 204, 21, 0.42) !important;
+  border-bottom: 1.5px solid rgba(67, 20, 7, 0.85) !important;
+  box-shadow:
+    0 20px 44px -12px rgba(234, 88, 12, 0.32),
+    inset 0 1.5px 1px rgba(255, 247, 237, 0.85) !important;
+}
+
+#station-songs .nl-songs-heading__eyebrow {
+  color: #fde047 !important;
+}
+
+#station-songs .nl-songs-heading__number {
+  color: #fb923c !important;
+  text-shadow: 0 0 18px rgba(251, 146, 60, 0.45);
+}
+
+#station-songs .nl-song-card,
+#station-songs .song-card {
+  border-radius: 22px !important;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 166, 43, 0.20) 0%,
+    rgba(250, 204, 21, 0.10) 38%,
+    rgba(28, 14, 6, 0.74) 76%,
+    rgba(12, 6, 3, 0.90) 100%
+  ) !important;
+  border-top: 1px solid rgba(254, 215, 170, 0.56) !important;
+  border-left: 1px solid rgba(251, 146, 60, 0.34) !important;
+  border-right: 1px solid rgba(250, 204, 21, 0.28) !important;
+  border-bottom: 1px solid rgba(45, 14, 4, 0.85) !important;
+  box-shadow:
+    0 14px 32px -8px rgba(0, 0, 0, 0.48),
+    0 4px 16px -4px rgba(249, 115, 22, 0.18),
+    inset 0 1.5px 1px rgba(255, 247, 237, 0.65) !important;
+}
+
+#station-songs .nl-song-card:hover,
+#station-songs .song-card:hover {
+  border-top-color: rgba(254, 240, 138, 0.88) !important;
+  box-shadow:
+    0 20px 40px -10px rgba(234, 88, 12, 0.38),
+    0 0 24px -4px rgba(250, 204, 21, 0.32),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.88) !important;
+}
+
+#station-songs .nl-song-card.is-active,
+#station-songs .song-card.active {
+  border-top: 1.5px solid rgba(254, 240, 138, 0.95) !important;
+  border-left: 1.5px solid rgba(251, 146, 60, 0.72) !important;
+  border-right: 1.5px solid rgba(250, 204, 21, 0.72) !important;
+  box-shadow:
+    0 24px 52px -10px rgba(249, 115, 22, 0.46),
+    0 0 28px -4px rgba(250, 204, 21, 0.36),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.92) !important;
+}
+
+/* ── 7. Floating Toggles & Switches — Vibrant Yellow & Deep Black Glassmorphism (Prompt 10) ── */
+.floating-audio-btn,
+.floating-theme-btn,
+.nl-motion-toggle {
+  background: linear-gradient(
+    145deg,
+    rgba(250, 204, 21, 0.24) 0%,
+    rgba(24, 24, 27, 0.86) 52%,
+    rgba(9, 9, 11, 0.96) 100%
+  ) !important;
+  border: 1px solid rgba(250, 204, 21, 0.58) !important;
+  color: #fef08a !important;
+  box-shadow:
+    0 12px 28px -6px rgba(0, 0, 0, 0.68),
+    0 0 18px -4px rgba(250, 204, 21, 0.35),
+    inset 0 1.5px 1px rgba(254, 249, 195, 0.75) !important;
+}
+
+/* ── 8. Theme-Specific Master Overrides ── */
+
+/* A) MIDNIGHT THEME (Prompts 2 & 4: Liquid Glass, Deep Blue & Vibrant Gradient Accents, Layered Depth) */
+[data-theme="midnight"] .nl-platform-dock {
+  background: linear-gradient(
+    160deg,
+    rgba(56, 189, 248, 0.16) 0%,
+    rgba(99, 102, 241, 0.14) 44%,
+    rgba(10, 15, 32, 0.78) 100%
+  );
+  border-color: rgba(125, 211, 252, 0.34);
+}
+
+/* B) DARK THEME (Prompt 6: 3D Render, Obsidian Black & Clear Glass, High Contrast Dramatic Highlights) */
+[data-theme="dark"] .nl-platform-dock,
+[data-theme="dark"] #station-profile .hero-window {
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(24, 24, 28, 0.68) 42%,
+    rgba(4, 4, 6, 0.92) 100%
+  ) !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.82) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-bottom: 1.5px solid rgba(0, 0, 0, 0.95) !important;
+  box-shadow:
+    0 28px 64px -12px rgba(0, 0, 0, 0.85),
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.90),
+    inset 0 -14px 28px rgba(0, 0, 0, 0.85) !important;
+}
+
+/* C) LIGHT THEME (Prompt 5 & 12: Playful & Nostalgic Retro Computer Interface, Bright Primary Colors, Clean Flat/Pixel Finish) */
+[data-theme="light"] .nl-top-nav--serene-dock .nl-top-nav__grid {
+  background: #fffbeb !important;
+  border: 2px solid #1e293b !important;
+  border-radius: 16px !important;
+  box-shadow: 4px 4px 0px #1e293b !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-theme="light"] .nl-top-nav--serene-dock .nl-top-nav__button {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 2px solid #1e293b !important;
+  border-radius: 10px !important;
+  box-shadow: 2px 2px 0px #2563eb !important;
+}
+
+[data-theme="light"] .nl-top-nav--serene-dock .nl-top-nav__button:hover {
+  background: #fef08a !important;
+  color: #0f172a !important;
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 4px 4px 0px #ef4444 !important;
+}
+
+[data-theme="light"] #station-profile .hero-window,
+[data-theme="light"] .nl-platform-dock,
+[data-theme="light"] #station-gallery .me-bit-cta,
+[data-theme="light"] #station-gallery .nl-lens-cta,
+[data-theme="light"] #station-highlights #vault-playlist,
+[data-theme="light"] #station-highlights .nl-hl-player,
+[data-theme="light"] #station-songs #my-songs-section,
+[data-theme="light"] .nl-contact-card {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 2.5px solid #1e293b !important;
+  border-radius: 18px !important;
+  box-shadow: 6px 6px 0px #2563eb, inset 0 4px 0px #facc15 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-theme="light"] .nl-platform-dock__eyebrow {
+  color: #1d4ed8 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .nl-platform-dock__line {
+  height: 2px;
+  background: repeating-linear-gradient(90deg, #2563eb 0 8px, transparent 8px 14px);
+}
+
+[data-theme="light"] .nl-lattice .nl-lattice-node {
+  background: #f8fafc !important;
+  border: 2px solid #1e293b !important;
+  border-radius: 14px !important;
+  box-shadow: 3px 3px 0px var(--node-accent, #2563eb) !important;
+}
+
+[data-theme="light"] .nl-lattice .nl-lattice-node:hover {
+  background: #fef9c3 !important;
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 5px 5px 0px #ef4444 !important;
+}
+
+[data-theme="light"] .nl-lattice .nl-lattice-node-label {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] #station-songs .nl-songs-heading {
+  background: linear-gradient(90deg, #facc15 0%, #fb923c 55%, #f43f5e 100%) !important;
+  border: 2.5px solid #1e293b !important;
+  border-radius: 16px !important;
+  box-shadow: 4px 4px 0px #1e293b !important;
+}
+
+[data-theme="light"] #station-songs .nl-songs-heading__eyebrow,
+[data-theme="light"] #station-songs .nl-songs-heading__title,
+[data-theme="light"] #station-songs .nl-songs-heading__title strong,
+[data-theme="light"] #station-songs .nl-songs-heading__number,
+[data-theme="light"] #station-songs .nl-songs-heading__label {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light"] #station-songs .nl-song-card,
+[data-theme="light"] #station-songs .song-card {
+  background: #fffbeb !important;
+  color: #0f172a !important;
+  border: 2px solid #1e293b !important;
+  border-radius: 16px !important;
+  box-shadow: 4px 4px 0px #f97316 !important;
+}
+
+[data-theme="light"] #station-songs .nl-song-card.is-active,
+[data-theme="light"] #station-songs .song-card.active {
+  background: #fef3c7 !important;
+  border: 2.5px solid #ea580c !important;
+  box-shadow: 5px 5px 0px #2563eb !important;
+}
+
+[data-theme="light"] #station-gallery .nl-lc-badge,
+[data-theme="light"] #station-highlights .nl-lc-badge {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: 2px solid #1e293b !important;
+  border-radius: 8px !important;
+  box-shadow: 3px 3px 0px #facc15 !important;
+}
+
+/* D) LITE THEME & LOW-PERF FAST PATH */
+[data-theme="lite"] .nl-platform-dock,
+[data-theme="lite"] #station-songs #my-songs-section,
+[data-theme="lite"] .nl-top-nav--serene-dock .nl-top-nav__grid,
+.nl-home-map[data-lite="true"] .nl-platform-dock {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+@media (max-width: 640px) {
+  .nl-platform-dock__grid {
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 12px;
+  }
+}
