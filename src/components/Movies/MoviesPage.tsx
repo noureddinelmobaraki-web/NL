@@ -21,6 +21,8 @@ import {
   Users,
   Sparkles,
   MapPin,
+  Maximize2,
+  Layers,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { m, AnimatePresence } from "framer-motion";
@@ -36,7 +38,11 @@ import { FALLBACK_SERIES, FALLBACK_SERIES_GENRES } from "../Series/CuratedFallba
 import { normLang, tmdbLang } from "../../utils/lang";
 import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
 import "../../styles/components/cinema.css";
-import { MovieSourcesModal, ServerBranchesInline } from "./MovieSourcesModal";
+import {
+  MovieSourcesModal,
+  ServerBranchesInline,
+  useResolvedImdbSources,
+} from "./MovieSourcesModal";
 import { useTopMovies } from "./useTopMovies";
 import { logPlay } from "../../features/music/data/playTracking";
 
@@ -737,6 +743,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [selectedWatchItem, setSelectedWatchItem] = useState<CinemaItem | null>(null);
   const [showHeroTrailer, setShowHeroTrailer] = useState(false);
+  const [isWatchingInGallery, setIsWatchingInGallery] = useState(false);
+  const [activeGalleryServerIdx, setActiveGalleryServerIdx] = useState(0);
+  const [selectedSeason, setSelectedSeason] = useState(1);
+  const [selectedEpisode, setSelectedEpisode] = useState(1);
+  const [isFullSeasonEmbed, setIsFullSeasonEmbed] = useState(false);
+  const [seasonEpisodes, setSeasonEpisodes] = useState<
+    Array<{ episode_number: number; name: string }>
+  >([]);
+  const [loadingSeasonEpisodes, setLoadingSeasonEpisodes] = useState(false);
+  const galleryStageRef = useRef<HTMLDivElement | null>(null);
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -747,12 +763,50 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const detailDialogRef = useFocusTrap(selectedItemId !== null && !!detailedItem);
 
+  const detailWatchTarget = useMemo(() => {
+    if (!detailedItem) return null;
+    return {
+      id: detailedItem.id,
+      mediaType: detailedItem.mediaType,
+      title: detailedItem.title,
+      imdbId: detailedItem.imdbId,
+      backdropPath: detailedItem.backdropPath,
+      posterPath: detailedItem.posterPath,
+      season: selectedSeason,
+      episode: selectedEpisode,
+      fullSeason: isFullSeasonEmbed,
+    };
+  }, [detailedItem, selectedSeason, selectedEpisode, isFullSeasonEmbed]);
+
+  const { sources: detailPlaySources } = useResolvedImdbSources(
+    detailWatchTarget,
+    Boolean(detailedItem),
+  );
+  const activeGallerySource =
+    detailPlaySources[activeGalleryServerIdx] || detailPlaySources[0] || null;
+
+  const handleToggleGalleryFullscreen = useCallback(() => {
+    const el = galleryStageRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen?.().catch(() => {});
+    } else {
+      void el.requestFullscreen?.().catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
     setHeroServersOpen(false);
   }, [heroIndex, activeTab]);
 
   useEffect(() => {
     setShowHeroTrailer(false);
+    setIsWatchingInGallery(false);
+    setActiveGalleryServerIdx(0);
+    setSelectedSeason(1);
+    setSelectedEpisode(1);
+    setIsFullSeasonEmbed(false);
+    setSeasonEpisodes([]);
     setDetailServersOpen(false);
     setSelectedActor(null);
     setActorDetails(null);
@@ -770,6 +824,66 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedItemId]);
+
+  // Fetch TV Season Episodes when a TV Series is open in Details Modal
+  useEffect(() => {
+    if (!detailedItem || detailedItem.mediaType !== 'tv') {
+      setSeasonEpisodes([]);
+      return;
+    }
+    let cancelled = false;
+    const loadSeasonEps = async () => {
+      setLoadingSeasonEpisodes(true);
+      const fallbackCount = Math.max(
+        1,
+        Math.min(
+          30,
+          detailedItem.episodes && detailedItem.seasons
+            ? Math.ceil(detailedItem.episodes / Math.max(1, detailedItem.seasons))
+            : 12,
+        ),
+      );
+      try {
+        if (tmdbKey) {
+          const langParam = `&language=${tmdbLang(currentLang)}`;
+          const seasonData = await fetchWithCache(
+            `${TMDB_BASE_URL}/tv/${detailedItem.id}/season/${selectedSeason}?api_key=${tmdbKey}${langParam}`,
+          );
+          if (
+            !cancelled &&
+            Array.isArray(seasonData?.episodes) &&
+            seasonData.episodes.length > 0
+          ) {
+            setSeasonEpisodes(
+              seasonData.episodes.map((ep: any, idx: number) => ({
+                episode_number: Number(ep.episode_number) || idx + 1,
+                name:
+                  ep.name ||
+                  (currentLang === 'ar' ? `الحلقة ${idx + 1}` : `Episode ${idx + 1}`),
+              })),
+            );
+            setLoadingSeasonEpisodes(false);
+            return;
+          }
+        }
+      } catch {
+        // Fallback below
+      }
+      if (!cancelled) {
+        setSeasonEpisodes(
+          Array.from({ length: fallbackCount }, (_, idx) => ({
+            episode_number: idx + 1,
+            name: currentLang === 'ar' ? `الحلقة ${idx + 1}` : `Episode ${idx + 1}`,
+          })),
+        );
+        setLoadingSeasonEpisodes(false);
+      }
+    };
+    void loadSeasonEps();
+    return () => {
+      cancelled = true;
+    };
+  }, [detailedItem, selectedSeason, tmdbKey, currentLang]);
 
   // Fetch Actor Details when a Cast Member is clicked
   const handleSelectActor = useCallback(
@@ -1855,12 +1969,144 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
                 className="nl-detail-card lg-cinema-glass-modal relative w-full max-w-4xl rounded-3xl z-10 overflow-hidden my-auto max-h-[92dvh] flex flex-col"
               >
-                {/* Top 16:9 Liquid Glass Gallery Stage (Single Unified Trailer & Hero Stage) */}
-                <div className="p-2.5 sm:p-3.5 pb-0 flex-shrink-0">
-                  <div className="lg-cinema-gallery-stage relative aspect-video w-full">
-                    {showHeroTrailer && detailedItem.trailerKey ? (
+                {/* Top 16:9 Liquid Glass Gallery Stage (Unified Movie/Series Player, Trailer & Hero Stage) */}
+                <div className="p-2.5 sm:p-3.5 pb-0 flex-shrink-0 flex flex-col gap-2">
+                  {/* Elevated Top Control Bar ABOVE Gallery Stage when Movie or Trailer is actively playing */}
+                  {((isWatchingInGallery && Boolean(activeGallerySource)) ||
+                    (showHeroTrailer && Boolean(detailedItem.trailerKey))) && (
+                    <div
+                      className="lg-cinema-gallery-top-bar flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-2xl"
+                      dir="ltr"
+                    >
+                      <div className="flex flex-wrap items-center gap-2 min-w-0">
+                        {detailedItem.trailerKey && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (showHeroTrailer) {
+                                setShowHeroTrailer(false);
+                              } else {
+                                setIsWatchingInGallery(false);
+                                setShowHeroTrailer(true);
+                              }
+                            }}
+                            className={`lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
+                              showHeroTrailer
+                                ? "!bg-rose-600/45 !border-rose-300/70 text-white"
+                                : "text-white"
+                            }`}
+                          >
+                            <Film size={13} />
+                            <span>
+                              {showHeroTrailer
+                                ? currentLang === "ar"
+                                  ? "إغلاق التريلر"
+                                  : "Hide Trailer"
+                                : currentLang === "ar"
+                                  ? "تشغيل التريلر"
+                                  : "Watch Trailer"}
+                            </span>
+                          </button>
+                        )}
+
+                        {showHeroTrailer && activeGallerySource && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowHeroTrailer(false);
+                              setIsWatchingInGallery(true);
+                              setDetailServersOpen(true);
+                            }}
+                            className="lg-cinema-primary-pill px-3.5 py-1.5 text-xs font-black text-white flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Play size={12} className="fill-current" />
+                            <span>
+                              {currentLang === "ar" ? "مشاهدة الآن" : "Watch Movie"}
+                            </span>
+                          </button>
+                        )}
+
+                        {isWatchingInGallery && activeGallerySource && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-rose-500/20 border border-rose-300/45 text-rose-100">
+                            <Play size={10} className="fill-current text-rose-400" />
+                            <span>
+                              {activeGallerySource.label} • {activeGallerySource.host}
+                            </span>
+                            {detailedItem.mediaType === "tv" && (
+                              <span className="text-amber-300 ms-1">
+                                {isFullSeasonEmbed
+                                  ? "Full Season"
+                                  : `S${selectedSeason}:E${selectedEpisode}`}
+                              </span>
+                            )}
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsWatchingInGallery(false);
+                            setShowHeroTrailer(false);
+                          }}
+                          className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-white/90 hover:text-white flex items-center gap-1.5 cursor-pointer"
+                          title={
+                            currentLang === "ar"
+                              ? "العودة لصورة المعرض"
+                              : "Back to Gallery Poster"
+                          }
+                        >
+                          <span>
+                            {currentLang === "ar" ? "عرض المعرض" : "Show Backdrop"}
+                          </span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleToggleGalleryFullscreen}
+                          className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px]"
+                          aria-label={
+                            currentLang === "ar" ? "ملء الشاشة" : "Fullscreen"
+                          }
+                          title={currentLang === "ar" ? "ملء الشاشة" : "Fullscreen"}
+                        >
+                          <Maximize2 size={15} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedItemId(null)}
+                          className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] hover:!bg-rose-600/45 hover:!border-rose-300/60"
+                          aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
+                          title={currentLang === "ar" ? "إغلاق" : "Close"}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div
+                    ref={galleryStageRef}
+                    className="lg-cinema-gallery-stage relative aspect-video w-full bg-black"
+                  >
+                    {isWatchingInGallery && activeGallerySource ? (
                       <iframe
-                        className="w-full h-full border-0"
+                        key={`${activeGallerySource.id}-${activeGallerySource.url}`}
+                        className="w-full h-full border-0 bg-black"
+                        src={activeGallerySource.url}
+                        title={`${detailedItem.title} - ${activeGallerySource.label}`}
+                        width="100%"
+                        height="100%"
+                        frameBorder="0"
+                        scrolling="no"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                        allowFullScreen
+                      />
+                    ) : showHeroTrailer && detailedItem.trailerKey ? (
+                      <iframe
+                        className="w-full h-full border-0 bg-black"
                         src={`https://www.youtube.com/embed/${detailedItem.trailerKey}?autoplay=1&rel=0&modestbranding=1`}
                         title={`${detailedItem.title} Trailer`}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
@@ -1869,7 +2115,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                     ) : (
                       <>
                         <img
-                          src={getBackdropSrc_static(detailedItem.backdropPath, detailedItem.posterPath, detailedItem.trailerKey)}
+                          src={getBackdropSrc_static(
+                            detailedItem.backdropPath,
+                            detailedItem.posterPath,
+                            detailedItem.trailerKey,
+                          )}
                           alt={detailedItem.title}
                           className="w-full h-full object-cover opacity-90"
                         />
@@ -1881,24 +2131,35 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           }}
                         />
 
-                        {/* Center Liquid Glass Play Trailer Trigger */}
-                        {detailedItem.trailerKey && (
-                          <button
-                            type="button"
-                            onClick={() => setShowHeroTrailer(true)}
-                            className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/18 hover:bg-white/28 border border-white/50 backdrop-blur-xl flex items-center justify-center text-white shadow-[0_12px_36px_rgba(0,0,0,0.68),inset_0_1.5px_1px_rgba(255,255,255,0.85)] transition-transform hover:scale-110 cursor-pointer group z-10"
-                            aria-label={currentLang === "ar" ? "تشغيل التريلر" : "Play Trailer"}
-                            title={currentLang === "ar" ? "تشغيل التريلر" : "Play Trailer"}
-                          >
-                            <Play size={28} className="fill-current ms-1 group-hover:scale-110 transition-transform" />
-                          </button>
-                        )}
+                        {/* Center Liquid Glass Play Trigger (Plays Movie/Series or Trailer) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowHeroTrailer(false);
+                            setIsWatchingInGallery(true);
+                            setDetailServersOpen(true);
+                          }}
+                          className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/18 hover:bg-white/28 border border-white/50 backdrop-blur-xl flex items-center justify-center text-white shadow-[0_12px_36px_rgba(0,0,0,0.68),inset_0_1.5px_1px_rgba(255,255,255,0.85)] transition-transform hover:scale-110 cursor-pointer group z-10"
+                          aria-label={
+                            currentLang === "ar" ? "مشاهدة الآن" : "Watch Now"
+                          }
+                          title={currentLang === "ar" ? "مشاهدة الآن" : "Watch Now"}
+                        >
+                          <Play
+                            size={28}
+                            className="fill-current ms-1 group-hover:scale-110 transition-transform"
+                          />
+                        </button>
 
-                        {/* Bottom Overlay Info inside Gallery Stage */}
+                        {/* Bottom Overlay Info inside Gallery Stage (Only when NOT playing) */}
                         <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 flex items-end justify-between gap-4 z-10">
                           <div className="flex items-end gap-3.5 min-w-0">
                             <img
-                              src={getPosterSrc_static(detailedItem.posterPath, detailedItem.backdropPath, detailedItem.trailerKey)}
+                              src={getPosterSrc_static(
+                                detailedItem.posterPath,
+                                detailedItem.backdropPath,
+                                detailedItem.trailerKey,
+                              )}
                               alt=""
                               className="hidden sm:block w-20 md:w-24 aspect-[2/3] object-cover rounded-2xl border border-white/35 shadow-2xl flex-shrink-0"
                             />
@@ -1908,20 +2169,31 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                   <Star size={11} className="fill-current" />
                                   {detailedItem.rating?.toFixed(1) || "8.2"}
                                 </span>
-                                <span className="text-xs font-bold text-white/90">{detailedItem.year || "2024"}</span>
+                                <span className="text-xs font-bold text-white/90">
+                                  {detailedItem.year || "2024"}
+                                </span>
                                 <span className="border border-white/30 bg-white/12 px-2 py-0.5 rounded-full text-[10px] font-bold text-white/95 backdrop-blur-md">
-                                  {detailedItem.certification || (detailedItem.mediaType === 'movie' ? "PG-13" : "TV-MA")}
+                                  {detailedItem.certification ||
+                                    (detailedItem.mediaType === "movie"
+                                      ? "PG-13"
+                                      : "TV-MA")}
                                 </span>
                                 <span className="text-xs text-white/80 font-medium">
-                                  {detailedItem.mediaType === 'movie'
-                                    ? detailedItem.runtime ? `${detailedItem.runtime}${t("movies.meta.minutes")}` : `148${t("movies.meta.minutes")}`
-                                    : detailedItem.seasons ? `${detailedItem.seasons} ${t("movies.meta.seasons")}` : `5 ${t("movies.meta.seasons")}`}
+                                  {detailedItem.mediaType === "movie"
+                                    ? detailedItem.runtime
+                                      ? `${detailedItem.runtime}${t("movies.meta.minutes")}`
+                                      : `148${t("movies.meta.minutes")}`
+                                    : detailedItem.seasons
+                                      ? `${detailedItem.seasons} ${t("movies.meta.seasons")}`
+                                      : `5 ${t("movies.meta.seasons")}`}
                                 </span>
-                                {detailedItem.mediaType === 'tv' && detailedItem.episodes && (
-                                  <span className="text-xs text-white/80 font-medium">
-                                    • {detailedItem.episodes} {t("movies.meta.episodes")}
-                                  </span>
-                                )}
+                                {detailedItem.mediaType === "tv" &&
+                                  detailedItem.episodes && (
+                                    <span className="text-xs text-white/80 font-medium">
+                                      • {detailedItem.episodes}{" "}
+                                      {t("movies.meta.episodes")}
+                                    </span>
+                                  )}
                               </div>
                               <h3 className="text-xl sm:text-3xl font-black text-white select-text truncate drop-shadow-md">
                                 {detailedItem.title}
@@ -1934,37 +2206,159 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             </div>
                           </div>
                         </div>
-                      </>
-                    )}
 
-                    {/* Top Floating Glass Controls inside Gallery Stage */}
-                    <div className="absolute top-3.5 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
-                      <div className="pointer-events-auto">
-                        {detailedItem.trailerKey && (
+                        {/* Top Floating Glass Controls inside Gallery Stage (Only visible when NOT playing) */}
+                        <div className="absolute top-3.5 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
+                          <div className="pointer-events-auto">
+                            {detailedItem.trailerKey && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsWatchingInGallery(false);
+                                  setShowHeroTrailer(true);
+                                }}
+                                className="lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Film size={13} />
+                                <span>
+                                  {currentLang === "ar"
+                                    ? "تشغيل التريلر"
+                                    : "Watch Trailer"}
+                                </span>
+                              </button>
+                            )}
+                          </div>
                           <button
                             type="button"
-                            onClick={() => setShowHeroTrailer((v) => !v)}
-                            className="lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
+                            onClick={() => setSelectedItemId(null)}
+                            className="lg-cinema-icon-pill pointer-events-auto hover:!bg-rose-600/45 hover:!border-rose-300/60"
+                            aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
                           >
-                            <Film size={13} />
-                            <span>
-                              {showHeroTrailer
-                                ? (currentLang === "ar" ? "إغلاق التريلر" : "Hide Trailer")
-                                : (currentLang === "ar" ? "تشغيل التريلر" : "Watch Trailer")}
-                            </span>
+                            <X size={16} />
                           </button>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedItemId(null)}
-                        className="lg-cinema-icon-pill pointer-events-auto hover:!bg-rose-600/45 hover:!border-rose-300/60"
-                        aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
+
+                  {/* Liquid-Glass Season & Episode Selector Bar directly below Gallery Stage for TV Series */}
+                  {detailedItem.mediaType === "tv" && (
+                    <div
+                      className="lg-cinema-tv-selector-bar rounded-2xl p-3 flex flex-col gap-2.5"
+                      dir="ltr"
+                    >
+                      {/* Row 1: Seasons + Complete Season Mode */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 max-w-full">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-white/70 pe-1 shrink-0">
+                            <Tv size={12} className="text-rose-400" />
+                            <span>
+                              {currentLang === "ar" ? "المواسم" : "Seasons"}
+                            </span>
+                          </span>
+                          {Array.from(
+                            { length: Math.max(1, Math.min(30, detailedItem.seasons || 1)) },
+                            (_, idx) => idx + 1,
+                          ).map((seasonNum) => {
+                            const isSeasonActive =
+                              !isFullSeasonEmbed && selectedSeason === seasonNum;
+                            return (
+                              <button
+                                key={`season-${seasonNum}`}
+                                type="button"
+                                onClick={() => {
+                                  setIsFullSeasonEmbed(false);
+                                  setSelectedSeason(seasonNum);
+                                  setSelectedEpisode(1);
+                                  setShowHeroTrailer(false);
+                                  setIsWatchingInGallery(true);
+                                  setDetailServersOpen(true);
+                                }}
+                                className={`lg-cinema-tv-pill px-3 py-1 rounded-full text-xs font-extrabold shrink-0 cursor-pointer transition-all ${
+                                  isSeasonActive
+                                    ? "lg-cinema-tv-pill--active"
+                                    : "text-white/80 hover:text-white"
+                                }`}
+                              >
+                                {currentLang === "ar"
+                                  ? `موسم ${seasonNum}`
+                                  : `Season ${seasonNum}`}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Complete Season (embedtvfull) Toggle Option */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsFullSeasonEmbed((prev) => !prev);
+                            setShowHeroTrailer(false);
+                            setIsWatchingInGallery(true);
+                            setDetailServersOpen(true);
+                          }}
+                          className={`lg-cinema-tv-pill px-3 py-1 rounded-full text-xs font-extrabold inline-flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
+                            isFullSeasonEmbed
+                              ? "lg-cinema-tv-pill--active"
+                              : "text-amber-200/90 hover:text-amber-100"
+                          }`}
+                          title="https://www.2embed.cc/embedtvfull/..."
+                        >
+                          <Layers size={12} />
+                          <span>
+                            {currentLang === "ar"
+                              ? "الموسم الكامل (Full)"
+                              : "Full Season Player"}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Row 2: Episodes Strip */}
+                      {!isFullSeasonEmbed && (
+                        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-white/65 pe-1 shrink-0">
+                            {currentLang === "ar" ? "الحلقات" : "Episodes"}
+                          </span>
+                          {loadingSeasonEpisodes && seasonEpisodes.length === 0 ? (
+                            <span className="text-xs text-white/60 font-bold px-2">
+                              Loading...
+                            </span>
+                          ) : (
+                            seasonEpisodes.map((ep) => {
+                              const isEpActive =
+                                selectedEpisode === ep.episode_number;
+                              return (
+                                <button
+                                  key={`ep-${selectedSeason}-${ep.episode_number}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setIsFullSeasonEmbed(false);
+                                    setSelectedEpisode(ep.episode_number);
+                                    setShowHeroTrailer(false);
+                                    setIsWatchingInGallery(true);
+                                    setDetailServersOpen(true);
+                                  }}
+                                  className={`lg-cinema-tv-ep-pill px-2.5 py-1 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all inline-flex items-center gap-1 ${
+                                    isEpActive
+                                      ? "lg-cinema-tv-ep-pill--active"
+                                      : "text-white/80 hover:text-white"
+                                  }`}
+                                  title={ep.name}
+                                >
+                                  <span>E{ep.episode_number}</span>
+                                  {isEpActive && ep.name && (
+                                    <span className="max-w-[140px] truncate text-[11px] opacity-95 font-semibold ms-0.5">
+                                      • {ep.name}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Scrollable Liquid Glass Body */}
@@ -1973,27 +2367,61 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   <div className="flex flex-col gap-3 pb-4 border-b border-white/12">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2.5 flex-1">
-                        <ServerBranchesInline
-                          item={detailedItem}
-                          isOpen={detailServersOpen}
-                          onToggle={() => setDetailServersOpen((v) => !v)}
-                          onClose={() => setDetailServersOpen(false)}
-                          buttonLabel={t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}
-                        />
+                        {detailWatchTarget && (
+                          <ServerBranchesInline
+                            item={detailWatchTarget}
+                            isOpen={detailServersOpen}
+                            onToggle={() => {
+                              if (!detailServersOpen || !isWatchingInGallery) {
+                                setDetailServersOpen(true);
+                                setShowHeroTrailer(false);
+                                setIsWatchingInGallery(true);
+                              } else {
+                                setDetailServersOpen(false);
+                              }
+                            }}
+                            onClose={() => setDetailServersOpen(false)}
+                            buttonLabel={
+                              t("movies.meta.watchNow") ||
+                              (currentLang === "ar" ? "شاهد الآن" : "Watch Now")
+                            }
+                            activeServerIdx={
+                              isWatchingInGallery ? activeGalleryServerIdx : null
+                            }
+                            onSelectServer={(idx) => {
+                              setActiveGalleryServerIdx(idx);
+                              setShowHeroTrailer(false);
+                              setIsWatchingInGallery(true);
+                            }}
+                          />
+                        )}
 
                         {detailedItem.trailerKey && !detailServersOpen && (
                           <button
                             type="button"
-                            onClick={() => setShowHeroTrailer((v) => !v)}
+                            onClick={() => {
+                              if (showHeroTrailer) {
+                                setShowHeroTrailer(false);
+                              } else {
+                                setIsWatchingInGallery(false);
+                                setShowHeroTrailer(true);
+                              }
+                            }}
                             className={`lg-cinema-action-pill py-2.5 px-4 text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer ${
-                              showHeroTrailer ? "!bg-white/25 !border-white/50 text-white" : "text-white/90"
+                              showHeroTrailer
+                                ? "!bg-white/25 !border-white/50 text-white"
+                                : "text-white/90"
                             }`}
                           >
                             <Film size={14} />
                             <span>
                               {showHeroTrailer
-                                ? (currentLang === "ar" ? "عرض الملصق" : "Show Backdrop")
-                                : (currentLang === "ar" ? "التريلر الرسمي" : "Official Trailer")}
+                                ? currentLang === "ar"
+                                  ? "عرض الملصق"
+                                  : "Show Backdrop"
+                                : currentLang === "ar"
+                                  ? "التريلر الرسمي"
+                                  : "Official Trailer"}
                             </span>
                           </button>
                         )}

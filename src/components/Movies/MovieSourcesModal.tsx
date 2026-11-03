@@ -17,6 +17,9 @@ export interface CinemaWatchTarget {
   imdbId?: string;
   backdropPath?: string;
   posterPath?: string;
+  season?: number;
+  episode?: number;
+  fullSeason?: boolean;
 }
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -36,29 +39,71 @@ export function extractImdbId(imdbId?: string): string {
 }
 
 export function buildSources(item: {
+  id?: number;
   mediaType: 'movie' | 'tv';
   imdbId?: string;
+  season?: number;
+  episode?: number;
+  fullSeason?: boolean;
 }): PlaySource[] {
   const imdbId = extractImdbId(item.imdbId);
-  if (!imdbId) return [];
+  const tmdbId = item.id ? String(item.id) : '';
+  const targetId = imdbId || tmdbId;
+  if (!targetId) return [];
+
   const type = item.mediaType === 'movie' ? 'movie' : 'tv';
-  const twoEmbedUrl =
+  const s = Math.max(1, item.season || 1);
+  const e = Math.max(1, item.episode || 1);
+  const isFullSeason = Boolean(item.fullSeason);
+
+  const twoEmbedCcUrl =
     type === 'movie'
-      ? `https://www.2embed.cc/embed/${imdbId}`
-      : `https://www.2embed.cc/embedtvfull/${imdbId}`;
+      ? `https://www.2embed.cc/embed/${targetId}`
+      : isFullSeason
+        ? `https://www.2embed.cc/embedtvfull/${targetId}`
+        : `https://www.2embed.cc/embedtv/${targetId}&s=${s}&e=${e}`;
+
+  const twoEmbedSkinUrl =
+    type === 'movie'
+      ? `https://www.2embed.skin/embed/${targetId}`
+      : isFullSeason
+        ? `https://www.2embed.skin/embedtvfull/${targetId}`
+        : `https://www.2embed.skin/embedtv/${targetId}&s=${s}&e=${e}`;
+
+  const vidsrcXyzUrl =
+    type === 'movie'
+      ? `https://vidsrc.xyz/embed/movie/${targetId}`
+      : `https://vidsrc.xyz/embed/tv/${targetId}/${s}-${e}`;
+
+  const vidsrcIcuUrl =
+    type === 'movie'
+      ? `https://vidsrc.icu/embed/movie/${targetId}`
+      : `https://vidsrc.icu/embed/tv/${targetId}/${s}/${e}`;
+
   const autoEmbedUrl =
     type === 'movie'
-      ? `https://autoembed.co/movie/imdb/${imdbId}`
-      : `https://autoembed.co/tv/imdb/${imdbId}-1-1`;
+      ? imdbId
+        ? `https://autoembed.co/movie/imdb/${imdbId}`
+        : `https://autoembed.co/movie/tmdb/${targetId}`
+      : imdbId
+        ? `https://autoembed.co/tv/imdb/${imdbId}-${s}-${e}`
+        : `https://autoembed.co/tv/tmdb/${targetId}-${s}-${e}`;
+
+  const multiEmbedUrl =
+    type === 'movie'
+      ? `https://multiembed.mov/?video_id=${targetId}${imdbId ? '' : '&tmdb=1'}`
+      : `https://multiembed.mov/?video_id=${targetId}${imdbId ? '' : '&tmdb=1'}&s=${s}&e=${e}`;
+
+  const streamImdbUrl = `https://streamimdb.ru/embed/${type}/${targetId}`;
 
   const rawUrls = [
-    { host: 'streamimdb.ru', url: `https://streamimdb.ru/embed/${type}/${imdbId}` },
-    { host: 'player.imdb.su', url: `https://player.imdb.su/embed/${type}/${imdbId}` },
-    { host: '2embed.cc', url: twoEmbedUrl },
-    { host: 'multiembed.mov', url: `https://multiembed.mov/?video_id=${imdbId}` },
-    { host: 'vidsrc.icu', url: `https://vidsrc.icu/embed/${type}/${imdbId}` },
-    { host: 'vidsrc.xyz', url: `https://vidsrc.xyz/embed/${type}/${imdbId}` },
+    { host: '2embed.cc', url: twoEmbedCcUrl },
+    { host: '2embed.skin', url: twoEmbedSkinUrl },
+    { host: 'vidsrc.xyz', url: vidsrcXyzUrl },
+    { host: 'vidsrc.icu', url: vidsrcIcuUrl },
     { host: 'autoembed.co', url: autoEmbedUrl },
+    { host: 'multiembed.mov', url: multiEmbedUrl },
+    { host: 'streamimdb.ru', url: streamImdbUrl },
   ];
 
   return rawUrls.map((entry, idx) => ({
@@ -140,12 +185,16 @@ export function useResolvedImdbSources(
   const sources = useMemo(() => {
     if (!item) return [];
     return buildSources({
+      id: item.id,
       mediaType: item.mediaType,
       imdbId: resolvedImdbId || item.imdbId,
+      season: item.season,
+      episode: item.episode,
+      fullSeason: item.fullSeason,
     });
   }, [item, resolvedImdbId]);
 
-  return { sources, resolving };
+  return { sources, resolving, resolvedImdbId: resolvedImdbId || extractImdbId(item?.imdbId) };
 }
 
 /**
@@ -263,7 +312,18 @@ export const ServerBranchesInline: React.FC<{
   onClose: () => void;
   buttonLabel: string;
   align?: 'start' | 'center';
-}> = ({ item, isOpen, onToggle, onClose, buttonLabel, align = 'start' }) => {
+  activeServerIdx?: number | null;
+  onSelectServer?: (index: number, source: PlaySource) => void;
+}> = ({
+  item,
+  isOpen,
+  onToggle,
+  onClose,
+  buttonLabel,
+  align = 'start',
+  activeServerIdx = null,
+  onSelectServer,
+}) => {
   const { sources, resolving } = useResolvedImdbSources(item, true);
   const [showTip, setShowTip] = useState(false);
 
@@ -318,29 +378,81 @@ export const ServerBranchesInline: React.FC<{
                   <span className="lg-server-glow-text">Loading...</span>
                 </span>
               ) : (
-                sources.map((src, idx) => (
-                  <m.a
-                    key={src.id}
-                    href={src.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    initial={{ opacity: 0, scale: 0.8, y: 6 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.8, y: 4 }}
-                    transition={{
-                      duration: 0.2,
-                      delay: idx * 0.04,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="lg-server-branch-pill px-3.5 py-2 rounded-full text-xs font-black flex items-center gap-1.5 cursor-pointer no-underline"
-                    title={`${src.label} (${src.host})`}
-                  >
-                    <Play size={11} className="fill-current text-rose-400 shrink-0" />
-                    <span className="lg-server-glow-text">{src.label}</span>
-                    <ExternalLink size={10} className="opacity-70 shrink-0" />
-                  </m.a>
-                ))
+                sources.map((src, idx) => {
+                  const isActive = activeServerIdx === idx;
+                  if (onSelectServer) {
+                    return (
+                      <m.div
+                        key={src.id}
+                        initial={{ opacity: 0, scale: 0.8, y: 6 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, y: 4 }}
+                        transition={{
+                          duration: 0.2,
+                          delay: idx * 0.04,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`lg-server-branch-pill pl-3.5 pr-2 py-1.5 rounded-full text-xs font-black inline-flex items-center gap-1.5 ${
+                          isActive ? 'lg-server-branch-pill--active' : ''
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectServer(idx, src);
+                          }}
+                          className="inline-flex items-center gap-1.5 cursor-pointer bg-transparent border-0 p-0 text-inherit"
+                          title={`Play ${src.label} (${src.host}) inside gallery`}
+                        >
+                          <Play
+                            size={11}
+                            className={`fill-current shrink-0 ${
+                              isActive ? 'text-white' : 'text-rose-400'
+                            }`}
+                          />
+                          <span className="lg-server-glow-text">{src.label}</span>
+                        </button>
+                        <a
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-5 h-5 rounded-full inline-flex items-center justify-center bg-white/10 hover:bg-white/25 text-white/85 hover:text-white transition-colors"
+                          title={`Open ${src.label} (${src.host}) in new tab`}
+                          aria-label={`Open ${src.label} in new tab`}
+                        >
+                          <ExternalLink size={10} className="shrink-0" />
+                        </a>
+                      </m.div>
+                    );
+                  }
+
+                  return (
+                    <m.a
+                      key={src.id}
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      initial={{ opacity: 0, scale: 0.8, y: 6 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, y: 4 }}
+                      transition={{
+                        duration: 0.2,
+                        delay: idx * 0.04,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="lg-server-branch-pill px-3.5 py-2 rounded-full text-xs font-black flex items-center gap-1.5 cursor-pointer no-underline"
+                      title={`${src.label} (${src.host})`}
+                    >
+                      <Play size={11} className="fill-current text-rose-400 shrink-0" />
+                      <span className="lg-server-glow-text">{src.label}</span>
+                      <ExternalLink size={10} className="opacity-70 shrink-0" />
+                    </m.a>
+                  );
+                })
               )}
 
               <button
