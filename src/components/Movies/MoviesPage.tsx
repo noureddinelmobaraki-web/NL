@@ -1436,65 +1436,63 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           <>
             {activeHeroItem && (
               <section
-                className="relative flex flex-col justify-end w-full pb-8 sm:pb-14 px-5 sm:px-14"
-                style={{ height: isMobile ? "56vh" : "76vh" }}
+                className="lg-cinema-hero-stage relative flex flex-col justify-end w-full pb-12 sm:pb-20 px-6 sm:px-14"
+                style={{ height: isMobile ? "60vh" : "80vh" }}
               >
-                <div className="absolute inset-0 z-0 overflow-hidden">
+                {/* Hero Image with Multi-Stop Vertical Dissolve Mask */}
+                <div className="lg-cinema-hero-backdrop">
                   <img
                     src={getBackdropSrc_static(activeHeroItem.backdropPath, activeHeroItem.posterPath, activeHeroItem.trailerKey)}
                     alt=""
-                    className="w-full h-full object-cover select-none pointer-events-none scale-105 transition-transform duration-1000"
-                  />
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        "linear-gradient(to top, rgba(7,10,18,1) 0%, rgba(7,10,18,0.45) 45%, rgba(7,10,18,0.3) 100%)",
-                    }}
-                  />
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        currentLang === "ar"
-                          ? "linear-gradient(to left, rgba(7,10,18,0.88) 0%, rgba(7,10,18,0.35) 50%, transparent 100%)"
-                          : "linear-gradient(to right, rgba(7,10,18,0.88) 0%, rgba(7,10,18,0.35) 50%, transparent 100%)",
-                    }}
+                    className="w-full h-full object-cover object-top select-none pointer-events-none scale-105 transition-transform duration-1000"
                   />
                 </div>
 
-                {/* Liquid Glass Hero Showcase Card */}
-                <div className="relative z-10 flex flex-col max-w-2xl text-white gap-3 p-5 sm:p-7 rounded-3xl border border-white/15 bg-white/[0.06] backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.25)]">
+                {/* Seamless Multi-Stop Vignette Dissolving into #05070e */}
+                <div
+                  className="lg-cinema-hero-vignette"
+                  style={{
+                    background:
+                      currentLang === "ar"
+                        ? "linear-gradient(to top, #05070e 0%, rgba(5,7,14,0.92) 14%, rgba(5,7,14,0.55) 36%, rgba(5,7,14,0.18) 66%, rgba(5,7,14,0.48) 100%), linear-gradient(to left, rgba(5,7,14,0.88) 0%, rgba(5,7,14,0.42) 45%, transparent 100%)"
+                        : "linear-gradient(to top, #05070e 0%, rgba(5,7,14,0.92) 14%, rgba(5,7,14,0.55) 36%, rgba(5,7,14,0.18) 66%, rgba(5,7,14,0.48) 100%), linear-gradient(to right, rgba(5,7,14,0.88) 0%, rgba(5,7,14,0.42) 45%, transparent 100%)",
+                  }}
+                />
+
+                {/* Frameless Cinematic Hero Content Floating Over Dissolved Gradient */}
+                <div className="relative z-10 flex flex-col max-w-2xl text-white gap-3.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/25 border border-rose-300/40 text-rose-100">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/25 border border-rose-300/40 text-rose-100 backdrop-blur-md">
                       {activeHeroItem.mediaType === 'movie'
                         ? (currentLang === "ar" ? "فيلم مميز" : "Featured Movie")
                         : (currentLang === "ar" ? "مسلسل مميز" : "Featured Series")}
                     </span>
-                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-400/20 border border-amber-300/40 text-amber-300">
+                    <span className="flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-extrabold bg-amber-400/20 border border-amber-300/40 text-amber-300 backdrop-blur-md">
                       <Star size={11} className="fill-current" />
                       {activeHeroItem.rating?.toFixed(1) || "8.1"}
                     </span>
-                    <span className="text-xs text-white/80 font-semibold">{activeHeroItem.year || "2024"}</span>
-                    <span className="border border-white/25 bg-white/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs text-white/90 font-bold bg-white/10 border border-white/20 backdrop-blur-md">
+                      {activeHeroItem.year || "2024"}
+                    </span>
+                    <span className="border border-white/25 bg-white/10 px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md">
                       {activeHeroItem.mediaType === 'movie' ? "PG-13" : "TV-MA"}
                     </span>
-                    <span className="text-xs text-white/75 font-medium">
+                    <span className="text-xs text-white/80 font-semibold drop-shadow">
                       {activeHeroItem.mediaType === 'movie'
                         ? activeHeroItem.runtime ? `${activeHeroItem.runtime}${t("movies.meta.minutes")}` : `148${t("movies.meta.minutes")}`
                         : activeHeroItem.seasons ? `${activeHeroItem.seasons} ${t("movies.meta.seasons")}` : `5 ${t("movies.meta.seasons")}`}
                     </span>
                   </div>
 
-                  <h2 className="text-2xl sm:text-4xl font-black leading-tight tracking-tight select-text drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+                  <h2 className="text-3xl sm:text-5xl font-black leading-tight tracking-tight select-text drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
                     {localizedHeroTitle}
                   </h2>
 
-                  <p className="text-xs sm:text-sm text-white/80 tracking-wide leading-relaxed line-clamp-2 select-text">
+                  <p className="text-xs sm:text-sm text-white/85 tracking-wide leading-relaxed line-clamp-2 select-text max-w-xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]">
                     {activeHeroItem.overview}
                   </p>
 
-                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                     <button
                       type="button"
                       onClick={() => setSelectedWatchItem(activeHeroItem)}
@@ -1514,7 +1512,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
                     {/* Hero Slide Indicators */}
                     {slideshowSlidesLength > 1 && (
-                      <div className="ms-auto flex items-center gap-1.5">
+                      <div className="ms-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md">
                         {slideshowSlides.map((slide, idx) => (
                           <button
                             key={slide.id}
@@ -1522,7 +1520,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             onClick={() => setHeroIndex(idx)}
                             aria-label={`Slide ${idx + 1}`}
                             className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                              idx === heroIndex ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "w-1.5 bg-white/35 hover:bg-white/60"
+                              idx === heroIndex ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "w-1.5 bg-white/40 hover:bg-white/70"
                             }`}
                           />
                         ))}
@@ -1535,7 +1533,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
             {activeTab === 'movies' ? (
               globalError && trendingMovies.length === 0 ? (
-                <div className="w-full py-20 flex flex-col items-center gap-4 text-center">
+                <div className="w-full py-20 flex flex-col items-center gap-4 text-center relative z-20">
                   <p className="text-white/60 font-medium">{t("movies.meta.errorLoad")}</p>
                   <button
                     type="button"
@@ -1546,7 +1544,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   </button>
                 </div>
               ) : moviesLoading ? (
-                <div className="relative pb-24 -mt-2">
+                <div className="relative z-20 pb-24 -mt-8 sm:-mt-12">
                   {[1, 2, 3, 4].map((idx) => (
                     <div key={idx} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
                       <div className="h-5 w-36 bg-white/10 animate-pulse rounded-full px-2" />
@@ -1559,7 +1557,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   ))}
                 </div>
               ) : (
-                <div className="relative pb-24 -mt-2">
+                <div className="relative z-20 pb-24 -mt-8 sm:-mt-12">
                   {topMovies.length > 0 && (
                     <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Movies"} items={topMovies} {...rowProps} />
                   )}
@@ -1574,7 +1572,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               )
             ) : (
               globalError && trendingSeries.length === 0 ? (
-                <div className="w-full py-20 flex flex-col items-center gap-4 text-center">
+                <div className="w-full py-20 flex flex-col items-center gap-4 text-center relative z-20">
                   <p className="text-white/60 font-medium">{t("movies.meta.errorLoad")}</p>
                   <button
                     type="button"
@@ -1585,7 +1583,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   </button>
                 </div>
               ) : seriesLoading ? (
-                <div className="relative pb-24 -mt-2">
+                <div className="relative z-20 pb-24 -mt-8 sm:-mt-12">
                   {[1, 2, 3, 4].map((idx) => (
                     <div key={idx} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
                       <div className="h-5 w-36 bg-white/10 animate-pulse rounded-full px-2" />
@@ -1598,7 +1596,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   ))}
                 </div>
               ) : (
-                <div className="relative pb-24 -mt-2">
+                <div className="relative z-20 pb-24 -mt-8 sm:-mt-12">
                   {topSeries.length > 0 && (
                     <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Series"} items={topSeries} {...rowProps} />
                   )}

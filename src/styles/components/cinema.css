@@ -13,7 +13,7 @@
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   overscroll-behavior: none;
-  background: #060911;
+  background: #05070e;
   isolation: isolate;
 }
 
@@ -26,67 +26,102 @@
   scroll-padding-top: var(--cinema-header-h);
 }
 
-/* ── Dynamic Ambient Backdrop Aura Behind Entire Page ───────────────────── */
+/* ── Dynamic Ambient Backdrop Aura Behind Entire Page (No tiling/seams) ──── */
 .lg-cinema-ambient-bg {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-}
-
-.lg-cinema-ambient-bg__img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: blur(54px) saturate(165%) brightness(0.38);
-  transform: scale(1.12);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: blur(74px) saturate(165%) brightness(0.24);
+  transform: scale(1.22);
   opacity: 0.85;
-  transition: opacity 0.6s ease;
+  transition: background-image 0.6s ease, opacity 0.6s ease;
 }
 
-.lg-cinema-ambient-bg__scrim {
+/* ── Hero Stage Seamless Multi-Stop Dissolve Into Darkness ──────────────── */
+.lg-cinema-hero-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.lg-cinema-hero-backdrop {
   position: absolute;
   inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 42%,
+    rgba(0, 0, 0, 0.78) 64%,
+    rgba(0, 0, 0, 0.36) 82%,
+    rgba(0, 0, 0, 0.08) 93%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 42%,
+    rgba(0, 0, 0, 0.78) 64%,
+    rgba(0, 0, 0, 0.36) 82%,
+    rgba(0, 0, 0, 0.08) 93%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.lg-cinema-hero-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
   background:
-    radial-gradient(circle at 50% 0%, rgba(16, 24, 42, 0.25) 0%, rgba(6, 9, 17, 0.86) 75%),
-    linear-gradient(180deg, rgba(6, 9, 17, 0.35) 0%, rgba(6, 9, 17, 0.78) 55%, rgba(6, 9, 17, 0.96) 100%);
+    linear-gradient(
+      to top,
+      #05070e 0%,
+      rgba(5, 7, 14, 0.92) 14%,
+      rgba(5, 7, 14, 0.62) 34%,
+      rgba(5, 7, 14, 0.22) 62%,
+      rgba(5, 7, 14, 0.45) 100%
+    ),
+    radial-gradient(
+      circle at 75% 28%,
+      transparent 0%,
+      rgba(5, 7, 14, 0.35) 55%,
+      rgba(5, 7, 14, 0.78) 100%
+    );
 }
 
 /* ── Unified Liquid Glass Header (Never overlaps Sound & Back/Close) ────── */
 .nl-cinema-header {
-  padding-top: calc(0.65rem + env(safe-area-inset-top));
-  padding-bottom: 0.65rem;
-  padding-inline-start: max(1rem, env(safe-area-inset-left));
-  padding-inline-end: max(1rem, env(safe-area-inset-right));
+  padding-top: calc(0.75rem + env(safe-area-inset-top));
+  padding-bottom: 0.75rem;
+  padding-inline-start: max(1.25rem, env(safe-area-inset-left));
+  padding-inline-end: max(1.25rem, env(safe-area-inset-right));
   transition:
     background 0.3s ease,
     box-shadow 0.3s ease,
     border-color 0.3s ease;
 }
 
-.nl-cinema-header--floating {
-  background: linear-gradient(
-    180deg,
-    rgba(6, 10, 18, 0.72) 0%,
-    rgba(6, 10, 18, 0.24) 70%,
-    transparent 100%
-  );
-}
-
 .nl-cinema-header--scrolled {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 100%),
-    rgba(8, 12, 22, 0.68);
-  -webkit-backdrop-filter: blur(20px) saturate(185%);
-  backdrop-filter: blur(20px) saturate(185%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    rgba(7, 10, 18, 0.72);
+  -webkit-backdrop-filter: blur(22px) saturate(185%);
+  backdrop-filter: blur(22px) saturate(185%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow:
-    0 14px 36px rgba(0, 0, 0, 0.42),
+    0 14px 36px rgba(0, 0, 0, 0.48),
     inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
 
-/* ── Shared Lightweight Liquid Glass Surfaces & Pills ──────────────────── */
+/* ── Shared Lightweight Liquid Glass Surfaces & Circular/Capsule Pills ─── */
 .aero-glass-style,
 .lg-cinema-glass-surface {
   background:
@@ -102,79 +137,129 @@
   position: relative;
 }
 
+/* Horizontal Segmented Capsule Group (Movies / Series & Server Tabs) */
 .lg-cinema-pill-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 9999px !important;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 100%),
-    rgba(8, 12, 22, 0.48);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+    rgba(8, 12, 22, 0.56);
+  -webkit-backdrop-filter: blur(18px) saturate(185%);
+  backdrop-filter: blur(18px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.28),
+    0 10px 24px rgba(0, 0, 0, 0.35),
     inset 0 1px 0.8px rgba(255, 255, 255, 0.55);
 }
 
-.lg-cinema-icon-pill,
+/* Circular 40x40 Liquid Glass Icon Bubble (Search, Watchlist, Mute, Close, Back) */
+.lg-cinema-icon-pill {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 9999px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.28) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 100%),
+    rgba(12, 18, 32, 0.52);
+  -webkit-backdrop-filter: blur(18px) saturate(185%);
+  backdrop-filter: blur(18px) saturate(185%);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.36),
+    inset 0 1.2px 1px rgba(255, 255, 255, 0.72),
+    inset 0 -1px 2px rgba(145, 215, 255, 0.16);
+  cursor: pointer;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+/* Rounded Capsule Action Pill (Details & Trailer, Back, External, etc.) */
 .lg-cinema-action-pill {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 9999px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 100%),
-    rgba(12, 18, 30, 0.42);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.24) 0%, transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 100%),
+    rgba(12, 18, 32, 0.52);
+  -webkit-backdrop-filter: blur(18px) saturate(185%);
+  backdrop-filter: blur(18px) saturate(185%);
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.28),
-    inset 0 1.2px 0.8px rgba(255, 255, 255, 0.65);
+    0 10px 24px rgba(0, 0, 0, 0.36),
+    inset 0 1.2px 1px rgba(255, 255, 255, 0.72);
+  cursor: pointer;
   transition:
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
 }
 
 .lg-cinema-icon-pill:hover,
 .lg-cinema-action-pill:hover {
-  transform: translateY(-1px) scale(1.04);
-  border-color: rgba(255, 255, 255, 0.48);
+  transform: translateY(-1.5px) scale(1.05);
+  border-color: rgba(255, 255, 255, 0.55);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.10) 100%),
-    rgba(18, 26, 42, 0.55);
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.36) 0%, transparent 65%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.10) 100%),
+    rgba(18, 26, 44, 0.65);
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.36),
-    0 0 16px rgba(155, 225, 255, 0.26),
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.85);
+    0 12px 28px rgba(0, 0, 0, 0.44),
+    0 0 18px rgba(155, 225, 255, 0.28),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.88);
 }
 
 .lg-cinema-icon-pill:active,
 .lg-cinema-action-pill:active {
-  transform: scale(0.95);
+  transform: scale(0.94);
 }
 
-/* Primary glowing liquid glass CTA (Watch Now / Active Tab) */
+/* Primary glowing liquid glass CTA (Watch Now / Active Tab / Active Server) */
 .lg-cinema-primary-pill,
+.lg-cinema-pill-btn--active,
 .lg-cinema-server-tab--active {
-  border: 1px solid rgba(255, 255, 255, 0.48);
+  border-radius: 9999px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.52);
   background:
-    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.45) 0%, transparent 55%),
-    linear-gradient(135deg, rgba(235, 30, 58, 0.88) 0%, rgba(185, 12, 38, 0.88) 100%);
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.46) 0%, transparent 55%),
+    linear-gradient(135deg, rgba(235, 30, 58, 0.92) 0%, rgba(185, 12, 38, 0.92) 100%);
   box-shadow:
-    0 10px 26px -4px rgba(229, 9, 20, 0.52),
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.82);
+    0 10px 26px -4px rgba(229, 9, 20, 0.56),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.85);
   transition:
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.2s ease;
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s ease;
 }
 
 .lg-cinema-primary-pill:hover {
-  transform: translateY(-1.5px) scale(1.03);
+  transform: translateY(-1.5px) scale(1.04);
   box-shadow:
-    0 14px 32px -4px rgba(235, 25, 45, 0.68),
-    inset 0 1.8px 1.2px rgba(255, 255, 255, 0.92);
+    0 14px 32px -4px rgba(235, 25, 45, 0.72),
+    inset 0 1.8px 1.2px rgba(255, 255, 255, 0.94);
 }
 
 .lg-cinema-primary-pill:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
 /* ── Liquid Glass Poster Card & Unclipped Smooth Hover Zoom ─────────────── */
@@ -248,7 +333,7 @@
   padding: 8px 9px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 100%),
-    rgba(8, 12, 22, 0.74);
+    rgba(8, 12, 22, 0.78);
   -webkit-backdrop-filter: blur(14px) saturate(180%);
   backdrop-filter: blur(14px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -268,7 +353,7 @@
 .nl-detail-card {
   background:
     linear-gradient(165deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 48%, rgba(8, 12, 22, 0.68) 100%),
-    rgba(8, 12, 22, 0.74);
+    rgba(8, 12, 22, 0.78);
   -webkit-backdrop-filter: blur(26px) saturate(190%);
   backdrop-filter: blur(26px) saturate(190%);
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -304,14 +389,14 @@
 }
 
 .lg-cinema-badge-dot {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  background: linear-gradient(135deg, rgba(235, 30, 58, 0.9), rgba(185, 12, 38, 0.9));
+  background: linear-gradient(135deg, rgba(235, 30, 58, 0.92), rgba(185, 12, 38, 0.92));
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.75);
 }
 
