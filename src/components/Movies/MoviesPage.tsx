@@ -1,6 +1,27 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { X, Search, Volume2, VolumeX, Play, Info, ChevronLeft, ChevronRight, Star, Film, Tv, Heart, Eye, Bookmark } from "lucide-react";
+import {
+  X,
+  Search,
+  Volume2,
+  VolumeX,
+  Play,
+  Info,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  Film,
+  Tv,
+  Heart,
+  Eye,
+  Bookmark,
+  Calendar,
+  Globe2,
+  Award,
+  Users,
+  Sparkles,
+  MapPin,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { m, AnimatePresence } from "framer-motion";
 import { useAppContext } from "../../context/AppContext";
@@ -15,7 +36,7 @@ import { FALLBACK_SERIES, FALLBACK_SERIES_GENRES } from "../Series/CuratedFallba
 import { normLang, tmdbLang } from "../../utils/lang";
 import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
 import "../../styles/components/cinema.css";
-import { MovieSourcesModal } from "./MovieSourcesModal";
+import { MovieSourcesModal, ServerBranchesInline } from "./MovieSourcesModal";
 import { useTopMovies } from "./useTopMovies";
 import { logPlay } from "../../features/music/data/playTracking";
 
@@ -33,7 +54,6 @@ interface CacheEntry {
 const MEMORY_CACHE: Record<string, CacheEntry> = {};
 
 export async function fetchWithCache(url: string, signal?: AbortSignal, ttlMs = 3600_000 * 24): Promise<any> {
-  // لا تُضمّن api_key في مفتاح التخزين
   const key = `cache_v2_${url.replace(/([?&])api_key=[^&]*/i, '$1api_key=_')}`;
   const now = Date.now();
   const fresh = (t: number) => now - t < ttlMs;
@@ -68,6 +88,32 @@ export async function fetchWithCache(url: string, signal?: AbortSignal, ttlMs = 
 
 type Media = 'movie' | 'tv';
 
+export interface CastMember {
+  id?: number;
+  name: string;
+  character: string;
+  profilePath: string;
+}
+
+export interface ActorDetails {
+  id: number;
+  name: string;
+  character?: string;
+  profilePath: string;
+  biography: string;
+  birthday?: string;
+  placeOfBirth?: string;
+  knownForDepartment?: string;
+  knownWorks: {
+    id: number;
+    mediaType: Media;
+    title: string;
+    posterPath: string;
+    year: string;
+    rating: number;
+  }[];
+}
+
 export interface CinemaItem {
   id: number;
   mediaType: Media;
@@ -76,7 +122,9 @@ export interface CinemaItem {
   posterPath: string;
   backdropPath: string;
   year: string;
+  releaseDate?: string;
   rating: number;
+  voteCount?: number;
   genreIds: number[];
   genreNames: string[];
   trailerKey: string;
@@ -84,7 +132,15 @@ export interface CinemaItem {
   runtime?: number;
   seasons?: number;
   episodes?: number;
-  cast: { name: string; character: string; profilePath: string }[];
+  tagline?: string;
+  status?: string;
+  originalLanguage?: string;
+  certification?: string;
+  budget?: number;
+  revenue?: number;
+  directors?: string[];
+  productionCompanies?: { id: number; name: string; logoPath: string }[];
+  cast: CastMember[];
   similar: CinemaItem[];
 }
 
@@ -103,14 +159,51 @@ export function normalizeItem(raw: any, mediaType: Media, lang: string): CinemaI
     : Array.isArray(raw.genre_ids) ? raw.genre_ids : [];
   const trailerKey =
     raw.videos?.results?.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer')?.key
+    || raw.videos?.results?.find((v: any) => v.site === 'YouTube')?.key
     || raw.trailer_key || raw.trailerKey || '';
-  
+
   const rawTitle = pick(isTv ? (raw.name ?? raw.title) : (raw.title ?? raw.name), lang) || "Unknown Title";
   let rawOverview = pick(raw.overview, lang);
   if (!rawOverview || rawOverview.trim() === '') {
     if (lang === 'ar') rawOverview = "Synopsis currently unavailable.";
     else if (lang === 'fr') rawOverview = "Synopsis non disponible.";
     else rawOverview = "Overview not available.";
+  }
+
+  const fullReleaseDate = String(isTv ? (raw.first_air_date || raw.year || '') : (raw.release_date || raw.year || ''));
+
+  const directors: string[] = [];
+  if (Array.isArray(raw.credits?.crew)) {
+    raw.credits.crew
+      .filter((c: any) => c.job === 'Director' || c.job === 'Executive Producer')
+      .slice(0, 3)
+      .forEach((c: any) => {
+        if (c.name && !directors.includes(c.name)) directors.push(c.name);
+      });
+  }
+  if (Array.isArray(raw.created_by)) {
+    raw.created_by.forEach((c: any) => {
+      if (c.name && !directors.includes(c.name)) directors.push(c.name);
+    });
+  }
+
+  const prodSources = [
+    ...(Array.isArray(raw.production_companies) ? raw.production_companies : []),
+    ...(Array.isArray(raw.networks) ? raw.networks : []),
+  ];
+  const productionCompanies = prodSources.slice(0, 5).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    logoPath: p.logo_path || '',
+  }));
+
+  let certification = '';
+  if (Array.isArray(raw.release_dates?.results)) {
+    const usRel =
+      raw.release_dates.results.find((r: any) => r.iso_3166_1 === 'US') ||
+      raw.release_dates.results[0];
+    const certObj = usRel?.release_dates?.find((d: any) => d.certification);
+    if (certObj?.certification) certification = certObj.certification;
   }
 
   return {
@@ -120,19 +213,32 @@ export function normalizeItem(raw: any, mediaType: Media, lang: string): CinemaI
     overview: rawOverview,
     posterPath: raw.poster_path || raw.posterPath || '',
     backdropPath: raw.backdrop_path || raw.backdropPath || '',
-    year: String(isTv ? (raw.first_air_date || raw.year || '') : (raw.release_date || raw.year || '')).split('-')[0],
+    year: fullReleaseDate.split('-')[0],
+    releaseDate: fullReleaseDate || undefined,
     rating: typeof raw.vote_average === 'number' ? raw.vote_average : (typeof raw.rating === 'number' ? raw.rating : 0),
+    voteCount: typeof raw.vote_count === 'number' ? raw.vote_count : undefined,
     genreIds,
     genreNames,
     trailerKey,
     imdbId: raw.imdb_id || raw.imdbId || raw.external_ids?.imdb_id,
-    runtime: raw.runtime || raw.duration,
+    runtime: raw.runtime || (Array.isArray(raw.episode_run_time) ? raw.episode_run_time[0] : undefined) || raw.duration,
     seasons: raw.number_of_seasons || raw.seasons,
     episodes: raw.number_of_episodes || raw.episodes,
-    cast: (raw.credits?.cast || raw.cast || []).map((c: any) => ({
-      name: c.name, character: c.character || '', profilePath: c.profile_path || c.profilePath || '',
+    tagline: typeof raw.tagline === 'string' && raw.tagline.trim() ? raw.tagline.trim() : undefined,
+    status: typeof raw.status === 'string' ? raw.status : undefined,
+    originalLanguage: typeof raw.original_language === 'string' ? raw.original_language.toUpperCase() : undefined,
+    certification: certification || (isTv ? 'TV-MA' : 'PG-13'),
+    budget: typeof raw.budget === 'number' && raw.budget > 0 ? raw.budget : undefined,
+    revenue: typeof raw.revenue === 'number' && raw.revenue > 0 ? raw.revenue : undefined,
+    directors: directors.length > 0 ? directors : undefined,
+    productionCompanies: productionCompanies.length > 0 ? productionCompanies : undefined,
+    cast: (raw.credits?.cast || raw.cast || []).slice(0, 12).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      character: c.character || '',
+      profilePath: c.profile_path || c.profilePath || '',
     })),
-    similar: (raw.similar?.results || raw.similar || []).map((s: any) => normalizeItem(s, mediaType, lang)),
+    similar: (raw.similar?.results || raw.similar || []).slice(0, 10).map((s: any) => normalizeItem(s, mediaType, lang)),
   };
 }
 
@@ -307,7 +413,7 @@ const MoviePosterCard = React.memo(
           </p>
         </div>
 
-        {/* Zoomed Liquid Glass Drawer Overlay (Shows full artwork above + rich glass controls below) */}
+        {/* Zoomed Liquid Glass Drawer Overlay */}
         <AnimatePresence>
           {isZoomed && (
             <m.div
@@ -526,7 +632,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     const loadTopMoviesDetails = async () => {
       const items: CinemaItem[] = [];
       const langParam = `&language=${tmdbLang(currentLang)}`;
-      
+
       const allLoaded = [
         ...trendingMovies,
         ...topRatedMovies,
@@ -573,7 +679,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     const loadTopSeriesDetails = async () => {
       const items: CinemaItem[] = [];
       const langParam = `&language=${tmdbLang(currentLang)}`;
-      
+
       const allLoaded = [
         ...trendingSeries,
         ...topRatedSeries,
@@ -619,10 +725,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [searchOpen, setSearchOpen] = useState(false);
   const [showWatchlist, setShowWatchlist] = useState(false);
 
-  // Slideshow / Modal
+  // Slideshow / Modal / Server Branching States
   useDocumentMeta("movies.title", "movies.description");
 
   const [heroIndex, setHeroIndex] = useState(0);
+  const [heroServersOpen, setHeroServersOpen] = useState(false);
+  const [detailServersOpen, setDetailServersOpen] = useState(false);
+
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -631,17 +740,132 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Interactive Actor Profile Card State
+  const [selectedActor, setSelectedActor] = useState<CastMember | null>(null);
+  const [actorDetails, setActorDetails] = useState<ActorDetails | null>(null);
+  const [loadingActor, setLoadingActor] = useState(false);
+
   const detailDialogRef = useFocusTrap(selectedItemId !== null && !!detailedItem);
 
   useEffect(() => {
+    setHeroServersOpen(false);
+  }, [heroIndex, activeTab]);
+
+  useEffect(() => {
     setShowHeroTrailer(false);
+    setDetailServersOpen(false);
+    setSelectedActor(null);
+    setActorDetails(null);
     if (selectedItemId === null) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedItemId(null);
+      if (e.key === 'Escape') {
+        if (selectedActor) {
+          setSelectedActor(null);
+          setActorDetails(null);
+        } else {
+          setSelectedItemId(null);
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedItemId]);
+
+  // Fetch Actor Details when a Cast Member is clicked
+  const handleSelectActor = useCallback(
+    async (actor: CastMember) => {
+      setSelectedActor(actor);
+      if (!actor.id || !tmdbKey) {
+        setActorDetails({
+          id: actor.id || 0,
+          name: actor.name,
+          character: actor.character,
+          profilePath: actor.profilePath,
+          biography:
+            currentLang === 'ar'
+              ? 'نبذة الممثل غير متوفرة حالياً في الوضع غير المتصل.'
+              : 'Actor biography currently unavailable.',
+          knownWorks: [],
+        });
+        return;
+      }
+
+      setLoadingActor(true);
+      try {
+        const langParam = `&language=${tmdbLang(currentLang)}`;
+        const personData = await fetchWithCache(
+          `${TMDB_BASE_URL}/person/${actor.id}?api_key=${tmdbKey}${langParam}&append_to_response=combined_credits`,
+        );
+
+        let bio = personData?.biography || '';
+        if (!bio.trim() && currentLang !== 'en') {
+          try {
+            const enPerson = await fetchWithCache(
+              `${TMDB_BASE_URL}/person/${actor.id}?api_key=${tmdbKey}&language=en-US`,
+            );
+            bio = enPerson?.biography || '';
+          } catch {}
+        }
+
+        const rawCredits: any[] = personData?.combined_credits?.cast || [];
+        const uniqueCreditsMap = new Map<number, any>();
+        rawCredits.forEach((c) => {
+          if (
+            c &&
+            c.id &&
+            (c.media_type === 'movie' || c.media_type === 'tv') &&
+            (c.poster_path || c.backdrop_path) &&
+            !uniqueCreditsMap.has(c.id)
+          ) {
+            uniqueCreditsMap.set(c.id, c);
+          }
+        });
+
+        const topCredits = Array.from(uniqueCreditsMap.values())
+          .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+          .slice(0, 10)
+          .map((c) => ({
+            id: c.id,
+            mediaType: (c.media_type === 'tv' ? 'tv' : 'movie') as Media,
+            title: c.title || c.name || 'Untitled',
+            posterPath: c.poster_path || c.backdrop_path || '',
+            year: String(c.release_date || c.first_air_date || '').split('-')[0],
+            rating: typeof c.vote_average === 'number' ? c.vote_average : 7.5,
+          }));
+
+        setActorDetails({
+          id: actor.id,
+          name: personData?.name || actor.name,
+          character: actor.character,
+          profilePath: personData?.profile_path || actor.profilePath,
+          biography:
+            bio.trim() ||
+            (currentLang === 'ar'
+              ? 'لا تتوفر سيرة ذاتية مفصلة لهذا الممثل في قاعدة البيانات حالياً.'
+              : 'Detailed biography is not available for this actor yet.'),
+          birthday: personData?.birthday || undefined,
+          placeOfBirth: personData?.place_of_birth || undefined,
+          knownForDepartment: personData?.known_for_department || undefined,
+          knownWorks: topCredits,
+        });
+      } catch {
+        setActorDetails({
+          id: actor.id,
+          name: actor.name,
+          character: actor.character,
+          profilePath: actor.profilePath,
+          biography:
+            currentLang === 'ar'
+              ? 'تعذر تحميل تفاصيل الممثل الإضافية.'
+              : 'Could not load additional actor details.',
+          knownWorks: [],
+        });
+      } finally {
+        setLoadingActor(false);
+      }
+    },
+    [tmdbKey, currentLang],
+  );
 
   const handleQuickWatch = useCallback((item: CinemaItem) => {
     setSelectedWatchItem(item);
@@ -749,7 +973,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     const loadMovies = async () => {
       try {
         const langParam = `&language=${tmdbLang(currentLang)}`;
-        
+
         const results = await Promise.allSettled([
           fetchWithCache(`${TMDB_BASE_URL}/genre/movie/list?api_key=${tmdbKey}${langParam}`),
           fetchWithCache(`${TMDB_BASE_URL}/trending/movie/week?api_key=${tmdbKey}${langParam}`),
@@ -844,7 +1068,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     const loadSeries = async () => {
       try {
         const langParam = `&language=${tmdbLang(currentLang)}`;
-        
+
         const results = await Promise.allSettled([
           fetchWithCache(`${TMDB_BASE_URL}/genre/tv/list?api_key=${tmdbKey}${langParam}`),
           fetchWithCache(`${TMDB_BASE_URL}/trending/tv/week?api_key=${tmdbKey}${langParam}`),
@@ -1045,13 +1269,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const slideshowSlidesLength = slideshowSlides.length;
 
   useEffect(() => {
-    if (slideshowSlidesLength <= 1) return;
+    if (slideshowSlidesLength <= 1 || heroServersOpen) return;
     const interval = setInterval(() => {
       if (document.hidden) return;
       setHeroIndex(prev => (prev + 1) % slideshowSlidesLength);
     }, 8000);
     return () => clearInterval(interval);
-  }, [slideshowSlidesLength]);
+  }, [slideshowSlidesLength, heroServersOpen]);
 
   const activeHeroItem = slideshowSlides[heroIndex];
 
@@ -1090,7 +1314,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     : "";
 
   return createPortal(
-    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[9500] w-full h-[100dvh] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto">
+    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto">
       {/* Dynamic Liquid Glass Ambient Backdrop Illumination */}
       {ambientBackdropUrl && (
         <div
@@ -1103,7 +1327,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         className="absolute inset-0 z-10 pointer-events-none"
         style={{
           background:
-            "radial-gradient(circle at 50% 15%, rgba(16, 24, 42, 0.35) 0%, rgba(6, 9, 17, 0.88) 70%, rgba(4, 6, 12, 0.97) 100%)",
+            "radial-gradient(circle at 50% 15%, rgba(16, 24, 42, 0.32) 0%, rgba(6, 9, 17, 0.86) 68%, rgba(5, 7, 14, 0.96) 100%)",
         }}
       />
 
@@ -1113,13 +1337,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         className="nl-cinema-scroll absolute inset-0 z-20 overflow-y-auto h-full w-full scrollbar-none"
         style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
       >
-        {/* Unified Non-Overlapping Liquid Glass Header */}
+        {/* Unified Non-Overlapping Liquid Glass Header (CSS selector 2) */}
         <header
           className={`nl-cinema-header fixed top-0 inset-x-0 z-50 flex items-center justify-between gap-2 px-3 sm:px-8 py-3 transition-all duration-300 ${
-            scrolled ? "nl-cinema-header--scrolled" : "bg-gradient-to-b from-black/70 via-black/30 to-transparent"
+            scrolled ? "nl-cinema-header--scrolled" : "bg-gradient-to-b from-black/75 via-black/30 to-transparent"
           }`}
         >
-          {/* Left / Start Zone: Back button (when inside subview) + Logo + Liquid Glass Tabs + Desktop Genres */}
+          {/* Left / Start Zone: Back button + Logo + Liquid Glass Tabs + Desktop Genres */}
           <div className="flex items-center gap-2.5 sm:gap-5 min-w-0">
             {(selectedItemId !== null || showWatchlist || searchQuery.trim() !== "" || selectedGenreId !== null) && (
               <button
@@ -1148,10 +1372,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               <button
                 type="button"
                 onClick={() => setActiveTab('movies')}
-                className={`px-3 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'movies'
                     ? 'lg-cinema-pill-btn--active'
-                    : 'text-white/70 hover:text-white'
+                    : 'text-white/75 hover:text-white'
                 }`}
               >
                 <Film size={12} />
@@ -1160,10 +1384,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               <button
                 type="button"
                 onClick={() => setActiveTab('series')}
-                className={`px-3 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'series'
                     ? 'lg-cinema-pill-btn--active'
-                    : 'text-white/70 hover:text-white'
+                    : 'text-white/75 hover:text-white'
                 }`}
               >
                 <Tv size={12} />
@@ -1176,23 +1400,23 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 <button
                   type="button"
                   onClick={() => setSelectedGenreId(null)}
-                  className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all cursor-pointer border ${
+                  className={`text-[11px] font-bold px-3.5 py-1 rounded-full transition-all cursor-pointer border backdrop-blur-md ${
                     selectedGenreId === null
-                      ? "text-white bg-white/18 border-white/35 shadow-[0_4px_14px_rgba(255,255,255,0.12)]"
-                      : "text-white/65 bg-white/5 border-white/10 hover:text-white hover:bg-white/10"
+                      ? "text-white bg-white/20 border-white/40 shadow-[0_4px_14px_rgba(255,255,255,0.14)]"
+                      : "text-white/70 bg-white/6 border-white/14 hover:text-white hover:bg-white/12"
                   }`}
                 >
                   {t("movies.all") || (currentLang === "ar" ? "الكل" : "All")}
                 </button>
-                {activeGenres.slice(0, 5).map(g => (
+                {activeGenres.slice(0, 6).map(g => (
                   <button
                     type="button"
                     key={g.id}
                     onClick={() => setSelectedGenreId(g.id)}
-                    className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all cursor-pointer border whitespace-nowrap ${
+                    className={`text-[11px] font-bold px-3.5 py-1 rounded-full transition-all cursor-pointer border whitespace-nowrap backdrop-blur-md ${
                       selectedGenreId === g.id
-                        ? "text-white bg-white/18 border-white/35 shadow-[0_4px_14px_rgba(255,255,255,0.12)]"
-                        : "text-white/65 bg-white/5 border-white/10 hover:text-white hover:bg-white/10"
+                        ? "text-white bg-white/20 border-white/40 shadow-[0_4px_14px_rgba(255,255,255,0.14)]"
+                        : "text-white/70 bg-white/6 border-white/14 hover:text-white hover:bg-white/12"
                     }`}
                   >
                     {g.name}
@@ -1202,7 +1426,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             )}
           </div>
 
-          {/* Right / End Zone: Search + Watchlist + Sound Mute + Close Window (Cleanly spaced, zero overlap) */}
+          {/* Right / End Zone: Search + Watchlist + Sound Mute + Close Window */}
           <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
             <div className="relative flex items-center">
               {isTouch ? (
@@ -1436,31 +1660,29 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           <>
             {activeHeroItem && (
               <section
-                className="lg-cinema-hero-stage relative flex flex-col justify-end w-full pb-12 sm:pb-20 px-6 sm:px-14"
-                style={{ height: isMobile ? "60vh" : "80vh" }}
+                className="lg-cinema-hero-stage relative flex flex-col justify-end w-full pb-12 sm:pb-16 px-6 sm:px-14"
+                style={{ minHeight: isMobile ? "58vh" : "76vh" }}
               >
-                {/* Hero Image with Multi-Stop Vertical Dissolve Mask */}
+                {/* Hero Image + Side Vignette Masked Together (100% Seamless Dissolve, Zero Seam Line) */}
                 <div className="lg-cinema-hero-backdrop">
                   <img
                     src={getBackdropSrc_static(activeHeroItem.backdropPath, activeHeroItem.posterPath, activeHeroItem.trailerKey)}
                     alt=""
                     className="w-full h-full object-cover object-top select-none pointer-events-none scale-105 transition-transform duration-1000"
                   />
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background:
+                        currentLang === "ar"
+                          ? "linear-gradient(to left, rgba(5,7,14,0.84) 0%, rgba(5,7,14,0.38) 48%, rgba(5,7,14,0.12) 100%)"
+                          : "linear-gradient(to right, rgba(5,7,14,0.84) 0%, rgba(5,7,14,0.38) 48%, rgba(5,7,14,0.12) 100%)",
+                    }}
+                  />
                 </div>
 
-                {/* Seamless Multi-Stop Vignette Dissolving into #05070e */}
-                <div
-                  className="lg-cinema-hero-vignette"
-                  style={{
-                    background:
-                      currentLang === "ar"
-                        ? "linear-gradient(to top, #05070e 0%, rgba(5,7,14,0.92) 14%, rgba(5,7,14,0.55) 36%, rgba(5,7,14,0.18) 66%, rgba(5,7,14,0.48) 100%), linear-gradient(to left, rgba(5,7,14,0.88) 0%, rgba(5,7,14,0.42) 45%, transparent 100%)"
-                        : "linear-gradient(to top, #05070e 0%, rgba(5,7,14,0.92) 14%, rgba(5,7,14,0.55) 36%, rgba(5,7,14,0.18) 66%, rgba(5,7,14,0.48) 100%), linear-gradient(to right, rgba(5,7,14,0.88) 0%, rgba(5,7,14,0.42) 45%, transparent 100%)",
-                  }}
-                />
-
                 {/* Frameless Cinematic Hero Content Floating Over Dissolved Gradient */}
-                <div className="relative z-10 flex flex-col max-w-2xl text-white gap-3.5">
+                <div className="relative z-10 flex flex-col max-w-3xl text-white gap-3 pt-24">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/25 border border-rose-300/40 text-rose-100 backdrop-blur-md">
                       {activeHeroItem.mediaType === 'movie'
@@ -1475,7 +1697,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       {activeHeroItem.year || "2024"}
                     </span>
                     <span className="border border-white/25 bg-white/10 px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md">
-                      {activeHeroItem.mediaType === 'movie' ? "PG-13" : "TV-MA"}
+                      {activeHeroItem.certification || (activeHeroItem.mediaType === 'movie' ? "PG-13" : "TV-MA")}
                     </span>
                     <span className="text-xs text-white/80 font-semibold drop-shadow">
                       {activeHeroItem.mediaType === 'movie'
@@ -1484,7 +1706,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                     </span>
                   </div>
 
-                  <h2 className="text-3xl sm:text-5xl font-black leading-tight tracking-tight select-text drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
+                  <h2
+                    onClick={() => setSelectedItemId(activeHeroItem.id)}
+                    className="text-3xl sm:text-5xl font-black leading-tight tracking-tight select-text cursor-pointer hover:text-white/90 transition-colors drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]"
+                  >
                     {localizedHeroTitle}
                   </h2>
 
@@ -1492,40 +1717,34 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                     {activeHeroItem.overview}
                   </p>
 
-                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedWatchItem(activeHeroItem)}
-                      className="lg-cinema-primary-pill py-2.5 px-6 text-white font-black flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
-                    >
-                      <Play size={15} className="fill-current" />
-                      <span>{t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedItemId(activeHeroItem.id)}
-                      className="lg-cinema-action-pill py-2.5 px-5 text-white font-bold flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
-                    >
-                      <Info size={15} />
-                      <span>{t("movies.meta.moreInfo") || (currentLang === "ar" ? "التفاصيل والتريلر" : "Details & Trailer")}</span>
-                    </button>
+                  {/* Branching Liquid Glass Server Capsules + Smart Floating TIP Card (More Info button removed per request) */}
+                  <div className="flex flex-col gap-2.5 mt-1.5">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <ServerBranchesInline
+                        item={activeHeroItem}
+                        isOpen={heroServersOpen}
+                        onToggle={() => setHeroServersOpen((v) => !v)}
+                        onClose={() => setHeroServersOpen(false)}
+                        buttonLabel={t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}
+                      />
 
-                    {/* Hero Slide Indicators */}
-                    {slideshowSlidesLength > 1 && (
-                      <div className="ms-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md">
-                        {slideshowSlides.map((slide, idx) => (
-                          <button
-                            key={slide.id}
-                            type="button"
-                            onClick={() => setHeroIndex(idx)}
-                            aria-label={`Slide ${idx + 1}`}
-                            className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                              idx === heroIndex ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "w-1.5 bg-white/40 hover:bg-white/70"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    )}
+                      {/* Hero Slide Indicators */}
+                      {slideshowSlidesLength > 1 && !heroServersOpen && (
+                        <div className="ms-1 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md">
+                          {slideshowSlides.map((slide, idx) => (
+                            <button
+                              key={slide.id}
+                              type="button"
+                              onClick={() => setHeroIndex(idx)}
+                              aria-label={`Slide ${idx + 1}`}
+                              className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                                idx === heroIndex ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "w-1.5 bg-white/40 hover:bg-white/70"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1544,7 +1763,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   </button>
                 </div>
               ) : moviesLoading ? (
-                <div className="relative z-20 pb-24 -mt-8 sm:-mt-12">
+                <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
                   {[1, 2, 3, 4].map((idx) => (
                     <div key={idx} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
                       <div className="h-5 w-36 bg-white/10 animate-pulse rounded-full px-2" />
@@ -1557,7 +1776,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   ))}
                 </div>
               ) : (
-                <div className="relative z-20 pb-24 -mt-8 sm:-mt-12">
+                <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
                   {topMovies.length > 0 && (
                     <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Movies"} items={topMovies} {...rowProps} />
                   )}
@@ -1583,7 +1802,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   </button>
                 </div>
               ) : seriesLoading ? (
-                <div className="relative z-20 pb-24 -mt-8 sm:-mt-12">
+                <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
                   {[1, 2, 3, 4].map((idx) => (
                     <div key={idx} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
                       <div className="h-5 w-36 bg-white/10 animate-pulse rounded-full px-2" />
@@ -1596,7 +1815,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   ))}
                 </div>
               ) : (
-                <div className="relative z-20 pb-24 -mt-8 sm:-mt-12">
+                <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
                   {topSeries.length > 0 && (
                     <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Series"} items={topSeries} {...rowProps} />
                   )}
@@ -1614,10 +1833,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         )}
       </div>
 
-      {/* Liquid Glass Movie / Series Details & Practical Trailer Modal */}
+      {/* Liquid Glass Movie / Series Details Modal (Single Top Glass Gallery Trailer + Rich TMDB Info + Interactive Cast) */}
       <AnimatePresence>
         {selectedItemId !== null && detailedItem && (
-          <div className="nl-detail-wrap fixed inset-0 z-[7000] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/75 backdrop-blur-xl">
+          <div className="nl-detail-wrap fixed inset-0 z-[10100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/75 backdrop-blur-xl">
             <div onClick={() => setSelectedItemId(null)} className="absolute inset-0 z-0 cursor-zoom-out" />
             {isLoadingDetails ? (
               <div className="relative z-10 flex flex-col items-center gap-3 text-white lg-cinema-glass-modal px-8 py-7 rounded-3xl">
@@ -1636,330 +1855,439 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
                 className="nl-detail-card lg-cinema-glass-modal relative w-full max-w-4xl rounded-3xl z-10 overflow-hidden my-auto max-h-[92dvh] flex flex-col"
               >
-                {/* Top 16:9 Stage: Switches between Backdrop Hero & Interactive Full-Width Trailer */}
-                <div className="relative aspect-video w-full bg-black flex-shrink-0 overflow-hidden">
-                  {showHeroTrailer && detailedItem.trailerKey ? (
-                    <iframe
-                      className="w-full h-full border-0"
-                      src={`https://www.youtube.com/embed/${detailedItem.trailerKey}?autoplay=1&rel=0&modestbranding=1`}
-                      title={`${detailedItem.title} Trailer`}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <>
-                      <img
-                        src={getBackdropSrc_static(detailedItem.backdropPath, detailedItem.posterPath, detailedItem.trailerKey)}
-                        alt={detailedItem.title}
-                        className="w-full h-full object-cover opacity-90"
+                {/* Top 16:9 Liquid Glass Gallery Stage (Single Unified Trailer & Hero Stage) */}
+                <div className="p-2.5 sm:p-3.5 pb-0 flex-shrink-0">
+                  <div className="lg-cinema-gallery-stage relative aspect-video w-full">
+                    {showHeroTrailer && detailedItem.trailerKey ? (
+                      <iframe
+                        className="w-full h-full border-0"
+                        src={`https://www.youtube.com/embed/${detailedItem.trailerKey}?autoplay=1&rel=0&modestbranding=1`}
+                        title={`${detailedItem.title} Trailer`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                        allowFullScreen
                       />
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            "linear-gradient(to top, rgba(10, 14, 24, 0.98) 0%, rgba(10, 14, 24, 0.45) 50%, rgba(10, 14, 24, 0.3) 100%)",
-                        }}
-                      />
+                    ) : (
+                      <>
+                        <img
+                          src={getBackdropSrc_static(detailedItem.backdropPath, detailedItem.posterPath, detailedItem.trailerKey)}
+                          alt={detailedItem.title}
+                          className="w-full h-full object-cover opacity-90"
+                        />
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            background:
+                              "linear-gradient(to top, rgba(8, 12, 22, 0.96) 0%, rgba(8, 12, 22, 0.42) 52%, rgba(8, 12, 22, 0.25) 100%)",
+                          }}
+                        />
 
-                      {/* Center Play Trailer Trigger on Backdrop if trailer exists */}
-                      {detailedItem.trailerKey && (
-                        <button
-                          type="button"
-                          onClick={() => setShowHeroTrailer(true)}
-                          className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/15 hover:bg-white/25 border border-white/40 backdrop-blur-xl flex items-center justify-center text-white shadow-[0_12px_36px_rgba(0,0,0,0.65)] transition-transform hover:scale-110 cursor-pointer group"
-                          aria-label={currentLang === "ar" ? "تشغيل التريلر" : "Play Trailer"}
-                          title={currentLang === "ar" ? "تشغيل التريلر" : "Play Trailer"}
-                        >
-                          <Play size={28} className="fill-current ms-1 group-hover:scale-110 transition-transform" />
-                        </button>
-                      )}
+                        {/* Center Liquid Glass Play Trailer Trigger */}
+                        {detailedItem.trailerKey && (
+                          <button
+                            type="button"
+                            onClick={() => setShowHeroTrailer(true)}
+                            className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/18 hover:bg-white/28 border border-white/50 backdrop-blur-xl flex items-center justify-center text-white shadow-[0_12px_36px_rgba(0,0,0,0.68),inset_0_1.5px_1px_rgba(255,255,255,0.85)] transition-transform hover:scale-110 cursor-pointer group z-10"
+                            aria-label={currentLang === "ar" ? "تشغيل التريلر" : "Play Trailer"}
+                            title={currentLang === "ar" ? "تشغيل التريلر" : "Play Trailer"}
+                          >
+                            <Play size={28} className="fill-current ms-1 group-hover:scale-110 transition-transform" />
+                          </button>
+                        )}
 
-                      {/* Bottom Overlay Info inside Hero Stage */}
-                      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 flex items-end justify-between gap-4">
-                        <div className="flex items-end gap-3.5 min-w-0">
-                          <img
-                            src={getPosterSrc_static(detailedItem.posterPath, detailedItem.backdropPath, detailedItem.trailerKey)}
-                            alt=""
-                            className="hidden sm:block w-20 md:w-24 aspect-[2/3] object-cover rounded-xl border border-white/25 shadow-2xl flex-shrink-0"
-                          />
-                          <div className="flex flex-col gap-1.5 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400/20 border border-amber-300/45 text-amber-300">
-                                <Star size={11} className="fill-current" />
-                                {detailedItem.rating?.toFixed(1) || "8.2"}
-                              </span>
-                              <span className="text-xs font-bold text-white/85">{detailedItem.year || "2024"}</span>
-                              <span className="border border-white/25 bg-white/10 px-2 py-0.5 rounded-full text-[10px] font-bold text-white/90">
-                                {detailedItem.mediaType === 'movie' ? "PG-13" : "TV-MA"}
-                              </span>
-                              <span className="text-xs text-white/75 font-medium">
-                                {detailedItem.mediaType === 'movie'
-                                  ? detailedItem.runtime ? `${detailedItem.runtime}${t("movies.meta.minutes")}` : `148${t("movies.meta.minutes")}`
-                                  : detailedItem.seasons ? `${detailedItem.seasons} ${t("movies.meta.seasons")}` : `5 ${t("movies.meta.seasons")}`}
-                              </span>
-                              {detailedItem.mediaType === 'tv' && detailedItem.episodes && (
-                                <span className="text-xs text-white/75 font-medium">
-                                  • {detailedItem.episodes} {t("movies.meta.episodes")}
+                        {/* Bottom Overlay Info inside Gallery Stage */}
+                        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 flex items-end justify-between gap-4 z-10">
+                          <div className="flex items-end gap-3.5 min-w-0">
+                            <img
+                              src={getPosterSrc_static(detailedItem.posterPath, detailedItem.backdropPath, detailedItem.trailerKey)}
+                              alt=""
+                              className="hidden sm:block w-20 md:w-24 aspect-[2/3] object-cover rounded-2xl border border-white/35 shadow-2xl flex-shrink-0"
+                            />
+                            <div className="flex flex-col gap-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400/20 border border-amber-300/45 text-amber-300 backdrop-blur-md">
+                                  <Star size={11} className="fill-current" />
+                                  {detailedItem.rating?.toFixed(1) || "8.2"}
                                 </span>
+                                <span className="text-xs font-bold text-white/90">{detailedItem.year || "2024"}</span>
+                                <span className="border border-white/30 bg-white/12 px-2 py-0.5 rounded-full text-[10px] font-bold text-white/95 backdrop-blur-md">
+                                  {detailedItem.certification || (detailedItem.mediaType === 'movie' ? "PG-13" : "TV-MA")}
+                                </span>
+                                <span className="text-xs text-white/80 font-medium">
+                                  {detailedItem.mediaType === 'movie'
+                                    ? detailedItem.runtime ? `${detailedItem.runtime}${t("movies.meta.minutes")}` : `148${t("movies.meta.minutes")}`
+                                    : detailedItem.seasons ? `${detailedItem.seasons} ${t("movies.meta.seasons")}` : `5 ${t("movies.meta.seasons")}`}
+                                </span>
+                                {detailedItem.mediaType === 'tv' && detailedItem.episodes && (
+                                  <span className="text-xs text-white/80 font-medium">
+                                    • {detailedItem.episodes} {t("movies.meta.episodes")}
+                                  </span>
+                                )}
+                              </div>
+                              <h3 className="text-xl sm:text-3xl font-black text-white select-text truncate drop-shadow-md">
+                                {detailedItem.title}
+                              </h3>
+                              {detailedItem.tagline && (
+                                <p className="text-[11px] sm:text-xs italic text-rose-200/90 truncate">
+                                  “{detailedItem.tagline}”
+                                </p>
                               )}
                             </div>
-                            <h3 className="text-xl sm:text-3xl font-black text-white select-text truncate drop-shadow-md">
-                              {detailedItem.title}
-                            </h3>
                           </div>
                         </div>
-                      </div>
-                    </>
-                  )}
+                      </>
+                    )}
 
-                  {/* Top Floating Controls inside Modal Hero */}
-                  <div className="absolute top-3.5 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
-                    <div className="pointer-events-auto">
-                      {detailedItem.trailerKey && (
-                        <button
-                          type="button"
-                          onClick={() => setShowHeroTrailer((v) => !v)}
-                          className="lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <Film size={13} />
-                          <span>
-                            {showHeroTrailer
-                              ? (currentLang === "ar" ? "إغلاق التريلر" : "Hide Trailer")
-                              : (currentLang === "ar" ? "تشغيل التريلر" : "Watch Trailer")}
-                          </span>
-                        </button>
-                      )}
+                    {/* Top Floating Glass Controls inside Gallery Stage */}
+                    <div className="absolute top-3.5 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
+                      <div className="pointer-events-auto">
+                        {detailedItem.trailerKey && (
+                          <button
+                            type="button"
+                            onClick={() => setShowHeroTrailer((v) => !v)}
+                            className="lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Film size={13} />
+                            <span>
+                              {showHeroTrailer
+                                ? (currentLang === "ar" ? "إغلاق التريلر" : "Hide Trailer")
+                                : (currentLang === "ar" ? "تشغيل التريلر" : "Watch Trailer")}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedItemId(null)}
+                        className="lg-cinema-icon-pill pointer-events-auto hover:!bg-rose-600/45 hover:!border-rose-300/60"
+                        aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedItemId(null)}
-                      className="lg-cinema-icon-pill pointer-events-auto hover:!bg-rose-600/45 hover:!border-rose-300/60"
-                      aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
-                    >
-                      <X size={16} />
-                    </button>
                   </div>
                 </div>
 
                 {/* Scrollable Liquid Glass Body */}
                 <div className="p-5 sm:p-7 flex flex-col gap-5 overflow-y-auto">
-                  {/* Action Bar: Watch Now (In-App Stream) + Trailer Toggle + Account Actions */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedWatchItem(detailedItem)}
-                        className="lg-cinema-primary-pill py-2.5 px-6 text-white font-black flex items-center gap-2 cursor-pointer text-xs sm:text-sm"
-                      >
-                        <Play size={15} className="fill-current" />
-                        <span>{t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}</span>
-                      </button>
+                  {/* Action Bar: Branching Server Capsules + TIP Card + Trailer Toggle + Account Actions */}
+                  <div className="flex flex-col gap-3 pb-4 border-b border-white/12">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2.5 flex-1">
+                        <ServerBranchesInline
+                          item={detailedItem}
+                          isOpen={detailServersOpen}
+                          onToggle={() => setDetailServersOpen((v) => !v)}
+                          onClose={() => setDetailServersOpen(false)}
+                          buttonLabel={t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}
+                        />
 
-                      {detailedItem.trailerKey && (
-                        <button
-                          type="button"
-                          onClick={() => setShowHeroTrailer((v) => !v)}
-                          className={`lg-cinema-action-pill py-2.5 px-4 text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer ${
-                            showHeroTrailer ? "!bg-white/25 !border-white/50 text-white" : "text-white/90"
-                          }`}
-                        >
-                          <Film size={14} />
-                          <span>
-                            {showHeroTrailer
-                              ? (currentLang === "ar" ? "عرض الملصق" : "Show Backdrop")
-                              : (currentLang === "ar" ? "التريلر الرسمي" : "Official Trailer")}
-                          </span>
-                        </button>
-                      )}
-                    </div>
-
-                    {user && detailedItem && (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* Favorite */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggle(
-                              detailedItem.id,
-                              detailedItem.mediaType,
-                              'favorite',
-                              detailedItem.title,
-                              detailedItem.posterPath
-                            )
-                          }
-                          aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'favorite')}
-                          aria-label="Add to favorites"
-                          className={[
-                            'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
-                            'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
-                            has(detailedItem.id, detailedItem.mediaType, 'favorite')
-                              ? 'bg-rose-600/40 border-rose-400/60 text-white shadow-md'
-                              : 'bg-white/6 border-white/15 text-white/75 hover:border-rose-400/50 hover:text-rose-200',
-                          ].join(' ')}
-                        >
-                          <Heart
-                            size={13}
-                            strokeWidth={2}
-                            fill={has(detailedItem.id, detailedItem.mediaType, 'favorite') ? 'currentColor' : 'none'}
-                          />
-                          <span>{currentLang === "ar" ? "مفضل" : "Favorite"}</span>
-                        </button>
-
-                        {/* Watched */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggle(
-                              detailedItem.id,
-                              detailedItem.mediaType,
-                              'watched',
-                              detailedItem.title,
-                              detailedItem.posterPath
-                            )
-                          }
-                          aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watched')}
-                          aria-label="Mark as watched"
-                          className={[
-                            'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
-                            'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
-                            has(detailedItem.id, detailedItem.mediaType, 'watched')
-                              ? 'bg-emerald-600/40 border-emerald-400/60 text-white shadow-md'
-                              : 'bg-white/6 border-white/15 text-white/75 hover:border-emerald-400/50 hover:text-emerald-200',
-                          ].join(' ')}
-                        >
-                          <Eye
-                            size={13}
-                            strokeWidth={2}
-                            fill={has(detailedItem.id, detailedItem.mediaType, 'watched') ? 'currentColor' : 'none'}
-                          />
-                          <span>{currentLang === "ar" ? "تمت مشاهدته" : "Watched"}</span>
-                        </button>
-
-                        {/* Watchlist */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggle(
-                              detailedItem.id,
-                              detailedItem.mediaType,
-                              'watchlist',
-                              detailedItem.title,
-                              detailedItem.posterPath
-                            )
-                          }
-                          aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watchlist')}
-                          aria-label="Add to watchlist"
-                          className={[
-                            'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
-                            'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
-                            has(detailedItem.id, detailedItem.mediaType, 'watchlist')
-                              ? 'bg-amber-500/40 border-amber-300/60 text-white shadow-md'
-                              : 'bg-white/6 border-white/15 text-white/75 hover:border-amber-400/50 hover:text-amber-200',
-                          ].join(' ')}
-                        >
-                          <Bookmark
-                            size={13}
-                            strokeWidth={2}
-                            fill={has(detailedItem.id, detailedItem.mediaType, 'watchlist') ? 'currentColor' : 'none'}
-                          />
-                          <span>{currentLang === "ar" ? "للمشاهدة لاحقاً" : "Watchlist"}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Overview */}
-                  <p className="text-xs sm:text-sm text-white/85 leading-relaxed select-text">
-                    {detailedItem.overview}
-                  </p>
-
-                  {/* Practical Trailer Card + Genres & Cast */}
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                    {/* Interactive Trailer Box (7 cols on desktop) */}
-                    <div className="md:col-span-7 flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest">
-                          {currentLang === "ar" ? "الإعلان التشويقي (التريلر)" : "Official Trailer"}
-                        </h4>
-                        {detailedItem.trailerKey && !showHeroTrailer && (
+                        {detailedItem.trailerKey && !detailServersOpen && (
                           <button
                             type="button"
-                            onClick={() => setShowHeroTrailer(true)}
-                            className="text-[11px] font-bold text-rose-300 hover:text-rose-200 cursor-pointer"
+                            onClick={() => setShowHeroTrailer((v) => !v)}
+                            className={`lg-cinema-action-pill py-2.5 px-4 text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer ${
+                              showHeroTrailer ? "!bg-white/25 !border-white/50 text-white" : "text-white/90"
+                            }`}
                           >
-                            {currentLang === "ar" ? "تكبير في الأعلى ↗" : "Expand to Top Stage ↗"}
+                            <Film size={14} />
+                            <span>
+                              {showHeroTrailer
+                                ? (currentLang === "ar" ? "عرض الملصق" : "Show Backdrop")
+                                : (currentLang === "ar" ? "التريلر الرسمي" : "Official Trailer")}
+                            </span>
                           </button>
                         )}
                       </div>
 
-                      {detailedItem.trailerKey ? (
-                        <div className="w-full aspect-video rounded-2xl overflow-hidden border border-white/20 bg-black shadow-[0_12px_30px_rgba(0,0,0,0.5)]">
-                          <iframe
-                            className="w-full h-full border-0"
-                            src={`https://www.youtube.com/embed/${detailedItem.trailerKey}?autoplay=0&rel=0&modestbranding=1`}
-                            title="Cinema Trailer"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                            allowFullScreen
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-full aspect-video rounded-2xl border border-white/15 flex items-center justify-center text-white/50 text-xs font-semibold bg-white/[0.04]">
-                          {t("movies.meta.noTrailer")}
+                      {user && detailedItem && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Favorite */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toggle(
+                                detailedItem.id,
+                                detailedItem.mediaType,
+                                'favorite',
+                                detailedItem.title,
+                                detailedItem.posterPath
+                              )
+                            }
+                            aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'favorite')}
+                            aria-label="Add to favorites"
+                            className={[
+                              'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
+                              'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
+                              has(detailedItem.id, detailedItem.mediaType, 'favorite')
+                                ? 'bg-rose-600/40 border-rose-400/60 text-white shadow-md'
+                                : 'bg-white/6 border-white/15 text-white/75 hover:border-rose-400/50 hover:text-rose-200',
+                            ].join(' ')}
+                          >
+                            <Heart
+                              size={13}
+                              strokeWidth={2}
+                              fill={has(detailedItem.id, detailedItem.mediaType, 'favorite') ? 'currentColor' : 'none'}
+                            />
+                            <span>{currentLang === "ar" ? "مفضل" : "Favorite"}</span>
+                          </button>
+
+                          {/* Watched */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toggle(
+                                detailedItem.id,
+                                detailedItem.mediaType,
+                                'watched',
+                                detailedItem.title,
+                                detailedItem.posterPath
+                              )
+                            }
+                            aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watched')}
+                            aria-label="Mark as watched"
+                            className={[
+                              'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
+                              'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
+                              has(detailedItem.id, detailedItem.mediaType, 'watched')
+                                ? 'bg-emerald-600/40 border-emerald-400/60 text-white shadow-md'
+                                : 'bg-white/6 border-white/15 text-white/75 hover:border-emerald-400/50 hover:text-emerald-200',
+                            ].join(' ')}
+                          >
+                            <Eye
+                              size={13}
+                              strokeWidth={2}
+                              fill={has(detailedItem.id, detailedItem.mediaType, 'watched') ? 'currentColor' : 'none'}
+                            />
+                            <span>{currentLang === "ar" ? "تمت مشاهدته" : "Watched"}</span>
+                          </button>
+
+                          {/* Watchlist */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toggle(
+                                detailedItem.id,
+                                detailedItem.mediaType,
+                                'watchlist',
+                                detailedItem.title,
+                                detailedItem.posterPath
+                              )
+                            }
+                            aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watchlist')}
+                            aria-label="Add to watchlist"
+                            className={[
+                              'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
+                              'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
+                              has(detailedItem.id, detailedItem.mediaType, 'watchlist')
+                                ? 'bg-amber-500/40 border-amber-300/60 text-white shadow-md'
+                                : 'bg-white/6 border-white/15 text-white/75 hover:border-amber-400/50 hover:text-amber-200',
+                            ].join(' ')}
+                          >
+                            <Bookmark
+                              size={13}
+                              strokeWidth={2}
+                              fill={has(detailedItem.id, detailedItem.mediaType, 'watchlist') ? 'currentColor' : 'none'}
+                            />
+                            <span>{currentLang === "ar" ? "للمشاهدة لاحقاً" : "Watchlist"}</span>
+                          </button>
                         </div>
                       )}
                     </div>
+                  </div>
 
-                    {/* Genres & Cast (5 cols on desktop) */}
-                    <div className="md:col-span-5 flex flex-col gap-4 p-4 rounded-2xl bg-white/[0.04] border border-white/12">
-                      <div>
-                        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest mb-2">
-                          {t("movies.genres")}
+                  {/* Overview & Rich TMDB Metadata Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                    {/* Left / Main Column: Storyline + Genres + Rich Metadata Badges */}
+                    <div className="lg:col-span-6 flex flex-col gap-4">
+                      <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 flex flex-col gap-2.5">
+                        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest">
+                          {currentLang === "ar" ? "القصة والملخص" : "Storyline"}
                         </h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {detailedItem.genreNames.map((g, i) => (
-                            <span
-                              key={i}
-                              className="text-[11px] font-bold px-3 py-1 bg-white/10 border border-white/20 rounded-full text-white/90"
-                            >
-                              {g}
-                            </span>
-                          ))}
-                        </div>
+                        <p className="text-xs sm:text-sm text-white/90 leading-relaxed select-text">
+                          {detailedItem.overview}
+                        </p>
                       </div>
 
-                      <div>
-                        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest mb-2">
-                          {t("movies.cast")}
-                        </h4>
-                        <div className="grid grid-cols-2 gap-2.5">
-                          {detailedItem.cast.slice(0, 6).map((actor, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-2.5 p-1.5 rounded-xl bg-white/[0.04] border border-white/10"
-                            >
-                              <div className="w-9 h-9 rounded-full bg-white/10 overflow-hidden border border-white/20 flex-shrink-0">
-                                {actor.profilePath ? (
-                                  <img
-                                    src={actor.profilePath.startsWith("http") ? actor.profilePath : `${TMDB_IMAGE_BASE}/w185${actor.profilePath}`}
-                                    className="w-full h-full object-cover select-none pointer-events-none"
-                                    alt={actor.name}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-xs text-white/50">👤</div>
-                                )}
-                              </div>
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-[11px] font-bold text-white/90 truncate">{actor.name}</span>
-                                {actor.character && (
-                                  <span className="text-[9.5px] text-white/55 truncate">{actor.character}</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                      {/* Genres */}
+                      {detailedItem.genreNames.length > 0 && (
+                        <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 flex flex-col gap-2.5">
+                          <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest">
+                            {t("movies.genres") || (currentLang === "ar" ? "التصنيفات" : "Genres")}
+                          </h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {detailedItem.genreNames.map((g, i) => (
+                              <span
+                                key={i}
+                                className="text-[11px] font-bold px-3.5 py-1 bg-white/10 border border-white/22 rounded-full text-white/95 shadow-sm"
+                              >
+                                {g}
+                              </span>
+                            ))}
+                          </div>
                         </div>
+                      )}
+
+                      {/* Rich TMDB Facts (Release Date, Status, Language, Vote Count, Directors, Studios) */}
+                      <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                        {detailedItem.releaseDate && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
+                              <Calendar size={11} />
+                              {currentLang === "ar" ? "تاريخ الإصدار" : "Release Date"}
+                            </span>
+                            <span className="font-extrabold text-white/95">{detailedItem.releaseDate}</span>
+                          </div>
+                        )}
+
+                        {detailedItem.status && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
+                              <Sparkles size={11} />
+                              {currentLang === "ar" ? "الحالة" : "Status"}
+                            </span>
+                            <span className="font-extrabold text-emerald-300">{detailedItem.status}</span>
+                          </div>
+                        )}
+
+                        {detailedItem.originalLanguage && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
+                              <Globe2 size={11} />
+                              {currentLang === "ar" ? "اللغة الأصلية" : "Language"}
+                            </span>
+                            <span className="font-extrabold text-white/95">{detailedItem.originalLanguage}</span>
+                          </div>
+                        )}
+
+                        {detailedItem.voteCount !== undefined && detailedItem.voteCount > 0 && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
+                              <Award size={11} />
+                              {currentLang === "ar" ? "عدد التقييمات" : "Votes"}
+                            </span>
+                            <span className="font-extrabold text-amber-300">
+                              {detailedItem.voteCount.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+
+                        {detailedItem.directors && detailedItem.directors.length > 0 && (
+                          <div className="flex flex-col gap-0.5 col-span-2">
+                            <span className="text-[10px] text-white/55 font-bold">
+                              {detailedItem.mediaType === 'tv'
+                                ? (currentLang === "ar" ? "صناع العمل" : "Created By")
+                                : (currentLang === "ar" ? "الإخراج" : "Director")}
+                            </span>
+                            <span className="font-extrabold text-white/95 truncate">
+                              {detailedItem.directors.join(" • ")}
+                            </span>
+                          </div>
+                        )}
+
+                        {detailedItem.productionCompanies && detailedItem.productionCompanies.length > 0 && (
+                          <div className="flex flex-col gap-1 col-span-2 sm:col-span-3 pt-1 border-t border-white/10">
+                            <span className="text-[10px] text-white/55 font-bold">
+                              {currentLang === "ar" ? "شركات وشبكات الإنتاج" : "Production & Networks"}
+                            </span>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {detailedItem.productionCompanies.map((p) => (
+                                <span
+                                  key={p.id || p.name}
+                                  className="px-2.5 py-0.5 rounded-full bg-white/8 border border-white/15 text-[10.5px] font-bold text-white/85"
+                                >
+                                  {p.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right Column: Interactive Cast Grid (Click any actor to open their Liquid Glass Profile) */}
+                    <div className="lg:col-span-6 p-4 rounded-2xl bg-white/[0.04] border border-white/12 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[11px] font-bold text-white/70 uppercase tracking-widest flex items-center gap-1.5">
+                          <Users size={13} className="text-rose-400" />
+                          <span>{t("movies.cast") || (currentLang === "ar" ? "طاقم التمثيل" : "Top Cast")}</span>
+                        </h4>
+                        <span className="text-[10px] text-sky-300/90 font-semibold">
+                          {currentLang === "ar" ? "اضغط على الممثل لعرض بطاقته وأعماله" : "Click any actor for bio & works"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        {detailedItem.cast.slice(0, 9).map((actor, idx) => (
+                          <button
+                            key={actor.id || idx}
+                            type="button"
+                            onClick={() => handleSelectActor(actor)}
+                            className="lg-cinema-cast-pill flex items-center gap-2.5 p-2 rounded-2xl text-start cursor-pointer group"
+                          >
+                            <div className="w-11 h-11 rounded-full bg-white/10 overflow-hidden border border-white/30 flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                              {actor.profilePath ? (
+                                <img
+                                  src={actor.profilePath.startsWith("http") ? actor.profilePath : `${TMDB_IMAGE_BASE}/w185${actor.profilePath}`}
+                                  className="w-full h-full object-cover select-none pointer-events-none"
+                                  alt={actor.name}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xs text-white/50">👤</div>
+                              )}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[11px] font-extrabold text-white group-hover:text-rose-200 transition-colors truncate">
+                                {actor.name}
+                              </span>
+                              {actor.character && (
+                                <span className="text-[9.5px] text-white/60 truncate">
+                                  {actor.character}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
+
+                  {/* Similar / Recommended Titles Row */}
+                  {detailedItem.similar && detailedItem.similar.length > 0 && (
+                    <div className="flex flex-col gap-2.5 pt-2 border-t border-white/10">
+                      <h4 className="text-xs font-extrabold text-white/80 uppercase tracking-wider">
+                        {currentLang === "ar" ? "أعمال مشابهة قد تعجبك" : "Similar Titles You May Like"}
+                      </h4>
+                      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none" style={MOVIE_ROW_SCROLL_STYLE}>
+                        {detailedItem.similar.slice(0, 8).map((sim) => (
+                          <button
+                            key={sim.id}
+                            type="button"
+                            onClick={() => {
+                              setShowHeroTrailer(false);
+                              setSelectedItemId(sim.id);
+                            }}
+                            className="nl-poster relative w-[110px] sm:w-[126px] aspect-[2/3] flex-shrink-0 overflow-hidden cursor-pointer text-start group"
+                          >
+                            <img
+                              src={getPosterSrc_static(sim.posterPath, sim.trailerKey, sim.backdropPath)}
+                              alt={sim.title}
+                              loading="lazy"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            <span className="nl-poster__sheen" />
+                            <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full bg-black/65 border border-white/20 text-[9px] font-extrabold text-amber-400 flex items-center gap-0.5">
+                              <Star size={8} className="fill-current" />
+                              {sim.rating?.toFixed(1) || "7.8"}
+                            </span>
+                            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                              <p className="text-[10px] font-bold text-white truncate">{sim.title}</p>
+                              <p className="text-[8.5px] text-white/65">{sim.year}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </m.div>
             )}
@@ -1967,6 +2295,151 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         )}
       </AnimatePresence>
 
+      {/* Interactive Liquid Glass Actor Profile Card Modal */}
+      <AnimatePresence>
+        {selectedActor && (
+          <div className="fixed inset-0 z-[10150] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xl select-none">
+            <div
+              className="absolute inset-0 cursor-zoom-out"
+              onClick={() => {
+                setSelectedActor(null);
+                setActorDetails(null);
+              }}
+            />
+            <m.div
+              role="dialog"
+              aria-modal="true"
+              aria-label={selectedActor.name}
+              initial={{ opacity: 0, scale: 0.92, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 16 }}
+              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              className="lg-cinema-glass-modal relative z-10 w-full max-w-2xl rounded-3xl p-5 sm:p-6 overflow-y-auto max-h-[88dvh] flex flex-col gap-4"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 min-w-0">
+                  {/* Large High-Res Actor Portrait in Liquid Glass Frame */}
+                  <div className="w-28 h-36 sm:w-32 sm:h-44 rounded-2xl overflow-hidden border border-white/35 shadow-2xl flex-shrink-0 bg-white/10 relative">
+                    {(actorDetails?.profilePath || selectedActor.profilePath) ? (
+                      <img
+                        src={
+                          (actorDetails?.profilePath || selectedActor.profilePath).startsWith("http")
+                            ? (actorDetails?.profilePath || selectedActor.profilePath)
+                            : `${TMDB_IMAGE_BASE}/h632${actorDetails?.profilePath || selectedActor.profilePath}`
+                        }
+                        alt={selectedActor.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-3xl">👤</div>
+                    )}
+                    <span className="nl-poster__sheen" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 text-center sm:text-start min-w-0">
+                    <span className="inline-flex self-center sm:self-start items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/25 border border-rose-300/40 text-rose-200">
+                      {actorDetails?.knownForDepartment || (currentLang === "ar" ? "ممثل" : "Acting")}
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-black text-white select-text">
+                      {actorDetails?.name || selectedActor.name}
+                    </h3>
+                    {selectedActor.character && (
+                      <p className="text-xs font-bold text-amber-300">
+                        {currentLang === "ar" ? `الدور: ${selectedActor.character}` : `Role: ${selectedActor.character}`}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-[11px] text-white/75 mt-1">
+                      {actorDetails?.birthday && (
+                        <span className="flex items-center gap-1">
+                          <Calendar size={12} className="text-sky-300" />
+                          {actorDetails.birthday}
+                        </span>
+                      )}
+                      {actorDetails?.placeOfBirth && (
+                        <span className="flex items-center gap-1">
+                          <MapPin size={12} className="text-rose-300" />
+                          {actorDetails.placeOfBirth}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedActor(null);
+                    setActorDetails(null);
+                  }}
+                  className="lg-cinema-icon-pill flex-shrink-0 hover:!bg-rose-600/45"
+                  aria-label="Close actor profile"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {loadingActor ? (
+                <div className="py-10 flex flex-col items-center justify-center gap-2 text-white/75">
+                  <div className="w-8 h-8 border-2 border-t-rose-500 border-white/20 rounded-full animate-spin" />
+                  <span className="text-xs font-bold">
+                    {currentLang === "ar" ? "جاري جلب معلومات الممثل..." : "Loading actor profile..."}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {/* Biography */}
+                  <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/12 max-h-44 overflow-y-auto">
+                    <h4 className="text-[10px] font-bold text-white/55 uppercase tracking-widest mb-1">
+                      {currentLang === "ar" ? "السيرة الذاتية" : "Biography"}
+                    </h4>
+                    <p className="text-xs text-white/85 leading-relaxed select-text whitespace-pre-line">
+                      {actorDetails?.biography}
+                    </p>
+                  </div>
+
+                  {/* Actor's Known Works (Clickable to open directly) */}
+                  {actorDetails?.knownWorks && actorDetails.knownWorks.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <h4 className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
+                        {currentLang === "ar" ? "أشهر الأعمال (اضغط للفتح)" : "Known For (Click to Open)"}
+                      </h4>
+                      <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-none" style={MOVIE_ROW_SCROLL_STYLE}>
+                        {actorDetails.knownWorks.map((work) => (
+                          <button
+                            key={`${work.mediaType}-${work.id}`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedActor(null);
+                              setActorDetails(null);
+                              setActiveTab(work.mediaType === 'tv' ? 'series' : 'movies');
+                              setSelectedItemId(work.id);
+                            }}
+                            className="nl-poster relative w-[96px] sm:w-[108px] aspect-[2/3] flex-shrink-0 overflow-hidden cursor-pointer text-start group"
+                          >
+                            <img
+                              src={getPosterSrc_static(work.posterPath)}
+                              alt={work.title}
+                              loading="lazy"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <span className="nl-poster__sheen" />
+                            <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                              <p className="text-[9.5px] font-bold text-white truncate">{work.title}</p>
+                              <p className="text-[8px] text-white/65">{work.year}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </m.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Quick-Watch Branching Server Capsules + TIP Card when triggered from Poster Cards */}
       <MovieSourcesModal
         isOpen={selectedWatchItem !== null}
         onClose={() => setSelectedWatchItem(null)}

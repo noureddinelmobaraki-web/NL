@@ -2623,17 +2623,10 @@ const SCOPED_STYLES = `
   }
 
   /* ==========================================================================
-   * FULL-PAGE SUN ALBUMS STAGE (8x4 PC / 4x6 Phone Grid, 1:1 Luxury Glass Tile,
-   * Ascended Album Cover, Expandable Liquid Glass Track Tubes, & Synced Lyrics)
+   * FULL-PAGE SUN ALBUMS STAGE — INFINITE 2D SILK-THREAD FISHEYE GRID,
+   * TRUE SUN/EARTH CLEAR BUBBLE GLASS, TEXT/BUTTON-ONLY YELLOW GLOW,
+   * STRICTLY 2-LINE iOS 26 LYRICS, & SMART YOUTUBE / ALBUM COVER BACKGROUND
    * ========================================================================== */
-  .lg-shared-glass-defs {
-    position: absolute;
-    width: 0;
-    height: 0;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
   .lg-sun-fullstage {
     position: relative;
     z-index: 15;
@@ -2645,252 +2638,155 @@ const SCOPED_STYLES = `
     justify-content: center;
     box-sizing: border-box;
     overflow: hidden;
+    perspective: 1200px;
   }
 
-  /* ── Scrollable Full-Page Viewport Hosting the 99 Albums Grid ──────────── */
-  .lg-albums-scroll-viewport {
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    padding:
-      max(64px, calc(env(safe-area-inset-top) + 52px))
-      max(14px, env(safe-area-inset-right))
-      max(36px, calc(env(safe-area-inset-bottom) + 28px))
-      max(14px, env(safe-area-inset-left));
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
-    transition:
-      opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .lg-albums-scroll-viewport::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .lg-albums-scroll-viewport::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.26);
-    border-radius: 999px;
-  }
-
-  .lg-albums-scroll-viewport--exiting {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-    pointer-events: none;
-  }
-
-  /* 8 columns on Desktop / 4 columns on Phone, dynamically sized */
-  .lg-albums-grid {
-    width: var(--lg-grid-w, 100%);
-    max-width: 100%;
-    display: grid;
-    grid-template-columns: repeat(var(--lg-grid-cols, 8), var(--lg-tile-size, 110px));
-    justify-content: center;
-    column-gap: var(--lg-col-gap, 16px);
-    row-gap: var(--lg-row-gap, 14px);
-    box-sizing: border-box;
-  }
-
-  /* ── Single Album Cell (1:1 Glass Square + Album Title Underneath) ─────── */
-  .lg-album-cell {
-    appearance: none;
-    border: none;
-    background: transparent;
-    padding: 0;
-    margin: 0;
-    width: var(--lg-tile-size, 110px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    text-align: center;
-    color: #ffffff;
-    contain: layout style;
-    opacity: 0;
-    transform: translate3d(0, 16px, 0) scale(0.86);
-    animation: lgAlbumTileIn 0.42s cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
-    animation-delay: var(--tile-delay, 0ms);
-  }
-
-  @keyframes lgAlbumTileIn {
-    0% {
-      opacity: 0;
-      transform: translate3d(0, 16px, 0) scale(0.86);
-    }
-    100% {
-      opacity: 1;
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-  }
-
-  /* ── 1:1 Luxury Liquid Glass Square Frame ──────────────────────────────── */
-  .lg-album-square {
-    position: relative;
-    width: var(--lg-tile-size, 110px);
-    height: var(--lg-tile-size, 110px);
-    aspect-ratio: 1 / 1;
-    border-radius: 18.5%;
-    padding: 5.5%;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    isolation: isolate;
-    background:
-      linear-gradient(
-        145deg,
-        rgba(255, 255, 255, 0.26) 0%,
-        rgba(var(--album-rgb, 255, 168, 76), 0.14) 48%,
-        rgba(12, 16, 26, 0.28) 100%
-      );
-    box-shadow:
-      0 10px 24px -6px rgba(0, 0, 0, 0.46),
-      0 0 20px -4px rgba(var(--album-rgb, 255, 168, 76), 0.36),
-      inset 0 1.5px 2px rgba(255, 255, 255, 0.78),
-      inset 0 -2px 5px rgba(var(--album-rgb, 255, 168, 76), 0.34);
-    transition:
-      transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.24s ease;
-  }
-
-  .lg-album-cell:hover .lg-album-square {
-    transform: translateY(-4px) scale(1.045);
-    box-shadow:
-      0 14px 30px -6px rgba(0, 0, 0, 0.55),
-      0 0 28px -2px rgba(var(--album-rgb, 255, 168, 76), 0.68),
-      inset 0 2px 3px rgba(255, 255, 255, 0.92),
-      inset 0 -2.5px 7px rgba(var(--album-rgb, 255, 168, 76), 0.52);
-  }
-
-  .lg-album-cell:active .lg-album-square {
-    transform: translateY(0) scale(0.96);
-  }
-
-  /* Color-matched internal glow aura */
-  .lg-album-square__aura {
+  /* ── Subtle Atmospheric Backdrop Over Current Background ───────────────── */
+  .lg-sun-backdrop-dim {
     position: absolute;
     inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
     z-index: 0;
-    background: radial-gradient(
-      circle at 50% 50%,
-      rgba(var(--album-rgb, 255, 168, 76), 0.32) 0%,
-      rgba(var(--album-rgb, 255, 168, 76), 0.08) 68%,
-      transparent 100%
-    );
-  }
-
-  .lg-album-square__img {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 14.5%;
-    display: block;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.36);
-  }
-
-  /* Subtle color-reactive surface shimmer over the cover */
-  .lg-album-square__color-sheen {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
     pointer-events: none;
-    z-index: 2;
     background:
-      linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.34) 0%,
-        rgba(var(--album-rgb, 255, 168, 76), 0.16) 28%,
-        rgba(255, 255, 255, 0.0) 56%,
-        rgba(var(--album-rgb, 255, 168, 76), 0.22) 100%
+      radial-gradient(
+        circle at 50% 48%,
+        rgba(6, 10, 18, 0.22) 0%,
+        rgba(4, 7, 14, 0.48) 72%,
+        rgba(2, 4, 10, 0.72) 100%
       );
-    mix-blend-mode: screen;
-    opacity: 0.78;
-    transition: opacity 0.24s ease;
+    transition: background 0.4s ease;
   }
 
-  .lg-album-cell:hover .lg-album-square__color-sheen {
-    opacity: 1;
+  .lg-sun-backdrop-dim--detail {
+    background:
+      radial-gradient(
+        circle at 50% 35%,
+        rgba(6, 9, 16, 0.18) 0%,
+        rgba(4, 7, 14, 0.44) 72%,
+        rgba(2, 4, 10, 0.68) 100%
+      );
   }
 
-  /* Cloned <use href="#lg-shared-glass-1x1"> overlay */
-  .lg-album-square__glass-svg {
+  /* ── Smart Background Stage: Album Cover Fallback + Verified YouTube ───── */
+  .lg-yt-bg-stage {
     position: absolute;
     inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+    animation: lgFadeSlideUp 0.55s ease both;
+  }
+
+  /* Always-present Album Cover Background (shown whenever YouTube is unavailable/off) */
+  .lg-yt-bg-stage__album-fallback {
+    position: absolute;
+    inset: -8%;
+    width: 116%;
+    height: 116%;
+    background-size: cover;
+    background-position: center;
+    filter: blur(28px) saturate(155%) brightness(0.68);
+    transform: scale(1.06);
+    opacity: 0.88;
+    transition: opacity 0.65s ease;
+  }
+
+  .lg-yt-bg-stage__album-fallback--dimmed {
+    opacity: 0.18;
+  }
+
+  /* YouTube iframe stays 100% invisible (opacity: 0) until verified PLAYING */
+  .lg-yt-bg-stage__frame-wrap {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100dvw, 177.78dvh);
+    height: max(100dvh, 56.25dvw);
+    transform: translate(-50%, -50%) scale(1.14);
+    pointer-events: none;
+    opacity: 0;
+    filter: saturate(1.25) contrast(1.05);
+    transition: opacity 0.7s ease;
+  }
+
+  .lg-yt-bg-stage__frame-wrap--playing {
+    opacity: 0.54;
+  }
+
+  .lg-yt-bg-stage__iframe {
     width: 100%;
     height: 100%;
+    border: 0;
     pointer-events: none;
+  }
+
+  .lg-yt-bg-stage__vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        circle at 50% 50%,
+        rgba(6, 9, 16, 0.16) 0%,
+        rgba(4, 7, 14, 0.45) 75%,
+        rgba(2, 4, 10, 0.74) 100%
+      );
+  }
+
+  /* ── VIEW 1: Connected Spherical-Dome Fisheye Mesh Viewport ────────────── */
+  .lg-brick-viewport {
+    position: relative;
     z-index: 3;
-  }
-
-  /* Professional Album Name Underneath Each Square */
-  .lg-album-title {
     width: 100%;
-    height: calc(var(--lg-title-h, 28px) - 6px);
-    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
-    font-size: clamp(0.66rem, 0.56rem + 0.28vw, 0.78rem);
-    font-weight: 700;
-    line-height: 1.25;
-    letter-spacing: 0.01em;
-    color: rgba(255, 255, 255, 0.95);
-    text-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.85),
-      0 0 10px rgba(0, 0, 0, 0.45);
-    white-space: nowrap;
+    height: 100%;
     overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0 2px;
-    box-sizing: border-box;
-    transition: color 0.2s ease, transform 0.2s ease;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
   }
 
-  .lg-album-cell:hover .lg-album-title {
-    color: #ffffff;
-    text-shadow:
-      0 1px 4px rgba(0, 0, 0, 0.9),
-      0 0 12px rgba(var(--album-rgb, 255, 168, 76), 0.75);
+  .lg-brick-viewport--dragging {
+    cursor: grabbing;
+  }
+
+  .lg-fisheye-mesh-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
   }
 
   /* ==========================================================================
-   * VIEW 2: SELECTED ALBUM WORKSPACE (Ascended Cover + Track Tubes + Lyrics)
+   * VIEW 2: SELECTED ALBUM WORKSPACE (True Sun/Earth Clear Bubble Glass)
    * ========================================================================== */
   .lg-album-detail-workspace {
-    width: min(94dvw, 1140px);
+    position: relative;
+    z-index: 5;
+    width: min(95dvw, 1220px);
     height: 100dvh;
     padding:
-      max(58px, calc(env(safe-area-inset-top) + 46px))
+      max(52px, calc(env(safe-area-inset-top) + 40px))
       0
-      max(24px, calc(env(safe-area-inset-bottom) + 18px));
+      max(20px, calc(env(safe-area-inset-bottom) + 14px));
     box-sizing: border-box;
     display: flex;
     flex-direction: row;
-    align-items: stretch;
+    align-items: center;
     justify-content: center;
-    gap: 20px;
-    overflow: hidden;
+    gap: 28px;
+    overflow: visible;
   }
 
   .lg-album-player-column {
-    flex: 1 1 560px;
-    max-width: 640px;
+    flex: 1 1 580px;
+    max-width: 650px;
     height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    overflow: hidden;
+    gap: 14px;
+    overflow: visible;
     transition: max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
@@ -2898,7 +2794,7 @@ const SCOPED_STYLES = `
     max-width: 560px;
   }
 
-  /* ── Ascended Album Cover at Top of Page ───────────────────────────────── */
+  /* ── Selected Album Cover: Full-Bleed Image + Ultra-Thin Sun/Earth Bubble Rim ── */
   .lg-ascended-album-hero {
     flex-shrink: 0;
     display: flex;
@@ -2906,13 +2802,13 @@ const SCOPED_STYLES = `
     align-items: center;
     gap: 10px;
     text-align: center;
-    animation: lgAscendHeroIn 0.52s cubic-bezier(0.18, 0.9, 0.26, 1) both;
+    animation: lgAscendHeroIn 0.42s cubic-bezier(0.2, 0.9, 0.25, 1) both;
   }
 
   @keyframes lgAscendHeroIn {
     0% {
       opacity: 0;
-      transform: translate3d(0, 48px, 0) scale(0.76);
+      transform: translate3d(0, 28px, 0) scale(0.84);
     }
     100% {
       opacity: 1;
@@ -2920,76 +2816,139 @@ const SCOPED_STYLES = `
     }
   }
 
-  .lg-ascended-album-cover {
-    --album-rgb: var(--selected-album-rgb, 255, 168, 76);
+  /* Zero white padding box! Image fills 100% of the wobbling Sun/Earth bubble */
+  .lg-ascended-album-cover--sun-bubble {
     position: relative;
-    width: clamp(124px, 18dvh, 172px);
-    height: clamp(124px, 18dvh, 172px);
+    width: clamp(148px, 21dvh, 206px);
+    height: clamp(148px, 21dvh, 206px);
     aspect-ratio: 1 / 1;
-    border-radius: 18.5%;
-    padding: 5.5%;
+    border-radius: 28% 24% 27% 25% / 25% 28% 24% 27%;
+    padding: 0;
     box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     overflow: hidden;
     isolation: isolate;
-    background:
-      linear-gradient(
-        145deg,
-        rgba(255, 255, 255, 0.30) 0%,
-        rgba(var(--selected-album-rgb, 255, 168, 76), 0.20) 50%,
-        rgba(12, 16, 26, 0.32) 100%
-      );
+    background: transparent;
     box-shadow:
-      0 18px 42px -8px rgba(0, 0, 0, 0.55),
-      0 0 34px -4px rgba(var(--selected-album-rgb, 255, 168, 76), 0.58),
+      0 20px 48px -10px rgba(0, 0, 0, 0.56),
       inset 0 2px 3px rgba(255, 255, 255, 0.88),
-      inset 0 -3px 7px rgba(var(--selected-album-rgb, 255, 168, 76), 0.45);
+      inset 0 -2px 4px rgba(255, 195, 130, 0.36);
+    animation: lgWaterDropletFloat 6s ease-in-out infinite;
+    will-change: border-radius, transform;
+  }
+
+  @keyframes lgWaterDropletFloat {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+    }
+    33% {
+      transform: translate3d(0, -4px, 0) scale3d(1.022, 0.982, 1);
+    }
+    66% {
+      transform: translate3d(0, 2px, 0) scale3d(0.985, 1.02, 1);
+    }
+  }
+
+  .lg-ascended-album-cover__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    display: block;
   }
 
   .lg-ascended-album-meta {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
     max-width: 90vw;
   }
 
   .lg-ascended-album-title {
     margin: 0;
     font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
-    font-size: clamp(1.08rem, 0.92rem + 0.65vw, 1.42rem);
+    font-size: clamp(1.16rem, 1.0rem + 0.65vw, 1.52rem);
     font-weight: 800;
-    letter-spacing: -0.01em;
-    color: #ffffff;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+    letter-spacing: -0.015em;
+    background-image: linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fff099 45%,
+      #ffd447 85%,
+      #ffba26 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: #ffe678;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.72));
   }
 
   .lg-ascended-album-artist {
     margin: 0;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    font-size: clamp(0.76rem, 0.7rem + 0.25vw, 0.88rem);
+    font-size: clamp(0.78rem, 0.72rem + 0.22vw, 0.90rem);
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.78);
-    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.65);
+    color: rgba(255, 244, 200, 0.9);
+    text-shadow: none;
   }
 
-  /* ── Liquid Glass Track Tubes List Below Ascended Album ────────────────── */
+  /* ── Shared Sun/Earth Bubble Caustic Rim & Specular Sheen for Capsules ─── */
+  .lg-orb-capsule-caustic {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    pointer-events: none;
+    z-index: 3;
+    background: conic-gradient(
+      from 20deg at 50% 50%,
+      rgba(255, 255, 255, 0.94) 0deg,
+      rgba(255, 205, 135, 0.50) 60deg,
+      rgba(255, 255, 255, 0.12) 125deg,
+      rgba(195, 238, 255, 0.52) 195deg,
+      rgba(255, 255, 255, 0.12) 265deg,
+      rgba(255, 195, 125, 0.48) 320deg,
+      rgba(255, 255, 255, 0.94) 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0.92;
+  }
+
+  .lg-orb-capsule-sheen {
+    position: absolute;
+    inset: 2px 10px auto 10px;
+    height: 42%;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 2;
+    background: radial-gradient(
+      90% 85% at 30% 10%,
+      rgba(255, 255, 255, 0.36) 0%,
+      rgba(255, 255, 255, 0.08) 48%,
+      rgba(255, 255, 255, 0) 82%
+    );
+  }
+
+  /* ── Track Tubes List ──────────────────────────────────────────────────── */
   .lg-track-tubes-list {
     width: 100%;
     flex: 1 1 auto;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: visible;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    padding: 4px 6px 24px;
+    padding: 6px 10px 28px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 9px;
+    gap: 10px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
   }
 
   .lg-track-tubes-list::-webkit-scrollbar {
@@ -2997,103 +2956,101 @@ const SCOPED_STYLES = `
   }
 
   .lg-track-tubes-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.24);
+    background: rgba(255, 255, 255, 0.28);
     border-radius: 999px;
   }
 
-  /* Individual Liquid Glass Tube / Window */
+  /* ── True Clear Sun/Earth Bubble Glass Tube (NO yellow fog around box!) ── */
   .lg-track-tube {
     position: relative;
     width: 100%;
-    border-radius: 22px;
-    padding: 10px 14px;
+    border-radius: 999px;
+    padding: 11px 16px;
     box-sizing: border-box;
     cursor: pointer;
     isolation: isolate;
-    color: rgba(255, 255, 255, 0.95);
+    color: #ffffff;
     background:
-      linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.20) 0%,
-        rgba(255, 255, 255, 0.04) 100%
-      ),
-      rgba(10, 14, 24, 0.34);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    backdrop-filter: blur(16px) saturate(180%);
+      radial-gradient(
+        140% 100% at 20% 0%,
+        rgba(255, 255, 255, 0.16) 0%,
+        rgba(255, 255, 255, 0.02) 45%,
+        transparent 75%
+      );
+    -webkit-backdrop-filter: blur(8px) saturate(145%);
+    backdrop-filter: blur(8px) saturate(145%);
     box-shadow:
-      0 10px 24px -6px rgba(0, 0, 0, 0.34),
-      inset 0 1.2px 0.8px rgba(255, 255, 255, 0.62),
-      inset 0 -1px 1px rgba(0, 0, 0, 0.26);
+      0 14px 34px -10px rgba(0, 0, 0, 0.38),
+      inset 0 1.5px 2px rgba(255, 255, 255, 0.84),
+      inset 0 -1.5px 3px rgba(255, 195, 130, 0.26),
+      inset 1.5px 0 3px rgba(255, 255, 255, 0.24),
+      inset -1.5px 0 3px rgba(195, 230, 255, 0.22);
     opacity: 0;
-    transform: translate3d(0, 12px, 0);
-    animation: lgTubeEnter 0.38s cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
+    transform: translate3d(0, 10px, 0);
+    animation: lgTubeEnter 0.34s cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
     animation-delay: var(--tube-delay, 0ms);
     transition:
-      padding 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      border-radius 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      padding 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      border-radius 0.34s cubic-bezier(0.22, 1, 0.36, 1),
       background 0.28s ease,
       box-shadow 0.28s ease,
-      transform 0.22s ease;
+      transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .lg-track-tube::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    pointer-events: none;
-    background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.72) 0%,
-      rgba(var(--selected-album-rgb, 255, 168, 76), 0.38) 45%,
-      rgba(255, 255, 255, 0.14) 75%,
-      rgba(255, 255, 255, 0.58) 100%
-    );
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-  }
-
-  .lg-track-tube:hover:not(.lg-track-tube--expanded) {
+  .lg-track-tube:hover:not(.lg-track-tube--expanded-player) {
     transform: translateY(-1.5px) scale(1.008);
     background:
-      linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.26) 0%,
-        rgba(var(--selected-album-rgb, 255, 168, 76), 0.10) 100%
-      ),
-      rgba(12, 16, 28, 0.42);
-    box-shadow:
-      0 12px 28px -6px rgba(0, 0, 0, 0.42),
-      0 0 18px -4px rgba(var(--selected-album-rgb, 255, 168, 76), 0.38),
-      inset 0 1.4px 1px rgba(255, 255, 255, 0.75);
-  }
-
-  /* Expanded Active Track Tube */
-  .lg-track-tube--expanded {
-    cursor: default;
-    border-radius: 26px;
-    padding: 13px 16px 14px;
-    background:
-      linear-gradient(
-        165deg,
-        rgba(255, 255, 255, 0.26) 0%,
-        rgba(var(--selected-album-rgb, 255, 168, 76), 0.16) 52%,
-        rgba(10, 14, 24, 0.48) 100%
+      radial-gradient(
+        140% 100% at 20% 0%,
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(255, 255, 255, 0.04) 50%,
+        transparent 80%
       );
     box-shadow:
-      0 16px 38px -8px rgba(0, 0, 0, 0.52),
-      0 0 28px -4px rgba(var(--selected-album-rgb, 255, 168, 76), 0.46),
-      inset 0 1.6px 1.5px rgba(255, 255, 255, 0.85),
-      inset 0 -1.5px 3px rgba(var(--selected-album-rgb, 255, 168, 76), 0.28);
+      0 16px 38px -10px rgba(0, 0, 0, 0.44),
+      inset 0 2px 2.5px rgba(255, 255, 255, 0.92),
+      inset 0 -1.5px 3px rgba(255, 205, 140, 0.32);
+  }
+
+  /* ── Expanded Clear Sun/Earth Bubble Glass Player Card (No yellow box fog) ─ */
+  .lg-track-tube--expanded-player {
+    border-radius: 32px;
+    padding: 18px 20px 18px;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M5.5 3.2L19 12.8L12.2 13.9L15.3 20.3L12.4 21.6L9.4 15.1L5.5 18.8V3.2Z' fill='%23000000' stroke='%23ffffff' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E") 5 3, grab;
+    touch-action: none;
+    background:
+      radial-gradient(
+        140% 100% at 20% 0%,
+        rgba(255, 255, 255, 0.18) 0%,
+        rgba(255, 255, 255, 0.03) 48%,
+        transparent 78%
+      );
+    -webkit-backdrop-filter: blur(10px) saturate(155%);
+    backdrop-filter: blur(10px) saturate(155%);
+    box-shadow:
+      0 24px 56px -12px rgba(0, 0, 0, 0.48),
+      inset 0 2px 2.5px rgba(255, 255, 255, 0.88),
+      inset 0 -2px 3.5px rgba(255, 195, 130, 0.28),
+      inset 2px 0 3px rgba(255, 255, 255, 0.28),
+      inset -2px 0 3px rgba(195, 225, 255, 0.24);
+    transition:
+      padding 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      border-radius 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      background 0.28s ease,
+      box-shadow 0.28s ease;
+  }
+
+  .lg-track-tube--dragging-player {
+    box-shadow:
+      0 32px 70px -10px rgba(0, 0, 0, 0.58),
+      inset 0 2.5px 3px #ffffff,
+      inset 0 -2px 4px rgba(255, 205, 140, 0.34);
   }
 
   @keyframes lgTubeEnter {
     0% {
       opacity: 0;
-      transform: translate3d(0, 12px, 0);
+      transform: translate3d(0, 10px, 0);
     }
     100% {
       opacity: 1;
@@ -3102,26 +3059,24 @@ const SCOPED_STYLES = `
   }
 
   .lg-track-tube__header {
+    position: relative;
+    z-index: 4;
     display: flex;
     align-items: center;
-    gap: 11px;
+    gap: 12px;
     min-height: 28px;
   }
 
+  /* ── Self-Luminous Golden-Yellow Letters (Zero Rectangular Glow Box!) ──── */
   .lg-track-tube__num {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 0.76rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: rgba(255, 255, 255, 0.78);
-    min-width: 26px;
-    height: 26px;
+    min-width: 27px;
+    height: 27px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.10);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65);
     flex-shrink: 0;
   }
 
@@ -3131,7 +3086,25 @@ const SCOPED_STYLES = `
     background: transparent;
     box-shadow: none;
     margin-right: 6px;
-    color: rgba(var(--selected-album-rgb, 255, 200, 120), 1);
+  }
+
+  .lg-track-tube__num-glyph {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.76rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    background-image: linear-gradient(
+      180deg,
+      #fffef5 0%,
+      #ffec82 38%,
+      #ffd038 78%,
+      #ffae19 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: #ffe266;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
   }
 
   .lg-track-tube__title-wrap {
@@ -3140,17 +3113,41 @@ const SCOPED_STYLES = `
     display: flex;
     align-items: center;
     cursor: pointer;
+    filter: drop-shadow(0 1.5px 2px rgba(0, 0, 0, 0.65));
   }
 
+  /* Letters themselves are painted with a radiant golden-yellow gradient — NO clipped text-shadow box! */
   .lg-track-tube__title {
     font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
-    font-size: clamp(0.84rem, 0.78rem + 0.22vw, 0.95rem);
-    font-weight: 700;
-    color: #ffffff;
+    font-size: clamp(0.86rem, 0.8rem + 0.22vw, 0.98rem);
+    font-weight: 800;
+    letter-spacing: -0.005em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+    background-image: linear-gradient(
+      180deg,
+      #fffef6 0%,
+      #ffec85 36%,
+      #ffd13b 76%,
+      #ffb01f 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: #ffe266;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+
+  .lg-track-tube:hover .lg-track-tube__title,
+  .lg-track-tube--current .lg-track-tube__title {
+    background-image: linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fff39e 35%,
+      #ffda47 75%,
+      #ffbe2e 100%
+    );
   }
 
   .lg-tube-play-btn {
@@ -3159,30 +3156,19 @@ const SCOPED_STYLES = `
     min-width: 34px;
     border: none;
     border-radius: 50%;
-    color: #ffffff;
-    background:
-      radial-gradient(
-        circle at 32% 24%,
-        rgba(255, 255, 255, 0.55) 0%,
-        rgba(var(--selected-album-rgb, 255, 168, 76), 0.45) 55%,
-        rgba(18, 24, 38, 0.65) 100%
-      );
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.35),
-      inset 0 1.2px 1px rgba(255, 255, 255, 0.82);
+    color: #ffe578;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.85);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    transition: transform 0.18s ease, background 0.18s ease;
   }
 
   .lg-tube-play-btn:hover {
-    transform: scale(1.07);
-  }
-
-  .lg-tube-play-btn:active {
-    transform: scale(0.93);
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.20);
   }
 
   .lg-tube-mini-spinner {
@@ -3190,36 +3176,45 @@ const SCOPED_STYLES = `
     height: 15px;
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.28);
-    border-top-color: #ffffff;
+    border-top-color: #ffe57f;
     animation: lgSpin 0.75s linear infinite;
   }
 
   .lg-track-tube__actions {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     flex-shrink: 0;
   }
 
   .lg-tube-time-readout {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 0.74rem;
-    font-weight: 600;
+    font-weight: 800;
     font-variant-numeric: tabular-nums;
-    color: rgba(255, 255, 255, 0.92);
     white-space: nowrap;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+    background-image: linear-gradient(
+      180deg,
+      #fffef5 0%,
+      #ffec85 45%,
+      #ffd13b 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: #ffe266;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
   }
 
   .lg-tube-icon-btn {
-    width: 30px;
-    height: 30px;
-    min-width: 30px;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
     border: none;
     border-radius: 50%;
-    color: rgba(255, 255, 255, 0.92);
-    background: rgba(255, 255, 255, 0.10);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    color: #ffe885;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.68);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -3228,102 +3223,281 @@ const SCOPED_STYLES = `
   }
 
   .lg-tube-icon-btn:hover {
-    background: rgba(255, 255, 255, 0.20);
-    transform: scale(1.06);
+    background: rgba(255, 255, 255, 0.18);
+    transform: scale(1.08);
   }
 
-  /* Small Lyrics / Translation Button inside Expanded Tube */
+  .lg-yt-toggle-btn--active {
+    color: #ffe675;
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  /* Icon-Only Expressive Lyrics Button */
   .lg-tube-lyrics-btn {
     position: relative;
-    height: 30px;
-    padding: 0 10px;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    padding: 0;
     border: none;
-    border-radius: 999px;
+    border-radius: 50%;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    font-size: 0.73rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.94);
-    background:
-      linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.24) 0%,
-        rgba(255, 255, 255, 0.06) 100%
-      );
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.24),
-      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    justify-content: center;
+    color: #ffe885;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.72);
     cursor: pointer;
-    white-space: nowrap;
     transition:
       background 0.2s ease,
-      box-shadow 0.2s ease,
       transform 0.18s ease;
   }
 
   .lg-tube-lyrics-btn--ready {
-    box-shadow:
-      0 4px 14px rgba(var(--selected-album-rgb, 255, 168, 76), 0.35),
-      inset 0 1px 1px rgba(255, 255, 255, 0.82);
+    color: #ffea8a;
   }
 
   .lg-tube-lyrics-btn--active {
-    background:
-      linear-gradient(
-        180deg,
-        rgba(var(--selected-album-rgb, 255, 168, 76), 0.55) 0%,
-        rgba(var(--selected-album-rgb, 255, 168, 76), 0.24) 100%
-      );
-    box-shadow:
-      0 0 18px rgba(var(--selected-album-rgb, 255, 168, 76), 0.65),
-      inset 0 1.2px 1px rgba(255, 255, 255, 0.92);
+    color: #ffef99;
+    background: rgba(255, 255, 255, 0.20);
+    box-shadow: inset 0 1.4px 1.5px #ffffff;
   }
 
   .lg-tube-lyrics-btn:hover {
-    transform: scale(1.04);
+    transform: scale(1.08);
   }
 
   .lg-tube-lyrics-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #ffffff;
-    opacity: 0.75;
+    background: #ffe57f;
+    box-shadow: 0 0 8px #ffe57f;
   }
 
-  /* ── Capillary Liquid Seek Bar inside Expanded Track Tube ──────────────── */
-  .lg-track-tube__player-body {
-    margin-top: 10px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    animation: lgFadeSlideUp 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* ── Expanded Clear Glass Player Card Inner Layout ─────────────────────── */
+  .lg-expanded-player-card {
+    position: relative;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    animation: lgFadeSlideUp 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  .lg-expanded-player__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .lg-expanded-player__identity {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .lg-expanded-player__thumb-wrap {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 50%;
+    padding: 0;
+    box-sizing: border-box;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.42);
+  }
+
+  .lg-expanded-player__thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+  }
+
+  .lg-expanded-player__thumb-wrap--playing .lg-expanded-player__thumb {
+    animation: lgSpin 18s linear infinite;
+  }
+
+  .lg-expanded-player__thumb-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    border: 1.4px solid rgba(255, 255, 255, 0.88);
+    box-shadow: inset 0 1px 2px #ffffff;
+  }
+
+  .lg-expanded-player__titles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    filter: drop-shadow(0 1.5px 2px rgba(0, 0, 0, 0.68));
+  }
+
+  .lg-expanded-player__song-title {
+    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+    font-size: clamp(0.98rem, 0.9rem + 0.28vw, 1.14rem);
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-image: linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fff094 36%,
+      #ffd23b 78%,
+      #ffb01f 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: #ffe46b;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+
+  .lg-expanded-player__album-sub {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-size: 0.76rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(255, 244, 198, 0.92);
+    text-shadow: none;
+  }
+
+  .lg-expanded-player__top-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .lg-expanded-player__progress-section {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .lg-expanded-player__time-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.73rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: #ffe880;
+    padding: 0 2px;
+    text-shadow: none;
+  }
+
+  .lg-expanded-player__controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 2px;
+  }
+
+  .lg-player-side-btn {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 50%;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.68);
+    filter: drop-shadow(0 0 8px rgba(255, 218, 78, 0.75));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.18s ease, background 0.18s ease, filter 0.18s ease;
+  }
+
+  .lg-player-side-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 12px rgba(255, 224, 92, 0.98));
+  }
+
+  .lg-player-center-trio {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .lg-player-trio-btn {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.10);
+    box-shadow: inset 0 1.2px 1.2px rgba(255, 255, 255, 0.82);
+    filter: drop-shadow(0 0 9px rgba(255, 218, 78, 0.82));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.18s ease, background 0.18s ease, filter 0.18s ease;
+  }
+
+  .lg-player-trio-btn:hover {
+    background: rgba(255, 255, 255, 0.20);
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 14px rgba(255, 226, 96, 1));
+  }
+
+  .lg-player-trio-btn--primary {
+    width: 52px;
+    height: 52px;
+    color: #ffffff;
+    background:
+      radial-gradient(
+        circle at 32% 24%,
+        rgba(255, 255, 255, 0.34) 0%,
+        rgba(255, 255, 255, 0.08) 65%,
+        transparent 100%
+      );
+    box-shadow: inset 0 1.8px 2px #ffffff;
+    filter: drop-shadow(0 0 12px rgba(255, 220, 82, 0.95));
+  }
+
+  .lg-player-trio-btn--primary:hover {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 16px rgba(255, 228, 100, 1));
+  }
+
+  /* ── Capillary Liquid Seek Bar inside Expanded Player ──────────────────── */
   .lg-tube-seek-hit {
     height: 28px;
   }
 
   .lg-tube-seek-track {
-    height: 12px;
+    height: 11px;
   }
 
-  /* Flowing Liquid inside Track Tube (Tinted with Album Cover Color + Ruby Core) */
   .lg-tube-seek-fill {
     background:
       linear-gradient(
         180deg,
-        rgba(255, 255, 255, 0.85) 0%,
-        rgba(var(--selected-album-rgb, 255, 140, 65), 0.92) 42%,
-        rgba(215, 28, 56, 0.92) 82%,
-        rgba(var(--selected-album-rgb, 255, 168, 76), 0.95) 100%
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 224, 96, 0.95) 50%,
+        rgba(255, 195, 55, 0.95) 100%
       );
     box-shadow:
-      0 0 14px rgba(var(--selected-album-rgb, 255, 140, 65), 0.72),
-      0 0 24px rgba(215, 28, 56, 0.42),
-      inset 0 1px 1.5px rgba(255, 255, 255, 0.82),
-      inset 0 -1px 2px rgba(45, 0, 12, 0.65);
+      0 0 12px rgba(255, 220, 82, 0.78),
+      inset 0 1px 1.5px #ffffff;
   }
 
   .lg-tube-seek-thumb {
@@ -3333,71 +3507,35 @@ const SCOPED_STYLES = `
       radial-gradient(
         circle at 34% 28%,
         #ffffff 0%,
-        rgba(var(--selected-album-rgb, 255, 168, 76), 0.96) 45%,
-        rgba(195, 22, 48, 0.96) 100%
+        rgba(255, 228, 105, 0.98) 60%,
+        rgba(255, 195, 55, 0.98) 100%
       );
     box-shadow:
-      0 2px 8px rgba(0, 0, 0, 0.48),
-      0 0 14px rgba(var(--selected-album-rgb, 255, 168, 76), 0.92),
+      0 2px 8px rgba(0, 0, 0, 0.45),
+      0 0 14px rgba(255, 224, 92, 0.95),
       inset 0 1.5px 1.5px #ffffff;
   }
 
   /* ==========================================================================
-   * SIDE-BY-SIDE LIQUID GLASS SYNCED LYRICS WINDOW (nl music Lyrics Engine)
+   * "LIQUID GLASS iOS 26" DIAGONAL 3-CAPSULE LYRICS STAGE (STRICTLY 2 LINES!)
    * ========================================================================== */
-  .lg-lyrics-glass-window {
+  .lg-ios26-lyrics-stage {
     position: relative;
-    flex: 1 1 380px;
-    max-width: 440px;
-    height: calc(100% - 8px);
+    flex: 0 1 450px;
+    max-width: 480px;
     align-self: center;
-    border-radius: 28px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    isolation: isolate;
-    background:
-      linear-gradient(
-        160deg,
-        rgba(255, 255, 255, 0.24) 0%,
-        rgba(var(--selected-album-rgb, 255, 168, 76), 0.12) 48%,
-        rgba(10, 14, 24, 0.46) 100%
-      );
-    -webkit-backdrop-filter: blur(22px) saturate(190%);
-    backdrop-filter: blur(22px) saturate(190%);
-    box-shadow:
-      0 22px 54px -10px rgba(0, 0, 0, 0.52),
-      0 0 32px -6px rgba(var(--selected-album-rgb, 255, 168, 76), 0.42),
-      inset 0 1.8px 1.5px rgba(255, 255, 255, 0.82),
-      inset 0 -2px 4px rgba(var(--selected-album-rgb, 255, 168, 76), 0.26);
+    justify-content: center;
+    padding: 8px 6px;
+    box-sizing: border-box;
     animation: lgLyricsWindowSlideIn 0.38s cubic-bezier(0.2, 0.9, 0.25, 1) both;
-  }
-
-  .lg-lyrics-glass-window::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1.2px;
-    pointer-events: none;
-    background: conic-gradient(
-      from 180deg at 50% 50%,
-      rgba(255, 255, 255, 0.88) 0deg,
-      rgba(var(--selected-album-rgb, 255, 168, 76), 0.52) 90deg,
-      rgba(255, 255, 255, 0.16) 180deg,
-      rgba(var(--selected-album-rgb, 255, 168, 76), 0.48) 270deg,
-      rgba(255, 255, 255, 0.88) 360deg
-    );
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
   }
 
   @keyframes lgLyricsWindowSlideIn {
     0% {
       opacity: 0;
-      transform: translate3d(24px, 0, 0) scale(0.94);
+      transform: translate3d(22px, 0, 0) scale(0.94);
     }
     100% {
       opacity: 1;
@@ -3405,196 +3543,254 @@ const SCOPED_STYLES = `
     }
   }
 
-  .lg-lyrics-glass-window__header {
+  .lg-ios26-quote-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 14px 16px 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    flex-shrink: 0;
+    width: 100%;
+    margin-bottom: -6px;
+    z-index: 6;
   }
 
-  .lg-lyrics-glass-window__title-group {
+  .lg-ios26-lyrics-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    color: #ffffff;
+    background:
+      radial-gradient(
+        140% 100% at 20% 0%,
+        rgba(255, 255, 255, 0.18) 0%,
+        rgba(255, 255, 255, 0.03) 60%,
+        transparent 100%
+      );
+    -webkit-backdrop-filter: blur(8px) saturate(145%);
+    backdrop-filter: blur(8px) saturate(145%);
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.32),
+      inset 0 1.2px 1.5px rgba(255, 255, 255, 0.85);
+    filter: drop-shadow(0 0 7px rgba(255, 218, 75, 0.65));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.18s ease, background 0.18s ease;
+  }
+
+  .lg-ios26-lyrics-close:hover {
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  /* 3-Capsule Diagonal Spatial Assembly (Compact & Hugging Only 2 Lines) */
+  .lg-ios26-diagonal-assembly {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* 1 & 3: Small Quote Capsules with Double-Layered Rim & Milky Frosted Core */
+  .lg-ios26-quote-capsule {
+    display: flex;
+    z-index: 6;
+  }
+
+  .lg-ios26-quote-capsule--open {
+    align-self: flex-start;
+    margin-left: 2px;
+  }
+
+  .lg-ios26-quote-capsule--close {
+    align-self: flex-end;
+    margin-right: 2px;
+    margin-top: -6px;
+  }
+
+  .lg-ios26-quote-capsule__outer-rim {
+    padding: 4.5px;
+    border-radius: 999px;
+    background:
+      radial-gradient(
+        140% 100% at 20% 0%,
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(255, 255, 255, 0.04) 60%,
+        transparent 100%
+      );
+    -webkit-backdrop-filter: blur(10px) saturate(155%);
+    backdrop-filter: blur(10px) saturate(155%);
+    border: 1.4px solid rgba(255, 255, 255, 0.82);
+    box-shadow:
+      0 12px 28px -6px rgba(0, 0, 0, 0.42),
+      inset 0 1.5px 2px #ffffff;
+  }
+
+  .lg-ios26-quote-capsule__milky-core {
+    min-width: 54px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 999px;
     display: flex;
     align-items: center;
-    gap: 9px;
-    min-width: 0;
+    justify-content: center;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.86) 0%,
+        rgba(240, 245, 255, 0.68) 100%
+      );
+    box-shadow:
+      0 4px 10px rgba(0, 0, 0, 0.20),
+      inset 0 1.5px 2px #ffffff;
   }
 
-  .lg-lyrics-sparkle {
-    color: rgba(var(--selected-album-rgb, 255, 210, 140), 1);
-    flex-shrink: 0;
+  .lg-ios26-quote-glyph {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.95rem;
+    font-weight: 900;
+    line-height: 1;
+    color: rgba(24, 30, 48, 0.78);
+    text-shadow: 0 1px 0 #ffffff;
+    transform: translateY(5px);
+    user-select: none;
   }
 
-  .lg-lyrics-glass-window__meta {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .lg-lyrics-glass-window__song {
-    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
-    font-size: 0.88rem;
-    font-weight: 800;
-    color: #ffffff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .lg-lyrics-glass-window__artist {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.72);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .lg-lyrics-glass-window__body {
-    flex: 1 1 auto;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  /* 2: Wide Central Container — True Sun/Earth Clear Bubble Glass Hugging ONLY 2 Lines */
+  .lg-ios26-central-capsule {
     position: relative;
+    width: 100%;
+    border-radius: 34px;
+    padding: 20px 24px;
+    box-sizing: border-box;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+      radial-gradient(
+        140% 100% at 20% 0%,
+        rgba(255, 255, 255, 0.16) 0%,
+        rgba(255, 255, 255, 0.02) 48%,
+        transparent 78%
+      );
+    -webkit-backdrop-filter: blur(8px) saturate(150%);
+    backdrop-filter: blur(8px) saturate(150%);
+    box-shadow:
+      0 22px 52px -12px rgba(0, 0, 0, 0.46),
+      inset 0 2px 2.5px rgba(255, 255, 255, 0.88),
+      inset 0 -2px 3.5px rgba(255, 195, 130, 0.28),
+      inset 2px 0 3px rgba(255, 255, 255, 0.26),
+      inset -2px 0 3px rgba(195, 225, 255, 0.24);
   }
 
-  .lg-lyrics-status {
-    height: 100%;
+  .lg-ios26-lyrics-empty {
+    min-height: 76px;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    padding: 24px;
     text-align: center;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.92rem;
+    font-weight: 700;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.9);
   }
 
-  .lg-lyrics-synced-stage {
-    height: 100%;
+  /* Strictly 2-Line Spotlight (No extra stream or empty space below!) */
+  .lg-ios26-two-line-spotlight {
+    position: relative;
+    z-index: 4;
+    padding: 4px 2px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    text-align: left;
+    isolation: isolate;
   }
 
-  .lg-lyrics-scroll-list,
-  .lg-lyrics-plain-scroll {
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-    padding: 36px 18px 64px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-    text-align: center;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
-    -webkit-mask-image: linear-gradient(
-      180deg,
-      transparent 0%,
-      #000 12%,
-      #000 88%,
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      180deg,
-      transparent 0%,
-      #000 12%,
-      #000 88%,
-      transparent 100%
-    );
+  /* Softly Blurred Miniature Patch of the Album Cover Moving Behind the Active Spoken Words */
+  .lg-ios26-word-cover-aura {
+    position: absolute;
+    top: -4%;
+    left: var(--word-aura-x, 28%);
+    width: 52%;
+    height: 108%;
+    transform: translateX(-25%);
+    background-size: cover;
+    background-position: center;
+    border-radius: 999px;
+    filter: blur(15px) saturate(185%) brightness(1.06);
+    opacity: 0.65;
+    z-index: 0;
+    pointer-events: none;
+    transition: left 0.28s linear, background-image 0.35s ease;
   }
 
-  .lg-lyric-line {
-    appearance: none;
-    border: none;
-    background: transparent;
-    padding: 6px 10px;
-    border-radius: 14px;
-    width: 100%;
-    cursor: pointer;
-    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
-    font-size: clamp(0.92rem, 0.84rem + 0.28vw, 1.06rem);
-    font-weight: 600;
-    line-height: 1.45;
-    color: rgba(255, 255, 255, 0.42);
-    transition:
-      color 0.26s ease,
-      transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
-      text-shadow 0.26s ease,
-      background 0.22s ease;
-  }
-
-  .lg-lyric-line:hover {
-    color: rgba(255, 255, 255, 0.78);
-    background: rgba(255, 255, 255, 0.06);
-  }
-
-  .lg-lyric-line--passed {
-    color: rgba(255, 255, 255, 0.52);
-  }
-
-  .lg-lyric-line--active {
-    font-size: clamp(1.06rem, 0.96rem + 0.4vw, 1.26rem);
-    font-weight: 800;
-    color: #ffffff;
-    transform: scale(1.05);
-    background: rgba(var(--selected-album-rgb, 255, 168, 76), 0.16);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
-    text-shadow:
-      0 2px 12px rgba(0, 0, 0, 0.65),
-      0 0 18px rgba(var(--selected-album-rgb, 255, 168, 76), 0.85);
-  }
-
-  .lg-lyric-plain-line {
+  .lg-ios26-line {
+    position: relative;
+    z-index: 2;
     margin: 0;
+    width: 100%;
     font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
-    font-size: 0.95rem;
-    font-weight: 600;
-    line-height: 1.65;
-    color: rgba(255, 255, 255, 0.88);
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+    font-style: italic;
+    text-align: left;
+    letter-spacing: -0.01em;
+    transition: transform 0.26s ease, opacity 0.26s ease;
   }
 
-  /* Responsive stacking for Selected Album + Side Lyrics Window on Mobile */
-  @media (max-width: 860px) {
+  .lg-ios26-line--primary {
+    font-size: clamp(1.16rem, 1.02rem + 0.48vw, 1.44rem);
+    font-weight: 800;
+    line-height: 1.28;
+    color: #ffffff;
+    text-shadow:
+      0 3px 14px rgba(0, 0, 0, 0.76),
+      0 1px 3px rgba(0, 0, 0, 0.58);
+  }
+
+  .lg-ios26-line--secondary {
+    font-size: clamp(0.98rem, 0.9rem + 0.34vw, 1.18rem);
+    font-weight: 700;
+    line-height: 1.32;
+    color: rgba(255, 255, 255, 0.78);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+  }
+
+  /* Responsive stacking for Selected Album + iOS 26 Lyrics on Mobile */
+  @media (max-width: 880px) {
     .lg-album-detail-workspace {
       flex-direction: column;
       gap: 12px;
-      padding-top: max(54px, calc(env(safe-area-inset-top) + 42px));
+      padding-top: max(50px, calc(env(safe-area-inset-top) + 38px));
+      overflow-y: auto;
     }
 
     .lg-album-player-column,
     .lg-album-detail-workspace--with-lyrics .lg-album-player-column {
       max-width: 100%;
-      flex: 1 1 55%;
+      flex: 1 1 56%;
     }
 
-    .lg-ascended-album-cover {
-      width: clamp(92px, 13dvh, 128px);
-      height: clamp(92px, 13dvh, 128px);
+    .lg-ascended-album-cover--sun-bubble {
+      width: clamp(116px, 16dvh, 148px);
+      height: clamp(116px, 16dvh, 148px);
     }
 
-    .lg-lyrics-glass-window {
+    .lg-ios26-lyrics-stage {
       max-width: 100%;
       width: 100%;
-      flex: 1 1 42%;
-      height: auto;
+      flex: 0 0 auto;
+      padding: 4px 4px 14px;
     }
   }
 
   @media (max-width: 640px) {
     .lg-glass-pill {
-      -webkit-backdrop-filter: blur(12px) saturate(150%);
-      backdrop-filter: blur(12px) saturate(150%);
+      -webkit-backdrop-filter: blur(10px) saturate(145%);
+      backdrop-filter: blur(10px) saturate(145%);
     }
   }
 
@@ -3605,13 +3801,13 @@ const SCOPED_STYLES = `
     .lg-orb-title-img,
     .lg-glass-pill,
     .lg-next-random-btn,
-    .lg-album-cell,
+    .lg-silk-tile,
     .lg-track-tube {
       transition: none;
       animation: none;
       opacity: 1;
-      transform: none;
     }
   }
 `;
+
 
