@@ -1,118 +1,352 @@
-/* صفحة السينما — تخطيط 2026 للهاتف والحاسوب */
+/* ==========================================================================
+ * src/styles/components/cinema.css
+ * Liquid Glass Cinema System (Movies & Series) — Lightweight VisionOS / iOS 26
+ * ========================================================================== */
+
 :root {
-  --cinema-header-h: 60px;
-  --aero-glass-bg: rgba(20, 20, 20, 0.55);
-  --aero-glass-blur: 24px;
-  --aero-hi: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.02) 40%, transparent 100%);
-  --aero-border: 1px dashed rgba(255, 255, 255, 0.14);
-  --aero-shadow: 0 16px 45px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --cinema-header-h: 68px;
 }
 
-.aero-glass-style {
-  background: var(--aero-glass-bg);
-  -webkit-backdrop-filter: blur(var(--aero-glass-blur)) saturate(160%);
-  backdrop-filter: blur(var(--aero-glass-blur)) saturate(160%);
-  border: var(--aero-border);
-  box-shadow: var(--aero-shadow);
-  position: relative;
+.nl-cinema-root {
+  height: 100svh;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  overscroll-behavior: none;
+  background: #060911;
+  isolation: isolate;
+}
+
+.nl-cinema-root img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+.nl-cinema-scroll {
+  scroll-padding-top: var(--cinema-header-h);
+}
+
+/* ── Dynamic Ambient Backdrop Aura Behind Entire Page ───────────────────── */
+.lg-cinema-ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   overflow: hidden;
 }
 
-.aero-glass-style::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 35%;
-  background: var(--aero-hi);
-  pointer-events: none;
-  z-index: 1;
+.lg-cinema-ambient-bg__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(54px) saturate(165%) brightness(0.38);
+  transform: scale(1.12);
+  opacity: 0.85;
+  transition: opacity 0.6s ease;
 }
 
-/* Fallback for browsers that don't support backdrop-filter */
-@supports not (backdrop-filter: blur(2px)) {
-  .aero-glass-style {
-    background: rgba(20, 20, 20, 0.95) !important;
+.lg-cinema-ambient-bg__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(16, 24, 42, 0.25) 0%, rgba(6, 9, 17, 0.86) 75%),
+    linear-gradient(180deg, rgba(6, 9, 17, 0.35) 0%, rgba(6, 9, 17, 0.78) 55%, rgba(6, 9, 17, 0.96) 100%);
+}
+
+/* ── Unified Liquid Glass Header (Never overlaps Sound & Back/Close) ────── */
+.nl-cinema-header {
+  padding-top: calc(0.65rem + env(safe-area-inset-top));
+  padding-bottom: 0.65rem;
+  padding-inline-start: max(1rem, env(safe-area-inset-left));
+  padding-inline-end: max(1rem, env(safe-area-inset-right));
+  transition:
+    background 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.nl-cinema-header--floating {
+  background: linear-gradient(
+    180deg,
+    rgba(6, 10, 18, 0.72) 0%,
+    rgba(6, 10, 18, 0.24) 70%,
+    transparent 100%
+  );
+}
+
+.nl-cinema-header--scrolled {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 100%),
+    rgba(8, 12, 22, 0.68);
+  -webkit-backdrop-filter: blur(20px) saturate(185%);
+  backdrop-filter: blur(20px) saturate(185%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+/* ── Shared Lightweight Liquid Glass Surfaces & Pills ──────────────────── */
+.aero-glass-style,
+.lg-cinema-glass-surface {
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 55%, rgba(10, 15, 26, 0.45) 100%),
+    rgba(10, 14, 24, 0.62);
+  -webkit-backdrop-filter: blur(22px) saturate(185%);
+  backdrop-filter: blur(22px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 22px 54px -10px rgba(0, 0, 0, 0.62),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.65),
+    inset 0 -1px 2px rgba(145, 215, 255, 0.18);
+  position: relative;
+}
+
+.lg-cinema-pill-group {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 100%),
+    rgba(8, 12, 22, 0.48);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0.8px rgba(255, 255, 255, 0.55);
+}
+
+.lg-cinema-icon-pill,
+.lg-cinema-action-pill {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 100%),
+    rgba(12, 18, 30, 0.42);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.28),
+    inset 0 1.2px 0.8px rgba(255, 255, 255, 0.65);
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.lg-cinema-icon-pill:hover,
+.lg-cinema-action-pill:hover {
+  transform: translateY(-1px) scale(1.04);
+  border-color: rgba(255, 255, 255, 0.48);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.10) 100%),
+    rgba(18, 26, 42, 0.55);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.36),
+    0 0 16px rgba(155, 225, 255, 0.26),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.85);
+}
+
+.lg-cinema-icon-pill:active,
+.lg-cinema-action-pill:active {
+  transform: scale(0.95);
+}
+
+/* Primary glowing liquid glass CTA (Watch Now / Active Tab) */
+.lg-cinema-primary-pill,
+.lg-cinema-server-tab--active {
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.45) 0%, transparent 55%),
+    linear-gradient(135deg, rgba(235, 30, 58, 0.88) 0%, rgba(185, 12, 38, 0.88) 100%);
+  box-shadow:
+    0 10px 26px -4px rgba(229, 9, 20, 0.52),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.82);
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s ease;
+}
+
+.lg-cinema-primary-pill:hover {
+  transform: translateY(-1.5px) scale(1.03);
+  box-shadow:
+    0 14px 32px -4px rgba(235, 25, 45, 0.68),
+    inset 0 1.8px 1.2px rgba(255, 255, 255, 0.92);
+}
+
+.lg-cinema-primary-pill:active {
+  transform: scale(0.96);
+}
+
+/* ── Liquid Glass Poster Card & Unclipped Smooth Hover Zoom ─────────────── */
+.nl-cinema-row {
+  -webkit-overflow-scrolling: touch;
+  padding-top: 22px !important;
+  padding-bottom: 26px !important;
+}
+
+@media (max-width: 639px) {
+  .nl-cinema-row {
+    scroll-snap-type: x proximity !important;
+    padding-top: 12px !important;
+    padding-bottom: 16px !important;
   }
 }
 
-/* Respect reduced motion preference */
+.nl-poster {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18) 0%, rgba(12, 16, 26, 0.42) 100%);
+  box-shadow:
+    0 12px 28px -8px rgba(0, 0, 0, 0.58),
+    inset 0 1.2px 1px rgba(255, 255, 255, 0.62);
+  transform-origin: center center;
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s ease,
+    z-index 0s;
+}
+
+.nl-poster--hovered {
+  z-index: 45 !important;
+  transform: translateY(-10px) scale(1.13);
+  border-color: rgba(255, 255, 255, 0.68);
+  box-shadow:
+    0 24px 48px -8px rgba(0, 0, 0, 0.82),
+    0 0 28px -2px rgba(165, 228, 255, 0.38),
+    inset 0 2px 2px rgba(255, 255, 255, 0.92);
+}
+
+.nl-poster__sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.36) 0%,
+    rgba(255, 255, 255, 0.06) 32%,
+    transparent 58%
+  );
+  opacity: 0.72;
+  transition: opacity 0.28s ease;
+}
+
+.nl-poster--hovered .nl-poster__sheen {
+  opacity: 1;
+}
+
+.nl-poster__glass-drawer {
+  position: absolute;
+  inset-inline: 6px;
+  bottom: 6px;
+  z-index: 5;
+  border-radius: 13px;
+  padding: 8px 9px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 100%),
+    rgba(8, 12, 22, 0.74);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0.8px rgba(255, 255, 255, 0.68);
+}
+
+@media (max-width: 479px) {
+  .nl-cinema-root .nl-poster {
+    width: clamp(104px, 31vw, 136px) !important;
+  }
+}
+
+/* ── Liquid Glass Details Modal & Stream Modal ─────────────────────────── */
+.lg-cinema-glass-modal,
+.nl-detail-card {
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 48%, rgba(8, 12, 22, 0.68) 100%),
+    rgba(8, 12, 22, 0.74);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 28px 72px -12px rgba(0, 0, 0, 0.78),
+    0 0 38px -8px rgba(155, 220, 255, 0.22),
+    inset 0 1.8px 1.5px rgba(255, 255, 255, 0.78),
+    inset 0 -1.5px 3px rgba(145, 215, 255, 0.22);
+}
+
+.lg-cinema-embed-box {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px rgba(255, 255, 255, 0.45);
+}
+
+.lg-cinema-source-row {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 100%),
+    rgba(12, 18, 30, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0.8px rgba(255, 255, 255, 0.5);
+}
+
+.lg-cinema-source-row:hover {
+  border-color: rgba(255, 255, 255, 0.38);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.07) 100%),
+    rgba(16, 24, 40, 0.58);
+}
+
+.lg-cinema-badge-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(235, 30, 58, 0.9), rgba(185, 12, 38, 0.9));
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.75);
+}
+
+@media (max-width: 639px) {
+  .nl-detail-wrap {
+    padding: 8px !important;
+  }
+  .nl-detail-card {
+    max-width: 100% !important;
+    max-height: calc(100dvh - 16px);
+    border-radius: 24px !important;
+    overflow-y: auto;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* NL Logo */
+.nl-logo {
+  display: inline-block;
+  font: 900 clamp(20px, 4.5vw, 28px) / 1 'Plus Jakarta Sans', 'Arial Black', system-ui, sans-serif;
+  letter-spacing: -0.04em;
+  color: #ff2a38;
+  text-shadow: 0 2px 14px rgba(255, 42, 56, 0.55);
+  filter: drop-shadow(0 0 8px rgba(255, 42, 56, 0.38));
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .aero-glass-style, .nl-cinema-root, .nl-cinema-back {
+  .aero-glass-style,
+  .nl-cinema-root,
+  .nl-poster,
+  .lg-cinema-icon-pill,
+  .lg-cinema-action-pill,
+  .lg-cinema-primary-pill {
     transition: none !important;
     animation: none !important;
     transform: none !important;
   }
-}
-
-/* الجذر: ارتفاع آمن مستقر للهاتف مع دعم النوتش */
-.nl-cinema-root{
-  height:100svh;       /* أساس مستقر لا يقفز أثناء التمرير */
-  height:100dvh;       /* ديناميكي للمتصفحات الداعمة */
-  padding-top:env(safe-area-inset-top);
-  padding-bottom:env(safe-area-inset-bottom);
-  overscroll-behavior:none;   /* منع pull-to-refresh */
-}
-
-/* الهيدر يحترم النوتش */
-.nl-cinema-header{
-  padding-top:calc(0.875rem + env(safe-area-inset-top));
-  padding-inline-start:max(1rem, env(safe-area-inset-left));
-  padding-inline-end:max(1rem, env(safe-area-inset-right));
-}
-
-/* حاوية التمرير تبدأ تحت الهيدر بشكل سليم */
-.nl-cinema-scroll{ scroll-padding-top:var(--cinema-header-h); }
-
-/* منع سحب الصور و long-press على الهاتف (إحساس أصلي) */
-.nl-cinema-root img{ -webkit-user-drag:none; -webkit-touch-callout:none; }
-
-/* بوسترات أدق على الهاتف الصغير جداً */
-@media (max-width:479px){
-  .nl-cinema-root .nl-poster{ width:clamp(96px, 30vw, 130px) !important; }
-}
-
-/* زر رجوع الهاتف */
-.nl-cinema-back{
-  position:fixed;
-  top:calc(env(safe-area-inset-top) + 10px);
-  inset-inline-start:calc(env(safe-area-inset-left) + 12px);
-  z-index:7500;                 /* فوق نافذة التفاصيل (7000) */
-  display:flex; align-items:center; justify-content:center;
-  width:42px; height:42px; border-radius:9999px;
-  background:#E50914; color:#fff;
-  border:1px solid rgba(255,255,255,.25);
-  box-shadow:0 6px 18px rgba(229,9,20,.45);
-  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
-  cursor:pointer; transition:transform .15s ease;
-}
-.nl-cinema-back:active{ transform:scale(.9); }
-/* في العربية يتجه السهم لليمين */
-[dir="rtl"] .nl-cinema-back svg{ transform:scaleX(-1); }
-
-/* كاروسيل مرن على الهاتف */
-@media (max-width:639px){
-  .nl-cinema-row{ scroll-snap-type:x proximity !important; }
-}
-.nl-cinema-row{ -webkit-overflow-scrolling:touch; }
-
-/* ملء الشاشة للتفاصيل على الهاتف */
-@media (max-width:639px){
-  .nl-detail-wrap{ padding:0 !important; }
-  .nl-detail-card{
-    max-width:100% !important;
-    height:100svh; height:100dvh;
-    border-radius:0 !important;
-    overflow-y:auto;
-    padding-bottom:env(safe-area-inset-bottom);
-  }
-}
-
-/* لوقو NL */
-.nl-logo{
-  display:inline-block;
-  font:900 clamp(20px, 5.5vw, 30px)/1 "Arial Black", system-ui, sans-serif;
-  letter-spacing:-0.05em;
-  color:#E50914;                       /* أحمر نيتفلكس */
-  text-shadow:0 2px 12px rgba(229,9,20,.5);
-  filter:drop-shadow(0 0 6px rgba(229,9,20,.4));
-  -webkit-text-stroke:0.5px rgba(255,255,255,.08);
 }

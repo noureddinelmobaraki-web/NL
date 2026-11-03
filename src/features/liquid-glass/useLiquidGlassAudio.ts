@@ -204,7 +204,7 @@ export function useLiquidGlassAudio(src: string = LIQUID_GLASS_BG_AUDIO_URL) {
     }
   }, []);
 
-  const onVideoElementMount = useCallback((el: HTMLVideoElement | null) => {
+  const onVideoElementMount = useCallback((el: HTMLMediaElement | null) => {
     if (videoUnregisterRef.current) {
       try {
         videoUnregisterRef.current();

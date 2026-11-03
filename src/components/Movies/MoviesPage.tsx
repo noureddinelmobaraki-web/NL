@@ -136,220 +136,344 @@ export function normalizeItem(raw: any, mediaType: Media, lang: string): CinemaI
   };
 }
 
-const getBackdropSrc_static = (path: string | null | undefined) => {
-  if (!path) return "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1600";
-  if (path.startsWith("http")) return path;
-  return `${TMDB_IMAGE_BASE}/original${path}`;
+const getBackdropSrc_static = (
+  path: string | null | undefined,
+  trailerKey?: string,
+  posterPath?: string,
+) => {
+  if (path) {
+    if (path.startsWith("http")) return path;
+    return `${TMDB_IMAGE_BASE}/original${path}`;
+  }
+  if (posterPath) {
+    if (posterPath.startsWith("http")) return posterPath;
+    return `${TMDB_IMAGE_BASE}/w780${posterPath}`;
+  }
+  if (trailerKey) {
+    return `https://i.ytimg.com/vi/${trailerKey}/hqdefault.jpg`;
+  }
+  return "/bioBG_poster.webp";
 };
 
-const getPosterSrc_static = (path: string | null | undefined) => {
-  if (!path) return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500";
-  if (path.startsWith("http")) return path;
-  return `${TMDB_IMAGE_BASE}/w342${path}`;
+const getPosterSrc_static = (
+  path: string | null | undefined,
+  trailerKey?: string,
+  backdropPath?: string,
+) => {
+  if (path) {
+    if (path.startsWith("http")) return path;
+    return `${TMDB_IMAGE_BASE}/w500${path}`;
+  }
+  if (backdropPath) {
+    if (backdropPath.startsWith("http")) return backdropPath;
+    return `${TMDB_IMAGE_BASE}/w500${backdropPath}`;
+  }
+  if (trailerKey) {
+    return `https://i.ytimg.com/vi/${trailerKey}/hqdefault.jpg`;
+  }
+  return "/bioBG_poster.webp";
 };
 
-const MOVIE_ROW_SCROLL_STYLE: React.CSSProperties = { scrollbarWidth: "none", msOverflowStyle: "none", scrollSnapType: "x mandatory" };
+const MOVIE_ROW_SCROLL_STYLE: React.CSSProperties = {
+  scrollbarWidth: "none",
+  msOverflowStyle: "none",
+  scrollSnapType: "x mandatory",
+};
 
-const MoviePosterCard = React.memo(({ 
-  item, isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t, isFavorite 
-}: { 
-  item: CinemaItem, isTouch: boolean, activeHoverId: number | null, 
-  setActiveHoverId: (id: number | null) => void, hoverTimer: React.MutableRefObject<any>, 
-  setSelectedItemId: (id: number | null) => void, t: any, isFavorite?: boolean 
-}) => {
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const [hovered, setHovered] = useState(false);
+const MoviePosterCard = React.memo(
+  ({
+    item,
+    isTouch,
+    activeHoverId,
+    setActiveHoverId,
+    hoverTimer,
+    setSelectedItemId,
+    onQuickWatch,
+    t,
+    isFavorite,
+  }: {
+    item: CinemaItem;
+    isTouch: boolean;
+    activeHoverId: number | null;
+    setActiveHoverId: (id: number | null) => void;
+    hoverTimer: React.MutableRefObject<any>;
+    setSelectedItemId: (id: number | null) => void;
+    onQuickWatch?: (item: CinemaItem) => void;
+    t: any;
+    isFavorite?: boolean;
+  }) => {
+    const cardRef = useRef<HTMLDivElement | null>(null);
+    const [hovered, setHovered] = useState(false);
 
-  const handleMouseEnter = useCallback(() => {
-    if (isTouch) return;
-    if (hoverTimer.current) clearTimeout(hoverTimer.current);
-    setHovered(true);
-    setActiveHoverId(item.id);
-  }, [isTouch, hoverTimer, item.id, setActiveHoverId]);
+    const handleMouseEnter = useCallback(() => {
+      if (isTouch) return;
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+      setHovered(true);
+      setActiveHoverId(item.id);
+    }, [isTouch, hoverTimer, item.id, setActiveHoverId]);
 
-  const handleMouseLeave = useCallback(() => {
-    if (isTouch) return;
-    hoverTimer.current = setTimeout(() => {
-      setHovered(false);
-      setActiveHoverId(null);
-    }, 350);
-  }, [isTouch, hoverTimer, setActiveHoverId]);
+    const handleMouseLeave = useCallback(() => {
+      if (isTouch) return;
+      hoverTimer.current = setTimeout(() => {
+        setHovered(false);
+        setActiveHoverId(null);
+      }, 180);
+    }, [isTouch, hoverTimer, setActiveHoverId]);
 
-  useEffect(() => {
-    if (activeHoverId !== item.id) { setHovered(false); }
-  }, [activeHoverId, item.id]);
+    useEffect(() => {
+      if (activeHoverId !== item.id) {
+        setHovered(false);
+      }
+    }, [activeHoverId, item.id]);
 
-  const fallbackGenText = item.genreNames.slice(0, 2).join(" · ") || "Drama";
+    const isZoomed = hovered && activeHoverId === item.id && !isTouch;
+    const fallbackGenText = item.genreNames.slice(0, 2).join(" · ") || "Cinema";
+    const posterUrl = getPosterSrc_static(
+      item.posterPath,
+      item.trailerKey,
+      item.backdropPath,
+    );
 
-  return (
-    <div
-      ref={cardRef}
-      role="button"
-      tabIndex={0}
-      aria-label={item.title}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={() => setSelectedItemId(item.id)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          setSelectedItemId(item.id);
-        }
-      }}
-      className="nl-poster relative w-[110px] sm:w-[150px] md:w-[170px] aspect-[2/3] rounded-md overflow-hidden bg-neutral-900 border border-zinc-800 hover:border-red-600 focus-visible:outline-none focus-visible:border-red-500 focus-visible:ring-2 focus-visible:ring-red-500 cursor-pointer select-none transition shadow hover:shadow-red-900/50 hover:shadow-lg active:scale-95 flex-shrink-0 snap-start"
-    >
-      {isFavorite && (
-        <span
-          className="absolute top-1.5 left-1.5 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-red-600 shadow-sm"
-          aria-label="Favorited"
-        >
-          <Heart size={10} strokeWidth={2.5} fill="white" color="white" />
-        </span>
-      )}
-      <img
-        src={getPosterSrc_static(item.posterPath)}
-        alt={item.title}
-        loading="lazy"
-        decoding="async"
-        onError={(e) => {
-          const el = e.currentTarget;
-          if (item.trailerKey && !el.dataset.fb) {
-            el.dataset.fb = '1';
-            el.src = `https://i.ytimg.com/vi/${item.trailerKey}/hqdefault.jpg`;
+    return (
+      <div
+        ref={cardRef}
+        role="button"
+        tabIndex={0}
+        aria-label={item.title}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={() => setSelectedItemId(item.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setSelectedItemId(item.id);
           }
         }}
-        className="w-full h-full object-cover select-none pointer-events-none"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-0 hover:opacity-100 transition-opacity flex flex-col justify-end p-2.5">
-        <p className="text-[10px] sm:text-xs font-black text-zinc-100 truncate">{item.title}</p>
-        <div className="flex items-center gap-2 text-[8px] sm:text-[9px] text-zinc-300 font-medium">
-          <span className="flex items-center gap-0.5 text-amber-500 font-bold">
-            <Star size={8} className="fill-current" />
-            {item.rating?.toFixed(1) || "8.1"}
-          </span>
-          <span>{item.year || "2024"}</span>
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {hovered && activeHoverId === item.id && !isTouch && (
-          <m.div
-            layoutId={`cinema-hover-${item.id}`}
-            initial={{ opacity: 0, scale: 0.94, y: 10 }}
-            animate={{ opacity: 1, scale: 1.05, y: -6 }}
-            exit={{ opacity: 0, scale: 0.94, y: 5 }}
-            transition={{ type: "spring", stiffness: 350, damping: 24 }}
-            className="absolute z-50 bottom-[30px] -left-6 w-[200px] sm:w-[230px] rounded-xl overflow-hidden bg-neutral-950 border border-zinc-700 shadow-2xl pointer-events-auto"
+        className={`nl-poster relative w-[116px] sm:w-[154px] md:w-[176px] aspect-[2/3] overflow-hidden cursor-pointer select-none flex-shrink-0 snap-start ${
+          isZoomed ? "nl-poster--hovered" : ""
+        }`}
+      >
+        {/* Top-left Favorite Heart Badge */}
+        {isFavorite && (
+          <span
+            className="absolute top-2 left-2 z-20 flex items-center justify-center w-6 h-6 rounded-full bg-red-600/90 border border-white/40 shadow-md"
+            aria-label="Favorited"
           >
-            <div className="relative aspect-video w-full bg-black">
-              <img src={getBackdropSrc_static(item.backdropPath)} alt="" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 to-transparent" />
-            </div>
-            <div className="p-3 flex flex-col gap-1.5 bg-neutral-950">
-              <h4 className="text-xs font-black text-zinc-100 line-clamp-1">{item.title}</h4>
-              <div className="flex items-center gap-2 text-[9px] text-zinc-400 font-mono">
-                <span className="flex items-center gap-0.5 text-amber-500 font-bold">
-                  <Star size={10} className="fill-current" />
-                  {item.rating?.toFixed(1) || "8.1"}
-                </span>
-                <span>{item.year || "2024"}</span>
-                <span className="border border-zinc-700 px-1 rounded text-[8px] text-zinc-300">
-                  {item.mediaType === 'movie' ? "PG-13" : "TV-14"}
-                </span>
-              </div>
-              <p className="text-[10px] text-zinc-300 line-clamp-2 leading-relaxed">{item.overview}</p>
-              <div className="flex items-center justify-between gap-2 mt-1">
-                <span className="text-[8px] font-extrabold text-zinc-500 tracking-wider truncate">{fallbackGenText}</span>
-                <span className="text-[9px] font-black text-red-500 hover:text-red-400 flex items-center gap-0.5">
-                  {t("movies.meta.moreInfo")} →
-                </span>
-              </div>
-            </div>
-          </m.div>
+            <Heart size={11} strokeWidth={2.5} fill="white" color="white" />
+          </span>
         )}
-      </AnimatePresence>
-    </div>
-  );
-});
 
-const MovieRow = React.memo(({ title, items, isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t, isFavoriteFn }: any) => {
-  const sliderRef = useRef<HTMLDivElement | null>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
+        {/* Top-right Rating Pill */}
+        <span className="absolute top-2 right-2 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-[10px] font-extrabold text-amber-400 shadow">
+          <Star size={9} className="fill-current" />
+          {item.rating?.toFixed(1) || "8.1"}
+        </span>
 
-  const updateScrollState = useCallback(() => {
-    if (!sliderRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
-    setCanScrollLeft(scrollLeft > 6);
-    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
-  }, []);
+        {/* Full-Bleed Movie/Series Artwork (Always Visible on Hover Zoom) */}
+        <img
+          src={posterUrl}
+          alt={item.title}
+          loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            const el = e.currentTarget;
+            if (item.trailerKey && !el.dataset.fb) {
+              el.dataset.fb = "1";
+              el.src = `https://i.ytimg.com/vi/${item.trailerKey}/hqdefault.jpg`;
+            } else if (!el.dataset.fb2) {
+              el.dataset.fb2 = "1";
+              el.src = "/bioBG_poster.webp";
+            }
+          }}
+          className={`w-full h-full object-cover select-none pointer-events-none transition-transform duration-500 ${
+            isZoomed ? "scale-105 brightness-105" : "scale-100"
+          }`}
+        />
 
-  const handleScrollClick = useCallback((direction: "left" | "right") => {
-    if (!sliderRef.current) return;
-    const { clientWidth } = sliderRef.current;
-    const scrollAmt = direction === "left" ? -clientWidth * 0.75 : clientWidth * 0.75;
-    sliderRef.current.scrollBy({ left: scrollAmt, behavior: "smooth" });
-  }, []);
+        {/* Specular Liquid Glass Sheen */}
+        <span className="nl-poster__sheen" aria-hidden="true" />
 
-  const [isVisible, setIsVisible] = useState(false);
-  const rowRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIsVisible(true);
-        observer.disconnect();
-      }
-    }, { rootMargin: "200px" });
-    if (rowRef.current) observer.observe(rowRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  if (items.length === 0) return null;
-
-  return (
-    <div ref={rowRef} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
-      <h2 className="text-sm sm:text-lg font-bold text-zinc-100 tracking-wide uppercase px-2">{title}</h2>
-      <div className="group/row relative w-full overflow-hidden">
-        {canScrollLeft && !isTouch && (
-          <button onClick={() => handleScrollClick("left")} className="absolute left-0 top-0 bottom-0 z-30 w-10 flex items-center justify-center bg-black/60 opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer">
-            <ChevronLeft size={28} />
-          </button>
-        )}
+        {/* Subtle resting bottom title gradient when not hovered */}
         <div
-          ref={sliderRef}
-          onScroll={updateScrollState}
-          className="nl-cinema-row flex gap-4 overflow-x-auto select-none py-4 px-2 scroll-smooth scrollbar-none snap-x snap-mandatory"
-          style={MOVIE_ROW_SCROLL_STYLE}
+          className={`absolute inset-x-0 bottom-0 z-10 p-2.5 pt-8 bg-gradient-to-t from-black/90 via-black/45 to-transparent transition-opacity duration-200 ${
+            isZoomed ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
         >
-          {isVisible && items.map((item: any, index: number) => {
-            const isFirst = index === 0;
-            const isLast = index === items.length - 1;
-            return (
-              <div key={item.id} className="flex-shrink-0 snap-start" style={{ transformOrigin: isFirst ? "left" : isLast ? "right" : "center" }}>
-                <MoviePosterCard 
-                  item={item} 
-                  isTouch={isTouch} 
-                  activeHoverId={activeHoverId} 
-                  setActiveHoverId={setActiveHoverId} 
-                  hoverTimer={hoverTimer} 
-                  setSelectedItemId={setSelectedItemId} 
-                  t={t} 
-                  isFavorite={isFavoriteFn?.(item.id, item.mediaType)}
-                />
-              </div>
-            );
-          })}
+          <p className="text-[11px] sm:text-xs font-extrabold text-white truncate drop-shadow">
+            {item.title}
+          </p>
+          <p className="text-[9px] text-white/70 font-medium truncate">
+            {item.year || "2024"} · {fallbackGenText}
+          </p>
         </div>
-        {canScrollRight && !isTouch && (
-          <button onClick={() => handleScrollClick("right")} className="absolute right-0 top-0 bottom-0 z-30 w-10 flex items-center justify-center bg-black/60 opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer">
-            <ChevronRight size={28} />
-          </button>
-        )}
+
+        {/* Zoomed Liquid Glass Drawer Overlay (Shows full artwork above + rich glass controls below) */}
+        <AnimatePresence>
+          {isZoomed && (
+            <m.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="nl-poster__glass-drawer flex flex-col gap-1.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4 className="text-[11px] font-black text-white leading-tight line-clamp-1">
+                {item.title}
+              </h4>
+              <div className="flex items-center justify-between text-[9px] text-white/80 font-mono">
+                <span>{item.year || "2024"}</span>
+                <span className="px-1.5 py-0.2 rounded bg-white/15 text-[8px] font-bold text-white">
+                  {item.mediaType === "movie" ? "MOVIE" : "SERIES"}
+                </span>
+              </div>
+              <p className="text-[9.5px] text-white/80 line-clamp-2 leading-snug">
+                {item.overview}
+              </p>
+              <div className="flex items-center gap-1.5 mt-1">
+                {onQuickWatch && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onQuickWatch(item);
+                    }}
+                    className="lg-cinema-primary-pill flex-1 py-1 px-2 rounded-full text-[9.5px] font-extrabold text-white flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Play size={10} className="fill-current" />
+                    <span>{t("movies.meta.watchNow") || "Watch"}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedItemId(item.id);
+                  }}
+                  className="lg-cinema-action-pill py-1 px-2.5 rounded-full text-[9.5px] font-bold text-white flex items-center justify-center gap-1 cursor-pointer"
+                  title={t("movies.meta.moreInfo") || "Details"}
+                >
+                  <Info size={10} />
+                </button>
+              </div>
+            </m.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
+
+const MovieRow = React.memo(
+  ({
+    title,
+    items,
+    isTouch,
+    activeHoverId,
+    setActiveHoverId,
+    hoverTimer,
+    setSelectedItemId,
+    onQuickWatch,
+    t,
+    isFavoriteFn,
+  }: any) => {
+    const sliderRef = useRef<HTMLDivElement | null>(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(true);
+
+    const updateScrollState = useCallback(() => {
+      if (!sliderRef.current) return;
+      const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
+      setCanScrollLeft(Math.abs(scrollLeft) > 6);
+      setCanScrollRight(Math.abs(scrollLeft) + clientWidth < scrollWidth - 6);
+    }, []);
+
+    const handleScrollClick = useCallback((direction: "left" | "right") => {
+      if (!sliderRef.current) return;
+      const { clientWidth } = sliderRef.current;
+      const scrollAmt =
+        direction === "left" ? -clientWidth * 0.75 : clientWidth * 0.75;
+      sliderRef.current.scrollBy({ left: scrollAmt, behavior: "smooth" });
+    }, []);
+
+    const [isVisible, setIsVisible] = useState(false);
+    const rowRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            observer.disconnect();
+          }
+        },
+        { rootMargin: "240px" },
+      );
+      if (rowRef.current) observer.observe(rowRef.current);
+      return () => observer.disconnect();
+    }, []);
+
+    if (items.length === 0) return null;
+
+    return (
+      <div
+        ref={rowRef}
+        className="relative z-10 flex flex-col gap-1.5 py-2.5 px-4 sm:px-10"
+      >
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-sm sm:text-lg font-extrabold text-white tracking-tight drop-shadow">
+            {title}
+          </h2>
+        </div>
+        <div className="group/row relative w-full">
+          {canScrollLeft && !isTouch && (
+            <button
+              type="button"
+              onClick={() => handleScrollClick("left")}
+              className="lg-cinema-icon-pill absolute left-1 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft size={22} />
+            </button>
+          )}
+          <div
+            ref={sliderRef}
+            onScroll={updateScrollState}
+            className="nl-cinema-row flex gap-4 overflow-x-auto select-none px-3 scroll-smooth scrollbar-none snap-x snap-mandatory"
+            style={MOVIE_ROW_SCROLL_STYLE}
+          >
+            {isVisible &&
+              items.map((item: any) => (
+                <div key={item.id} className="flex-shrink-0 snap-start">
+                  <MoviePosterCard
+                    item={item}
+                    isTouch={isTouch}
+                    activeHoverId={activeHoverId}
+                    setActiveHoverId={setActiveHoverId}
+                    hoverTimer={hoverTimer}
+                    setSelectedItemId={setSelectedItemId}
+                    onQuickWatch={onQuickWatch}
+                    t={t}
+                    isFavorite={isFavoriteFn?.(item.id, item.mediaType)}
+                  />
+                </div>
+              ))}
+          </div>
+          {canScrollRight && !isTouch && (
+            <button
+              type="button"
+              onClick={() => handleScrollClick("right")}
+              className="lg-cinema-icon-pill absolute right-1 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer"
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={22} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  },
+);
 
 export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => void; initialTab?: 'movies' | 'series' }) {
   const { t, i18n } = useTranslation();
@@ -503,12 +627,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [selectedWatchItem, setSelectedWatchItem] = useState<CinemaItem | null>(null);
+  const [showHeroTrailer, setShowHeroTrailer] = useState(false);
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const detailDialogRef = useFocusTrap(selectedItemId !== null && !!detailedItem);
 
   useEffect(() => {
+    setShowHeroTrailer(false);
     if (selectedItemId === null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedItemId(null);
@@ -517,10 +643,20 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedItemId]);
 
+  const handleQuickWatch = useCallback((item: CinemaItem) => {
+    setSelectedWatchItem(item);
+  }, []);
+
   const rowProps = useMemo(() => ({
-    isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t,
+    isTouch,
+    activeHoverId,
+    setActiveHoverId,
+    hoverTimer,
+    setSelectedItemId,
+    onQuickWatch: handleQuickWatch,
+    t,
     isFavoriteFn: (id: number, mediaType: 'movie' | 'tv') => has(id, mediaType, 'favorite')
-  }), [isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, t, has]);
+  }), [isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, handleQuickWatch, t, has]);
 
   const watchlistItems = useMemo(
     () => movieItems.filter((i) => i.status === 'watchlist'),
@@ -533,14 +669,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setSelectedItemId(rec.tmdb_id);
   }, []);
 
-  const isOpenForAudio = Boolean(detailedItem || selectedItemId);
+  const isOpenForAudio = Boolean(detailedItem || selectedItemId || selectedWatchItem);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
 
   const [scrolled, setScrolled] = useState(false);
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
   const handleScrollEvent = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    setScrolled(e.currentTarget.scrollTop > 50);
+    setScrolled(e.currentTarget.scrollTop > 40);
   }, []);
 
   useEffect(() => {
@@ -911,8 +1047,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   useEffect(() => {
     if (slideshowSlidesLength <= 1) return;
     const interval = setInterval(() => {
-      // Pause hero rotation while the tab is hidden: avoids needless re-renders
-      // and wasted work in a background tab (NL-PRI-0376).
       if (document.hidden) return;
       setHeroIndex(prev => (prev + 1) % slideshowSlidesLength);
     }, 8000);
@@ -949,48 +1083,118 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     trendingSeries, topRatedSeries, popularSeries, actionSeries, mysterySeries, dramaSeries, animationSeries
   ]);
 
-
-
   const localizedHeroTitle = activeHeroItem ? activeHeroItem.title : "";
+  const ambientBackdropItem = detailedItem || activeHeroItem;
+  const ambientBackdropUrl = ambientBackdropItem
+    ? getBackdropSrc_static(ambientBackdropItem.backdropPath, ambientBackdropItem.posterPath, ambientBackdropItem.trailerKey)
+    : "";
 
   return createPortal(
-    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[9500] w-full h-[100dvh] bg-gradient-to-b from-[#141414] via-[#101010] to-[#0a0a0a] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto">
-      <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(20,20,20,1) 0%, rgba(20,20,20,0.68) 45%, rgba(20,20,20,0.88) 100%)" }} />
-
-      {isTouch && (
-        <button
-          onClick={() => { selectedItemId !== null ? setSelectedItemId(null) : onClose(); }}
-          className="nl-cinema-back"
-          aria-label={currentLang === "ar" ? "Back" : "Back"}
-        >
-          <ChevronLeft size={22} />
-        </button>
+    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[9500] w-full h-[100dvh] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto">
+      {/* Dynamic Liquid Glass Ambient Backdrop Illumination */}
+      {ambientBackdropUrl && (
+        <div
+          className="lg-cinema-ambient-bg"
+          style={{ backgroundImage: `url(${ambientBackdropUrl})` }}
+          aria-hidden="true"
+        />
       )}
+      <div
+        className="absolute inset-0 z-10 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 15%, rgba(16, 24, 42, 0.35) 0%, rgba(6, 9, 17, 0.88) 70%, rgba(4, 6, 12, 0.97) 100%)",
+        }}
+      />
 
-      <div ref={mainScrollRef} onScroll={handleScrollEvent} className="nl-cinema-scroll absolute inset-0 z-20 overflow-y-auto h-full w-full scrollbar-none" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-        <header className={`nl-cinema-header fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 sm:px-8 py-3.5 transition-all duration-300 ${scrolled ? "aero-glass-style" : "bg-transparent"}`}>
-          <div className="flex items-center gap-4 sm:gap-8">
-            <h1 className="text-lg sm:text-2xl font-black tracking-tighter text-red-600 bg-gradient-to-r from-red-600 via-rose-500 to-red-700 bg-clip-text text-transparent select-none">
+      <div
+        ref={mainScrollRef}
+        onScroll={handleScrollEvent}
+        className="nl-cinema-scroll absolute inset-0 z-20 overflow-y-auto h-full w-full scrollbar-none"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+      >
+        {/* Unified Non-Overlapping Liquid Glass Header */}
+        <header
+          className={`nl-cinema-header fixed top-0 inset-x-0 z-50 flex items-center justify-between gap-2 px-3 sm:px-8 py-3 transition-all duration-300 ${
+            scrolled ? "nl-cinema-header--scrolled" : "bg-gradient-to-b from-black/70 via-black/30 to-transparent"
+          }`}
+        >
+          {/* Left / Start Zone: Back button (when inside subview) + Logo + Liquid Glass Tabs + Desktop Genres */}
+          <div className="flex items-center gap-2.5 sm:gap-5 min-w-0">
+            {(selectedItemId !== null || showWatchlist || searchQuery.trim() !== "" || selectedGenreId !== null) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedItemId !== null) setSelectedItemId(null);
+                  else if (showWatchlist) setShowWatchlist(false);
+                  else if (searchQuery.trim() !== "" || selectedGenreId !== null) {
+                    setSearchQuery("");
+                    setSelectedGenreId(null);
+                  }
+                }}
+                className="lg-cinema-icon-pill flex-shrink-0"
+                aria-label={currentLang === "ar" ? "رجوع" : "Back"}
+                title={currentLang === "ar" ? "رجوع" : "Back"}
+              >
+                <ChevronLeft size={17} className={currentLang === "ar" ? "rotate-180" : ""} />
+              </button>
+            )}
+
+            <h1 className="text-base sm:text-2xl font-black tracking-tighter text-white drop-shadow-[0_2px_12px_rgba(229,9,20,0.55)] select-none flex-shrink-0">
               <NLLogo />
             </h1>
-            <div className="flex bg-zinc-950/45 rounded-full p-1 border border-white/10 backdrop-blur-md shadow-inner scale-90 sm:scale-100">
-              <button onClick={() => setActiveTab('movies')} className={`px-3 py-1 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'movies' ? 'bg-red-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
+
+            <div className="lg-cinema-pill-group scale-95 sm:scale-100 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab('movies')}
+                className={`px-3 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === 'movies'
+                    ? 'lg-cinema-pill-btn--active'
+                    : 'text-white/70 hover:text-white'
+                }`}
+              >
                 <Film size={12} />
-                <span>{currentLang === "ar" ? "Movies" : "Movies"}</span>
+                <span>{currentLang === "ar" ? "أفلام" : "Movies"}</span>
               </button>
-              <button onClick={() => setActiveTab('series')} className={`px-3 py-1 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'series' ? 'bg-red-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
+              <button
+                type="button"
+                onClick={() => setActiveTab('series')}
+                className={`px-3 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === 'series'
+                    ? 'lg-cinema-pill-btn--active'
+                    : 'text-white/70 hover:text-white'
+                }`}
+              >
                 <Tv size={12} />
-                <span>{currentLang === "ar" ? "Series" : "Series"}</span>
+                <span>{currentLang === "ar" ? "مسلسلات" : "Series"}</span>
               </button>
             </div>
 
             {!isMobile && (
-              <nav className="flex gap-2">
-                <button onClick={() => setSelectedGenreId(null)} className={`text-[11px] font-bold px-2 py-0.5 rounded transition-colors cursor-pointer ${selectedGenreId === null ? "text-white bg-red-600/90" : "text-zinc-400 hover:text-white"}`}>
-                  {t("movies.all") || "All"}
+              <nav className="hidden lg:flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => setSelectedGenreId(null)}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all cursor-pointer border ${
+                    selectedGenreId === null
+                      ? "text-white bg-white/18 border-white/35 shadow-[0_4px_14px_rgba(255,255,255,0.12)]"
+                      : "text-white/65 bg-white/5 border-white/10 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {t("movies.all") || (currentLang === "ar" ? "الكل" : "All")}
                 </button>
                 {activeGenres.slice(0, 5).map(g => (
-                  <button key={g.id} onClick={() => setSelectedGenreId(g.id)} className={`text-[11px] font-bold px-2 py-0.5 rounded transition-colors cursor-pointer ${selectedGenreId === g.id ? "text-white bg-red-600/90" : "text-zinc-400 hover:text-white"}`}>
+                  <button
+                    type="button"
+                    key={g.id}
+                    onClick={() => setSelectedGenreId(g.id)}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all cursor-pointer border whitespace-nowrap ${
+                      selectedGenreId === g.id
+                        ? "text-white bg-white/18 border-white/35 shadow-[0_4px_14px_rgba(255,255,255,0.12)]"
+                        : "text-white/65 bg-white/5 border-white/10 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
                     {g.name}
                   </button>
                 ))}
@@ -998,32 +1202,56 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Right / End Zone: Search + Watchlist + Sound Mute + Close Window (Cleanly spaced, zero overlap) */}
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
             <div className="relative flex items-center">
               {isTouch ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="search"
-                    placeholder={activeTab === 'movies' ? t("movies.search") || "Search..." : t("series.search") || "Search series..."}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    dir="auto"
-                    className="w-28 sm:w-44 px-3 py-1 bg-zinc-900/95 border border-zinc-700/80 text-white rounded text-xs focus:outline-none focus:border-red-600 transition"
-                  />
-                </div>
-              ) : (
                 <div className="flex items-center">
-                  <m.div animate={{ width: searchOpen ? "200px" : "0px" }} transition={{ ease: "easeOut", duration: 0.25 }} className="overflow-hidden">
+                  <m.div
+                    animate={{ width: searchOpen ? (isMobile ? "135px" : "190px") : "0px", opacity: searchOpen ? 1 : 0 }}
+                    transition={{ ease: "easeOut", duration: 0.22 }}
+                    className="overflow-hidden"
+                  >
                     <input
                       type="search"
-                      placeholder={activeTab === 'movies' ? t("movies.search") || "Search..." : t("series.search") || "Search..."}
+                      placeholder={activeTab === 'movies' ? (t("movies.search") || "Search...") : (t("series.search") || "Search...")}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="px-3 py-1 bg-zinc-900/90 border border-zinc-700 border-r-0 text-white rounded-l text-xs outline-none focus:ring-1 focus:ring-red-600 tracking-tight"
+                      dir="auto"
+                      className="w-full px-3 py-1.5 bg-white/10 border border-white/20 text-white placeholder-white/45 rounded-full text-xs focus:outline-none focus:border-white/45 backdrop-blur-md me-1.5"
                     />
                   </m.div>
-                  <button onClick={() => setSearchOpen(!searchOpen)} className="p-1.5 rounded-r bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-white cursor-pointer">
-                    <Search size={14} />
+                  <button
+                    type="button"
+                    onClick={() => setSearchOpen(!searchOpen)}
+                    className={`lg-cinema-icon-pill ${searchOpen || searchQuery ? "border-white/40 bg-white/15" : ""}`}
+                    aria-label={currentLang === "ar" ? "بحث" : "Search"}
+                  >
+                    <Search size={15} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <m.div
+                    animate={{ width: searchOpen ? "210px" : "0px", opacity: searchOpen ? 1 : 0 }}
+                    transition={{ ease: "easeOut", duration: 0.25 }}
+                    className="overflow-hidden"
+                  >
+                    <input
+                      type="search"
+                      placeholder={activeTab === 'movies' ? (t("movies.search") || "Search...") : (t("series.search") || "Search...")}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full px-3.5 py-1.5 bg-white/10 border border-white/25 text-white placeholder-white/50 rounded-full text-xs outline-none focus:border-white/50 backdrop-blur-md tracking-tight"
+                    />
+                  </m.div>
+                  <button
+                    type="button"
+                    onClick={() => setSearchOpen(!searchOpen)}
+                    className={`lg-cinema-icon-pill ${searchOpen || searchQuery ? "border-white/40 bg-white/15" : ""}`}
+                    aria-label={currentLang === "ar" ? "بحث" : "Search"}
+                  >
+                    <Search size={15} />
                   </button>
                 </div>
               )}
@@ -1031,36 +1259,74 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
             {user && (
               <button
+                type="button"
                 onClick={() => setShowWatchlist((v) => !v)}
                 aria-pressed={showWatchlist}
-                aria-label={currentLang === "ar" ? "Watchlist" : "Watchlist"}
-                className={`relative p-2 rounded border flex items-center justify-center cursor-pointer transition ${showWatchlist ? 'bg-amber-500 border-amber-400 text-white' : 'bg-neutral-900/80 border-zinc-800 text-zinc-400 hover:text-white'}`}
+                aria-label={currentLang === "ar" ? "قائمتي" : "Watchlist"}
+                title={currentLang === "ar" ? "قائمتي" : "Watchlist"}
+                className={`lg-cinema-icon-pill relative ${
+                  showWatchlist ? "!bg-amber-500/35 !border-amber-300/60 text-amber-200" : ""
+                }`}
               >
                 <Bookmark size={15} fill={showWatchlist ? 'currentColor' : 'none'} />
                 {watchlistCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 border border-white/40 text-white text-[9px] font-black flex items-center justify-center shadow">
                     {watchlistCount}
                   </span>
                 )}
               </button>
             )}
-            <button onClick={toggleMute} className="p-2 rounded bg-neutral-900/80 border border-zinc-800 hover:bg-neutral-800 transition text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer" style={{ width: "34px", height: "34px" }}>
-              {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="lg-cinema-icon-pill"
+              aria-label={isMuted ? (currentLang === "ar" ? "تشغيل الصوت" : "Unmute") : (currentLang === "ar" ? "كتم الصوت" : "Mute")}
+              title={isMuted ? (currentLang === "ar" ? "تشغيل الصوت" : "Unmute") : (currentLang === "ar" ? "كتم الصوت" : "Mute")}
+            >
+              {isMuted ? <VolumeX size={15} className="text-white/65" /> : <Volume2 size={15} className="text-emerald-300" />}
             </button>
 
-            <button onClick={onClose} className="p-2 rounded-full bg-neutral-900 hover:bg-red-600 transition text-zinc-300 hover:text-white flex items-center justify-center border border-zinc-800 hover:border-red-600 cursor-pointer" style={{ width: "34px", height: "34px" }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="lg-cinema-icon-pill hover:!bg-rose-600/40 hover:!border-rose-400/60"
+              aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
+              title={currentLang === "ar" ? "إغلاق" : "Close"}
+            >
               <X size={16} />
             </button>
           </div>
         </header>
 
+        {/* Mobile / Tablet Liquid Glass Genre Bar */}
         {isMobile && activeGenres.length > 0 && (
-          <div className="px-4 overflow-x-auto select-none overflow-y-hidden flex gap-2 scrollbar-none py-1" style={{ marginTop: "calc(var(--cinema-header-h) + env(safe-area-inset-top) + 8px)" }}>
-            <button onClick={() => setSelectedGenreId(null)} className={`text-[10px] font-bold px-3 py-1 flex-shrink-0 rounded-full transition-colors cursor-pointer ${selectedGenreId === null ? "text-white bg-red-600" : "text-zinc-400 bg-zinc-900/80 border border-zinc-800"}`}>
-              {t("movies.all") || "All"}
+          <div
+            className="px-4 overflow-x-auto select-none overflow-y-hidden flex gap-2 scrollbar-none py-1.5 relative z-30"
+            style={{ marginTop: "calc(var(--cinema-header-h, 64px) + env(safe-area-inset-top) + 6px)" }}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedGenreId(null)}
+              className={`text-[11px] font-bold px-3.5 py-1 flex-shrink-0 rounded-full transition-all cursor-pointer border backdrop-blur-md ${
+                selectedGenreId === null
+                  ? "text-white bg-white/20 border-white/40 shadow-[0_4px_12px_rgba(255,255,255,0.12)]"
+                  : "text-white/70 bg-white/6 border-white/12"
+              }`}
+            >
+              {t("movies.all") || (currentLang === "ar" ? "الكل" : "All")}
             </button>
             {activeGenres.map(g => (
-              <button key={g.id} onClick={() => setSelectedGenreId(g.id)} className={`text-[10px] font-bold px-3 py-1 flex-shrink-0 rounded-full transition-colors cursor-pointer ${selectedGenreId === g.id ? "text-white bg-red-600" : "text-zinc-400 bg-zinc-900/80 border border-zinc-800"}`}>
+              <button
+                type="button"
+                key={g.id}
+                onClick={() => setSelectedGenreId(g.id)}
+                className={`text-[11px] font-bold px-3.5 py-1 flex-shrink-0 rounded-full transition-all cursor-pointer border backdrop-blur-md ${
+                  selectedGenreId === g.id
+                    ? "text-white bg-white/20 border-white/40 shadow-[0_4px_12px_rgba(255,255,255,0.12)]"
+                    : "text-white/70 bg-white/6 border-white/12"
+                }`}
+              >
                 {g.name}
               </button>
             ))}
@@ -1068,24 +1334,31 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         )}
 
         {showWatchlist ? (
-          <main className="pt-24 px-4 sm:px-10 pb-20">
+          <main className="pt-24 px-4 sm:px-10 pb-24 relative z-20">
             <div className="flex items-center gap-3 mb-6">
-              <button onClick={() => setShowWatchlist(false)} className="p-1 px-3 bg-zinc-800/80 border border-zinc-700 text-xs rounded hover:bg-zinc-700 cursor-pointer">
-                ← {t("movies.back") || (currentLang === "ar" ? "Back" : "Back")}
+              <button
+                type="button"
+                onClick={() => setShowWatchlist(false)}
+                className="lg-cinema-action-pill px-4 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>←</span>
+                <span>{t("movies.back") || (currentLang === "ar" ? "رجوع" : "Back")}</span>
               </button>
-              <div className="text-md sm:text-xl font-black flex items-center gap-2">
-                <Bookmark size={18} className="text-amber-500 fill-current" />
-                <span>{currentLang === "ar" ? "Watchlist" : "My Watchlist"}</span>
+              <div className="text-base sm:text-xl font-black flex items-center gap-2">
+                <Bookmark size={18} className="text-amber-400 fill-current" />
+                <span>{currentLang === "ar" ? "قائمتي للمشاهدة" : "My Watchlist"}</span>
               </div>
             </div>
 
             {watchlistItems.length === 0 ? (
-              <div className="w-full py-20 flex flex-col items-center gap-3 text-center text-zinc-500">
-                <Bookmark size={30} />
-                <span className="font-medium">{currentLang === "ar" ? "No items in watchlist yet." : "Your watchlist is empty."}</span>
+              <div className="w-full py-20 flex flex-col items-center gap-3 text-center text-white/50 lg-cinema-glass-modal rounded-3xl p-10 max-w-md mx-auto">
+                <Bookmark size={32} className="text-amber-300/70" />
+                <span className="font-semibold text-sm">
+                  {currentLang === "ar" ? "لا توجد عناصر في قائمتك حتى الآن." : "Your watchlist is empty."}
+                </span>
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
                 {watchlistItems.map((rec) => (
                   <div key={`${rec.tmdb_id}-${rec.media_type}`} className="relative group flex justify-center">
                     <div
@@ -1094,24 +1367,33 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       aria-label={rec.title}
                       onClick={() => openWatchlistItem(rec)}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openWatchlistItem(rec); } }}
-                      className="nl-poster relative w-[110px] sm:w-[150px] md:w-[170px] aspect-[2/3] rounded-md overflow-hidden bg-neutral-900 border border-zinc-800 hover:border-amber-500 cursor-pointer select-none transition shadow hover:shadow-lg active:scale-95 flex-shrink-0"
+                      className="nl-poster relative w-[135px] sm:w-[160px] md:w-[175px] aspect-[2/3] cursor-pointer select-none flex-shrink-0"
                     >
+                      <div className="nl-poster__sheen" />
                       {rec.poster_path ? (
-                        <img src={`https://image.tmdb.org/t/p/w342${rec.poster_path}`} alt={rec.title} loading="lazy" className="w-full h-full object-cover pointer-events-none" />
+                        <img
+                          src={getPosterSrc_static(rec.poster_path)}
+                          alt={rec.title}
+                          loading="lazy"
+                          className="w-full h-full object-cover pointer-events-none"
+                        />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-600"><Film size={26} /></div>
+                        <div className="w-full h-full flex items-center justify-center text-white/40"><Film size={28} /></div>
                       )}
-                      <span className="absolute top-1 inset-inline-start-1 text-[8px] font-black px-1 rounded bg-black/70 text-white">
-                        {rec.media_type === 'tv' ? (currentLang === "ar" ? "Series" : "TV") : (currentLang === "ar" ? "Movie" : "Movie")}
+                      <span className="absolute top-2 inset-inline-start-2 text-[9px] font-black px-2 py-0.5 rounded-full bg-black/65 border border-white/20 backdrop-blur-md text-white">
+                        {rec.media_type === 'tv' ? (currentLang === "ar" ? "مسلسل" : "Series") : (currentLang === "ar" ? "فيلم" : "Movie")}
                       </span>
+                      <div className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                        <p className="text-[11px] font-bold text-white truncate">{rec.title}</p>
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); toggle(rec.tmdb_id, rec.media_type, 'watchlist', rec.title, rec.poster_path); }}
-                      aria-label={currentLang === "ar" ? "Remove from list" : "Remove from watchlist"}
-                      className="absolute top-1.5 inset-inline-end-1.5 w-6 h-6 grid place-items-center rounded-full bg-black/70 border border-white/20 text-white opacity-0 group-hover:opacity-100 transition hover:bg-red-600 cursor-pointer"
+                      aria-label={currentLang === "ar" ? "إزالة من القائمة" : "Remove from watchlist"}
+                      className="absolute top-2 inset-inline-end-4 w-7 h-7 grid place-items-center rounded-full bg-black/75 border border-white/25 text-white opacity-0 group-hover:opacity-100 transition hover:bg-rose-600 cursor-pointer z-20"
                     >
-                      <X size={12} />
+                      <X size={13} />
                     </button>
                   </div>
                 ))}
@@ -1119,69 +1401,133 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             )}
           </main>
         ) : searchQuery.trim() !== "" || selectedGenreId !== null ? (
-          <main className="pt-24 px-4 sm:px-10 pb-20">
+          <main className="pt-24 px-4 sm:px-10 pb-24 relative z-20">
             <div className="flex items-center gap-3 mb-6">
-              <button onClick={() => { setSearchQuery(""); setSelectedGenreId(null); }} className="p-1 px-3 bg-zinc-800/80 border border-zinc-700 text-xs rounded hover:bg-zinc-700 cursor-pointer">
-                ← {t("movies.back") || "Back"}
+              <button
+                type="button"
+                onClick={() => { setSearchQuery(""); setSelectedGenreId(null); }}
+                className="lg-cinema-action-pill px-4 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>←</span>
+                <span>{t("movies.back") || (currentLang === "ar" ? "رجوع" : "Back")}</span>
               </button>
-              <div className="text-md sm:text-xl font-black">
+              <div className="text-base sm:text-xl font-black text-white">
                 {selectedGenreId
-                  ? `${t("movies.genres") || "Category"}: ${activeGenres.find(g => g.id === selectedGenreId)?.name || ""}`
-                  : `${t("movies.search") || "Search results"}: "${searchQuery}"`}
+                  ? `${t("movies.genres") || (currentLang === "ar" ? "التصنيف" : "Category")}: ${activeGenres.find(g => g.id === selectedGenreId)?.name || ""}`
+                  : `${t("movies.search") || (currentLang === "ar" ? "نتائج البحث" : "Search results")}: "${searchQuery}"`}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
               {(searchQuery ? searchResults : filteredList).map((item) => (
-                <div key={item.id} className="flex justify-center">
+                <div key={item.id} className="flex justify-center py-2">
                   <MoviePosterCard item={item} {...rowProps} isFavorite={rowProps.isFavoriteFn?.(item.id, item.mediaType)} />
                 </div>
               ))}
             </div>
 
             {(searchQuery ? searchResults : filteredList).length === 0 && !isSearching && (
-              <div className="w-full py-20 text-center text-zinc-500 font-medium">
-                {t("movies.noResults") || (currentLang === "ar" ? "No matching results." : "No matching titles found.")}
+              <div className="w-full py-20 text-center text-white/55 font-medium lg-cinema-glass-modal rounded-3xl max-w-md mx-auto">
+                {t("movies.noResults") || (currentLang === "ar" ? "لا توجد نتائج مطابقة." : "No matching titles found.")}
               </div>
             )}
           </main>
         ) : (
           <>
             {activeHeroItem && (
-              <section className="relative flex flex-col justify-end w-full pb-8 sm:pb-16 px-6 sm:px-16" style={{ height: isMobile ? "52vh" : "78vh" }}>
-                <div className="absolute inset-0 z-0">
-                  <img src={getBackdropSrc_static(activeHeroItem.backdropPath)} alt="" className="w-full h-full object-cover select-none pointer-events-none" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/30 to-black/35" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-transparent to-transparent " />
+              <section
+                className="relative flex flex-col justify-end w-full pb-8 sm:pb-14 px-5 sm:px-14"
+                style={{ height: isMobile ? "56vh" : "76vh" }}
+              >
+                <div className="absolute inset-0 z-0 overflow-hidden">
+                  <img
+                    src={getBackdropSrc_static(activeHeroItem.backdropPath, activeHeroItem.posterPath, activeHeroItem.trailerKey)}
+                    alt=""
+                    className="w-full h-full object-cover select-none pointer-events-none scale-105 transition-transform duration-1000"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        "linear-gradient(to top, rgba(7,10,18,1) 0%, rgba(7,10,18,0.45) 45%, rgba(7,10,18,0.3) 100%)",
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        currentLang === "ar"
+                          ? "linear-gradient(to left, rgba(7,10,18,0.88) 0%, rgba(7,10,18,0.35) 50%, transparent 100%)"
+                          : "linear-gradient(to right, rgba(7,10,18,0.88) 0%, rgba(7,10,18,0.35) 50%, transparent 100%)",
+                    }}
+                  />
                 </div>
 
-                <div className="relative z-10 flex flex-col max-w-xl text-zinc-100 gap-3">
-                  <h2 className="text-xl sm:text-[36px] font-black leading-tight tracking-tight select-text">{localizedHeroTitle}</h2>
-                  <div className="flex items-center gap-3 text-xs text-zinc-300 font-mono">
-                    <span className="flex items-center gap-0.5 text-amber-500 font-bold">
+                {/* Liquid Glass Hero Showcase Card */}
+                <div className="relative z-10 flex flex-col max-w-2xl text-white gap-3 p-5 sm:p-7 rounded-3xl border border-white/15 bg-white/[0.06] backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.25)]">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/25 border border-rose-300/40 text-rose-100">
+                      {activeHeroItem.mediaType === 'movie'
+                        ? (currentLang === "ar" ? "فيلم مميز" : "Featured Movie")
+                        : (currentLang === "ar" ? "مسلسل مميز" : "Featured Series")}
+                    </span>
+                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-400/20 border border-amber-300/40 text-amber-300">
                       <Star size={11} className="fill-current" />
                       {activeHeroItem.rating?.toFixed(1) || "8.1"}
                     </span>
-                    <span>{activeHeroItem.year || "2024"}</span>
-                    <span className="border border-white/35 px-1 rounded text-[9px]">
+                    <span className="text-xs text-white/80 font-semibold">{activeHeroItem.year || "2024"}</span>
+                    <span className="border border-white/25 bg-white/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
                       {activeHeroItem.mediaType === 'movie' ? "PG-13" : "TV-MA"}
                     </span>
-                    <span>
+                    <span className="text-xs text-white/75 font-medium">
                       {activeHeroItem.mediaType === 'movie'
                         ? activeHeroItem.runtime ? `${activeHeroItem.runtime}${t("movies.meta.minutes")}` : `148${t("movies.meta.minutes")}`
                         : activeHeroItem.seasons ? `${activeHeroItem.seasons} ${t("movies.meta.seasons")}` : `5 ${t("movies.meta.seasons")}`}
                     </span>
                   </div>
-                  <p className="text-xs sm:text-sm text-neutral-300 tracking-wide leading-relaxed line-clamp-2 select-text max-h-[3.6rem] overflow-hidden">{activeHeroItem.overview}</p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <button onClick={() => setSelectedItemId(activeHeroItem.id)} className="py-2 px-5 bg-white text-zinc-950 font-black rounded-md flex items-center gap-1.5 hover:bg-neutral-200 transition text-xs sm:text-sm cursor-pointer shadow hover:scale-105">
-                      <Play size={14} className="fill-current" />
-                      <span>{t("movies.meta.watchNow")}</span>
+
+                  <h2 className="text-2xl sm:text-4xl font-black leading-tight tracking-tight select-text drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+                    {localizedHeroTitle}
+                  </h2>
+
+                  <p className="text-xs sm:text-sm text-white/80 tracking-wide leading-relaxed line-clamp-2 select-text">
+                    {activeHeroItem.overview}
+                  </p>
+
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWatchItem(activeHeroItem)}
+                      className="lg-cinema-primary-pill py-2.5 px-6 text-white font-black flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
+                    >
+                      <Play size={15} className="fill-current" />
+                      <span>{t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}</span>
                     </button>
-                    <button onClick={() => setSelectedItemId(activeHeroItem.id)} className="py-2 px-4 bg-zinc-700/60 text-zinc-100 font-bold rounded-md flex items-center gap-1.5 hover:bg-zinc-600 transition text-xs sm:text-sm cursor-pointer">
-                      <Info size={14} />
-                      <span>{t("movies.meta.moreInfo")}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedItemId(activeHeroItem.id)}
+                      className="lg-cinema-action-pill py-2.5 px-5 text-white font-bold flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
+                    >
+                      <Info size={15} />
+                      <span>{t("movies.meta.moreInfo") || (currentLang === "ar" ? "التفاصيل والتريلر" : "Details & Trailer")}</span>
                     </button>
+
+                    {/* Hero Slide Indicators */}
+                    {slideshowSlidesLength > 1 && (
+                      <div className="ms-auto flex items-center gap-1.5">
+                        {slideshowSlides.map((slide, idx) => (
+                          <button
+                            key={slide.id}
+                            type="button"
+                            onClick={() => setHeroIndex(idx)}
+                            aria-label={`Slide ${idx + 1}`}
+                            className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                              idx === heroIndex ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "w-1.5 bg-white/35 hover:bg-white/60"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>
@@ -1190,28 +1536,32 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             {activeTab === 'movies' ? (
               globalError && trendingMovies.length === 0 ? (
                 <div className="w-full py-20 flex flex-col items-center gap-4 text-center">
-                  <p className="text-zinc-500 font-medium">{t("movies.meta.errorLoad")}</p>
-                  <button onClick={() => window.location.reload()} className="px-5 py-2 bg-zinc-800 hover:bg-red-600 rounded-md text-white font-bold text-sm transition transition-all duration-300">
+                  <p className="text-white/60 font-medium">{t("movies.meta.errorLoad")}</p>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="lg-cinema-action-pill px-5 py-2 text-white font-bold text-sm cursor-pointer"
+                  >
                     ↻
                   </button>
                 </div>
               ) : moviesLoading ? (
-                <div className="relative pb-24 -mt-4 bg-[#141414]">
-                  {[1, 2, 3, 4, 5].map((idx) => (
+                <div className="relative pb-24 -mt-2">
+                  {[1, 2, 3, 4].map((idx) => (
                     <div key={idx} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
-                      <div className="h-4 sm:h-6 w-32 bg-zinc-800 animate-pulse rounded px-2" />
+                      <div className="h-5 w-36 bg-white/10 animate-pulse rounded-full px-2" />
                       <div className="flex gap-4 overflow-x-hidden py-4 px-2">
                         {[1, 2, 3, 4, 5, 6].map((idx2) => (
-                          <div key={idx2} className="relative w-[110px] sm:w-[150px] md:w-[170px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 border border-zinc-800 animate-pulse flex-shrink-0 nl-skeleton-card" />
+                          <div key={idx2} className="relative w-[135px] sm:w-[160px] md:w-[175px] aspect-[2/3] rounded-2xl overflow-hidden bg-white/5 border border-white/10 animate-pulse flex-shrink-0 nl-skeleton-card" />
                         ))}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="relative pb-24 -mt-4 bg-[#141414]">
+                <div className="relative pb-24 -mt-2">
                   {topMovies.length > 0 && (
-                    <MovieRow title={currentLang === "ar" ? "Most Watched" : "Top Movies"} items={topMovies} {...rowProps} />
+                    <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Movies"} items={topMovies} {...rowProps} />
                   )}
                   <MovieRow title={t("movies.rows.trending")} items={trendingMovies} {...rowProps} />
                   <MovieRow title={t("movies.rows.topRated")} items={topRatedMovies} {...rowProps} />
@@ -1225,28 +1575,32 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             ) : (
               globalError && trendingSeries.length === 0 ? (
                 <div className="w-full py-20 flex flex-col items-center gap-4 text-center">
-                  <p className="text-zinc-500 font-medium">{t("movies.meta.errorLoad")}</p>
-                  <button onClick={() => window.location.reload()} className="px-5 py-2 bg-zinc-800 hover:bg-red-600 rounded-md text-white font-bold text-sm transition transition-all duration-300">
+                  <p className="text-white/60 font-medium">{t("movies.meta.errorLoad")}</p>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="lg-cinema-action-pill px-5 py-2 text-white font-bold text-sm cursor-pointer"
+                  >
                     ↻
                   </button>
                 </div>
               ) : seriesLoading ? (
-                <div className="relative pb-24 -mt-4 bg-[#141414]">
-                  {[1, 2, 3, 4, 5].map((idx) => (
+                <div className="relative pb-24 -mt-2">
+                  {[1, 2, 3, 4].map((idx) => (
                     <div key={idx} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
-                      <div className="h-4 sm:h-6 w-32 bg-zinc-800 animate-pulse rounded px-2" />
+                      <div className="h-5 w-36 bg-white/10 animate-pulse rounded-full px-2" />
                       <div className="flex gap-4 overflow-x-hidden py-4 px-2">
                         {[1, 2, 3, 4, 5, 6].map((idx2) => (
-                          <div key={idx2} className="relative w-[110px] sm:w-[150px] md:w-[170px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 border border-zinc-800 animate-pulse flex-shrink-0 nl-skeleton-card" />
+                          <div key={idx2} className="relative w-[135px] sm:w-[160px] md:w-[175px] aspect-[2/3] rounded-2xl overflow-hidden bg-white/5 border border-white/10 animate-pulse flex-shrink-0 nl-skeleton-card" />
                         ))}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="relative pb-24 -mt-4 bg-[#141414]">
+                <div className="relative pb-24 -mt-2">
                   {topSeries.length > 0 && (
-                    <MovieRow title={currentLang === "ar" ? "Most Watched" : "Top Series"} items={topSeries} {...rowProps} />
+                    <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Series"} items={topSeries} {...rowProps} />
                   )}
                   <MovieRow title={t("movies.rows.trending")} items={trendingSeries} {...rowProps} />
                   <MovieRow title={t("movies.rows.topRated")} items={topRatedSeries} {...rowProps} />
@@ -1262,14 +1616,15 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         )}
       </div>
 
+      {/* Liquid Glass Movie / Series Details & Practical Trailer Modal */}
       <AnimatePresence>
         {selectedItemId !== null && detailedItem && (
-          <div className="nl-detail-wrap fixed inset-0 z-[7000] flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/85 backdrop-blur-sm">
+          <div className="nl-detail-wrap fixed inset-0 z-[7000] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/75 backdrop-blur-xl">
             <div onClick={() => setSelectedItemId(null)} className="absolute inset-0 z-0 cursor-zoom-out" />
             {isLoadingDetails ? (
-              <div className="relative z-10 flex flex-col items-center gap-3 text-red-600">
-                <div className="w-12 h-12 border-4 border-t-red-600 border-zinc-800 rounded-full animate-spin" />
-                <p className="text-zinc-400 text-xs font-mono">{t("movies.meta.resolving")}</p>
+              <div className="relative z-10 flex flex-col items-center gap-3 text-white lg-cinema-glass-modal px-8 py-7 rounded-3xl">
+                <div className="w-11 h-11 border-3 border-t-rose-500 border-white/20 rounded-full animate-spin" />
+                <p className="text-white/75 text-xs font-medium">{t("movies.meta.resolving")}</p>
               </div>
             ) : (
               <m.div
@@ -1277,181 +1632,330 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 role="dialog"
                 aria-modal="true"
                 aria-label={detailedItem.title}
-                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                initial={{ opacity: 0, scale: 0.94, y: 18 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                transition={{ duration: 0.25 }}
-                className="nl-detail-card relative aero-glass-style w-full max-w-3xl rounded-2xl z-10"
+                exit={{ opacity: 0, scale: 0.94, y: 18 }}
+                transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+                className="nl-detail-card lg-cinema-glass-modal relative w-full max-w-4xl rounded-3xl z-10 overflow-hidden my-auto max-h-[92dvh] flex flex-col"
               >
-                <div className="relative aspect-video w-full bg-black">
-                  <img src={getBackdropSrc_static(detailedItem.backdropPath)} alt="" className="w-full h-full object-cover opacity-85" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-black/30" />
-                  <button onClick={() => setSelectedItemId(null)} className="absolute top-4 right-4 p-2 bg-neutral-900/80 hover:bg-red-600 transition rounded-full text-white cursor-pointer">
-                    <X size={16} />
-                  </button>
-                </div>
+                {/* Top 16:9 Stage: Switches between Backdrop Hero & Interactive Full-Width Trailer */}
+                <div className="relative aspect-video w-full bg-black flex-shrink-0 overflow-hidden">
+                  {showHeroTrailer && detailedItem.trailerKey ? (
+                    <iframe
+                      className="w-full h-full border-0"
+                      src={`https://www.youtube.com/embed/${detailedItem.trailerKey}?autoplay=1&rel=0&modestbranding=1`}
+                      title={`${detailedItem.title} Trailer`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <>
+                      <img
+                        src={getBackdropSrc_static(detailedItem.backdropPath, detailedItem.posterPath, detailedItem.trailerKey)}
+                        alt={detailedItem.title}
+                        className="w-full h-full object-cover opacity-90"
+                      />
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            "linear-gradient(to top, rgba(10, 14, 24, 0.98) 0%, rgba(10, 14, 24, 0.45) 50%, rgba(10, 14, 24, 0.3) 100%)",
+                        }}
+                      />
 
-                <div className="p-6 md:p-8 flex flex-col gap-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-xl sm:text-2xl font-black text-zinc-100 select-text">{detailedItem.title}</h3>
-                    <button
-                      onClick={() => setSelectedWatchItem(detailedItem)}
-                      className="py-1.5 px-5 sm:py-2 sm:px-6 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black rounded-md flex items-center gap-1.5 border border-red-500 shadow-lg cursor-pointer transition text-xs sm:text-sm"
-                    >
-                      <Play size={14} className="fill-current" />
-                      <span>{t("movies.meta.watchNow")}</span>
-                    </button>
-                  </div>
+                      {/* Center Play Trailer Trigger on Backdrop if trailer exists */}
+                      {detailedItem.trailerKey && (
+                        <button
+                          type="button"
+                          onClick={() => setShowHeroTrailer(true)}
+                          className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/15 hover:bg-white/25 border border-white/40 backdrop-blur-xl flex items-center justify-center text-white shadow-[0_12px_36px_rgba(0,0,0,0.65)] transition-transform hover:scale-110 cursor-pointer group"
+                          aria-label={currentLang === "ar" ? "تشغيل التريلر" : "Play Trailer"}
+                          title={currentLang === "ar" ? "تشغيل التريلر" : "Play Trailer"}
+                        >
+                          <Play size={28} className="fill-current ms-1 group-hover:scale-110 transition-transform" />
+                        </button>
+                      )}
 
-                  {user && detailedItem && (
-                    <div className="flex items-center gap-2 mt-1">
-                      {/* Favorite */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          toggle(
-                            detailedItem.id,
-                            detailedItem.mediaType,
-                            'favorite',
-                            detailedItem.title,
-                            detailedItem.posterPath
-                          )
-                        }
-                        aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'favorite')}
-                        aria-label="Add to favorites"
-                        className={[
-                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
-                          'text-xs font-semibold border transition-all duration-200 cursor-pointer',
-                          has(detailedItem.id, detailedItem.mediaType, 'favorite')
-                            ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-900/30'
-                            : 'bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:border-red-500 hover:text-red-400',
-                        ].join(' ')}
-                      >
-                        <Heart
-                          size={13}
-                          strokeWidth={2}
-                          fill={has(detailedItem.id, detailedItem.mediaType, 'favorite') ? 'currentColor' : 'none'}
-                        />
-                        <span>Favorite</span>
-                      </button>
-
-                      {/* Watched */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          toggle(
-                            detailedItem.id,
-                            detailedItem.mediaType,
-                            'watched',
-                            detailedItem.title,
-                            detailedItem.posterPath
-                          )
-                        }
-                        aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watched')}
-                        aria-label="Mark as watched"
-                        className={[
-                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
-                          'text-xs font-semibold border transition-all duration-200 cursor-pointer',
-                          has(detailedItem.id, detailedItem.mediaType, 'watched')
-                            ? 'bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-900/30'
-                            : 'bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:border-emerald-500 hover:text-emerald-400',
-                        ].join(' ')}
-                      >
-                        <Eye
-                          size={13}
-                          strokeWidth={2}
-                          fill={has(detailedItem.id, detailedItem.mediaType, 'watched') ? 'currentColor' : 'none'}
-                        />
-                        <span>Watched</span>
-                      </button>
-
-                      {/* Watchlist */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          toggle(
-                            detailedItem.id,
-                            detailedItem.mediaType,
-                            'watchlist',
-                            detailedItem.title,
-                            detailedItem.posterPath
-                          )
-                        }
-                        aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watchlist')}
-                        aria-label="Add to watchlist"
-                        className={[
-                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
-                          'text-xs font-semibold border transition-all duration-200 cursor-pointer',
-                          has(detailedItem.id, detailedItem.mediaType, 'watchlist')
-                            ? 'bg-amber-500 border-amber-400 text-white shadow-md shadow-amber-900/30'
-                            : 'bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:border-amber-500 hover:text-amber-400',
-                        ].join(' ')}
-                      >
-                        <Bookmark
-                          size={13}
-                          strokeWidth={2}
-                          fill={has(detailedItem.id, detailedItem.mediaType, 'watchlist') ? 'currentColor' : 'none'}
-                        />
-                        <span>Plan to Watch</span>
-                      </button>
-                    </div>
+                      {/* Bottom Overlay Info inside Hero Stage */}
+                      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 flex items-end justify-between gap-4">
+                        <div className="flex items-end gap-3.5 min-w-0">
+                          <img
+                            src={getPosterSrc_static(detailedItem.posterPath, detailedItem.backdropPath, detailedItem.trailerKey)}
+                            alt=""
+                            className="hidden sm:block w-20 md:w-24 aspect-[2/3] object-cover rounded-xl border border-white/25 shadow-2xl flex-shrink-0"
+                          />
+                          <div className="flex flex-col gap-1.5 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400/20 border border-amber-300/45 text-amber-300">
+                                <Star size={11} className="fill-current" />
+                                {detailedItem.rating?.toFixed(1) || "8.2"}
+                              </span>
+                              <span className="text-xs font-bold text-white/85">{detailedItem.year || "2024"}</span>
+                              <span className="border border-white/25 bg-white/10 px-2 py-0.5 rounded-full text-[10px] font-bold text-white/90">
+                                {detailedItem.mediaType === 'movie' ? "PG-13" : "TV-MA"}
+                              </span>
+                              <span className="text-xs text-white/75 font-medium">
+                                {detailedItem.mediaType === 'movie'
+                                  ? detailedItem.runtime ? `${detailedItem.runtime}${t("movies.meta.minutes")}` : `148${t("movies.meta.minutes")}`
+                                  : detailedItem.seasons ? `${detailedItem.seasons} ${t("movies.meta.seasons")}` : `5 ${t("movies.meta.seasons")}`}
+                              </span>
+                              {detailedItem.mediaType === 'tv' && detailedItem.episodes && (
+                                <span className="text-xs text-white/75 font-medium">
+                                  • {detailedItem.episodes} {t("movies.meta.episodes")}
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-xl sm:text-3xl font-black text-white select-text truncate drop-shadow-md">
+                              {detailedItem.title}
+                            </h3>
+                          </div>
+                        </div>
+                      </div>
+                    </>
                   )}
 
-                  <div className="flex items-center gap-4 text-xs font-mono text-zinc-400">
-                    <span className="flex items-center gap-0.5 text-amber-500 font-extrabold">
-                      <Star size={12} className="fill-current" />
-                      {detailedItem.rating?.toFixed(1) || "8.2"}
-                    </span>
-                    <span>{detailedItem.year || "2024"}</span>
-                    <span className="border border-zinc-700 px-1.5 rounded text-[10px] text-zinc-300 font-bold">
-                      {detailedItem.mediaType === 'movie' ? "PG-13" : "TV-MA"}
-                    </span>
-                    <span>
-                      {detailedItem.mediaType === 'movie'
-                        ? detailedItem.runtime ? `${detailedItem.runtime}${t("movies.meta.minutes")}` : `148${t("movies.meta.minutes")}`
-                        : detailedItem.seasons ? `${detailedItem.seasons} ${t("movies.meta.seasons")}` : `5 ${t("movies.meta.seasons")}`}
-                    </span>
-                    {detailedItem.mediaType === 'tv' && detailedItem.episodes && (
-                      <span>{detailedItem.episodes} {t("movies.meta.episodes")}</span>
+                  {/* Top Floating Controls inside Modal Hero */}
+                  <div className="absolute top-3.5 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
+                    <div className="pointer-events-auto">
+                      {detailedItem.trailerKey && (
+                        <button
+                          type="button"
+                          onClick={() => setShowHeroTrailer((v) => !v)}
+                          className="lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Film size={13} />
+                          <span>
+                            {showHeroTrailer
+                              ? (currentLang === "ar" ? "إغلاق التريلر" : "Hide Trailer")
+                              : (currentLang === "ar" ? "تشغيل التريلر" : "Watch Trailer")}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedItemId(null)}
+                      className="lg-cinema-icon-pill pointer-events-auto hover:!bg-rose-600/45 hover:!border-rose-300/60"
+                      aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Scrollable Liquid Glass Body */}
+                <div className="p-5 sm:p-7 flex flex-col gap-5 overflow-y-auto">
+                  {/* Action Bar: Watch Now (In-App Stream) + Trailer Toggle + Account Actions */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedWatchItem(detailedItem)}
+                        className="lg-cinema-primary-pill py-2.5 px-6 text-white font-black flex items-center gap-2 cursor-pointer text-xs sm:text-sm"
+                      >
+                        <Play size={15} className="fill-current" />
+                        <span>{t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}</span>
+                      </button>
+
+                      {detailedItem.trailerKey && (
+                        <button
+                          type="button"
+                          onClick={() => setShowHeroTrailer((v) => !v)}
+                          className={`lg-cinema-action-pill py-2.5 px-4 text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer ${
+                            showHeroTrailer ? "!bg-white/25 !border-white/50 text-white" : "text-white/90"
+                          }`}
+                        >
+                          <Film size={14} />
+                          <span>
+                            {showHeroTrailer
+                              ? (currentLang === "ar" ? "عرض الملصق" : "Show Backdrop")
+                              : (currentLang === "ar" ? "التريلر الرسمي" : "Official Trailer")}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+
+                    {user && detailedItem && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Favorite */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggle(
+                              detailedItem.id,
+                              detailedItem.mediaType,
+                              'favorite',
+                              detailedItem.title,
+                              detailedItem.posterPath
+                            )
+                          }
+                          aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'favorite')}
+                          aria-label="Add to favorites"
+                          className={[
+                            'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
+                            'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
+                            has(detailedItem.id, detailedItem.mediaType, 'favorite')
+                              ? 'bg-rose-600/40 border-rose-400/60 text-white shadow-md'
+                              : 'bg-white/6 border-white/15 text-white/75 hover:border-rose-400/50 hover:text-rose-200',
+                          ].join(' ')}
+                        >
+                          <Heart
+                            size={13}
+                            strokeWidth={2}
+                            fill={has(detailedItem.id, detailedItem.mediaType, 'favorite') ? 'currentColor' : 'none'}
+                          />
+                          <span>{currentLang === "ar" ? "مفضل" : "Favorite"}</span>
+                        </button>
+
+                        {/* Watched */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggle(
+                              detailedItem.id,
+                              detailedItem.mediaType,
+                              'watched',
+                              detailedItem.title,
+                              detailedItem.posterPath
+                            )
+                          }
+                          aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watched')}
+                          aria-label="Mark as watched"
+                          className={[
+                            'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
+                            'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
+                            has(detailedItem.id, detailedItem.mediaType, 'watched')
+                              ? 'bg-emerald-600/40 border-emerald-400/60 text-white shadow-md'
+                              : 'bg-white/6 border-white/15 text-white/75 hover:border-emerald-400/50 hover:text-emerald-200',
+                          ].join(' ')}
+                        >
+                          <Eye
+                            size={13}
+                            strokeWidth={2}
+                            fill={has(detailedItem.id, detailedItem.mediaType, 'watched') ? 'currentColor' : 'none'}
+                          />
+                          <span>{currentLang === "ar" ? "تمت مشاهدته" : "Watched"}</span>
+                        </button>
+
+                        {/* Watchlist */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggle(
+                              detailedItem.id,
+                              detailedItem.mediaType,
+                              'watchlist',
+                              detailedItem.title,
+                              detailedItem.posterPath
+                            )
+                          }
+                          aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watchlist')}
+                          aria-label="Add to watchlist"
+                          className={[
+                            'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
+                            'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
+                            has(detailedItem.id, detailedItem.mediaType, 'watchlist')
+                              ? 'bg-amber-500/40 border-amber-300/60 text-white shadow-md'
+                              : 'bg-white/6 border-white/15 text-white/75 hover:border-amber-400/50 hover:text-amber-200',
+                          ].join(' ')}
+                        >
+                          <Bookmark
+                            size={13}
+                            strokeWidth={2}
+                            fill={has(detailedItem.id, detailedItem.mediaType, 'watchlist') ? 'currentColor' : 'none'}
+                          />
+                          <span>{currentLang === "ar" ? "للمشاهدة لاحقاً" : "Watchlist"}</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
-                  <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed select-text mt-1 max-h-32 overflow-y-auto pr-1">{detailedItem.overview}</p>
+                  {/* Overview */}
+                  <p className="text-xs sm:text-sm text-white/85 leading-relaxed select-text">
+                    {detailedItem.overview}
+                  </p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                    {detailedItem.trailerKey ? (
-                      <div className="w-full aspect-video rounded-lg overflow-hidden border border-zinc-800 bg-black shadow-inner">
-                        <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${detailedItem.trailerKey}?autoplay=0&muted=0`} title="Cinema Trailer" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                  {/* Practical Trailer Card + Genres & Cast */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                    {/* Interactive Trailer Box (7 cols on desktop) */}
+                    <div className="md:col-span-7 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest">
+                          {currentLang === "ar" ? "الإعلان التشويقي (التريلر)" : "Official Trailer"}
+                        </h4>
+                        {detailedItem.trailerKey && !showHeroTrailer && (
+                          <button
+                            type="button"
+                            onClick={() => setShowHeroTrailer(true)}
+                            className="text-[11px] font-bold text-rose-300 hover:text-rose-200 cursor-pointer"
+                          >
+                            {currentLang === "ar" ? "تكبير في الأعلى ↗" : "Expand to Top Stage ↗"}
+                          </button>
+                        )}
                       </div>
-                    ) : (
-                      <div className="w-full aspect-video rounded-lg border border-zinc-800/60 flex items-center justify-center text-zinc-500 text-xs font-semibold bg-neutral-900/50">
-                        {t("movies.meta.noTrailer")}
-                      </div>
-                    )}
 
-                    <div className="flex flex-col gap-3">
+                      {detailedItem.trailerKey ? (
+                        <div className="w-full aspect-video rounded-2xl overflow-hidden border border-white/20 bg-black shadow-[0_12px_30px_rgba(0,0,0,0.5)]">
+                          <iframe
+                            className="w-full h-full border-0"
+                            src={`https://www.youtube.com/embed/${detailedItem.trailerKey}?autoplay=0&rel=0&modestbranding=1`}
+                            title="Cinema Trailer"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                            allowFullScreen
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full aspect-video rounded-2xl border border-white/15 flex items-center justify-center text-white/50 text-xs font-semibold bg-white/[0.04]">
+                          {t("movies.meta.noTrailer")}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Genres & Cast (5 cols on desktop) */}
+                    <div className="md:col-span-5 flex flex-col gap-4 p-4 rounded-2xl bg-white/[0.04] border border-white/12">
                       <div>
-                        <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">{t("movies.genres")}</h4>
-                        <div className="flex flex-wrap gap-1">
+                        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest mb-2">
+                          {t("movies.genres")}
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5">
                           {detailedItem.genreNames.map((g, i) => (
-                            <span key={i} className="text-[10px] font-black px-2.5 py-0.5 bg-zinc-900 border border-zinc-800 rounded">{g}</span>
+                            <span
+                              key={i}
+                              className="text-[11px] font-bold px-3 py-1 bg-white/10 border border-white/20 rounded-full text-white/90"
+                            >
+                              {g}
+                            </span>
                           ))}
                         </div>
                       </div>
 
                       <div>
-                        <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">{t("movies.cast")}</h4>
-                        <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none">
-                          {detailedItem.cast.slice(0, 4).map((actor, idx) => (
-                            <div key={idx} className="flex flex-col items-center gap-1 text-center min-w-[55px] max-w-[65px] flex-shrink-0">
-                              <div className="w-8 h-8 rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
+                        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest mb-2">
+                          {t("movies.cast")}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {detailedItem.cast.slice(0, 6).map((actor, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-2.5 p-1.5 rounded-xl bg-white/[0.04] border border-white/10"
+                            >
+                              <div className="w-9 h-9 rounded-full bg-white/10 overflow-hidden border border-white/20 flex-shrink-0">
                                 {actor.profilePath ? (
-                                  <img src={actor.profilePath.startsWith("http") ? actor.profilePath : `${TMDB_IMAGE_BASE}/w185${actor.profilePath}`} className="w-full h-full object-cover select-none pointer-events-none" alt="" />
+                                  <img
+                                    src={actor.profilePath.startsWith("http") ? actor.profilePath : `${TMDB_IMAGE_BASE}/w185${actor.profilePath}`}
+                                    className="w-full h-full object-cover select-none pointer-events-none"
+                                    alt={actor.name}
+                                  />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-xs text-zinc-500">👤</div>
+                                  <div className="w-full h-full flex items-center justify-center text-xs text-white/50">👤</div>
                                 )}
                               </div>
-                              <span className="text-[7.5px] font-medium text-zinc-400 truncate w-full">{actor.name}</span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[11px] font-bold text-white/90 truncate">{actor.name}</span>
+                                {actor.character && (
+                                  <span className="text-[9.5px] text-white/55 truncate">{actor.character}</span>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>

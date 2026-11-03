@@ -1,6 +1,6 @@
 {
-  "summary":  "تحليل عميق لصفحة Home وخطة شاملة لإعادة تصميمها بالكامل واستبدال نمط الفروع الثقيل بتخطيط زجاجي متدفق فائق الأداء، مع توظيف جميع البرومتات الـ 14 عبر الأقسام والأنماط الخمسة (Midnight, Dark, Light, Bit, Lite) والحفاظ التام على المحتوى والنوافذ التفاعلية.",
-  "updatedAt":  "2026-10-31T20:17:22.691831206Z",
-  "requestFeedback":  true,
-  "userFacing":  true
+  "summary": "Implementation plan for transforming the Movies & Series window into a full Liquid Glass interface: fixing the Sound/Back button overlap, fixing the poster hover zoom so artwork is always visible, upgrading the Movie/Series details modal and practical trailer viewer, and replacing the Watch Now modal with an in-app 16:9 Liquid Glass iframe player that automatically tests the 3 streaming sources with top server-switching controls and automatic fallback to the external source selector.",
+  "updatedAt": "2026-11-03T00:33:22.753825717Z",
+  "requestFeedback": true,
+  "userFacing": true
 }

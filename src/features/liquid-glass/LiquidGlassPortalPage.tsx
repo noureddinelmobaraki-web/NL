@@ -1,23 +1,32 @@
 /**
  * src/features/liquid-glass/LiquidGlassPortalPage.tsx
  *
- * Single-file, zero-bloat WebGL Liquid Glass interactive page for NL:
- *  - Responsive PC & Phone WebP backgrounds rendered with real-time GLSL refraction
- *  - Initial centerpiece: Rotating Earth + 7 twinkling curved-corner stars inside a
- *    living, wobbling, crystal-clear circular Liquid Glass bubble just slightly larger than Earth
- *  - Click Earth -> the bubble itself smoothly morphs into an adaptive-aspect HLS (.m3u8) video player
- *  - Cylindrical transparent glass tube progress bar beneath the player with flowing blood-red liquid
- *  - Small Liquid Glass random-next video button at the bottom of the viewport
- *  - Clean audio lifecycle hooks for NL's central audioManager & soundGovernor (no unmanaged audio)
+ * Dual-Orb WebGL Liquid Glass interactive page for NL:
+ *  - Responsive PC & Phone WebP backgrounds rendered with real-time Dual-Lens GLSL refraction
+ *  - Dual centerpiece in 'orbs' mode:
+ *      1. Rotating Earth + 7 twinkling curved-corner stars inside a living, wobbling Liquid Glass bubble,
+ *         with transparent '/X.webp' (2400x1340) floating title centered underneath
+ *      2. Rotating Sun (15% larger than Earth) + 7 twinkling curved-corner stars + pulsing solar corona
+ *         inside its own living, wobbling Liquid Glass bubble, with transparent '/ALBUMS.webp' (2400x1340)
+ *         floating title centered underneath
+ *  - Dynamic responsive layout: side-by-side on desktop/landscape, stacked vertically on phone/portrait,
+ *    with continuous fluid viewport scaling and smooth position/size transitions on window resize
+ *  - Click Earth -> morphs Earth's bubble into the adaptive-aspect HLS (.m3u8) video player
+ *  - Click Sun -> prepared handler (`onOpenSunWindow`) that morphs Sun's bubble into a window
+ *    displaying the current background image (ready for future Albums content)
  */
 
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Pause, Play, Shuffle, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Shuffle, Volume2, VolumeX, X } from 'lucide-react';
 import type Hls from 'hls.js';
+import { getLocalAssetUrl } from '../../constants/assets';
 import { useLiquidGlassAudio } from './useLiquidGlassAudio';
+import { EARTH_TEXTURE_DATA_URI, SUN_TEXTURE_DATA_URI } from './sunTexture';
+import { LIQUID_GLASS_ALL_HLS_VIDEOS } from './albumsData';
+import { SunAlbumsStage } from './SunAlbumsStage';
 
 // ============================================================================
-// [EDIT HERE: BACKGROUNDS] — روابط خلفيتي الحاسوب والهاتف
+// [EDIT HERE: BACKGROUNDS & TITLES] — روابط الخلفيات وصور العناوين (X & ALBUMS)
 // ============================================================================
 export const LIQUID_GLASS_BACKGROUNDS = {
   pc: 'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/pc.webp',
@@ -25,32 +34,20 @@ export const LIQUID_GLASS_BACKGROUNDS = {
   mobileBreakpointQuery: '(max-width: 768px)',
 } as const;
 
+export const LIQUID_GLASS_TITLE_IMAGES = {
+  earthX: getLocalAssetUrl('X.webp'),
+  sunAlbums: getLocalAssetUrl('ALBUMS.webp'),
+  naturalWidth: 2400,
+  naturalHeight: 1340,
+} as const;
+
+/** مجسم الشمس أكبر بنسبة 15% من مجسم كوكب الأرض */
+export const SUN_SCALE_MULTIPLIER = 1.15;
+
 // ============================================================================
-// [EDIT HERE: VIDEO STREAMS] — قائمة الـ 21 فيديو بتقنية البث HLS (.m3u8)
+// [EDIT HERE: VIDEO STREAMS] — القائمة الكاملة الموحدة لجميع الفيديوهات (من 1 إلى 45 شاملة 21.5)
 // ============================================================================
-export const LIQUID_GLASS_HLS_VIDEOS: readonly string[] = [
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/1/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/2/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/3/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/4/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/5/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/6/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/7/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/8/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/9/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/10/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/11/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/12/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/13/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/14/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/15/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/16/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/17/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/18/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/19/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/20/index.m3u8',
-  'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/21/index.m3u8',
-];
+export const LIQUID_GLASS_HLS_VIDEOS: readonly string[] = LIQUID_GLASS_ALL_HLS_VIDEOS;
 
 // ============================================================================
 // [EDIT HERE: GLASS SHADER UNIFORMS] — إعدادات فيزياء الزجاج السائل وسلوك المشغل
@@ -59,8 +56,8 @@ const GLASS_CONFIG = {
   tint: [0.99, 0.995, 1.0] as const,
   saturation: 1.18,
   distortion: 1.45,
-  blurEarthMode: 0.35,
-  blurVideoRim: 0.55,
+  blurOrbMode: 0.35,
+  blurWindowRim: 0.55,
   chromaticAberration: 1.35,
   shadowIntensity: 0.22,
   shadowOffsetX: 0,
@@ -68,39 +65,22 @@ const GLASS_CONFIG = {
   shadowBlur: 28,
   cornerRadiusDesktop: 32,
   cornerRadiusMobile: 24,
-  /** عند انتهاء الفيديو ينتقل تلقائياً لفيديو عشوائي آخر */
   autoAdvanceOnEnded: true,
 } as const;
-
-// ============================================================================
-// [EDIT HERE: EARTH TEXTURE] — خامة كوكب الأرض الأصلية الكاملة (Base64 JPEG)
-// ============================================================================
-const EARTH_TEXTURE_DATA_URI =
-  'data:image/jpeg;base64,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';
 
 // ============================================================================
 // [EDIT HERE: AUDIO BRIDGE] — واجهة الربط مع نظام الصوت والتوجيه في موقع NL
 // ============================================================================
 export interface LiquidGlassPortalPageProps {
-  /** إغلاق الصفحة والعودة للموقع (يُمرَّر closeLiquidGlass من AppContext) */
   onClose?: () => void;
-  /**
-   * يُستدعى تلقائياً عند تغيّر حالة صوت الفيديو (true = فيديو يعمل، أوقف موسيقى خلفية الصفحة؛
-   * false = لا فيديو يعمل) لربط الصفحة بخطاف الصوت المركزي (audioManager / soundGovernor) دون تراكب
-   */
   onVideoAudioActiveChange?: (isVideoAudible: boolean) => void;
-  /**
-   * يتيح تمرير عنصر <video> إلى audioManager.registerExternal('video', ...)
-   */
-  onVideoElementMount?: (videoEl: HTMLVideoElement | null) => void;
-  /** حالة الكتم العالمي القادمة من NotchIsland (audioManager.isMuted) */
+  onVideoElementMount?: (mediaEl: HTMLMediaElement | null) => void;
   externalMuted?: boolean;
-  /** تبديل الكتم العالمي إن أراد المستخدم التحكم به من شريط الفيديو أيضاً */
   onToggleMute?: () => void;
 }
 
 // ============================================================================
-// WebGL GLSL Shaders — محرك الزجاج السائل الحقيقي (فقاعة كريستالية متذبذبة + تحوّل سلس)
+// WebGL GLSL Shaders — محرك الزجاج السائل المزدوج (فقاعة الأرض + فقاعة الشمس)
 // ============================================================================
 const VERTEX_SHADER_SOURCE = `
   attribute vec2 a_position;
@@ -113,30 +93,8 @@ const VERTEX_SHADER_SOURCE = `
   }
 `;
 
-function buildFragmentShaderSource(hasDerivatives: boolean): string {
-  const gradientBlock = hasDerivatives
-    ? `
-      #ifdef GL_OES_standard_derivatives
-      vec2 grad = normalize(vec2(dFdx(sdf), dFdy(sdf)) + vec2(1e-5));
-      #else
-      vec2 grad = normalize(centeredUV + vec2(1e-5));
-      #endif
-    `
-    : `
-      float eps = 2.0;
-      vec2 h = vec2(eps, 0.0);
-      float sdf1 = sdLiquidShape((fragCoord + h.xy) - u_center, vec2(u_width, u_height), u_cornerRadius, u_wobbleAmp, u_time);
-      float sdf2 = sdLiquidShape((fragCoord - h.xy) - u_center, vec2(u_width, u_height), u_cornerRadius, u_wobbleAmp, u_time);
-      float sdf3 = sdLiquidShape((fragCoord + h.yx) - u_center, vec2(u_width, u_height), u_cornerRadius, u_wobbleAmp, u_time);
-      float sdf4 = sdLiquidShape((fragCoord - h.yx) - u_center, vec2(u_width, u_height), u_cornerRadius, u_wobbleAmp, u_time);
-      vec2 grad = normalize(vec2(sdf1 - sdf2, sdf3 - sdf4) + vec2(1e-5));
-    `;
-
+function buildFragmentShaderSource(): string {
   return `
-    #ifdef GL_OES_standard_derivatives
-    #extension GL_OES_standard_derivatives : enable
-    #endif
-
     #ifdef GL_FRAGMENT_PRECISION_HIGH
     precision highp float;
     #else
@@ -145,11 +103,23 @@ function buildFragmentShaderSource(hasDerivatives: boolean): string {
 
     uniform float u_time;
     uniform vec2 u_resolution;
-    uniform vec2 u_center;
     uniform vec2 u_lightShift;
     uniform sampler2D u_texture;
-    uniform float u_width;
-    uniform float u_height;
+
+    // Bubble A (Earth / Video Player)
+    uniform vec2 u_centerA;
+    uniform vec2 u_sizeA;
+    uniform float u_cornerA;
+    uniform float u_wobbleA;
+    uniform float u_alphaA;
+
+    // Bubble B (Sun / Albums Window)
+    uniform vec2 u_centerB;
+    uniform vec2 u_sizeB;
+    uniform float u_cornerB;
+    uniform float u_wobbleB;
+    uniform float u_alphaB;
+
     uniform vec3 u_tint;
     uniform float u_saturation;
     uniform float u_distortion;
@@ -159,9 +129,7 @@ function buildFragmentShaderSource(hasDerivatives: boolean): string {
     uniform float u_shadowIntensity;
     uniform vec2 u_shadowOffset;
     uniform float u_shadowBlur;
-    uniform float u_cornerRadius;
     uniform float u_chromaticAberration;
-    uniform float u_wobbleAmp;
 
     varying vec2 v_texCoord;
 
@@ -184,16 +152,15 @@ function buildFragmentShaderSource(hasDerivatives: boolean): string {
       return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - cornerRadius.x;
     }
 
-    // Organic Siri/NotchIsland liquid droplet surface ripple
-    float sdLiquidShape(vec2 pos, vec2 halfSize, float radius, float wobbleAmp, float t) {
+    float sdLiquidShape(vec2 pos, vec2 halfSize, float radius, float wobbleAmp, float t, float phase) {
       float base = sdRoundedRect(pos, halfSize, vec4(radius));
       if (wobbleAmp <= 0.001) return base;
       float ang = atan(pos.y, pos.x);
       float minDim = min(halfSize.x, halfSize.y);
       float wave =
-        sin(ang * 2.0 + t * 1.65) * 0.44 +
-        cos(ang * 3.0 - t * 2.15) * 0.34 +
-        sin(ang * 4.0 + t * 1.25) * 0.22;
+        sin(ang * 2.0 + t * 1.65 + phase) * 0.44 +
+        cos(ang * 3.0 - t * 2.15 - phase * 0.7) * 0.34 +
+        sin(ang * 4.0 + t * 1.25 + phase * 1.3) * 0.22;
       return base + wave * minDim * 0.042 * wobbleAmp;
     }
 
@@ -224,53 +191,81 @@ function buildFragmentShaderSource(hasDerivatives: boolean): string {
 
     void main() {
       vec2 fragCoord = v_texCoord * u_resolution;
-      vec2 centeredUV = fragCoord - u_center;
-      float sdf = sdLiquidShape(centeredUV, vec2(u_width, u_height), u_cornerRadius, u_wobbleAmp, u_time);
+
+      float sdfA = (u_alphaA > 0.01)
+        ? sdLiquidShape(fragCoord - u_centerA, u_sizeA, u_cornerA, u_wobbleA, u_time, 0.0)
+        : 1e5;
+      float sdfB = (u_alphaB > 0.01)
+        ? sdLiquidShape(fragCoord - u_centerB, u_sizeB, u_cornerB, u_wobbleB, u_time, 2.094)
+        : 1e5;
 
       vec2 coverUV = getCoverUV(v_texCoord, u_imageAspect, u_canvasAspect);
       vec3 baseTex = texture2D(u_texture, coverUV).rgb;
 
-      // Analytical O(1) soft drop shadow around the liquid glass boundary
-      float shadowDist = sdLiquidShape(centeredUV - u_shadowOffset, vec2(u_width, u_height), u_cornerRadius, u_wobbleAmp, u_time);
-      float shadowAlpha = (1.0 - smoothstep(-u_shadowBlur * 0.25, max(u_shadowBlur, 1.0), shadowDist)) * u_shadowIntensity;
+      // Analytical soft drop shadows for both bubbles
+      float shDistA = (u_alphaA > 0.01)
+        ? sdLiquidShape((fragCoord - u_centerA) - u_shadowOffset, u_sizeA, u_cornerA, u_wobbleA, u_time, 0.0)
+        : 1e5;
+      float shDistB = (u_alphaB > 0.01)
+        ? sdLiquidShape((fragCoord - u_centerB) - u_shadowOffset, u_sizeB, u_cornerB, u_wobbleB, u_time, 2.094)
+        : 1e5;
+
+      float shAlphaA = (1.0 - smoothstep(-u_shadowBlur * 0.25, max(u_shadowBlur, 1.0), shDistA)) * u_shadowIntensity * u_alphaA;
+      float shAlphaB = (1.0 - smoothstep(-u_shadowBlur * 0.25, max(u_shadowBlur, 1.0), shDistB)) * u_shadowIntensity * u_alphaB;
+      float shadowAlpha = max(shAlphaA, shAlphaB);
       vec3 shadowedBackground = baseTex * (1.0 - shadowAlpha);
 
-      // Fast exit outside the glass boundary
-      if (sdf > 1.5) {
+      bool isSunBubble = (sdfB < sdfA);
+      float sdf = isSunBubble ? sdfB : sdfA;
+      float bubbleAlpha = isSunBubble ? u_alphaB : u_alphaA;
+
+      if (sdf > 1.5 || bubbleAlpha <= 0.01) {
         gl_FragColor = vec4(shadowedBackground, 1.0);
         return;
       }
 
-      float minHalfDim = max(min(u_width, u_height), 1.0);
+      vec2 activeCenter = isSunBubble ? u_centerB : u_centerA;
+      vec2 activeSize = isSunBubble ? u_sizeB : u_sizeA;
+      float activeCorner = isSunBubble ? u_cornerB : u_cornerA;
+      float activeWobble = isSunBubble ? u_wobbleB : u_wobbleA;
+      float activePhase = isSunBubble ? 2.094 : 0.0;
+
+      float minHalfDim = max(min(activeSize.x, activeSize.y), 1.0);
       float normalizedInside = clamp((sdf / minHalfDim) + 1.0, 0.0, 1.0);
-      // Meniscus lens curve: crystal clear in the interior, strong curved glass lensing at the outer rim
       float rimCurve = pow(normalizedInside, 3.8);
       float outerMeniscus = pow(normalizedInside, 8.5);
 
-      ${gradientBlock}
+      float eps = 2.0;
+      vec2 h = vec2(eps, 0.0);
+      float sdf1 = sdLiquidShape((fragCoord + h.xy) - activeCenter, activeSize, activeCorner, activeWobble, u_time, activePhase);
+      float sdf2 = sdLiquidShape((fragCoord - h.xy) - activeCenter, activeSize, activeCorner, activeWobble, u_time, activePhase);
+      float sdf3 = sdLiquidShape((fragCoord + h.yx) - activeCenter, activeSize, activeCorner, activeWobble, u_time, activePhase);
+      float sdf4 = sdLiquidShape((fragCoord - h.yx) - activeCenter, activeSize, activeCorner, activeWobble, u_time, activePhase);
+      vec2 grad = normalize(vec2(sdf1 - sdf2, sdf3 - sdf4) + vec2(1e-5));
 
       vec2 refractVec = grad * (-0.042 * u_distortion * rimCurve) + u_lightShift * 0.003 * rimCurve;
       vec2 sampleUV = v_texCoord + refractVec;
 
-      // Keep interior 100% transparent/sharp; subtle optical softening only at the curved glass bevel
       float rimBlurPx = outerMeniscus * 2.4 * u_blur;
       vec3 glassTex = sampleCrystalGlass(sampleUV, refractVec, rimBlurPx);
       glassTex = mix(glassTex, saturateColor(glassTex, u_saturation), rimCurve * 0.55);
-      glassTex *= u_tint;
 
-      // Rotating liquid caustic + pointer-reactive fresnel specular highlight
-      float causticAngle = u_time * 0.55;
-      vec2 lightDir1 = normalize(vec2(-0.707, -0.707) + u_lightShift * 0.35 + vec2(cos(causticAngle), sin(causticAngle)) * 0.18 * u_wobbleAmp);
+      vec3 activeTint = isSunBubble ? vec3(1.0, 0.985, 0.96) : u_tint;
+      glassTex *= activeTint;
+
+      float causticAngle = u_time * 0.55 + activePhase;
+      vec2 lightDir1 = normalize(vec2(-0.707, -0.707) + u_lightShift * 0.35 + vec2(cos(causticAngle), sin(causticAngle)) * 0.18 * activeWobble);
       vec2 lightDir2 = normalize(vec2(0.65, 0.75) - u_lightShift * 0.25);
       float spec1 = pow(max(dot(grad, lightDir1), 0.0), 3.2);
       float spec2 = pow(max(dot(grad, lightDir2), 0.0), 4.0) * 0.55;
 
-      // Crisp crystal bubble rim + subtle iridescent fresnel sheen
       float rimHighlight = smoothstep(-5.5, -0.6, sdf) * (1.0 - smoothstep(-0.6, 1.2, sdf));
-      vec3 fresnelTint = mix(vec3(0.84, 0.95, 1.0), vec3(1.0, 0.96, 0.99), spec1);
+      vec3 fresnelTint = isSunBubble
+        ? mix(vec3(1.0, 0.90, 0.74), vec3(1.0, 0.97, 0.90), spec1)
+        : mix(vec3(0.84, 0.95, 1.0), vec3(1.0, 0.96, 0.99), spec1);
       glassTex += fresnelTint * ((spec1 + spec2) * outerMeniscus * 0.36 + rimHighlight * 0.32);
 
-      float boxMask = 1.0 - smoothstep(-0.85, 0.85, sdf);
+      float boxMask = (1.0 - smoothstep(-0.85, 0.85, sdf)) * bubbleAlpha;
       gl_FragColor = vec4(mix(shadowedBackground, glassTex, boxMask), 1.0);
     }
   `;
@@ -291,7 +286,7 @@ function formatDuration(sec: number): string {
 }
 
 // ============================================================================
-// Rotating Earth + 7 Curved-Corner Twinkling Stars (Exact Scoped Conversion)
+// Rotating Earth + 7 Curved-Corner Twinkling Stars (100% Preserved)
 // ============================================================================
 const STAR_IDS = [1, 2, 3, 4, 5, 6, 7] as const;
 
@@ -309,12 +304,51 @@ const RotatingEarthButton = React.memo(function RotatingEarthButton({
       onClick={onActivate}
       tabIndex={hidden ? -1 : 0}
       aria-hidden={hidden}
-      aria-label="اضغط على الكوكب لبدء عرض الفيديوهات"
+      aria-label="اضغط على كوكب الأرض لبدء عرض الفيديوهات"
     >
       <div className="lg-earth-scale-wrap">
         <div className="lg-section-banner">
           {STAR_IDS.map((n) => (
             <div key={n} className={`lg-star lg-star-${n}`} aria-hidden="true">
+              <div className="lg-curved-corner-star">
+                <div className="lg-cc-br" />
+                <div className="lg-cc-bl" />
+              </div>
+              <div className="lg-curved-corner-star">
+                <div className="lg-cc-tr" />
+                <div className="lg-cc-tl" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </button>
+  );
+});
+
+// ============================================================================
+// Rotating Sun + 7 Curved-Corner Twinkling Stars (Exact Scoped Conversion)
+// ============================================================================
+const RotatingSunButton = React.memo(function RotatingSunButton({
+  onActivate,
+  hidden,
+}: {
+  onActivate: () => void;
+  hidden: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className={`lg-sun-trigger${hidden ? ' lg-sun-trigger--morphed' : ''}`}
+      onClick={onActivate}
+      tabIndex={hidden ? -1 : 0}
+      aria-hidden={hidden}
+      aria-label="اضغط على مجسم الشمس لفتح الألبومات"
+    >
+      <div className="lg-sun-scale-wrap">
+        <div className="lg-section-banner-sun">
+          {STAR_IDS.map((n) => (
+            <div key={n} className={`lg-sun-star lg-sun-star-${n}`} aria-hidden="true">
               <div className="lg-curved-corner-star">
                 <div className="lg-cc-br" />
                 <div className="lg-cc-bl" />
@@ -351,18 +385,42 @@ export default function LiquidGlassPortalPage({
   const externalMuted = externalMutedProp ?? managedAudio.externalMuted;
   const onToggleMute = onToggleMuteProp ?? managedAudio.onToggleMute;
 
-  // Responsive viewport mode (phone <= 768px vs PC > 768px)
-  const [isMobileView, setIsMobileView] = useState<boolean>(() =>
-    typeof window !== 'undefined'
-      ? window.matchMedia(LIQUID_GLASS_BACKGROUNDS.mobileBreakpointQuery).matches
-      : false,
-  );
+  // Responsive viewport mode & dynamic layout calculation
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1280,
+    height: typeof window !== 'undefined' ? window.innerHeight : 800,
+    isMobile:
+      typeof window !== 'undefined'
+        ? window.matchMedia(LIQUID_GLASS_BACKGROUNDS.mobileBreakpointQuery).matches
+        : false,
+  }));
 
-  // WebGL texture readiness (falls back cleanly to <picture> + CSS glass if WebGL/CORS fails)
+  const isMobileView = viewport.isMobile;
+  // Switch between side-by-side (PC / landscape) and stacked vertical (phone / narrow window)
+  const isStackedLayout =
+    viewport.width <= 768 || (viewport.width < 920 && viewport.height > viewport.width * 1.08);
+
+  // Compute dynamic fluid scale for Earth (1.0x) and Sun (1.15x) so both orbs + titles always fit
+  const orbScale = React.useMemo(() => {
+    const w = Math.max(viewport.width, 320);
+    const h = Math.max(viewport.height, 480);
+    if (isStackedLayout) {
+      // Vertical stack: Earth bubble (286*s) + X title + gap + Sun bubble (329*s) + ALBUMS title
+      const maxByHeight = (h - 140) / 760;
+      const maxByWidth = (w - 40) / 360;
+      return Math.min(Math.max(Math.min(maxByHeight, maxByWidth), 0.48), 0.92);
+    }
+    // Horizontal side-by-side: Earth bubble (286*s) + gap + Sun bubble (329*s)
+    const maxByWidth = (w - 120) / 740;
+    const maxByHeight = (h - 170) / 470;
+    return Math.min(Math.max(Math.min(maxByWidth, maxByHeight), 0.56), 1.08);
+  }, [viewport.width, viewport.height, isStackedLayout]);
+
+  // WebGL texture readiness
   const [webglReady, setWebglReady] = useState(false);
 
-  // Mode: 'earth' initially -> 'video' once Earth is clicked
-  const [mode, setMode] = useState<'earth' | 'video'>('earth');
+  // Mode: 'orbs' initially -> 'video' when Earth clicked -> 'sun' when Sun clicked
+  const [mode, setMode] = useState<'orbs' | 'video' | 'sun'>('orbs');
   const [currentVideoIndex, setCurrentVideoIndex] = useState<number | null>(null);
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -373,9 +431,10 @@ export default function LiquidGlassPortalPage({
 
   const effectiveMuted = externalMuted || localMuted;
 
-  // Refs for WebGL, HLS, shuffle bag, and smooth geometry interpolation
+  // Refs for WebGL, DOM glass boxes, HLS, shuffle bag, and seek track
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const glassBoxRef = useRef<HTMLDivElement | null>(null);
+  const sunGlassBoxRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const shuffleBagRef = useRef<number[]>([]);
@@ -385,15 +444,25 @@ export default function LiquidGlassPortalPage({
 
   // Mutable render state read inside rAF without re-creating the WebGL loop
   const renderStateRef = useRef({
-    mode: 'earth' as 'earth' | 'video',
+    mode: 'orbs' as 'orbs' | 'video' | 'sun',
     isMobile: isMobileView,
     imageAspect: isMobileView ? 9 / 16 : 16 / 9,
-    currCenterX: 0,
-    currCenterY: 0,
-    currHalfW: 142,
-    currHalfH: 142,
-    currCorner: 142,
-    currWobble: 1,
+    // Bubble A (Earth)
+    currCenterAX: 0,
+    currCenterAY: 0,
+    currHalfAW: 142,
+    currHalfAH: 142,
+    currCornerA: 142,
+    currWobbleA: 1,
+    currAlphaA: 1,
+    // Bubble B (Sun — 15% larger)
+    currCenterBX: 0,
+    currCenterBY: 0,
+    currHalfBW: 164,
+    currHalfBH: 164,
+    currCornerB: 164,
+    currWobbleB: 1,
+    currAlphaB: 1,
     geometryInitialized: false,
     lightX: 0,
     lightY: 0,
@@ -413,12 +482,10 @@ export default function LiquidGlassPortalPage({
 
     if (shuffleBagRef.current.length === 0) {
       const fresh = Array.from({ length: total }, (_, i) => i);
-      // Fisher-Yates shuffle
       for (let i = fresh.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [fresh[i], fresh[j]] = [fresh[j], fresh[i]];
       }
-      // Prevent immediate repeat across bag boundary
       if (fresh[fresh.length - 1] === lastPickedRef.current && fresh.length > 1) {
         [fresh[0], fresh[fresh.length - 1]] = [fresh[fresh.length - 1], fresh[0]];
       }
@@ -440,36 +507,67 @@ export default function LiquidGlassPortalPage({
     onVideoAudioActiveChange?.(true);
   }, [pickNextRandomVideoIndex, onVideoAudioActiveChange]);
 
-  // ── Media query listener for PC <-> Phone background switching ───────────
+  // ── Prepared empty handler for Sun -> opens window showing current background ──
+  const onOpenSunWindow = useCallback(() => {
+    // دالة مجهزة لفتح نافذة الشمس (تعرض حالياً صورة الخلفية الحالية فقط وجاهزة للبرومتات القادمة)
+    setMode('sun');
+    onVideoAudioActiveChange?.(false);
+  }, [onVideoAudioActiveChange]);
+
+  const handleReturnToOrbs = useCallback(() => {
+    setMode('orbs');
+    setIsPlaying(false);
+    onVideoAudioActiveChange?.(false);
+  }, [onVideoAudioActiveChange]);
+
+  // ── Window resize & orientation listener for dynamic sizing and layout swap ──
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     const mq = window.matchMedia(LIQUID_GLASS_BACKGROUNDS.mobileBreakpointQuery);
-    const onChange = (e: MediaQueryListEvent) => setIsMobileView(e.matches);
-    setIsMobileView(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+
+    const updateViewport = () => {
+      setViewport({
+        width: window.innerWidth,
+        height: window.innerHeight,
+        isMobile: mq.matches,
+      });
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport, { passive: true });
+    window.addEventListener('orientationchange', updateViewport, { passive: true });
+    mq.addEventListener('change', updateViewport);
+
+    return () => {
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
+      mq.removeEventListener('change', updateViewport);
+    };
   }, []);
 
-  // ── Escape key closes fullscreen page ────────────────────────────────────
+  // ── Escape key returns to orbs or closes fullscreen page ─────────────────
   useEffect(() => {
-    if (!onClose) return undefined;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        if (mode !== 'orbs') {
+          handleReturnToOrbs();
+        } else if (onClose) {
+          onClose();
+        }
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  }, [mode, handleReturnToOrbs, onClose]);
 
-  // ── Desktop subtle pointer specular/refraction tracking (no free drag) ───
+  // ── Desktop subtle pointer specular/refraction tracking ──────────────────
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'touch') return;
     const vw = Math.max(window.innerWidth, 1);
     const vh = Math.max(window.innerHeight, 1);
-    renderStateRef.current.targetLightX = ((e.clientX / vw) - 0.5) * 2;
-    renderStateRef.current.targetLightY = ((e.clientY / vh) - 0.5) * 2;
+    renderStateRef.current.targetLightX = (e.clientX / vw - 0.5) * 2;
+    renderStateRef.current.targetLightY = (e.clientY / vh - 0.5) * 2;
   }, []);
 
   const handlePointerLeave = useCallback(() => {
@@ -477,7 +575,7 @@ export default function LiquidGlassPortalPage({
     renderStateRef.current.targetLightY = 0;
   }, []);
 
-  // ── WebGL Liquid Glass Engine ────────────────────────────────────────────
+  // ── WebGL Dual-Lens Liquid Glass Engine ──────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
@@ -495,8 +593,6 @@ export default function LiquidGlassPortalPage({
       return undefined;
     }
 
-    const hasDerivatives = Boolean(gl.getExtension('OES_standard_derivatives'));
-
     const compileShader = (type: number, src: string): WebGLShader | null => {
       const sh = gl.createShader(type);
       if (!sh) return null;
@@ -510,7 +606,7 @@ export default function LiquidGlassPortalPage({
     };
 
     const vs = compileShader(gl.VERTEX_SHADER, VERTEX_SHADER_SOURCE);
-    const fs = compileShader(gl.FRAGMENT_SHADER, buildFragmentShaderSource(hasDerivatives));
+    const fs = compileShader(gl.FRAGMENT_SHADER, buildFragmentShaderSource());
     if (!vs || !fs) {
       setWebglReady(false);
       return undefined;
@@ -532,7 +628,6 @@ export default function LiquidGlassPortalPage({
 
     gl.useProgram(program);
 
-    // Fullscreen quad: v_texCoord (0,0) = top-left, (1,1) = bottom-right (matches DOM client coords)
     const quad = new Float32Array([
       -1, -1, 0, 1,
        1, -1, 1, 1,
@@ -553,11 +648,18 @@ export default function LiquidGlassPortalPage({
     const locs = {
       u_time: gl.getUniformLocation(program, 'u_time'),
       u_resolution: gl.getUniformLocation(program, 'u_resolution'),
-      u_center: gl.getUniformLocation(program, 'u_center'),
       u_lightShift: gl.getUniformLocation(program, 'u_lightShift'),
       u_texture: gl.getUniformLocation(program, 'u_texture'),
-      u_width: gl.getUniformLocation(program, 'u_width'),
-      u_height: gl.getUniformLocation(program, 'u_height'),
+      u_centerA: gl.getUniformLocation(program, 'u_centerA'),
+      u_sizeA: gl.getUniformLocation(program, 'u_sizeA'),
+      u_cornerA: gl.getUniformLocation(program, 'u_cornerA'),
+      u_wobbleA: gl.getUniformLocation(program, 'u_wobbleA'),
+      u_alphaA: gl.getUniformLocation(program, 'u_alphaA'),
+      u_centerB: gl.getUniformLocation(program, 'u_centerB'),
+      u_sizeB: gl.getUniformLocation(program, 'u_sizeB'),
+      u_cornerB: gl.getUniformLocation(program, 'u_cornerB'),
+      u_wobbleB: gl.getUniformLocation(program, 'u_wobbleB'),
+      u_alphaB: gl.getUniformLocation(program, 'u_alphaB'),
       u_tint: gl.getUniformLocation(program, 'u_tint'),
       u_saturation: gl.getUniformLocation(program, 'u_saturation'),
       u_distortion: gl.getUniformLocation(program, 'u_distortion'),
@@ -567,9 +669,7 @@ export default function LiquidGlassPortalPage({
       u_shadowIntensity: gl.getUniformLocation(program, 'u_shadowIntensity'),
       u_shadowOffset: gl.getUniformLocation(program, 'u_shadowOffset'),
       u_shadowBlur: gl.getUniformLocation(program, 'u_shadowBlur'),
-      u_cornerRadius: gl.getUniformLocation(program, 'u_cornerRadius'),
       u_chromaticAberration: gl.getUniformLocation(program, 'u_chromaticAberration'),
-      u_wobbleAmp: gl.getUniformLocation(program, 'u_wobbleAmp'),
     };
 
     const texture = gl.createTexture();
@@ -595,7 +695,6 @@ export default function LiquidGlassPortalPage({
     let lastSizeKey = '';
     const t0 = performance.now();
 
-    // Store gl + texture on canvas element for the responsive image swapper effect
     (canvas as HTMLCanvasElement & { __lgCtx?: { gl: WebGLRenderingContext; texture: WebGLTexture | null } }).__lgCtx = {
       gl,
       texture,
@@ -616,66 +715,129 @@ export default function LiquidGlassPortalPage({
         lastSizeKey = sizeKey;
       }
 
-      // Measure actual DOM glass container so WebGL SDF morphs 1:1 from circular bubble to video player
       const st = renderStateRef.current;
-      const boxEl = glassBoxRef.current;
-      if (boxEl) {
-        const rect = boxEl.getBoundingClientRect();
-        const canvasRect = canvas.getBoundingClientRect();
-        const targetCX = (rect.left - canvasRect.left + rect.width * 0.5) * dpr;
-        const targetCY = (rect.top - canvasRect.top + rect.height * 0.5) * dpr;
-        const targetHW = Math.max(rect.width * 0.5 * dpr, 20);
-        const targetHH = Math.max(rect.height * 0.5 * dpr, 20);
+      const canvasRect = canvas.getBoundingClientRect();
+      const baseWindowCorner =
+        (st.isMobile ? GLASS_CONFIG.cornerRadiusMobile : GLASS_CONFIG.cornerRadiusDesktop) * dpr;
 
-        const baseVideoCorner =
-          (st.isMobile ? GLASS_CONFIG.cornerRadiusMobile : GLASS_CONFIG.cornerRadiusDesktop) * dpr;
-        const targetCorner =
-          st.mode === 'earth'
-            ? Math.min(targetHW, targetHH)
-            : Math.min(baseVideoCorner, Math.min(targetHW, targetHH) - 1);
-        const targetWobble = st.mode === 'earth' ? 1.0 : 0.0;
+      const boxA = glassBoxRef.current;
+      const boxB = sunGlassBoxRef.current;
 
-        if (!st.geometryInitialized) {
-          st.currCenterX = targetCX;
-          st.currCenterY = targetCY;
-          st.currHalfW = targetHW;
-          st.currHalfH = targetHH;
-          st.currCorner = targetCorner;
-          st.currWobble = targetWobble;
-          st.geometryInitialized = true;
-        } else {
-          const ease = 0.18;
-          st.currCenterX += (targetCX - st.currCenterX) * ease;
-          st.currCenterY += (targetCY - st.currCenterY) * ease;
-          st.currHalfW += (targetHW - st.currHalfW) * ease;
-          st.currHalfH += (targetHH - st.currHalfH) * ease;
-          st.currCorner += (targetCorner - st.currCorner) * ease;
-          st.currWobble += (targetWobble - st.currWobble) * 0.14;
+      // Measure Earth Bubble (A)
+      let targetAX = st.currCenterAX;
+      let targetAY = st.currCenterAY;
+      let targetAHW = st.currHalfAW;
+      let targetAHH = st.currHalfAH;
+      let targetCornerA = st.currCornerA;
+      const targetWobbleA = st.mode === 'orbs' ? 1.0 : 0.0;
+      const targetAlphaA = st.mode === 'sun' ? 0.0 : 1.0;
+
+      if (boxA && st.mode !== 'sun') {
+        const rA = boxA.getBoundingClientRect();
+        if (rA.width > 4 && rA.height > 4) {
+          targetAX = (rA.left - canvasRect.left + rA.width * 0.5) * dpr;
+          targetAY = (rA.top - canvasRect.top + rA.height * 0.5) * dpr;
+          targetAHW = Math.max(rA.width * 0.5 * dpr, 20);
+          targetAHH = Math.max(rA.height * 0.5 * dpr, 20);
+          targetCornerA =
+            st.mode === 'orbs'
+              ? Math.min(targetAHW, targetAHH)
+              : Math.min(baseWindowCorner, Math.min(targetAHW, targetAHH) - 1);
         }
+      }
+
+      // Measure Sun Bubble (B) — dissolves cleanly when entering full-page 'sun' mode
+      let targetBX = st.currCenterBX;
+      let targetBY = st.currCenterBY;
+      let targetBHW = st.currHalfBW;
+      let targetBHH = st.currHalfBH;
+      let targetCornerB = st.currCornerB;
+      const targetWobbleB = st.mode === 'orbs' ? 1.0 : 0.0;
+      const targetAlphaB = st.mode === 'orbs' ? 1.0 : 0.0;
+
+      if (boxB && st.mode === 'orbs') {
+        const rB = boxB.getBoundingClientRect();
+        if (rB.width > 4 && rB.height > 4) {
+          targetBX = (rB.left - canvasRect.left + rB.width * 0.5) * dpr;
+          targetBY = (rB.top - canvasRect.top + rB.height * 0.5) * dpr;
+          targetBHW = Math.max(rB.width * 0.5 * dpr, 20);
+          targetBHH = Math.max(rB.height * 0.5 * dpr, 20);
+          targetCornerB = Math.min(targetBHW, targetBHH);
+        }
+      }
+
+      if (!st.geometryInitialized) {
+        st.currCenterAX = targetAX;
+        st.currCenterAY = targetAY;
+        st.currHalfAW = targetAHW;
+        st.currHalfAH = targetAHH;
+        st.currCornerA = targetCornerA;
+        st.currWobbleA = targetWobbleA;
+        st.currAlphaA = targetAlphaA;
+
+        st.currCenterBX = targetBX;
+        st.currCenterBY = targetBY;
+        st.currHalfBW = targetBHW;
+        st.currHalfBH = targetBHH;
+        st.currCornerB = targetCornerB;
+        st.currWobbleB = targetWobbleB;
+        st.currAlphaB = targetAlphaB;
+        st.geometryInitialized = true;
+      } else {
+        const ease = 0.18;
+        st.currCenterAX += (targetAX - st.currCenterAX) * ease;
+        st.currCenterAY += (targetAY - st.currCenterAY) * ease;
+        st.currHalfAW += (targetAHW - st.currHalfAW) * ease;
+        st.currHalfAH += (targetAHH - st.currHalfAH) * ease;
+        st.currCornerA += (targetCornerA - st.currCornerA) * ease;
+        st.currWobbleA += (targetWobbleA - st.currWobbleA) * 0.14;
+        st.currAlphaA += (targetAlphaA - st.currAlphaA) * 0.16;
+
+        st.currCenterBX += (targetBX - st.currCenterBX) * ease;
+        st.currCenterBY += (targetBY - st.currCenterBY) * ease;
+        st.currHalfBW += (targetBHW - st.currHalfBW) * ease;
+        st.currHalfBH += (targetBHH - st.currHalfBH) * ease;
+        st.currCornerB += (targetCornerB - st.currCornerB) * ease;
+        st.currWobbleB += (targetWobbleB - st.currWobbleB) * 0.14;
+        st.currAlphaB += (targetAlphaB - st.currAlphaB) * 0.16;
       }
 
       st.lightX += (st.targetLightX - st.lightX) * 0.08;
       st.lightY += (st.targetLightY - st.lightY) * 0.08;
 
-      const clampedCorner = Math.min(
-        Math.max(st.currCorner, 4),
-        Math.min(st.currHalfW, st.currHalfH) - 0.5,
+      const clampedCornerA = Math.min(
+        Math.max(st.currCornerA, 4),
+        Math.min(st.currHalfAW, st.currHalfAH) - 0.5,
+      );
+      const clampedCornerB = Math.min(
+        Math.max(st.currCornerB, 4),
+        Math.min(st.currHalfBW, st.currHalfBH) - 0.5,
       );
 
       gl.useProgram(program);
       gl.uniform1f(locs.u_time, (now - t0) * 0.001);
       gl.uniform2f(locs.u_resolution, canvas.width, canvas.height);
-      gl.uniform2f(locs.u_center, st.currCenterX, st.currCenterY);
       gl.uniform2f(locs.u_lightShift, st.lightX, st.lightY);
       gl.uniform1i(locs.u_texture, 0);
-      gl.uniform1f(locs.u_width, st.currHalfW);
-      gl.uniform1f(locs.u_height, st.currHalfH);
+
+      gl.uniform2f(locs.u_centerA, st.currCenterAX, st.currCenterAY);
+      gl.uniform2f(locs.u_sizeA, st.currHalfAW, st.currHalfAH);
+      gl.uniform1f(locs.u_cornerA, clampedCornerA);
+      gl.uniform1f(locs.u_wobbleA, st.currWobbleA);
+      gl.uniform1f(locs.u_alphaA, st.currAlphaA);
+
+      gl.uniform2f(locs.u_centerB, st.currCenterBX, st.currCenterBY);
+      gl.uniform2f(locs.u_sizeB, st.currHalfBW, st.currHalfBH);
+      gl.uniform1f(locs.u_cornerB, clampedCornerB);
+      gl.uniform1f(locs.u_wobbleB, st.currWobbleB);
+      gl.uniform1f(locs.u_alphaB, st.currAlphaB);
+
       gl.uniform3f(locs.u_tint, GLASS_CONFIG.tint[0], GLASS_CONFIG.tint[1], GLASS_CONFIG.tint[2]);
       gl.uniform1f(locs.u_saturation, GLASS_CONFIG.saturation);
       gl.uniform1f(locs.u_distortion, GLASS_CONFIG.distortion);
       gl.uniform1f(
         locs.u_blur,
-        st.mode === 'video' ? GLASS_CONFIG.blurVideoRim : GLASS_CONFIG.blurEarthMode,
+        st.mode === 'orbs' ? GLASS_CONFIG.blurOrbMode : GLASS_CONFIG.blurWindowRim,
       );
       gl.uniform1f(locs.u_imageAspect, st.imageAspect);
       gl.uniform1f(locs.u_canvasAspect, canvas.width / Math.max(canvas.height, 1));
@@ -686,9 +848,7 @@ export default function LiquidGlassPortalPage({
         GLASS_CONFIG.shadowOffsetY * dpr,
       );
       gl.uniform1f(locs.u_shadowBlur, GLASS_CONFIG.shadowBlur * dpr);
-      gl.uniform1f(locs.u_cornerRadius, clampedCorner);
       gl.uniform1f(locs.u_chromaticAberration, GLASS_CONFIG.chromaticAberration);
-      gl.uniform1f(locs.u_wobbleAmp, st.currWobble);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -747,7 +907,6 @@ export default function LiquidGlassPortalPage({
         );
         setWebglReady(true);
       } catch {
-        // Graceful fallback to <picture> + CSS glass if canvas is tainted
         setWebglReady(false);
       }
     };
@@ -781,7 +940,7 @@ export default function LiquidGlassPortalPage({
     }
   }, [effectiveMuted, currentVideoIndex]);
 
-  // ── Dynamic HLS (.m3u8) Streaming Lifecycle — Zero upfront page load ─────
+  // ── Dynamic HLS (.m3u8) Streaming Lifecycle ──────────────────────────────
   useEffect(() => {
     if (mode !== 'video' || currentVideoIndex === null) return undefined;
     const video = videoRef.current;
@@ -862,13 +1021,11 @@ export default function LiquidGlassPortalPage({
     const startPlayback = () => {
       if (cancelled) return;
       video.play().catch(() => {
-        // Fallback if browser requires muted start before unmuting
         setIsPlaying(false);
       });
     };
 
     void (async () => {
-      // Prefer hls.js where MediaSource is supported; fallback to native Safari HLS
       const { default: HlsLib } = await import('hls.js');
       if (cancelled) return;
 
@@ -927,7 +1084,6 @@ export default function LiquidGlassPortalPage({
     };
   }, [mode, currentVideoIndex, effectiveMuted, onVideoAudioActiveChange, triggerRandomVideo]);
 
-  // Ensure audio system resets cleanly on unmount
   useEffect(() => {
     return () => {
       onVideoAudioActiveChange?.(false);
@@ -997,10 +1153,12 @@ export default function LiquidGlassPortalPage({
   const progressPercent =
     duration > 0 ? Math.min(Math.max((currentTime / duration) * 100, 0), 100) : 0;
 
-  // Dynamic CSS custom properties for adaptive video aspect ratio
   const cornerRadiusPx = isMobileView
     ? GLASS_CONFIG.cornerRadiusMobile
     : GLASS_CONFIG.cornerRadiusDesktop;
+
+  const earthBubblePx = Math.round(286 * orbScale);
+  const sunBubblePx = Math.round(286 * orbScale * SUN_SCALE_MULTIPLIER);
 
   return (
     <div
@@ -1012,12 +1170,15 @@ export default function LiquidGlassPortalPage({
         {
           '--lg-video-aspect': String(videoAspect),
           '--lg-corner': `${cornerRadiusPx}px`,
+          '--lg-orb-scale': String(orbScale),
+          '--lg-earth-bubble': `${earthBubblePx}px`,
+          '--lg-sun-bubble': `${sunBubblePx}px`,
         } as React.CSSProperties
       }
     >
       <style>{SCOPED_STYLES}</style>
 
-      {/* 1. Instant LCP Responsive Background (<picture>) + Fallback if WebGL CORS fails */}
+      {/* 1. Instant LCP Responsive Background (<picture>) */}
       <picture className="lg-bg-picture" aria-hidden="true">
         <source
           media={LIQUID_GLASS_BACKGROUNDS.mobileBreakpointQuery}
@@ -1033,14 +1194,25 @@ export default function LiquidGlassPortalPage({
         />
       </picture>
 
-      {/* 2. Real-time WebGL GLSL Liquid Glass Shader Canvas */}
+      {/* 2. Real-time Dual-Lens WebGL GLSL Liquid Glass Shader Canvas */}
       <canvas
         ref={canvasRef}
         className={`lg-webgl-canvas${webglReady ? ' lg-webgl-canvas--ready' : ''}`}
         aria-hidden="true"
       />
 
-      {/* 3. Optional Fullscreen Close Button (✕) */}
+      {/* 3. Top Controls: Return to Orbs button (in video mode) + Close Button (✕) */}
+      {mode === 'video' && (
+        <button
+          type="button"
+          className="lg-glass-pill lg-back-orbs-btn"
+          onClick={handleReturnToOrbs}
+          aria-label="العودة إلى كوكب الأرض والشمس"
+        >
+          <ArrowLeft size={18} strokeWidth={2.3} />
+        </button>
+      )}
+
       {onClose && (
         <button
           type="button"
@@ -1052,127 +1224,204 @@ export default function LiquidGlassPortalPage({
         </button>
       )}
 
-      {/* 4. Main Centered Stage: Single Unified Liquid Glass Bubble that Morphs into the Video Player */}
-      <main className="lg-stage">
-        <div
-          ref={glassBoxRef}
-          className={`lg-main-glass ${
-            mode === 'video' ? 'lg-main-glass--video' : 'lg-main-glass--earth'
-          }${!webglReady ? ' lg-main-glass--css-fallback' : ''}`}
+      {/* 4. Main Centered Stage: Dynamic Dual Orbs (Earth + Sun), Video Player, or Full-Page Sun Albums */}
+      {mode === 'sun' ? (
+        <SunAlbumsStage
+          viewportWidth={viewport.width}
+          viewportHeight={viewport.height}
+          externalMuted={effectiveMuted}
+          onToggleMute={handleToggleMuteClick}
+          onAudioActiveChange={onVideoAudioActiveChange}
+          onAudioElementMount={onVideoElementMount}
+          onBackToOrbs={handleReturnToOrbs}
+        />
+      ) : (
+        <main
+          className={`lg-stage ${
+            mode === 'orbs'
+              ? isStackedLayout
+                ? 'lg-stage--orbs-column'
+                : 'lg-stage--orbs-row'
+              : 'lg-stage--expanded'
+          }`}
         >
-          {/* Crystal-clear liquid bubble specular caustic & rim layers */}
-          <div className="lg-main-glass__caustic" aria-hidden="true" />
-          <div className="lg-main-glass__rim" aria-hidden="true" />
-          <div className="lg-main-glass__sheen" aria-hidden="true" />
+          {/* ── EARTH CELESTIAL COLUMN (Earth Liquid Glass Bubble + /X.webp Title) ── */}
+          <div
+            className={`lg-celestial-unit lg-celestial-unit--earth${
+              mode === 'video' ? ' lg-celestial-unit--expanded' : ''
+            }`}
+          >
+            <div
+              ref={glassBoxRef}
+              className={`lg-main-glass ${
+                mode === 'video' ? 'lg-main-glass--video' : 'lg-main-glass--earth'
+              }${!webglReady ? ' lg-main-glass--css-fallback' : ''}`}
+            >
+              <div className="lg-main-glass__caustic" aria-hidden="true" />
+              <div className="lg-main-glass__rim" aria-hidden="true" />
+              <div className="lg-main-glass__sheen" aria-hidden="true" />
 
-          {/* Earth stays mounted during the morph so the bubble itself transforms seamlessly */}
-          <RotatingEarthButton
-            onActivate={triggerRandomVideo}
-            hidden={mode === 'video'}
-          />
-
-          {mode === 'video' && (
-            <div className="lg-video-viewport" onClick={togglePlayPause}>
-              <video
-                ref={videoRef}
-                className="lg-video-el"
-                width={1280}
-                height={720}
-                playsInline
-                preload="none"
+              <RotatingEarthButton
+                onActivate={triggerRandomVideo}
+                hidden={mode === 'video'}
               />
 
-              {isBuffering && (
-                <div className="lg-video-spinner-wrap" aria-hidden="true">
-                  <div className="lg-video-spinner" />
-                </div>
-              )}
+              {mode === 'video' && (
+                <div className="lg-video-viewport" onClick={togglePlayPause}>
+                  <video
+                    ref={videoRef}
+                    className="lg-video-el"
+                    width={1280}
+                    height={720}
+                    playsInline
+                    preload="none"
+                  />
 
-              {!isPlaying && !isBuffering && (
-                <div className="lg-video-paused-badge" aria-hidden="true">
-                  <Play size={26} fill="currentColor" />
+                  {isBuffering && (
+                    <div className="lg-video-spinner-wrap" aria-hidden="true">
+                      <div className="lg-video-spinner" />
+                    </div>
+                  )}
+
+                  {!isPlaying && !isBuffering && (
+                    <div className="lg-video-paused-badge" aria-hidden="true">
+                      <Play size={26} fill="currentColor" />
+                    </div>
+                  )}
                 </div>
               )}
+            </div>
+
+            {/* Transparent /X.webp (2400x1340) Title Centered Beneath Earth — No bubble around it */}
+            {mode === 'orbs' && (
+              <img
+                src={LIQUID_GLASS_TITLE_IMAGES.earthX}
+                alt="X"
+                width={LIQUID_GLASS_TITLE_IMAGES.naturalWidth}
+                height={LIQUID_GLASS_TITLE_IMAGES.naturalHeight}
+                onClick={triggerRandomVideo}
+                className="lg-orb-title-img lg-orb-title-img--earth"
+                decoding="async"
+                draggable={false}
+              />
+            )}
+          </div>
+
+          {/* ── SUN CELESTIAL COLUMN (Sun 1.15x Liquid Glass Bubble + /ALBUMS.webp Title) ── */}
+          <div
+            className={`lg-celestial-unit lg-celestial-unit--sun${
+              mode === 'video' ? ' lg-celestial-unit--hidden' : ''
+            }`}
+          >
+            <div
+              ref={sunGlassBoxRef}
+              className={`lg-main-glass lg-main-glass--sun${
+                !webglReady ? ' lg-main-glass--css-fallback' : ''
+              }`}
+            >
+              <div className="lg-main-glass__caustic lg-main-glass__caustic--sun" aria-hidden="true" />
+              <div className="lg-main-glass__rim lg-main-glass__rim--sun" aria-hidden="true" />
+              <div className="lg-main-glass__sheen" aria-hidden="true" />
+
+              <RotatingSunButton
+                onActivate={onOpenSunWindow}
+                hidden={false}
+              />
+            </div>
+
+            {/* Transparent /ALBUMS.webp (2400x1340) Title Centered Beneath Sun — No bubble around it */}
+            {mode === 'orbs' && (
+              <img
+                src={LIQUID_GLASS_TITLE_IMAGES.sunAlbums}
+                alt="ALBUMS"
+                width={LIQUID_GLASS_TITLE_IMAGES.naturalWidth}
+                height={LIQUID_GLASS_TITLE_IMAGES.naturalHeight}
+                onClick={onOpenSunWindow}
+                className="lg-orb-title-img lg-orb-title-img--sun"
+                decoding="async"
+                draggable={false}
+              />
+            )}
+          </div>
+
+          {/* 5. Transparent Glass Capillary Tube Progress Bar with Flowing Blood-Red Liquid */}
+          {mode === 'video' && (
+            <div
+              className="lg-glass-pill lg-progress-bar"
+              role="region"
+              aria-label="شريط تقدم الفيديو"
+            >
+              <button
+                type="button"
+                className="lg-icon-tap"
+                onClick={togglePlayPause}
+                aria-label={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}
+              >
+                {isPlaying ? (
+                  <Pause size={15} fill="currentColor" />
+                ) : (
+                  <Play size={15} fill="currentColor" />
+                )}
+              </button>
+
+              <div
+                ref={seekTrackRef}
+                className="lg-seek-hit"
+                role="slider"
+                tabIndex={0}
+                aria-label="تقديم أو ترجيع الفيديو"
+                aria-valuemin={0}
+                aria-valuemax={Math.round(duration || 0)}
+                aria-valuenow={Math.round(currentTime || 0)}
+                onPointerDown={handleSeekPointerDown}
+                onPointerMove={handleSeekPointerMove}
+                onPointerUp={handleSeekPointerUp}
+                onPointerCancel={handleSeekPointerUp}
+              >
+                <div className="lg-seek-track">
+                  <div
+                    className="lg-seek-fill"
+                    style={{ width: `${progressPercent}%` }}
+                  >
+                    <span className="lg-seek-fill__wave" aria-hidden="true" />
+                  </div>
+                  <div
+                    className="lg-seek-thumb"
+                    style={{ left: `${progressPercent}%` }}
+                  />
+                  <div className="lg-seek-tube-gloss" aria-hidden="true" />
+                </div>
+              </div>
+
+              <span className="lg-time-readout">
+                {formatDuration(currentTime)} / {formatDuration(duration)}
+              </span>
+
+              <button
+                type="button"
+                className="lg-icon-tap"
+                onClick={handleToggleMuteClick}
+                aria-label={effectiveMuted ? 'إلغاء الكتم' : 'كتم الصوت'}
+              >
+                {effectiveMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+              </button>
             </div>
           )}
-        </div>
+        </main>
+      )}
 
-        {/* 5. Transparent Glass Capillary Tube Progress Bar with Flowing Blood-Red Liquid */}
-        {mode === 'video' && (
-          <div
-            className="lg-glass-pill lg-progress-bar"
-            role="region"
-            aria-label="شريط تقدم الفيديو"
-          >
-            <button
-              type="button"
-              className="lg-icon-tap"
-              onClick={togglePlayPause}
-              aria-label={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}
-            >
-              {isPlaying ? (
-                <Pause size={15} fill="currentColor" />
-              ) : (
-                <Play size={15} fill="currentColor" />
-              )}
-            </button>
-
-            <div
-              ref={seekTrackRef}
-              className="lg-seek-hit"
-              role="slider"
-              tabIndex={0}
-              aria-label="تقديم أو ترجيع الفيديو"
-              aria-valuemin={0}
-              aria-valuemax={Math.round(duration || 0)}
-              aria-valuenow={Math.round(currentTime || 0)}
-              onPointerDown={handleSeekPointerDown}
-              onPointerMove={handleSeekPointerMove}
-              onPointerUp={handleSeekPointerUp}
-              onPointerCancel={handleSeekPointerUp}
-            >
-              <div className="lg-seek-track">
-                <div
-                  className="lg-seek-fill"
-                  style={{ width: `${progressPercent}%` }}
-                >
-                  <span className="lg-seek-fill__wave" aria-hidden="true" />
-                </div>
-                <div
-                  className="lg-seek-thumb"
-                  style={{ left: `${progressPercent}%` }}
-                />
-                <div className="lg-seek-tube-gloss" aria-hidden="true" />
-              </div>
-            </div>
-
-            <span className="lg-time-readout">
-              {formatDuration(currentTime)} / {formatDuration(duration)}
-            </span>
-
-            <button
-              type="button"
-              className="lg-icon-tap"
-              onClick={handleToggleMuteClick}
-              aria-label={effectiveMuted ? 'إلغاء الكتم' : 'كتم الصوت'}
-            >
-              {effectiveMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-            </button>
-          </div>
-        )}
-      </main>
-
-      {/* 6. Small Liquid Glass Random Video Navigation Button at Bottom of Page */}
+      {/* 6. Icon-Only Professional Liquid Glass Shuffle Bubble at Bottom of Page */}
       {mode === 'video' && (
         <div className="lg-bottom-dock">
           <button
             type="button"
-            className="lg-glass-pill lg-next-random-btn"
+            className="lg-next-random-btn"
             onClick={triggerRandomVideo}
             aria-label="عرض فيديو عشوائي آخر"
           >
-            <Shuffle size={15} strokeWidth={2.2} />
-            <span>فيديو آخر</span>
+            <span className="lg-next-random-btn__sheen" aria-hidden="true" />
+            <span className="lg-next-random-btn__caustic" aria-hidden="true" />
+            <Shuffle size={20} strokeWidth={2.3} className="lg-next-random-btn__icon" />
           </button>
         </div>
       )}
@@ -1181,8 +1430,8 @@ export default function LiquidGlassPortalPage({
 }
 
 // ============================================================================
-// Scoped Styles — Living Circular Liquid Bubble around Earth, Seamless Morph
-// into Video Player, and Cylindrical Glass Tube Progress Bar with Blood-Red Liquid
+// Scoped Styles — Dual Living Circular Liquid Bubbles (Earth 1.0x + Sun 1.15x),
+// Floating Transparent Titles (/X.webp & /ALBUMS.webp), Dynamic Layout Switching
 // ============================================================================
 const SCOPED_STYLES = `
   .lg-portal-root {
@@ -1284,34 +1533,164 @@ const SCOPED_STYLES = `
     cursor: pointer;
   }
 
-  .lg-close-btn:hover {
+  .lg-back-orbs-btn {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    left: max(16px, env(safe-area-inset-left));
+    z-index: 30;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+  }
+
+  .lg-close-btn:hover,
+  .lg-back-orbs-btn:hover {
     transform: scale(1.05);
   }
 
-  .lg-close-btn:active {
+  .lg-close-btn:active,
+  .lg-back-orbs-btn:active {
     transform: scale(0.95);
   }
 
-  /* ── Center Stage & Unified Morphing Liquid Glass Bubble ───────────────── */
+  /* ── Center Stage & Dynamic Responsive Layout (Row on PC, Column on Phone) ─ */
   .lg-stage {
     position: relative;
     z-index: 10;
     width: 100%;
     height: 100%;
     padding:
-      max(68px, calc(env(safe-area-inset-top) + 56px))
+      max(58px, calc(env(safe-area-inset-top) + 46px))
       max(16px, env(safe-area-inset-left))
-      max(82px, calc(env(safe-area-inset-bottom) + 74px))
+      max(32px, calc(env(safe-area-inset-bottom) + 24px))
       max(16px, env(safe-area-inset-right));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    pointer-events: none;
+    transition: gap 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .lg-stage--orbs-row {
+    flex-direction: row;
+    gap: clamp(32px, 6.5vw, 108px);
+  }
+
+  .lg-stage--orbs-column {
+    flex-direction: column;
+    gap: clamp(14px, 2.6dvh, 34px);
+  }
+
+  .lg-stage--expanded {
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: max(82px, calc(env(safe-area-inset-bottom) + 74px));
+  }
+
+  /* ── Individual Celestial Unit (Orb Bubble + Centered Floating Title) ──── */
+  .lg-celestial-unit {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
-    box-sizing: border-box;
+    gap: calc(10px * var(--lg-orb-scale, 1));
     pointer-events: none;
+    transition:
+      transform 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
+  .lg-celestial-unit--hidden {
+    opacity: 0;
+    transform: scale(0.72);
+    pointer-events: none;
+    position: absolute;
+    visibility: hidden;
+  }
+
+  .lg-celestial-unit--expanded {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Transparent Floating Title Images (/X.webp & /ALBUMS.webp) ────────── */
+  .lg-orb-title-img {
+    pointer-events: auto;
+    cursor: pointer;
+    height: auto;
+    aspect-ratio: 2400 / 1340;
+    object-fit: contain;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0;
+    margin: 0;
+    display: block;
+    flex-shrink: 0;
+    will-change: transform;
+    transition:
+      width 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      filter 0.32s ease;
+  }
+
+  /* X under Earth — smaller than the Earth orb to fit proportionally as a title */
+  .lg-orb-title-img--earth {
+    width: calc(var(--lg-earth-bubble, 286px) * 0.62);
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.42));
+    animation: lgTitleFloatEarth 4.4s ease-in-out infinite;
+  }
+
+  .lg-orb-title-img--earth:hover {
+    filter: drop-shadow(0 10px 22px rgba(185, 238, 255, 0.48));
+  }
+
+  /* ALBUMS under Sun — smaller than the Sun orb to fit proportionally as a title */
+  .lg-orb-title-img--sun {
+    width: calc(var(--lg-sun-bubble, 329px) * 0.62);
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.42));
+    animation: lgTitleFloatSun 4.8s ease-in-out infinite;
+  }
+
+  .lg-orb-title-img--sun:hover {
+    filter: drop-shadow(0 10px 22px rgba(255, 170, 75, 0.48));
+  }
+
+  @keyframes lgTitleFloatEarth {
+    0%, 100% {
+      transform: translate3d(0, 0px, 0) scale3d(1, 1, 1) rotate(0deg);
+    }
+    25% {
+      transform: translate3d(0, -3.5px, 0) scale3d(1.018, 0.986, 1) rotate(0.7deg);
+    }
+    50% {
+      transform: translate3d(0, 2px, 0) scale3d(0.988, 1.014, 1) rotate(-0.7deg);
+    }
+    75% {
+      transform: translate3d(0, -2px, 0) scale3d(1.01, 0.992, 1) rotate(0.35deg);
+    }
+  }
+
+  @keyframes lgTitleFloatSun {
+    0%, 100% {
+      transform: translate3d(0, 0px, 0) scale3d(1, 1, 1) rotate(0deg);
+    }
+    25% {
+      transform: translate3d(0, 2.5px, 0) scale3d(0.988, 1.015, 1) rotate(-0.7deg);
+    }
+    50% {
+      transform: translate3d(0, -3.5px, 0) scale3d(1.018, 0.986, 1) rotate(0.75deg);
+    }
+    75% {
+      transform: translate3d(0, 1.5px, 0) scale3d(1.008, 0.994, 1) rotate(-0.35deg);
+    }
+  }
+
+  /* ── Liquid Glass Bubble Containers (Earth 1.0x & Sun 1.15x) ───────────── */
   .lg-main-glass {
     position: relative;
     pointer-events: auto;
@@ -1321,22 +1700,17 @@ const SCOPED_STYLES = `
     isolation: isolate;
     transform-origin: center center;
     transition:
-      width 0.72s cubic-bezier(0.22, 1, 0.36, 1),
-      height 0.72s cubic-bezier(0.22, 1, 0.36, 1),
-      border-radius 0.72s cubic-bezier(0.22, 1, 0.36, 1),
+      width 0.68s cubic-bezier(0.22, 1, 0.36, 1),
+      height 0.68s cubic-bezier(0.22, 1, 0.36, 1),
+      border-radius 0.68s cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 0.55s cubic-bezier(0.22, 1, 0.36, 1),
       background 0.55s ease;
   }
 
-  /*
-   * Initial Earth State:
-   * Circular, crystal-clear liquid glass bubble wrapping closely around the 250px Earth
-   * (only ~18px of liquid glass shell around the planet) with continuous Siri/NotchIsland
-   * organic water-droplet wobble & breathing motion.
-   */
+  /* Earth Bubble (Base 1.0x scale) */
   .lg-main-glass--earth {
-    width: 286px;
-    height: 286px;
+    width: var(--lg-earth-bubble, 286px);
+    height: var(--lg-earth-bubble, 286px);
     border-radius: 53% 47% 52% 48% / 48% 53% 47% 52%;
     background:
       radial-gradient(
@@ -1361,17 +1735,35 @@ const SCOPED_STYLES = `
     animation: lgBubbleWobble 4.4s ease-in-out infinite;
   }
 
-  @media (max-width: 480px) {
-    .lg-main-glass--earth {
-      width: 216px;
-      height: 216px;
-    }
+  /* Sun Bubble (1.15x scale — 15% larger than Earth, with same liquid glass bubble effect) */
+  .lg-main-glass--sun {
+    width: var(--lg-sun-bubble, 329px);
+    height: var(--lg-sun-bubble, 329px);
+    border-radius: 48% 52% 47% 53% / 52% 48% 53% 47%;
+    background:
+      radial-gradient(
+        circle at 30% 22%,
+        rgba(255, 255, 255, 0.44) 0%,
+        rgba(255, 230, 195, 0.12) 28%,
+        rgba(255, 255, 255, 0.0) 58%
+      ),
+      radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 255, 255, 0.0) 66%,
+        rgba(255, 195, 125, 0.16) 87%,
+        rgba(255, 240, 215, 0.36) 97%,
+        rgba(255, 255, 255, 0.58) 100%
+      );
+    box-shadow:
+      0 22px 52px -10px rgba(0, 0, 0, 0.34),
+      0 0 36px -4px rgba(255, 155, 50, 0.28),
+      inset 0 2px 3px rgba(255, 255, 255, 0.88),
+      inset 0 -3px 6px rgba(255, 185, 110, 0.32),
+      inset 0 0 20px rgba(255, 235, 205, 0.18);
+    animation: lgBubbleWobbleSun 4.8s ease-in-out infinite;
   }
 
-  /*
-   * Video Player State:
-   * The exact same bubble smoothly expands and morphs its curvature into the video player
-   */
+  /* Video Player State (when Earth is clicked) */
   .lg-main-glass--video {
     --lg-avail-w: min(92dvw, 1080px);
     --lg-avail-h: calc(100dvh - 210px);
@@ -1396,13 +1788,35 @@ const SCOPED_STYLES = `
     animation: none;
   }
 
-  /* CSS fallback glass only if WebGL or CORS fails */
-  .lg-main-glass--css-fallback.lg-main-glass--earth {
+  /* Prepared Sun Window State (when Sun is clicked — shows current background image) */
+  .lg-main-glass--sun-window {
+    width: min(92dvw, 1040px);
+    height: min(calc(100dvh - 150px), 680px);
+    border-radius: var(--lg-corner, 32px);
+    background:
+      radial-gradient(
+        140% 100% at 20% 0%,
+        rgba(255, 255, 255, 0.18) 0%,
+        rgba(255, 255, 255, 0.02) 45%,
+        transparent 75%
+      );
+    box-shadow:
+      0 26px 64px -12px rgba(0, 0, 0, 0.52),
+      0 0 36px -8px rgba(255, 165, 75, 0.24),
+      inset 0 1.5px 2px rgba(255, 255, 255, 0.82),
+      inset 0 -1.5px 3px rgba(255, 190, 120, 0.24);
+    animation: none;
+  }
+
+  /* CSS fallback glass if WebGL or CORS fails */
+  .lg-main-glass--css-fallback.lg-main-glass--earth,
+  .lg-main-glass--css-fallback.lg-main-glass--sun {
     -webkit-backdrop-filter: blur(6px) saturate(145%);
     backdrop-filter: blur(6px) saturate(145%);
   }
 
-  .lg-main-glass--css-fallback.lg-main-glass--video {
+  .lg-main-glass--css-fallback.lg-main-glass--video,
+  .lg-main-glass--css-fallback.lg-main-glass--sun-window {
     -webkit-backdrop-filter: blur(16px) saturate(170%);
     backdrop-filter: blur(16px) saturate(170%);
   }
@@ -1424,6 +1838,25 @@ const SCOPED_STYLES = `
     75% {
       border-radius: 48% 52% 46% 54% / 52% 46% 54% 48%;
       transform: scale3d(1.012, 0.99, 1) rotate(0.4deg);
+    }
+  }
+
+  @keyframes lgBubbleWobbleSun {
+    0%, 100% {
+      border-radius: 48% 52% 47% 53% / 52% 48% 53% 47%;
+      transform: scale3d(1, 1, 1) rotate(0deg);
+    }
+    25% {
+      border-radius: 54% 46% 53% 47% / 47% 53% 46% 54%;
+      transform: scale3d(0.986, 1.016, 1) rotate(-0.75deg);
+    }
+    50% {
+      border-radius: 46% 54% 48% 52% / 54% 46% 52% 48%;
+      transform: scale3d(1.018, 0.984, 1) rotate(0.8deg);
+    }
+    75% {
+      border-radius: 52% 48% 54% 46% / 48% 54% 46% 52%;
+      transform: scale3d(1.01, 0.992, 1) rotate(-0.4deg);
     }
   }
 
@@ -1452,6 +1885,19 @@ const SCOPED_STYLES = `
     opacity: 0.9;
   }
 
+  .lg-main-glass__caustic--sun {
+    background: conic-gradient(
+      from 20deg at 50% 50%,
+      rgba(255, 255, 255, 0.94) 0deg,
+      rgba(255, 205, 135, 0.52) 60deg,
+      rgba(255, 255, 255, 0.10) 125deg,
+      rgba(255, 220, 165, 0.55) 195deg,
+      rgba(255, 255, 255, 0.12) 265deg,
+      rgba(255, 195, 125, 0.50) 320deg,
+      rgba(255, 255, 255, 0.94) 360deg
+    );
+  }
+
   .lg-main-glass__rim {
     position: absolute;
     inset: 0;
@@ -1463,6 +1909,14 @@ const SCOPED_STYLES = `
       inset 0 -2px 3px rgba(170, 230, 255, 0.28),
       inset 2px 0 3px rgba(255, 255, 255, 0.28),
       inset -2px 0 3px rgba(195, 225, 255, 0.24);
+  }
+
+  .lg-main-glass__rim--sun {
+    box-shadow:
+      inset 0 2px 2px rgba(255, 255, 255, 0.85),
+      inset 0 -2px 3px rgba(255, 195, 130, 0.32),
+      inset 2px 0 3px rgba(255, 255, 255, 0.30),
+      inset -2px 0 3px rgba(255, 210, 155, 0.26);
   }
 
   .lg-main-glass__sheen {
@@ -1481,12 +1935,14 @@ const SCOPED_STYLES = `
     transition: opacity 0.45s ease;
   }
 
-  .lg-main-glass--video .lg-main-glass__sheen {
+  .lg-main-glass--video .lg-main-glass__sheen,
+  .lg-main-glass--sun-window .lg-main-glass__sheen {
     opacity: 0.38;
   }
 
-  /* ── Video Viewport Morphs Directly Inside the Same Bubble ─────────────── */
-  .lg-video-viewport {
+  /* ── Video Viewport & Prepared Sun Window Viewport ─────────────────────── */
+  .lg-video-viewport,
+  .lg-sun-window-viewport {
     position: absolute;
     inset: 0;
     z-index: 2;
@@ -1494,9 +1950,27 @@ const SCOPED_STYLES = `
     height: 100%;
     border-radius: inherit;
     overflow: hidden;
+    animation: lgBubbleMorphIn 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .lg-video-viewport {
     background: rgba(3, 5, 10, 0.55);
     cursor: pointer;
-    animation: lgBubbleMorphIn 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .lg-sun-window-viewport {
+    background: transparent;
+  }
+
+  .lg-sun-window-bg-picture,
+  .lg-sun-window-bg-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    object-position: center;
+    border-radius: inherit;
+    pointer-events: none;
   }
 
   .lg-video-el {
@@ -1593,7 +2067,6 @@ const SCOPED_STYLES = `
     touch-action: none;
   }
 
-  /* Hollow 3D Cylindrical Glass Tube */
   .lg-seek-track {
     position: relative;
     width: 100%;
@@ -1615,7 +2088,6 @@ const SCOPED_STYLES = `
     overflow: visible;
   }
 
-  /* Continuous glass tube specular reflection sitting ABOVE the blood-red liquid */
   .lg-seek-tube-gloss {
     position: absolute;
     inset: 1px 2px auto 2px;
@@ -1630,7 +2102,6 @@ const SCOPED_STYLES = `
     );
   }
 
-  /* Translucent Blood-Red Liquid Flowing Inside the Glass Tube */
   .lg-seek-fill {
     position: absolute;
     left: 1px;
@@ -1655,7 +2126,6 @@ const SCOPED_STYLES = `
     transition: width 0.08s linear;
   }
 
-  /* Subtle internal crimson liquid wave shimmer */
   .lg-seek-fill__wave {
     position: absolute;
     inset: 0;
@@ -1679,7 +2149,6 @@ const SCOPED_STYLES = `
     }
   }
 
-  /* Blood-Red Liquid Meniscus Droplet Thumb inside/around the Tube */
   .lg-seek-thumb {
     position: absolute;
     top: 50%;
@@ -1723,7 +2192,7 @@ const SCOPED_STYLES = `
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   }
 
-  /* ── Small Liquid Glass Random Navigation Button at Page Bottom ────────── */
+  /* ── Icon-Only Liquid Glass Shuffle Bubble at Page Bottom ──────────────── */
   .lg-bottom-dock {
     position: fixed;
     left: 0;
@@ -1736,29 +2205,132 @@ const SCOPED_STYLES = `
   }
 
   .lg-next-random-btn {
+    position: relative;
     pointer-events: auto;
-    min-height: 44px;
-    padding: 0 18px;
-    gap: 8px;
-    font-size: 0.84rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: none;
+    border-radius: 53% 47% 52% 48% / 48% 53% 47% 52%;
+    color: rgba(255, 255, 255, 0.96);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    animation: lgFadeSlideUp 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
+    isolation: isolate;
+    background:
+      radial-gradient(
+        circle at 30% 22%,
+        rgba(255, 255, 255, 0.52) 0%,
+        rgba(255, 255, 255, 0.14) 28%,
+        rgba(255, 255, 255, 0.0) 58%
+      ),
+      radial-gradient(
+        circle at 50% 50%,
+        rgba(14, 20, 32, 0.18) 0%,
+        rgba(165, 228, 255, 0.18) 84%,
+        rgba(255, 255, 255, 0.46) 97%,
+        rgba(255, 255, 255, 0.68) 100%
+      );
+    -webkit-backdrop-filter: blur(16px) saturate(190%);
+    backdrop-filter: blur(16px) saturate(190%);
+    box-shadow:
+      0 16px 36px -6px rgba(0, 0, 0, 0.42),
+      0 0 24px -2px rgba(165, 232, 255, 0.34),
+      inset 0 2px 3px rgba(255, 255, 255, 0.9),
+      inset 0 -3px 6px rgba(135, 210, 255, 0.36),
+      inset 0 0 14px rgba(255, 255, 255, 0.22);
+    animation:
+      lgFadeSlideUp 0.44s cubic-bezier(0.16, 1, 0.3, 1) both,
+      lgShuffleBubbleWobble 3.8s ease-in-out infinite;
+    transition:
+      transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.24s ease;
+  }
+
+  .lg-next-random-btn__sheen {
+    position: absolute;
+    inset: 3px 7px auto 7px;
+    height: 40%;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(
+      85% 85% at 38% 18%,
+      rgba(255, 255, 255, 0.68) 0%,
+      rgba(255, 255, 255, 0.16) 52%,
+      rgba(255, 255, 255, 0) 100%
+    );
+  }
+
+  .lg-next-random-btn__caustic {
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1.4px;
+    pointer-events: none;
+    background: conic-gradient(
+      from 45deg at 50% 50%,
+      rgba(255, 255, 255, 0.95) 0deg,
+      rgba(155, 228, 255, 0.55) 75deg,
+      rgba(255, 255, 255, 0.12) 145deg,
+      rgba(210, 175, 255, 0.48) 225deg,
+      rgba(145, 225, 255, 0.52) 300deg,
+      rgba(255, 255, 255, 0.95) 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  .lg-next-random-btn__icon {
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .lg-next-random-btn:hover {
-    transform: translateY(-2px) scale(1.03);
+    box-shadow:
+      0 18px 42px -6px rgba(0, 0, 0, 0.48),
+      0 0 32px rgba(175, 238, 255, 0.52),
+      inset 0 2.5px 3.5px rgba(255, 255, 255, 0.95),
+      inset 0 -3px 7px rgba(145, 220, 255, 0.45),
+      inset 0 0 18px rgba(255, 255, 255, 0.28);
   }
 
-  .lg-next-random-btn:active {
-    transform: translateY(0) scale(0.96);
+  .lg-next-random-btn:hover .lg-next-random-btn__icon {
+    transform: scale(1.14) rotate(12deg);
+  }
+
+  .lg-next-random-btn:active .lg-next-random-btn__icon {
+    transform: scale(0.9);
+  }
+
+  @keyframes lgShuffleBubbleWobble {
+    0%, 100% {
+      border-radius: 53% 47% 52% 48% / 48% 53% 47% 52%;
+      transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+    }
+    25% {
+      border-radius: 47% 53% 48% 52% / 53% 47% 52% 48%;
+      transform: translate3d(0, -3px, 0) scale3d(1.03, 0.97, 1);
+    }
+    50% {
+      border-radius: 54% 46% 53% 47% / 46% 54% 47% 53%;
+      transform: translate3d(0, 1px, 0) scale3d(0.975, 1.028, 1);
+    }
+    75% {
+      border-radius: 48% 52% 47% 53% / 52% 48% 53% 47%;
+      transform: translate3d(0, -2px, 0) scale3d(1.018, 0.985, 1);
+    }
   }
 
   /* ==========================================================================
-   * [EDIT HERE: EARTH & STARS] — الكوكب الدوّار والنجوم الـ 7 (مطابق للأصل 100%)
+   * [EDIT HERE: EARTH & SUN ORBS + 7 TWINKLING STARS]
    * ========================================================================== */
-  .lg-earth-trigger {
+  .lg-earth-trigger,
+  .lg-sun-trigger {
     position: relative;
     z-index: 5;
     width: 100%;
@@ -1778,7 +2350,8 @@ const SCOPED_STYLES = `
       transform 0.48s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .lg-earth-trigger--morphed {
+  .lg-earth-trigger--morphed,
+  .lg-sun-trigger--morphed {
     opacity: 0;
     transform: scale(1.16);
     pointer-events: none;
@@ -1790,31 +2363,42 @@ const SCOPED_STYLES = `
     display: flex;
     align-items: center;
     justify-content: center;
-    transform: scale(1);
+    transform: scale(var(--lg-orb-scale, 1));
     transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.32s ease;
   }
 
   .lg-earth-trigger:hover .lg-earth-scale-wrap {
-    transform: scale(1.035);
+    transform: scale(calc(var(--lg-orb-scale, 1) * 1.035));
     filter: drop-shadow(0 0 18px rgba(195, 244, 255, 0.36));
   }
 
   .lg-earth-trigger:active .lg-earth-scale-wrap {
-    transform: scale(0.96);
+    transform: scale(calc(var(--lg-orb-scale, 1) * 0.96));
   }
 
-  @media (max-width: 480px) {
-    .lg-earth-scale-wrap {
-      transform: scale(0.74);
-    }
-    .lg-earth-trigger:hover .lg-earth-scale-wrap {
-      transform: scale(0.765);
-    }
-    .lg-earth-trigger:active .lg-earth-scale-wrap {
-      transform: scale(0.71);
-    }
+  /*
+   * Sun inner banner is 300px native vs Earth's 250px native.
+   * Scaling 300px by (var(--lg-orb-scale) * 0.9583) yields 287.5px = 250px * 1.15,
+   * so the Sun orb and its surrounding Liquid Glass bubble are both 15% larger than Earth.
+   */
+  .lg-sun-scale-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(calc(var(--lg-orb-scale, 1) * 0.9583));
+    transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.32s ease;
   }
 
+  .lg-sun-trigger:hover .lg-sun-scale-wrap {
+    transform: scale(calc(var(--lg-orb-scale, 1) * 0.992));
+    filter: drop-shadow(0 0 22px rgba(255, 155, 45, 0.48));
+  }
+
+  .lg-sun-trigger:active .lg-sun-scale-wrap {
+    transform: scale(calc(var(--lg-orb-scale, 1) * 0.92));
+  }
+
+  /* Rotating Earth Sphere (250x250 base) */
   .lg-section-banner {
     height: 250px;
     width: 250px;
@@ -1841,6 +2425,57 @@ const SCOPED_STYLES = `
     }
     100% {
       background-position: 400px 0;
+    }
+  }
+
+  /* Rotating & Pulsing Sun Sphere (300x300 from user snippet, scaled to 1.15x Earth) */
+  .lg-section-banner-sun {
+    height: 300px;
+    width: 300px;
+    position: relative;
+    transition: left 0.3s linear;
+    background: url("${SUN_TEXTURE_DATA_URI}");
+    background-size: cover;
+    background-position: left;
+    bottom: 0px;
+    border-radius: 50%;
+    animation:
+      lgSunRotate 30s linear 0s infinite,
+      lgSunShadowPulse 5s ease-in-out infinite;
+    box-shadow:
+      0px 0px 40px 20px rgba(255, 140, 0, 0.8),
+      -5px 0px 10px 1px #ffb453 inset,
+      15px 2px 40px 20px #bb6d01c5 inset,
+      -24px -2px 50px 25px #ffa265c2 inset,
+      150px 0px 80px 35px #c55f00aa inset;
+  }
+
+  @keyframes lgSunRotate {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 400px 0;
+    }
+  }
+
+  @keyframes lgSunShadowPulse {
+    0%,
+    100% {
+      box-shadow:
+        0px 0px 40px 20px rgba(255, 140, 0, 0.8),
+        -5px 0px 10px 1px #ffb453 inset,
+        15px 2px 40px 20px #bb6d01c5 inset,
+        -24px -2px 50px 25px #ffa265c2 inset,
+        150px 0px 80px 35px #c55f00aa inset;
+    }
+    50% {
+      box-shadow:
+        0px 0px 60px 30px rgba(255, 140, 0, 0.9),
+        -5px 0px 20px 5px #ffb453 inset,
+        15px 2px 60px 30px #bb6d01c5 inset,
+        -24px -2px 70px 35px #ffa265c2 inset,
+        150px 0px 100px 45px #c55f00aa inset;
     }
   }
 
@@ -1905,47 +2540,55 @@ const SCOPED_STYLES = `
     }
   }
 
-  .lg-star {
+  .lg-star,
+  .lg-sun-star {
     position: absolute;
     pointer-events: none;
   }
 
-  .lg-star-1 {
+  .lg-star-1,
+  .lg-sun-star-1 {
     left: -20px;
     animation: lgTwinkling 3s infinite;
   }
 
-  .lg-star-2 {
+  .lg-star-2,
+  .lg-sun-star-2 {
     left: -40px;
     top: 30px;
     animation: lgTwinkling 2s infinite;
   }
 
-  .lg-star-3 {
+  .lg-star-3,
+  .lg-sun-star-3 {
     left: 350px;
     top: 90px;
     animation: lgTwinkling 4s infinite;
   }
 
-  .lg-star-4 {
+  .lg-star-4,
+  .lg-sun-star-4 {
     left: 200px;
     top: 290px;
     animation: lgTwinkling 3s infinite;
   }
 
-  .lg-star-5 {
+  .lg-star-5,
+  .lg-sun-star-5 {
     left: 50px;
     top: 270px;
     animation: lgTwinkling 1.5s infinite;
   }
 
-  .lg-star-6 {
+  .lg-star-6,
+  .lg-sun-star-6 {
     left: 250px;
     top: -50px;
     animation: lgTwinkling 4s infinite;
   }
 
-  .lg-star-7 {
+  .lg-star-7,
+  .lg-sun-star-7 {
     left: 290px;
     top: 60px;
     animation: lgTwinkling 2s infinite;
@@ -1979,7 +2622,975 @@ const SCOPED_STYLES = `
     }
   }
 
-  /* Smooth performance tier on mobile touch devices */
+  /* ==========================================================================
+   * FULL-PAGE SUN ALBUMS STAGE (8x4 PC / 4x6 Phone Grid, 1:1 Luxury Glass Tile,
+   * Ascended Album Cover, Expandable Liquid Glass Track Tubes, & Synced Lyrics)
+   * ========================================================================== */
+  .lg-shared-glass-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .lg-sun-fullstage {
+    position: relative;
+    z-index: 15;
+    width: 100dvw;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  /* ── Scrollable Full-Page Viewport Hosting the 99 Albums Grid ──────────── */
+  .lg-albums-scroll-viewport {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding:
+      max(64px, calc(env(safe-area-inset-top) + 52px))
+      max(14px, env(safe-area-inset-right))
+      max(36px, calc(env(safe-area-inset-bottom) + 28px))
+      max(14px, env(safe-area-inset-left));
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+    transition:
+      opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .lg-albums-scroll-viewport::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .lg-albums-scroll-viewport::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.26);
+    border-radius: 999px;
+  }
+
+  .lg-albums-scroll-viewport--exiting {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+    pointer-events: none;
+  }
+
+  /* 8 columns on Desktop / 4 columns on Phone, dynamically sized */
+  .lg-albums-grid {
+    width: var(--lg-grid-w, 100%);
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(var(--lg-grid-cols, 8), var(--lg-tile-size, 110px));
+    justify-content: center;
+    column-gap: var(--lg-col-gap, 16px);
+    row-gap: var(--lg-row-gap, 14px);
+    box-sizing: border-box;
+  }
+
+  /* ── Single Album Cell (1:1 Glass Square + Album Title Underneath) ─────── */
+  .lg-album-cell {
+    appearance: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    width: var(--lg-tile-size, 110px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    text-align: center;
+    color: #ffffff;
+    contain: layout style;
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.86);
+    animation: lgAlbumTileIn 0.42s cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
+    animation-delay: var(--tile-delay, 0ms);
+  }
+
+  @keyframes lgAlbumTileIn {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 16px, 0) scale(0.86);
+    }
+    100% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  /* ── 1:1 Luxury Liquid Glass Square Frame ──────────────────────────────── */
+  .lg-album-square {
+    position: relative;
+    width: var(--lg-tile-size, 110px);
+    height: var(--lg-tile-size, 110px);
+    aspect-ratio: 1 / 1;
+    border-radius: 18.5%;
+    padding: 5.5%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.26) 0%,
+        rgba(var(--album-rgb, 255, 168, 76), 0.14) 48%,
+        rgba(12, 16, 26, 0.28) 100%
+      );
+    box-shadow:
+      0 10px 24px -6px rgba(0, 0, 0, 0.46),
+      0 0 20px -4px rgba(var(--album-rgb, 255, 168, 76), 0.36),
+      inset 0 1.5px 2px rgba(255, 255, 255, 0.78),
+      inset 0 -2px 5px rgba(var(--album-rgb, 255, 168, 76), 0.34);
+    transition:
+      transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.24s ease;
+  }
+
+  .lg-album-cell:hover .lg-album-square {
+    transform: translateY(-4px) scale(1.045);
+    box-shadow:
+      0 14px 30px -6px rgba(0, 0, 0, 0.55),
+      0 0 28px -2px rgba(var(--album-rgb, 255, 168, 76), 0.68),
+      inset 0 2px 3px rgba(255, 255, 255, 0.92),
+      inset 0 -2.5px 7px rgba(var(--album-rgb, 255, 168, 76), 0.52);
+  }
+
+  .lg-album-cell:active .lg-album-square {
+    transform: translateY(0) scale(0.96);
+  }
+
+  /* Color-matched internal glow aura */
+  .lg-album-square__aura {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(var(--album-rgb, 255, 168, 76), 0.32) 0%,
+      rgba(var(--album-rgb, 255, 168, 76), 0.08) 68%,
+      transparent 100%
+    );
+  }
+
+  .lg-album-square__img {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14.5%;
+    display: block;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.36);
+  }
+
+  /* Subtle color-reactive surface shimmer over the cover */
+  .lg-album-square__color-sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 2;
+    background:
+      linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.34) 0%,
+        rgba(var(--album-rgb, 255, 168, 76), 0.16) 28%,
+        rgba(255, 255, 255, 0.0) 56%,
+        rgba(var(--album-rgb, 255, 168, 76), 0.22) 100%
+      );
+    mix-blend-mode: screen;
+    opacity: 0.78;
+    transition: opacity 0.24s ease;
+  }
+
+  .lg-album-cell:hover .lg-album-square__color-sheen {
+    opacity: 1;
+  }
+
+  /* Cloned <use href="#lg-shared-glass-1x1"> overlay */
+  .lg-album-square__glass-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  /* Professional Album Name Underneath Each Square */
+  .lg-album-title {
+    width: 100%;
+    height: calc(var(--lg-title-h, 28px) - 6px);
+    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+    font-size: clamp(0.66rem, 0.56rem + 0.28vw, 0.78rem);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.85),
+      0 0 10px rgba(0, 0, 0, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 2px;
+    box-sizing: border-box;
+    transition: color 0.2s ease, transform 0.2s ease;
+  }
+
+  .lg-album-cell:hover .lg-album-title {
+    color: #ffffff;
+    text-shadow:
+      0 1px 4px rgba(0, 0, 0, 0.9),
+      0 0 12px rgba(var(--album-rgb, 255, 168, 76), 0.75);
+  }
+
+  /* ==========================================================================
+   * VIEW 2: SELECTED ALBUM WORKSPACE (Ascended Cover + Track Tubes + Lyrics)
+   * ========================================================================== */
+  .lg-album-detail-workspace {
+    width: min(94dvw, 1140px);
+    height: 100dvh;
+    padding:
+      max(58px, calc(env(safe-area-inset-top) + 46px))
+      0
+      max(24px, calc(env(safe-area-inset-bottom) + 18px));
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: center;
+    gap: 20px;
+    overflow: hidden;
+  }
+
+  .lg-album-player-column {
+    flex: 1 1 560px;
+    max-width: 640px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    overflow: hidden;
+    transition: max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .lg-album-detail-workspace--with-lyrics .lg-album-player-column {
+    max-width: 560px;
+  }
+
+  /* ── Ascended Album Cover at Top of Page ───────────────────────────────── */
+  .lg-ascended-album-hero {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    animation: lgAscendHeroIn 0.52s cubic-bezier(0.18, 0.9, 0.26, 1) both;
+  }
+
+  @keyframes lgAscendHeroIn {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 48px, 0) scale(0.76);
+    }
+    100% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  .lg-ascended-album-cover {
+    --album-rgb: var(--selected-album-rgb, 255, 168, 76);
+    position: relative;
+    width: clamp(124px, 18dvh, 172px);
+    height: clamp(124px, 18dvh, 172px);
+    aspect-ratio: 1 / 1;
+    border-radius: 18.5%;
+    padding: 5.5%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.30) 0%,
+        rgba(var(--selected-album-rgb, 255, 168, 76), 0.20) 50%,
+        rgba(12, 16, 26, 0.32) 100%
+      );
+    box-shadow:
+      0 18px 42px -8px rgba(0, 0, 0, 0.55),
+      0 0 34px -4px rgba(var(--selected-album-rgb, 255, 168, 76), 0.58),
+      inset 0 2px 3px rgba(255, 255, 255, 0.88),
+      inset 0 -3px 7px rgba(var(--selected-album-rgb, 255, 168, 76), 0.45);
+  }
+
+  .lg-ascended-album-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    max-width: 90vw;
+  }
+
+  .lg-ascended-album-title {
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+    font-size: clamp(1.08rem, 0.92rem + 0.65vw, 1.42rem);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+  }
+
+  .lg-ascended-album-artist {
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-size: clamp(0.76rem, 0.7rem + 0.25vw, 0.88rem);
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.78);
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.65);
+  }
+
+  /* ── Liquid Glass Track Tubes List Below Ascended Album ────────────────── */
+  .lg-track-tubes-list {
+    width: 100%;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 6px 24px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+  }
+
+  .lg-track-tubes-list::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .lg-track-tubes-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+  }
+
+  /* Individual Liquid Glass Tube / Window */
+  .lg-track-tube {
+    position: relative;
+    width: 100%;
+    border-radius: 22px;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    cursor: pointer;
+    isolation: isolate;
+    color: rgba(255, 255, 255, 0.95);
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.20) 0%,
+        rgba(255, 255, 255, 0.04) 100%
+      ),
+      rgba(10, 14, 24, 0.34);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(16px) saturate(180%);
+    box-shadow:
+      0 10px 24px -6px rgba(0, 0, 0, 0.34),
+      inset 0 1.2px 0.8px rgba(255, 255, 255, 0.62),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.26);
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+    animation: lgTubeEnter 0.38s cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
+    animation-delay: var(--tube-delay, 0ms);
+    transition:
+      padding 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      border-radius 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      background 0.28s ease,
+      box-shadow 0.28s ease,
+      transform 0.22s ease;
+  }
+
+  .lg-track-tube::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(var(--selected-album-rgb, 255, 168, 76), 0.38) 45%,
+      rgba(255, 255, 255, 0.14) 75%,
+      rgba(255, 255, 255, 0.58) 100%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  .lg-track-tube:hover:not(.lg-track-tube--expanded) {
+    transform: translateY(-1.5px) scale(1.008);
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.26) 0%,
+        rgba(var(--selected-album-rgb, 255, 168, 76), 0.10) 100%
+      ),
+      rgba(12, 16, 28, 0.42);
+    box-shadow:
+      0 12px 28px -6px rgba(0, 0, 0, 0.42),
+      0 0 18px -4px rgba(var(--selected-album-rgb, 255, 168, 76), 0.38),
+      inset 0 1.4px 1px rgba(255, 255, 255, 0.75);
+  }
+
+  /* Expanded Active Track Tube */
+  .lg-track-tube--expanded {
+    cursor: default;
+    border-radius: 26px;
+    padding: 13px 16px 14px;
+    background:
+      linear-gradient(
+        165deg,
+        rgba(255, 255, 255, 0.26) 0%,
+        rgba(var(--selected-album-rgb, 255, 168, 76), 0.16) 52%,
+        rgba(10, 14, 24, 0.48) 100%
+      );
+    box-shadow:
+      0 16px 38px -8px rgba(0, 0, 0, 0.52),
+      0 0 28px -4px rgba(var(--selected-album-rgb, 255, 168, 76), 0.46),
+      inset 0 1.6px 1.5px rgba(255, 255, 255, 0.85),
+      inset 0 -1.5px 3px rgba(var(--selected-album-rgb, 255, 168, 76), 0.28);
+  }
+
+  @keyframes lgTubeEnter {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 12px, 0);
+    }
+    100% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .lg-track-tube__header {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 28px;
+  }
+
+  .lg-track-tube__num {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.76rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, 0.78);
+    min-width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.10);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+    flex-shrink: 0;
+  }
+
+  .lg-track-tube__num--inline {
+    min-width: auto;
+    height: auto;
+    background: transparent;
+    box-shadow: none;
+    margin-right: 6px;
+    color: rgba(var(--selected-album-rgb, 255, 200, 120), 1);
+  }
+
+  .lg-track-tube__title-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .lg-track-tube__title {
+    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+    font-size: clamp(0.84rem, 0.78rem + 0.22vw, 0.95rem);
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  }
+
+  .lg-tube-play-btn {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border: none;
+    border-radius: 50%;
+    color: #ffffff;
+    background:
+      radial-gradient(
+        circle at 32% 24%,
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(var(--selected-album-rgb, 255, 168, 76), 0.45) 55%,
+        rgba(18, 24, 38, 0.65) 100%
+      );
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.35),
+      inset 0 1.2px 1px rgba(255, 255, 255, 0.82);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .lg-tube-play-btn:hover {
+    transform: scale(1.07);
+  }
+
+  .lg-tube-play-btn:active {
+    transform: scale(0.93);
+  }
+
+  .lg-tube-mini-spinner {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    border-top-color: #ffffff;
+    animation: lgSpin 0.75s linear infinite;
+  }
+
+  .lg-track-tube__actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .lg-tube-time-readout {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, 0.92);
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+
+  .lg-tube-icon-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border: none;
+    border-radius: 50%;
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.10);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+
+  .lg-tube-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.20);
+    transform: scale(1.06);
+  }
+
+  /* Small Lyrics / Translation Button inside Expanded Tube */
+  .lg-tube-lyrics-btn {
+    position: relative;
+    height: 30px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.94);
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.24) 0%,
+        rgba(255, 255, 255, 0.06) 100%
+      );
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.18s ease;
+  }
+
+  .lg-tube-lyrics-btn--ready {
+    box-shadow:
+      0 4px 14px rgba(var(--selected-album-rgb, 255, 168, 76), 0.35),
+      inset 0 1px 1px rgba(255, 255, 255, 0.82);
+  }
+
+  .lg-tube-lyrics-btn--active {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(var(--selected-album-rgb, 255, 168, 76), 0.55) 0%,
+        rgba(var(--selected-album-rgb, 255, 168, 76), 0.24) 100%
+      );
+    box-shadow:
+      0 0 18px rgba(var(--selected-album-rgb, 255, 168, 76), 0.65),
+      inset 0 1.2px 1px rgba(255, 255, 255, 0.92);
+  }
+
+  .lg-tube-lyrics-btn:hover {
+    transform: scale(1.04);
+  }
+
+  .lg-tube-lyrics-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffffff;
+    opacity: 0.75;
+  }
+
+  /* ── Capillary Liquid Seek Bar inside Expanded Track Tube ──────────────── */
+  .lg-track-tube__player-body {
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    animation: lgFadeSlideUp 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .lg-tube-seek-hit {
+    height: 28px;
+  }
+
+  .lg-tube-seek-track {
+    height: 12px;
+  }
+
+  /* Flowing Liquid inside Track Tube (Tinted with Album Cover Color + Ruby Core) */
+  .lg-tube-seek-fill {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.85) 0%,
+        rgba(var(--selected-album-rgb, 255, 140, 65), 0.92) 42%,
+        rgba(215, 28, 56, 0.92) 82%,
+        rgba(var(--selected-album-rgb, 255, 168, 76), 0.95) 100%
+      );
+    box-shadow:
+      0 0 14px rgba(var(--selected-album-rgb, 255, 140, 65), 0.72),
+      0 0 24px rgba(215, 28, 56, 0.42),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.82),
+      inset 0 -1px 2px rgba(45, 0, 12, 0.65);
+  }
+
+  .lg-tube-seek-thumb {
+    width: 15px;
+    height: 15px;
+    background:
+      radial-gradient(
+        circle at 34% 28%,
+        #ffffff 0%,
+        rgba(var(--selected-album-rgb, 255, 168, 76), 0.96) 45%,
+        rgba(195, 22, 48, 0.96) 100%
+      );
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.48),
+      0 0 14px rgba(var(--selected-album-rgb, 255, 168, 76), 0.92),
+      inset 0 1.5px 1.5px #ffffff;
+  }
+
+  /* ==========================================================================
+   * SIDE-BY-SIDE LIQUID GLASS SYNCED LYRICS WINDOW (nl music Lyrics Engine)
+   * ========================================================================== */
+  .lg-lyrics-glass-window {
+    position: relative;
+    flex: 1 1 380px;
+    max-width: 440px;
+    height: calc(100% - 8px);
+    align-self: center;
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+      linear-gradient(
+        160deg,
+        rgba(255, 255, 255, 0.24) 0%,
+        rgba(var(--selected-album-rgb, 255, 168, 76), 0.12) 48%,
+        rgba(10, 14, 24, 0.46) 100%
+      );
+    -webkit-backdrop-filter: blur(22px) saturate(190%);
+    backdrop-filter: blur(22px) saturate(190%);
+    box-shadow:
+      0 22px 54px -10px rgba(0, 0, 0, 0.52),
+      0 0 32px -6px rgba(var(--selected-album-rgb, 255, 168, 76), 0.42),
+      inset 0 1.8px 1.5px rgba(255, 255, 255, 0.82),
+      inset 0 -2px 4px rgba(var(--selected-album-rgb, 255, 168, 76), 0.26);
+    animation: lgLyricsWindowSlideIn 0.38s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  }
+
+  .lg-lyrics-glass-window::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.2px;
+    pointer-events: none;
+    background: conic-gradient(
+      from 180deg at 50% 50%,
+      rgba(255, 255, 255, 0.88) 0deg,
+      rgba(var(--selected-album-rgb, 255, 168, 76), 0.52) 90deg,
+      rgba(255, 255, 255, 0.16) 180deg,
+      rgba(var(--selected-album-rgb, 255, 168, 76), 0.48) 270deg,
+      rgba(255, 255, 255, 0.88) 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  @keyframes lgLyricsWindowSlideIn {
+    0% {
+      opacity: 0;
+      transform: translate3d(24px, 0, 0) scale(0.94);
+    }
+    100% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  .lg-lyrics-glass-window__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+  }
+
+  .lg-lyrics-glass-window__title-group {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+  }
+
+  .lg-lyrics-sparkle {
+    color: rgba(var(--selected-album-rgb, 255, 210, 140), 1);
+    flex-shrink: 0;
+  }
+
+  .lg-lyrics-glass-window__meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .lg-lyrics-glass-window__song {
+    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lg-lyrics-glass-window__artist {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.72);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lg-lyrics-glass-window__body {
+    flex: 1 1 auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .lg-lyrics-status {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px;
+    text-align: center;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .lg-lyrics-synced-stage {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .lg-lyrics-scroll-list,
+  .lg-lyrics-plain-scroll {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    padding: 36px 18px 64px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      transparent 0%,
+      #000 12%,
+      #000 88%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      180deg,
+      transparent 0%,
+      #000 12%,
+      #000 88%,
+      transparent 100%
+    );
+  }
+
+  .lg-lyric-line {
+    appearance: none;
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: 14px;
+    width: 100%;
+    cursor: pointer;
+    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+    font-size: clamp(0.92rem, 0.84rem + 0.28vw, 1.06rem);
+    font-weight: 600;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.42);
+    transition:
+      color 0.26s ease,
+      transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+      text-shadow 0.26s ease,
+      background 0.22s ease;
+  }
+
+  .lg-lyric-line:hover {
+    color: rgba(255, 255, 255, 0.78);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .lg-lyric-line--passed {
+    color: rgba(255, 255, 255, 0.52);
+  }
+
+  .lg-lyric-line--active {
+    font-size: clamp(1.06rem, 0.96rem + 0.4vw, 1.26rem);
+    font-weight: 800;
+    color: #ffffff;
+    transform: scale(1.05);
+    background: rgba(var(--selected-album-rgb, 255, 168, 76), 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    text-shadow:
+      0 2px 12px rgba(0, 0, 0, 0.65),
+      0 0 18px rgba(var(--selected-album-rgb, 255, 168, 76), 0.85);
+  }
+
+  .lg-lyric-plain-line {
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.88);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Responsive stacking for Selected Album + Side Lyrics Window on Mobile */
+  @media (max-width: 860px) {
+    .lg-album-detail-workspace {
+      flex-direction: column;
+      gap: 12px;
+      padding-top: max(54px, calc(env(safe-area-inset-top) + 42px));
+    }
+
+    .lg-album-player-column,
+    .lg-album-detail-workspace--with-lyrics .lg-album-player-column {
+      max-width: 100%;
+      flex: 1 1 55%;
+    }
+
+    .lg-ascended-album-cover {
+      width: clamp(92px, 13dvh, 128px);
+      height: clamp(92px, 13dvh, 128px);
+    }
+
+    .lg-lyrics-glass-window {
+      max-width: 100%;
+      width: 100%;
+      flex: 1 1 42%;
+      height: auto;
+    }
+  }
+
   @media (max-width: 640px) {
     .lg-glass-pill {
       -webkit-backdrop-filter: blur(12px) saturate(150%);
@@ -1990,9 +3601,17 @@ const SCOPED_STYLES = `
   @media (prefers-reduced-motion: reduce) {
     .lg-main-glass,
     .lg-earth-scale-wrap,
-    .lg-glass-pill {
+    .lg-sun-scale-wrap,
+    .lg-orb-title-img,
+    .lg-glass-pill,
+    .lg-next-random-btn,
+    .lg-album-cell,
+    .lg-track-tube {
       transition: none;
       animation: none;
+      opacity: 1;
+      transform: none;
     }
   }
 `;
+
