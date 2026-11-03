@@ -54,6 +54,19 @@
       "resolving": "Resolving details…",
       "loading": "Loading…",
       "errorLoad": "Couldn't load content, try again"
+    },
+    "player": {
+      "loadingServer": "Connecting to {{server}}…",
+      "switchingTo": "Switching to {{server}}…",
+      "allFailed": "All streaming servers failed to respond. Please retry or open an external server.",
+      "retry": "Retry",
+      "watchTrailer": "Watch Trailer",
+      "hideTrailer": "Hide Trailer",
+      "showBackdrop": "Show Backdrop",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit Fullscreen",
+      "fullSeason": "Full Season Player",
+      "season": "Season {{num}}"
     }
   },
   "series": {

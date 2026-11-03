@@ -54,6 +54,19 @@
       "resolving": "Chargement des détails…",
       "loading": "Chargement…",
       "errorLoad": "Échec du chargement, réessayez"
+    },
+    "player": {
+      "loadingServer": "Connexion à {{server}}…",
+      "switchingTo": "Passage à {{server}}…",
+      "allFailed": "Tous les serveurs sont indisponibles pour le moment. Veuillez réessayer.",
+      "retry": "Réessayer",
+      "watchTrailer": "Bande-annonce",
+      "hideTrailer": "Masquer la bande-annonce",
+      "showBackdrop": "Afficher l'affiche",
+      "fullscreen": "Plein écran",
+      "exitFullscreen": "Quitter le plein écran",
+      "fullSeason": "Saison complète (Full)",
+      "season": "Saison {{num}}"
     }
   },
   "series": {

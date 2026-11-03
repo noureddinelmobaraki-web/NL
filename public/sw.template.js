@@ -178,7 +178,15 @@ self.addEventListener('fetch', (event) => {
   if (
     requestUrl.includes('.supabase.co') ||
     requestUrl.includes('.supabase.com') ||
-    requestUrl.includes('supabase.io')
+    requestUrl.includes('supabase.io') ||
+    requestUrl.includes('2embed.cc') ||
+    requestUrl.includes('2embed.skin') ||
+    requestUrl.includes('vidsrc.') ||
+    requestUrl.includes('autoembed.') ||
+    requestUrl.includes('multiembed.') ||
+    requestUrl.includes('streamingnow.') ||
+    requestUrl.includes('streamimdb.') ||
+    requestUrl.includes('imdb.su')
   ) {
     return;
   }
@@ -273,19 +281,33 @@ self.addEventListener('fetch', (event) => {
     }
   }
 
-  // Navigation requests: serve cached shell as fallback
+  // Navigation requests: network-first, updating CACHE_SHELL on success, with cached shell fallback
   if (request.mode === 'navigate') {
+    const navUrl = new URL(request.url);
+    if (navUrl.origin !== self.location.origin) {
+      return;
+    }
     event.respondWith(
-      fetch(request).catch(async () => {
-        const cache = await caches.open(CACHE_SHELL);
-        // Try cached app shell first (better UX if user navigates while online cache exists)
-        const cachedShell = await cache.match('/NL/');
-        if (cachedShell) return cachedShell;
-        // Fall back to branded offline page
-        const offline = await cache.match('/NL/offline.html');
-        if (offline) return offline;
-        return new Response('Offline', { status: 503 });
-      })
+      fetch(request)
+        .then(async (response) => {
+          if (response && response.ok) {
+            try {
+              const cache = await caches.open(CACHE_SHELL);
+              await cache.put('/NL/', response.clone());
+            } catch {}
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cache = await caches.open(CACHE_SHELL);
+          // Try cached app shell first (better UX if user navigates while online cache exists)
+          const cachedShell = await cache.match('/NL/');
+          if (cachedShell) return cachedShell;
+          // Fall back to branded offline page
+          const offline = await cache.match('/NL/offline.html');
+          if (offline) return offline;
+          return new Response('Offline', { status: 503 });
+        })
     );
     return;
   }

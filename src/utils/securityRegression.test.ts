@@ -1,16 +1,46 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import { runInNewContext } from 'node:vm';
+import { ALL_SERVER_FRAME_ORIGINS, CINEMA_SERVERS } from '../config/servers';
 
 const read = (p: string) => fs.readFileSync(p, 'utf8');
 
 describe('security and deployment regressions', () => {
-  it('allows same-origin Retro iframe without unsafe inline scripts', () => {
+  it('allows same-origin Retro iframe and all 7 cinema embed server origins in frame-src without wildcards or unsafe inline scripts', () => {
     const html = read('index.html');
     expect(html).toContain("frame-src 'self'");
     expect(html).not.toMatch(/script-src[^;]*'unsafe-inline'/);
     expect(html).toContain("'inline-speculation-rules'");
     expect(html).not.toContain("Object.defineProperty(window, 'fetch'");
+
+    const frameSrcMatch = html.match(/frame-src\s+([^;]+);/);
+    expect(frameSrcMatch).not.toBeNull();
+    const frameSrcTokens = frameSrcMatch![1].trim().split(/\s+/);
+    expect(frameSrcTokens).not.toContain('*');
+    expect(frameSrcTokens).not.toContain('https:');
+    for (const origin of ALL_SERVER_FRAME_ORIGINS) {
+      expect(frameSrcTokens).toContain(origin);
+    }
+  });
+
+  it('builds valid movie and TV URLs for Shawshank Redemption (tt0111161 / 278) and The Flash (tt3107288 / 60735)', () => {
+    expect(CINEMA_SERVERS).toHaveLength(7);
+    const server1 = CINEMA_SERVERS[0];
+    expect(server1.movie({ imdb: 'tt0111161', tmdb: 278 })).toBe(
+      'https://www.2embed.cc/embed/tt0111161',
+    );
+    expect(server1.movie({ tmdb: 278 })).toBe(
+      'https://www.2embed.cc/embed/278',
+    );
+    expect(server1.tv({ imdb: 'tt3107288', tmdb: 60735 }, 1, 1, false)).toBe(
+      'https://www.2embed.cc/embedtv/tt3107288&s=1&e=1',
+    );
+    expect(server1.tv({ tmdb: 60735 }, 1, 1, false)).toBe(
+      'https://www.2embed.cc/embedtv/60735&s=1&e=1',
+    );
+    expect(server1.tv({ imdb: 'tt3107288', tmdb: 60735 }, 1, 1, true)).toBe(
+      'https://www.2embed.cc/embedtvfull/tt3107288',
+    );
   });
 
   it('does not cache failed app-shell responses in the service worker', () => {

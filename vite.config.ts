@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { ALL_SERVER_FRAME_ORIGINS } from './src/config/servers';
 
 export default defineConfig(({ mode }) => {
   return {
@@ -11,6 +12,16 @@ export default defineConfig(({ mode }) => {
     base: process.env.VITE_BASE_PATH ?? '/NL/',
     assetsInclude: ['**/*.xml'],
     plugins: [
+      {
+        name: 'sync-cinema-csp-frame-src',
+        transformIndexHtml(html: string) {
+          return html.replace(/frame-src\s+([^;]+);/, (_match, directives: string) => {
+            const existing = directives.trim().split(/\s+/);
+            const merged = Array.from(new Set([...existing, ...ALL_SERVER_FRAME_ORIGINS]));
+            return `frame-src ${merged.join(' ')};`;
+          });
+        },
+      },
       {
         name: 'dev-csp-relax',
         apply: 'serve' as const,

@@ -54,6 +54,19 @@
       "resolving": "جارٍ تحميل التفاصيل…",
       "loading": "جارٍ التحميل…",
       "errorLoad": "تعذّر تحميل المحتوى، حاول لاحقاً"
+    },
+    "player": {
+      "loadingServer": "جارٍ الاتصال بـ {{server}}…",
+      "switchingTo": "جارٍ التبديل إلى {{server}}…",
+      "allFailed": "تعذّر الاتصال بجميع السيرفرات حالياً. يرجى المحاولة مجدداً أو اختيار سيرفر خارجي.",
+      "retry": "إعادة المحاولة",
+      "watchTrailer": "تشغيل التريلر",
+      "hideTrailer": "إغلاق التريلر",
+      "showBackdrop": "عرض الملصق",
+      "fullscreen": "ملء الشاشة",
+      "exitFullscreen": "تصغير الشاشة",
+      "fullSeason": "الموسم الكامل (Full)",
+      "season": "موسم {{num}}"
     }
   },
   "series": {

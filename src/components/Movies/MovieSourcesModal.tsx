@@ -2,12 +2,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Play, RefreshCw, Sparkles, ExternalLink } from 'lucide-react';
 import { PUBLIC_TMDB_KEY } from '../../config/publicKeys';
+import {
+  CINEMA_SERVERS,
+  extractValidImdbId,
+} from '../../config/servers';
 
 export interface PlaySource {
   id: string;
   label: string;
   host: string;
   url: string;
+  origins: string[];
+  timeoutMs: number;
 }
 
 export interface CinemaWatchTarget {
@@ -33,9 +39,7 @@ export const EXACT_TIP_MESSAGE =
   ' جرب  سيرفرفات بعض المرات قدر ميكونش واحد فيهم خدام  و من الافضل تفرج ب متصفح brave باش  تمنع كل الاعلانات تلقائيا ';
 
 export function extractImdbId(imdbId?: string): string {
-  if (!imdbId) return '';
-  const match = imdbId.match(/(tt\d+)/);
-  return match ? match[1] : imdbId.trim();
+  return extractValidImdbId(imdbId);
 }
 
 export function buildSources(item: {
@@ -46,72 +50,28 @@ export function buildSources(item: {
   episode?: number;
   fullSeason?: boolean;
 }): PlaySource[] {
-  const imdbId = extractImdbId(item.imdbId);
-  const tmdbId = item.id ? String(item.id) : '';
-  const targetId = imdbId || tmdbId;
-  if (!targetId) return [];
-
-  const type = item.mediaType === 'movie' ? 'movie' : 'tv';
+  const ids = {
+    imdb: item.imdbId,
+    tmdb: item.id,
+  };
   const s = Math.max(1, item.season || 1);
   const e = Math.max(1, item.episode || 1);
   const isFullSeason = Boolean(item.fullSeason);
 
-  const twoEmbedCcUrl =
-    type === 'movie'
-      ? `https://www.2embed.cc/embed/${targetId}`
-      : isFullSeason
-        ? `https://www.2embed.cc/embedtvfull/${targetId}`
-        : `https://www.2embed.cc/embedtv/${targetId}&s=${s}&e=${e}`;
-
-  const twoEmbedSkinUrl =
-    type === 'movie'
-      ? `https://www.2embed.skin/embed/${targetId}`
-      : isFullSeason
-        ? `https://www.2embed.skin/embedtvfull/${targetId}`
-        : `https://www.2embed.skin/embedtv/${targetId}&s=${s}&e=${e}`;
-
-  const vidsrcXyzUrl =
-    type === 'movie'
-      ? `https://vidsrc.xyz/embed/movie/${targetId}`
-      : `https://vidsrc.xyz/embed/tv/${targetId}/${s}-${e}`;
-
-  const vidsrcIcuUrl =
-    type === 'movie'
-      ? `https://vidsrc.icu/embed/movie/${targetId}`
-      : `https://vidsrc.icu/embed/tv/${targetId}/${s}/${e}`;
-
-  const autoEmbedUrl =
-    type === 'movie'
-      ? imdbId
-        ? `https://autoembed.co/movie/imdb/${imdbId}`
-        : `https://autoembed.co/movie/tmdb/${targetId}`
-      : imdbId
-        ? `https://autoembed.co/tv/imdb/${imdbId}-${s}-${e}`
-        : `https://autoembed.co/tv/tmdb/${targetId}-${s}-${e}`;
-
-  const multiEmbedUrl =
-    type === 'movie'
-      ? `https://multiembed.mov/?video_id=${targetId}${imdbId ? '' : '&tmdb=1'}`
-      : `https://multiembed.mov/?video_id=${targetId}${imdbId ? '' : '&tmdb=1'}&s=${s}&e=${e}`;
-
-  const streamImdbUrl = `https://streamimdb.ru/embed/${type}/${targetId}`;
-
-  const rawUrls = [
-    { host: '2embed.cc', url: twoEmbedCcUrl },
-    { host: '2embed.skin', url: twoEmbedSkinUrl },
-    { host: 'vidsrc.xyz', url: vidsrcXyzUrl },
-    { host: 'vidsrc.icu', url: vidsrcIcuUrl },
-    { host: 'autoembed.co', url: autoEmbedUrl },
-    { host: 'multiembed.mov', url: multiEmbedUrl },
-    { host: 'streamimdb.ru', url: streamImdbUrl },
-  ];
-
-  return rawUrls.map((entry, idx) => ({
-    id: `server-${idx + 1}`,
-    label: `Server ${idx + 1}`,
-    host: entry.host,
-    url: entry.url,
-  }));
+  return CINEMA_SERVERS.map((server) => {
+    const url =
+      item.mediaType === 'movie'
+        ? server.movie(ids)
+        : server.tv(ids, s, e, isFullSeason);
+    return {
+      id: server.id,
+      label: server.label,
+      host: server.host,
+      url,
+      origins: server.origins,
+      timeoutMs: server.timeoutMs,
+    };
+  }).filter((src) => Boolean(src.url));
 }
 
 export function useResolvedImdbSources(

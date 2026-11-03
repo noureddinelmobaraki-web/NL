@@ -22,7 +22,10 @@ import {
   Sparkles,
   MapPin,
   Maximize2,
+  Minimize2,
   Layers,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { m, AnimatePresence } from "framer-motion";
@@ -587,6 +590,50 @@ const MovieRow = React.memo(
   },
 );
 
+const LAST_SERVER_STORAGE_KEY = 'nl_cinema_last_server_v1';
+
+function readPreferredServerId(itemKey: string): string | null {
+  try {
+    const raw = localStorage.getItem(LAST_SERVER_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      if (itemKey && parsed.byItem && typeof parsed.byItem[itemKey] === 'string') {
+        return parsed.byItem[itemKey];
+      }
+      if (typeof parsed.globalServerId === 'string') {
+        return parsed.globalServerId;
+      }
+    }
+  } catch {
+    // Ignore storage errors (e.g. Safari Private Browsing)
+  }
+  return null;
+}
+
+function savePreferredServerId(itemKey: string, serverId: string): void {
+  try {
+    const raw = localStorage.getItem(LAST_SERVER_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    const byItem =
+      parsed && typeof parsed.byItem === 'object' && parsed.byItem !== null
+        ? { ...parsed.byItem }
+        : {};
+    if (itemKey) {
+      byItem[itemKey] = serverId;
+    }
+    localStorage.setItem(
+      LAST_SERVER_STORAGE_KEY,
+      JSON.stringify({
+        globalServerId: serverId,
+        byItem,
+      }),
+    );
+  } catch {
+    // Ignore storage errors (e.g. Safari Private Browsing)
+  }
+}
+
 export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => void; initialTab?: 'movies' | 'series' }) {
   const { t, i18n } = useTranslation();
   const { isMobile, isTablet } = useDeviceType();
@@ -745,6 +792,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [showHeroTrailer, setShowHeroTrailer] = useState(false);
   const [isWatchingInGallery, setIsWatchingInGallery] = useState(false);
   const [activeGalleryServerIdx, setActiveGalleryServerIdx] = useState(0);
+  const [isPlayerLoading, setIsPlayerLoading] = useState(false);
+  const [failoverNotice, setFailoverNotice] = useState<string | null>(null);
+  const [allServersFailed, setAllServersFailed] = useState(false);
+  const [isCssFullscreen, setIsCssFullscreen] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [isFullSeasonEmbed, setIsFullSeasonEmbed] = useState(false);
@@ -753,6 +804,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   >([]);
   const [loadingSeasonEpisodes, setLoadingSeasonEpisodes] = useState(false);
   const galleryStageRef = useRef<HTMLDivElement | null>(null);
+  const playerIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const attemptTokenRef = useRef(0);
+  const manualServerLockRef = useRef(false);
+  const failoverQueueRef = useRef<number[]>([]);
+  const failoverStepRef = useRef(0);
+  const loadedCurrentAttemptRef = useRef(false);
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -785,23 +842,264 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const activeGallerySource =
     detailPlaySources[activeGalleryServerIdx] || detailPlaySources[0] || null;
 
-  const handleToggleGalleryFullscreen = useCallback(() => {
-    const el = galleryStageRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) {
-      void document.exitFullscreen?.().catch(() => {});
-    } else {
-      void el.requestFullscreen?.().catch(() => {});
+  const detailItemStorageKey = detailedItem
+    ? `${detailedItem.mediaType}_${detailedItem.id}`
+    : '';
+
+  // Build ordered failover queue starting from the last known working server
+  const startGalleryWatchSession = useCallback(
+    (explicitServerIdx?: number) => {
+      const total = detailPlaySources.length || 7;
+      let startIdx = 0;
+
+      if (typeof explicitServerIdx === 'number' && explicitServerIdx >= 0) {
+        startIdx = explicitServerIdx;
+        manualServerLockRef.current = true;
+      } else {
+        manualServerLockRef.current = false;
+        const preferredId = readPreferredServerId(detailItemStorageKey);
+        if (preferredId && detailPlaySources.length > 0) {
+          const foundIdx = detailPlaySources.findIndex((s) => s.id === preferredId);
+          if (foundIdx >= 0) startIdx = foundIdx;
+        }
+      }
+
+      const ordered: number[] = [startIdx];
+      for (let i = 0; i < total; i++) {
+        if (i !== startIdx) ordered.push(i);
+      }
+      // One final backoff retry of the primary server at the end of the queue
+      ordered.push(startIdx);
+
+      failoverQueueRef.current = ordered;
+      failoverStepRef.current = 0;
+      attemptTokenRef.current += 1;
+      loadedCurrentAttemptRef.current = false;
+      setAllServersFailed(false);
+      setFailoverNotice(null);
+      setIsPlayerLoading(true);
+      setActiveGalleryServerIdx(startIdx);
+      setShowHeroTrailer(false);
+      setIsWatchingInGallery(true);
+    },
+    [detailPlaySources, detailItemStorageKey],
+  );
+
+  // Advance to the next server in the failover queue
+  const advanceFailoverServer = useCallback(
+    (reason: string, forceEvenIfManual = false) => {
+      if (manualServerLockRef.current && !forceEvenIfManual) {
+        setIsPlayerLoading(false);
+        return;
+      }
+      const queue = failoverQueueRef.current;
+      const nextStep = failoverStepRef.current + 1;
+      if (!queue.length || nextStep >= queue.length) {
+        setIsPlayerLoading(false);
+        setFailoverNotice(null);
+        setAllServersFailed(true);
+        console.warn(`[CinemaPlayer] All servers exhausted (${reason}).`);
+        return;
+      }
+
+      failoverStepRef.current = nextStep;
+      const nextServerIdx = queue[nextStep];
+      const nextSrc = detailPlaySources[nextServerIdx];
+      attemptTokenRef.current += 1;
+      loadedCurrentAttemptRef.current = false;
+      setIsPlayerLoading(true);
+
+      if (nextSrc) {
+        setFailoverNotice(
+          t('movies.player.switchingTo', {
+            server: nextSrc.label,
+            defaultValue:
+              currentLang === 'ar'
+                ? `جارٍ التبديل إلى ${nextSrc.label}…`
+                : `Switching to ${nextSrc.label}…`,
+          }),
+        );
+      }
+
+      const isFinalBackoffRetry = nextStep === queue.length - 1;
+      if (isFinalBackoffRetry) {
+        const tokenSnapshot = attemptTokenRef.current;
+        setTimeout(() => {
+          if (attemptTokenRef.current === tokenSnapshot) {
+            setActiveGalleryServerIdx(nextServerIdx);
+          }
+        }, 1600);
+      } else {
+        setActiveGalleryServerIdx(nextServerIdx);
+      }
+    },
+    [detailPlaySources, t, currentLang],
+  );
+
+  // Monitor active server attempt: CSP securitypolicyviolation + adaptive timeout + 4s pre-flight probe
+  useEffect(() => {
+    if (!isWatchingInGallery || !activeGallerySource || allServersFailed) {
+      return undefined;
     }
-  }, []);
+
+    const currentToken = ++attemptTokenRef.current;
+    loadedCurrentAttemptRef.current = false;
+    setIsPlayerLoading(true);
+
+    const conn = (navigator as any)?.connection;
+    const effType = String(conn?.effectiveType || '').toLowerCase();
+    const isSlowNetwork =
+      effType === 'slow-2g' || effType === '2g' || effType === '3g';
+    const timeoutMs = isSlowNetwork
+      ? 20000
+      : activeGallerySource.timeoutMs || 12000;
+
+    // 1. Immediate CSP violation detection (frame-src / child-src)
+    const onCspViolation = (e: SecurityPolicyViolationEvent) => {
+      if (attemptTokenRef.current !== currentToken) return;
+      const directive = String(e.effectiveDirective || e.violatedDirective || '');
+      if (!directive.startsWith('frame-src') && !directive.startsWith('child-src')) {
+        return;
+      }
+      const blocked = String(e.blockedURI || '');
+      const matchesCurrent =
+        blocked.includes(activeGallerySource.host) ||
+        (activeGallerySource.origins || []).some((orig) => blocked.startsWith(orig));
+
+      if (matchesCurrent) {
+        console.warn(
+          `[CinemaPlayer] CSP blocked framing ${blocked} (${directive}). Missing origin in frame-src for ${activeGallerySource.label} (${activeGallerySource.host}). Failing over immediately.`,
+        );
+        advanceFailoverServer('csp-violation', true);
+      }
+    };
+    document.addEventListener('securitypolicyviolation', onCspViolation);
+
+    // 2. Load timeout timer
+    const loadTimer = setTimeout(() => {
+      if (
+        attemptTokenRef.current === currentToken &&
+        !loadedCurrentAttemptRef.current
+      ) {
+        console.warn(
+          `[CinemaPlayer] ${activeGallerySource.label} (${activeGallerySource.host}) timed out after ${timeoutMs}ms.`,
+        );
+        advanceFailoverServer('timeout', false);
+      }
+    }, timeoutMs);
+
+    // 3. Fast pre-flight reachability probe (no-cors, 4s timeout)
+    const probeController = new AbortController();
+    const probeTimer = setTimeout(() => probeController.abort(), 4000);
+    const primaryOrigin =
+      activeGallerySource.origins?.[0] || `https://${activeGallerySource.host}`;
+
+    if (!manualServerLockRef.current && typeof fetch === 'function') {
+      fetch(primaryOrigin, {
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: probeController.signal,
+      })
+        .catch((err) => {
+          if (attemptTokenRef.current !== currentToken) return;
+          if (err?.name === 'AbortError') return;
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+          if (!loadedCurrentAttemptRef.current) {
+            console.warn(
+              `[CinemaPlayer] Pre-flight reachability probe failed for ${primaryOrigin}:`,
+              err,
+            );
+            advanceFailoverServer('preflight-network-error', false);
+          }
+        })
+        .finally(() => {
+          clearTimeout(probeTimer);
+        });
+    }
+
+    return () => {
+      document.removeEventListener('securitypolicyviolation', onCspViolation);
+      clearTimeout(loadTimer);
+      clearTimeout(probeTimer);
+      probeController.abort();
+    };
+  }, [
+    isWatchingInGallery,
+    activeGallerySource,
+    allServersFailed,
+    advanceFailoverServer,
+  ]);
+
+  // Stop audio & release iframe resources when closing or stopping gallery player
+  useEffect(() => {
+    if (!isWatchingInGallery && playerIframeRef.current) {
+      try {
+        playerIframeRef.current.src = 'about:blank';
+      } catch {}
+    }
+  }, [isWatchingInGallery]);
+
+  const handleToggleGalleryFullscreen = useCallback(() => {
+    const el = galleryStageRef.current as any;
+    if (!el) return;
+
+    if (isCssFullscreen) {
+      setIsCssFullscreen(false);
+      return;
+    }
+
+    const doc = document as any;
+    const fullscreenEl =
+      doc.fullscreenElement || doc.webkitFullscreenElement || null;
+
+    if (fullscreenEl) {
+      try {
+        const exitFn = doc.exitFullscreen || doc.webkitExitFullscreen;
+        if (exitFn) {
+          void Promise.resolve(exitFn.call(doc)).catch(() => {
+            setIsCssFullscreen(false);
+          });
+          return;
+        }
+      } catch {}
+      setIsCssFullscreen(false);
+      return;
+    }
+
+    try {
+      const reqFn =
+        el.requestFullscreen ||
+        el.webkitRequestFullscreen ||
+        el.webkitEnterFullscreen;
+      if (reqFn) {
+        void Promise.resolve(reqFn.call(el)).catch(() => {
+          setIsCssFullscreen((v) => !v);
+        });
+        return;
+      }
+    } catch {}
+
+    // iOS Safari fallback: CSS fixed viewport fullscreen
+    setIsCssFullscreen((v) => !v);
+  }, [isCssFullscreen]);
 
   useEffect(() => {
     setHeroServersOpen(false);
   }, [heroIndex, activeTab]);
 
   useEffect(() => {
+    if (playerIframeRef.current) {
+      try {
+        playerIframeRef.current.src = 'about:blank';
+      } catch {}
+    }
+    attemptTokenRef.current += 1;
     setShowHeroTrailer(false);
     setIsWatchingInGallery(false);
+    setIsPlayerLoading(false);
+    setFailoverNotice(null);
+    setAllServersFailed(false);
+    setIsCssFullscreen(false);
     setActiveGalleryServerIdx(0);
     setSelectedSeason(1);
     setSelectedEpisode(1);
@@ -813,7 +1111,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     if (selectedItemId === null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (selectedActor) {
+        if (isCssFullscreen) {
+          setIsCssFullscreen(false);
+        } else if (selectedActor) {
           setSelectedActor(null);
           setActorDetails(null);
         } else {
@@ -2013,15 +2313,15 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           <button
                             type="button"
                             onClick={() => {
-                              setShowHeroTrailer(false);
-                              setIsWatchingInGallery(true);
                               setDetailServersOpen(true);
+                              startGalleryWatchSession();
                             }}
                             className="lg-cinema-primary-pill px-3.5 py-1.5 text-xs font-black text-white flex items-center gap-1.5 cursor-pointer"
                           >
                             <Play size={12} className="fill-current" />
                             <span>
-                              {currentLang === "ar" ? "مشاهدة الآن" : "Watch Movie"}
+                              {t("movies.meta.watchNow") ||
+                                (currentLang === "ar" ? "مشاهدة الآن" : "Watch Now")}
                             </span>
                           </button>
                         )}
@@ -2045,19 +2345,19 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         <button
                           type="button"
                           onClick={() => {
+                            if (playerIframeRef.current) {
+                              try {
+                                playerIframeRef.current.src = "about:blank";
+                              } catch {}
+                            }
                             setIsWatchingInGallery(false);
                             setShowHeroTrailer(false);
+                            setIsCssFullscreen(false);
                           }}
                           className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-white/90 hover:text-white flex items-center gap-1.5 cursor-pointer"
-                          title={
-                            currentLang === "ar"
-                              ? "العودة لصورة المعرض"
-                              : "Back to Gallery Poster"
-                          }
+                          title={t("movies.player.showBackdrop")}
                         >
-                          <span>
-                            {currentLang === "ar" ? "عرض المعرض" : "Show Backdrop"}
-                          </span>
+                          <span>{t("movies.player.showBackdrop")}</span>
                         </button>
                       </div>
 
@@ -2067,19 +2367,36 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           onClick={handleToggleGalleryFullscreen}
                           className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px]"
                           aria-label={
-                            currentLang === "ar" ? "ملء الشاشة" : "Fullscreen"
+                            isCssFullscreen
+                              ? t("movies.player.exitFullscreen")
+                              : t("movies.player.fullscreen")
                           }
-                          title={currentLang === "ar" ? "ملء الشاشة" : "Fullscreen"}
+                          title={
+                            isCssFullscreen
+                              ? t("movies.player.exitFullscreen")
+                              : t("movies.player.fullscreen")
+                          }
                         >
-                          <Maximize2 size={15} />
+                          {isCssFullscreen ? (
+                            <Minimize2 size={15} />
+                          ) : (
+                            <Maximize2 size={15} />
+                          )}
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => setSelectedItemId(null)}
+                          onClick={() => {
+                            if (playerIframeRef.current) {
+                              try {
+                                playerIframeRef.current.src = "about:blank";
+                              } catch {}
+                            }
+                            setSelectedItemId(null);
+                          }}
                           className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] hover:!bg-rose-600/45 hover:!border-rose-300/60"
-                          aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
-                          title={currentLang === "ar" ? "إغلاق" : "Close"}
+                          aria-label={t("movies.close")}
+                          title={t("movies.close")}
                         >
                           <X size={16} />
                         </button>
@@ -2089,24 +2406,91 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
                   <div
                     ref={galleryStageRef}
-                    className="lg-cinema-gallery-stage relative aspect-video w-full bg-black"
+                    onClick={(e) => e.stopPropagation()}
+                    className={`lg-cinema-gallery-stage relative aspect-video w-full bg-black ${
+                      isCssFullscreen ? "lg-cinema-gallery-stage--css-fullscreen" : ""
+                    }`}
                   >
+                    {isCssFullscreen && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsCssFullscreen(false);
+                        }}
+                        className="lg-cinema-icon-pill fixed top-4 right-4 z-[10600] !w-10 !h-10"
+                        aria-label={t("movies.player.exitFullscreen")}
+                        title={t("movies.player.exitFullscreen")}
+                      >
+                        <Minimize2 size={16} />
+                      </button>
+                    )}
+
                     {isWatchingInGallery && activeGallerySource ? (
-                      <iframe
-                        key={`${activeGallerySource.id}-${activeGallerySource.url}`}
-                        className="w-full h-full border-0 bg-black"
-                        src={activeGallerySource.url}
-                        title={`${detailedItem.title} - ${activeGallerySource.label}`}
-                        width="100%"
-                        height="100%"
-                        frameBorder="0"
-                        scrolling="no"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                        allowFullScreen
-                      />
+                      <div className="relative w-full h-full bg-black">
+                        {!allServersFailed && (
+                          <iframe
+                            ref={playerIframeRef}
+                            key={`${activeGallerySource.id}-${activeGallerySource.url}`}
+                            className="w-full h-full border-0 bg-black block"
+                            src={activeGallerySource.url}
+                            title={`${detailedItem.title} - ${activeGallerySource.label}`}
+                            width="100%"
+                            height="100%"
+                            frameBorder="0"
+                            scrolling="no"
+                            referrerPolicy="origin"
+                            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                            allowFullScreen
+                            onLoad={() => {
+                              loadedCurrentAttemptRef.current = true;
+                              setIsPlayerLoading(false);
+                              setFailoverNotice(null);
+                              savePreferredServerId(
+                                detailItemStorageKey,
+                                activeGallerySource.id,
+                              );
+                            }}
+                          />
+                        )}
+
+                        {/* Loading / Failover Toast Indicator (pointer-events-none so it never blocks clicks) */}
+                        {isPlayerLoading && !allServersFailed && (
+                          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 bg-black/55 backdrop-blur-xs pointer-events-none">
+                            <RefreshCw
+                              size={26}
+                              className="animate-spin text-rose-400"
+                            />
+                            <span className="px-3.5 py-1 rounded-full bg-black/70 border border-white/20 text-xs font-extrabold text-white shadow-lg">
+                              {failoverNotice ||
+                                t("movies.player.loadingServer", {
+                                  server: `${activeGallerySource.label} (${activeGallerySource.host})`,
+                                })}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* All Servers Exhausted Error State with Retry Button */}
+                        {allServersFailed && (
+                          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-6 text-center bg-black/90">
+                            <AlertTriangle size={32} className="text-amber-400" />
+                            <p className="text-xs sm:text-sm font-bold text-white/90 max-w-md leading-relaxed">
+                              {t("movies.player.allFailed")}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => startGalleryWatchSession(0)}
+                              className="lg-cinema-primary-pill px-5 py-2 text-xs sm:text-sm font-black text-white flex items-center gap-2 cursor-pointer"
+                            >
+                              <RefreshCw size={14} />
+                              <span>{t("movies.player.retry")}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     ) : showHeroTrailer && detailedItem.trailerKey ? (
                       <iframe
-                        className="w-full h-full border-0 bg-black"
+                        className="w-full h-full border-0 bg-black block"
                         src={`https://www.youtube.com/embed/${detailedItem.trailerKey}?autoplay=1&rel=0&modestbranding=1`}
                         title={`${detailedItem.title} Trailer`}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
@@ -2131,28 +2515,27 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           }}
                         />
 
-                        {/* Center Liquid Glass Play Trigger (Plays Movie/Series or Trailer) */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowHeroTrailer(false);
-                            setIsWatchingInGallery(true);
-                            setDetailServersOpen(true);
-                          }}
-                          className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/18 hover:bg-white/28 border border-white/50 backdrop-blur-xl flex items-center justify-center text-white shadow-[0_12px_36px_rgba(0,0,0,0.68),inset_0_1.5px_1px_rgba(255,255,255,0.85)] transition-transform hover:scale-110 cursor-pointer group z-10"
-                          aria-label={
-                            currentLang === "ar" ? "مشاهدة الآن" : "Watch Now"
-                          }
-                          title={currentLang === "ar" ? "مشاهدة الآن" : "Watch Now"}
-                        >
-                          <Play
-                            size={28}
-                            className="fill-current ms-1 group-hover:scale-110 transition-transform"
-                          />
-                        </button>
+                        {/* Center Liquid Glass Play Trailer Trigger (Plays Trailer ONLY, as requested) */}
+                        {detailedItem.trailerKey && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsWatchingInGallery(false);
+                              setShowHeroTrailer(true);
+                            }}
+                            className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/18 hover:bg-white/28 border border-white/50 backdrop-blur-xl flex items-center justify-center text-white shadow-[0_12px_36px_rgba(0,0,0,0.68),inset_0_1.5px_1px_rgba(255,255,255,0.85)] transition-transform hover:scale-110 cursor-pointer group z-10"
+                            aria-label={t("movies.player.watchTrailer")}
+                            title={t("movies.player.watchTrailer")}
+                          >
+                            <Play
+                              size={28}
+                              className="fill-current ms-1 group-hover:scale-110 transition-transform"
+                            />
+                          </button>
+                        )}
 
                         {/* Bottom Overlay Info inside Gallery Stage (Only when NOT playing) */}
-                        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 flex items-end justify-between gap-4 z-10">
+                        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 flex items-end justify-between gap-4 z-10 pointer-events-none">
                           <div className="flex items-end gap-3.5 min-w-0">
                             <img
                               src={getPosterSrc_static(
@@ -2220,11 +2603,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 className="lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
                               >
                                 <Film size={13} />
-                                <span>
-                                  {currentLang === "ar"
-                                    ? "تشغيل التريلر"
-                                    : "Watch Trailer"}
-                                </span>
+                                <span>{t("movies.player.watchTrailer")}</span>
                               </button>
                             )}
                           </div>
@@ -2232,7 +2611,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             type="button"
                             onClick={() => setSelectedItemId(null)}
                             className="lg-cinema-icon-pill pointer-events-auto hover:!bg-rose-600/45 hover:!border-rose-300/60"
-                            aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
+                            aria-label={t("movies.close")}
                           >
                             <X size={16} />
                           </button>
@@ -2252,9 +2631,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 max-w-full">
                           <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-white/70 pe-1 shrink-0">
                             <Tv size={12} className="text-rose-400" />
-                            <span>
-                              {currentLang === "ar" ? "المواسم" : "Seasons"}
-                            </span>
+                            <span>{t("movies.meta.seasons")}</span>
                           </span>
                           {Array.from(
                             { length: Math.max(1, Math.min(30, detailedItem.seasons || 1)) },
@@ -2270,9 +2647,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                   setIsFullSeasonEmbed(false);
                                   setSelectedSeason(seasonNum);
                                   setSelectedEpisode(1);
-                                  setShowHeroTrailer(false);
-                                  setIsWatchingInGallery(true);
                                   setDetailServersOpen(true);
+                                  startGalleryWatchSession();
                                 }}
                                 className={`lg-cinema-tv-pill px-3 py-1 rounded-full text-xs font-extrabold shrink-0 cursor-pointer transition-all ${
                                   isSeasonActive
@@ -2280,9 +2656,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                     : "text-white/80 hover:text-white"
                                 }`}
                               >
-                                {currentLang === "ar"
-                                  ? `موسم ${seasonNum}`
-                                  : `Season ${seasonNum}`}
+                                {t("movies.player.season", { num: seasonNum })}
                               </button>
                             );
                           })}
@@ -2293,9 +2667,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           type="button"
                           onClick={() => {
                             setIsFullSeasonEmbed((prev) => !prev);
-                            setShowHeroTrailer(false);
-                            setIsWatchingInGallery(true);
                             setDetailServersOpen(true);
+                            startGalleryWatchSession();
                           }}
                           className={`lg-cinema-tv-pill px-3 py-1 rounded-full text-xs font-extrabold inline-flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
                             isFullSeasonEmbed
@@ -2305,11 +2678,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           title="https://www.2embed.cc/embedtvfull/..."
                         >
                           <Layers size={12} />
-                          <span>
-                            {currentLang === "ar"
-                              ? "الموسم الكامل (Full)"
-                              : "Full Season Player"}
-                          </span>
+                          <span>{t("movies.player.fullSeason")}</span>
                         </button>
                       </div>
 
@@ -2317,11 +2686,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       {!isFullSeasonEmbed && (
                         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
                           <span className="text-[11px] font-black uppercase tracking-wider text-white/65 pe-1 shrink-0">
-                            {currentLang === "ar" ? "الحلقات" : "Episodes"}
+                            {t("movies.meta.episodes")}
                           </span>
                           {loadingSeasonEpisodes && seasonEpisodes.length === 0 ? (
                             <span className="text-xs text-white/60 font-bold px-2">
-                              Loading...
+                              {t("movies.meta.loading")}
                             </span>
                           ) : (
                             seasonEpisodes.map((ep) => {
@@ -2334,9 +2703,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                   onClick={() => {
                                     setIsFullSeasonEmbed(false);
                                     setSelectedEpisode(ep.episode_number);
-                                    setShowHeroTrailer(false);
-                                    setIsWatchingInGallery(true);
                                     setDetailServersOpen(true);
+                                    startGalleryWatchSession();
                                   }}
                                   className={`lg-cinema-tv-ep-pill px-2.5 py-1 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all inline-flex items-center gap-1 ${
                                     isEpActive
@@ -2374,24 +2742,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             onToggle={() => {
                               if (!detailServersOpen || !isWatchingInGallery) {
                                 setDetailServersOpen(true);
-                                setShowHeroTrailer(false);
-                                setIsWatchingInGallery(true);
+                                startGalleryWatchSession();
                               } else {
                                 setDetailServersOpen(false);
                               }
                             }}
                             onClose={() => setDetailServersOpen(false)}
-                            buttonLabel={
-                              t("movies.meta.watchNow") ||
-                              (currentLang === "ar" ? "شاهد الآن" : "Watch Now")
-                            }
+                            buttonLabel={t("movies.meta.watchNow")}
                             activeServerIdx={
                               isWatchingInGallery ? activeGalleryServerIdx : null
                             }
                             onSelectServer={(idx) => {
-                              setActiveGalleryServerIdx(idx);
-                              setShowHeroTrailer(false);
-                              setIsWatchingInGallery(true);
+                              startGalleryWatchSession(idx);
                             }}
                           />
                         )}
