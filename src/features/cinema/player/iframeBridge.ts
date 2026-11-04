@@ -10,6 +10,7 @@ export interface BridgeEvent {
   paused?: boolean;
   rate?: number;
   ackId?: string;
+  fid?: string;
   bridgeTier?: BridgeTier;
   payload?: unknown;
 }
@@ -19,10 +20,14 @@ export type IframePlayerCommand =
   | { type: "play" }
   | { type: "pause" };
 
-let lastSeenSeq = -1;
+const lastSeqByFid = new Map<string, number>();
 
 export function resetNlBridgeSeq(): void {
-  lastSeenSeq = -1;
+  lastSeqByFid.clear();
+}
+
+export function isSyncCapableEvent(ev: BridgeEvent | null | undefined): boolean {
+  return Boolean(ev && typeof ev.currentTime === "number" && Number.isFinite(ev.currentTime));
 }
 
 const num = (v: unknown): number | undefined => {
@@ -64,38 +69,44 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
 
   // 1. Versioned NL Worker bridge protocol (__nl: 1)
   if (d.__nl === 1 && typeof d.type === "string") {
+    const fidKey = typeof d.fid === "string" && d.fid ? d.fid : "_";
     if (d.type === "NL_READY") {
-      lastSeenSeq = -1;
+      lastSeqByFid.delete(fidKey);
       return {
         kind: "media",
-        bridgeTier: "worker",
+        fid: typeof d.fid === "string" ? d.fid : undefined,
       };
     }
     if (d.type === "NL_ACK") {
+      const ct = num(d.t);
       return {
         kind: "seeked",
-        currentTime: num(d.t),
+        currentTime: ct,
         duration: num(d.d),
         paused: typeof d.paused === "boolean" ? d.paused : undefined,
         rate: num(d.rate),
         ackId: typeof d.id === "string" ? d.id : undefined,
-        bridgeTier: "worker",
+        fid: typeof d.fid === "string" ? d.fid : undefined,
+        bridgeTier: ct !== undefined ? "worker" : undefined,
       };
     }
     if (d.type === "NL_STATE") {
       const seq = num(d.seq);
       if (seq !== undefined) {
-        if (seq <= lastSeenSeq) return null;
-        lastSeenSeq = seq;
+        const prevSeq = lastSeqByFid.get(fidKey);
+        if (prevSeq !== undefined && seq <= prevSeq) return null;
+        lastSeqByFid.set(fidKey, seq);
       }
       const evKey = String(d.ev || "timeupdate").toLowerCase();
+      const ct = num(d.t);
       return {
         kind: KIND_MAP[evKey] ?? "timeupdate",
-        currentTime: num(d.t),
+        currentTime: ct,
         duration: num(d.d),
         paused: typeof d.paused === "boolean" ? d.paused : undefined,
         rate: num(d.rate),
-        bridgeTier: "worker",
+        fid: typeof d.fid === "string" ? d.fid : undefined,
+        bridgeTier: ct !== undefined ? "worker" : undefined,
       };
     }
   }
@@ -103,12 +114,13 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
   // VidLink (documented): { type: "PLAYER_EVENT", data: { event, currentTime, duration, ... } }
   if (d.type === "PLAYER_EVENT" && d.data && typeof d.data === "object") {
     const kind = KIND_MAP[String(d.data.event || "").toLowerCase()] ?? "timeupdate";
+    const ct = num(d.data.currentTime);
     return {
       kind,
-      currentTime: num(d.data.currentTime),
+      currentTime: ct,
       duration: num(d.data.duration),
       paused: kind === "pause" || kind === "ended" ? true : kind === "play" ? false : undefined,
-      bridgeTier: "native",
+      bridgeTier: ct !== undefined ? "native" : undefined,
       payload: d.data,
     };
   }
@@ -118,7 +130,7 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
       kind: "media",
       currentTime: prog.currentTime,
       duration: prog.duration,
-      bridgeTier: "native",
+      bridgeTier: prog.currentTime !== undefined ? "native" : undefined,
       payload: d.data,
     };
   }
@@ -147,7 +159,7 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
           : resolvedKind === "play"
             ? false
             : undefined,
-    bridgeTier: "native",
+    bridgeTier: t !== undefined ? "native" : undefined,
   };
 }
 
@@ -232,6 +244,22 @@ function isFromFrame(source: MessageEventSource | null, root: Window | null | un
   return false;
 }
 
+function logBridgeDebug(
+  origin: string,
+  accepted: boolean,
+  reason: "origin" | "source" | "parse" | null,
+  data: unknown,
+): void {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("nl_debug_bridge") === "1") {
+      // eslint-disable-next-line no-console
+      console.debug("[NLBridge]", origin, accepted ? "ACCEPT" : "REJECT:" + reason, data);
+    }
+  } catch {
+    // ignore storage access errors
+  }
+}
+
 export function useIframePlayerBridge(opts: {
   iframeRef: RefObject<HTMLIFrameElement | null>;
   allowedOrigins: string[];
@@ -256,19 +284,31 @@ export function useIframePlayerBridge(opts: {
     const allowed = new Set(originsKey.split("|").filter(Boolean));
 
     const onMessage = (e: MessageEvent) => {
-      if (!allowed.has(e.origin)) return;
-      if (!isFromFrame(e.source, iframeRef.current?.contentWindow)) return;
+      if (!allowed.has(e.origin)) {
+        logBridgeDebug(e.origin, false, "origin", e.data);
+        return;
+      }
+      if (!isFromFrame(e.source, iframeRef.current?.contentWindow)) {
+        logBridgeDebug(e.origin, false, "source", e.data);
+        return;
+      }
       const ev = parsePlayerMessage(e.data);
-      if (!ev) return;
+      if (!ev) {
+        logBridgeDebug(e.origin, false, "parse", e.data);
+        return;
+      }
+      logBridgeDebug(e.origin, true, null, e.data);
 
-      if (ev.bridgeTier === "worker") {
-        setTier("worker");
-      } else if (ev.bridgeTier === "native") {
-        setTier((prev) => prev ?? "native");
+      if (isSyncCapableEvent(ev)) {
+        if (ev.bridgeTier === "worker") {
+          setTier("worker");
+        } else if (ev.bridgeTier === "native") {
+          setTier((prev) => prev ?? "native");
+        }
       }
 
       if (ev.kind === "media") {
-        if (ev.currentTime !== undefined) {
+        if (isSyncCapableEvent(ev)) {
           setActive(true);
           onEventRef.current?.(ev);
         }
@@ -278,7 +318,7 @@ export function useIframePlayerBridge(opts: {
         return;
       }
 
-      if (ev.currentTime !== undefined || ev.kind === "play" || ev.kind === "pause" || ev.kind === "ended" || ev.ackId) {
+      if (isSyncCapableEvent(ev) || ev.kind === "play" || ev.kind === "pause" || ev.kind === "ended" || ev.ackId) {
         setActive(true);
         onEventRef.current?.(ev);
       }

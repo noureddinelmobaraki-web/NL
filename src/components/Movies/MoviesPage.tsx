@@ -1140,6 +1140,32 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       : activeGallerySource.url;
   }, [activeGallerySource, playerRenderMode, extractedStreams, activeExtractedIdx]);
 
+  const prevWatchingInGalleryRef = useRef(false);
+  useEffect(() => {
+    const wasWatching = prevWatchingInGalleryRef.current;
+    prevWatchingInGalleryRef.current = isWatchingInGallery;
+    if (!wasWatching && isWatchingInGallery) {
+      try {
+        const now = Date.now();
+        const TTL_MS = 30 * 60 * 1000;
+        const staleKeys: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i += 1) {
+          const k = sessionStorage.key(i);
+          if (k && k.startsWith("nl_wb_fail_")) {
+            const raw = sessionStorage.getItem(k);
+            const ts = raw ? Number(raw) : NaN;
+            if (raw === "1" || !Number.isFinite(ts) || now - ts > TTL_MS) {
+              staleKeys.push(k);
+            }
+          }
+        }
+        staleKeys.forEach((k) => sessionStorage.removeItem(k));
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [isWatchingInGallery]);
+
   const activeIframeUrl = useMemo(() => {
     if (!activeGallerySource || !activeIframeUrlBase) return "";
     let rawUrl = activeIframeUrlBase;
@@ -1165,7 +1191,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     ) {
       let wbFailed = false;
       try {
-        wbFailed = sessionStorage.getItem(`nl_wb_fail_${activeGallerySource.id}`) === "1";
+        const failKey = `nl_wb_fail_${activeGallerySource.id}`;
+        const rawFail = sessionStorage.getItem(failKey);
+        if (rawFail !== null) {
+          const ts = Number(rawFail);
+          if (rawFail === "1" || !Number.isFinite(ts) || Date.now() - ts > 30 * 60 * 1000) {
+            sessionStorage.removeItem(failKey);
+            wbFailed = false;
+          } else {
+            wbFailed = true;
+          }
+        }
       } catch {
         wbFailed = false;
       }
@@ -1243,9 +1279,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       }
 
       const firstIdx = ordered[0] ?? 0;
+      const targetSource = detailPlaySources[firstIdx] || detailPlaySources[0];
+      const initialAnchorSec = targetSource?.capabilities?.startAt
+        ? (resumeStartAtSec ?? 0)
+        : 0;
 
       cleanupDirectVideoPlayer();
-      clockAnchor(resumeStartAtSec ?? 0, {
+      clockAnchor(initialAnchorSec, {
         duration: (detailedItem?.runtime ?? 0) * 60,
         source: "manual",
         durationIsEstimated: true,
@@ -1292,13 +1332,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         return;
       }
 
-      clockAnchor(resumeStartAtSec ?? 0, {
+      const nextServerIdx = queue[nextStep];
+      const nextSource = detailPlaySources[nextServerIdx];
+      const nextAnchorSec = nextSource?.capabilities?.startAt
+        ? (resumeStartAtSec ?? 0)
+        : 0;
+
+      clockAnchor(nextAnchorSec, {
         duration: (detailedItem?.runtime ?? 0) * 60,
         source: "manual",
         durationIsEstimated: true,
       });
       failoverStepRef.current = nextStep;
-      const nextServerIdx = queue[nextStep];
       attemptTokenRef.current += 1;
       playAttemptStartedAtRef.current = performance.now();
       loadedCurrentAttemptRef.current = false;
@@ -1903,6 +1948,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return Array.from(set);
   }, [activeIframeUrl]);
 
+  const gotTimeSinceLoadRef = useRef(false);
+
   // Origin-allowlisted postMessage bridge for iframe / clean-embed players
   const bridge = useIframePlayerBridge({
     enabled:
@@ -1911,6 +1958,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     iframeRef: playerIframeRef,
     allowedOrigins: bridgeAllowedOrigins,
     onEvent: (ev) => {
+      if (typeof ev.currentTime === "number" && Number.isFinite(ev.currentTime)) {
+        gotTimeSinceLoadRef.current = true;
+      }
       const decision = syncControllerRef.current
         ? syncControllerRef.current.onReport(ev)
         : "accept";
@@ -1952,15 +2002,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const [iframeLoadStamp, setIframeLoadStamp] = useState(0);
   const [manualClockEligible, setManualClockEligible] = useState(false);
-  const bridgeTierRef = useRef(bridge.tier);
-  bridgeTierRef.current = bridge.tier;
 
   useEffect(() => {
     setManualClockEligible(false);
   }, [activeIframeUrl, playerRenderMode, isWatchingInGallery]);
 
-  // 8000ms post-load watchdog: fallback from Worker /embed to raw URL if NL_READY wasn't received,
-  // and unlock manual subtitle clock auto-start only when bridge.tier === null after 8s.
+  // 8000ms post-load watchdog: fallback from Worker /embed to raw URL if no sync-capable event was received,
+  // and unlock manual subtitle clock auto-start only when no sync-capable event arrived after 8s.
   useEffect(() => {
     if (
       !isWatchingInGallery ||
@@ -1977,14 +2025,20 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         playerRenderMode === "iframe" &&
         srvCaps?.workerBridge &&
         activeGallerySource &&
-        bridgeTierRef.current !== "worker"
+        !gotTimeSinceLoadRef.current
       ) {
         let alreadyFailed = false;
         try {
+          const failKey = `nl_wb_fail_${activeGallerySource.id}`;
+          const raw = sessionStorage.getItem(failKey);
+          const ts = raw ? Number(raw) : NaN;
           alreadyFailed =
-            sessionStorage.getItem(`nl_wb_fail_${activeGallerySource.id}`) === "1";
+            raw !== null &&
+            raw !== "1" &&
+            Number.isFinite(ts) &&
+            Date.now() - ts <= 30 * 60 * 1000;
           if (!alreadyFailed) {
-            sessionStorage.setItem(`nl_wb_fail_${activeGallerySource.id}`, "1");
+            sessionStorage.setItem(failKey, String(Date.now()));
           }
         } catch {
           // ignore storage errors
@@ -1994,7 +2048,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           return;
         }
       }
-      if (bridgeTierRef.current === null) {
+      if (!gotTimeSinceLoadRef.current) {
         setManualClockEligible(true);
       }
     }, 8000);
@@ -2030,7 +2084,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         document.activeElement === playerIframeRef.current &&
         clockGetState().source === "manual" &&
         clockGetState().paused &&
-        bridgeTierRef.current === null
+        !gotTimeSinceLoadRef.current
       ) {
         clockPlay();
       }
@@ -3985,6 +4039,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                   detailItemStorageKey,
                                 );
                                 setIsPlayerLoading(false);
+                                gotTimeSinceLoadRef.current = false;
                                 setIframeLoadStamp(Date.now());
                               }}
                             />

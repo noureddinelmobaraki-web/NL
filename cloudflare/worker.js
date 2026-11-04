@@ -53,18 +53,20 @@ export default {
 
 /* ---------------- أمان ---------------- */
 
-function getAllowedOriginsList(env, workerOrigin) {
-  const base = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()) : DEFAULT_ALLOWED_ORIGINS;
-  return workerOrigin && !base.includes(workerOrigin) ? [...base, workerOrigin] : base;
-}
-
 function isAllowedCaller(request, env) {
+  const list = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()) : DEFAULT_ALLOWED_ORIGINS;
   const workerOrigin = new URL(request.url).origin;
-  const list = getAllowedOriginsList(env, workerOrigin);
   const origin = request.headers.get("Origin");
-  if (origin) return list.includes(origin);
+  if (origin) return origin === workerOrigin || list.includes(origin);
   const ref = request.headers.get("Referer");
-  if (ref) { try { return list.includes(new URL(ref).origin); } catch { return false; } }
+  if (ref) {
+    try {
+      const refOrigin = new URL(ref).origin;
+      return refOrigin === workerOrigin || list.includes(refOrigin);
+    } catch {
+      return false;
+    }
+  }
   return true; // بعض طلبات <video> لا ترسل Origin/Referer — نسمح كي لا يتوقف التشغيل
 }
 
@@ -179,8 +181,9 @@ function cleanHeaders(src, dropLength) {
 /* ---------------- /embed (HTMLRewriter Bridge) ---------------- */
 
 const EMBED_HOST_ALLOW = /^(.*\.)?(streamimdb\.ru|imdb\.su|2embed\.cc|2embed\.skin|2vcdn\.skin|multiembed\.mov|streamingnow\.mov|vidsrc\.[a-z]+|vidplay\.[a-z]+|filemoon\.[a-z]+|streamtape\.[a-z]+|dood\.[a-z]+|mixdrop\.[a-z]+|rabbitstream\.net|megacloud\.tv|dokicloud\.one)$/i;
+const EMBED_AD_HOST_RE = /google|facebook|doubleclick|googlesyndication|recaptcha/i;
 
-const NL_BRIDGE_JS = `(function(){if(window.__nlBridge)return;window.__nlBridge=1;var seq=0,cur=null,lastSent=0;function post(m){try{window.top.postMessage(m,"*")}catch(e){}try{if(window.parent&&window.parent!==window.top)window.parent.postMessage(m,"*")}catch(e){}}function send(ev){if(!cur)return;var now=Date.now();if(ev==="timeupdate"&&now-lastSent<250)return;lastSent=now;var d=cur.duration;post({__nl:1,type:"NL_STATE",ev:ev,t:cur.currentTime||0,d:isFinite(d)&&d>0?d:0,paused:!!cur.paused,rate:cur.playbackRate||1,seq:++seq})}function bind(v){if(!v||v===cur)return;cur=v;var evs=["loadedmetadata","durationchange","play","playing","pause","waiting","seeked","seeking","timeupdate","ratechange","ended"];for(var i=0;i<evs.length;i++)(function(e){v.addEventListener(e,function(){send(e)},true)})(evs[i]);send("loadedmetadata")}function scan(){var vs=document.getElementsByTagName("video");var best=null;for(var i=0;i<vs.length;i++){var v=vs[i];if(v.readyState>0||v.src||v.currentSrc){best=v;break}if(!best)best=v}if(best)bind(best)}try{var origPlay=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){if(this&&this.tagName==="VIDEO")bind(this);return origPlay.apply(this,arguments)}}catch(e){}try{var mo=new MutationObserver(scan);mo.observe(document.documentElement,{childList:true,subtree:true})}catch(e){}setInterval(scan,1500);scan();window.addEventListener("message",function(e){var d=e.data;if(typeof d==="string"){try{d=JSON.parse(d)}catch(x){return}}if(!d||d.__nl!==1||d.type!=="NL_CMD")return;if(cur){try{if(d.cmd==="seek"&&typeof d.t==="number"){cur.currentTime=Math.max(0,d.t);post({__nl:1,type:"NL_ACK",id:d.id,t:cur.currentTime,d:isFinite(cur.duration)?cur.duration:0,paused:!!cur.paused})}else if(d.cmd==="play"){var p=cur.play();if(p&&p.catch)p.catch(function(){})}else if(d.cmd==="pause"){cur.pause()}}catch(x){}}var fs=window.frames;for(var i=0;i<fs.length;i++){try{fs[i].postMessage(d,"*")}catch(x){}}});post({__nl:1,type:"NL_READY"})})();`;
+const NL_BRIDGE_JS = `(function(){try{if(window.__nlBridge)return;window.__nlBridge=1;var WORKER=__WORKER_ORIGIN__,PARENT=__PARENT_ORIGIN__,DEPTH=__DEPTH__;var FID=Math.random().toString(36).slice(2,10);var seq=0,cur=null,lastSent=0,readySent=false;function wrap(u){try{if(!u||typeof u!=="string")return u;var a=new URL(u,document.baseURI);if(!/^https?:$/.test(a.protocol))return u;if(a.origin===WORKER)return u;if(/google|facebook|doubleclick|googlesyndication|recaptcha/i.test(a.hostname))return u;if(DEPTH>=3)return u;return WORKER+"/embed?url="+encodeURIComponent(a.href)+"&parent="+encodeURIComponent(PARENT)+"&depth="+(DEPTH+1)+"&ref="+encodeURIComponent(document.baseURI)}catch(e){return u}}try{var desc=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,"src");if(desc&&desc.set){Object.defineProperty(HTMLIFrameElement.prototype,"src",{configurable:true,enumerable:desc.enumerable,get:desc.get,set:function(v){try{return desc.set.call(this,wrap(v))}catch(e){}}})}}catch(e){}var origSetAttr=null;try{origSetAttr=Element.prototype.setAttribute;Element.prototype.setAttribute=function(name,value){try{if(this&&this.tagName==="IFRAME"&&String(name).toLowerCase()==="src")value=wrap(value)}catch(e){}return origSetAttr.call(this,name,value)}}catch(e){}function post(m){try{if(window.parent&&window.parent!==window)window.parent.postMessage(m,"*")}catch(e){}}function send(ev){try{if(!cur)return;var now=Date.now();if(ev==="timeupdate"&&now-lastSent<250)return;lastSent=now;var d=cur.duration;post({__nl:1,type:"NL_STATE",ev:ev,t:cur.currentTime||0,d:isFinite(d)&&d>0?d:0,paused:!!cur.paused,rate:cur.playbackRate||1,seq:++seq,fid:FID})}catch(e){}}function bind(v){try{if(!v||v===cur)return;cur=v;var evs=["loadedmetadata","durationchange","play","playing","pause","waiting","seeked","seeking","timeupdate","ratechange","ended"];for(var i=0;i<evs.length;i++)(function(e){try{v.addEventListener(e,function(){send(e)},true)}catch(x){}})(evs[i]);if(!readySent){readySent=true;post({__nl:1,type:"NL_READY",fid:FID})}send("loadedmetadata")}catch(e){}}function wrapFrameEl(f){try{if(!f||f.tagName!=="IFRAME")return;var raw=f.getAttribute("src");if(raw){var w=wrap(raw);if(w!==raw){if(origSetAttr)origSetAttr.call(f,"src",w);else f.setAttribute("src",w)}}}catch(e){}}function scan(){try{var vs=document.getElementsByTagName("video");var best=null;for(var i=0;i<vs.length;i++){var v=vs[i];if(v.readyState>0||v.src||v.currentSrc){best=v;break}if(!best)best=v}if(best)bind(best);var fs=document.getElementsByTagName("iframe");for(var j=0;j<fs.length;j++)wrapFrameEl(fs[j])}catch(e){}}try{var origPlay=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){try{if(this&&this.tagName==="VIDEO")bind(this)}catch(e){}return origPlay.apply(this,arguments)}}catch(e){}try{var mo=new MutationObserver(function(muts){try{for(var i=0;i<muts.length;i++){var added=muts[i].addedNodes;if(!added)continue;for(var k=0;k<added.length;k++){var n=added[k];if(!n||n.nodeType!==1)continue;if(n.tagName==="IFRAME")wrapFrameEl(n);else if(n.getElementsByTagName){var ifs=n.getElementsByTagName("iframe");for(var m=0;m<ifs.length;m++)wrapFrameEl(ifs[m])}}}scan()}catch(e){}});mo.observe(document.documentElement,{childList:true,subtree:true})}catch(e){}setInterval(scan,1500);scan();window.addEventListener("message",function(e){try{var d=e.data;if(typeof d==="string"){try{d=JSON.parse(d)}catch(x){return}}if(!d||d.__nl!==1)return;if(e.source!==window.parent&&d.type!=="NL_CMD"){post(d);return}if(d.type!=="NL_CMD")return;if(cur){try{if(d.cmd==="seek"&&typeof d.t==="number"){cur.currentTime=Math.max(0,d.t);var dur=cur.duration;post({__nl:1,type:"NL_ACK",id:d.id,t:cur.currentTime,d:isFinite(dur)&&dur>0?dur:0,paused:!!cur.paused,fid:FID})}else if(d.cmd==="play"){var p=cur.play();if(p&&p.catch)p.catch(function(){})}else if(d.cmd==="pause"){cur.pause()}}catch(x){}}var fs=window.frames;for(var i=0;i<fs.length;i++){try{fs[i].postMessage(d,"*")}catch(x){}}}catch(e){}})}catch(e){}})();`;
 
 function cleanEmbedHeaders(src, parentOrigin, workerOrigin) {
   const h = cleanHeaders(src, true);
@@ -191,44 +194,100 @@ function cleanEmbedHeaders(src, parentOrigin, workerOrigin) {
 async function handleEmbed(request, reqUrl, workerOrigin, env) {
   const rawUrl = reqUrl.searchParams.get("url") || "";
   const parentOrigin = reqUrl.searchParams.get("parent") || "";
+  const refParam = reqUrl.searchParams.get("ref") || "";
   const depth = parseInt(reqUrl.searchParams.get("depth") || "0", 10);
   if (!Number.isFinite(depth) || depth < 0 || depth > 3) {
     return jsonResponse({ error: "bad_depth" }, 400);
   }
-  const allowedList = getAllowedOriginsList(env, workerOrigin);
+  const allowedList = env.ALLOWED_ORIGINS
+    ? env.ALLOWED_ORIGINS.split(",").map((s) => s.trim())
+    : DEFAULT_ALLOWED_ORIGINS;
   if (!parentOrigin || !allowedList.includes(parentOrigin)) {
     return jsonResponse({ error: "bad_parent" }, 403);
   }
   const target = safeTarget(rawUrl);
-  if (!target || !EMBED_HOST_ALLOW.test(target.hostname)) {
+  if (!target) {
     return jsonResponse({ error: "host_not_allowed" }, 403);
   }
+  if (depth === 0) {
+    if (!EMBED_HOST_ALLOW.test(target.hostname)) {
+      return jsonResponse({ error: "host_not_allowed" }, 403);
+    }
+  } else {
+    if (target.protocol !== "https:") {
+      return jsonResponse({ error: "host_not_allowed" }, 403);
+    }
+    const reqRef = request.headers.get("Referer") || "";
+    let refOrigin = "";
+    try { refOrigin = new URL(reqRef).origin; } catch {}
+    if (refOrigin !== workerOrigin) {
+      return jsonResponse({ error: "host_not_allowed" }, 403);
+    }
+  }
 
-  const upstream = await fetch(target.href, {
-    headers: {
-      "User-Agent": UA,
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      Referer: target.origin + "/",
-    },
-    redirect: "follow",
-  });
+  let upstreamReferer = target.origin + "/";
+  if (depth >= 1 && refParam) {
+    const validRef = safeTarget(refParam);
+    if (validRef) upstreamReferer = validRef.href;
+  }
+
+  let upstream;
+  try {
+    upstream = await fetch(target.href, {
+      headers: {
+        "User-Agent": UA,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        Referer: upstreamReferer,
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    return Response.redirect(target.href, 302);
+  }
+
+  if (!upstream.ok || upstream.status === 403 || upstream.status === 503) {
+    return Response.redirect(target.href, 302);
+  }
 
   const ct = (upstream.headers.get("Content-Type") || "").toLowerCase();
   if (!ct.includes("text/html")) {
-    return new Response(upstream.body, {
-      status: upstream.status,
-      headers: cleanEmbedHeaders(upstream.headers, parentOrigin, workerOrigin),
-    });
+    return Response.redirect(target.href, 302);
   }
 
-  const finalOrigin = new URL(upstream.url || target.href).origin;
+  try {
+    const cloneBody = upstream.clone().body;
+    if (cloneBody) {
+      const reader = cloneBody.getReader();
+      const decoder = new TextDecoder();
+      let bytesRead = 0;
+      let headChunk = "";
+      while (bytesRead < 4096) {
+        const { done, value } = await reader.read();
+        if (done || !value) break;
+        bytesRead += value.byteLength;
+        headChunk += decoder.decode(value, { stream: true });
+      }
+      try { await reader.cancel(); } catch {}
+      if (/cf-chl|challenge-platform/i.test(headChunk)) {
+        return Response.redirect(target.href, 302);
+      }
+    }
+  } catch {
+    return Response.redirect(target.href, 302);
+  }
+
   const finalBaseHref = new URL(upstream.url || target.href).href;
+  const bridgeScript = NL_BRIDGE_JS
+    .replace(/__WORKER_ORIGIN__/g, JSON.stringify(workerOrigin))
+    .replace(/__PARENT_ORIGIN__/g, JSON.stringify(parentOrigin))
+    .replace(/__DEPTH__/g, String(depth));
 
   const rewriter = new HTMLRewriter()
     .on("head", {
       element(el) {
         el.prepend(
-          `<base href="${finalBaseHref.replace(/"/g, "&quot;")}"><script>${NL_BRIDGE_JS}</script>`,
+          `<base href="${finalBaseHref.replace(/"/g, "&quot;")}"><script>${bridgeScript}</script>`,
           { html: true },
         );
       },
@@ -239,13 +298,14 @@ async function handleEmbed(request, reqUrl, workerOrigin, env) {
         const srcAttr = el.getAttribute("src");
         if (!srcAttr) return;
         try {
-          const abs = new URL(srcAttr, finalOrigin);
+          const abs = new URL(srcAttr, finalBaseHref);
           if (
-            (abs.protocol === "https:" || abs.protocol === "http:") &&
-            EMBED_HOST_ALLOW.test(abs.hostname) &&
-            !/google|facebook|doubleclick/i.test(abs.hostname)
+            abs.protocol === "https:" &&
+            abs.origin !== workerOrigin &&
+            safeTarget(abs.href) &&
+            !EMBED_AD_HOST_RE.test(abs.hostname)
           ) {
-            const wrapped = `${workerOrigin}/embed?url=${encodeURIComponent(abs.href)}&parent=${encodeURIComponent(parentOrigin)}&depth=${depth + 1}`;
+            const wrapped = `${workerOrigin}/embed?url=${encodeURIComponent(abs.href)}&parent=${encodeURIComponent(parentOrigin)}&depth=${depth + 1}&ref=${encodeURIComponent(finalBaseHref)}`;
             el.setAttribute("src", wrapped);
           }
         } catch {}
