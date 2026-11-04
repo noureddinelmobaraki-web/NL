@@ -26,6 +26,9 @@ import {
   Layers,
   RefreshCw,
   AlertTriangle,
+  ShieldCheck,
+  ShieldOff,
+  Server,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { m, AnimatePresence } from "framer-motion";
@@ -42,7 +45,6 @@ import { normLang, tmdbLang } from "../../utils/lang";
 import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
 import "../../styles/components/cinema.css";
 import {
-  MovieSourcesModal,
   ServerBranchesInline,
   useResolvedImdbSources,
 } from "./MovieSourcesModal";
@@ -590,20 +592,22 @@ const MovieRow = React.memo(
   },
 );
 
-const LAST_SERVER_STORAGE_KEY = 'nl_cinema_last_server_v1';
+const LAST_SERVER_STORAGE_KEY = 'nl_cinema_last_server_v2';
+const AD_LOCK_STORAGE_KEY = 'nl_cinema_adlock_v1';
 
 function readPreferredServerId(itemKey: string): string | null {
+  if (!itemKey) return null;
   try {
     const raw = localStorage.getItem(LAST_SERVER_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object') {
-      if (itemKey && parsed.byItem && typeof parsed.byItem[itemKey] === 'string') {
-        return parsed.byItem[itemKey];
-      }
-      if (typeof parsed.globalServerId === 'string') {
-        return parsed.globalServerId;
-      }
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      parsed.byItem &&
+      typeof parsed.byItem[itemKey] === 'string'
+    ) {
+      return parsed.byItem[itemKey];
     }
   } catch {
     // Ignore storage errors (e.g. Safari Private Browsing)
@@ -612,6 +616,7 @@ function readPreferredServerId(itemKey: string): string | null {
 }
 
 function savePreferredServerId(itemKey: string, serverId: string): void {
+  if (!itemKey || !serverId) return;
   try {
     const raw = localStorage.getItem(LAST_SERVER_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
@@ -619,18 +624,33 @@ function savePreferredServerId(itemKey: string, serverId: string): void {
       parsed && typeof parsed.byItem === 'object' && parsed.byItem !== null
         ? { ...parsed.byItem }
         : {};
-    if (itemKey) {
-      byItem[itemKey] = serverId;
-    }
+    byItem[itemKey] = serverId;
     localStorage.setItem(
       LAST_SERVER_STORAGE_KEY,
       JSON.stringify({
-        globalServerId: serverId,
         byItem,
       }),
     );
   } catch {
     // Ignore storage errors (e.g. Safari Private Browsing)
+  }
+}
+
+function readInitialAdLock(): boolean {
+  try {
+    const raw = localStorage.getItem(AD_LOCK_STORAGE_KEY);
+    if (raw === '0' || raw === 'false') return false;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function saveAdLockState(enabled: boolean): void {
+  try {
+    localStorage.setItem(AD_LOCK_STORAGE_KEY, enabled ? '1' : '0');
+  } catch {
+    // Ignore storage errors
   }
 }
 
@@ -788,10 +808,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [selectedWatchItem, setSelectedWatchItem] = useState<CinemaItem | null>(null);
   const [showHeroTrailer, setShowHeroTrailer] = useState(false);
   const [isWatchingInGallery, setIsWatchingInGallery] = useState(false);
   const [activeGalleryServerIdx, setActiveGalleryServerIdx] = useState(0);
+  const [isAdLockEnabled, setIsAdLockEnabled] = useState<boolean>(() => readInitialAdLock());
   const [isPlayerLoading, setIsPlayerLoading] = useState(false);
   const [failoverNotice, setFailoverNotice] = useState<string | null>(null);
   const [allServersFailed, setAllServersFailed] = useState(false);
@@ -810,6 +830,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const failoverQueueRef = useRef<number[]>([]);
   const failoverStepRef = useRef(0);
   const loadedCurrentAttemptRef = useRef(false);
+  const autoStartWatchRef = useRef(false);
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -846,15 +867,19 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     ? `${detailedItem.mediaType}_${detailedItem.id}`
     : '';
 
-  // Build ordered failover queue starting from the last known working server
+  // Build ordered failover queue starting from the per-title cached server or Default Server 7 (index 0)
   const startGalleryWatchSession = useCallback(
     (explicitServerIdx?: number) => {
-      const total = detailPlaySources.length || 7;
+      const total = detailPlaySources.length || 4;
       let startIdx = 0;
 
       if (typeof explicitServerIdx === 'number' && explicitServerIdx >= 0) {
-        startIdx = explicitServerIdx;
+        startIdx = explicitServerIdx % Math.max(1, total);
         manualServerLockRef.current = true;
+        const chosenSource = detailPlaySources[startIdx];
+        if (chosenSource && detailItemStorageKey) {
+          savePreferredServerId(detailItemStorageKey, chosenSource.id);
+        }
       } else {
         manualServerLockRef.current = false;
         const preferredId = readPreferredServerId(detailItemStorageKey);
@@ -868,8 +893,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       for (let i = 0; i < total; i++) {
         if (i !== startIdx) ordered.push(i);
       }
-      // One final backoff retry of the primary server at the end of the queue
-      ordered.push(startIdx);
 
       failoverQueueRef.current = ordered;
       failoverStepRef.current = 0;
@@ -885,7 +908,22 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     [detailPlaySources, detailItemStorageKey],
   );
 
-  // Advance to the next server in the failover queue
+  const handleToggleAdLock = useCallback(() => {
+    setIsAdLockEnabled((prev) => {
+      const next = !prev;
+      saveAdLockState(next);
+      return next;
+    });
+    setIsPlayerLoading(true);
+  }, []);
+
+  const handleCycleNextServer = useCallback(() => {
+    const total = detailPlaySources.length || 4;
+    const nextIdx = (activeGalleryServerIdx + 1) % Math.max(1, total);
+    startGalleryWatchSession(nextIdx);
+  }, [detailPlaySources.length, activeGalleryServerIdx, startGalleryWatchSession]);
+
+  // Advance to the next server in the failover queue (triggered only on confirmed CSP violation)
   const advanceFailoverServer = useCallback(
     (reason: string, forceEvenIfManual = false) => {
       if (manualServerLockRef.current && !forceEvenIfManual) {
@@ -921,22 +959,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         );
       }
 
-      const isFinalBackoffRetry = nextStep === queue.length - 1;
-      if (isFinalBackoffRetry) {
-        const tokenSnapshot = attemptTokenRef.current;
-        setTimeout(() => {
-          if (attemptTokenRef.current === tokenSnapshot) {
-            setActiveGalleryServerIdx(nextServerIdx);
-          }
-        }, 1600);
-      } else {
-        setActiveGalleryServerIdx(nextServerIdx);
-      }
+      setActiveGalleryServerIdx(nextServerIdx);
     },
     [detailPlaySources, t, currentLang],
   );
 
-  // Monitor active server attempt: CSP securitypolicyviolation + adaptive timeout + 4s pre-flight probe
+  // Monitor active server attempt for CSP securitypolicyviolation ONLY (no 12s timer or no-cors probe that could interrupt playback)
   useEffect(() => {
     if (!isWatchingInGallery || !activeGallerySource || allServersFailed) {
       return undefined;
@@ -946,15 +974,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     loadedCurrentAttemptRef.current = false;
     setIsPlayerLoading(true);
 
-    const conn = (navigator as any)?.connection;
-    const effType = String(conn?.effectiveType || '').toLowerCase();
-    const isSlowNetwork =
-      effType === 'slow-2g' || effType === '2g' || effType === '3g';
-    const timeoutMs = isSlowNetwork
-      ? 20000
-      : activeGallerySource.timeoutMs || 12000;
-
-    // 1. Immediate CSP violation detection (frame-src / child-src)
     const onCspViolation = (e: SecurityPolicyViolationEvent) => {
       if (attemptTokenRef.current !== currentToken) return;
       const directive = String(e.effectiveDirective || e.violatedDirective || '');
@@ -968,60 +987,15 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
       if (matchesCurrent) {
         console.warn(
-          `[CinemaPlayer] CSP blocked framing ${blocked} (${directive}). Missing origin in frame-src for ${activeGallerySource.label} (${activeGallerySource.host}). Failing over immediately.`,
+          `[CinemaPlayer] CSP blocked framing ${blocked} (${directive}). Failing over immediately.`,
         );
         advanceFailoverServer('csp-violation', true);
       }
     };
     document.addEventListener('securitypolicyviolation', onCspViolation);
 
-    // 2. Load timeout timer
-    const loadTimer = setTimeout(() => {
-      if (
-        attemptTokenRef.current === currentToken &&
-        !loadedCurrentAttemptRef.current
-      ) {
-        console.warn(
-          `[CinemaPlayer] ${activeGallerySource.label} (${activeGallerySource.host}) timed out after ${timeoutMs}ms.`,
-        );
-        advanceFailoverServer('timeout', false);
-      }
-    }, timeoutMs);
-
-    // 3. Fast pre-flight reachability probe (no-cors, 4s timeout)
-    const probeController = new AbortController();
-    const probeTimer = setTimeout(() => probeController.abort(), 4000);
-    const primaryOrigin =
-      activeGallerySource.origins?.[0] || `https://${activeGallerySource.host}`;
-
-    if (!manualServerLockRef.current && typeof fetch === 'function') {
-      fetch(primaryOrigin, {
-        mode: 'no-cors',
-        cache: 'no-store',
-        signal: probeController.signal,
-      })
-        .catch((err) => {
-          if (attemptTokenRef.current !== currentToken) return;
-          if (err?.name === 'AbortError') return;
-          if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-          if (!loadedCurrentAttemptRef.current) {
-            console.warn(
-              `[CinemaPlayer] Pre-flight reachability probe failed for ${primaryOrigin}:`,
-              err,
-            );
-            advanceFailoverServer('preflight-network-error', false);
-          }
-        })
-        .finally(() => {
-          clearTimeout(probeTimer);
-        });
-    }
-
     return () => {
       document.removeEventListener('securitypolicyviolation', onCspViolation);
-      clearTimeout(loadTimer);
-      clearTimeout(probeTimer);
-      probeController.abort();
     };
   }, [
     isWatchingInGallery,
@@ -1282,7 +1256,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   );
 
   const handleQuickWatch = useCallback((item: CinemaItem) => {
-    setSelectedWatchItem(item);
+    autoStartWatchRef.current = true;
+    setSelectedItemId(item.id);
   }, []);
 
   const rowProps = useMemo(() => ({
@@ -1307,7 +1282,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setSelectedItemId(rec.tmdb_id);
   }, []);
 
-  const isOpenForAudio = Boolean(detailedItem || selectedItemId || selectedWatchItem);
+  const isOpenForAudio = Boolean(detailedItem || selectedItemId);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
 
   const [scrolled, setScrolled] = useState(false);
@@ -1670,6 +1645,21 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     loadDetails();
     return () => { cancelled = true; };
   }, [selectedItemId, activeTab, tmdbKey, currentLang, omdbKey]);
+
+  // Automatically start in-app gallery player when opened via Hero Banner or Poster Card Quick-Watch
+  useEffect(() => {
+    if (
+      detailedItem &&
+      selectedItemId !== null &&
+      detailedItem.id === selectedItemId &&
+      autoStartWatchRef.current &&
+      detailPlaySources.length > 0
+    ) {
+      autoStartWatchRef.current = false;
+      setDetailServersOpen(true);
+      startGalleryWatchSession();
+    }
+  }, [detailedItem, selectedItemId, detailPlaySources, startGalleryWatchSession]);
 
   const activeGenres = activeTab === 'movies' ? movieGenres : seriesGenres;
   const activeFallbackSelected = activeTab === 'movies' ? FALLBACK_MOVIES : FALLBACK_SERIES;
@@ -2137,7 +2127,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       <ServerBranchesInline
                         item={activeHeroItem}
                         isOpen={heroServersOpen}
-                        onToggle={() => setHeroServersOpen((v) => !v)}
+                        onToggle={() => {
+                          autoStartWatchRef.current = true;
+                          setSelectedItemId(activeHeroItem.id);
+                        }}
                         onClose={() => setHeroServersOpen(false)}
                         buttonLabel={t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}
                       />
@@ -2327,19 +2320,61 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         )}
 
                         {isWatchingInGallery && activeGallerySource && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-rose-500/20 border border-rose-300/45 text-rose-100">
-                            <Play size={10} className="fill-current text-rose-400" />
-                            <span>
-                              {activeGallerySource.label} • {activeGallerySource.host}
-                            </span>
+                          <>
+                            {/* Ad-Lock Sandbox Toggle Button (Blocks window.open popups by default) */}
+                            <button
+                              type="button"
+                              onClick={handleToggleAdLock}
+                              className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
+                                isAdLockEnabled
+                                  ? "!bg-emerald-500/22 !border-emerald-300/55 text-emerald-100"
+                                  : "!bg-amber-500/22 !border-amber-300/55 text-amber-100"
+                              }`}
+                              title={
+                                isAdLockEnabled
+                                  ? t("movies.player.adLockOn")
+                                  : t("movies.player.adLockOff")
+                              }
+                            >
+                              {isAdLockEnabled ? (
+                                <ShieldCheck size={14} className="text-emerald-300 shrink-0" />
+                              ) : (
+                                <ShieldOff size={14} className="text-amber-300 shrink-0" />
+                              )}
+                              <span>
+                                {isAdLockEnabled
+                                  ? t("movies.player.adLockOn")
+                                  : t("movies.player.adLockOff")}
+                              </span>
+                            </button>
+
+                            {/* Switch Server Button (Cycles through the 4 remaining servers & caches choice per title) */}
+                            <button
+                              type="button"
+                              onClick={handleCycleNextServer}
+                              className="lg-cinema-action-pill px-3 py-1.5 text-xs font-extrabold text-white hover:text-rose-100 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                              title={t("movies.player.switchServer", {
+                                current: activeGalleryServerIdx + 1,
+                                total: detailPlaySources.length || 4,
+                              })}
+                            >
+                              <Server size={13} className="text-rose-300 shrink-0" />
+                              <span>
+                                {t("movies.player.switchServer", {
+                                  current: activeGalleryServerIdx + 1,
+                                  total: detailPlaySources.length || 4,
+                                })}
+                              </span>
+                            </button>
+
                             {detailedItem.mediaType === "tv" && (
-                              <span className="text-amber-300 ms-1">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-400/20 border border-amber-300/45 text-amber-200 whitespace-nowrap">
                                 {isFullSeasonEmbed
                                   ? "Full Season"
                                   : `S${selectedSeason}:E${selectedEpisode}`}
                               </span>
                             )}
-                          </span>
+                          </>
                         )}
 
                         <button
@@ -2354,7 +2389,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             setShowHeroTrailer(false);
                             setIsCssFullscreen(false);
                           }}
-                          className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-white/90 hover:text-white flex items-center gap-1.5 cursor-pointer"
+                          className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-white/90 hover:text-white flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                           title={t("movies.player.showBackdrop")}
                         >
                           <span>{t("movies.player.showBackdrop")}</span>
@@ -2431,7 +2466,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         {!allServersFailed && (
                           <iframe
                             ref={playerIframeRef}
-                            key={`${activeGallerySource.id}-${activeGallerySource.url}`}
+                            key={`${activeGallerySource.id}-${activeGallerySource.url}-adlock-${isAdLockEnabled ? "1" : "0"}`}
                             className="w-full h-full border-0 bg-black block"
                             src={activeGallerySource.url}
                             title={`${detailedItem.title} - ${activeGallerySource.label}`}
@@ -2440,6 +2475,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             frameBorder="0"
                             scrolling="no"
                             referrerPolicy="origin"
+                            sandbox={
+                              isAdLockEnabled
+                                ? "allow-scripts allow-same-origin allow-forms allow-presentation"
+                                : undefined
+                            }
                             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                             allowFullScreen
                             onLoad={() => {
@@ -2740,21 +2780,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             item={detailWatchTarget}
                             isOpen={detailServersOpen}
                             onToggle={() => {
-                              if (!detailServersOpen || !isWatchingInGallery) {
-                                setDetailServersOpen(true);
+                              setDetailServersOpen(true);
+                              if (!isWatchingInGallery) {
                                 startGalleryWatchSession();
-                              } else {
-                                setDetailServersOpen(false);
                               }
                             }}
                             onClose={() => setDetailServersOpen(false)}
                             buttonLabel={t("movies.meta.watchNow")}
-                            activeServerIdx={
-                              isWatchingInGallery ? activeGalleryServerIdx : null
-                            }
-                            onSelectServer={(idx) => {
-                              startGalleryWatchSession(idx);
-                            }}
                           />
                         )}
 
@@ -3229,12 +3261,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         )}
       </AnimatePresence>
 
-      {/* Quick-Watch Branching Server Capsules + TIP Card when triggered from Poster Cards */}
-      <MovieSourcesModal
-        isOpen={selectedWatchItem !== null}
-        onClose={() => setSelectedWatchItem(null)}
-        item={selectedWatchItem}
-      />
     </div>,
     document.body
   );

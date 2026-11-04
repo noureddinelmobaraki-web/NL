@@ -66,7 +66,10 @@
       "fullscreen": "ملء الشاشة",
       "exitFullscreen": "تصغير الشاشة",
       "fullSeason": "الموسم الكامل (Full)",
-      "season": "موسم {{num}}"
+      "season": "موسم {{num}}",
+      "adLockOn": "مانع النوافذ: مفعّل",
+      "adLockOff": "مانع النوافذ: متوقف",
+      "switchServer": "تبديل السيرفر ({{current}}/{{total}})"
     }
   },
   "series": {

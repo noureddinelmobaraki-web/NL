@@ -6,7 +6,7 @@ import { ALL_SERVER_FRAME_ORIGINS, CINEMA_SERVERS } from '../config/servers';
 const read = (p: string) => fs.readFileSync(p, 'utf8');
 
 describe('security and deployment regressions', () => {
-  it('allows same-origin Retro iframe and all 7 cinema embed server origins in frame-src without wildcards or unsafe inline scripts', () => {
+  it('allows same-origin Retro iframe and all 4 active cinema embed server origins in frame-src without wildcards or removed servers', () => {
     const html = read('index.html');
     expect(html).toContain("frame-src 'self'");
     expect(html).not.toMatch(/script-src[^;]*'unsafe-inline'/);
@@ -18,14 +18,32 @@ describe('security and deployment regressions', () => {
     const frameSrcTokens = frameSrcMatch![1].trim().split(/\s+/);
     expect(frameSrcTokens).not.toContain('*');
     expect(frameSrcTokens).not.toContain('https:');
+    expect(frameSrcTokens).not.toContain('https://vidsrc.xyz');
+    expect(frameSrcTokens).not.toContain('https://vidsrc.icu');
+    expect(frameSrcTokens).not.toContain('https://autoembed.co');
     for (const origin of ALL_SERVER_FRAME_ORIGINS) {
       expect(frameSrcTokens).toContain(origin);
     }
   });
 
-  it('builds valid movie and TV URLs for Shawshank Redemption (tt0111161 / 278) and The Flash (tt3107288 / 60735)', () => {
-    expect(CINEMA_SERVERS).toHaveLength(7);
-    const server1 = CINEMA_SERVERS[0];
+  it('sets Server 7 as default primary server (index 0), removes servers 3/4/5, and builds valid movie and TV URLs', () => {
+    expect(CINEMA_SERVERS).toHaveLength(4);
+    expect(CINEMA_SERVERS.map((s) => s.id)).toEqual([
+      'server-7',
+      'server-1',
+      'server-2',
+      'server-6',
+    ]);
+    const defaultServer = CINEMA_SERVERS[0];
+    expect(defaultServer.id).toBe('server-7');
+    expect(defaultServer.movie({ imdb: 'tt0111161', tmdb: 278 })).toBe(
+      'https://streamimdb.ru/embed/movie/tt0111161',
+    );
+    expect(defaultServer.tv({ imdb: 'tt3107288', tmdb: 60735 }, 1, 1, false)).toBe(
+      'https://streamimdb.ru/embed/tv/tt3107288/1/1',
+    );
+
+    const server1 = CINEMA_SERVERS[1];
     expect(server1.movie({ imdb: 'tt0111161', tmdb: 278 })).toBe(
       'https://www.2embed.cc/embed/tt0111161',
     );

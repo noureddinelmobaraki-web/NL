@@ -66,7 +66,10 @@
       "fullscreen": "Plein écran",
       "exitFullscreen": "Quitter le plein écran",
       "fullSeason": "Saison complète (Full)",
-      "season": "Saison {{num}}"
+      "season": "Saison {{num}}",
+      "adLockOn": "Bloqueur Popups : ON",
+      "adLockOff": "Bloqueur Popups : OFF",
+      "switchServer": "Changer Serveur ({{current}}/{{total}})"
     }
   },
   "series": {

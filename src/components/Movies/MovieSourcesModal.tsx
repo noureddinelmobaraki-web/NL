@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Play, RefreshCw, Sparkles, ExternalLink } from 'lucide-react';
+import { X, Play, Sparkles } from 'lucide-react';
 import { PUBLIC_TMDB_KEY } from '../../config/publicKeys';
 import {
   CINEMA_SERVERS,
@@ -262,14 +262,15 @@ export const FloatingGlassTipCard: React.FC<{
 };
 
 /**
- * Smooth Branching Liquid Glass Server Capsules + Auto-Opening Smart TIP Window
- * Used directly inside Hero Banner and Details Modal when clicking Watch Now
+ * Direct Watch Now Trigger + Auto-Opening Smart TIP Window
+ * Server selection buttons are intentionally removed from the UI; background server
+ * resolution and smart caching handle playback directly inside the gallery player.
  */
 export const ServerBranchesInline: React.FC<{
   item: CinemaWatchTarget;
   isOpen: boolean;
   onToggle: () => void;
-  onClose: () => void;
+  onClose?: () => void;
   buttonLabel: string;
   align?: 'start' | 'center';
   activeServerIdx?: number | null;
@@ -278,13 +279,9 @@ export const ServerBranchesInline: React.FC<{
   item,
   isOpen,
   onToggle,
-  onClose,
   buttonLabel,
   align = 'start',
-  activeServerIdx = null,
-  onSelectServer,
 }) => {
-  const { sources, resolving } = useResolvedImdbSources(item, true);
   const [showTip, setShowTip] = useState(false);
 
   useEffect(() => {
@@ -294,7 +291,7 @@ export const ServerBranchesInline: React.FC<{
     }
     const timer = setTimeout(() => {
       setShowTip(true);
-    }, 160);
+    }, 140);
     return () => clearTimeout(timer);
   }, [isOpen, item.id]);
 
@@ -305,7 +302,7 @@ export const ServerBranchesInline: React.FC<{
       }`}
     >
       <div className="flex flex-wrap items-center gap-2">
-        {/* Main Watch Now Trigger Button */}
+        {/* Main Watch Now Trigger Button (Starts playback directly in the gallery player) */}
         <button
           type="button"
           onClick={(e) => {
@@ -313,123 +310,13 @@ export const ServerBranchesInline: React.FC<{
             onToggle();
           }}
           aria-expanded={isOpen}
-          className={`lg-cinema-primary-pill py-2.5 px-6 text-white font-black flex items-center gap-2 text-xs sm:text-sm cursor-pointer ${
+          className={`lg-cinema-primary-pill py-2.5 px-6 text-white font-black flex items-center gap-2 text-xs sm:text-sm cursor-pointer whitespace-nowrap ${
             isOpen ? 'ring-2 ring-white/60' : ''
           }`}
         >
           <Play size={15} className="fill-current" />
           <span>{buttonLabel}</span>
         </button>
-
-        {/* Smoothly Branching Liquid Glass Server Capsules (Server 1, Server 2...) */}
-        <AnimatePresence>
-          {isOpen && (
-            <m.div
-              initial={{ opacity: 0, scale: 0.92, x: -8 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.92, x: -8 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="flex flex-wrap items-center gap-2"
-              dir="ltr"
-            >
-              {resolving && sources.length === 0 ? (
-                <span className="lg-server-branch-pill px-3.5 py-2 rounded-full text-xs font-extrabold flex items-center gap-1.5">
-                  <RefreshCw size={12} className="animate-spin text-rose-300" />
-                  <span className="lg-server-glow-text">Loading...</span>
-                </span>
-              ) : (
-                sources.map((src, idx) => {
-                  const isActive = activeServerIdx === idx;
-                  if (onSelectServer) {
-                    return (
-                      <m.div
-                        key={src.id}
-                        initial={{ opacity: 0, scale: 0.8, y: 6 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.8, y: 4 }}
-                        transition={{
-                          duration: 0.2,
-                          delay: idx * 0.04,
-                          ease: [0.22, 1, 0.36, 1],
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`lg-server-branch-pill pl-3.5 pr-2 py-1.5 rounded-full text-xs font-black inline-flex items-center gap-1.5 ${
-                          isActive ? 'lg-server-branch-pill--active' : ''
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectServer(idx, src);
-                          }}
-                          className="inline-flex items-center gap-1.5 cursor-pointer bg-transparent border-0 p-0 text-inherit"
-                          title={`Play ${src.label} (${src.host}) inside gallery`}
-                        >
-                          <Play
-                            size={11}
-                            className={`fill-current shrink-0 ${
-                              isActive ? 'text-white' : 'text-rose-400'
-                            }`}
-                          />
-                          <span className="lg-server-glow-text">{src.label}</span>
-                        </button>
-                        <a
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-5 h-5 rounded-full inline-flex items-center justify-center bg-white/10 hover:bg-white/25 text-white/85 hover:text-white transition-colors"
-                          title={`Open ${src.label} (${src.host}) in new tab`}
-                          aria-label={`Open ${src.label} in new tab`}
-                        >
-                          <ExternalLink size={10} className="shrink-0" />
-                        </a>
-                      </m.div>
-                    );
-                  }
-
-                  return (
-                    <m.a
-                      key={src.id}
-                      href={src.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      initial={{ opacity: 0, scale: 0.8, y: 6 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.8, y: 4 }}
-                      transition={{
-                        duration: 0.2,
-                        delay: idx * 0.04,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="lg-server-branch-pill px-3.5 py-2 rounded-full text-xs font-black flex items-center gap-1.5 cursor-pointer no-underline"
-                      title={`${src.label} (${src.host})`}
-                    >
-                      <Play size={11} className="fill-current text-rose-400 shrink-0" />
-                      <span className="lg-server-glow-text">{src.label}</span>
-                      <ExternalLink size={10} className="opacity-70 shrink-0" />
-                    </m.a>
-                  );
-                })
-              )}
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose();
-                }}
-                className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px]"
-                aria-label="Close servers"
-                title="Close"
-              >
-                <X size={13} />
-              </button>
-            </m.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Smart Floating Liquid Glass TIP Window */}
@@ -439,130 +326,5 @@ export const ServerBranchesInline: React.FC<{
         className="w-full max-w-[430px] mt-0.5"
       />
     </div>
-  );
-};
-
-/**
- * Floating Popover for Quick-Watch on Poster Cards (No Iframe — Direct Branching Server Capsules + TIP Card)
- */
-interface MovieSourcesModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  item: CinemaWatchTarget | null;
-}
-
-export const MovieSourcesModal: React.FC<MovieSourcesModalProps> = ({
-  isOpen,
-  onClose,
-  item,
-}) => {
-  const { sources, resolving } = useResolvedImdbSources(item, isOpen);
-  const [showTip, setShowTip] = useState(true);
-
-  useEffect(() => {
-    if (isOpen) {
-      setShowTip(true);
-    }
-  }, [isOpen, item?.id]);
-
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, onClose]);
-
-  if (!item) return null;
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[10200] flex items-center justify-center p-4 select-none">
-          <div
-            className="absolute inset-0 bg-black/65 backdrop-blur-md cursor-default"
-            onClick={onClose}
-          />
-
-          <m.div
-            role="dialog"
-            aria-modal="true"
-            aria-label={item.title}
-            initial={{ opacity: 0, scale: 0.92, y: 14 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 14 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="relative z-10 w-full max-w-[480px] flex flex-col items-center gap-3.5"
-          >
-            {/* Floating Branching Capsules Container */}
-            <div className="lg-cinema-glass-modal w-full rounded-3xl p-4 sm:p-5 flex flex-col gap-3.5">
-              <div className="flex items-center justify-between gap-2" dir="ltr">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="lg-cinema-badge-dot shrink-0">
-                    <Play size={12} className="fill-current" />
-                  </span>
-                  <h3 className="text-sm sm:text-base font-black text-white truncate">
-                    {item.title}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] hover:!bg-rose-600/45"
-                  aria-label="Close"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-
-              {/* Branching Server Capsules */}
-              <div
-                className="flex flex-wrap items-center justify-center gap-2.5 py-1"
-                dir="ltr"
-              >
-                {resolving && sources.length === 0 ? (
-                  <div className="py-4 flex items-center gap-2 text-white/85 text-xs font-bold">
-                    <RefreshCw size={16} className="animate-spin text-rose-400" />
-                    <span className="lg-server-glow-text">Loading Servers...</span>
-                  </div>
-                ) : (
-                  sources.map((src, idx) => (
-                    <m.a
-                      key={src.id}
-                      href={src.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      initial={{ opacity: 0, scale: 0.84, y: 8 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{
-                        duration: 0.2,
-                        delay: idx * 0.04,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                      className="lg-server-branch-pill px-4 py-2.5 rounded-full text-xs sm:text-sm font-black flex items-center gap-2 cursor-pointer no-underline"
-                    >
-                      <Play size={12} className="fill-current text-rose-400 shrink-0" />
-                      <span className="lg-server-glow-text">{src.label}</span>
-                      <ExternalLink size={11} className="opacity-75 shrink-0" />
-                    </m.a>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Smart Floating Liquid Glass TIP Window right below the server branches */}
-            <FloatingGlassTipCard
-              isOpen={showTip}
-              onClose={() => setShowTip(false)}
-              className="w-full"
-            />
-          </m.div>
-        </div>
-      )}
-    </AnimatePresence>
   );
 };

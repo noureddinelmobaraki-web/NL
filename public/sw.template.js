@@ -181,8 +181,6 @@ self.addEventListener('fetch', (event) => {
     requestUrl.includes('supabase.io') ||
     requestUrl.includes('2embed.cc') ||
     requestUrl.includes('2embed.skin') ||
-    requestUrl.includes('vidsrc.') ||
-    requestUrl.includes('autoembed.') ||
     requestUrl.includes('multiembed.') ||
     requestUrl.includes('streamingnow.') ||
     requestUrl.includes('streamimdb.') ||

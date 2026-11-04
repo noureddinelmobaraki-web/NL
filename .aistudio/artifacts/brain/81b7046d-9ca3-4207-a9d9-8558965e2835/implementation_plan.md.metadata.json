@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for upgrading the Cinema Detail Modal with in-app 2Embed movie & TV series playback inside the 16:9 gallery stage, top-relocated clean controls during playback, and a liquid-glass Season & Episode selector bar for TV series.",
-  "updatedAt": "2026-11-03T22:30:07.159239628Z",
+  "summary": "خطة تنفيذية لإزالة السيرفرات 3 و4 و5 نهائياً، ضبط السيرفر 7 (moviesapi.club) كافتراضي، إخفاء أزرار اختيار السيرفرات من الواجهة مع تشغيل فوري داخل المشغّل المدمج من كل الأماكن (البانر الرئيسي، البطاقات، ونافذة التفاصيل)، إضافة زر حظر النوافذ المنبثقة (Ad-Lock) وزر تبديل السيرفر بأيقونات احترافية في الشريط العلوي للمشغّل، والحفاظ على بطاقة النصيحة والكاش الذكي لحفظ تقدم المشاهدة.",
+  "updatedAt": "2026-11-04T00:00:01.146202258Z",
   "requestFeedback": true,
   "userFacing": true
 }

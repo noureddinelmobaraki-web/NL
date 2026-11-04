@@ -64,7 +64,26 @@ function normalizeSeasonEpisode(season?: number, episode?: number): { s: string;
   };
 }
 
+// Ordered with Server 7 as the default primary server (index 0), and Servers 3, 4, 5 permanently removed.
 export const CINEMA_SERVERS: CinemaServerConfig[] = [
+  {
+    id: 'server-7',
+    label: 'Server 7',
+    host: 'streamimdb.ru',
+    origins: ['https://streamimdb.ru', 'https://player.imdb.su'],
+    supports: { imdb: true, tmdb: true },
+    timeoutMs: 12000,
+    movie: (ids) => {
+      const { preferred } = sanitizeServerIds(ids);
+      return preferred ? `https://streamimdb.ru/embed/movie/${preferred}` : '';
+    },
+    tv: (ids, season = 1, episode = 1) => {
+      const { preferred } = sanitizeServerIds(ids);
+      if (!preferred) return '';
+      const { s, e } = normalizeSeasonEpisode(season, episode);
+      return `https://streamimdb.ru/embed/tv/${preferred}/${s}/${e}`;
+    },
+  },
   {
     id: 'server-1',
     label: 'Server 1',
@@ -83,7 +102,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
         return `https://www.2embed.cc/embedtvfull/${preferred}`;
       }
       const { s, e } = normalizeSeasonEpisode(season, episode);
-      // Official 2embed format uses &s={season}&e={episode}
       return `https://www.2embed.cc/embedtv/${preferred}&s=${s}&e=${e}`;
     },
   },
@@ -109,63 +127,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     },
   },
   {
-    id: 'server-3',
-    label: 'Server 3',
-    host: 'vidsrc.xyz',
-    origins: ['https://vidsrc.xyz', 'https://vidsrc.me', 'https://vidsrc.in', 'https://vidsrc.pm', 'https://vidsrc.net'],
-    supports: { imdb: true, tmdb: true },
-    timeoutMs: 12000,
-    movie: (ids) => {
-      const { preferred } = sanitizeServerIds(ids);
-      return preferred ? `https://vidsrc.xyz/embed/movie/${preferred}` : '';
-    },
-    tv: (ids, season = 1, episode = 1) => {
-      const { preferred } = sanitizeServerIds(ids);
-      if (!preferred) return '';
-      const { s, e } = normalizeSeasonEpisode(season, episode);
-      return `https://vidsrc.xyz/embed/tv/${preferred}/${s}-${e}`;
-    },
-  },
-  {
-    id: 'server-4',
-    label: 'Server 4',
-    host: 'vidsrc.icu',
-    origins: ['https://vidsrc.icu', 'https://vidsrc.cc', 'https://vidsrc.to'],
-    supports: { imdb: true, tmdb: true },
-    timeoutMs: 12000,
-    movie: (ids) => {
-      const { preferred } = sanitizeServerIds(ids);
-      return preferred ? `https://vidsrc.icu/embed/movie/${preferred}` : '';
-    },
-    tv: (ids, season = 1, episode = 1) => {
-      const { preferred } = sanitizeServerIds(ids);
-      if (!preferred) return '';
-      const { s, e } = normalizeSeasonEpisode(season, episode);
-      return `https://vidsrc.icu/embed/tv/${preferred}/${s}/${e}`;
-    },
-  },
-  {
-    id: 'server-5',
-    label: 'Server 5',
-    host: 'autoembed.co',
-    origins: ['https://autoembed.co', 'https://player.autoembed.cc'],
-    supports: { imdb: true, tmdb: true },
-    timeoutMs: 12000,
-    movie: (ids) => {
-      const { imdb, tmdb } = sanitizeServerIds(ids);
-      if (imdb) return `https://autoembed.co/movie/imdb/${imdb}`;
-      if (tmdb) return `https://autoembed.co/movie/tmdb/${tmdb}`;
-      return '';
-    },
-    tv: (ids, season = 1, episode = 1) => {
-      const { imdb, tmdb } = sanitizeServerIds(ids);
-      const { s, e } = normalizeSeasonEpisode(season, episode);
-      if (imdb) return `https://autoembed.co/tv/imdb/${imdb}-${s}-${e}`;
-      if (tmdb) return `https://autoembed.co/tv/tmdb/${tmdb}-${s}-${e}`;
-      return '';
-    },
-  },
-  {
     id: 'server-6',
     label: 'Server 6',
     host: 'multiembed.mov',
@@ -184,24 +145,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
       if (imdb) return `https://multiembed.mov/?video_id=${imdb}&s=${s}&e=${e}`;
       if (tmdb) return `https://multiembed.mov/?video_id=${tmdb}&tmdb=1&s=${s}&e=${e}`;
       return '';
-    },
-  },
-  {
-    id: 'server-7',
-    label: 'Server 7',
-    host: 'streamimdb.ru',
-    origins: ['https://streamimdb.ru', 'https://player.imdb.su'],
-    supports: { imdb: true, tmdb: true },
-    timeoutMs: 12000,
-    movie: (ids) => {
-      const { preferred } = sanitizeServerIds(ids);
-      return preferred ? `https://streamimdb.ru/embed/movie/${preferred}` : '';
-    },
-    tv: (ids, season = 1, episode = 1) => {
-      const { preferred } = sanitizeServerIds(ids);
-      if (!preferred) return '';
-      const { s, e } = normalizeSeasonEpisode(season, episode);
-      return `https://streamimdb.ru/embed/tv/${preferred}/${s}/${e}`;
     },
   },
 ];
