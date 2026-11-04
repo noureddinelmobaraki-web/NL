@@ -69,20 +69,31 @@ import {
 import { EyeLoader } from "./EyeLoader";
 import { useTopMovies } from "./useTopMovies";
 import { logPlay } from "../../features/music/data/playTracking";
-import { ALL_SERVER_FRAME_ORIGINS } from "../../config/servers";
+import {
+  ALL_SERVER_FRAME_ORIGINS,
+  toWorkerEmbedUrl,
+  type CinemaServerConfig,
+} from "../../config/servers";
 import {
   bindVideoElementToClock,
+  clockAnchor,
   clockGetState,
   clockNow,
   clockPlay,
+  clockReport,
+  clockReportedNow,
   clockReset,
+  clockSync,
   useClockState,
 } from "../../features/cinema/player/playbackClock";
 import {
   sendIframePlayerCommand,
   useIframePlayerBridge,
-  type IframePlayerCommand,
 } from "../../features/cinema/player/iframeBridge";
+import {
+  createSyncController,
+  type SyncController,
+} from "../../features/cinema/player/syncController";
 import {
   CinemaTimeline,
   type PlayerControlMode,
@@ -1099,15 +1110,39 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const activeGallerySource =
     detailPlaySources[activeGalleryServerIdx] || detailPlaySources[0] || null;
   const [embedSeekStartAtSec, setEmbedSeekStartAtSec] = useState<number | null>(null);
-  const embedSeekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [workerBridgeRevision, setWorkerBridgeRevision] = useState(0);
+  const [seekUnsupportedToast, setSeekUnsupportedToast] = useState(false);
+  const seekUnsupportedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showSeekUnsupportedToast = useCallback(() => {
+    setSeekUnsupportedToast(true);
+    if (seekUnsupportedToastTimerRef.current) {
+      clearTimeout(seekUnsupportedToastTimerRef.current);
+    }
+    seekUnsupportedToastTimerRef.current = setTimeout(() => {
+      setSeekUnsupportedToast(false);
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (seekUnsupportedToastTimerRef.current) {
+        clearTimeout(seekUnsupportedToastTimerRef.current);
+      }
+    };
+  }, []);
+
+  const activeIframeUrlBase = useMemo(() => {
+    if (!activeGallerySource) return "";
+    return playerRenderMode === "clean-embed"
+      ? (extractedStreams[activeExtractedIdx] || extractedStreams[0])?.directUrl ||
+          activeGallerySource.url
+      : activeGallerySource.url;
+  }, [activeGallerySource, playerRenderMode, extractedStreams, activeExtractedIdx]);
 
   const activeIframeUrl = useMemo(() => {
-    if (!activeGallerySource) return "";
-    const base =
-      playerRenderMode === "clean-embed"
-        ? (extractedStreams[activeExtractedIdx] || extractedStreams[0])?.directUrl ||
-          activeGallerySource.url
-        : activeGallerySource.url;
+    if (!activeGallerySource || !activeIframeUrlBase) return "";
+    let rawUrl = activeIframeUrlBase;
     if (
       embedSeekStartAtSec !== null &&
       embedSeekStartAtSec > 0 &&
@@ -1115,20 +1150,36 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       activeGallerySource.capabilities?.startAt
     ) {
       try {
-        const u = new URL(base);
+        const u = new URL(rawUrl);
         u.searchParams.set("startAt", String(Math.floor(embedSeekStartAtSec)));
-        return u.toString();
+        rawUrl = u.toString();
       } catch {
-        return base;
+        // keep rawUrl
       }
     }
-    return base;
+    const srvCaps = activeGallerySource.capabilities as CinemaServerConfig["capabilities"];
+    if (
+      playerRenderMode === "iframe" &&
+      srvCaps?.workerBridge &&
+      typeof window !== "undefined"
+    ) {
+      let wbFailed = false;
+      try {
+        wbFailed = sessionStorage.getItem(`nl_wb_fail_${activeGallerySource.id}`) === "1";
+      } catch {
+        wbFailed = false;
+      }
+      if (!wbFailed) {
+        return toWorkerEmbedUrl(rawUrl, WORKER_ENDPOINT, window.location.origin);
+      }
+    }
+    return rawUrl;
   }, [
     activeGallerySource,
+    activeIframeUrlBase,
     playerRenderMode,
-    extractedStreams,
-    activeExtractedIdx,
     embedSeekStartAtSec,
+    workerBridgeRevision,
   ]);
 
   const detailItemStorageKey = detailedItem
@@ -1139,7 +1190,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     if (!detailedItem || !isWatchingInGallery) return;
     const st = clockGetState();
     if (st.source !== "video" && st.source !== "bridge") return;
-    const curTime = clockNow();
+    const curTime = st.source === "bridge" ? clockReportedNow() : clockNow();
+    if (curTime === null) return;
     const durationSec =
       st.duration > 0
         ? st.duration
@@ -1193,7 +1245,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       const firstIdx = ordered[0] ?? 0;
 
       cleanupDirectVideoPlayer();
-      clockReset("manual");
+      clockAnchor(resumeStartAtSec ?? 0, {
+        duration: (detailedItem?.runtime ?? 0) * 60,
+        source: "manual",
+        durationIsEstimated: true,
+      });
       setEmbedSeekStartAtSec(null);
       appliedInitialSeekRef.current = false;
       failoverQueueRef.current = ordered;
@@ -1210,7 +1266,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       setIsSubtitleMenuOpen(false);
       setIsWatchingInGallery(true);
     },
-    [detailPlaySources, detailItemStorageKey, cleanupDirectVideoPlayer],
+    [
+      detailPlaySources,
+      detailItemStorageKey,
+      cleanupDirectVideoPlayer,
+      resumeStartAtSec,
+      detailedItem?.runtime,
+    ],
   );
 
   // Advance to the next fastest server in the failover queue
@@ -1230,7 +1292,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         return;
       }
 
-      clockReset("manual");
+      clockAnchor(resumeStartAtSec ?? 0, {
+        duration: (detailedItem?.runtime ?? 0) * 60,
+        source: "manual",
+        durationIsEstimated: true,
+      });
       failoverStepRef.current = nextStep;
       const nextServerIdx = queue[nextStep];
       attemptTokenRef.current += 1;
@@ -1239,7 +1305,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       setIsPlayerLoading(true);
       setActiveGalleryServerIdx(nextServerIdx);
     },
-    [detailPlaySources, activeGalleryServerIdx],
+    [
+      detailPlaySources,
+      activeGalleryServerIdx,
+      resumeStartAtSec,
+      detailedItem?.runtime,
+    ],
   );
 
   // Extract direct .m3u8 / .mp4 streams or inner clean player via Cloudflare Worker across speed-sorted servers + external subtitles in parallel
@@ -1752,13 +1823,121 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return bindVideoElementToClock(v);
   }, [isWatchingInGallery, playerRenderMode, extractedStreams, activeExtractedIdx]);
 
+  const syncControllerRef = useRef<SyncController | null>(null);
+  const canReloadStartAt = Boolean(
+    playerRenderMode === "iframe" && activeGallerySource?.capabilities?.startAt,
+  );
+
+  useEffect(() => {
+    if (
+      !isWatchingInGallery ||
+      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed")
+    ) {
+      syncControllerRef.current?.dispose();
+      syncControllerRef.current = null;
+      return undefined;
+    }
+
+    const ctrl = createSyncController({
+      now: () => performance.now(),
+      sendSeek: (target, id) => {
+        sendIframePlayerCommand(
+          playerIframeRef.current,
+          { type: "seek", time: target },
+          id,
+        );
+      },
+      sendPlay: () => {
+        sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
+      },
+      sendPause: () => {
+        sendIframePlayerCommand(playerIframeRef.current, { type: "pause" });
+      },
+      reloadAt: canReloadStartAt
+        ? (target) => {
+            const rounded = Math.max(0, Math.floor(target));
+            const cur = clockGetState();
+            clockAnchor(rounded, {
+              duration: cur.duration || (detailedItem?.runtime ?? 0) * 60,
+              source: "manual",
+              durationIsEstimated: cur.durationIsEstimated,
+            });
+            setEmbedSeekStartAtSec(rounded);
+          }
+        : undefined,
+      onSeekUnsupported: () => {
+        showSeekUnsupportedToast();
+      },
+    });
+    syncControllerRef.current = ctrl;
+    return () => {
+      ctrl.dispose();
+      if (syncControllerRef.current === ctrl) {
+        syncControllerRef.current = null;
+      }
+    };
+  }, [
+    isWatchingInGallery,
+    activeIframeUrlBase,
+    playerRenderMode,
+    canReloadStartAt,
+    showSeekUnsupportedToast,
+  ]);
+
+  const bridgeAllowedOrigins = useMemo(() => {
+    const set = new Set<string>(ALL_SERVER_FRAME_ORIGINS);
+    if (activeIframeUrl) {
+      try {
+        set.add(new URL(activeIframeUrl).origin);
+      } catch {
+        // ignore invalid URL
+      }
+    }
+    if (WORKER_ENDPOINT) {
+      try {
+        set.add(new URL(WORKER_ENDPOINT).origin);
+      } catch {
+        // ignore invalid URL
+      }
+    }
+    return Array.from(set);
+  }, [activeIframeUrl]);
+
   // Origin-allowlisted postMessage bridge for iframe / clean-embed players
-  const bridged = useIframePlayerBridge({
+  const bridge = useIframePlayerBridge({
     enabled:
       isWatchingInGallery &&
       (playerRenderMode === "iframe" || playerRenderMode === "clean-embed"),
     iframeRef: playerIframeRef,
-    allowedOrigins: ALL_SERVER_FRAME_ORIGINS,
+    allowedOrigins: bridgeAllowedOrigins,
+    onEvent: (ev) => {
+      const decision = syncControllerRef.current
+        ? syncControllerRef.current.onReport(ev)
+        : "accept";
+      if (decision === "ignore") return;
+      if (ev.currentTime !== undefined) {
+        const paused =
+          ev.paused !== undefined
+            ? ev.paused
+            : ev.kind === "pause" || ev.kind === "ended"
+              ? true
+              : ev.kind === "play" || ev.kind === "timeupdate"
+                ? false
+                : undefined;
+        clockReport(
+          ev.currentTime,
+          {
+            duration: ev.duration,
+            paused,
+            rate: ev.rate,
+            source: "bridge",
+          },
+          ev.kind === "timeupdate" ? 0.35 : 0,
+        );
+      } else if (ev.kind === "play" || ev.kind === "pause" || ev.kind === "ended") {
+        clockSync({ paused: ev.kind !== "play", source: "bridge" });
+      }
+    },
     onMediaData: () => {
       persistCurrentProgress();
     },
@@ -1767,49 +1946,82 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const controlMode: PlayerControlMode =
     playerRenderMode === "direct"
       ? "direct"
-      : bridged
+      : bridge.active
         ? "bridged"
         : "none";
 
-  const handleIframePlayerCommand = useCallback(
-    (cmd: IframePlayerCommand) => {
-      sendIframePlayerCommand(playerIframeRef.current, cmd);
-    },
-    [],
-  );
+  const [iframeLoadStamp, setIframeLoadStamp] = useState(0);
+  const [manualClockEligible, setManualClockEligible] = useState(false);
+  const bridgeTierRef = useRef(bridge.tier);
+  bridgeTierRef.current = bridge.tier;
 
-  const handleCommitEmbedSeek = useCallback(
-    (targetSec: number) => {
-      if (
-        playerRenderMode !== "iframe" ||
-        !activeGallerySource?.capabilities?.startAt
-      ) {
-        return;
-      }
-      if (embedSeekTimerRef.current) {
-        clearTimeout(embedSeekTimerRef.current);
-        embedSeekTimerRef.current = null;
-      }
-      const rounded = Math.max(0, Math.floor(targetSec));
-      if (!bridged) {
-        setEmbedSeekStartAtSec(rounded);
-        return;
-      }
-      embedSeekTimerRef.current = setTimeout(() => {
-        if (Math.abs(clockNow() - targetSec) > 4) {
-          setEmbedSeekStartAtSec(rounded);
-        }
-      }, 650);
-    },
-    [playerRenderMode, activeGallerySource, bridged],
-  );
+  useEffect(() => {
+    setManualClockEligible(false);
+  }, [activeIframeUrl, playerRenderMode, isWatchingInGallery]);
 
-  // Auto-start manual subtitle clock on first click into iframe when subtitles are enabled on non-timeEvent servers
+  // 8000ms post-load watchdog: fallback from Worker /embed to raw URL if NL_READY wasn't received,
+  // and unlock manual subtitle clock auto-start only when bridge.tier === null after 8s.
   useEffect(() => {
     if (
       !isWatchingInGallery ||
       (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
-      activeSubtitleIdx === null
+      iframeLoadStamp === 0
+    ) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      const srvCaps = activeGallerySource?.capabilities as
+        | CinemaServerConfig["capabilities"]
+        | undefined;
+      if (
+        playerRenderMode === "iframe" &&
+        srvCaps?.workerBridge &&
+        activeGallerySource &&
+        bridgeTierRef.current !== "worker"
+      ) {
+        let alreadyFailed = false;
+        try {
+          alreadyFailed =
+            sessionStorage.getItem(`nl_wb_fail_${activeGallerySource.id}`) === "1";
+          if (!alreadyFailed) {
+            sessionStorage.setItem(`nl_wb_fail_${activeGallerySource.id}`, "1");
+          }
+        } catch {
+          // ignore storage errors
+        }
+        if (!alreadyFailed) {
+          setWorkerBridgeRevision((r) => r + 1);
+          return;
+        }
+      }
+      if (bridgeTierRef.current === null) {
+        setManualClockEligible(true);
+      }
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [
+    isWatchingInGallery,
+    playerRenderMode,
+    iframeLoadStamp,
+    activeGallerySource,
+  ]);
+
+  const handleUserSeek = useCallback((targetSec: number) => {
+    syncControllerRef.current?.userSeek(targetSec);
+  }, []);
+
+  const handleUserTogglePlay = useCallback(() => {
+    syncControllerRef.current?.userTogglePlay();
+  }, []);
+
+  // Auto-start manual subtitle clock on click into iframe ONLY when bridge.tier === null after 8s post-load grace window
+  useEffect(() => {
+    if (
+      !isWatchingInGallery ||
+      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
+      activeSubtitleIdx === null ||
+      bridge.tier !== null ||
+      !manualClockEligible
     ) {
       return undefined;
     }
@@ -1818,14 +2030,20 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         document.activeElement === playerIframeRef.current &&
         clockGetState().source === "manual" &&
         clockGetState().paused &&
-        !(playerRenderMode === "iframe" && activeGallerySource?.capabilities?.timeEvents)
+        bridgeTierRef.current === null
       ) {
         clockPlay();
       }
     };
     window.addEventListener("blur", onBlur);
     return () => window.removeEventListener("blur", onBlur);
-  }, [isWatchingInGallery, playerRenderMode, activeSubtitleIdx, activeGallerySource]);
+  }, [
+    isWatchingInGallery,
+    playerRenderMode,
+    activeSubtitleIdx,
+    bridge.tier,
+    manualClockEligible,
+  ]);
 
   // Save Continue Watching progress every 10s when clock source is video or bridge
   useEffect(() => {
@@ -3767,9 +3985,19 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                   detailItemStorageKey,
                                 );
                                 setIsPlayerLoading(false);
+                                setIframeLoadStamp(Date.now());
                               }}
                             />
                           )}
+
+                        {seekUnsupportedToast && (
+                          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-black/85 border border-amber-400/50 text-amber-200 text-xs font-bold shadow-lg pointer-events-none">
+                            {t(
+                              "movies.player.seekUnsupported",
+                              "This server doesn't support external seeking — use the player's own bar",
+                            )}
+                          </div>
+                        )}
 
                         {/* Live Cinema Subtitle Overlay (Rendered above video/iframe across ALL player modes) */}
                         {!allServersFailed && activeSubtitleIdx !== null && (
@@ -4016,8 +4244,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           videoRef={videoElementRef}
                           fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
                           hasSubtitles={activeTrackCues.length > 0}
-                          onIframeCommand={handleIframePlayerCommand}
-                          onCommitEmbedSeek={handleCommitEmbedSeek}
+                          onUserSeek={handleUserSeek}
+                          onUserTogglePlay={handleUserTogglePlay}
                         />
 
                         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -4168,8 +4396,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         videoRef={videoElementRef}
                         fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
                         hasSubtitles={activeTrackCues.length > 0}
-                        onIframeCommand={handleIframePlayerCommand}
-                        onCommitEmbedSeek={handleCommitEmbedSeek}
+                        onUserSeek={handleUserSeek}
+                        onUserTogglePlay={handleUserTogglePlay}
                       />
 
                       <div className="flex items-center justify-between gap-2 flex-wrap">

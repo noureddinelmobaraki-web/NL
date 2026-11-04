@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Pause, Play, RotateCcw, RotateCw, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { clockPause, clockPlay, clockSeek, useClockState, useClockTime } from "./playbackClock";
-import type { IframePlayerCommand } from "./iframeBridge";
 
 export type PlayerControlMode = "direct" | "bridged" | "none";
 
@@ -20,16 +19,16 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
   mode,
   videoRef,
   fallbackDurationSec = 0,
-  hasSubtitles,
-  onIframeCommand,
-  onCommitEmbedSeek,
+  hasSubtitles: _hasSubtitles,
+  onUserSeek,
+  onUserTogglePlay,
 }: {
   mode: PlayerControlMode;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   fallbackDurationSec?: number;
   hasSubtitles: boolean;
-  onIframeCommand?: (cmd: IframePlayerCommand) => void;
-  onCommitEmbedSeek?: (targetSec: number) => void;
+  onUserSeek?: (targetSec: number) => void;
+  onUserTogglePlay?: () => void;
 }) {
   const { t } = useTranslation();
   const liveTime = useClockTime(200);
@@ -39,18 +38,20 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
   const time = scrubTime !== null ? scrubTime : liveTime;
   const duration = clock.duration || fallbackDurationSec || 7200;
   const displayDuration = clock.duration || fallbackDurationSec;
+  const isEstimated = clock.durationIsEstimated || (!clock.duration && fallbackDurationSec > 0);
 
-  const applySeek = (nextSec: number, commitToEmbed = false) => {
+  const commitSeek = (nextSec: number) => {
     const clamped = Math.max(0, Math.min(duration, nextSec));
-    clockSeek(clamped);
     if (mode === "direct") {
+      clockSeek(clamped);
       const el = videoRef.current;
       if (el) el.currentTime = clamped;
+      return;
+    }
+    if (onUserSeek) {
+      onUserSeek(clamped);
     } else {
-      onIframeCommand?.({ type: "seek", time: clamped });
-      if (commitToEmbed) {
-        onCommitEmbedSeek?.(clamped);
-      }
+      clockSeek(clamped);
     }
   };
 
@@ -67,12 +68,14 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
       }
       return;
     }
+    if (onUserTogglePlay) {
+      onUserTogglePlay();
+      return;
+    }
     if (clock.paused) {
       clockPlay();
-      onIframeCommand?.({ type: "play" });
     } else {
       clockPause();
-      onIframeCommand?.({ type: "pause" });
     }
   };
 
@@ -80,7 +83,7 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
     if (scrubTime === null) return;
     const finalTime = scrubTime;
     setScrubTime(null);
-    applySeek(finalTime, true);
+    commitSeek(finalTime);
   };
 
   return (
@@ -96,7 +99,6 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
           onChange={(e) => {
             const next = Number(e.target.value);
             setScrubTime(next);
-            applySeek(next, false);
           }}
           onMouseUp={commitScrub}
           onTouchEnd={commitScrub}
@@ -108,14 +110,16 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
           aria-label={t("movies.player.seek", "Seek")}
         />
         <span className="min-w-[36px] text-end">
-          {displayDuration > 0 ? formatClock(displayDuration) : "--:--"}
+          {displayDuration > 0
+            ? `${isEstimated ? "~" : ""}${formatClock(displayDuration)}`
+            : "--:--"}
         </span>
         {mode === "bridged" && (
           <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] whitespace-nowrap">
             {t("movies.player.synced", "Synced with player")}
           </span>
         )}
-        {mode === "none" && hasSubtitles && (
+        {mode === "none" && (
           <span
             className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[9px] whitespace-nowrap"
             title={t(
@@ -123,7 +127,7 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
               "The movie player is separate. Start/pause this clock together with the movie.",
             )}
           >
-            <Timer size={11} /> {t("movies.subs.clock", "Subtitle clock")}
+            <Timer size={11} /> {t("movies.player.notSynced", "Not synced — manual")}
           </span>
         )}
       </div>
@@ -144,14 +148,14 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
         <button
           type="button"
           className={pill}
-          onClick={() => applySeek(time - 10, true)}
+          onClick={() => commitSeek(time - 10)}
         >
           <RotateCcw size={12} /> 10s
         </button>
         <button
           type="button"
           className={pill}
-          onClick={() => applySeek(time + 10, true)}
+          onClick={() => commitSeek(time + 10)}
         >
           <RotateCw size={12} /> 10s
         </button>

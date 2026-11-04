@@ -17,7 +17,8 @@ const originMatches = [
   ...serversSource.matchAll(/origins:\s*\[([^\]]+)\]/g),
 ];
 
-const extractedOrigins = new Set();
+const WORKER_FRAME_ORIGIN = 'https://broad-block-7bd7.nordinegb2018.workers.dev';
+const extractedOrigins = new Set([WORKER_FRAME_ORIGIN]);
 for (const match of originMatches) {
   const block = match[1];
   for (const strMatch of block.matchAll(/['"](https:\/\/[^'"]+)['"]/g)) {

@@ -1,5 +1,5 @@
 // NL Worker — broad-block-7bd7 (ملف واحد يُلصق في لوحة Cloudflare)
-// Routes: / (extract) · /proxy · /subs/search · /subs/file · /trailer/imdb · /meta/omdb · /tmdb/3/* · /health
+// Routes: / (extract) · /embed · /proxy · /subs/search · /subs/file · /trailer/imdb · /meta/omdb · /tmdb/3/* · /health
 // Secrets (اختيارية حسب المسار): WYZIE_KEY, OMDB_KEY, TMDB_KEY  | KV binding (اختياري ومستحسن): NL_CACHE
 // Variable اختياري: ALLOWED_ORIGINS = "https://a.com,https://b.com"
 
@@ -43,6 +43,7 @@ export default {
       if (path === "/trailer/imdb") return await withCache(request, env, ctx, 604800, () => imdbTrailer(reqUrl));
       if (path === "/meta/omdb") return await withCache(request, env, ctx, 86400, () => omdbMeta(reqUrl, env));
       if (path.startsWith("/tmdb/3/")) return await withCache(request, env, ctx, tmdbTtl(path), () => tmdbProxy(reqUrl, env));
+      if (path === "/embed") return await handleEmbed(request, reqUrl, workerOrigin, env);
       return await handleExtract(request, reqUrl, workerOrigin); // السلوك الأصلي لأي مسار آخر
     } catch (err) {
       return jsonResponse({ error: "worker_failed", detail: String((err && err.message) || err) }, 502);
@@ -52,8 +53,14 @@ export default {
 
 /* ---------------- أمان ---------------- */
 
+function getAllowedOriginsList(env, workerOrigin) {
+  const base = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()) : DEFAULT_ALLOWED_ORIGINS;
+  return workerOrigin && !base.includes(workerOrigin) ? [...base, workerOrigin] : base;
+}
+
 function isAllowedCaller(request, env) {
-  const list = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()) : DEFAULT_ALLOWED_ORIGINS;
+  const workerOrigin = new URL(request.url).origin;
+  const list = getAllowedOriginsList(env, workerOrigin);
   const origin = request.headers.get("Origin");
   if (origin) return list.includes(origin);
   const ref = request.headers.get("Referer");
@@ -167,6 +174,90 @@ function cleanHeaders(src, dropLength) {
   if (dropLength) { h.delete("content-length"); h.delete("content-encoding"); }
   Object.entries(CORS).forEach(([k, v]) => h.set(k, v));
   return h;
+}
+
+/* ---------------- /embed (HTMLRewriter Bridge) ---------------- */
+
+const EMBED_HOST_ALLOW = /^(.*\.)?(streamimdb\.ru|imdb\.su|2embed\.cc|2embed\.skin|2vcdn\.skin|multiembed\.mov|streamingnow\.mov|vidsrc\.[a-z]+|vidplay\.[a-z]+|filemoon\.[a-z]+|streamtape\.[a-z]+|dood\.[a-z]+|mixdrop\.[a-z]+|rabbitstream\.net|megacloud\.tv|dokicloud\.one)$/i;
+
+const NL_BRIDGE_JS = `(function(){if(window.__nlBridge)return;window.__nlBridge=1;var seq=0,cur=null,lastSent=0;function post(m){try{window.top.postMessage(m,"*")}catch(e){}try{if(window.parent&&window.parent!==window.top)window.parent.postMessage(m,"*")}catch(e){}}function send(ev){if(!cur)return;var now=Date.now();if(ev==="timeupdate"&&now-lastSent<250)return;lastSent=now;var d=cur.duration;post({__nl:1,type:"NL_STATE",ev:ev,t:cur.currentTime||0,d:isFinite(d)&&d>0?d:0,paused:!!cur.paused,rate:cur.playbackRate||1,seq:++seq})}function bind(v){if(!v||v===cur)return;cur=v;var evs=["loadedmetadata","durationchange","play","playing","pause","waiting","seeked","seeking","timeupdate","ratechange","ended"];for(var i=0;i<evs.length;i++)(function(e){v.addEventListener(e,function(){send(e)},true)})(evs[i]);send("loadedmetadata")}function scan(){var vs=document.getElementsByTagName("video");var best=null;for(var i=0;i<vs.length;i++){var v=vs[i];if(v.readyState>0||v.src||v.currentSrc){best=v;break}if(!best)best=v}if(best)bind(best)}try{var origPlay=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){if(this&&this.tagName==="VIDEO")bind(this);return origPlay.apply(this,arguments)}}catch(e){}try{var mo=new MutationObserver(scan);mo.observe(document.documentElement,{childList:true,subtree:true})}catch(e){}setInterval(scan,1500);scan();window.addEventListener("message",function(e){var d=e.data;if(typeof d==="string"){try{d=JSON.parse(d)}catch(x){return}}if(!d||d.__nl!==1||d.type!=="NL_CMD")return;if(cur){try{if(d.cmd==="seek"&&typeof d.t==="number"){cur.currentTime=Math.max(0,d.t);post({__nl:1,type:"NL_ACK",id:d.id,t:cur.currentTime,d:isFinite(cur.duration)?cur.duration:0,paused:!!cur.paused})}else if(d.cmd==="play"){var p=cur.play();if(p&&p.catch)p.catch(function(){})}else if(d.cmd==="pause"){cur.pause()}}catch(x){}}var fs=window.frames;for(var i=0;i<fs.length;i++){try{fs[i].postMessage(d,"*")}catch(x){}}});post({__nl:1,type:"NL_READY"})})();`;
+
+function cleanEmbedHeaders(src, parentOrigin, workerOrigin) {
+  const h = cleanHeaders(src, true);
+  h.set("Content-Security-Policy", `frame-ancestors 'self' ${parentOrigin} ${workerOrigin};`);
+  return h;
+}
+
+async function handleEmbed(request, reqUrl, workerOrigin, env) {
+  const rawUrl = reqUrl.searchParams.get("url") || "";
+  const parentOrigin = reqUrl.searchParams.get("parent") || "";
+  const depth = parseInt(reqUrl.searchParams.get("depth") || "0", 10);
+  if (!Number.isFinite(depth) || depth < 0 || depth > 3) {
+    return jsonResponse({ error: "bad_depth" }, 400);
+  }
+  const allowedList = getAllowedOriginsList(env, workerOrigin);
+  if (!parentOrigin || !allowedList.includes(parentOrigin)) {
+    return jsonResponse({ error: "bad_parent" }, 403);
+  }
+  const target = safeTarget(rawUrl);
+  if (!target || !EMBED_HOST_ALLOW.test(target.hostname)) {
+    return jsonResponse({ error: "host_not_allowed" }, 403);
+  }
+
+  const upstream = await fetch(target.href, {
+    headers: {
+      "User-Agent": UA,
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      Referer: target.origin + "/",
+    },
+    redirect: "follow",
+  });
+
+  const ct = (upstream.headers.get("Content-Type") || "").toLowerCase();
+  if (!ct.includes("text/html")) {
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: cleanEmbedHeaders(upstream.headers, parentOrigin, workerOrigin),
+    });
+  }
+
+  const finalOrigin = new URL(upstream.url || target.href).origin;
+  const finalBaseHref = new URL(upstream.url || target.href).href;
+
+  const rewriter = new HTMLRewriter()
+    .on("head", {
+      element(el) {
+        el.prepend(
+          `<base href="${finalBaseHref.replace(/"/g, "&quot;")}"><script>${NL_BRIDGE_JS}</script>`,
+          { html: true },
+        );
+      },
+    })
+    .on("iframe[src]", {
+      element(el) {
+        if (depth >= 3) return;
+        const srcAttr = el.getAttribute("src");
+        if (!srcAttr) return;
+        try {
+          const abs = new URL(srcAttr, finalOrigin);
+          if (
+            (abs.protocol === "https:" || abs.protocol === "http:") &&
+            EMBED_HOST_ALLOW.test(abs.hostname) &&
+            !/google|facebook|doubleclick/i.test(abs.hostname)
+          ) {
+            const wrapped = `${workerOrigin}/embed?url=${encodeURIComponent(abs.href)}&parent=${encodeURIComponent(parentOrigin)}&depth=${depth + 1}`;
+            el.setAttribute("src", wrapped);
+          }
+        } catch {}
+      },
+    });
+
+  return rewriter.transform(
+    new Response(upstream.body, {
+      status: upstream.status,
+      headers: cleanEmbedHeaders(upstream.headers, parentOrigin, workerOrigin),
+    }),
+  );
 }
 
 /* ---------------- / (استخراج) ---------------- */

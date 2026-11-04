@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { clockSoftSync, clockSync } from "./playbackClock";
 
 export type BridgeKind = "timeupdate" | "play" | "pause" | "seeked" | "ended" | "media";
+export type BridgeTier = "worker" | "native";
+
 export interface BridgeEvent {
   kind: BridgeKind;
   currentTime?: number;
   duration?: number;
+  paused?: boolean;
+  rate?: number;
+  ackId?: string;
+  bridgeTier?: BridgeTier;
   payload?: unknown;
 }
 
@@ -14,8 +19,11 @@ export type IframePlayerCommand =
   | { type: "play" }
   | { type: "pause" };
 
-let lastExternalSeekAt = 0;
-let lastExternalSeekTarget: number | null = null;
+let lastSeenSeq = -1;
+
+export function resetNlBridgeSeq(): void {
+  lastSeenSeq = -1;
+}
 
 const num = (v: unknown): number | undefined => {
   const n = typeof v === "string" ? parseFloat(v) : v;
@@ -26,6 +34,7 @@ const KIND_MAP: Record<string, BridgeKind> = {
   timeupdate: "timeupdate", time: "timeupdate", progress: "timeupdate",
   play: "play", playing: "play", pause: "pause", paused: "pause",
   seeked: "seeked", seeking: "seeked", seek: "seeked", ended: "ended", complete: "ended",
+  loadedmetadata: "timeupdate", durationchange: "timeupdate", ratechange: "timeupdate",
 };
 
 function extractMediaDataProgress(data: any): { currentTime?: number; duration?: number } {
@@ -53,12 +62,53 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
   }
   if (!d || typeof d !== "object") return null;
 
+  // 1. Versioned NL Worker bridge protocol (__nl: 1)
+  if (d.__nl === 1 && typeof d.type === "string") {
+    if (d.type === "NL_READY") {
+      lastSeenSeq = -1;
+      return {
+        kind: "media",
+        bridgeTier: "worker",
+      };
+    }
+    if (d.type === "NL_ACK") {
+      return {
+        kind: "seeked",
+        currentTime: num(d.t),
+        duration: num(d.d),
+        paused: typeof d.paused === "boolean" ? d.paused : undefined,
+        rate: num(d.rate),
+        ackId: typeof d.id === "string" ? d.id : undefined,
+        bridgeTier: "worker",
+      };
+    }
+    if (d.type === "NL_STATE") {
+      const seq = num(d.seq);
+      if (seq !== undefined) {
+        if (seq <= lastSeenSeq) return null;
+        lastSeenSeq = seq;
+      }
+      const evKey = String(d.ev || "timeupdate").toLowerCase();
+      return {
+        kind: KIND_MAP[evKey] ?? "timeupdate",
+        currentTime: num(d.t),
+        duration: num(d.d),
+        paused: typeof d.paused === "boolean" ? d.paused : undefined,
+        rate: num(d.rate),
+        bridgeTier: "worker",
+      };
+    }
+  }
+
   // VidLink (documented): { type: "PLAYER_EVENT", data: { event, currentTime, duration, ... } }
   if (d.type === "PLAYER_EVENT" && d.data && typeof d.data === "object") {
+    const kind = KIND_MAP[String(d.data.event || "").toLowerCase()] ?? "timeupdate";
     return {
-      kind: KIND_MAP[String(d.data.event || "").toLowerCase()] ?? "timeupdate",
+      kind,
       currentTime: num(d.data.currentTime),
       duration: num(d.data.duration),
+      paused: kind === "pause" || kind === "ended" ? true : kind === "play" ? false : undefined,
+      bridgeTier: "native",
       payload: d.data,
     };
   }
@@ -68,6 +118,7 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
       kind: "media",
       currentTime: prog.currentTime,
       duration: prog.duration,
+      bridgeTier: "native",
       payload: d.data,
     };
   }
@@ -83,10 +134,20 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
   const evRaw = String(inner.event ?? d.event ?? d.api ?? "timeupdate").toLowerCase();
   const mappedKind = KIND_MAP[evRaw];
   if (t === undefined && !mappedKind) return null;
+  const resolvedKind = mappedKind ?? "timeupdate";
   return {
-    kind: mappedKind ?? "timeupdate",
+    kind: resolvedKind,
     currentTime: t,
     duration: num(inner.duration ?? d.duration),
+    paused:
+      typeof inner.paused === "boolean"
+        ? inner.paused
+        : resolvedKind === "pause" || resolvedKind === "ended"
+          ? true
+          : resolvedKind === "play"
+            ? false
+            : undefined,
+    bridgeTier: "native",
   };
 }
 
@@ -94,14 +155,17 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
 export function sendIframePlayerCommand(
   iframe: HTMLIFrameElement | null | undefined,
   cmd: IframePlayerCommand,
+  id?: string,
 ): void {
   const win = iframe?.contentWindow;
   if (!win) return;
-  if (cmd.type === "seek") {
-    lastExternalSeekAt = performance.now();
-    lastExternalSeekTarget = cmd.time;
-  }
-  const payloads: unknown[] =
+
+  const nlCmd =
+    cmd.type === "seek"
+      ? { __nl: 1, type: "NL_CMD", cmd: "seek", t: cmd.time, id }
+      : { __nl: 1, type: "NL_CMD", cmd: cmd.type, id };
+
+  const legacyPayloads: unknown[] =
     cmd.type === "seek"
       ? [
           { type: "PLAYER_COMMAND", command: "seek", currentTime: cmd.time, time: cmd.time },
@@ -128,6 +192,8 @@ export function sendIframePlayerCommand(
           { action: cmd.type },
         ];
 
+  const payloads: unknown[] = [nlCmd, ...legacyPayloads];
+
   for (const msg of payloads) {
     try {
       win.postMessage(msg, "*");
@@ -137,15 +203,32 @@ export function sendIframePlayerCommand(
   }
 }
 
-/** True if `source` is the iframe window or one of its direct child frames. */
+/** True if `source` is the iframe window or one of its descendant frames up to depth 4 (BFS). */
 function isFromFrame(source: MessageEventSource | null, root: Window | null | undefined): boolean {
   if (!source || !root) return false;
   if (source === root) return true;
-  try {
-    for (let i = 0; i < root.frames.length; i += 1) {
-      if (root.frames[i] === source) return true;
+  const queue: Array<{ win: Window; depth: number }> = [{ win: root, depth: 0 }];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current.depth >= 4) continue;
+    let len = 0;
+    try {
+      len = current.win.frames.length;
+    } catch {
+      /* cross-origin frames access can throw in some browsers */
+      continue;
     }
-  } catch { /* cross-origin frames access can throw in some browsers */ }
+    for (let i = 0; i < len; i += 1) {
+      try {
+        const child: Window | null | undefined = current.win.frames[i];
+        if (!child) continue;
+        if (child === source) return true;
+        queue.push({ win: child, depth: current.depth + 1 });
+      } catch {
+        /* ignore frame access error */
+      }
+    }
+  }
   return false;
 }
 
@@ -153,9 +236,13 @@ export function useIframePlayerBridge(opts: {
   iframeRef: RefObject<HTMLIFrameElement | null>;
   allowedOrigins: string[];
   enabled: boolean;
+  onEvent?: (ev: BridgeEvent) => void;
   onMediaData?: (payload: unknown) => void;
-}): boolean {
+}): { active: boolean; tier: BridgeTier | null } {
   const [active, setActive] = useState(false);
+  const [tier, setTier] = useState<BridgeTier | null>(null);
+  const onEventRef = useRef(opts.onEvent);
+  onEventRef.current = opts.onEvent;
   const onMediaRef = useRef(opts.onMediaData);
   onMediaRef.current = opts.onMediaData;
   const originsKey = opts.allowedOrigins.join("|");
@@ -163,6 +250,8 @@ export function useIframePlayerBridge(opts: {
 
   useEffect(() => {
     setActive(false);
+    setTier(null);
+    resetNlBridgeSeq();
     if (!enabled) return undefined;
     const allowed = new Set(originsKey.split("|").filter(Boolean));
 
@@ -171,45 +260,32 @@ export function useIframePlayerBridge(opts: {
       if (!isFromFrame(e.source, iframeRef.current?.contentWindow)) return;
       const ev = parsePlayerMessage(e.data);
       if (!ev) return;
+
+      if (ev.bridgeTier === "worker") {
+        setTier("worker");
+      } else if (ev.bridgeTier === "native") {
+        setTier((prev) => prev ?? "native");
+      }
+
       if (ev.kind === "media") {
         if (ev.currentTime !== undefined) {
           setActive(true);
-          clockSoftSync(ev.currentTime, { duration: ev.duration, source: "bridge" });
+          onEventRef.current?.(ev);
         }
-        onMediaRef.current?.(ev.payload);
-        return;
-      }
-      if (ev.currentTime === undefined) {
-        if (ev.kind === "play" || ev.kind === "pause" || ev.kind === "ended") {
-          setActive(true);
-          clockSync({ paused: ev.kind !== "play", source: "bridge" });
+        if (ev.payload !== undefined) {
+          onMediaRef.current?.(ev.payload);
         }
         return;
       }
-      setActive(true);
-      // Avoid snapping back to old iframe time right after user scrubbed the external seekbar
-      if (
-        ev.kind === "timeupdate" &&
-        lastExternalSeekTarget !== null &&
-        performance.now() - lastExternalSeekAt < 1400 &&
-        Math.abs(ev.currentTime - lastExternalSeekTarget) > 4
-      ) {
-        return;
-      }
-      if (ev.kind === "timeupdate") {
-        clockSoftSync(ev.currentTime, { paused: false, duration: ev.duration, source: "bridge" });
-      } else {
-        clockSync({
-          time: ev.currentTime,
-          duration: ev.duration,
-          paused: ev.kind === "pause" || ev.kind === "ended" ? true : ev.kind === "play" ? false : undefined,
-          source: "bridge",
-        });
+
+      if (ev.currentTime !== undefined || ev.kind === "play" || ev.kind === "pause" || ev.kind === "ended" || ev.ackId) {
+        setActive(true);
+        onEventRef.current?.(ev);
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [enabled, originsKey, iframeRef]);
 
-  return active;
+  return { active, tier };
 }

@@ -27,6 +27,8 @@ export interface CinemaServerConfig {
     timeEvents?: boolean;
     /** Supports ?startAt=<seconds> in embed URL. */
     startAt?: boolean;
+    /** Route through Cloudflare Worker /embed HTMLRewriter bridge. */
+    workerBridge?: boolean;
   };
   timeoutMs: number;
   movie: (ids: ServerIds, opts?: { startAt?: number }) => string;
@@ -121,6 +123,7 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: 'streamimdb.ru',
     origins: ['https://streamimdb.ru', 'https://player.imdb.su'],
     supports: { imdb: true, tmdb: true },
+    capabilities: { workerBridge: true },
     timeoutMs: 12000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
@@ -139,6 +142,7 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: '2embed.cc',
     origins: ['https://www.2embed.cc', 'https://2embed.cc', 'https://2vcdn.skin'],
     supports: { imdb: true, tmdb: true },
+    capabilities: { workerBridge: true },
     timeoutMs: 12000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
@@ -160,6 +164,7 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: '2embed.skin',
     origins: ['https://www.2embed.skin', 'https://2embed.skin', 'https://2vcdn.skin'],
     supports: { imdb: true, tmdb: true },
+    capabilities: { workerBridge: true },
     timeoutMs: 12000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
@@ -181,6 +186,7 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: 'multiembed.mov',
     origins: ['https://multiembed.mov', 'https://streamingnow.mov'],
     supports: { imdb: true, tmdb: true },
+    capabilities: { workerBridge: true },
     timeoutMs: 12000,
     movie: (ids) => {
       const { imdb, tmdb } = sanitizeServerIds(ids);
@@ -201,3 +207,21 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
 export const ALL_SERVER_FRAME_ORIGINS: string[] = Array.from(
   new Set(CINEMA_SERVERS.flatMap((srv) => srv.origins)),
 );
+
+export function toWorkerEmbedUrl(
+  rawUrl: string,
+  workerEndpoint: string,
+  parentOrigin: string,
+): string {
+  if (!rawUrl || !workerEndpoint) return rawUrl;
+  try {
+    const base = workerEndpoint.replace(/\/+$/, '');
+    const u = new URL(`${base}/embed`);
+    u.searchParams.set('url', rawUrl);
+    u.searchParams.set('parent', parentOrigin);
+    u.searchParams.set('depth', '0');
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
