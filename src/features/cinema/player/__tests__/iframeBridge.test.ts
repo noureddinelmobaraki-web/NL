@@ -182,4 +182,45 @@ describe("iframeBridge", () => {
     expect(ev?.bridgeTier).toBe("native");
     expect(isSyncCapableEvent(ev)).toBe(true);
   });
+
+  it("isOriginAllowed matches exact origins and wildcard subdomains", async () => {
+    const { isOriginAllowed } = await import("../iframeBridge");
+    const allowed = ["https://vidlink.pro", "https://*.vidlink.pro", "https://streamimdb.ru"];
+    expect(isOriginAllowed("https://vidlink.pro", allowed)).toBe(true);
+    expect(isOriginAllowed("https://player.vidlink.pro", allowed)).toBe(true);
+    expect(isOriginAllowed("https://cloud.vidlink.pro", allowed)).toBe(true);
+    expect(isOriginAllowed("https://streamimdb.ru", allowed)).toBe(true);
+    expect(isOriginAllowed("https://evil.com", allowed)).toBe(false);
+  });
+
+  it("isFromFrame accepts messages from allowlisted origins with valid player payloads under Site Isolation", async () => {
+    const { isFromFrame, parsePlayerMessage } = await import("../iframeBridge");
+    const allowed = ["https://vidlink.pro", "https://player.vidlink.pro"];
+    const fakeSubFrameWindow = {} as Window; // Not equal to root, cross-origin traversal impossible
+    const rootWindow = {} as Window;
+
+    const payload = {
+      type: "PLAYER_EVENT",
+      data: { event: "timeupdate", currentTime: 45, duration: 120 },
+    };
+    const parsed = parsePlayerMessage(payload);
+
+    const accepted = isFromFrame(
+      fakeSubFrameWindow,
+      rootWindow,
+      "https://player.vidlink.pro",
+      allowed,
+      parsed,
+    );
+    expect(accepted).toBe(true);
+
+    const rejectedBadOrigin = isFromFrame(
+      fakeSubFrameWindow,
+      rootWindow,
+      "https://attacker.com",
+      allowed,
+      parsed,
+    );
+    expect(rejectedBadOrigin).toBe(false);
+  });
 });

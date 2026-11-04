@@ -141,19 +141,36 @@ export function getServerPriorityScore(
 /**
  * Sorts an array of play sources so the fastest cached servers for this user appear first.
  * If the user previously had a fast working server for this specific title, it gets a speed boost.
+ * Sources with timeEvents capabilities (Tier 2, e.g. VidLink) receive a strong priority bonus
+ * so they are ranked before silent embed servers unless failureCount exceeds successCount.
  */
-export function sortSourcesBySpeed<T extends { id: string }>(
-  sources: T[],
-  titleKey?: string,
-): T[] {
+export function sortSourcesBySpeed<
+  T extends { id: string; capabilities?: { timeEvents?: boolean } },
+>(sources: T[], titleKey?: string): T[] {
   if (!Array.isArray(sources) || sources.length <= 1) return sources;
   const state = readStorage();
   const preferredForTitle = titleKey ? state.byTitle[titleKey] : undefined;
+  const hasTmdb = Boolean(
+    titleKey && (titleKey.startsWith("movie_") || titleKey.startsWith("tv_")),
+  );
 
   return [...sources]
     .map((src, originalIdx) => {
       let score = getServerPriorityScore(src.id, originalIdx, state);
       const metric = state.metrics[src.id];
+      const hasFailed = Boolean(
+        metric && metric.failureCount > metric.successCount,
+      );
+
+      // Enforce Tier 2 priority: any source with timeEvents MUST be ranked before sources without
+      // timeEvents, unless its failureCount exceeds its successCount for this session.
+      const isTimeEvents =
+        src.capabilities?.timeEvents === true ||
+        (hasTmdb && src.id === "server-vl");
+      if (isTimeEvents && !hasFailed) {
+        score -= 5000;
+      }
+
       // Boost the title's remembered server unless it has recently failed repeatedly
       if (
         preferredForTitle &&
@@ -174,10 +191,9 @@ export function sortSourcesBySpeed<T extends { id: string }>(
 /**
  * Returns the ordered indices `[0..sources.length-1]` sorted from fastest server to slowest.
  */
-export function buildSpeedSortedQueue<T extends { id: string }>(
-  sources: T[],
-  titleKey?: string,
-): number[] {
+export function buildSpeedSortedQueue<
+  T extends { id: string; capabilities?: { timeEvents?: boolean } },
+>(sources: T[], titleKey?: string): number[] {
   if (!Array.isArray(sources) || sources.length === 0) return [0];
   const sorted = sortSourcesBySpeed(sources, titleKey);
   return sorted

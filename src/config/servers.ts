@@ -102,7 +102,7 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     id: 'server-vl',
     label: 'VidLink',
     host: 'vidlink.pro',
-    origins: ['https://vidlink.pro'],
+    origins: ['https://vidlink.pro', 'https://player.vidlink.pro', 'https://cloud.vidlink.pro'],
     supports: { imdb: false, tmdb: true },
     capabilities: { timeEvents: true, startAt: true },
     timeoutMs: 12000,
@@ -123,7 +123,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: 'streamimdb.ru',
     origins: ['https://streamimdb.ru', 'https://player.imdb.su'],
     supports: { imdb: true, tmdb: true },
-    capabilities: { workerBridge: true },
     timeoutMs: 12000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
@@ -142,7 +141,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: '2embed.cc',
     origins: ['https://www.2embed.cc', 'https://2embed.cc', 'https://2vcdn.skin'],
     supports: { imdb: true, tmdb: true },
-    capabilities: { workerBridge: true },
     timeoutMs: 12000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
@@ -164,7 +162,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: '2embed.skin',
     origins: ['https://www.2embed.skin', 'https://2embed.skin', 'https://2vcdn.skin'],
     supports: { imdb: true, tmdb: true },
-    capabilities: { workerBridge: true },
     timeoutMs: 12000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
@@ -186,7 +183,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: 'multiembed.mov',
     origins: ['https://multiembed.mov', 'https://streamingnow.mov'],
     supports: { imdb: true, tmdb: true },
-    capabilities: { workerBridge: true },
     timeoutMs: 12000,
     movie: (ids) => {
       const { imdb, tmdb } = sanitizeServerIds(ids);
@@ -207,6 +203,11 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
 export const ALL_SERVER_FRAME_ORIGINS: string[] = Array.from(
   new Set(CINEMA_SERVERS.flatMap((srv) => srv.origins)),
 );
+
+export const isTimeEventServer = (
+  server?: { capabilities?: { timeEvents?: boolean } } | null,
+): boolean => Boolean(server?.capabilities?.timeEvents);
+
 
 export function toWorkerEmbedUrl(
   rawUrl: string,

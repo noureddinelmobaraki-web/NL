@@ -18,6 +18,7 @@ export interface PlaySource {
   capabilities?: {
     timeEvents?: boolean;
     startAt?: boolean;
+    workerBridge?: boolean;
   };
 }
 

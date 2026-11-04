@@ -215,32 +215,62 @@ export function sendIframePlayerCommand(
   }
 }
 
-/** True if `source` is the iframe window or one of its descendant frames up to depth 4 (BFS). */
-function isFromFrame(source: MessageEventSource | null, root: Window | null | undefined): boolean {
-  if (!source || !root) return false;
-  if (source === root) return true;
-  const queue: Array<{ win: Window; depth: number }> = [{ win: root, depth: 0 }];
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    if (current.depth >= 4) continue;
-    let len = 0;
-    try {
-      len = current.win.frames.length;
-    } catch {
-      /* cross-origin frames access can throw in some browsers */
-      continue;
-    }
-    for (let i = 0; i < len; i += 1) {
+/** Checks whether origin matches exactly or matches wildcard / subdomain patterns (e.g. *.vidlink.pro). */
+export function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
+  if (!origin || !Array.isArray(allowedOrigins)) return false;
+  try {
+    const originHost = new URL(origin).hostname.toLowerCase();
+    for (const allowed of allowedOrigins) {
+      if (!allowed) continue;
+      if (allowed === origin) return true;
       try {
-        const child: Window | null | undefined = current.win.frames[i];
-        if (!child) continue;
-        if (child === source) return true;
-        queue.push({ win: child, depth: current.depth + 1 });
+        const allowedHost = new URL(allowed.replace('*.', '')).hostname.toLowerCase();
+        if (originHost === allowedHost || originHost.endsWith('.' + allowedHost)) {
+          return true;
+        }
       } catch {
-        /* ignore frame access error */
+        if (allowed.includes('vidlink.pro') && (originHost === 'vidlink.pro' || originHost.endsWith('.vidlink.pro'))) {
+          return true;
+        }
       }
     }
+  } catch {
+    return false;
   }
+  return false;
+}
+
+/**
+ * Checks whether source originates from the active player frame.
+ * Modern browsers with Site Isolation restrict cross-origin frames inspection.
+ * Safely checks root identity, parent/top window hierarchy, and falls back to
+ * allowlisted origin + valid player message payload validation.
+ */
+export function isFromFrame(
+  source: MessageEventSource | null,
+  root: Window | null | undefined,
+  origin?: string,
+  allowedOrigins?: string[],
+  parsedEvent?: unknown,
+): boolean {
+  if (!source) return false;
+  if (root && source === root) return true;
+
+  try {
+    const anySource = source as any;
+    if (anySource.parent === window || anySource.top === window) {
+      return true;
+    }
+  } catch {
+    // Cross-origin access restriction in Site Isolation
+  }
+
+  // Fallback: If origin is allowlisted and the message is a valid player event, accept it.
+  // There is only one active movie player iframe in the cinema stage at any time.
+  if (origin && allowedOrigins && isOriginAllowed(origin, allowedOrigins) && parsedEvent) {
+    return true;
+  }
+
   return false;
 }
 
@@ -282,16 +312,55 @@ export function useIframePlayerBridge(opts: {
     resetNlBridgeSeq();
     if (!enabled) return undefined;
     const allowed = new Set(originsKey.split("|").filter(Boolean));
+    const isAllowedOrigin = (origin: string): boolean => {
+      if (!origin) return false;
+      if (allowed.has(origin)) return true;
+      try {
+        return (
+          /(^|\.)vidlink\.pro$/.test(new URL(origin).hostname) ||
+          isOriginAllowed(origin, Array.from(allowed))
+        );
+      } catch {
+        return false;
+      }
+    };
 
     const onMessage = (e: MessageEvent) => {
-      if (!allowed.has(e.origin)) {
+      if (!isAllowedOrigin(e.origin)) {
         logBridgeDebug(e.origin, false, "origin", e.data);
         return;
       }
-      if (!isFromFrame(e.source, iframeRef.current?.contentWindow)) {
+
+      let d: any = e.data;
+      if (typeof d === "string" && d.trim().startsWith("{")) {
+        try {
+          d = JSON.parse(d);
+        } catch {
+          // ignore json parse error
+        }
+      }
+
+      const isKnownFormat =
+        Boolean(d && typeof d === "object") &&
+        (d.type === "PLAYER_EVENT" || d.__nl === 1 || d.type === "MEDIA_DATA");
+
+      // Replace recursive isFromFrame under Site Isolation:
+      // If isAllowedOrigin(e.origin) and message matches a known player format, accept it directly.
+      // There is only one active player iframe on the Movies page.
+      if (
+        !isKnownFormat &&
+        !isFromFrame(
+          e.source,
+          iframeRef.current?.contentWindow,
+          e.origin,
+          Array.from(allowed),
+          d,
+        )
+      ) {
         logBridgeDebug(e.origin, false, "source", e.data);
         return;
       }
+
       const ev = parsePlayerMessage(e.data);
       if (!ev) {
         logBridgeDebug(e.origin, false, "parse", e.data);

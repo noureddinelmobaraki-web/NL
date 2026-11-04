@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for Phase 3b (Unified Cloudflare Worker reference, GitHub Actions deploy env hardening, Worker-backed OMDb metadata with Rotten Tomatoes/Metacritic/Awards/Box Office display, and bidirectional progress bar synchronization between inside and outside the gallery player).",
-  "updatedAt": "2026-11-04T16:07:24.046090648Z",
+  "summary": "Surgical fix plan for video progress bar synchronization on the Movies page: removes Cloudflare Worker proxy flags from Turnstile-protected servers, expands VidLink origins and wildcard subdomain matching, replaces cross-origin frame traversal with a safe site-isolation-compatible frame/origin check, and prioritizes VidLink when TMDB ID is present.",
+  "updatedAt": "2026-11-04T19:11:41.640055356Z",
   "requestFeedback": true,
   "userFacing": true
 }

@@ -1186,7 +1186,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     const srvCaps = activeGallerySource.capabilities as CinemaServerConfig["capabilities"];
     if (
       playerRenderMode === "iframe" &&
-      srvCaps?.workerBridge &&
+      srvCaps?.workerBridge === true &&
       typeof window !== "undefined"
     ) {
       let wbFailed = false;
@@ -1271,6 +1271,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         detailItemStorageKey,
       );
       let ordered = speedOrdered.length > 0 ? speedOrdered : [0, 1, 2, 3];
+
+      // Ensure sources with capabilities?.timeEvents === true are placed before sources without timeEvents
+      if (typeof explicitServerIdx !== "number") {
+        const timeEventIndices = ordered.filter(
+          (idx) => detailPlaySources[idx]?.capabilities?.timeEvents === true,
+        );
+        const silentIndices = ordered.filter(
+          (idx) => detailPlaySources[idx]?.capabilities?.timeEvents !== true,
+        );
+        ordered = [...timeEventIndices, ...silentIndices];
+      }
 
       if (typeof explicitServerIdx === "number" && explicitServerIdx >= 0) {
         const total = detailPlaySources.length || 4;
@@ -1931,6 +1942,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const bridgeAllowedOrigins = useMemo(() => {
     const set = new Set<string>(ALL_SERVER_FRAME_ORIGINS);
+    set.add("https://vidlink.pro");
+    set.add("https://player.vidlink.pro");
+    set.add("https://cloud.vidlink.pro");
+    set.add("https://*.vidlink.pro");
     if (activeIframeUrl) {
       try {
         set.add(new URL(activeIframeUrl).origin);
@@ -4294,14 +4309,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         }`}
                         dir="ltr"
                       >
-                        <CinemaTimeline
-                          mode={controlMode}
-                          videoRef={videoElementRef}
-                          fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
-                          hasSubtitles={activeTrackCues.length > 0}
-                          onUserSeek={handleUserSeek}
-                          onUserTogglePlay={handleUserTogglePlay}
-                        />
+                        {controlMode !== "none" && (
+                          <CinemaTimeline
+                            mode={controlMode}
+                            videoRef={videoElementRef}
+                            fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
+                            hasSubtitles={activeTrackCues.length > 0}
+                            onUserSeek={handleUserSeek}
+                            onUserTogglePlay={handleUserTogglePlay}
+                          />
+                        )}
 
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -4446,14 +4463,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       className="lg-cinema-player-controls rounded-2xl px-3.5 py-2.5 flex flex-col gap-2"
                       dir="ltr"
                     >
-                      <CinemaTimeline
-                        mode={controlMode}
-                        videoRef={videoElementRef}
-                        fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
-                        hasSubtitles={activeTrackCues.length > 0}
-                        onUserSeek={handleUserSeek}
-                        onUserTogglePlay={handleUserTogglePlay}
-                      />
+                      {controlMode !== "none" && (
+                        <CinemaTimeline
+                          mode={controlMode}
+                          videoRef={videoElementRef}
+                          fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
+                          hasSubtitles={activeTrackCues.length > 0}
+                          onUserSeek={handleUserSeek}
+                          onUserTogglePlay={handleUserTogglePlay}
+                        />
+                      )}
 
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
