@@ -55,9 +55,11 @@ import {
   fetchExtractedVideos,
   type ExtractedSubtitleTrack,
   type ExtractedVideoStream,
+  type SubtitleCue,
 } from "../../services/videoExtractor";
 import {
   fetchExternalSubtitles,
+  loadTrackCuesIfNeeded,
   revokeSubtitleBlobUrls,
 } from "../../services/subtitleService";
 import {
@@ -442,30 +444,29 @@ const MoviePosterCard = React.memo(
           </p>
         </div>
 
-        {/* Zoomed Liquid Glass Drawer Overlay */}
+        {/* Zoomed Liquid Glass Drawer Overlay (Ultra-light translucent finish) */}
         <AnimatePresence>
           {isZoomed && (
             <m.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
+              exit={{ opacity: 0, y: 6 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="nl-poster__glass-drawer flex flex-col gap-1.5"
+              className="nl-poster__glass-drawer flex flex-col gap-1"
               onClick={(e) => e.stopPropagation()}
             >
-              <h4 className="text-[11px] font-black text-white leading-tight line-clamp-1">
-                {item.title}
-              </h4>
-              <div className="flex items-center justify-between text-[9px] text-white/80 font-mono">
-                <span>{item.year || "2024"}</span>
-                <span className="px-1.5 py-0.2 rounded bg-white/15 text-[8px] font-bold text-white">
-                  {item.mediaType === "movie" ? "MOVIE" : "SERIES"}
+              <div className="flex items-center justify-between gap-1">
+                <h4 className="text-[11px] font-black text-white leading-tight line-clamp-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+                  {item.title}
+                </h4>
+                <span className="px-1.5 py-0.5 rounded-full bg-white/12 border border-white/20 text-[7.5px] font-extrabold text-white/95 shrink-0">
+                  {item.year || "2024"}
                 </span>
               </div>
-              <p className="text-[9.5px] text-white/80 line-clamp-2 leading-snug">
+              <p className="text-[9px] text-white/90 line-clamp-2 leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]">
                 {item.overview}
               </p>
-              <div className="flex items-center gap-1.5 mt-1">
+              <div className="flex items-center gap-1.5 mt-0.5">
                 {onQuickWatch && (
                   <button
                     type="button"
@@ -473,9 +474,9 @@ const MoviePosterCard = React.memo(
                       e.stopPropagation();
                       onQuickWatch(item);
                     }}
-                    className="lg-cinema-primary-pill flex-1 py-1 px-2 rounded-full text-[9.5px] font-extrabold text-white flex items-center justify-center gap-1 cursor-pointer"
+                    className="lg-cinema-primary-pill flex-1 py-1 px-2 rounded-full text-[9px] font-extrabold text-white flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <Play size={10} className="fill-current" />
+                    <Play size={9.5} className="fill-current" />
                     <span>{t("movies.meta.watchNow") || "Watch"}</span>
                   </button>
                 )}
@@ -485,10 +486,10 @@ const MoviePosterCard = React.memo(
                     e.stopPropagation();
                     setSelectedItemId(item.id);
                   }}
-                  className="lg-cinema-action-pill py-1 px-2.5 rounded-full text-[9.5px] font-bold text-white flex items-center justify-center gap-1 cursor-pointer"
+                  className="lg-cinema-action-pill py-1 px-2 rounded-full text-[9px] font-bold text-white flex items-center justify-center gap-1 cursor-pointer"
                   title={t("movies.meta.moreInfo") || "Details"}
                 >
-                  <Info size={10} />
+                  <Info size={9.5} />
                 </button>
               </div>
             </m.div>
@@ -827,6 +828,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [showHeroTrailer, setShowHeroTrailer] = useState(false);
+  const [trailerFallbackToYoutube, setTrailerFallbackToYoutube] = useState(false);
   const [isWatchingInGallery, setIsWatchingInGallery] = useState(false);
   const [activeGalleryServerIdx, setActiveGalleryServerIdx] = useState(0);
   const [isPlayerLoading, setIsPlayerLoading] = useState(false);
@@ -836,6 +838,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [extractedStreams, setExtractedStreams] = useState<ExtractedVideoStream[]>([]);
   const [externalSubtitles, setExternalSubtitles] = useState<ExtractedSubtitleTrack[]>([]);
   const externalSubtitlesRef = useRef<ExtractedSubtitleTrack[]>([]);
+  const [isLoadingSubtitles, setIsLoadingSubtitles] = useState(false);
+  const [subtitleOffsetSec, setSubtitleOffsetSec] = useState(0);
+  const [activeTrackCues, setActiveTrackCues] = useState<SubtitleCue[]>([]);
   const [activeExtractedIdx, setActiveExtractedIdx] = useState(0);
   const [useDirectUrlFallback, setUseDirectUrlFallback] = useState(false);
   const [playerRenderMode, setPlayerRenderMode] = useState<
@@ -1049,9 +1054,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       }
 
       try {
+        setIsLoadingSubtitles(true);
         // 2. Query Cloudflare Worker across all 4 servers AND Wyzie/OpenSubtitles in parallel
+        // Wrap fetchExtractedVideos in .catch so external subtitles are NEVER lost if Worker fails
         const [videos, extSubs] = await Promise.all([
-          fetchExtractedVideos(generatedTargetUrl, abortController.signal),
+          fetchExtractedVideos(
+            generatedTargetUrl,
+            abortController.signal,
+          ).catch(() => [] as ExtractedVideoStream[]),
           detailedItem
             ? fetchExternalSubtitles({
                 tmdbId: detailedItem.id,
@@ -1076,6 +1086,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         }
         externalSubtitlesRef.current = extSubs;
         setExternalSubtitles(extSubs);
+        setIsLoadingSubtitles(false);
 
         if (videos.length === 0) {
           setExtractedStreams([]);
@@ -1134,6 +1145,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         }
       } catch {
         if (cancelled || attemptTokenRef.current !== currentToken) return;
+        setIsLoadingSubtitles(false);
         setExtractedStreams([]);
         playAttemptStartedAtRef.current = performance.now();
         setPlayerRenderMode("iframe");
@@ -1393,8 +1405,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     }
   }, [isWatchingInGallery, showHeroTrailer, cleanupDirectVideoPlayer, clearExternalSubtitleBlobs]);
 
+  // Unified subtitle list across ALL player modes (direct, clean-embed, iframe)
   const activeSubtitlesList = useMemo<ExtractedSubtitleTrack[]>(() => {
-    if (!isWatchingInGallery || playerRenderMode !== "direct") return [];
+    if (!isWatchingInGallery) return [];
     const streamSubs =
       extractedStreams[activeExtractedIdx]?.subtitles ||
       extractedStreams[0]?.subtitles;
@@ -1402,7 +1415,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return externalSubtitles;
   }, [
     isWatchingInGallery,
-    playerRenderMode,
     extractedStreams,
     activeExtractedIdx,
     externalSubtitles,
@@ -1412,23 +1424,138 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   useEffect(() => {
     if (activeSubtitlesList.length === 0) {
       setActiveSubtitleIdx(null);
+      setActiveTrackCues([]);
       return;
     }
     const defaultIdx = activeSubtitlesList.findIndex((s) => s.default);
     setActiveSubtitleIdx(defaultIdx >= 0 ? defaultIdx : 0);
   }, [activeSubtitlesList]);
 
-  // Synchronize HTML5 <video> TextTrackList mode with activeSubtitleIdx
+  // Load parsed cues for the active subtitle track so the live subtitle overlay works in every player mode
+  useEffect(() => {
+    let cancelled = false;
+    if (
+      !isWatchingInGallery ||
+      activeSubtitleIdx === null ||
+      !activeSubtitlesList[activeSubtitleIdx]
+    ) {
+      setActiveTrackCues([]);
+      return undefined;
+    }
+    const track = activeSubtitlesList[activeSubtitleIdx];
+    if (Array.isArray(track.cues) && track.cues.length > 0) {
+      setActiveTrackCues(track.cues);
+      return undefined;
+    }
+    void loadTrackCuesIfNeeded(track).then((cues) => {
+      if (!cancelled) {
+        setActiveTrackCues(cues);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isWatchingInGallery, activeSubtitleIdx, activeSubtitlesList]);
+
+  // Active subtitle cue text for the current timestamp (adjusted by subtitleOffsetSec)
+  const activeCueText = useMemo(() => {
+    if (
+      !isWatchingInGallery ||
+      activeSubtitleIdx === null ||
+      activeTrackCues.length === 0
+    ) {
+      return "";
+    }
+    const effectiveTime = Math.max(0, videoCurrentTime - subtitleOffsetSec);
+    // Binary or linear search for matching cues
+    const matches = activeTrackCues.filter(
+      (c) => effectiveTime >= c.start && effectiveTime <= c.end,
+    );
+    if (matches.length === 0) return "";
+    return matches.map((m) => m.text).join("\n");
+  }, [
+    isWatchingInGallery,
+    activeSubtitleIdx,
+    activeTrackCues,
+    videoCurrentTime,
+    subtitleOffsetSec,
+  ]);
+
+  // Listen to postMessage time updates from embedded iframe players AND run a smooth fallback timer for clean-embed/iframe subtitle sync
+  useEffect(() => {
+    if (
+      !isWatchingInGallery ||
+      (playerRenderMode !== "clean-embed" && playerRenderMode !== "iframe")
+    ) {
+      return undefined;
+    }
+
+    const onPlayerMessage = (e: MessageEvent) => {
+      try {
+        const raw = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (!raw || typeof raw !== "object") return;
+        const payload = raw.data && typeof raw.data === "object" ? raw.data : raw;
+        if (typeof payload.currentTime === "number" && Number.isFinite(payload.currentTime)) {
+          setVideoCurrentTime(payload.currentTime);
+        } else if (typeof payload.time === "number" && Number.isFinite(payload.time)) {
+          setVideoCurrentTime(payload.time);
+        }
+        if (typeof payload.duration === "number" && payload.duration > 0) {
+          setVideoDuration(payload.duration);
+        }
+        if (raw.event === "pause" || payload.event === "pause") {
+          setIsVideoPaused(true);
+        } else if (raw.event === "play" || payload.event === "play") {
+          setIsVideoPaused(false);
+        }
+      } catch {
+        // Ignore non-JSON postMessages
+      }
+    };
+
+    window.addEventListener("message", onPlayerMessage);
+    const fallbackDurationSec =
+      (detailedItem?.runtime && detailedItem.runtime > 0
+        ? detailedItem.runtime * 60
+        : detailedItem?.mediaType === "tv"
+          ? 45 * 60
+          : 120 * 60);
+    setVideoDuration((prev) => (prev > 0 ? prev : fallbackDurationSec));
+
+    const timer = setInterval(() => {
+      if (!isPlayerLoading && !isVideoPaused) {
+        setVideoCurrentTime((prev) => prev + 0.25);
+      }
+    }, 250);
+
+    return () => {
+      window.removeEventListener("message", onPlayerMessage);
+      clearInterval(timer);
+    };
+  }, [
+    isWatchingInGallery,
+    playerRenderMode,
+    isPlayerLoading,
+    isVideoPaused,
+    detailedItem,
+  ]);
+
+  // Synchronize HTML5 <video> TextTrackList mode with activeSubtitleIdx (use hidden when custom overlay is active to prevent duplicate captions)
   const syncVideoTextTracks = useCallback(
     (selectedIdx: number | null) => {
       const video = videoElementRef.current;
       if (!video || !video.textTracks) return;
       const tracks = video.textTracks;
       for (let i = 0; i < tracks.length; i += 1) {
-        tracks[i].mode = selectedIdx !== null && i === selectedIdx ? "showing" : "disabled";
+        tracks[i].mode =
+          selectedIdx !== null && i === selectedIdx
+            ? activeTrackCues.length > 0
+              ? "hidden"
+              : "showing"
+            : "disabled";
       }
     },
-    [],
+    [activeTrackCues.length],
   );
 
   useEffect(() => {
@@ -1487,43 +1614,73 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const handleToggleVideoPlay = useCallback(() => {
     const video = videoElementRef.current;
-    if (!video) return;
-    if (video.paused) {
-      void video.play().catch(() => {});
-      setIsVideoPaused(false);
+    if (video && playerRenderMode === "direct") {
+      if (video.paused) {
+        void video.play().catch(() => {});
+        setIsVideoPaused(false);
+      } else {
+        video.pause();
+        setIsVideoPaused(true);
+      }
     } else {
-      video.pause();
-      setIsVideoPaused(true);
+      setIsVideoPaused((prev) => !prev);
     }
     bumpControlsVisibility();
-  }, [bumpControlsVisibility]);
+  }, [playerRenderMode, bumpControlsVisibility]);
 
   const handleSeekBy = useCallback(
     (deltaSeconds: number) => {
       const video = videoElementRef.current;
-      if (!video) return;
-      const duration = Number.isFinite(video.duration) ? video.duration : 0;
-      const nextTime = Math.max(
-        0,
-        Math.min(duration || Number.MAX_SAFE_INTEGER, (video.currentTime || 0) + deltaSeconds),
-      );
-      video.currentTime = nextTime;
-      setVideoCurrentTime(nextTime);
+      if (video && playerRenderMode === "direct") {
+        const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        const nextTime = Math.max(
+          0,
+          Math.min(
+            duration || Number.MAX_SAFE_INTEGER,
+            (video.currentTime || 0) + deltaSeconds,
+          ),
+        );
+        video.currentTime = nextTime;
+        setVideoCurrentTime(nextTime);
+      } else {
+        setVideoCurrentTime((prev) =>
+          Math.max(
+            0,
+            Math.min(videoDuration || Number.MAX_SAFE_INTEGER, prev + deltaSeconds),
+          ),
+        );
+      }
       bumpControlsVisibility();
     },
-    [bumpControlsVisibility],
+    [playerRenderMode, videoDuration, bumpControlsVisibility],
   );
 
   const handleSeekTo = useCallback(
     (nextTime: number) => {
+      if (!Number.isFinite(nextTime)) return;
       const video = videoElementRef.current;
-      if (!video || !Number.isFinite(nextTime)) return;
-      video.currentTime = nextTime;
+      if (video && playerRenderMode === "direct") {
+        video.currentTime = nextTime;
+      }
       setVideoCurrentTime(nextTime);
       bumpControlsVisibility();
     },
-    [bumpControlsVisibility],
+    [playerRenderMode, bumpControlsVisibility],
   );
+
+  // Automatic IMDb trailer watchdog: if direct IMDb trailer doesn't load metadata within 5.5s, fall back to YouTube trailer automatically
+  useEffect(() => {
+    if (!showHeroTrailer || !activeImdbId || trailerFallbackToYoutube) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      const vid = videoElementRef.current;
+      if ((!vid || vid.readyState === 0) && detailedItem?.trailerKey) {
+        setTrailerFallbackToYoutube(true);
+      }
+    }, 5500);
+    return () => clearTimeout(timer);
+  }, [showHeroTrailer, activeImdbId, trailerFallbackToYoutube, detailedItem?.trailerKey]);
 
   const handleToggleVideoMute = useCallback(() => {
     const video = videoElementRef.current;
@@ -1614,11 +1771,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     clearExternalSubtitleBlobs();
     attemptTokenRef.current += 1;
     setShowHeroTrailer(false);
+    setTrailerFallbackToYoutube(false);
     setIsWatchingInGallery(false);
     setIsPlayerLoading(false);
     setAllServersFailed(false);
     setIsCssFullscreen(false);
     setIsSubtitleMenuOpen(false);
+    setSubtitleOffsetSec(0);
+    setActiveTrackCues([]);
     setVideoCurrentTime(0);
     setVideoDuration(0);
     setIsVideoPaused(false);
@@ -2152,7 +2312,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         const detailsAppend = isTv ? 'videos,credits,similar,external_ids' : 'videos,credits,similar,release_dates';
 
         const detail = await fetchWithCache(
-          `${TMDB_BASE_URL}/${detailType}/${selectedItemId}?api_key=${tmdbKey}${langParam}&append_to_response=${detailsAppend}`
+          `${TMDB_BASE_URL}/${detailType}/${selectedItemId}?api_key=${tmdbKey}${langParam}&include_video_language=${currentLang},en,null&append_to_response=${detailsAppend}`
         );
 
         let imdbRating = "N/A";
@@ -2836,7 +2996,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 >
                   {/* Sleek Semi-Transparent Top Control Bar ABOVE Gallery Stage when Movie or Trailer is actively playing */}
                   {((isWatchingInGallery && Boolean(activeGallerySource)) ||
-                    (showHeroTrailer && Boolean(activeImdbId))) && (
+                    (showHeroTrailer && Boolean(activeImdbId || detailedItem.trailerKey))) && (
                     <div
                       className={`lg-cinema-gallery-top-bar flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-2xl ${
                         isWatchingInGallery
@@ -2846,17 +3006,19 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       dir="ltr"
                     >
                       <div className="flex flex-wrap items-center gap-2 min-w-0">
-                        {activeImdbId && (
+                        {(activeImdbId || detailedItem.trailerKey) && (
                           <button
                             type="button"
                             onClick={() => {
                               if (showHeroTrailer) {
                                 setShowHeroTrailer(false);
+                                setTrailerFallbackToYoutube(false);
                               } else {
                                 setIsWatchingInGallery(false);
                                 setVideoCurrentTime(0);
                                 setVideoDuration(0);
                                 setIsVideoPaused(false);
+                                setTrailerFallbackToYoutube(!activeImdbId);
                                 setShowHeroTrailer(true);
                               }
                             }}
@@ -2916,6 +3078,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             }
                             setIsWatchingInGallery(false);
                             setShowHeroTrailer(false);
+                            setTrailerFallbackToYoutube(false);
                             setIsCssFullscreen(false);
                             setIsSubtitleMenuOpen(false);
                           }}
@@ -3143,6 +3306,24 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             />
                           )}
 
+                        {/* Live Cinema Subtitle Overlay (Rendered above video/iframe across ALL player modes) */}
+                        {!allServersFailed &&
+                          activeSubtitleIdx !== null &&
+                          Boolean(activeCueText) && (
+                            <div
+                              className="lg-cinema-subtitle-overlay"
+                              dir={
+                                activeSubtitlesList[activeSubtitleIdx]?.lang === "ar"
+                                  ? "rtl"
+                                  : "ltr"
+                              }
+                            >
+                              <span className="lg-cinema-subtitle-cue">
+                                {activeCueText}
+                              </span>
+                            </div>
+                          )}
+
                         {/* Pure Visual Eye Loader Overlay (Zero text, pointer-events-none) */}
                         {(isPlayerLoading || playerRenderMode === "extracting") && !allServersFailed && (
                           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/90 pointer-events-none">
@@ -3168,34 +3349,47 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           </div>
                         )}
                       </div>
-                    ) : showHeroTrailer && activeImdbId ? (
+                    ) : showHeroTrailer && (activeImdbId || detailedItem.trailerKey) ? (
                       <div className="relative w-full h-full bg-black">
-                        <video
-                          ref={videoElementRef}
-                          key={`imdb-trailer-${activeImdbId}`}
-                          src={`https://imdb.iamidiotareyoutoo.com/media/${encodeURIComponent(activeImdbId)}`}
-                          className="w-full h-full border-0 bg-black block object-contain cursor-pointer"
-                          autoPlay
-                          playsInline
-                          onClick={handleToggleVideoPlay}
-                          onDoubleClick={handleToggleGalleryFullscreen}
-                          onPlay={() => setIsVideoPaused(false)}
-                          onPause={() => setIsVideoPaused(true)}
-                          onTimeUpdate={(e) =>
-                            setVideoCurrentTime(e.currentTarget.currentTime || 0)
-                          }
-                          onLoadedMetadata={(e) => {
-                            setVideoDuration(e.currentTarget.duration || 0);
-                            setIsVideoPaused(e.currentTarget.paused);
-                          }}
-                          onVolumeChange={(e) => {
-                            setVideoVolume(e.currentTarget.volume);
-                            setIsVideoMuted(e.currentTarget.muted);
-                          }}
-                          onError={() => {
-                            setShowHeroTrailer(false);
-                          }}
-                        />
+                        {activeImdbId && !trailerFallbackToYoutube ? (
+                          <video
+                            ref={videoElementRef}
+                            key={`imdb-trailer-${activeImdbId}`}
+                            src={`https://imdb.iamidiotareyoutoo.com/media/${encodeURIComponent(activeImdbId)}`}
+                            className="w-full h-full border-0 bg-black block object-contain cursor-pointer"
+                            controls
+                            autoPlay
+                            playsInline
+                            onPlay={() => setIsVideoPaused(false)}
+                            onPause={() => setIsVideoPaused(true)}
+                            onTimeUpdate={(e) =>
+                              setVideoCurrentTime(e.currentTarget.currentTime || 0)
+                            }
+                            onLoadedMetadata={(e) => {
+                              setVideoDuration(e.currentTarget.duration || 0);
+                              setIsVideoPaused(e.currentTarget.paused);
+                            }}
+                            onError={() => {
+                              if (detailedItem.trailerKey) {
+                                setTrailerFallbackToYoutube(true);
+                              } else {
+                                setShowHeroTrailer(false);
+                              }
+                            }}
+                          />
+                        ) : detailedItem.trailerKey ? (
+                          <iframe
+                            key={`yt-trailer-${detailedItem.trailerKey}`}
+                            src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(detailedItem.trailerKey)}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                            title={`${detailedItem.title} - Official Trailer`}
+                            className="w-full h-full border-0 bg-black block"
+                            width="100%"
+                            height="100%"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                            allowFullScreen
+                          />
+                        ) : null}
                       </div>
                     ) : (
                       <>
@@ -3298,7 +3492,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         {/* Top Floating Glass Controls inside Gallery Stage (Only visible when NOT playing) */}
                         <div className="absolute top-3.5 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
                           <div className="pointer-events-auto">
-                            {activeImdbId && (
+                            {(activeImdbId || detailedItem.trailerKey) && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -3306,6 +3500,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                   setVideoCurrentTime(0);
                                   setVideoDuration(0);
                                   setIsVideoPaused(false);
+                                  setTrailerFallbackToYoutube(!activeImdbId);
                                   setShowHeroTrailer(true);
                                 }}
                                 className="lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
@@ -3327,22 +3522,19 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       </>
                     )}
 
-                    {/* Floating Liquid Glass Player Controls Bar inside Fullscreen Stage (Auto-hides after 3s of mouse inactivity) */}
-                    {isAnyFullscreen &&
-                      ((isWatchingInGallery &&
-                        !allServersFailed &&
-                        playerRenderMode === "direct") ||
-                        (showHeroTrailer && Boolean(activeImdbId))) && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          onMouseMove={bumpControlsVisibility}
-                          className={`lg-cinema-player-controls lg-cinema-player-controls--fullscreen rounded-2xl px-4 py-2.5 flex flex-col gap-2 ${
-                            isControlsVisible
-                              ? "opacity-100 translate-y-0"
-                              : "opacity-0 translate-y-3 pointer-events-none"
-                          }`}
-                          dir="ltr"
-                        >
+                    {/* Floating Liquid Glass Movie/Series Player & Subtitle Controls Bar inside Fullscreen Stage */}
+                    {isAnyFullscreen && isWatchingInGallery && !allServersFailed && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseMove={bumpControlsVisibility}
+                        className={`lg-cinema-player-controls lg-cinema-player-controls--fullscreen rounded-2xl px-4 py-2.5 flex flex-col gap-2 ${
+                          isControlsVisible
+                            ? "opacity-100 translate-y-0"
+                            : "opacity-0 translate-y-3 pointer-events-none"
+                        }`}
+                        dir="ltr"
+                      >
+                        {(playerRenderMode === "direct" || activeSubtitleIdx !== null) && (
                           <div className="flex items-center gap-3">
                             <span className="text-[11px] font-bold text-white/85 tabular-nums shrink-0">
                               {formatPlayerTime(videoCurrentTime)}
@@ -3350,28 +3542,273 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             <input
                               type="range"
                               min={0}
-                              max={Math.max(1, videoDuration || 0)}
+                              max={Math.max(1, videoDuration || 7200)}
                               step={0.5}
                               value={Math.min(
                                 videoCurrentTime,
-                                Math.max(1, videoDuration || 0),
+                                Math.max(1, videoDuration || 7200),
                               )}
                               onChange={(e) => handleSeekTo(Number(e.target.value))}
                               className="lg-cinema-seek-slider w-full"
                               aria-label="Seek timeline"
                             />
                             <span className="text-[11px] font-bold text-white/75 tabular-nums shrink-0">
-                              {formatPlayerTime(videoDuration)}
+                              {formatPlayerTime(videoDuration || 7200)}
                             </span>
                           </div>
+                        )}
 
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                            {(playerRenderMode === "direct" || activeSubtitleIdx !== null) && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={handleToggleVideoPlay}
+                                  className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
+                                  aria-label={isVideoPaused ? "Play" : "Pause"}
+                                >
+                                  {isVideoPaused ? (
+                                    <Play size={15} className="fill-current ms-0.5" />
+                                  ) : (
+                                    <Pause size={15} />
+                                  )}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleSeekBy(-10)}
+                                  className="lg-cinema-action-pill px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
+                                  title="-10s"
+                                >
+                                  <RotateCcw size={13} />
+                                  <span>10s</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleSeekBy(10)}
+                                  className="lg-cinema-action-pill px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
+                                  title="+10s"
+                                >
+                                  <RotateCw size={13} />
+                                  <span>10s</span>
+                                </button>
+                              </>
+                            )}
+
+                            {playerRenderMode === "direct" && (
+                              <div className="flex items-center gap-1.5 ps-1">
+                                <button
+                                  type="button"
+                                  onClick={handleToggleVideoMute}
+                                  className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] cursor-pointer"
+                                  aria-label={isVideoMuted ? "Unmute" : "Mute"}
+                                >
+                                  {isVideoMuted || videoVolume === 0 ? (
+                                    <VolumeX size={14} />
+                                  ) : (
+                                    <Volume2 size={14} />
+                                  )}
+                                </button>
+                                <input
+                                  type="range"
+                                  min={0}
+                                  max={1}
+                                  step={0.05}
+                                  value={isVideoMuted ? 0 : videoVolume}
+                                  onChange={(e) =>
+                                    handleChangeVideoVolume(Number(e.target.value))
+                                  }
+                                  className="lg-cinema-seek-slider hidden sm:block w-20"
+                                  aria-label="Volume"
+                                />
+                              </div>
+                            )}
+
+                            {activeSubtitleIdx !== null && (
+                              <div className="flex items-center gap-1 ps-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSubtitleOffsetSec((s) =>
+                                      Number((s - 0.5).toFixed(1)),
+                                    )
+                                  }
+                                  className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
+                                  title="Sync Subtitles -0.5s"
+                                >
+                                  -0.5s
+                                </button>
+                                {subtitleOffsetSec !== 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSubtitleOffsetSec(0)}
+                                    className="px-1.5 py-0.5 rounded bg-rose-500/30 border border-rose-300/40 text-[10px] font-mono text-white cursor-pointer"
+                                    title="Reset subtitle offset"
+                                  >
+                                    {subtitleOffsetSec > 0
+                                      ? `+${subtitleOffsetSec}s`
+                                      : `${subtitleOffsetSec}s`}
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSubtitleOffsetSec((s) =>
+                                      Number((s + 0.5).toFixed(1)),
+                                    )
+                                  }
+                                  className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
+                                  title="Sync Subtitles +0.5s"
+                                >
+                                  +0.5s
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 relative ms-auto">
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setIsSubtitleMenuOpen((prev) => !prev)
+                                }
+                                className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
+                                  activeSubtitleIdx !== null &&
+                                  activeSubtitlesList[activeSubtitleIdx]
+                                    ? "!bg-rose-600/45 !border-rose-300/70 text-white"
+                                    : "text-white/85"
+                                }`}
+                                aria-label="Subtitles (CC)"
+                                title="Subtitles (CC)"
+                              >
+                                <Subtitles size={14} />
+                                <span>
+                                  {activeSubtitleIdx !== null &&
+                                  activeSubtitlesList[activeSubtitleIdx]
+                                    ? activeSubtitlesList[
+                                        activeSubtitleIdx
+                                      ].lang.toUpperCase()
+                                    : isLoadingSubtitles
+                                      ? "CC..."
+                                      : "CC"}
+                                </span>
+                              </button>
+
+                              {isSubtitleMenuOpen && (
+                                <div className="absolute bottom-full mb-2 right-0 w-56 max-h-64 overflow-y-auto rounded-2xl p-1.5 bg-slate-950/95 border border-white/25 backdrop-blur-2xl shadow-2xl z-[10700] flex flex-col gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveSubtitleIdx(null);
+                                      syncVideoTextTracks(null);
+                                      setIsSubtitleMenuOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                                      activeSubtitleIdx === null
+                                        ? "bg-rose-600/50 text-white"
+                                        : "text-white/80 hover:bg-white/10"
+                                    }`}
+                                  >
+                                    {currentLang === "ar"
+                                      ? "إيقاف الترجمة (Off)"
+                                      : "Subtitles Off"}
+                                  </button>
+                                  {isLoadingSubtitles &&
+                                    activeSubtitlesList.length === 0 && (
+                                      <div className="px-3 py-2 text-[11px] text-white/65 font-semibold">
+                                        {currentLang === "ar"
+                                          ? "جاري البحث عن الترجمات..."
+                                          : "Fetching subtitles..."}
+                                      </div>
+                                    )}
+                                  {!isLoadingSubtitles &&
+                                    activeSubtitlesList.length === 0 && (
+                                      <div className="px-3 py-2 text-[11px] text-white/60 font-semibold">
+                                        {currentLang === "ar"
+                                          ? "لا تتوفر ترجمة خارجية لهذا العرض"
+                                          : "No external subtitles found"}
+                                      </div>
+                                    )}
+                                  {activeSubtitlesList.map((sub, idx) => (
+                                    <button
+                                      key={`fs-sub-${sub.lang}-${idx}`}
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveSubtitleIdx(idx);
+                                        syncVideoTextTracks(idx);
+                                        setIsSubtitleMenuOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer truncate ${
+                                        activeSubtitleIdx === idx
+                                          ? "bg-rose-600/50 text-white"
+                                          : "text-white/85 hover:bg-white/10"
+                                      }`}
+                                    >
+                                      {sub.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={handleToggleGalleryFullscreen}
+                              className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
+                              aria-label={t("movies.player.exitFullscreen")}
+                            >
+                              <Minimize2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* External Liquid Glass Movie/Series Player & Subtitle Controls Bar Directly BELOW Gallery Stage (Always visible across ALL Movie/Series modes: direct, clean-embed, iframe) */}
+                  {!isAnyFullscreen && isWatchingInGallery && !allServersFailed && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="lg-cinema-player-controls rounded-2xl px-3.5 py-2.5 flex flex-col gap-2"
+                      dir="ltr"
+                    >
+                      {(playerRenderMode === "direct" || activeSubtitleIdx !== null) && (
+                        <div className="flex items-center gap-3">
+                          <span className="text-[11px] font-bold text-white/85 tabular-nums shrink-0">
+                            {formatPlayerTime(videoCurrentTime)}
+                          </span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={Math.max(1, videoDuration || 7200)}
+                            step={0.5}
+                            value={Math.min(
+                              videoCurrentTime,
+                              Math.max(1, videoDuration || 7200),
+                            )}
+                            onChange={(e) => handleSeekTo(Number(e.target.value))}
+                            className="lg-cinema-seek-slider w-full"
+                            aria-label="Seek timeline"
+                          />
+                          <span className="text-[11px] font-bold text-white/75 tabular-nums shrink-0">
+                            {formatPlayerTime(videoDuration || 7200)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          {(playerRenderMode === "direct" || activeSubtitleIdx !== null) && (
+                            <>
                               <button
                                 type="button"
                                 onClick={handleToggleVideoPlay}
                                 className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
                                 aria-label={isVideoPaused ? "Play" : "Pause"}
+                                title={isVideoPaused ? "Play" : "Pause"}
                               >
                                 {isVideoPaused ? (
                                   <Play size={15} className="fill-current ms-0.5" />
@@ -3399,188 +3836,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 <RotateCw size={13} />
                                 <span>10s</span>
                               </button>
+                            </>
+                          )}
 
-                              <div className="flex items-center gap-1.5 ps-1">
-                                <button
-                                  type="button"
-                                  onClick={handleToggleVideoMute}
-                                  className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] cursor-pointer"
-                                  aria-label={isVideoMuted ? "Unmute" : "Mute"}
-                                >
-                                  {isVideoMuted || videoVolume === 0 ? (
-                                    <VolumeX size={14} />
-                                  ) : (
-                                    <Volume2 size={14} />
-                                  )}
-                                </button>
-                                <input
-                                  type="range"
-                                  min={0}
-                                  max={1}
-                                  step={0.05}
-                                  value={isVideoMuted ? 0 : videoVolume}
-                                  onChange={(e) =>
-                                    handleChangeVideoVolume(Number(e.target.value))
-                                  }
-                                  className="lg-cinema-seek-slider hidden sm:block w-20"
-                                  aria-label="Volume"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 relative">
-                              {isWatchingInGallery && playerRenderMode === "direct" && (
-                                <div className="relative">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setIsSubtitleMenuOpen((prev) => !prev)
-                                    }
-                                    className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
-                                      activeSubtitleIdx !== null &&
-                                      activeSubtitlesList[activeSubtitleIdx]
-                                        ? "!bg-rose-600/45 !border-rose-300/70 text-white"
-                                        : "text-white/85"
-                                    }`}
-                                    aria-label="Subtitles (CC)"
-                                    title="Subtitles (CC)"
-                                  >
-                                    <Subtitles size={14} />
-                                    <span>
-                                      {activeSubtitleIdx !== null &&
-                                      activeSubtitlesList[activeSubtitleIdx]
-                                        ? activeSubtitlesList[
-                                            activeSubtitleIdx
-                                          ].lang.toUpperCase()
-                                        : "CC"}
-                                    </span>
-                                  </button>
-
-                                  {isSubtitleMenuOpen && (
-                                    <div className="absolute bottom-full mb-2 right-0 w-52 max-h-60 overflow-y-auto rounded-2xl p-1.5 bg-slate-950/95 border border-white/25 backdrop-blur-2xl shadow-2xl z-[10700] flex flex-col gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveSubtitleIdx(null);
-                                          syncVideoTextTracks(null);
-                                          setIsSubtitleMenuOpen(false);
-                                        }}
-                                        className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                                          activeSubtitleIdx === null
-                                            ? "bg-rose-600/50 text-white"
-                                            : "text-white/80 hover:bg-white/10"
-                                        }`}
-                                      >
-                                        {currentLang === "ar"
-                                          ? "إيقاف الترجمة (Off)"
-                                          : "Subtitles Off"}
-                                      </button>
-                                      {activeSubtitlesList.map((sub, idx) => (
-                                        <button
-                                          key={`fs-sub-${sub.lang}-${idx}`}
-                                          type="button"
-                                          onClick={() => {
-                                            setActiveSubtitleIdx(idx);
-                                            syncVideoTextTracks(idx);
-                                            setIsSubtitleMenuOpen(false);
-                                          }}
-                                          className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer truncate ${
-                                            activeSubtitleIdx === idx
-                                              ? "bg-rose-600/50 text-white"
-                                              : "text-white/85 hover:bg-white/10"
-                                          }`}
-                                        >
-                                          {sub.label}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={handleToggleGalleryFullscreen}
-                                className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
-                                aria-label={t("movies.player.exitFullscreen")}
-                              >
-                                <Minimize2 size={15} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                  </div>
-
-                  {/* External Liquid Glass Player Controls Bar Directly BELOW Gallery Stage (Normal Mode) */}
-                  {!isAnyFullscreen &&
-                    ((isWatchingInGallery &&
-                      !allServersFailed &&
-                      playerRenderMode === "direct") ||
-                      (showHeroTrailer && Boolean(activeImdbId))) && (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="lg-cinema-player-controls rounded-2xl px-3.5 py-2.5 flex flex-col gap-2"
-                        dir="ltr"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] font-bold text-white/85 tabular-nums shrink-0">
-                            {formatPlayerTime(videoCurrentTime)}
-                          </span>
-                          <input
-                            type="range"
-                            min={0}
-                            max={Math.max(1, videoDuration || 0)}
-                            step={0.5}
-                            value={Math.min(
-                              videoCurrentTime,
-                              Math.max(1, videoDuration || 0),
-                            )}
-                            onChange={(e) => handleSeekTo(Number(e.target.value))}
-                            className="lg-cinema-seek-slider w-full"
-                            aria-label="Seek timeline"
-                          />
-                          <span className="text-[11px] font-bold text-white/75 tabular-nums shrink-0">
-                            {formatPlayerTime(videoDuration)}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <button
-                              type="button"
-                              onClick={handleToggleVideoPlay}
-                              className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
-                              aria-label={isVideoPaused ? "Play" : "Pause"}
-                              title={isVideoPaused ? "Play" : "Pause"}
-                            >
-                              {isVideoPaused ? (
-                                <Play size={15} className="fill-current ms-0.5" />
-                              ) : (
-                                <Pause size={15} />
-                              )}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleSeekBy(-10)}
-                              className="lg-cinema-action-pill px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
-                              title="-10s"
-                            >
-                              <RotateCcw size={13} />
-                              <span>10s</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleSeekBy(10)}
-                              className="lg-cinema-action-pill px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
-                              title="+10s"
-                            >
-                              <RotateCw size={13} />
-                              <span>10s</span>
-                            </button>
-
+                          {playerRenderMode === "direct" && (
                             <div className="flex items-center gap-1.5 ps-1">
                               <button
                                 type="button"
@@ -3607,91 +3866,157 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 aria-label="Volume"
                               />
                             </div>
-                          </div>
+                          )}
 
-                          <div className="flex items-center gap-2 relative">
-                            {isWatchingInGallery && playerRenderMode === "direct" && (
-                              <div className="relative">
+                          {activeSubtitleIdx !== null && (
+                            <div className="flex items-center gap-1 ps-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSubtitleOffsetSec((s) =>
+                                    Number((s - 0.5).toFixed(1)),
+                                  )
+                                }
+                                className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
+                                title={
+                                  currentLang === "ar"
+                                    ? "تقديم الترجمة -0.5 ثانية"
+                                    : "Sync Subtitles -0.5s"
+                                }
+                              >
+                                -0.5s
+                              </button>
+                              {subtitleOffsetSec !== 0 && (
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    setIsSubtitleMenuOpen((prev) => !prev)
-                                  }
-                                  className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
-                                    activeSubtitleIdx !== null &&
-                                    activeSubtitlesList[activeSubtitleIdx]
-                                      ? "!bg-rose-600/45 !border-rose-300/70 text-white"
-                                      : "text-white/85"
-                                  }`}
-                                  aria-label="Subtitles (CC)"
-                                  title="Subtitles (CC)"
+                                  onClick={() => setSubtitleOffsetSec(0)}
+                                  className="px-1.5 py-0.5 rounded bg-rose-500/30 border border-rose-300/40 text-[10px] font-mono text-white cursor-pointer"
+                                  title="Reset subtitle offset"
                                 >
-                                  <Subtitles size={14} />
-                                  <span>
-                                    {activeSubtitleIdx !== null &&
-                                    activeSubtitlesList[activeSubtitleIdx]
-                                      ? activeSubtitlesList[
-                                          activeSubtitleIdx
-                                        ].lang.toUpperCase()
-                                      : "CC"}
-                                  </span>
+                                  {subtitleOffsetSec > 0
+                                    ? `+${subtitleOffsetSec}s`
+                                    : `${subtitleOffsetSec}s`}
                                 </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSubtitleOffsetSec((s) =>
+                                    Number((s + 0.5).toFixed(1)),
+                                  )
+                                }
+                                className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
+                                title={
+                                  currentLang === "ar"
+                                    ? "تأخير الترجمة +0.5 ثانية"
+                                    : "Sync Subtitles +0.5s"
+                                }
+                              >
+                                +0.5s
+                              </button>
+                            </div>
+                          )}
+                        </div>
 
-                                {isSubtitleMenuOpen && (
-                                  <div className="absolute bottom-full mb-2 right-0 w-52 max-h-60 overflow-y-auto rounded-2xl p-1.5 bg-slate-950/95 border border-white/25 backdrop-blur-2xl shadow-2xl z-[10700] flex flex-col gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveSubtitleIdx(null);
-                                        syncVideoTextTracks(null);
-                                        setIsSubtitleMenuOpen(false);
-                                      }}
-                                      className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                                        activeSubtitleIdx === null
-                                          ? "bg-rose-600/50 text-white"
-                                          : "text-white/80 hover:bg-white/10"
-                                      }`}
-                                    >
-                                      {currentLang === "ar"
-                                        ? "إيقاف الترجمة (Off)"
-                                        : "Subtitles Off"}
-                                    </button>
-                                    {activeSubtitlesList.map((sub, idx) => (
-                                      <button
-                                        key={`norm-sub-${sub.lang}-${idx}`}
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveSubtitleIdx(idx);
-                                          syncVideoTextTracks(idx);
-                                          setIsSubtitleMenuOpen(false);
-                                        }}
-                                        className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer truncate ${
-                                          activeSubtitleIdx === idx
-                                            ? "bg-rose-600/50 text-white"
-                                            : "text-white/85 hover:bg-white/10"
-                                        }`}
-                                      >
-                                        {sub.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
+                        <div className="flex items-center gap-2 relative ms-auto">
+                          <div className="relative">
                             <button
                               type="button"
-                              onClick={handleToggleGalleryFullscreen}
-                              className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
-                              aria-label={t("movies.player.fullscreen")}
-                              title={t("movies.player.fullscreen")}
+                              onClick={() =>
+                                setIsSubtitleMenuOpen((prev) => !prev)
+                              }
+                              className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
+                                activeSubtitleIdx !== null &&
+                                activeSubtitlesList[activeSubtitleIdx]
+                                  ? "!bg-rose-600/45 !border-rose-300/70 text-white"
+                                  : "text-white/85"
+                              }`}
+                              aria-label="Subtitles (CC)"
+                              title="Subtitles (CC)"
                             >
-                              <Maximize2 size={15} />
+                              <Subtitles size={14} />
+                              <span>
+                                {activeSubtitleIdx !== null &&
+                                activeSubtitlesList[activeSubtitleIdx]
+                                  ? activeSubtitlesList[
+                                      activeSubtitleIdx
+                                    ].lang.toUpperCase()
+                                  : isLoadingSubtitles
+                                    ? "CC..."
+                                    : "CC"}
+                              </span>
                             </button>
+
+                            {isSubtitleMenuOpen && (
+                              <div className="absolute bottom-full mb-2 right-0 w-56 max-h-64 overflow-y-auto rounded-2xl p-1.5 bg-slate-950/95 border border-white/25 backdrop-blur-2xl shadow-2xl z-[10700] flex flex-col gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveSubtitleIdx(null);
+                                    syncVideoTextTracks(null);
+                                    setIsSubtitleMenuOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                                    activeSubtitleIdx === null
+                                      ? "bg-rose-600/50 text-white"
+                                      : "text-white/80 hover:bg-white/10"
+                                  }`}
+                                >
+                                  {currentLang === "ar"
+                                    ? "إيقاف الترجمة (Off)"
+                                    : "Subtitles Off"}
+                                </button>
+                                {isLoadingSubtitles &&
+                                  activeSubtitlesList.length === 0 && (
+                                    <div className="px-3 py-2 text-[11px] text-white/65 font-semibold">
+                                      {currentLang === "ar"
+                                        ? "جاري البحث عن الترجمات..."
+                                        : "Fetching subtitles..."}
+                                    </div>
+                                  )}
+                                {!isLoadingSubtitles &&
+                                  activeSubtitlesList.length === 0 && (
+                                    <div className="px-3 py-2 text-[11px] text-white/60 font-semibold">
+                                      {currentLang === "ar"
+                                        ? "لا تتوفر ترجمة خارجية لهذا العرض"
+                                        : "No external subtitles found"}
+                                    </div>
+                                  )}
+                                {activeSubtitlesList.map((sub, idx) => (
+                                  <button
+                                    key={`norm-sub-${sub.lang}-${idx}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveSubtitleIdx(idx);
+                                      syncVideoTextTracks(idx);
+                                      setIsSubtitleMenuOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer truncate ${
+                                      activeSubtitleIdx === idx
+                                        ? "bg-rose-600/50 text-white"
+                                        : "text-white/85 hover:bg-white/10"
+                                    }`}
+                                  >
+                                    {sub.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
+
+                          <button
+                            type="button"
+                            onClick={handleToggleGalleryFullscreen}
+                            className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
+                            aria-label={t("movies.player.fullscreen")}
+                            title={t("movies.player.fullscreen")}
+                          >
+                            <Maximize2 size={15} />
+                          </button>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  )}
 
                   {/* Liquid-Glass Season & Episode Selector Bar directly below Gallery Stage for TV Series */}
                   {detailedItem.mediaType === "tv" && (
@@ -3824,17 +4149,19 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           />
                         )}
 
-                        {activeImdbId && !detailServersOpen && (
+                        {(activeImdbId || detailedItem.trailerKey) && !detailServersOpen && (
                           <button
                             type="button"
                             onClick={() => {
                               if (showHeroTrailer) {
                                 setShowHeroTrailer(false);
+                                setTrailerFallbackToYoutube(false);
                               } else {
                                 setIsWatchingInGallery(false);
                                 setVideoCurrentTime(0);
                                 setVideoDuration(0);
                                 setIsVideoPaused(false);
+                                setTrailerFallbackToYoutube(!activeImdbId);
                                 setShowHeroTrailer(true);
                               }
                             }}

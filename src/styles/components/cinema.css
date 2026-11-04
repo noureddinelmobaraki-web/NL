@@ -426,20 +426,20 @@
 
 .nl-poster__glass-drawer {
   position: absolute;
-  inset-inline: 6px;
-  bottom: 6px;
+  inset-inline: 5px;
+  bottom: 5px;
   z-index: 5;
-  border-radius: 13px;
-  padding: 8px 9px;
+  border-radius: 14px;
+  padding: 7px 8.5px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 100%),
-    rgba(8, 12, 22, 0.78);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
-  backdrop-filter: blur(14px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+    linear-gradient(165deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.03) 100%),
+    rgba(8, 12, 22, 0.26);
+  -webkit-backdrop-filter: blur(11px) saturate(165%);
+  backdrop-filter: blur(11px) saturate(165%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.48),
-    inset 0 1px 0.8px rgba(255, 255, 255, 0.68);
+    0 6px 18px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0.8px rgba(255, 255, 255, 0.45);
 }
 
 @media (max-width: 479px) {
@@ -863,6 +863,41 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
   cursor: pointer;
   transition: transform 0.15s ease;
+}
+
+/* Live Cinema Subtitle Overlay (Works across direct, clean-embed, and iframe modes) */
+.lg-cinema-subtitle-overlay {
+  position: absolute;
+  inset-inline: 5%;
+  bottom: clamp(2.4rem, 7.5%, 4.75rem);
+  z-index: 16;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+}
+
+.lg-cinema-subtitle-cue {
+  display: inline-block;
+  max-width: min(92%, 52rem);
+  padding: 0.35rem 0.9rem;
+  border-radius: 0.75rem;
+  background: rgba(4, 7, 14, 0.66);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  backdrop-filter: blur(8px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: clamp(0.88rem, 2vw, 1.32rem);
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  white-space: pre-line;
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.95),
+    0 0 2px rgba(0, 0, 0, 1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {

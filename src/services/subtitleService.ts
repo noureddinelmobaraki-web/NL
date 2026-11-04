@@ -4,7 +4,7 @@ import {
   PUBLIC_OPENSUBTITLES_KEY,
   PUBLIC_WYZIE_KEY,
 } from "../config/publicKeys";
-import type { ExtractedSubtitleTrack } from "./videoExtractor";
+import type { ExtractedSubtitleTrack, SubtitleCue } from "./videoExtractor";
 
 const WYZIE_KEY = import.meta.env.VITE_WYZIE_API_KEY || PUBLIC_WYZIE_KEY;
 const OS_KEY =
@@ -34,6 +34,114 @@ function normalizeLangCode(raw?: string): "ar" | "en" | "fr" | string {
     return "fr";
   if (clean.startsWith("en") || clean.includes("eng")) return "en";
   return clean || "en";
+}
+
+function parseTimestampToSeconds(ts: string): number {
+  const clean = ts.trim().replace(",", ".");
+  const parts = clean.split(":");
+  if (parts.length === 3) {
+    const h = Number(parts[0]) || 0;
+    const m = Number(parts[1]) || 0;
+    const s = Number(parts[2]) || 0;
+    return h * 3600 + m * 60 + s;
+  }
+  if (parts.length === 2) {
+    const m = Number(parts[0]) || 0;
+    const s = Number(parts[1]) || 0;
+    return m * 60 + s;
+  }
+  return Number(clean) || 0;
+}
+
+/**
+ * Parses SRT or WebVTT text into an array of timed SubtitleCue objects (`{ start, end, text }`)
+ * for rendering in the live cinema subtitle overlay across all player modes (`direct`, `clean-embed`, `iframe`).
+ */
+export function parseSubtitleCues(rawText: string): SubtitleCue[] {
+  const normalized = rawText
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim();
+  if (!normalized) return [];
+
+  const blocks = normalized.split(/\n{2,}/);
+  const cues: SubtitleCue[] = [];
+  const timeRegex =
+    /((?:\d{1,2}:)?\d{2}:\d{2}[.,]\d{1,3})\s*-->\s*((?:\d{1,2}:)?\d{2}:\d{2}[.,]\d{1,3})/;
+
+  for (const block of blocks) {
+    const lines = block
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length === 0) continue;
+    if (lines[0].startsWith("WEBVTT") || lines[0].startsWith("NOTE")) continue;
+
+    let timeLineIdx = -1;
+    let match: RegExpMatchArray | null = null;
+    for (let i = 0; i < Math.min(lines.length, 3); i += 1) {
+      const m = lines[i].match(timeRegex);
+      if (m) {
+        timeLineIdx = i;
+        match = m;
+        break;
+      }
+    }
+
+    if (timeLineIdx === -1 || !match) continue;
+    const start = parseTimestampToSeconds(match[1]);
+    const end = parseTimestampToSeconds(match[2]);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      continue;
+    }
+
+    const textLines = lines
+      .slice(timeLineIdx + 1)
+      .map((line) =>
+        line
+          .replace(/\{[^}]*\}/g, "")
+          .replace(/<\/?[^>]+(>|$)/g, "")
+          .trim(),
+      )
+      .filter(Boolean);
+
+    if (textLines.length === 0) continue;
+    cues.push({
+      start,
+      end,
+      text: textLines.join("\n"),
+    });
+  }
+
+  return cues;
+}
+
+/**
+ * Loads and parses subtitle cues on-demand if a track does not already have `cues` populated.
+ */
+export async function loadTrackCuesIfNeeded(
+  track: ExtractedSubtitleTrack,
+  signal?: AbortSignal,
+): Promise<SubtitleCue[]> {
+  if (Array.isArray(track.cues) && track.cues.length > 0) {
+    return track.cues;
+  }
+  const src = track.proxiedUrl || track.url;
+  if (!src) return [];
+  try {
+    const res = await fetch(src, {
+      method: "GET",
+      signal: signal ?? AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const text = await res.text();
+    const parsed = parseSubtitleCues(text);
+    track.cues = parsed;
+    return parsed;
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -80,23 +188,26 @@ export function revokeSubtitleBlobUrls(
   }
 }
 
-async function fetchFromWyzie(
+async function queryWyzieSearch(
+  targetId: string,
   params: SubtitleFetchParams,
-): Promise<ExtractedSubtitleTrack[]> {
-  const targetId =
-    params.imdbId && /^tt\d+$/i.test(params.imdbId.trim())
-      ? params.imdbId.trim()
-      : String(params.tmdbId);
-
+  includeKey: boolean,
+): Promise<any[]> {
   const searchUrl = new URL("https://sub.wyzie.io/search");
   searchUrl.searchParams.set("id", targetId);
   searchUrl.searchParams.set("language", "ar,en,fr");
-  if (WYZIE_KEY) {
+  if (includeKey && WYZIE_KEY) {
     searchUrl.searchParams.set("key", WYZIE_KEY);
   }
   if (params.mediaType === "tv") {
-    searchUrl.searchParams.set("season", String(Math.max(1, params.season || 1)));
-    searchUrl.searchParams.set("episode", String(Math.max(1, params.episode || 1)));
+    searchUrl.searchParams.set(
+      "season",
+      String(Math.max(1, params.season || 1)),
+    );
+    searchUrl.searchParams.set(
+      "episode",
+      String(Math.max(1, params.episode || 1)),
+    );
   }
 
   const res = await fetch(searchUrl.toString(), {
@@ -108,13 +219,41 @@ async function fetchFromWyzie(
   }
 
   const payload = await res.json();
-  const list: any[] = Array.isArray(payload)
+  return Array.isArray(payload)
     ? payload
     : Array.isArray(payload?.subtitles)
       ? payload.subtitles
       : Array.isArray(payload?.results)
         ? payload.results
         : [];
+}
+
+async function fetchFromWyzie(
+  params: SubtitleFetchParams,
+): Promise<ExtractedSubtitleTrack[]> {
+  const validImdb =
+    params.imdbId && /^tt\d+$/i.test(params.imdbId.trim())
+      ? params.imdbId.trim()
+      : "";
+  const idCandidates = validImdb
+    ? [validImdb, String(params.tmdbId)]
+    : [String(params.tmdbId)];
+
+  let list: any[] = [];
+  for (const candidateId of idCandidates) {
+    try {
+      list = await queryWyzieSearch(candidateId, params, true);
+    } catch {
+      if (WYZIE_KEY) {
+        try {
+          list = await queryWyzieSearch(candidateId, params, false);
+        } catch {
+          list = [];
+        }
+      }
+    }
+    if (list.length > 0) break;
+  }
 
   // Pick first valid item per target language (ar, en, fr)
   const pickedByLang = new Map<string, any>();
@@ -136,15 +275,20 @@ async function fetchFromWyzie(
       });
       if (!subRes.ok) return;
       const srtText = await subRes.text();
+      const cues = parseSubtitleCues(srtText);
       const blobUrl = convertSrtToVttBlobUrl(srtText);
       const label =
-        LANGUAGE_LABELS[lang] || item.display || item.label || lang.toUpperCase();
+        LANGUAGE_LABELS[lang] ||
+        item.display ||
+        item.label ||
+        lang.toUpperCase();
       tracks.push({
         url: blobUrl,
         proxiedUrl: blobUrl,
         lang,
         label: `${label} (Wyzie)`,
         default: lang === "ar",
+        cues,
       });
     }),
   );
@@ -255,6 +399,7 @@ async function fetchFromOpenSubtitles(
       });
       if (!srtRes.ok) return;
       const srtText = await srtRes.text();
+      const cues = parseSubtitleCues(srtText);
       const blobUrl = convertSrtToVttBlobUrl(srtText);
       const label = LANGUAGE_LABELS[lang] || lang.toUpperCase();
       tracks.push({
@@ -263,6 +408,7 @@ async function fetchFromOpenSubtitles(
         lang,
         label: `${label} (OpenSubtitles)`,
         default: lang === "ar",
+        cues,
       });
     }),
   );

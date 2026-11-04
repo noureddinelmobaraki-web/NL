@@ -47,3 +47,9 @@
 
 .profile-orb--welcome{position:relative;width:100%;height:100%}
 
+html[data-active-page="cinema"] .profile-orb.is-docked,
+html[data-active-page="tv"] .profile-orb.is-docked,
+body.nl-cinema-active .profile-orb.is-docked {
+  display: none !important;
+}
+

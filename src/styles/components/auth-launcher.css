@@ -65,28 +65,25 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ─ الأفلام/التلفزيون: حاضر لكن مُنكمش (أيقونة فقط) ─ */
-html[data-active-page="cinema"] .auth-launcher,
-html[data-active-page="tv"] .auth-launcher,
+/* ─ الموسيقى: حاضر لكن مُنكمش (أيقونة فقط) ─ */
 html[data-active-page="music"] .auth-launcher {
   padding: 10px;
   gap: 0;
 }
-html[data-active-page="cinema"] .auth-launcher .auth-launcher__label,
-html[data-active-page="tv"] .auth-launcher .auth-launcher__label,
 html[data-active-page="music"] .auth-launcher .auth-launcher__label,
-html[data-active-page="cinema"] .auth-launcher .auth-launcher__dot,
-html[data-active-page="tv"] .auth-launcher .auth-launcher__dot,
 html[data-active-page="music"] .auth-launcher .auth-launcher__dot {
   display: none;
 }
 
-/* ─ تجارب ملء الشاشة: إخفاء ─ */
+/* ─ الأفلام والمسلسلات وتجارب ملء الشاشة: إخفاء تام لمنع التراكب مع أزرار الصوت والإغلاق ─ */
+html[data-active-page="cinema"] .auth-launcher,
+html[data-active-page="tv"] .auth-launcher,
+body.nl-cinema-active .auth-launcher,
 html[data-active-page="games"] .auth-launcher,
 html[data-active-page="xp"] .auth-launcher,
 html[data-active-page="retro"] .auth-launcher,
 html[data-active-page="liquidGlass"] .auth-launcher {
-  display: none;
+  display: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

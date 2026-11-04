@@ -2,12 +2,19 @@
 
 export const WORKER_ENDPOINT = "https://broad-block-7bd7.nordinegb2018.workers.dev/";
 
+export interface SubtitleCue {
+  start: number;
+  end: number;
+  text: string;
+}
+
 export interface ExtractedSubtitleTrack {
   url: string;
   proxiedUrl: string;
   lang: string;
   label: string;
   default?: boolean;
+  cues?: SubtitleCue[];
 }
 
 export interface ExtractedVideoStream {
