@@ -88,7 +88,7 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     id: 'server-1',
     label: 'Server 1',
     host: '2embed.cc',
-    origins: ['https://www.2embed.cc', 'https://2embed.cc'],
+    origins: ['https://www.2embed.cc', 'https://2embed.cc', 'https://2vcdn.skin'],
     supports: { imdb: true, tmdb: true },
     timeoutMs: 12000,
     movie: (ids) => {
@@ -109,7 +109,7 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     id: 'server-2',
     label: 'Server 2',
     host: '2embed.skin',
-    origins: ['https://www.2embed.skin', 'https://2embed.skin'],
+    origins: ['https://www.2embed.skin', 'https://2embed.skin', 'https://2vcdn.skin'],
     supports: { imdb: true, tmdb: true },
     timeoutMs: 12000,
     movie: (ids) => {

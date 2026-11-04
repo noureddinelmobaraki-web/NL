@@ -825,7 +825,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [extractedStreams, setExtractedStreams] = useState<ExtractedVideoStream[]>([]);
   const [activeExtractedIdx, setActiveExtractedIdx] = useState(0);
   const [useDirectUrlFallback, setUseDirectUrlFallback] = useState(false);
-  const [playerRenderMode, setPlayerRenderMode] = useState<"extracting" | "direct" | "iframe">("extracting");
+  const [playerRenderMode, setPlayerRenderMode] = useState<
+    "extracting" | "direct" | "clean-embed" | "iframe"
+  >("extracting");
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [isFullSeasonEmbed, setIsFullSeasonEmbed] = useState(false);
@@ -943,18 +945,24 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       saveAdLockState(next);
       return next;
     });
-    if (playerRenderMode === "iframe") {
+    if (playerRenderMode === "iframe" || playerRenderMode === "clean-embed") {
       setIsPlayerLoading(true);
     }
   }, [playerRenderMode]);
 
   const handleCycleNextServer = useCallback(() => {
     if (
-      playerRenderMode === "direct" &&
+      (playerRenderMode === "direct" || playerRenderMode === "clean-embed") &&
       activeExtractedIdx + 1 < extractedStreams.length
     ) {
+      const nextStreamIdx = activeExtractedIdx + 1;
+      const nextStream = extractedStreams[nextStreamIdx];
       setUseDirectUrlFallback(false);
-      setActiveExtractedIdx((prev) => prev + 1);
+      setActiveExtractedIdx(nextStreamIdx);
+      setPlayerRenderMode(
+        nextStream?.type === "clean-embed" ? "clean-embed" : "direct",
+      );
+      setIsPlayerLoading(true);
       return;
     }
     const total = detailPlaySources.length || 4;
@@ -963,7 +971,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   }, [
     playerRenderMode,
     activeExtractedIdx,
-    extractedStreams.length,
+    extractedStreams,
     detailPlaySources.length,
     activeGalleryServerIdx,
     startGalleryWatchSession,
@@ -1010,7 +1018,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     [detailPlaySources, t, currentLang],
   );
 
-  // Extract direct .m3u8 / .mp4 streams via Cloudflare Worker (with automatic fallback to iframe)
+  // Extract direct .m3u8 / .mp4 streams or inner ad-free player via Cloudflare Worker (with automatic fallback to iframe)
   useEffect(() => {
     if (!isWatchingInGallery || !activeGallerySource || allServersFailed) {
       return undefined;
@@ -1042,7 +1050,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       }
 
       try {
-        // 2. Send generated URLs to Cloudflare Worker to extract pure video streams
+        // 2. Send generated URLs to Cloudflare Worker to extract pure video streams or inner clean player
         const videos = await fetchExtractedVideos(generatedTargetUrl);
         if (cancelled || attemptTokenRef.current !== currentToken) return;
 
@@ -1055,12 +1063,23 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           return;
         }
 
-        // 3. Select first extracted video (playback effect attaches selectedVideo.proxiedUrl)
-        setExtractedStreams(videos);
+        // Prefer direct HLS/MP4 first; otherwise use clean-embed (2vcdn.skin)
+        const directFirst = [
+          ...videos.filter((v) => v.type === "hls" || v.type === "mp4"),
+          ...videos.filter((v) => v.type === "clean-embed"),
+        ];
+        const firstChoice = directFirst[0] || videos[0];
+
+        setExtractedStreams(directFirst);
         setActiveExtractedIdx(0);
         setUseDirectUrlFallback(false);
-        setPlayerRenderMode("direct");
-        setIsPlayerLoading(false);
+
+        if (firstChoice.type === "clean-embed") {
+          setPlayerRenderMode("clean-embed");
+        } else {
+          setPlayerRenderMode("direct");
+          setIsPlayerLoading(false);
+        }
         setFailoverNotice(null);
         savePreferredServerId(detailItemStorageKey, activeGallerySource.id);
       } catch (err) {
@@ -1100,8 +1119,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
     const selectedVideo =
       extractedStreams[activeExtractedIdx] || extractedStreams[0];
+    if (!selectedVideo) return undefined;
+
+    if (selectedVideo.type === "clean-embed") {
+      cleanupDirectVideoPlayer();
+      setPlayerRenderMode("clean-embed");
+      return undefined;
+    }
+
     const videoElement = videoElementRef.current;
-    if (!selectedVideo || !videoElement) return undefined;
+    if (!videoElement) return undefined;
 
     cleanupDirectVideoPlayer();
 
@@ -1124,8 +1151,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       ) {
         setUseDirectUrlFallback(true);
       } else if (activeExtractedIdx + 1 < extractedStreams.length) {
+        const nextIdx = activeExtractedIdx + 1;
+        const nextItem = extractedStreams[nextIdx];
         setUseDirectUrlFallback(false);
-        setActiveExtractedIdx((prev) => prev + 1);
+        setActiveExtractedIdx(nextIdx);
+        if (nextItem?.type === "clean-embed") {
+          cleanupDirectVideoPlayer();
+          setPlayerRenderMode("clean-embed");
+        }
       } else {
         cleanupDirectVideoPlayer();
         setPlayerRenderMode("iframe");
@@ -1198,7 +1231,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   useEffect(() => {
     if (
       !isWatchingInGallery ||
-      playerRenderMode !== "iframe" ||
+      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
       !activeGallerySource ||
       allServersFailed
     ) {
@@ -2555,6 +2588,57 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
                         {isWatchingInGallery && activeGallerySource && (
                           <>
+                            {/* Live Cloudflare Worker / Player Engine Status Indicator */}
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold border whitespace-nowrap ${
+                                playerRenderMode === "direct"
+                                  ? "bg-emerald-500/25 border-emerald-300/60 text-emerald-100"
+                                  : playerRenderMode === "clean-embed"
+                                    ? "bg-sky-500/25 border-sky-300/60 text-sky-100"
+                                    : playerRenderMode === "extracting"
+                                      ? "bg-rose-500/25 border-rose-300/60 text-rose-100"
+                                      : "bg-white/12 border-white/25 text-white/85"
+                              }`}
+                              title={
+                                playerRenderMode === "direct"
+                                  ? "Cloudflare Worker Direct Stream (.m3u8 / .mp4)"
+                                  : playerRenderMode === "clean-embed"
+                                    ? "Cloudflare Worker Extracted Inner Player (2vcdn.skin • Sandbox Compatible)"
+                                    : playerRenderMode === "extracting"
+                                      ? "Scanning servers via Cloudflare Worker..."
+                                      : "Standard Server Iframe Fallback (Worker returned 0 direct video links)"
+                              }
+                            >
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  playerRenderMode === "direct"
+                                    ? "bg-emerald-400"
+                                    : playerRenderMode === "clean-embed"
+                                      ? "bg-sky-400"
+                                      : playerRenderMode === "extracting"
+                                        ? "bg-rose-400 animate-ping"
+                                        : "bg-amber-400"
+                                }`}
+                              />
+                              <span>
+                                {playerRenderMode === "direct"
+                                  ? currentLang === "ar"
+                                    ? "مشغّل Worker المباشر (HLS/MP4)"
+                                    : "Worker Direct (HLS/MP4)"
+                                  : playerRenderMode === "clean-embed"
+                                    ? currentLang === "ar"
+                                      ? "مشغّل Worker الصافي (بدون إعلانات)"
+                                      : "Worker Clean Player (Ad-Free)"
+                                    : playerRenderMode === "extracting"
+                                      ? currentLang === "ar"
+                                        ? "جارٍ فحص Worker..."
+                                        : "Worker Scanning..."
+                                      : currentLang === "ar"
+                                        ? "مشغّل Iframe الاحتياطي"
+                                        : "Iframe Fallback"}
+                              </span>
+                            </span>
+
                             {/* Ad-Lock Sandbox Toggle Button (Blocks window.open popups by default) */}
                             <button
                               type="button"
@@ -2723,8 +2807,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 activeExtractedIdx + 1 <
                                 extractedStreams.length
                               ) {
+                                const nextIdx = activeExtractedIdx + 1;
+                                const nextItem = extractedStreams[nextIdx];
                                 setUseDirectUrlFallback(false);
-                                setActiveExtractedIdx((prev) => prev + 1);
+                                setActiveExtractedIdx(nextIdx);
+                                if (nextItem?.type === "clean-embed") {
+                                  cleanupDirectVideoPlayer();
+                                  setPlayerRenderMode("clean-embed");
+                                }
                               } else {
                                 cleanupDirectVideoPlayer();
                                 setPlayerRenderMode("iframe");
@@ -2733,36 +2823,52 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           />
                         )}
 
-                        {!allServersFailed && playerRenderMode === "iframe" && (
-                          <iframe
-                            ref={playerIframeRef}
-                            key={`${activeGallerySource.id}-${activeGallerySource.url}-adlock-${isAdLockEnabled ? "1" : "0"}`}
-                            className="w-full h-full border-0 bg-black block"
-                            src={activeGallerySource.url}
-                            title={`${detailedItem.title} - ${activeGallerySource.label}`}
-                            width="100%"
-                            height="100%"
-                            frameBorder="0"
-                            scrolling="no"
-                            referrerPolicy="origin"
-                            sandbox={
-                              isAdLockEnabled
-                                ? "allow-scripts allow-same-origin allow-forms allow-presentation"
-                                : undefined
-                            }
-                            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                            allowFullScreen
-                            onLoad={() => {
-                              loadedCurrentAttemptRef.current = true;
-                              setIsPlayerLoading(false);
-                              setFailoverNotice(null);
-                              savePreferredServerId(
-                                detailItemStorageKey,
-                                activeGallerySource.id,
-                              );
-                            }}
-                          />
-                        )}
+                        {!allServersFailed &&
+                          (playerRenderMode === "iframe" ||
+                            playerRenderMode === "clean-embed") && (
+                            <iframe
+                              ref={playerIframeRef}
+                              key={`${activeGallerySource.id}-${
+                                playerRenderMode === "clean-embed"
+                                  ? (
+                                      extractedStreams[activeExtractedIdx] ||
+                                      extractedStreams[0]
+                                    )?.directUrl || activeGallerySource.url
+                                  : activeGallerySource.url
+                              }-adlock-${isAdLockEnabled ? "1" : "0"}`}
+                              className="w-full h-full border-0 bg-black block"
+                              src={
+                                playerRenderMode === "clean-embed"
+                                  ? (
+                                      extractedStreams[activeExtractedIdx] ||
+                                      extractedStreams[0]
+                                    )?.directUrl || activeGallerySource.url
+                                  : activeGallerySource.url
+                              }
+                              title={`${detailedItem.title} - ${activeGallerySource.label}`}
+                              width="100%"
+                              height="100%"
+                              frameBorder="0"
+                              scrolling="no"
+                              referrerPolicy="origin"
+                              sandbox={
+                                isAdLockEnabled
+                                  ? "allow-scripts allow-same-origin allow-forms allow-presentation"
+                                  : undefined
+                              }
+                              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                              allowFullScreen
+                              onLoad={() => {
+                                loadedCurrentAttemptRef.current = true;
+                                setIsPlayerLoading(false);
+                                setFailoverNotice(null);
+                                savePreferredServerId(
+                                  detailItemStorageKey,
+                                  activeGallerySource.id,
+                                );
+                              }}
+                            />
+                          )}
 
                         {/* Loading / Failover Toast Indicator (pointer-events-none so it never blocks clicks) */}
                         {(isPlayerLoading || playerRenderMode === "extracting") && !allServersFailed && (
@@ -2773,9 +2879,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             />
                             <span className="px-3.5 py-1 rounded-full bg-black/70 border border-white/20 text-xs font-extrabold text-white shadow-lg">
                               {failoverNotice ||
-                                t("movies.player.loadingServer", {
-                                  server: `${activeGallerySource.label} (${activeGallerySource.host})`,
-                                })}
+                                (playerRenderMode === "extracting"
+                                  ? currentLang === "ar"
+                                    ? "جارٍ سحب الفيديو الصافي عبر Cloudflare Worker…"
+                                    : "Extracting clean stream via Cloudflare Worker…"
+                                  : t("movies.player.loadingServer", {
+                                      server: `${activeGallerySource.label} (${activeGallerySource.host})`,
+                                    }))}
                             </span>
                           </div>
                         )}
