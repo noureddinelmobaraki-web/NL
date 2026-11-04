@@ -47,7 +47,13 @@ import "../../styles/components/cinema.css";
 import {
   ServerBranchesInline,
   useResolvedImdbSources,
+  type PlaySource,
 } from "./MovieSourcesModal";
+import Hls from "hls.js";
+import {
+  fetchExtractedVideos,
+  type ExtractedVideoStream,
+} from "../../services/videoExtractor";
 import { useTopMovies } from "./useTopMovies";
 import { logPlay } from "../../features/music/data/playTracking";
 
@@ -816,6 +822,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [failoverNotice, setFailoverNotice] = useState<string | null>(null);
   const [allServersFailed, setAllServersFailed] = useState(false);
   const [isCssFullscreen, setIsCssFullscreen] = useState(false);
+  const [extractedStreams, setExtractedStreams] = useState<ExtractedVideoStream[]>([]);
+  const [activeExtractedIdx, setActiveExtractedIdx] = useState(0);
+  const [useDirectUrlFallback, setUseDirectUrlFallback] = useState(false);
+  const [playerRenderMode, setPlayerRenderMode] = useState<"extracting" | "direct" | "iframe">("extracting");
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [isFullSeasonEmbed, setIsFullSeasonEmbed] = useState(false);
@@ -825,6 +835,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [loadingSeasonEpisodes, setLoadingSeasonEpisodes] = useState(false);
   const galleryStageRef = useRef<HTMLDivElement | null>(null);
   const playerIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const hlsInstanceRef = useRef<Hls | null>(null);
   const attemptTokenRef = useRef(0);
   const manualServerLockRef = useRef(false);
   const failoverQueueRef = useRef<number[]>([]);
@@ -833,6 +845,22 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const autoStartWatchRef = useRef(false);
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cleanupDirectVideoPlayer = useCallback(() => {
+    if (hlsInstanceRef.current) {
+      try {
+        hlsInstanceRef.current.destroy();
+      } catch {}
+      hlsInstanceRef.current = null;
+    }
+    if (videoElementRef.current) {
+      try {
+        videoElementRef.current.pause();
+        videoElementRef.current.removeAttribute("src");
+        videoElementRef.current.load();
+      } catch {}
+    }
+  }, []);
 
   // Interactive Actor Profile Card State
   const [selectedActor, setSelectedActor] = useState<CastMember | null>(null);
@@ -894,6 +922,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         if (i !== startIdx) ordered.push(i);
       }
 
+      cleanupDirectVideoPlayer();
       failoverQueueRef.current = ordered;
       failoverStepRef.current = 0;
       attemptTokenRef.current += 1;
@@ -905,7 +934,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       setShowHeroTrailer(false);
       setIsWatchingInGallery(true);
     },
-    [detailPlaySources, detailItemStorageKey],
+    [detailPlaySources, detailItemStorageKey, cleanupDirectVideoPlayer],
   );
 
   const handleToggleAdLock = useCallback(() => {
@@ -914,14 +943,31 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       saveAdLockState(next);
       return next;
     });
-    setIsPlayerLoading(true);
-  }, []);
+    if (playerRenderMode === "iframe") {
+      setIsPlayerLoading(true);
+    }
+  }, [playerRenderMode]);
 
   const handleCycleNextServer = useCallback(() => {
+    if (
+      playerRenderMode === "direct" &&
+      activeExtractedIdx + 1 < extractedStreams.length
+    ) {
+      setUseDirectUrlFallback(false);
+      setActiveExtractedIdx((prev) => prev + 1);
+      return;
+    }
     const total = detailPlaySources.length || 4;
     const nextIdx = (activeGalleryServerIdx + 1) % Math.max(1, total);
     startGalleryWatchSession(nextIdx);
-  }, [detailPlaySources.length, activeGalleryServerIdx, startGalleryWatchSession]);
+  }, [
+    playerRenderMode,
+    activeExtractedIdx,
+    extractedStreams.length,
+    detailPlaySources.length,
+    activeGalleryServerIdx,
+    startGalleryWatchSession,
+  ]);
 
   // Advance to the next server in the failover queue (triggered only on confirmed CSP violation)
   const advanceFailoverServer = useCallback(
@@ -964,18 +1010,202 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     [detailPlaySources, t, currentLang],
   );
 
-  // Monitor active server attempt for CSP securitypolicyviolation ONLY (no 12s timer or no-cors probe that could interrupt playback)
+  // Extract direct .m3u8 / .mp4 streams via Cloudflare Worker (with automatic fallback to iframe)
   useEffect(() => {
     if (!isWatchingInGallery || !activeGallerySource || allServersFailed) {
       return undefined;
     }
 
+    let cancelled = false;
     const currentToken = ++attemptTokenRef.current;
     loadedCurrentAttemptRef.current = false;
     setIsPlayerLoading(true);
+    setPlayerRenderMode("extracting");
+    setUseDirectUrlFallback(false);
+
+    // 1. Generate ordered array of all 4 server URLs starting with activeGallerySource
+    const generateTargetUrl = (): string[] => {
+      const orderedSources: PlaySource[] = [
+        activeGallerySource,
+        ...detailPlaySources.filter((s) => s.id !== activeGallerySource.id),
+      ].filter((s): s is PlaySource => Boolean(s && s.url));
+      return orderedSources.map((s) => s.url);
+    };
+
+    async function loadAndPlayVideo() {
+      const generatedTargetUrl = generateTargetUrl();
+      if (generatedTargetUrl.length === 0) {
+        if (!cancelled && attemptTokenRef.current === currentToken) {
+          setPlayerRenderMode("iframe");
+        }
+        return;
+      }
+
+      try {
+        // 2. Send generated URLs to Cloudflare Worker to extract pure video streams
+        const videos = await fetchExtractedVideos(generatedTargetUrl);
+        if (cancelled || attemptTokenRef.current !== currentToken) return;
+
+        if (videos.length === 0) {
+          console.warn(
+            "لم يتم العثور على روابط .m3u8 أو .mp4 في الصفحة المستهدفة. التراجع تلقائياً للمشغل المدمج.",
+          );
+          setExtractedStreams([]);
+          setPlayerRenderMode("iframe");
+          return;
+        }
+
+        // 3. Select first extracted video (playback effect attaches selectedVideo.proxiedUrl)
+        setExtractedStreams(videos);
+        setActiveExtractedIdx(0);
+        setUseDirectUrlFallback(false);
+        setPlayerRenderMode("direct");
+        setIsPlayerLoading(false);
+        setFailoverNotice(null);
+        savePreferredServerId(detailItemStorageKey, activeGallerySource.id);
+      } catch (err) {
+        if (cancelled || attemptTokenRef.current !== currentToken) return;
+        console.warn(
+          "[CinemaPlayer] Worker extraction failed, falling back to iframe:",
+          err,
+        );
+        setExtractedStreams([]);
+        setPlayerRenderMode("iframe");
+      }
+    }
+
+    void loadAndPlayVideo();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isWatchingInGallery,
+    activeGallerySource,
+    detailPlaySources,
+    allServersFailed,
+    detailItemStorageKey,
+  ]);
+
+  // Attach HLS.js or direct MP4 stream to <video> when playerRenderMode === "direct"
+  useEffect(() => {
+    if (
+      !isWatchingInGallery ||
+      playerRenderMode !== "direct" ||
+      extractedStreams.length === 0
+    ) {
+      cleanupDirectVideoPlayer();
+      return undefined;
+    }
+
+    const selectedVideo =
+      extractedStreams[activeExtractedIdx] || extractedStreams[0];
+    const videoElement = videoElementRef.current;
+    if (!selectedVideo || !videoElement) return undefined;
+
+    cleanupDirectVideoPlayer();
+
+    // Always prefer selectedVideo.proxiedUrl to bypass CORS and Referer blocks
+    const streamUrlToPlay =
+      useDirectUrlFallback && selectedVideo.directUrl
+        ? selectedVideo.directUrl
+        : selectedVideo.proxiedUrl || selectedVideo.directUrl;
+
+    if (!streamUrlToPlay) {
+      setPlayerRenderMode("iframe");
+      return undefined;
+    }
+
+    const handleStreamErrorFallback = () => {
+      if (
+        !useDirectUrlFallback &&
+        selectedVideo.directUrl &&
+        selectedVideo.directUrl !== selectedVideo.proxiedUrl
+      ) {
+        setUseDirectUrlFallback(true);
+      } else if (activeExtractedIdx + 1 < extractedStreams.length) {
+        setUseDirectUrlFallback(false);
+        setActiveExtractedIdx((prev) => prev + 1);
+      } else {
+        cleanupDirectVideoPlayer();
+        setPlayerRenderMode("iframe");
+      }
+    };
+
+    const playHlsStream = (url: string) => {
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+        });
+        hlsInstanceRef.current = hls;
+        hls.loadSource(url);
+        hls.attachMedia(videoElement);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setIsPlayerLoading(false);
+          void videoElement.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                handleStreamErrorFallback();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                handleStreamErrorFallback();
+                break;
+            }
+          }
+        });
+      } else if (videoElement.canPlayType("application/vnd.apple.mpegurl")) {
+        videoElement.src = url;
+        void videoElement.play().catch(() => {});
+      } else {
+        handleStreamErrorFallback();
+      }
+    };
+
+    const playDirectVideo = (url: string) => {
+      videoElement.src = url;
+      void videoElement.play().catch(() => {});
+    };
+
+    if (
+      selectedVideo.type === "hls" ||
+      streamUrlToPlay.toLowerCase().includes(".m3u8")
+    ) {
+      playHlsStream(streamUrlToPlay);
+    } else {
+      playDirectVideo(streamUrlToPlay);
+    }
+
+    return () => {
+      cleanupDirectVideoPlayer();
+    };
+  }, [
+    isWatchingInGallery,
+    playerRenderMode,
+    extractedStreams,
+    activeExtractedIdx,
+    useDirectUrlFallback,
+    cleanupDirectVideoPlayer,
+  ]);
+
+  // Monitor active iframe fallback for CSP securitypolicyviolation
+  useEffect(() => {
+    if (
+      !isWatchingInGallery ||
+      playerRenderMode !== "iframe" ||
+      !activeGallerySource ||
+      allServersFailed
+    ) {
+      return undefined;
+    }
 
     const onCspViolation = (e: SecurityPolicyViolationEvent) => {
-      if (attemptTokenRef.current !== currentToken) return;
       const directive = String(e.effectiveDirective || e.violatedDirective || '');
       if (!directive.startsWith('frame-src') && !directive.startsWith('child-src')) {
         return;
@@ -999,19 +1229,23 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     };
   }, [
     isWatchingInGallery,
+    playerRenderMode,
     activeGallerySource,
     allServersFailed,
     advanceFailoverServer,
   ]);
 
-  // Stop audio & release iframe resources when closing or stopping gallery player
+  // Stop audio & release iframe / HLS resources when closing or stopping gallery player
   useEffect(() => {
-    if (!isWatchingInGallery && playerIframeRef.current) {
-      try {
-        playerIframeRef.current.src = 'about:blank';
-      } catch {}
+    if (!isWatchingInGallery) {
+      cleanupDirectVideoPlayer();
+      if (playerIframeRef.current) {
+        try {
+          playerIframeRef.current.src = 'about:blank';
+        } catch {}
+      }
     }
-  }, [isWatchingInGallery]);
+  }, [isWatchingInGallery, cleanupDirectVideoPlayer]);
 
   const handleToggleGalleryFullscreen = useCallback(() => {
     const el = galleryStageRef.current as any;
@@ -2463,7 +2697,43 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
                     {isWatchingInGallery && activeGallerySource ? (
                       <div className="relative w-full h-full bg-black">
-                        {!allServersFailed && (
+                        {!allServersFailed && playerRenderMode === "direct" && (
+                          <video
+                            ref={videoElementRef}
+                            className="w-full h-full border-0 bg-black block object-contain"
+                            controls
+                            autoPlay
+                            playsInline
+                            onLoadedData={() => {
+                              loadedCurrentAttemptRef.current = true;
+                              setIsPlayerLoading(false);
+                              setFailoverNotice(null);
+                            }}
+                            onError={() => {
+                              const currentStream =
+                                extractedStreams[activeExtractedIdx] ||
+                                extractedStreams[0];
+                              if (
+                                !useDirectUrlFallback &&
+                                currentStream?.directUrl &&
+                                currentStream.directUrl !== currentStream.proxiedUrl
+                              ) {
+                                setUseDirectUrlFallback(true);
+                              } else if (
+                                activeExtractedIdx + 1 <
+                                extractedStreams.length
+                              ) {
+                                setUseDirectUrlFallback(false);
+                                setActiveExtractedIdx((prev) => prev + 1);
+                              } else {
+                                cleanupDirectVideoPlayer();
+                                setPlayerRenderMode("iframe");
+                              }
+                            }}
+                          />
+                        )}
+
+                        {!allServersFailed && playerRenderMode === "iframe" && (
                           <iframe
                             ref={playerIframeRef}
                             key={`${activeGallerySource.id}-${activeGallerySource.url}-adlock-${isAdLockEnabled ? "1" : "0"}`}
@@ -2495,7 +2765,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         )}
 
                         {/* Loading / Failover Toast Indicator (pointer-events-none so it never blocks clicks) */}
-                        {isPlayerLoading && !allServersFailed && (
+                        {(isPlayerLoading || playerRenderMode === "extracting") && !allServersFailed && (
                           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 bg-black/55 backdrop-blur-xs pointer-events-none">
                             <RefreshCw
                               size={26}

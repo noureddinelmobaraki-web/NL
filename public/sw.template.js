@@ -184,7 +184,8 @@ self.addEventListener('fetch', (event) => {
     requestUrl.includes('multiembed.') ||
     requestUrl.includes('streamingnow.') ||
     requestUrl.includes('streamimdb.') ||
-    requestUrl.includes('imdb.su')
+    requestUrl.includes('imdb.su') ||
+    requestUrl.includes('.workers.dev')
   ) {
     return;
   }

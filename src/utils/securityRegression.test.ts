@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { ALL_SERVER_FRAME_ORIGINS, CINEMA_SERVERS } from '../config/servers';
+import { fetchExtractedVideos, WORKER_ENDPOINT } from '../services/videoExtractor';
 
 const read = (p: string) => fs.readFileSync(p, 'utf8');
 
@@ -9,6 +10,7 @@ describe('security and deployment regressions', () => {
   it('allows same-origin Retro iframe and all 4 active cinema embed server origins in frame-src without wildcards or removed servers', () => {
     const html = read('index.html');
     expect(html).toContain("frame-src 'self'");
+    expect(html).toContain('https://broad-block-7bd7.nordinegb2018.workers.dev');
     expect(html).not.toMatch(/script-src[^;]*'unsafe-inline'/);
     expect(html).toContain("'inline-speculation-rules'");
     expect(html).not.toContain("Object.defineProperty(window, 'fetch'");
@@ -59,6 +61,53 @@ describe('security and deployment regressions', () => {
     expect(server1.tv({ imdb: 'tt3107288', tmdb: 60735 }, 1, 1, true)).toBe(
       'https://www.2embed.cc/embedtvfull/tt3107288',
     );
+  });
+
+  it('posts generated target URLs to the Cloudflare Worker endpoint and normalizes extracted video streams', async () => {
+    expect(WORKER_ENDPOINT).toBe('https://broad-block-7bd7.nordinegb2018.workers.dev/');
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        total_pages: 1,
+        results: {
+          source: 'https://streamimdb.ru/embed/movie/tt0111161',
+          count: 1,
+          iframes_scanned: [],
+          videos: [
+            {
+              type: 'hls',
+              directUrl: 'https://cdn.target-site.com/master.m3u8',
+              proxiedUrl:
+                'https://broad-block-7bd7.nordinegb2018.workers.dev/proxy?videoUrl=https%3A%2F%2Fcdn.target-site.com%2Fmaster.m3u8&referer=https%3A%2F%2Fstreamimdb.ru',
+            },
+          ],
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+    try {
+      const videos = await fetchExtractedVideos('https://streamimdb.ru/embed/movie/tt0111161');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://broad-block-7bd7.nordinegb2018.workers.dev/',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls: ['https://streamimdb.ru/embed/movie/tt0111161'] }),
+        }),
+      );
+      expect(videos).toEqual([
+        {
+          sourcePage: 'https://streamimdb.ru/embed/movie/tt0111161',
+          type: 'hls',
+          directUrl: 'https://cdn.target-site.com/master.m3u8',
+          proxiedUrl:
+            'https://broad-block-7bd7.nordinegb2018.workers.dev/proxy?videoUrl=https%3A%2F%2Fcdn.target-site.com%2Fmaster.m3u8&referer=https%3A%2F%2Fstreamimdb.ru',
+        },
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('does not cache failed app-shell responses in the service worker', () => {
