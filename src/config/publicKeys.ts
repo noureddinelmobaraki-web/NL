@@ -7,3 +7,6 @@
 // تُترك فارغة هنا عمدًا حتى لا يُرفع أي مفتاح سرّي إلى المستودع.
 export const PUBLIC_TMDB_KEY = "";
 export const PUBLIC_OMDB_KEY = "";
+export const PUBLIC_WYZIE_KEY = "";
+export const PUBLIC_OPENSUBTITLES_KEY = "";
+

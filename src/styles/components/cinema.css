@@ -791,6 +791,80 @@
   border-color: rgba(255, 255, 255, 0.42);
 }
 
+/* External Liquid Glass Player Controls Bar (Below Video Stage & Floating in Fullscreen) */
+.lg-cinema-player-controls {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(12, 16, 28, 0.68) 100%
+  ) !important;
+  backdrop-filter: blur(22px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+  transition:
+    opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.22s ease;
+}
+
+.lg-cinema-player-controls--fullscreen {
+  position: fixed !important;
+  bottom: 1.25rem;
+  left: 1rem;
+  right: 1rem;
+  max-width: 56rem;
+  margin-left: auto;
+  margin-right: auto;
+  z-index: 10600 !important;
+}
+
+.lg-cinema-seek-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  outline: none;
+  cursor: pointer;
+  transition: height 0.16s ease, background 0.16s ease;
+}
+
+.lg-cinema-seek-slider:hover {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.lg-cinema-seek-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid rgba(244, 63, 94, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.lg-cinema-seek-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.lg-cinema-seek-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid rgba(244, 63, 94, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .aero-glass-style,
   .nl-cinema-root,
@@ -798,10 +872,10 @@
   .lg-cinema-icon-pill,
   .lg-cinema-action-pill,
   .lg-cinema-primary-pill,
-  .lg-server-branch-pill {
+  .lg-server-branch-pill,
+  .lg-cinema-player-controls {
     transition: none !important;
     animation: none !important;
     transform: none !important;
   }
 }
-
