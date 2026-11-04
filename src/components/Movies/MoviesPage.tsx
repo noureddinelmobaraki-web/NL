@@ -79,7 +79,6 @@ import {
   clockAnchor,
   clockGetState,
   clockNow,
-  clockPlay,
   clockReport,
   clockReportedNow,
   clockReset,
@@ -249,26 +248,59 @@ interface OmdbEnrichedMeta {
   country?: string;
 }
 
+const OMDB_CACHE: Record<string, OmdbEnrichedMeta | null> = {};
+const OMDB_STORAGE_PREFIX = "nl_omdb_v1_";
+
 async function fetchOmdbMeta(
   imdbId: string,
   omdbKey?: string,
 ): Promise<OmdbEnrichedMeta | null> {
   const cleanId = (imdbId || "").trim();
   if (!/^tt\d{5,10}$/i.test(cleanId)) return null;
+
+  if (cleanId in OMDB_CACHE) {
+    return OMDB_CACHE[cleanId];
+  }
+
+  try {
+    const rawStorage = localStorage.getItem(OMDB_STORAGE_PREFIX + cleanId);
+    if (rawStorage) {
+      const parsed = JSON.parse(rawStorage);
+      if (parsed && typeof parsed === "object") {
+        OMDB_CACHE[cleanId] = parsed;
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore localStorage parse error
+  }
+
   const cleanVal = (v: unknown): string | undefined =>
     typeof v === "string" && v.trim() && v.trim() !== "N/A"
       ? v.trim()
       : undefined;
 
+  const saveToCache = (result: OmdbEnrichedMeta | null) => {
+    OMDB_CACHE[cleanId] = result;
+    if (result) {
+      try {
+        localStorage.setItem(OMDB_STORAGE_PREFIX + cleanId, JSON.stringify(result));
+      } catch {
+        // ignore quota error
+      }
+    }
+    return result;
+  };
+
   if (USE_WORKER_META) {
     try {
       const r = await fetch(
         `${WORKER_ENDPOINT}meta/omdb?i=${encodeURIComponent(cleanId)}`,
-        { signal: AbortSignal.timeout(7000) },
+        { signal: AbortSignal.timeout(3500) },
       );
       if (r.ok) {
         const d: any = await r.json();
-        return {
+        const res: OmdbEnrichedMeta = {
           imdbRating: cleanVal(d?.imdbRating),
           imdbVotes: cleanVal(d?.imdbVotes),
           metascore: cleanVal(d?.metascore),
@@ -283,25 +315,26 @@ async function fetchOmdbMeta(
           language: cleanVal(d?.language),
           country: cleanVal(d?.country),
         };
+        return saveToCache(res);
       }
     } catch {
       // fall through to direct OMDb if key exists
     }
   }
 
-  if (!omdbKey) return null;
+  if (!omdbKey) return saveToCache(null);
   try {
     const r = await fetch(
       `${window.location.protocol}//www.omdbapi.com/?i=${encodeURIComponent(cleanId)}&apikey=${encodeURIComponent(omdbKey)}`,
-      { signal: AbortSignal.timeout(7000) },
+      { signal: AbortSignal.timeout(3500) },
     );
-    if (!r.ok) return null;
+    if (!r.ok) return saveToCache(null);
     const d: any = await r.json();
-    if (!d || d.Response === "False") return null;
+    if (!d || d.Response === "False") return saveToCache(null);
     const rt = Array.isArray(d.Ratings)
       ? d.Ratings.find((x: any) => x?.Source === "Rotten Tomatoes")?.Value
       : undefined;
-    return {
+    const res: OmdbEnrichedMeta = {
       imdbRating: cleanVal(d.imdbRating),
       imdbVotes: cleanVal(d.imdbVotes),
       metascore: cleanVal(d.Metascore ?? d.metascore),
@@ -316,9 +349,10 @@ async function fetchOmdbMeta(
       language: cleanVal(d.Language ?? d.language),
       country: cleanVal(d.Country ?? d.country),
     };
+    return saveToCache(res);
   } catch (omdbErr) {
     console.warn("Could not fetch ratings from OMDB API:", omdbErr);
-    return null;
+    return saveToCache(null);
   }
 }
 
@@ -971,12 +1005,88 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const [selectedItemId, setSelectedItemIdState] = useState<number | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<Media | null>(null);
-  const setSelectedItemId = useCallback((id: number | null, mediaType?: Media) => {
-    setSelectedMediaType(id === null ? null : (mediaType ?? null));
-    setSelectedItemIdState(id);
-  }, []);
   const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
+  const findPreloadedCinemaItem = useCallback(
+    (id: number, mediaType?: Media | null): CinemaItem | null => {
+      const targetType: Media = mediaType ?? (activeTab === "series" ? "tv" : "movie");
+      const pools: CinemaItem[][] =
+        targetType === "tv"
+          ? [
+              trendingSeries,
+              topRatedSeries,
+              popularSeries,
+              actionSeries,
+              mysterySeries,
+              dramaSeries,
+              animationSeries,
+              topSeries,
+              searchResults,
+            ]
+          : [
+              trendingMovies,
+              topRatedMovies,
+              popularMovies,
+              actionMovies,
+              horrorMovies,
+              dramaMovies,
+              sciFiMovies,
+              topMovies,
+              searchResults,
+            ];
+      for (const list of pools) {
+        const match = list.find((it) => it.id === id && it.mediaType === targetType);
+        if (match) return match;
+      }
+      const fbList = targetType === "tv" ? FALLBACK_SERIES : FALLBACK_MOVIES;
+      const fbMatch = fbList.find((it: any) => it.id === id);
+      return fbMatch ? normalizeItem(fbMatch, targetType, currentLang) : null;
+    },
+    [
+      activeTab,
+      currentLang,
+      trendingSeries,
+      topRatedSeries,
+      popularSeries,
+      actionSeries,
+      mysterySeries,
+      dramaSeries,
+      animationSeries,
+      topSeries,
+      trendingMovies,
+      topRatedMovies,
+      popularMovies,
+      actionMovies,
+      horrorMovies,
+      dramaMovies,
+      sciFiMovies,
+      topMovies,
+      searchResults,
+    ],
+  );
+
+  const setSelectedItemId = useCallback(
+    (id: number | null, mediaType?: Media) => {
+      if (id === null) {
+        setSelectedMediaType(null);
+        setSelectedItemIdState(null);
+        return;
+      }
+      const effType: Media = mediaType ?? (activeTab === "series" ? "tv" : "movie");
+      setSelectedMediaType(effType);
+      setSelectedItemIdState(id);
+      const preloaded = findPreloadedCinemaItem(id, effType);
+      if (preloaded) {
+        setDetailedItem((prev) => (prev && prev.id === id && prev.mediaType === effType ? prev : preloaded));
+        setIsLoadingDetails(false);
+      } else {
+        setDetailedItem((prev) => (prev && prev.id === id && prev.mediaType === effType ? prev : null));
+        setIsLoadingDetails(true);
+      }
+    },
+    [activeTab, findPreloadedCinemaItem],
+  );
   const [showHeroTrailer, setShowHeroTrailer] = useState(false);
   const [trailerFallbackToYoutube, setTrailerFallbackToYoutube] = useState(false);
   const [resolvedTrailer, setResolvedTrailer] = useState<TrailerSource | null>(null);
@@ -1303,6 +1413,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       });
       setEmbedSeekStartAtSec(null);
       appliedInitialSeekRef.current = false;
+      checkedExtractionKeyRef.current = "";
       failoverQueueRef.current = ordered;
       failoverStepRef.current = 0;
       attemptTokenRef.current += 1;
@@ -1369,9 +1480,67 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     ],
   );
 
-  // Extract direct .m3u8 / .mp4 streams or inner clean player via Cloudflare Worker across speed-sorted servers + external subtitles in parallel
+  const checkedExtractionKeyRef = useRef<string>("");
+  const detailPlaySourcesRef = useRef<PlaySource[]>(detailPlaySources);
+  detailPlaySourcesRef.current = detailPlaySources;
+
+  // Background External Subtitles Loader (Decoupled so subtitle APIs NEVER block video/iframe startup)
+  useEffect(() => {
+    if (!isWatchingInGallery || !detailedItem) {
+      return undefined;
+    }
+    let cancelled = false;
+    const abortController = new AbortController();
+    setIsLoadingSubtitles(true);
+
+    void fetchExternalSubtitles({
+      tmdbId: detailedItem.id,
+      imdbId: activeImdbId || undefined,
+      mediaType: detailedItem.mediaType,
+      season: detailedItem.mediaType === "tv" ? selectedSeason : undefined,
+      episode: detailedItem.mediaType === "tv" ? selectedEpisode : undefined,
+      signal: abortController.signal,
+    })
+      .catch(() => [] as ExtractedSubtitleTrack[])
+      .then((extSubs) => {
+        if (cancelled) {
+          revokeSubtitleBlobUrls(extSubs);
+          return;
+        }
+        if (externalSubtitlesRef.current.length > 0) {
+          revokeSubtitleBlobUrls(externalSubtitlesRef.current);
+        }
+        externalSubtitlesRef.current = extSubs;
+        setExternalSubtitles(extSubs);
+        setIsLoadingSubtitles(false);
+      });
+
+    return () => {
+      cancelled = true;
+      abortController.abort();
+    };
+  }, [
+    isWatchingInGallery,
+    detailedItem?.id,
+    detailedItem?.mediaType,
+    activeImdbId,
+    selectedSeason,
+    selectedEpisode,
+  ]);
+
+  // Tier 1 Direct Stream Extraction (.m3u8 / .mp4) -> Tier 2 (VidLink) / Tier 3 Iframe Fallback
   useEffect(() => {
     if (!isWatchingInGallery || !activeGallerySource || allServersFailed) {
+      return undefined;
+    }
+
+    const extractionSessionKey = `${detailItemStorageKey}_s${selectedSeason}_e${selectedEpisode}`;
+    // If we already probed Tier 1 direct extraction for this title/episode (e.g. during iframe failover),
+    // go straight to iframe mode without stalling on another Worker scrape.
+    if (checkedExtractionKeyRef.current === extractionSessionKey) {
+      playAttemptStartedAtRef.current = performance.now();
+      setIsPlayerLoading(true);
+      setPlayerRenderMode("iframe");
       return undefined;
     }
 
@@ -1384,17 +1553,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setPlayerRenderMode("extracting");
     setUseDirectUrlFallback(false);
 
-    // 1. Generate speed-sorted array of all 4 server URLs starting with activeGallerySource
-    const generateTargetUrl = (): string[] => {
-      const orderedSources: PlaySource[] = [
-        activeGallerySource,
-        ...detailPlaySources.filter((s) => s.id !== activeGallerySource.id),
-      ].filter((s): s is PlaySource => Boolean(s && s.url));
-      return orderedSources.map((s) => s.url);
-    };
+    const orderedSources: PlaySource[] = [
+      activeGallerySource,
+      ...detailPlaySourcesRef.current.filter((s) => s.id !== activeGallerySource.id),
+    ].filter((s): s is PlaySource => Boolean(s && s.url));
+    const generatedTargetUrl = orderedSources.map((s) => s.url);
 
     async function loadAndPlayVideo() {
-      const generatedTargetUrl = generateTargetUrl();
+      checkedExtractionKeyRef.current = extractionSessionKey;
       if (generatedTargetUrl.length === 0) {
         if (!cancelled && attemptTokenRef.current === currentToken) {
           setPlayerRenderMode("iframe");
@@ -1403,98 +1569,34 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       }
 
       try {
-        setIsLoadingSubtitles(true);
-        // 2. Query Cloudflare Worker across all 4 servers AND Wyzie/OpenSubtitles in parallel
-        // Wrap fetchExtractedVideos in .catch so external subtitles are NEVER lost if Worker fails
-        const [videos, extSubs] = await Promise.all([
-          fetchExtractedVideos(
-            generatedTargetUrl,
-            abortController.signal,
-          ).catch(() => [] as ExtractedVideoStream[]),
-          detailedItem
-            ? fetchExternalSubtitles({
-                tmdbId: detailedItem.id,
-                imdbId: activeImdbId || undefined,
-                mediaType: detailedItem.mediaType,
-                season:
-                  detailedItem.mediaType === "tv" ? selectedSeason : undefined,
-                episode:
-                  detailedItem.mediaType === "tv" ? selectedEpisode : undefined,
-                signal: abortController.signal,
-              }).catch(() => [] as ExtractedSubtitleTrack[])
-            : Promise.resolve([] as ExtractedSubtitleTrack[]),
-        ]);
+        const videos = await fetchExtractedVideos(
+          generatedTargetUrl,
+          abortController.signal,
+        ).catch(() => [] as ExtractedVideoStream[]);
 
         if (cancelled || attemptTokenRef.current !== currentToken) {
-          revokeSubtitleBlobUrls(extSubs);
           return;
         }
 
-        if (externalSubtitlesRef.current.length > 0) {
-          revokeSubtitleBlobUrls(externalSubtitlesRef.current);
-        }
-        externalSubtitlesRef.current = extSubs;
-        setExternalSubtitles(extSubs);
-        setIsLoadingSubtitles(false);
+        // Tier 1 ONLY accepts true direct streams (.m3u8 / .mp4) playable in HTML5 <video>
+        const directStreams = videos.filter(
+          (v) => v.type === "hls" || v.type === "mp4",
+        );
 
-        if (videos.length === 0) {
+        if (directStreams.length === 0) {
           setExtractedStreams([]);
           playAttemptStartedAtRef.current = performance.now();
           setPlayerRenderMode("iframe");
           return;
         }
 
-        // Merge Worker-extracted subtitles with external Wyzie/OpenSubtitles tracks (Arabic prioritized)
-        const mergeSubtitles = (
-          workerSubs?: ExtractedSubtitleTrack[],
-        ): ExtractedSubtitleTrack[] => {
-          const combined = [...(workerSubs || []), ...extSubs];
-          const seen = new Set<string>();
-          const deduped: ExtractedSubtitleTrack[] = [];
-          for (const sub of combined) {
-            const key = sub.id ?? `${sub.lang}:${sub.proxiedUrl || sub.url}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            deduped.push({ ...sub, default: false });
-          }
-          deduped.sort((a, b) => {
-            if (a.lang === "ar" && b.lang !== "ar") return -1;
-            if (b.lang === "ar" && a.lang !== "ar") return 1;
-            return 0;
-          });
-          if (deduped.length > 0) {
-            const arIdx = deduped.findIndex((s) => s.lang === "ar");
-            const defIdx = arIdx >= 0 ? arIdx : 0;
-            deduped[defIdx] = { ...deduped[defIdx], default: true };
-          }
-          return deduped;
-        };
-
-        const enrichedVideos = videos.map((v) => ({
-          ...v,
-          subtitles: mergeSubtitles(v.subtitles),
-        }));
-
-        // Prioritize direct HLS/MP4 streams across all servers first, then clean-embed streams across servers
-        const directFirst = [
-          ...enrichedVideos.filter((v) => v.type === "hls" || v.type === "mp4"),
-          ...enrichedVideos.filter((v) => v.type === "clean-embed"),
-        ];
-        const firstChoice = directFirst[0] || enrichedVideos[0];
-
-        setExtractedStreams(directFirst);
+        setExtractedStreams(directStreams);
         setActiveExtractedIdx(0);
         setUseDirectUrlFallback(false);
         playAttemptStartedAtRef.current = performance.now();
-
-        if (firstChoice.type === "clean-embed") {
-          setPlayerRenderMode("clean-embed");
-        } else {
-          setPlayerRenderMode("direct");
-        }
+        setPlayerRenderMode("direct");
       } catch {
         if (cancelled || attemptTokenRef.current !== currentToken) return;
-        setIsLoadingSubtitles(false);
         setExtractedStreams([]);
         playAttemptStartedAtRef.current = performance.now();
         setPlayerRenderMode("iframe");
@@ -1509,11 +1611,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     };
   }, [
     isWatchingInGallery,
-    activeGallerySource,
-    detailPlaySources,
+    activeGallerySource?.id,
+    activeGallerySource?.url,
     allServersFailed,
-    detailedItem,
-    activeImdbId,
+    detailItemStorageKey,
     selectedSeason,
     selectedEpisode,
   ]);
@@ -1759,9 +1860,26 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     if (!isWatchingInGallery) return [];
     const streamSubs =
       extractedStreams[activeExtractedIdx]?.subtitles ||
-      extractedStreams[0]?.subtitles;
-    if (streamSubs && streamSubs.length > 0) return streamSubs;
-    return externalSubtitles;
+      extractedStreams[0]?.subtitles ||
+      [];
+    if (streamSubs.length === 0) return externalSubtitles;
+    if (externalSubtitles.length === 0) return streamSubs;
+    const combined = [...streamSubs, ...externalSubtitles];
+    const seen = new Set<string>();
+    const deduped: ExtractedSubtitleTrack[] = [];
+    for (const sub of combined) {
+      const key = sub.id ?? `${sub.lang}:${sub.proxiedUrl || sub.url}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push({ ...sub, default: false });
+    }
+    deduped.sort((a, b) => (a.lang === "ar" && b.lang !== "ar" ? -1 : b.lang === "ar" && a.lang !== "ar" ? 1 : 0));
+    if (deduped.length > 0) {
+      const arIdx = deduped.findIndex((s) => s.lang === "ar");
+      const defIdx = arIdx >= 0 ? arIdx : 0;
+      deduped[defIdx] = { ...deduped[defIdx], default: true };
+    }
+    return deduped;
   }, [
     isWatchingInGallery,
     extractedStreams,
@@ -1972,6 +2090,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       (playerRenderMode === "iframe" || playerRenderMode === "clean-embed"),
     iframeRef: playerIframeRef,
     allowedOrigins: bridgeAllowedOrigins,
+    sessionKey: activeIframeUrl,
     onEvent: (ev) => {
       if (typeof ev.currentTime === "number" && Number.isFinite(ev.currentTime)) {
         gotTimeSinceLoadRef.current = true;
@@ -1986,7 +2105,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             ? ev.paused
             : ev.kind === "pause" || ev.kind === "ended"
               ? true
-              : ev.kind === "play" || ev.kind === "timeupdate"
+              : ev.kind === "play" || ev.kind === "timeupdate" || ev.kind === "media"
                 ? false
                 : undefined;
         clockReport(
@@ -2016,14 +2135,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         : "none";
 
   const [iframeLoadStamp, setIframeLoadStamp] = useState(0);
-  const [manualClockEligible, setManualClockEligible] = useState(false);
 
-  useEffect(() => {
-    setManualClockEligible(false);
-  }, [activeIframeUrl, playerRenderMode, isWatchingInGallery]);
-
-  // 8000ms post-load watchdog: fallback from Worker /embed to raw URL if no sync-capable event was received,
-  // and unlock manual subtitle clock auto-start only when no sync-capable event arrived after 8s.
+  // 8000ms post-load watchdog: fallback from Worker /embed to raw URL if no sync-capable event was received
   useEffect(() => {
     if (
       !isWatchingInGallery ||
@@ -2063,9 +2176,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           return;
         }
       }
-      if (!gotTimeSinceLoadRef.current) {
-        setManualClockEligible(true);
-      }
     }, 8000);
     return () => clearTimeout(timer);
   }, [
@@ -2082,37 +2192,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const handleUserTogglePlay = useCallback(() => {
     syncControllerRef.current?.userTogglePlay();
   }, []);
-
-  // Auto-start manual subtitle clock on click into iframe ONLY when bridge.tier === null after 8s post-load grace window
-  useEffect(() => {
-    if (
-      !isWatchingInGallery ||
-      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
-      activeSubtitleIdx === null ||
-      bridge.tier !== null ||
-      !manualClockEligible
-    ) {
-      return undefined;
-    }
-    const onBlur = () => {
-      if (
-        document.activeElement === playerIframeRef.current &&
-        clockGetState().source === "manual" &&
-        clockGetState().paused &&
-        !gotTimeSinceLoadRef.current
-      ) {
-        clockPlay();
-      }
-    };
-    window.addEventListener("blur", onBlur);
-    return () => window.removeEventListener("blur", onBlur);
-  }, [
-    isWatchingInGallery,
-    playerRenderMode,
-    activeSubtitleIdx,
-    bridge.tier,
-    manualClockEligible,
-  ]);
 
   // Save Continue Watching progress every 10s when clock source is video or bridge
   useEffect(() => {
@@ -2935,10 +3014,20 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   useEffect(() => {
     if (selectedItemId === null) return;
     let cancelled = false;
-    setIsLoadingDetails(true);
 
     const mediaType: Media = selectedMediaType ?? (activeTab === 'series' ? 'tv' : 'movie');
     const isTv = mediaType === 'tv';
+
+    // Fast-seed from memory if detailedItem is not already set for this item
+    if (!detailedItem || detailedItem.id !== selectedItemId) {
+      const seeded = findPreloadedCinemaItem(selectedItemId, mediaType);
+      if (seeded) {
+        setDetailedItem(seeded);
+        setIsLoadingDetails(false);
+      } else {
+        setIsLoadingDetails(true);
+      }
+    }
 
     if (!tmdbKey) {
       const list = isTv ? FALLBACK_SERIES : FALLBACK_MOVIES;
@@ -2973,36 +3062,61 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           `${TMDB_BASE_URL}/${detailType}/${selectedItemId}?api_key=${tmdbKey}${langParam}&include_video_language=${currentLang},en,null&append_to_response=${detailsAppend}`
         );
 
-        const imdbId = isTv ? detail.external_ids?.imdb_id : detail.imdb_id;
-        const omdb = imdbId ? await fetchOmdbMeta(imdbId, omdbKey) : null;
+        if (cancelled) return;
 
-        if (!cancelled) {
-          const normalized = normalizeItem(detail, mediaType, currentLang);
-          const parsedImdbRating = omdb?.imdbRating ? parseFloat(omdb.imdbRating) : NaN;
-          const resolvedItem: CinemaItem = {
-            ...normalized,
-            rating:
-              Number.isFinite(parsedImdbRating) && parsedImdbRating > 0
-                ? parsedImdbRating
-                : normalized.rating,
-            certification: normalized.certification || omdb?.rated,
-            rottenTomatoes: omdb?.rottenTomatoes,
-            metascore: omdb?.metascore,
-            awards: omdb?.awards,
-            boxOffice: omdb?.boxOffice,
-          };
-          setDetailedItem(resolvedItem);
-          if (isTv && preselectedProgressItemIdRef.current !== resolvedItem.id) {
-            preselectedProgressItemIdRef.current = resolvedItem.id;
-            const saved = getProgress('tv', resolvedItem.id);
-            if (saved?.season && saved.season > 0) setSelectedSeason(saved.season);
-            if (saved?.episode && saved.episode > 0) setSelectedEpisode(saved.episode);
+        const normalized = normalizeItem(detail, mediaType, currentLang);
+        setDetailedItem(prev => {
+          if (prev && prev.id === normalized.id) {
+            return {
+              ...normalized,
+              rating: prev.rating || normalized.rating,
+              certification: normalized.certification || prev.certification,
+              rottenTomatoes: prev.rottenTomatoes || normalized.rottenTomatoes,
+              metascore: prev.metascore || normalized.metascore,
+              awards: prev.awards || normalized.awards,
+              boxOffice: prev.boxOffice || normalized.boxOffice,
+            };
           }
-          logPlay({
-            item_type: resolvedItem.mediaType === 'tv' ? 'series' : 'movie',
-            item_id: String(resolvedItem.id),
-            media_type: resolvedItem.mediaType,
-            title: resolvedItem.title || null,
+          return normalized;
+        });
+
+        if (isTv && preselectedProgressItemIdRef.current !== normalized.id) {
+          preselectedProgressItemIdRef.current = normalized.id;
+          const saved = getProgress('tv', normalized.id);
+          if (saved?.season && saved.season > 0) setSelectedSeason(saved.season);
+          if (saved?.episode && saved.episode > 0) setSelectedEpisode(saved.episode);
+        }
+        logPlay({
+          item_type: normalized.mediaType === 'tv' ? 'series' : 'movie',
+          item_id: String(normalized.id),
+          media_type: normalized.mediaType,
+          title: normalized.title || null,
+        });
+        setIsLoadingDetails(false);
+
+        // Non-blocking OMDb enrichment in the background
+        const imdbId = isTv ? detail.external_ids?.imdb_id : detail.imdb_id;
+        if (imdbId && omdbKey) {
+          fetchOmdbMeta(imdbId, omdbKey).then(omdb => {
+            if (cancelled || !omdb) return;
+            const parsedImdbRating = omdb.imdbRating ? parseFloat(omdb.imdbRating) : NaN;
+            setDetailedItem(prev => {
+              if (!prev || prev.id !== normalized.id) return prev;
+              return {
+                ...prev,
+                rating:
+                  Number.isFinite(parsedImdbRating) && parsedImdbRating > 0
+                    ? parsedImdbRating
+                    : prev.rating,
+                certification: prev.certification || omdb.rated,
+                rottenTomatoes: omdb.rottenTomatoes || prev.rottenTomatoes,
+                metascore: omdb.metascore || prev.metascore,
+                awards: omdb.awards || prev.awards,
+                boxOffice: omdb.boxOffice || prev.boxOffice,
+              };
+            });
+          }).catch(err => {
+            console.debug("Non-blocking OMDb enrichment failed:", err);
           });
         }
       } catch (err) {
@@ -3091,8 +3205,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   return createPortal(
     <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto bg-black">
-      {/* Dynamic Liquid Glass Ambient Backdrop Illumination (Unmounted during active Movie playback to save GPU/RAM) */}
-      {!isCinemaFocusActive && ambientBackdropUrl && (
+      {/* Dynamic Liquid Glass Ambient Backdrop Illumination (Unmounted during active Movie playback OR modal open to save GPU/RAM and prevent stacked blur lag) */}
+      {!isCinemaFocusActive && selectedItemId === null && ambientBackdropUrl && (
         <div
           className="lg-cinema-ambient-bg"
           style={{ backgroundImage: `url(${ambientBackdropUrl})` }}
@@ -3720,7 +3834,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
       {/* Liquid Glass Movie / Series Details & Theater Stage Modal */}
       <AnimatePresence>
-        {selectedItemId !== null && detailedItem && (
+        {selectedItemId !== null && (
           <div
             className={`nl-detail-wrap fixed inset-0 z-[10100] flex items-center justify-center p-2 sm:p-5 overflow-y-auto ${
               isWatchingInGallery
@@ -3729,7 +3843,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             }`}
           >
             <div onClick={() => setSelectedItemId(null)} className="absolute inset-0 z-0 cursor-zoom-out" />
-            {isLoadingDetails ? (
+            {isLoadingDetails || !detailedItem ? (
               <div className="relative z-10 flex items-center justify-center p-8">
                 <EyeLoader />
               </div>

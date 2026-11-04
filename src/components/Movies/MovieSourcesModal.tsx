@@ -85,30 +85,69 @@ export function buildSources(item: {
   return sortSourcesBySpeed(built, titleKey);
 }
 
+const IMDB_STORAGE_KEY = 'nl_imdb_id_cache_v1';
+
+function readCachedImdbId(cacheKey: string): string {
+  if (IMDB_MEMORY_CACHE[cacheKey]) return IMDB_MEMORY_CACHE[cacheKey];
+  try {
+    const raw = localStorage.getItem(IMDB_STORAGE_KEY);
+    if (!raw) return '';
+    const parsed = JSON.parse(raw);
+    const val = typeof parsed?.[cacheKey] === 'string' ? extractImdbId(parsed[cacheKey]) : '';
+    if (val) IMDB_MEMORY_CACHE[cacheKey] = val;
+    return val;
+  } catch {
+    return '';
+  }
+}
+
+function writeCachedImdbId(cacheKey: string, imdbId: string): void {
+  if (!cacheKey || !imdbId) return;
+  IMDB_MEMORY_CACHE[cacheKey] = imdbId;
+  try {
+    const raw = localStorage.getItem(IMDB_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    parsed[cacheKey] = imdbId;
+    localStorage.setItem(IMDB_STORAGE_KEY, JSON.stringify(parsed));
+  } catch {
+    // ignore storage quota errors
+  }
+}
+
 export function useResolvedImdbSources(
   item: CinemaWatchTarget | null,
   enabled: boolean,
 ) {
+  const itemId = item?.id;
+  const mediaType = item?.mediaType;
+  const rawImdbId = item?.imdbId;
+  const season = item?.season;
+  const episode = item?.episode;
+  const fullSeason = item?.fullSeason;
+  const startAt = item?.startAt;
+
   const [resolvedImdbId, setResolvedImdbId] = useState<string>('');
   const [resolving, setResolving] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!enabled || !item) {
+    if (!enabled || !itemId || !mediaType) {
       setResolvedImdbId('');
       setResolving(false);
       return;
     }
 
-    const direct = extractImdbId(item.imdbId);
+    const cacheKey = `${mediaType}_${itemId}`;
+    const direct = extractImdbId(rawImdbId);
     if (direct) {
+      writeCachedImdbId(cacheKey, direct);
       setResolvedImdbId(direct);
       setResolving(false);
       return;
     }
 
-    const cacheKey = `${item.mediaType}_${item.id}`;
-    if (IMDB_MEMORY_CACHE[cacheKey]) {
-      setResolvedImdbId(IMDB_MEMORY_CACHE[cacheKey]);
+    const cached = readCachedImdbId(cacheKey);
+    if (cached) {
+      setResolvedImdbId(cached);
       setResolving(false);
       return;
     }
@@ -124,18 +163,18 @@ export function useResolvedImdbSources(
           return;
         }
         const endpoint =
-          item.mediaType === 'tv'
-            ? `${TMDB_BASE_URL}/tv/${item.id}/external_ids?api_key=${tmdbKey}`
-            : `${TMDB_BASE_URL}/movie/${item.id}?api_key=${tmdbKey}&append_to_response=external_ids`;
+          mediaType === 'tv'
+            ? `${TMDB_BASE_URL}/tv/${itemId}/external_ids?api_key=${tmdbKey}`
+            : `${TMDB_BASE_URL}/movie/${itemId}/external_ids?api_key=${tmdbKey}`;
 
-        const res = await fetch(endpoint);
+        const res = await fetch(endpoint, { signal: AbortSignal.timeout(4500) });
         if (!res.ok) throw new Error('Failed to resolve IMDb ID');
         const data = await res.json();
         const found = extractImdbId(
           data?.imdb_id || data?.external_ids?.imdb_id || '',
         );
         if (found) {
-          IMDB_MEMORY_CACHE[cacheKey] = found;
+          writeCachedImdbId(cacheKey, found);
         }
         if (!cancelled) {
           setResolvedImdbId(found);
@@ -151,22 +190,24 @@ export function useResolvedImdbSources(
     return () => {
       cancelled = true;
     };
-  }, [enabled, item]);
+  }, [enabled, itemId, mediaType, rawImdbId]);
+
+  const effectiveImdbId = resolvedImdbId || extractImdbId(rawImdbId);
 
   const sources = useMemo(() => {
-    if (!item) return [];
+    if (!itemId || !mediaType) return [];
     return buildSources({
-      id: item.id,
-      mediaType: item.mediaType,
-      imdbId: resolvedImdbId || item.imdbId,
-      season: item.season,
-      episode: item.episode,
-      fullSeason: item.fullSeason,
-      startAt: item.startAt,
+      id: itemId,
+      mediaType,
+      imdbId: effectiveImdbId || undefined,
+      season,
+      episode,
+      fullSeason,
+      startAt,
     });
-  }, [item, resolvedImdbId]);
+  }, [itemId, mediaType, effectiveImdbId, season, episode, fullSeason, startAt]);
 
-  return { sources, resolving, resolvedImdbId: resolvedImdbId || extractImdbId(item?.imdbId) };
+  return { sources, resolving, resolvedImdbId: effectiveImdbId };
 }
 
 export const FloatingGlassTipCard: React.FC<{

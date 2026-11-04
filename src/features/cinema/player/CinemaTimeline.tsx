@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pause, Play, RotateCcw, RotateCw, Timer } from "lucide-react";
+import { Pause, Play, RotateCcw, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { clockPause, clockPlay, clockSeek, useClockState, useClockTime } from "./playbackClock";
 
@@ -34,6 +34,10 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
   const liveTime = useClockTime(200);
   const clock = useClockState();
   const [scrubTime, setScrubTime] = useState<number | null>(null);
+
+  if (mode === "none") {
+    return null;
+  }
 
   const time = scrubTime !== null ? scrubTime : liveTime;
   const duration = clock.duration || fallbackDurationSec || 7200;
@@ -104,9 +108,7 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
           onTouchEnd={commitScrub}
           onPointerUp={commitScrub}
           onKeyUp={commitScrub}
-          className={`flex-1 cursor-pointer ${
-            mode === "none" ? "accent-amber-400" : "accent-red-600"
-          }`}
+          className="flex-1 cursor-pointer accent-red-600"
           aria-label={t("movies.player.seek", "Seek")}
         />
         <span className="min-w-[36px] text-end">
@@ -117,17 +119,6 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
         {mode === "bridged" && (
           <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] whitespace-nowrap">
             {t("movies.player.synced", "Synced with player")}
-          </span>
-        )}
-        {mode === "none" && (
-          <span
-            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[9px] whitespace-nowrap"
-            title={t(
-              "movies.subs.clockHint",
-              "The movie player is separate. Start/pause this clock together with the movie.",
-            )}
-          >
-            <Timer size={11} /> {t("movies.player.notSynced", "Not synced — manual")}
           </span>
         )}
       </div>

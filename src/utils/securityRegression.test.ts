@@ -34,24 +34,40 @@ describe('security and deployment regressions', () => {
     }
   });
 
-  it('sets Server 7 as default primary server (index 0), removes servers 3/4/5, and builds valid movie and TV URLs', () => {
-    expect(CINEMA_SERVERS).toHaveLength(4);
+  it('sets Server VL (VidLink) as default primary server (index 0), followed by 7, 1, 2, 6, and builds valid movie and TV URLs', () => {
+    expect(CINEMA_SERVERS).toHaveLength(5);
     expect(CINEMA_SERVERS.map((s) => s.id)).toEqual([
+      'server-vl',
       'server-7',
       'server-1',
       'server-2',
       'server-6',
     ]);
     const defaultServer = CINEMA_SERVERS[0];
-    expect(defaultServer.id).toBe('server-7');
-    expect(defaultServer.movie({ imdb: 'tt0111161', tmdb: 278 })).toBe(
+    expect(defaultServer.id).toBe('server-vl');
+    expect(defaultServer.movie({ tmdb: 278, imdb: 'tt0111161' })).toContain(
+      'https://vidlink.pro/movie/278',
+    );
+    expect(defaultServer.movie({ tmdb: 278, imdb: 'tt0111161' })).toContain(
+      'primaryColor=dc2626',
+    );
+    expect(defaultServer.tv({ tmdb: 60735, imdb: 'tt3107288' }, 1, 1, false)).toContain(
+      'https://vidlink.pro/tv/60735/1/1',
+    );
+    expect(defaultServer.tv({ tmdb: 60735, imdb: 'tt3107288' }, 1, 1, false, { startAt: 45 })).toContain(
+      'startAt=45',
+    );
+
+    const server7 = CINEMA_SERVERS[1];
+    expect(server7.id).toBe('server-7');
+    expect(server7.movie({ imdb: 'tt0111161', tmdb: 278 })).toBe(
       'https://streamimdb.ru/embed/movie/tt0111161',
     );
-    expect(defaultServer.tv({ imdb: 'tt3107288', tmdb: 60735 }, 1, 1, false)).toBe(
+    expect(server7.tv({ imdb: 'tt3107288', tmdb: 60735 }, 1, 1, false)).toBe(
       'https://streamimdb.ru/embed/tv/tt3107288/1/1',
     );
 
-    const server1 = CINEMA_SERVERS[1];
+    const server1 = CINEMA_SERVERS[2];
     expect(server1.movie({ imdb: 'tt0111161', tmdb: 278 })).toBe(
       'https://www.2embed.cc/embed/tt0111161',
     );
@@ -133,18 +149,23 @@ describe('security and deployment regressions', () => {
     }
   });
 
-  it('monitors server startup speed in ms and promotes the fastest working server to index 0 in cache', () => {
+  it('prioritizes Tier 2 (timeEvents) servers over Tier 3 silent servers, and sorts silent servers by speed', () => {
     const mockSources = [
       { id: 'server-7' },
       { id: 'server-1' },
       { id: 'server-2' },
       { id: 'server-6' },
+      { id: 'server-vl' },
     ];
     recordServerFailure('server-7');
     recordServerSuccess('server-2', 420, 'movie_278');
     const sorted = sortSourcesBySpeed(mockSources, 'movie_278');
-    expect(sorted[0].id).toBe('server-2');
-    expect(sorted[sorted.length - 1].id).toBe('server-7');
+    // Tier 2 (server-vl) remains in Bucket 0 ahead of Bucket 1 silent servers
+    expect(sorted[0].id).toBe('server-vl');
+    // In Bucket 1, server-2 was promoted ahead of server-7
+    const silentSortedIds = sorted.slice(1).map((s) => s.id);
+    expect(silentSortedIds[0]).toBe('server-2');
+    expect(silentSortedIds[silentSortedIds.length - 1]).toBe('server-7');
   });
 
   it('does not cache failed app-shell responses in the service worker', () => {

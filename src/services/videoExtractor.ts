@@ -173,22 +173,6 @@ function extractSubtitlesFromResult(
 }
 
 /**
- * Extracts clean inner player URL (https://2vcdn.skin/e/{id}) from 2embed swish iframe URLs
- * when the Worker scans 2embed pages.
- */
-function extractCleanEmbedFromScannedIframes(iframes?: string[]): string | null {
-  if (!Array.isArray(iframes)) return null;
-  for (const iframeUrl of iframes) {
-    if (typeof iframeUrl !== "string") continue;
-    const swishMatch = iframeUrl.match(/\/swish\?(?:[^#]*&)?id=([a-zA-Z0-9_-]+)/i);
-    if (swishMatch && swishMatch[1]) {
-      return `https://2vcdn.skin/e/${encodeURIComponent(swishMatch[1])}`;
-    }
-  }
-  return null;
-}
-
-/**
  * دالة استخراج روابط الفيديو (.m3u8 / .mp4) والترجمات عبر Cloudflare Worker
  * @param targetUrls - رابط الصفحة أو مصفوفة الروابط المرتبة حسب سرعة السيرفر
  * @returns مصفوفة الفيديوهات المستخرجة الجاهزة للتشغيل مع مسارات الترجمة إن وجدت
@@ -212,7 +196,7 @@ export async function fetchExtractedVideos(
   }
 
   const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(), 11_500);
+  const timeoutId = setTimeout(() => timeoutController.abort(), 4_500);
   const onExternalAbort = () => timeoutController.abort();
   signal?.addEventListener("abort", onExternalAbort, { once: true });
 
@@ -238,7 +222,6 @@ export async function fetchExtractedVideos(
     const rawResults = Array.isArray(data.results) ? data.results : [data.results];
 
     const extractedVideos: ExtractedVideoStream[] = [];
-    const cleanEmbedCandidates: ExtractedVideoStream[] = [];
 
     for (const pageResult of rawResults) {
       if (!pageResult) continue;
@@ -265,30 +248,16 @@ export async function fetchExtractedVideos(
           });
         }
       }
-
-      const cleanEmbedUrl = extractCleanEmbedFromScannedIframes(
-        pageResult.iframes_scanned,
-      );
-      if (cleanEmbedUrl) {
-        cleanEmbedCandidates.push({
-          sourcePage: pageResult.source || "",
-          type: "clean-embed",
-          directUrl: cleanEmbedUrl,
-          proxiedUrl: cleanEmbedUrl,
-          subtitles: extractSubtitlesFromResult(pageResult),
-        });
-      }
     }
 
-    const combined = [...extractedVideos, ...cleanEmbedCandidates];
-    if (combined.length > 0) {
+    if (extractedVideos.length > 0) {
       SESSION_EXTRACTION_CACHE.set(cacheKey, {
         timestamp: Date.now(),
-        streams: combined,
+        streams: extractedVideos,
       });
     }
 
-    return combined;
+    return extractedVideos;
   } catch (error) {
     console.error("خطأ في استخراج الفيديو عبر الـ Worker:", error);
     throw error;

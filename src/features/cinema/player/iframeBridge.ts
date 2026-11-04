@@ -112,16 +112,26 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
   }
 
   // VidLink (documented): { type: "PLAYER_EVENT", data: { event, currentTime, duration, ... } }
-  if (d.type === "PLAYER_EVENT" && d.data && typeof d.data === "object") {
-    const kind = KIND_MAP[String(d.data.event || "").toLowerCase()] ?? "timeupdate";
-    const ct = num(d.data.currentTime);
+  if (d.type === "PLAYER_EVENT") {
+    const payloadObj = d.data && typeof d.data === "object" ? d.data : d;
+    const kind = KIND_MAP[String(payloadObj.event || "").toLowerCase()] ?? "timeupdate";
+    const ct = num(payloadObj.currentTime ?? payloadObj.time ?? payloadObj.watched);
+    const dur = num(payloadObj.duration ?? d.duration);
+    const paused =
+      typeof payloadObj.paused === "boolean"
+        ? payloadObj.paused
+        : kind === "pause" || kind === "ended"
+          ? true
+          : kind === "play" || kind === "timeupdate"
+            ? false
+            : undefined;
     return {
       kind,
       currentTime: ct,
-      duration: num(d.data.duration),
-      paused: kind === "pause" || kind === "ended" ? true : kind === "play" ? false : undefined,
+      duration: dur,
+      paused,
       bridgeTier: ct !== undefined ? "native" : undefined,
-      payload: d.data,
+      payload: payloadObj,
     };
   }
   if (d.type === "MEDIA_DATA") {
@@ -130,6 +140,7 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
       kind: "media",
       currentTime: prog.currentTime,
       duration: prog.duration,
+      paused: prog.currentTime !== undefined ? false : undefined,
       bridgeTier: prog.currentTime !== undefined ? "native" : undefined,
       payload: d.data,
     };
@@ -229,7 +240,7 @@ export function isOriginAllowed(origin: string, allowedOrigins: string[]): boole
           return true;
         }
       } catch {
-        if (allowed.includes('vidlink.pro') && (originHost === 'vidlink.pro' || originHost.endsWith('.vidlink.pro'))) {
+        if (allowed.includes('vidlink.') && /(^|\.)vidlink\.[a-z]+$/i.test(originHost)) {
           return true;
         }
       }
@@ -294,6 +305,7 @@ export function useIframePlayerBridge(opts: {
   iframeRef: RefObject<HTMLIFrameElement | null>;
   allowedOrigins: string[];
   enabled: boolean;
+  sessionKey?: string;
   onEvent?: (ev: BridgeEvent) => void;
   onMediaData?: (payload: unknown) => void;
 }): { active: boolean; tier: BridgeTier | null } {
@@ -304,20 +316,21 @@ export function useIframePlayerBridge(opts: {
   const onMediaRef = useRef(opts.onMediaData);
   onMediaRef.current = opts.onMediaData;
   const originsKey = opts.allowedOrigins.join("|");
-  const { iframeRef, enabled } = opts;
+  const { iframeRef, enabled, sessionKey } = opts;
 
   useEffect(() => {
     setActive(false);
     setTier(null);
     resetNlBridgeSeq();
     if (!enabled) return undefined;
+    let hasSynced = false;
     const allowed = new Set(originsKey.split("|").filter(Boolean));
     const isAllowedOrigin = (origin: string): boolean => {
       if (!origin) return false;
       if (allowed.has(origin)) return true;
       try {
         return (
-          /(^|\.)vidlink\.pro$/.test(new URL(origin).hostname) ||
+          /(^|\.)vidlink\.[a-z]+$/i.test(new URL(origin).hostname) ||
           isOriginAllowed(origin, Array.from(allowed))
         );
       } catch {
@@ -368,7 +381,10 @@ export function useIframePlayerBridge(opts: {
       }
       logBridgeDebug(e.origin, true, null, e.data);
 
-      if (isSyncCapableEvent(ev)) {
+      const syncCapable = isSyncCapableEvent(ev);
+      if (syncCapable) {
+        hasSynced = true;
+        setActive(true);
         if (ev.bridgeTier === "worker") {
           setTier("worker");
         } else if (ev.bridgeTier === "native") {
@@ -377,8 +393,7 @@ export function useIframePlayerBridge(opts: {
       }
 
       if (ev.kind === "media") {
-        if (isSyncCapableEvent(ev)) {
-          setActive(true);
+        if (syncCapable) {
           onEventRef.current?.(ev);
         }
         if (ev.payload !== undefined) {
@@ -387,14 +402,17 @@ export function useIframePlayerBridge(opts: {
         return;
       }
 
-      if (isSyncCapableEvent(ev) || ev.kind === "play" || ev.kind === "pause" || ev.kind === "ended" || ev.ackId) {
-        setActive(true);
+      if (syncCapable || (hasSynced && (ev.kind === "play" || ev.kind === "pause" || ev.kind === "ended")) || ev.ackId) {
+        if (ev.ackId) {
+          hasSynced = true;
+          setActive(true);
+        }
         onEventRef.current?.(ev);
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [enabled, originsKey, iframeRef]);
+  }, [enabled, originsKey, iframeRef, sessionKey]);
 
   return { active, tier };
 }

@@ -1,67 +1,51 @@
-# Surgical Fix for Movies Page Video Progress Bar Synchronization
+# Surgical Fix for Movies Page Playback Pipeline & Timeline Synchronization
 
-Resolves two-way timeline synchronization failures and Turnstile-induced infinite spinners on the Movies page by loading closed third-party embeds directly, enabling wildcard subdomain origin matching (`*.vidlink.pro`), replacing cross-origin `frames.length` traversal with a Site-Isolation-safe origin/source check, and prioritizing VidLink (`server-vl`) whenever a TMDB ID is available.
+## Summary of Completed Work
 
-## User Review & Critical Decisions
+### 1. Server Configuration & Tier 2 Priority (`src/config/servers.ts`)
+- Confirmed `server-vl` (VidLink) as primary server at index `0` with `{ timeEvents: true, startAt: true }`.
+- Verified raw embed URL loading without `workerBridge: true`.
+- Allowlisted all VidLink domains (`https://vidlink.pro`, `https://player.vidlink.pro`, `https://cloud.vidlink.pro`) in CSP.
 
-> [!IMPORTANT]
-> All requirements are explicitly specified in the engineering brief:
-> - **Direct Embed Loading for Turnstile Servers**: `workerBridge: true` is removed from `server-7`, `server-1`, `server-2`, and `server-6` so their embeds load directly without triggering Cloudflare Turnstile blocks on `workers.dev`.
-> - **Site-Isolation-Safe `postMessage` Validation**: `isFromFrame` and `isOriginAllowed` in `iframeBridge` will support `*.vidlink.pro` wildcard subdomains and accept verified `PLAYER_EVENT`, `MEDIA_DATA`, and `__nl === 1` player payloads from allowlisted origins when cross-origin frame hierarchy inspection is restricted by browser Site Isolation.
-> - **VidLink Priority**: When a movie or series has a valid TMDB ID, `server-vl` (VidLink) is prioritized at index `0` unless it has recorded recent failures.
+### 2. Speed Monitor & Priority Inversion Protection (`src/services/serverSpeedMonitor.ts`)
+- Upgraded cache storage key to `nl_cinema_server_speed_v2` to discard stale legacy timings.
+- Implemented strict two-bucket sorting: Bucket 0 (Tier 2 time-reporting servers) always precedes Bucket 1 (Tier 3 silent embeds).
+- Prevented silent fallback servers from overwriting `server-vl` in `byTitle` preferences.
 
-## 1. Overview & Core Concept
+### 3. Tier 1 Stream Extraction Streamlining (`src/services/videoExtractor.ts`)
+- Restricted Tier 1 extraction strictly to direct `.m3u8` / `.mp4` streams.
+- Removed `clean-embed` promotion logic that previously hijacked playback with silent `2vcdn.skin` embeds.
+- Tightened extraction timeout to 4,500ms for fast fallback.
 
-- **What It Does**: Eliminates the 8-second black spinner on Turnstile-protected embed servers and restores real-time `PLAYER_EVENT` / `MEDIA_DATA` progress synchronization with VidLink (`*.vidlink.pro`) and direct `<video>` streams in Chrome/Brave Site Isolation environments.
-- **Target Audience / Persona**: Viewers watching movies and TV series on the Movies page who expect instant playback startup, accurate timeline progress, and responsive two-way seeking.
-- **Key Value**: Immediate iframe playback without proxy challenge failures, combined with reliable `postMessage` reception from nested or subdomained VidLink player frames.
+### 4. Player Bridge & Clock Synchronization (`src/features/cinema/player/iframeBridge.ts`)
+- Added `sessionKey` to cleanly reset active bridge state when switching servers or episodes.
+- Required a finite, positive `currentTime` before transitioning `active = true` to avoid stuck initial clocks.
+- Normalized `MEDIA_DATA` events to set `paused: false` when valid playback timestamps are received.
+- Supported `*.vidlink.*` wildcard origin matching under browser Site Isolation.
 
-## 2. User Experience & Visual Design
+### 5. Timeline Display Guarding (`src/features/cinema/player/CinemaTimeline.tsx`)
+- Enforced `if (mode === "none") return null;` so external timeline never renders on silent Tier 3 servers.
+- Stripped dummy "Not synced — manual" UI and blind time counters.
 
-- **Key User Flows**:
-  1. **Title Selection & Playback Start**: When a user opens a title with a TMDB ID and clicks Watch Now, `server-vl` (VidLink) is selected as priority 0 (unless it previously failed), providing native `PLAYER_EVENT` two-way sync and `?startAt=` support.
-  2. **In-Player & External Scrubbing**: Events from `vidlink.pro`, `player.vidlink.pro`, `cloud.vidlink.pro`, or any `*.vidlink.pro` subdomain pass origin and source validation under Chrome/Brave Site Isolation, immediately transitioning the external `CinemaTimeline` out of `"Not synced — manual"` mode into active bridged sync.
-  3. **Fallback Embeds**: If failover advances to Server 7, Server 1, Server 2, or Server 6, the raw embed URL loads directly in the iframe without routing through the Worker `/embed` proxy or waiting on an 8-second watchdog.
-- **Visual Identity & Theme**: Preserves the existing Liquid Glass cinema stage and control bar styling without any visual regressions.
+### 6. Modal Memoization & IMDb Cache (`src/components/Movies/MovieSourcesModal.tsx`)
+- Added `localStorage` caching (`nl_imdb_id_cache_v1`) for resolved IMDb IDs.
+- Memoized `sources` and effect triggers strictly on primitive values to prevent mid-flight playback aborts.
 
-## 3. Key Product Decisions & Trade-Offs
+### 7. Instant 0ms Trailer Resolution (`src/services/trailerService.ts`)
+- Returns `{ kind: "youtube", key }` immediately at 0ms whenever TMDB provides a valid YouTube key.
+- Constrained IMDb fallback scraping to tight timeouts only when no YouTube key is present.
 
-- **Decision 1: Disable Worker `/embed` Proxy on Turnstile-Protected Servers**
-  - *Chosen Approach*: Remove `workerBridge: true` from `server-7`, `server-1`, `server-2`, and `server-6`, and only call `toWorkerEmbedUrl` when `srvCaps?.workerBridge === true`.
-  - *Why*: Upstream CDNs (`nextgencloudfabric.com`, etc.) enforce Cloudflare Turnstile against `workers.dev` IPs, causing proxied embeds to hang. Loading them directly restores instant playback.
-- **Decision 2: Site-Isolation-Safe Source & Wildcard Origin Verification**
-  - *Chosen Approach*: Add `isOriginAllowed(origin, allowedOrigins)` supporting exact matches and wildcard subdomains (`https://*.vidlink.pro` / `.vidlink.pro`), and update `isFromFrame` to check `source === root`, then `source.parent === window || source.top === window` in a `try/catch`, and finally fall back to accepting validated player messages (`PLAYER_EVENT`, `MEDIA_DATA`, `__nl === 1`) from allowlisted origins.
-  - *Why*: Modern browsers with Site Isolation throw `DOMException` or return `0` when inspecting cross-origin `win.frames.length`, which previously caused legitimate messages from nested VidLink player frames to be rejected with `REJECT:source`.
+### 8. Instant Modal Open & Smooth Playback (`src/components/Movies/MoviesPage.tsx`)
+- Added `findPreloadedCinemaItem` to synchronously seed `detailedItem` on poster click (0ms open).
+- Transitioned OMDb enrichment to background non-blocking execution with LRU + `localStorage` cache (`nl_omdb_v1_`).
+- Decoupled external subtitle fetching into a non-blocking background effect so video starts playing immediately.
+- Keyed video extraction strictly on primitive media session IDs.
+- Unmounted `.lg-cinema-ambient-bg` when modal is open to eliminate GPU blur compositing stutter.
+- Removed blind window `onBlur` auto-clocking on silent servers.
 
-## 4. Technical Architecture & Data Strategy *(Technical Reference)*
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                         MoviesPage & Server Queue                        │
-│  • TMDB ID present ──► Prioritize `server-vl` (VidLink) at index 0       │
-│  • `activeIframeUrl` ──► Raw URL unless `srvCaps?.workerBridge === true` │
-│  • `bridgeAllowedOrigins` ──► ALL_SERVER_FRAME_ORIGINS + `*.vidlink.pro` │
-└────────────────────────────────────┬─────────────────────────────────────┘
-                                     │ postMessage
-                                     ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                       iframeBridge (Message Gate)                        │
-│  1. `isOriginAllowed(e.origin, allowedOrigins)`                          │
-│     ├─ Exact origin match OR wildcard subdomain (`*.vidlink.pro`)        │
-│  2. `parsePlayerMessage(e.data)`                                         │
-│     ├─ Extracts `PLAYER_EVENT`, `MEDIA_DATA`, or `__nl === 1`            │
-│  3. `isFromFrame(e.source, root, e.origin, allowedOrigins, e.data)`      │
-│     ├─ `source === root`                                                 │
-│     ├─ `try { source.parent === window || source.top === window }`       │
-│     └─ Fallback: allowlisted origin + valid player payload               │
-└────────────────────────────────────┬─────────────────────────────────────┘
-                                     │ BridgeEvent
-                                     ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                  syncController & playbackClock ◄──► CinemaTimeline      │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Server Configuration & CSP Alignment**:
-  - Expand `server-vl` origins to `['https://vidlink.pro', 'https://player.vidlink.pro', 'https://cloud.vidlink.pro']` and keep `index.html` `frame-src` synchronized so `scripts/check-csp.mjs` passes.
-  - Ensure `sortSourcesBySpeed` and `startGalleryWatchSession` place `server-vl` at index `0` whenever a TMDB ID is present and `server-vl` has not recorded a failure override.
+### 9. Verification & Quality Gates
+- `node scripts/check-csp.mjs`: PASSED (all 13 server origins verified).
+- `npx vitest run src/utils/securityRegression.test.ts src/features/cinema/player/__tests__/`: PASSED (19 of 19 tests).
+- `npx tsc --noEmit`: PASSED with 0 errors.
+- `compile_applet`: PASSED.
+- `lint_applet`: PASSED with 0 errors.

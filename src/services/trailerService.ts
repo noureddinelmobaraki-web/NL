@@ -33,7 +33,7 @@ let imdbApiDevDown = false; // session circuit breaker (service reported offline
 async function fromImdbApiDev(imdbId: string, signal?: AbortSignal): Promise<string | null> {
   if (imdbApiDevDown) return null;
   try {
-    const r = await fetch(`https://api.imdbapi.dev/titles/${imdbId}/videos?pageSize=10`, { signal: withTimeout(signal, 3500) });
+    const r = await fetch(`https://api.imdbapi.dev/titles/${imdbId}/videos?pageSize=10`, { signal: withTimeout(signal, 2500) });
     if (!r.ok) return null;
     const j: any = await r.json();
     const list: any[] = j?.videos ?? j?.items ?? [];
@@ -50,7 +50,7 @@ async function fromWorker(imdbId: string, signal?: AbortSignal): Promise<string 
   try {
     const u = new URL("trailer/imdb", WORKER_ENDPOINT);
     u.searchParams.set("id", imdbId);
-    const r = await fetch(u.toString(), { signal: withTimeout(signal, 6000) });
+    const r = await fetch(u.toString(), { signal: withTimeout(signal, 3500) });
     if (!r.ok) return null;
     const j: any = await r.json();
     return /^vi\d+$/.test(String(j?.videoId ?? "")) ? j.videoId : null;
@@ -64,6 +64,10 @@ export async function resolveTrailer(opts: {
   youtubeKey?: string;
   signal?: AbortSignal;
 }): Promise<TrailerSource | null> {
+  const ytKey = (opts.youtubeKey || "").trim();
+  if (ytKey) {
+    return { kind: "youtube", key: ytKey };
+  }
   const imdbId = (opts.imdbId || "").trim();
   if (/^tt\d{5,10}$/.test(imdbId)) {
     const c = readCache()[imdbId];
@@ -76,5 +80,5 @@ export async function resolveTrailer(opts: {
     }
     if (vi) return { kind: "imdb", videoId: vi, embedUrl: `https://www.imdb.com/video/embed/${vi}/` };
   }
-  return opts.youtubeKey ? { kind: "youtube", key: opts.youtubeKey } : null;
+  return null;
 }

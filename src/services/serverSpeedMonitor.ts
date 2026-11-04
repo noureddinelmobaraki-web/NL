@@ -14,8 +14,7 @@ interface StoredSpeedState {
   byTitle: Record<string, string>;
 }
 
-const SPEED_STORAGE_KEY = "nl_cinema_server_speed_v1";
-const LEGACY_TITLE_SERVER_KEY = "nl_cinema_last_server_v2";
+const SPEED_STORAGE_KEY = "nl_cinema_server_speed_v2";
 const DEFAULT_BASELINE_MS = 2600;
 const FAILURE_PENALTY_MS = 4500;
 const EWMA_ALPHA = 0.38;
@@ -32,22 +31,6 @@ function readStorage(): StoredSpeedState {
       parsed && typeof parsed.byTitle === "object" && parsed.byTitle !== null
         ? { ...parsed.byTitle }
         : {};
-
-    // Also migrate legacy per-title preference if present
-    try {
-      const legacyRaw = localStorage.getItem(LEGACY_TITLE_SERVER_KEY);
-      if (legacyRaw) {
-        const legacyParsed = JSON.parse(legacyRaw);
-        if (legacyParsed?.byItem && typeof legacyParsed.byItem === "object") {
-          for (const [k, v] of Object.entries(legacyParsed.byItem)) {
-            if (typeof v === "string" && !byTitle[k]) {
-              byTitle[k] = v;
-            }
-          }
-        }
-      }
-    } catch {}
-
     return { metrics, byTitle };
   } catch {
     return { metrics: {}, byTitle: {} };
@@ -64,7 +47,7 @@ function writeStorage(state: StoredSpeedState): void {
 
 /**
  * Records a successful server playback startup and updates its EWMA latency score in cache.
- * Faster servers receive lower score values and are automatically promoted to the front.
+ * Faster servers receive lower score values and are automatically promoted within their tier.
  */
 export function recordServerSuccess(
   serverId: string,
@@ -90,7 +73,10 @@ export function recordServerSuccess(
   };
 
   if (titleKey) {
-    state.byTitle[titleKey] = serverId;
+    // Do not let a fallback silent server overwrite a working Tier 2 (server-vl) preference
+    if (serverId === "server-vl" || state.byTitle[titleKey] !== "server-vl") {
+      state.byTitle[titleKey] = serverId;
+    }
   }
 
   writeStorage(state);
@@ -139,10 +125,10 @@ export function getServerPriorityScore(
 }
 
 /**
- * Sorts an array of play sources so the fastest cached servers for this user appear first.
- * If the user previously had a fast working server for this specific title, it gets a speed boost.
- * Sources with timeEvents capabilities (Tier 2, e.g. VidLink) receive a strong priority bonus
- * so they are ranked before silent embed servers unless failureCount exceeds successCount.
+ * Sorts an array of play sources using a strict Tiered Hierarchy:
+ * - Bucket 0 (Tier 2): Sources with `capabilities.timeEvents === true` (e.g. VidLink `server-vl`),
+ *   unless the server has failed repeatedly (`failureCount > successCount`).
+ * - Bucket 1 (Tier 3): Silent third-party fallback embeds, ordered by EWMA speed and reliability.
  */
 export function sortSourcesBySpeed<
   T extends { id: string; capabilities?: { timeEvents?: boolean } },
@@ -162,26 +148,29 @@ export function sortSourcesBySpeed<
         metric && metric.failureCount > metric.successCount,
       );
 
-      // Enforce Tier 2 priority: any source with timeEvents MUST be ranked before sources without
-      // timeEvents, unless its failureCount exceeds its successCount for this session.
       const isTimeEvents =
         src.capabilities?.timeEvents === true ||
         (hasTmdb && src.id === "server-vl");
+
+      // Strict Tier Bucket: healthy timeEvents servers ALWAYS stay in bucket 0 ahead of silent embeds
+      const bucket = isTimeEvents && !hasFailed ? 0 : 1;
+
       if (isTimeEvents && !hasFailed) {
         score -= 5000;
       }
 
-      // Boost the title's remembered server unless it has recently failed repeatedly
+      // Boost the title's remembered server within its tier bucket unless it has failed
       if (
         preferredForTitle &&
         src.id === preferredForTitle &&
-        (!metric || metric.failureCount <= metric.successCount)
+        !hasFailed
       ) {
         score -= 750;
       }
-      return { src, originalIdx, score };
+      return { src, originalIdx, bucket, score };
     })
     .sort((a, b) => {
+      if (a.bucket !== b.bucket) return a.bucket - b.bucket;
       if (a.score !== b.score) return a.score - b.score;
       return a.originalIdx - b.originalIdx;
     })
@@ -189,7 +178,7 @@ export function sortSourcesBySpeed<
 }
 
 /**
- * Returns the ordered indices `[0..sources.length-1]` sorted from fastest server to slowest.
+ * Returns the ordered indices `[0..sources.length-1]` sorted by tier and speed.
  */
 export function buildSpeedSortedQueue<
   T extends { id: string; capabilities?: { timeEvents?: boolean } },
