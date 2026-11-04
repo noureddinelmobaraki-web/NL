@@ -6,7 +6,7 @@
   default-src 'self';
   object-src 'none';
   script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-kwOTmlDcJErA+Ke+b7qQhRE5zYpCBEZcekVyFNpQhW0=' https://plausible.io https://www.google.com https://www.gstatic.com https://www.youtube.com;
-  frame-src 'self' https://noureddinelmobaraki-web.github.io https://www.google.com https://recaptcha.google.com https://www.youtube.com https://www.youtube-nocookie.com https://streamimdb.ru https://player.imdb.su https://www.2embed.cc https://2embed.cc https://www.2embed.skin https://2embed.skin https://2vcdn.skin https://multiembed.mov https://streamingnow.mov;
+  frame-src 'self' https://noureddinelmobaraki-web.github.io https://www.google.com https://recaptcha.google.com https://www.youtube.com https://www.youtube-nocookie.com https://www.imdb.com https://vidlink.pro https://streamimdb.ru https://player.imdb.su https://www.2embed.cc https://2embed.cc https://www.2embed.skin https://2embed.skin https://2vcdn.skin https://multiembed.mov https://streamingnow.mov;
   style-src 'self' 'unsafe-inline';
   style-src-elem 'self' 'unsafe-inline';
   style-src-attr 'unsafe-inline';
@@ -18,7 +18,7 @@
     https://m.media-amazon.com;
   media-src 'self' blob: https: https://noureddinelmobaraki-web.github.io https://broad-block-7bd7.nordinegb2018.workers.dev https://imdb.iamidiotareyoutoo.com https://*.media-imdb.com https://*.ssl-images-amazon.com https://*.amazonaws.com;
   font-src 'self' data:;
-  connect-src 'self' https: ws: wss: https://broad-block-7bd7.nordinegb2018.workers.dev https://imdb.iamidiotareyoutoo.com https://sub.wyzie.io https://api.opensubtitles.com https://iptv-org.github.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com https://*.supabase.co wss://*.supabase.co;
+  connect-src 'self' https: ws: wss: https://broad-block-7bd7.nordinegb2018.workers.dev https://imdb.iamidiotareyoutoo.com https://api.imdbapi.dev https://sub.wyzie.io https://api.opensubtitles.com https://iptv-org.github.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com https://*.supabase.co wss://*.supabase.co;
   worker-src 'self' blob:;
   manifest-src 'self';
   base-uri 'self';
@@ -37,6 +37,8 @@
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin>
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io">
     <link rel="dns-prefetch" href="https://noureddinelmobaraki-web.github.io">
+    <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
+    <link rel="preconnect" href="https://api.themoviedb.org" crossorigin>
 
     <!-- LCP: preload the hero background for the default (midnight) theme.
          Must byte-match --hero-bg-image-url in src/styles/themes/midnight.css.

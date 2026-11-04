@@ -1,6 +1,6 @@
 {
-  "summary": "خطة تنفيذ شاملة لإصلاح تشغيل الترجمة وعرضها في جميع أوضاع مشغل الأفلام والمسلسلات، إصلاح تشغيل التريلر مع التراجع التلقائي ليوتيوب، إزالة تراكب أزرار أعلى الصفحة، وتحديث بطاقة بوستر الفيلم بتصميم زجاجي فائق الشفافية.",
-  "updatedAt": "2026-11-04T13:44:35.826625268Z",
+  "summary": "Implementation plan for Phase 3b (Unified Cloudflare Worker reference, GitHub Actions deploy env hardening, Worker-backed OMDb metadata with Rotten Tomatoes/Metacritic/Awards/Box Office display, and bidirectional progress bar synchronization between inside and outside the gallery player).",
+  "updatedAt": "2026-11-04T16:07:24.046090648Z",
   "requestFeedback": true,
   "userFacing": true
 }

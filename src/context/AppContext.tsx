@@ -33,6 +33,22 @@ function buildViewUrl(view: string): string {
   return url.pathname + url.search + url.hash;
 }
 
+function resolveInitialViewFromUrl(): string {
+  if (typeof window === 'undefined') return 'home';
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const explicitView = params.get('view');
+    if (explicitView && VIEW_TO_NAV[explicitView]) return explicitView;
+    for (const legacyKey of ['movies', 'series', 'music', 'games'] as const) {
+      const val = params.get(legacyKey);
+      if (val === '1' || val === 'true') return legacyKey;
+    }
+  } catch {
+    // ignore URL parse issues
+  }
+  return 'home';
+}
+
 interface AppContextType {
   theme: Theme;
   setTheme: React.Dispatch<React.SetStateAction<Theme>>;
@@ -124,12 +140,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [ambientColor, setAmbientColor] = useState<string | null>(null);
   const [activeSong, setActiveSong] = useState<ActiveSong | null>(null);
   const isAutomatedCtx = isAutomatedEnv();
-  const [loaded, setLoaded] = useState(isAutomatedCtx);
+  const initialUrlView = resolveInitialViewFromUrl();
+  const initialMappedNav = VIEW_TO_NAV[initialUrlView];
+  const [loaded, setLoaded] = useState(isAutomatedCtx || Boolean(initialMappedNav));
   const [currentPage, setCurrentPage] = useState('home');
 
   const isPopStateNavRef = useRef(false); // true فقط أثناء معالجة popstate
 
-  const [nav, dispatch] = useReducer(navReducer, initialNavState);
+  const [nav, dispatch] = useReducer(
+    navReducer,
+    initialMappedNav
+      ? {
+          activePage: initialMappedNav.page,
+          cinemaTab: initialMappedNav.cinemaTab ?? 'movies',
+          transitioning: false,
+        }
+      : initialNavState,
+  );
 
   const isGamesOpen  = nav.activePage === 'games';
   const isMoviesOpen = nav.activePage === 'cinema' && nav.cinemaTab === 'movies';
@@ -232,12 +259,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const endTransition = useCallback(() => dispatch({ type: 'TRANSITION_END' }), []);
 
-  // [History] تهيئة أولية: اجعل للإدخال الأول حالة nlView
+  // [History] تهيئة أولية: اقرأ ?view= (أو المعاملات القديمة) قبل كتابة nlView: 'home'
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (window.history.state && window.history.state.nlView) return; // سبقت التهيئة
+    const resolvedView = resolveInitialViewFromUrl();
+    const mapped = VIEW_TO_NAV[resolvedView];
+    if (mapped) {
+      setLoaded(true);
+      dispatch({ type: 'NAVIGATE', page: mapped.page, cinemaTab: mapped.cinemaTab });
+    }
     try {
-      window.history.replaceState({ nlView: 'home' }, '', window.location.href);
+      window.history.replaceState(
+        { nlView: mapped ? resolvedView : 'home' },
+        '',
+        mapped ? buildViewUrl(resolvedView) : window.location.href,
+      );
     } catch (e) { /* تجاهل */ }
   }, []);
 

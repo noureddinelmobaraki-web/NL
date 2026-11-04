@@ -22,9 +22,21 @@ export interface CinemaServerConfig {
     imdb: boolean;
     tmdb: boolean;
   };
+  capabilities?: {
+    /** Emits verifiable postMessage timeUpdate events (iframeBridge.ts). */
+    timeEvents?: boolean;
+    /** Supports ?startAt=<seconds> in embed URL. */
+    startAt?: boolean;
+  };
   timeoutMs: number;
-  movie: (ids: ServerIds) => string;
-  tv: (ids: ServerIds, season?: number, episode?: number, fullSeason?: boolean) => string;
+  movie: (ids: ServerIds, opts?: { startAt?: number }) => string;
+  tv: (
+    ids: ServerIds,
+    season?: number,
+    episode?: number,
+    fullSeason?: boolean,
+    opts?: { startAt?: number },
+  ) => string;
 }
 
 const IMDB_ID_REGEX = /^tt\d+$/;
@@ -64,8 +76,45 @@ function normalizeSeasonEpisode(season?: number, episode?: number): { s: string;
   };
 }
 
-// Ordered with Server 7 as the default primary server (index 0), and Servers 3, 4, 5 permanently removed.
+function vidlinkQuery(opts?: { startAt?: number }): string {
+  const p = new URLSearchParams({
+    primaryColor: 'dc2626',
+    secondaryColor: 'a2a2a2',
+    iconColor: 'eefdec',
+    icons: 'default',
+    player: 'default',
+    title: 'false',
+    poster: 'true',
+    autoplay: 'true',
+    nextbutton: 'true',
+  });
+  if (opts?.startAt && opts.startAt > 5) {
+    p.set('startAt', String(Math.floor(opts.startAt)));
+  }
+  return p.toString();
+}
+
+// Ordered with VidLink (server-vl) as the default primary server (index 0), and Servers 3, 4, 5 permanently removed.
 export const CINEMA_SERVERS: CinemaServerConfig[] = [
+  {
+    id: 'server-vl',
+    label: 'VidLink',
+    host: 'vidlink.pro',
+    origins: ['https://vidlink.pro'],
+    supports: { imdb: false, tmdb: true },
+    capabilities: { timeEvents: true, startAt: true },
+    timeoutMs: 12000,
+    movie: (ids, opts) => {
+      const { tmdb } = sanitizeServerIds(ids);
+      return tmdb ? `https://vidlink.pro/movie/${tmdb}?${vidlinkQuery(opts)}` : '';
+    },
+    tv: (ids, season = 1, episode = 1, _fullSeason = false, opts) => {
+      const { tmdb } = sanitizeServerIds(ids);
+      if (!tmdb) return '';
+      const { s, e } = normalizeSeasonEpisode(season, episode);
+      return `https://vidlink.pro/tv/${tmdb}/${s}/${e}?${vidlinkQuery(opts)}`;
+    },
+  },
   {
     id: 'server-7',
     label: 'Server 7',

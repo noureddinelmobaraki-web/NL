@@ -9,12 +9,19 @@ export interface SubtitleCue {
 }
 
 export interface ExtractedSubtitleTrack {
+  id?: string;
   url: string;
   proxiedUrl: string;
   lang: string;
   label: string;
   default?: boolean;
   cues?: SubtitleCue[];
+  provider?: "wyzie" | "opensubtitles" | "worker" | "local";
+  release?: string;
+  hearingImpaired?: boolean;
+  remoteUrl?: string;
+  osFileId?: number;
+  loaded?: boolean;
 }
 
 export interface ExtractedVideoStream {

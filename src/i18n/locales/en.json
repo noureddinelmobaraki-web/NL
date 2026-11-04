@@ -32,6 +32,7 @@
     "vote": "Rating",
     "genres": "Genres",
     "rows": {
+      "continueWatching": "Continue watching",
       "trending": "Trending Now",
       "topRated": "Top Rated",
       "popular": "Most Popular",
@@ -53,7 +54,11 @@
       "noTrailer": "No Trailer Available",
       "resolving": "Resolving details…",
       "loading": "Loading…",
-      "errorLoad": "Couldn't load content, try again"
+      "errorLoad": "Couldn't load content, try again",
+      "rottenTomatoes": "Rotten Tomatoes",
+      "metascore": "Metacritic",
+      "awards": "Awards",
+      "boxOffice": "Box Office"
     },
     "player": {
       "loadingServer": "Connecting to {{server}}…",
@@ -69,7 +74,36 @@
       "season": "Season {{num}}",
       "adLockOn": "Ad-Lock: ON",
       "adLockOff": "Ad-Lock: OFF",
-      "switchServer": "Switch Server ({{current}}/{{total}})"
+      "switchServer": "Switch Server ({{current}}/{{total}})",
+      "play": "Play",
+      "pause": "Pause",
+      "seek": "Seek",
+      "bridgedTimeHint": "Live time from server (use player controls to seek)",
+      "controlsInsideFrame": "Playback controls are inside the video frame"
+    },
+    "subs": {
+      "syncClock": "Subtitle Sync",
+      "pauseClock": "Pause subtitle clock",
+      "startClock": "Start subtitle clock",
+      "title": "Subtitles",
+      "tabTracks": "Tracks",
+      "tabStyle": "Style",
+      "tabSync": "Sync",
+      "tabLangs": "Languages",
+      "off": "Off",
+      "uploadFile": "Load .srt / .vtt from device",
+      "noTracks": "No subtitles found for the selected languages.",
+      "size": "Size",
+      "color": "Color",
+      "background": "Background",
+      "bgBox": "Box",
+      "bgOutline": "Outline",
+      "bgNone": "Shadow",
+      "position": "Vertical Lift",
+      "offset": "Timing Offset",
+      "reset": "Reset",
+      "langsHint": "Choose up to 4 languages to search automatically.",
+      "applyLangs": "Re-fetch subtitles"
     }
   },
   "series": {

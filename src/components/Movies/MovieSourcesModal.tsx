@@ -15,6 +15,10 @@ export interface PlaySource {
   url: string;
   origins: string[];
   timeoutMs: number;
+  capabilities?: {
+    timeEvents?: boolean;
+    startAt?: boolean;
+  };
 }
 
 export interface CinemaWatchTarget {
@@ -27,6 +31,7 @@ export interface CinemaWatchTarget {
   season?: number;
   episode?: number;
   fullSeason?: boolean;
+  startAt?: number;
 }
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -49,6 +54,7 @@ export function buildSources(item: {
   season?: number;
   episode?: number;
   fullSeason?: boolean;
+  startAt?: number;
 }): PlaySource[] {
   const ids = {
     imdb: item.imdbId,
@@ -61,8 +67,8 @@ export function buildSources(item: {
   const built = CINEMA_SERVERS.map((server) => {
     const url =
       item.mediaType === 'movie'
-        ? server.movie(ids)
-        : server.tv(ids, s, e, isFullSeason);
+        ? server.movie(ids, { startAt: item.startAt })
+        : server.tv(ids, s, e, isFullSeason, { startAt: item.startAt });
     return {
       id: server.id,
       label: server.label,
@@ -70,6 +76,7 @@ export function buildSources(item: {
       url,
       origins: server.origins,
       timeoutMs: server.timeoutMs,
+      capabilities: server.capabilities,
     };
   }).filter((src) => Boolean(src.url));
 
@@ -154,6 +161,7 @@ export function useResolvedImdbSources(
       season: item.season,
       episode: item.episode,
       fullSeason: item.fullSeason,
+      startAt: item.startAt,
     });
   }, [item, resolvedImdbId]);
 

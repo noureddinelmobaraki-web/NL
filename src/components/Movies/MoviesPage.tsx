@@ -26,9 +26,6 @@ import {
   Layers,
   RefreshCw,
   AlertTriangle,
-  Pause,
-  RotateCcw,
-  RotateCw,
   Subtitles,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -52,14 +49,16 @@ import {
 } from "./MovieSourcesModal";
 import Hls from "hls.js";
 import {
+  WORKER_ENDPOINT,
   fetchExtractedVideos,
   type ExtractedSubtitleTrack,
   type ExtractedVideoStream,
   type SubtitleCue,
 } from "../../services/videoExtractor";
 import {
+  createLocalSubtitleTrack,
+  ensureTrackLoaded,
   fetchExternalSubtitles,
-  loadTrackCuesIfNeeded,
   revokeSubtitleBlobUrls,
 } from "../../services/subtitleService";
 import {
@@ -70,6 +69,36 @@ import {
 import { EyeLoader } from "./EyeLoader";
 import { useTopMovies } from "./useTopMovies";
 import { logPlay } from "../../features/music/data/playTracking";
+import { ALL_SERVER_FRAME_ORIGINS } from "../../config/servers";
+import {
+  bindVideoElementToClock,
+  clockGetState,
+  clockNow,
+  clockPlay,
+  clockReset,
+  useClockState,
+} from "../../features/cinema/player/playbackClock";
+import {
+  sendIframePlayerCommand,
+  useIframePlayerBridge,
+  type IframePlayerCommand,
+} from "../../features/cinema/player/iframeBridge";
+import {
+  CinemaTimeline,
+  type PlayerControlMode,
+} from "../../features/cinema/player/CinemaTimeline";
+import { SubtitleOverlay } from "../../features/cinema/subtitles/SubtitleOverlay";
+import { SubtitleSettingsPanel } from "../../features/cinema/subtitles/SubtitleSettingsPanel";
+import {
+  resolveTrailer,
+  type TrailerSource,
+} from "../../services/trailerService";
+import {
+  getProgress,
+  removeProgress,
+  saveProgress,
+  useContinueWatching,
+} from "../../features/cinema/progress/progressStore";
 
 function NLLogo() {
   return <span className="nl-logo" aria-label="NL" role="img">NL</span>;
@@ -83,20 +112,32 @@ interface CacheEntry {
   t: number;
 }
 const MEMORY_CACHE: Record<string, CacheEntry> = {};
+const IN_FLIGHT: Record<string, Promise<any> | undefined> = {};
 
 export async function fetchWithCache(url: string, signal?: AbortSignal, ttlMs = 3600_000 * 24): Promise<any> {
   const key = `cache_v2_${url.replace(/([?&])api_key=[^&]*/i, '$1api_key=_')}`;
   const now = Date.now();
   const fresh = (t: number) => now - t < ttlMs;
 
-  const revalidate = async () => {
-    const res = await fetch(url, { signal: signal ?? AbortSignal.timeout(10_000) });
-    if (!res.ok) throw new Error("TMDB network response failed");
-    const d = await res.json();
-    const entry = { d, t: Date.now() };
-    MEMORY_CACHE[key] = entry;
-    try { localStorage.setItem(key, JSON.stringify(entry)); } catch {}
-    return d;
+  const revalidate = (): Promise<any> => {
+    if (IN_FLIGHT[key]) return IN_FLIGHT[key]!;
+    const p = (async () => {
+      try {
+        const res = await fetch(url, { signal: signal ?? AbortSignal.timeout(10_000) });
+        if (!res.ok) throw new Error("TMDB network response failed");
+        const d = await res.json();
+        const entry = { d, t: Date.now() };
+        MEMORY_CACHE[key] = entry;
+        if (!/\/search\//.test(url)) {
+          try { localStorage.setItem(key, JSON.stringify(entry)); } catch {}
+        }
+        return d;
+      } finally {
+        delete IN_FLIGHT[key];
+      }
+    })();
+    IN_FLIGHT[key] = p;
+    return p;
   };
 
   if (MEMORY_CACHE[key]) {
@@ -167,12 +208,107 @@ export interface CinemaItem {
   status?: string;
   originalLanguage?: string;
   certification?: string;
+  rottenTomatoes?: string;
+  metascore?: string;
+  awards?: string;
+  boxOffice?: string;
   budget?: number;
   revenue?: number;
   directors?: string[];
   productionCompanies?: { id: number; name: string; logoPath: string }[];
   cast: CastMember[];
   similar: CinemaItem[];
+}
+
+const USE_WORKER_META = import.meta.env.VITE_USE_WORKER_META === "1";
+
+interface OmdbEnrichedMeta {
+  imdbRating?: string;
+  imdbVotes?: string;
+  metascore?: string;
+  rottenTomatoes?: string;
+  rated?: string;
+  runtime?: string;
+  awards?: string;
+  boxOffice?: string;
+  director?: string;
+  writer?: string;
+  actors?: string;
+  language?: string;
+  country?: string;
+}
+
+async function fetchOmdbMeta(
+  imdbId: string,
+  omdbKey?: string,
+): Promise<OmdbEnrichedMeta | null> {
+  const cleanId = (imdbId || "").trim();
+  if (!/^tt\d{5,10}$/i.test(cleanId)) return null;
+  const cleanVal = (v: unknown): string | undefined =>
+    typeof v === "string" && v.trim() && v.trim() !== "N/A"
+      ? v.trim()
+      : undefined;
+
+  if (USE_WORKER_META) {
+    try {
+      const r = await fetch(
+        `${WORKER_ENDPOINT}meta/omdb?i=${encodeURIComponent(cleanId)}`,
+        { signal: AbortSignal.timeout(7000) },
+      );
+      if (r.ok) {
+        const d: any = await r.json();
+        return {
+          imdbRating: cleanVal(d?.imdbRating),
+          imdbVotes: cleanVal(d?.imdbVotes),
+          metascore: cleanVal(d?.metascore),
+          rottenTomatoes: cleanVal(d?.rottenTomatoes),
+          rated: cleanVal(d?.rated),
+          runtime: cleanVal(d?.runtime),
+          awards: cleanVal(d?.awards),
+          boxOffice: cleanVal(d?.boxOffice),
+          director: cleanVal(d?.director),
+          writer: cleanVal(d?.writer),
+          actors: cleanVal(d?.actors),
+          language: cleanVal(d?.language),
+          country: cleanVal(d?.country),
+        };
+      }
+    } catch {
+      // fall through to direct OMDb if key exists
+    }
+  }
+
+  if (!omdbKey) return null;
+  try {
+    const r = await fetch(
+      `${window.location.protocol}//www.omdbapi.com/?i=${encodeURIComponent(cleanId)}&apikey=${encodeURIComponent(omdbKey)}`,
+      { signal: AbortSignal.timeout(7000) },
+    );
+    if (!r.ok) return null;
+    const d: any = await r.json();
+    if (!d || d.Response === "False") return null;
+    const rt = Array.isArray(d.Ratings)
+      ? d.Ratings.find((x: any) => x?.Source === "Rotten Tomatoes")?.Value
+      : undefined;
+    return {
+      imdbRating: cleanVal(d.imdbRating),
+      imdbVotes: cleanVal(d.imdbVotes),
+      metascore: cleanVal(d.Metascore ?? d.metascore),
+      rottenTomatoes: cleanVal(rt ?? d.rottenTomatoes),
+      rated: cleanVal(d.Rated ?? d.rated),
+      runtime: cleanVal(d.Runtime ?? d.runtime),
+      awards: cleanVal(d.Awards ?? d.awards),
+      boxOffice: cleanVal(d.BoxOffice ?? d.boxOffice),
+      director: cleanVal(d.Director ?? d.director),
+      writer: cleanVal(d.Writer ?? d.writer),
+      actors: cleanVal(d.Actors ?? d.actors),
+      language: cleanVal(d.Language ?? d.language),
+      country: cleanVal(d.Country ?? d.country),
+    };
+  } catch (omdbErr) {
+    console.warn("Could not fetch ratings from OMDB API:", omdbErr);
+    return null;
+  }
 }
 
 const pick = (v: any, lang: string): string => {
@@ -258,7 +394,7 @@ export function normalizeItem(raw: any, mediaType: Media, lang: string): CinemaI
     tagline: typeof raw.tagline === 'string' && raw.tagline.trim() ? raw.tagline.trim() : undefined,
     status: typeof raw.status === 'string' ? raw.status : undefined,
     originalLanguage: typeof raw.original_language === 'string' ? raw.original_language.toUpperCase() : undefined,
-    certification: certification || (isTv ? 'TV-MA' : 'PG-13'),
+    certification: certification || undefined,
     budget: typeof raw.budget === 'number' && raw.budget > 0 ? raw.budget : undefined,
     revenue: typeof raw.revenue === 'number' && raw.revenue > 0 ? raw.revenue : undefined,
     directors: directors.length > 0 ? directors : undefined,
@@ -280,7 +416,7 @@ const getBackdropSrc_static = (
 ) => {
   if (path) {
     if (path.startsWith("http")) return path;
-    return `${TMDB_IMAGE_BASE}/original${path}`;
+    return `${TMDB_IMAGE_BASE}/w1280${path}`;
   }
   if (posterPath) {
     if (posterPath.startsWith("http")) return posterPath;
@@ -328,16 +464,22 @@ const MoviePosterCard = React.memo(
     onQuickWatch,
     t,
     isFavorite,
+    progressRatio,
+    episodeBadge,
+    onRemoveProgress,
   }: {
     item: CinemaItem;
     isTouch: boolean;
     activeHoverId: number | null;
     setActiveHoverId: (id: number | null) => void;
     hoverTimer: React.MutableRefObject<any>;
-    setSelectedItemId: (id: number | null) => void;
+    setSelectedItemId: (id: number | null, mediaType?: Media) => void;
     onQuickWatch?: (item: CinemaItem) => void;
     t: any;
     isFavorite?: boolean;
+    progressRatio?: number;
+    episodeBadge?: string;
+    onRemoveProgress?: () => void;
   }) => {
     const cardRef = useRef<HTMLDivElement | null>(null);
     const [hovered, setHovered] = useState(false);
@@ -379,11 +521,11 @@ const MoviePosterCard = React.memo(
         aria-label={item.title}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onClick={() => setSelectedItemId(item.id)}
+        onClick={() => setSelectedItemId(item.id, item.mediaType)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            setSelectedItemId(item.id);
+            setSelectedItemId(item.id, item.mediaType);
           }
         }}
         className={`nl-poster relative w-[116px] sm:w-[154px] md:w-[176px] aspect-[2/3] overflow-hidden cursor-pointer select-none flex-shrink-0 snap-start ${
@@ -400,11 +542,35 @@ const MoviePosterCard = React.memo(
           </span>
         )}
 
+        {/* Episode badge or Remove button for Continue Watching */}
+        {episodeBadge && !isFavorite && (
+          <span className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded-full bg-black/70 border border-white/25 text-[9.5px] font-black text-white shadow">
+            {episodeBadge}
+          </span>
+        )}
+
+        {onRemoveProgress && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveProgress();
+            }}
+            aria-label={t("movies.close")}
+            title={t("movies.close")}
+            className="absolute top-2 right-2 z-30 w-6 h-6 rounded-full bg-black/75 hover:bg-rose-600 border border-white/30 text-white flex items-center justify-center text-xs font-black cursor-pointer shadow"
+          >
+            ×
+          </button>
+        )}
+
         {/* Top-right Rating Pill */}
-        <span className="absolute top-2 right-2 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-[10px] font-extrabold text-amber-400 shadow">
-          <Star size={9} className="fill-current" />
-          {item.rating?.toFixed(1) || "8.1"}
-        </span>
+        {!onRemoveProgress && item.rating > 0 && (
+          <span className="absolute top-2 right-2 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-[10px] font-extrabold text-amber-400 shadow">
+            <Star size={9} className="fill-current" />
+            {item.rating.toFixed(1)}
+          </span>
+        )}
 
         {/* Full-Bleed Movie/Series Artwork (Always Visible on Hover Zoom) */}
         <img
@@ -440,9 +606,21 @@ const MoviePosterCard = React.memo(
             {item.title}
           </p>
           <p className="text-[9px] text-white/70 font-medium truncate">
-            {item.year || "2024"} · {fallbackGenText}
+            {[item.year, fallbackGenText].filter(Boolean).join(" · ")}
           </p>
         </div>
+
+        {/* Thin red Continue Watching progress bar */}
+        {typeof progressRatio === "number" && progressRatio > 0 && (
+          <div className="absolute inset-x-0 bottom-0 h-[3px] bg-white/20 z-20 pointer-events-none">
+            <div
+              className="h-full bg-[#dc2626]"
+              style={{
+                width: `${Math.min(100, Math.max(2, Math.round(progressRatio * 100)))}%`,
+              }}
+            />
+          </div>
+        )}
 
         {/* Zoomed Liquid Glass Drawer Overlay (Ultra-light translucent finish) */}
         <AnimatePresence>
@@ -459,9 +637,11 @@ const MoviePosterCard = React.memo(
                 <h4 className="text-[11px] font-black text-white leading-tight line-clamp-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
                   {item.title}
                 </h4>
-                <span className="px-1.5 py-0.5 rounded-full bg-white/12 border border-white/20 text-[7.5px] font-extrabold text-white/95 shrink-0">
-                  {item.year || "2024"}
-                </span>
+                {item.year && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-white/12 border border-white/20 text-[7.5px] font-extrabold text-white/95 shrink-0">
+                    {item.year}
+                  </span>
+                )}
               </div>
               <p className="text-[9px] text-white/90 line-clamp-2 leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]">
                 {item.overview}
@@ -484,7 +664,7 @@ const MoviePosterCard = React.memo(
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedItemId(item.id);
+                    setSelectedItemId(item.id, item.mediaType);
                   }}
                   className="lg-cinema-action-pill py-1 px-2 rounded-full text-[9px] font-bold text-white flex items-center justify-center gap-1 cursor-pointer"
                   title={t("movies.meta.moreInfo") || "Details"}
@@ -611,68 +791,6 @@ const MovieRow = React.memo(
   },
 );
 
-const LAST_SERVER_STORAGE_KEY = 'nl_cinema_last_server_v2';
-const AD_LOCK_STORAGE_KEY = 'nl_cinema_adlock_v1';
-
-function readPreferredServerId(itemKey: string): string | null {
-  if (!itemKey) return null;
-  try {
-    const raw = localStorage.getItem(LAST_SERVER_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed === 'object' &&
-      parsed.byItem &&
-      typeof parsed.byItem[itemKey] === 'string'
-    ) {
-      return parsed.byItem[itemKey];
-    }
-  } catch {
-    // Ignore storage errors (e.g. Safari Private Browsing)
-  }
-  return null;
-}
-
-function savePreferredServerId(itemKey: string, serverId: string): void {
-  if (!itemKey || !serverId) return;
-  try {
-    const raw = localStorage.getItem(LAST_SERVER_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
-    const byItem =
-      parsed && typeof parsed.byItem === 'object' && parsed.byItem !== null
-        ? { ...parsed.byItem }
-        : {};
-    byItem[itemKey] = serverId;
-    localStorage.setItem(
-      LAST_SERVER_STORAGE_KEY,
-      JSON.stringify({
-        byItem,
-      }),
-    );
-  } catch {
-    // Ignore storage errors (e.g. Safari Private Browsing)
-  }
-}
-
-function readInitialAdLock(): boolean {
-  try {
-    const raw = localStorage.getItem(AD_LOCK_STORAGE_KEY);
-    if (raw === '0' || raw === 'false') return false;
-    return true;
-  } catch {
-    return true;
-  }
-}
-
-function saveAdLockState(enabled: boolean): void {
-  try {
-    localStorage.setItem(AD_LOCK_STORAGE_KEY, enabled ? '1' : '0');
-  } catch {
-    // Ignore storage errors
-  }
-}
-
 export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => void; initialTab?: 'movies' | 'series' }) {
   const { t, i18n } = useTranslation();
   const { isMobile, isTablet } = useDeviceType();
@@ -714,7 +832,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [animationSeries, setAnimationSeries] = useState<CinemaItem[]>([]);
   const [seriesGenres, setSeriesGenres] = useState<any[]>([]);
 
-  // Resolution effects for Top items
+  // Resolution effects for Top items (batched 6 at a time, preserving order)
   useEffect(() => {
     let cancelled = false;
     if (topMoviesRows.length === 0) {
@@ -722,7 +840,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       return;
     }
     const loadTopMoviesDetails = async () => {
-      const items: CinemaItem[] = [];
       const langParam = `&language=${tmdbLang(currentLang)}`;
 
       const allLoaded = [
@@ -736,26 +853,35 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         ...FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang))
       ];
 
-      for (const row of topMoviesRows) {
+      const resolved: (CinemaItem | null)[] = new Array(topMoviesRows.length).fill(null);
+      const BATCH_SIZE = 6;
+      for (let i = 0; i < topMoviesRows.length; i += BATCH_SIZE) {
         if (cancelled) return;
-        const matched = allLoaded.find(m => m.id === row.tmdb_id && m.mediaType === 'movie');
-        if (matched) {
-          items.push(matched);
-        } else if (tmdbKey) {
-          try {
-            const detail = await fetchWithCache(
-              `${TMDB_BASE_URL}/movie/${row.tmdb_id}?api_key=${tmdbKey}${langParam}`
-            );
-            if (!cancelled && detail) {
-              items.push(normalizeItem(detail, 'movie', currentLang));
+        const slice = topMoviesRows.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          slice.map(async (row, idx) => {
+            const targetIdx = i + idx;
+            const matched = allLoaded.find(m => m.id === row.tmdb_id && m.mediaType === 'movie');
+            if (matched) {
+              resolved[targetIdx] = matched;
+              return;
             }
-          } catch (e) {
-            console.warn("Failed to fetch top movie details for ID", row.tmdb_id, e);
-          }
-        }
+            if (!tmdbKey) return;
+            try {
+              const detail = await fetchWithCache(
+                `${TMDB_BASE_URL}/movie/${row.tmdb_id}?api_key=${tmdbKey}${langParam}`
+              );
+              if (!cancelled && detail) {
+                resolved[targetIdx] = normalizeItem(detail, 'movie', currentLang);
+              }
+            } catch (e) {
+              console.warn("Failed to fetch top movie details for ID", row.tmdb_id, e);
+            }
+          }),
+        );
       }
       if (!cancelled) {
-        setTopMovies(items);
+        setTopMovies(resolved.filter((x): x is CinemaItem => x !== null));
       }
     };
     loadTopMoviesDetails();
@@ -769,7 +895,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       return;
     }
     const loadTopSeriesDetails = async () => {
-      const items: CinemaItem[] = [];
       const langParam = `&language=${tmdbLang(currentLang)}`;
 
       const allLoaded = [
@@ -783,26 +908,35 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         ...FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang))
       ];
 
-      for (const row of topSeriesRows) {
+      const resolved: (CinemaItem | null)[] = new Array(topSeriesRows.length).fill(null);
+      const BATCH_SIZE = 6;
+      for (let i = 0; i < topSeriesRows.length; i += BATCH_SIZE) {
         if (cancelled) return;
-        const matched = allLoaded.find(m => m.id === row.tmdb_id && m.mediaType === 'tv');
-        if (matched) {
-          items.push(matched);
-        } else if (tmdbKey) {
-          try {
-            const detail = await fetchWithCache(
-              `${TMDB_BASE_URL}/tv/${row.tmdb_id}?api_key=${tmdbKey}${langParam}`
-            );
-            if (!cancelled && detail) {
-              items.push(normalizeItem(detail, 'tv', currentLang));
+        const slice = topSeriesRows.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          slice.map(async (row, idx) => {
+            const targetIdx = i + idx;
+            const matched = allLoaded.find(m => m.id === row.tmdb_id && m.mediaType === 'tv');
+            if (matched) {
+              resolved[targetIdx] = matched;
+              return;
             }
-          } catch (e) {
-            console.warn("Failed to fetch top series details for ID", row.tmdb_id, e);
-          }
-        }
+            if (!tmdbKey) return;
+            try {
+              const detail = await fetchWithCache(
+                `${TMDB_BASE_URL}/tv/${row.tmdb_id}?api_key=${tmdbKey}${langParam}`
+              );
+              if (!cancelled && detail) {
+                resolved[targetIdx] = normalizeItem(detail, 'tv', currentLang);
+              }
+            } catch (e) {
+              console.warn("Failed to fetch top series details for ID", row.tmdb_id, e);
+            }
+          }),
+        );
       }
       if (!cancelled) {
-        setTopSeries(items);
+        setTopSeries(resolved.filter((x): x is CinemaItem => x !== null));
       }
     };
     loadTopSeriesDetails();
@@ -824,11 +958,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [heroServersOpen, setHeroServersOpen] = useState(false);
   const [detailServersOpen, setDetailServersOpen] = useState(false);
 
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [selectedItemId, setSelectedItemIdState] = useState<number | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<Media | null>(null);
+  const setSelectedItemId = useCallback((id: number | null, mediaType?: Media) => {
+    setSelectedMediaType(id === null ? null : (mediaType ?? null));
+    setSelectedItemIdState(id);
+  }, []);
   const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [showHeroTrailer, setShowHeroTrailer] = useState(false);
   const [trailerFallbackToYoutube, setTrailerFallbackToYoutube] = useState(false);
+  const [resolvedTrailer, setResolvedTrailer] = useState<TrailerSource | null>(null);
+  const [imdbTrailerLoaded, setImdbTrailerLoaded] = useState(false);
   const [isWatchingInGallery, setIsWatchingInGallery] = useState(false);
   const [activeGalleryServerIdx, setActiveGalleryServerIdx] = useState(0);
   const [isPlayerLoading, setIsPlayerLoading] = useState(false);
@@ -839,6 +980,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [externalSubtitles, setExternalSubtitles] = useState<ExtractedSubtitleTrack[]>([]);
   const externalSubtitlesRef = useRef<ExtractedSubtitleTrack[]>([]);
   const [isLoadingSubtitles, setIsLoadingSubtitles] = useState(false);
+  const [loadingSubtitleIdx, setLoadingSubtitleIdx] = useState<number | null>(null);
   const [subtitleOffsetSec, setSubtitleOffsetSec] = useState(0);
   const [activeTrackCues, setActiveTrackCues] = useState<SubtitleCue[]>([]);
   const [activeExtractedIdx, setActiveExtractedIdx] = useState(0);
@@ -846,9 +988,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [playerRenderMode, setPlayerRenderMode] = useState<
     "extracting" | "direct" | "clean-embed" | "iframe"
   >("extracting");
-  const [isVideoPaused, setIsVideoPaused] = useState(false);
-  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
-  const [videoDuration, setVideoDuration] = useState(0);
+  const clockState = useClockState();
+  const isVideoPaused = clockState.paused;
   const [videoVolume, setVideoVolume] = useState(1);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [activeSubtitleIdx, setActiveSubtitleIdx] = useState<number | null>(0);
@@ -872,6 +1013,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const failoverStepRef = useRef(0);
   const loadedCurrentAttemptRef = useRef(false);
   const autoStartWatchRef = useRef(false);
+  const appliedInitialSeekRef = useRef(false);
+  const deepLinkSeRef = useRef<{ itemId: number; s?: number; e?: number } | null>(null);
+  const preselectedProgressItemIdRef = useRef<number | null>(null);
+  const continueWatchingItems = useContinueWatching();
+  const [seriesLoadTriggered, setSeriesLoadTriggered] = useState(initialTab === 'series');
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -915,6 +1061,20 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const detailDialogRef = useFocusTrap(selectedItemId !== null && !!detailedItem);
 
+  const resumeStartAtSec = useMemo(() => {
+    if (!detailedItem) return undefined;
+    const saved = getProgress(detailedItem.mediaType, detailedItem.id);
+    if (!saved) return undefined;
+    if (
+      detailedItem.mediaType === "tv" &&
+      ((saved.season && saved.season !== selectedSeason) ||
+        (saved.episode && saved.episode !== selectedEpisode))
+    ) {
+      return undefined;
+    }
+    return saved.time > 5 ? saved.time : undefined;
+  }, [detailedItem?.id, detailedItem?.mediaType, selectedSeason, selectedEpisode]);
+
   const detailWatchTarget = useMemo(() => {
     if (!detailedItem) return null;
     return {
@@ -927,8 +1087,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       season: selectedSeason,
       episode: selectedEpisode,
       fullSeason: isFullSeasonEmbed,
+      startAt: resumeStartAtSec,
     };
-  }, [detailedItem, selectedSeason, selectedEpisode, isFullSeasonEmbed]);
+  }, [detailedItem, selectedSeason, selectedEpisode, isFullSeasonEmbed, resumeStartAtSec]);
 
   const { sources: detailPlaySources, resolvedImdbId } = useResolvedImdbSources(
     detailWatchTarget,
@@ -937,10 +1098,67 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const activeImdbId = resolvedImdbId || detailedItem?.imdbId || "";
   const activeGallerySource =
     detailPlaySources[activeGalleryServerIdx] || detailPlaySources[0] || null;
+  const [embedSeekStartAtSec, setEmbedSeekStartAtSec] = useState<number | null>(null);
+  const embedSeekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const activeIframeUrl = useMemo(() => {
+    if (!activeGallerySource) return "";
+    const base =
+      playerRenderMode === "clean-embed"
+        ? (extractedStreams[activeExtractedIdx] || extractedStreams[0])?.directUrl ||
+          activeGallerySource.url
+        : activeGallerySource.url;
+    if (
+      embedSeekStartAtSec !== null &&
+      embedSeekStartAtSec > 0 &&
+      playerRenderMode === "iframe" &&
+      activeGallerySource.capabilities?.startAt
+    ) {
+      try {
+        const u = new URL(base);
+        u.searchParams.set("startAt", String(Math.floor(embedSeekStartAtSec)));
+        return u.toString();
+      } catch {
+        return base;
+      }
+    }
+    return base;
+  }, [
+    activeGallerySource,
+    playerRenderMode,
+    extractedStreams,
+    activeExtractedIdx,
+    embedSeekStartAtSec,
+  ]);
 
   const detailItemStorageKey = detailedItem
     ? `${detailedItem.mediaType}_${detailedItem.id}`
     : '';
+
+  const persistCurrentProgress = useCallback(() => {
+    if (!detailedItem || !isWatchingInGallery) return;
+    const st = clockGetState();
+    if (st.source !== "video" && st.source !== "bridge") return;
+    const curTime = clockNow();
+    const durationSec =
+      st.duration > 0
+        ? st.duration
+        : detailedItem.runtime && detailedItem.runtime > 0
+          ? detailedItem.runtime * 60
+          : 0;
+    if (durationSec <= 0 || curTime <= 5) return;
+    saveProgress({
+      id: detailedItem.id,
+      mediaType: detailedItem.mediaType,
+      title: detailedItem.title,
+      posterPath: detailedItem.posterPath,
+      backdropPath: detailedItem.backdropPath,
+      season: detailedItem.mediaType === "tv" ? selectedSeason : undefined,
+      episode: detailedItem.mediaType === "tv" ? selectedEpisode : undefined,
+      time: curTime,
+      duration: durationSec,
+    });
+  }, [detailedItem, isWatchingInGallery, selectedSeason, selectedEpisode]);
 
   const resolveServerIdForStream = useCallback(
     (stream?: ExtractedVideoStream | null): string => {
@@ -975,6 +1193,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       const firstIdx = ordered[0] ?? 0;
 
       cleanupDirectVideoPlayer();
+      clockReset("manual");
+      setEmbedSeekStartAtSec(null);
+      appliedInitialSeekRef.current = false;
       failoverQueueRef.current = ordered;
       failoverStepRef.current = 0;
       attemptTokenRef.current += 1;
@@ -1009,6 +1230,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         return;
       }
 
+      clockReset("manual");
       failoverStepRef.current = nextStep;
       const nextServerIdx = queue[nextStep];
       attemptTokenRef.current += 1;
@@ -1103,7 +1325,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           const seen = new Set<string>();
           const deduped: ExtractedSubtitleTrack[] = [];
           for (const sub of combined) {
-            const key = `${sub.lang}:${sub.proxiedUrl || sub.url}`;
+            const key = sub.id ?? `${sub.lang}:${sub.proxiedUrl || sub.url}`;
             if (seen.has(key)) continue;
             seen.add(key);
             deduped.push({ ...sub, default: false });
@@ -1425,138 +1647,204 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     if (activeSubtitlesList.length === 0) {
       setActiveSubtitleIdx(null);
       setActiveTrackCues([]);
+      setLoadingSubtitleIdx(null);
       return;
     }
     const defaultIdx = activeSubtitlesList.findIndex((s) => s.default);
     setActiveSubtitleIdx(defaultIdx >= 0 ? defaultIdx : 0);
   }, [activeSubtitlesList]);
 
-  // Load parsed cues for the active subtitle track so the live subtitle overlay works in every player mode
+  // Lazy-load parsed cues for the active subtitle track
   useEffect(() => {
     let cancelled = false;
+    const tokenAtStart = attemptTokenRef.current;
     if (
       !isWatchingInGallery ||
       activeSubtitleIdx === null ||
       !activeSubtitlesList[activeSubtitleIdx]
     ) {
       setActiveTrackCues([]);
+      setLoadingSubtitleIdx(null);
       return undefined;
     }
     const track = activeSubtitlesList[activeSubtitleIdx];
-    if (Array.isArray(track.cues) && track.cues.length > 0) {
+    if (track.loaded && Array.isArray(track.cues) && track.cues.length > 0) {
       setActiveTrackCues(track.cues);
+      setLoadingSubtitleIdx(null);
       return undefined;
     }
-    void loadTrackCuesIfNeeded(track).then((cues) => {
-      if (!cancelled) {
-        setActiveTrackCues(cues);
-      }
-    });
+    setLoadingSubtitleIdx(activeSubtitleIdx);
+    void ensureTrackLoaded(track)
+      .then((loadedTrack) => {
+        if (!cancelled && attemptTokenRef.current === tokenAtStart) {
+          setActiveTrackCues(loadedTrack.cues || []);
+          setLoadingSubtitleIdx(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled && attemptTokenRef.current === tokenAtStart) {
+          setActiveTrackCues([]);
+          setLoadingSubtitleIdx(null);
+        }
+      });
     return () => {
       cancelled = true;
     };
   }, [isWatchingInGallery, activeSubtitleIdx, activeSubtitlesList]);
 
-  // Active subtitle cue text for the current timestamp (adjusted by subtitleOffsetSec)
-  const activeCueText = useMemo(() => {
-    if (
-      !isWatchingInGallery ||
-      activeSubtitleIdx === null ||
-      activeTrackCues.length === 0
-    ) {
-      return "";
+  const handleRefreshSubtitlesForLanguages = useCallback(async () => {
+    if (!detailedItem || !isWatchingInGallery) return;
+    const tokenAtStart = attemptTokenRef.current;
+    setIsLoadingSubtitles(true);
+    try {
+      const extSubs = await fetchExternalSubtitles({
+        tmdbId: detailedItem.id,
+        imdbId: activeImdbId || undefined,
+        mediaType: detailedItem.mediaType,
+        season: detailedItem.mediaType === "tv" ? selectedSeason : undefined,
+        episode: detailedItem.mediaType === "tv" ? selectedEpisode : undefined,
+      });
+      if (attemptTokenRef.current !== tokenAtStart) {
+        revokeSubtitleBlobUrls(extSubs);
+        return;
+      }
+      if (externalSubtitlesRef.current.length > 0) {
+        revokeSubtitleBlobUrls(externalSubtitlesRef.current);
+      }
+      externalSubtitlesRef.current = extSubs;
+      setExternalSubtitles(extSubs);
+      setExtractedStreams((prev) =>
+        prev.map((v) => ({
+          ...v,
+          subtitles: [
+            ...(v.subtitles || []).filter((s) => s.provider === "worker" || s.provider === "local"),
+            ...extSubs,
+          ],
+        })),
+      );
+    } catch {
+      // ignore fetch error
+    } finally {
+      if (attemptTokenRef.current === tokenAtStart) {
+        setIsLoadingSubtitles(false);
+      }
     }
-    const effectiveTime = Math.max(0, videoCurrentTime - subtitleOffsetSec);
-    // Binary or linear search for matching cues
-    const matches = activeTrackCues.filter(
-      (c) => effectiveTime >= c.start && effectiveTime <= c.end,
-    );
-    if (matches.length === 0) return "";
-    return matches.map((m) => m.text).join("\n");
-  }, [
-    isWatchingInGallery,
-    activeSubtitleIdx,
-    activeTrackCues,
-    videoCurrentTime,
-    subtitleOffsetSec,
-  ]);
+  }, [detailedItem, isWatchingInGallery, activeImdbId, selectedSeason, selectedEpisode]);
 
-  // Listen to postMessage time updates from embedded iframe players AND run a smooth fallback timer for clean-embed/iframe subtitle sync
+  const handleUploadLocalSubtitle = useCallback(async (file: File) => {
+    const localTrack = await createLocalSubtitleTrack(file);
+    if (!localTrack) return;
+    externalSubtitlesRef.current = [localTrack, ...externalSubtitlesRef.current];
+    setExternalSubtitles((prev) => [localTrack, ...prev]);
+    setExtractedStreams((prev) =>
+      prev.map((v) => ({
+        ...v,
+        subtitles: [localTrack, ...(v.subtitles || [])],
+      })),
+    );
+    setActiveSubtitleIdx(0);
+  }, []);
+
+  // Bind HTML5 <video> element to isolated playbackClock in direct mode
+  useEffect(() => {
+    const v = videoElementRef.current;
+    if (!isWatchingInGallery || playerRenderMode !== "direct" || !v) return undefined;
+    return bindVideoElementToClock(v);
+  }, [isWatchingInGallery, playerRenderMode, extractedStreams, activeExtractedIdx]);
+
+  // Origin-allowlisted postMessage bridge for iframe / clean-embed players
+  const bridged = useIframePlayerBridge({
+    enabled:
+      isWatchingInGallery &&
+      (playerRenderMode === "iframe" || playerRenderMode === "clean-embed"),
+    iframeRef: playerIframeRef,
+    allowedOrigins: ALL_SERVER_FRAME_ORIGINS,
+    onMediaData: () => {
+      persistCurrentProgress();
+    },
+  });
+
+  const controlMode: PlayerControlMode =
+    playerRenderMode === "direct"
+      ? "direct"
+      : bridged
+        ? "bridged"
+        : "none";
+
+  const handleIframePlayerCommand = useCallback(
+    (cmd: IframePlayerCommand) => {
+      sendIframePlayerCommand(playerIframeRef.current, cmd);
+    },
+    [],
+  );
+
+  const handleCommitEmbedSeek = useCallback(
+    (targetSec: number) => {
+      if (
+        playerRenderMode !== "iframe" ||
+        !activeGallerySource?.capabilities?.startAt
+      ) {
+        return;
+      }
+      if (embedSeekTimerRef.current) {
+        clearTimeout(embedSeekTimerRef.current);
+        embedSeekTimerRef.current = null;
+      }
+      const rounded = Math.max(0, Math.floor(targetSec));
+      if (!bridged) {
+        setEmbedSeekStartAtSec(rounded);
+        return;
+      }
+      embedSeekTimerRef.current = setTimeout(() => {
+        if (Math.abs(clockNow() - targetSec) > 4) {
+          setEmbedSeekStartAtSec(rounded);
+        }
+      }, 650);
+    },
+    [playerRenderMode, activeGallerySource, bridged],
+  );
+
+  // Auto-start manual subtitle clock on first click into iframe when subtitles are enabled on non-timeEvent servers
   useEffect(() => {
     if (
       !isWatchingInGallery ||
-      (playerRenderMode !== "clean-embed" && playerRenderMode !== "iframe")
+      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
+      activeSubtitleIdx === null
     ) {
       return undefined;
     }
-
-    const onPlayerMessage = (e: MessageEvent) => {
-      try {
-        const raw = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-        if (!raw || typeof raw !== "object") return;
-        const payload = raw.data && typeof raw.data === "object" ? raw.data : raw;
-        if (typeof payload.currentTime === "number" && Number.isFinite(payload.currentTime)) {
-          setVideoCurrentTime(payload.currentTime);
-        } else if (typeof payload.time === "number" && Number.isFinite(payload.time)) {
-          setVideoCurrentTime(payload.time);
-        }
-        if (typeof payload.duration === "number" && payload.duration > 0) {
-          setVideoDuration(payload.duration);
-        }
-        if (raw.event === "pause" || payload.event === "pause") {
-          setIsVideoPaused(true);
-        } else if (raw.event === "play" || payload.event === "play") {
-          setIsVideoPaused(false);
-        }
-      } catch {
-        // Ignore non-JSON postMessages
+    const onBlur = () => {
+      if (
+        document.activeElement === playerIframeRef.current &&
+        clockGetState().source === "manual" &&
+        clockGetState().paused &&
+        !(playerRenderMode === "iframe" && activeGallerySource?.capabilities?.timeEvents)
+      ) {
+        clockPlay();
       }
     };
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, [isWatchingInGallery, playerRenderMode, activeSubtitleIdx, activeGallerySource]);
 
-    window.addEventListener("message", onPlayerMessage);
-    const fallbackDurationSec =
-      (detailedItem?.runtime && detailedItem.runtime > 0
-        ? detailedItem.runtime * 60
-        : detailedItem?.mediaType === "tv"
-          ? 45 * 60
-          : 120 * 60);
-    setVideoDuration((prev) => (prev > 0 ? prev : fallbackDurationSec));
+  // Save Continue Watching progress every 10s when clock source is video or bridge
+  useEffect(() => {
+    if (!isWatchingInGallery || !detailedItem) return undefined;
+    const interval = setInterval(() => {
+      persistCurrentProgress();
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [isWatchingInGallery, detailedItem, persistCurrentProgress]);
 
-    const timer = setInterval(() => {
-      if (!isPlayerLoading && !isVideoPaused) {
-        setVideoCurrentTime((prev) => prev + 0.25);
-      }
-    }, 250);
-
-    return () => {
-      window.removeEventListener("message", onPlayerMessage);
-      clearInterval(timer);
-    };
-  }, [
-    isWatchingInGallery,
-    playerRenderMode,
-    isPlayerLoading,
-    isVideoPaused,
-    detailedItem,
-  ]);
-
-  // Synchronize HTML5 <video> TextTrackList mode with activeSubtitleIdx (use hidden when custom overlay is active to prevent duplicate captions)
-  const syncVideoTextTracks = useCallback(
-    (selectedIdx: number | null) => {
-      const video = videoElementRef.current;
-      if (!video || !video.textTracks) return;
-      const tracks = video.textTracks;
-      for (let i = 0; i < tracks.length; i += 1) {
-        tracks[i].mode =
-          selectedIdx !== null && i === selectedIdx
-            ? activeTrackCues.length > 0
-              ? "hidden"
-              : "showing"
-            : "disabled";
-      }
-    },
-    [activeTrackCues.length],
-  );
+  // Synchronize HTML5 <video> TextTrackList mode with activeSubtitleIdx (always hidden in direct mode so SubtitleOverlay is the sole renderer)
+  const syncVideoTextTracks = useCallback((selectedIdx: number | null) => {
+    const video = videoElementRef.current;
+    if (!video || !video.textTracks) return;
+    const tracks = video.textTracks;
+    for (let i = 0; i < tracks.length; i += 1) {
+      tracks[i].mode = selectedIdx !== null && i === selectedIdx ? "hidden" : "disabled";
+    }
+  }, []);
 
   useEffect(() => {
     syncVideoTextTracks(activeSubtitleIdx);
@@ -1617,70 +1905,61 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     if (video && playerRenderMode === "direct") {
       if (video.paused) {
         void video.play().catch(() => {});
-        setIsVideoPaused(false);
       } else {
         video.pause();
-        setIsVideoPaused(true);
       }
-    } else {
-      setIsVideoPaused((prev) => !prev);
     }
     bumpControlsVisibility();
   }, [playerRenderMode, bumpControlsVisibility]);
 
-  const handleSeekBy = useCallback(
-    (deltaSeconds: number) => {
-      const video = videoElementRef.current;
-      if (video && playerRenderMode === "direct") {
-        const duration = Number.isFinite(video.duration) ? video.duration : 0;
-        const nextTime = Math.max(
-          0,
-          Math.min(
-            duration || Number.MAX_SAFE_INTEGER,
-            (video.currentTime || 0) + deltaSeconds,
-          ),
-        );
-        video.currentTime = nextTime;
-        setVideoCurrentTime(nextTime);
-      } else {
-        setVideoCurrentTime((prev) =>
-          Math.max(
-            0,
-            Math.min(videoDuration || Number.MAX_SAFE_INTEGER, prev + deltaSeconds),
-          ),
-        );
-      }
-      bumpControlsVisibility();
-    },
-    [playerRenderMode, videoDuration, bumpControlsVisibility],
-  );
-
-  const handleSeekTo = useCallback(
-    (nextTime: number) => {
-      if (!Number.isFinite(nextTime)) return;
-      const video = videoElementRef.current;
-      if (video && playerRenderMode === "direct") {
-        video.currentTime = nextTime;
-      }
-      setVideoCurrentTime(nextTime);
-      bumpControlsVisibility();
-    },
-    [playerRenderMode, bumpControlsVisibility],
-  );
-
-  // Automatic IMDb trailer watchdog: if direct IMDb trailer doesn't load metadata within 5.5s, fall back to YouTube trailer automatically
+  // Resolve IMDb / YouTube trailer when showHeroTrailer opens
   useEffect(() => {
-    if (!showHeroTrailer || !activeImdbId || trailerFallbackToYoutube) {
+    if (!showHeroTrailer || !detailedItem) {
+      setResolvedTrailer(null);
+      setImdbTrailerLoaded(false);
+      return undefined;
+    }
+    let cancelled = false;
+    const ctrl = new AbortController();
+    setImdbTrailerLoaded(false);
+    void resolveTrailer({
+      imdbId: activeImdbId || detailedItem.imdbId,
+      youtubeKey: detailedItem.trailerKey,
+      signal: ctrl.signal,
+    }).then((res) => {
+      if (!cancelled) {
+        setResolvedTrailer(res);
+      }
+    });
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+    };
+  }, [showHeroTrailer, detailedItem, activeImdbId]);
+
+  // 7-second watchdog for IMDb trailer iframe -> fallback to YouTube if available
+  useEffect(() => {
+    if (
+      !showHeroTrailer ||
+      resolvedTrailer?.kind !== "imdb" ||
+      trailerFallbackToYoutube ||
+      imdbTrailerLoaded
+    ) {
       return undefined;
     }
     const timer = setTimeout(() => {
-      const vid = videoElementRef.current;
-      if ((!vid || vid.readyState === 0) && detailedItem?.trailerKey) {
+      if (!imdbTrailerLoaded && detailedItem?.trailerKey) {
         setTrailerFallbackToYoutube(true);
       }
-    }, 5500);
+    }, 7000);
     return () => clearTimeout(timer);
-  }, [showHeroTrailer, activeImdbId, trailerFallbackToYoutube, detailedItem?.trailerKey]);
+  }, [
+    showHeroTrailer,
+    resolvedTrailer,
+    trailerFallbackToYoutube,
+    imdbTrailerLoaded,
+    detailedItem?.trailerKey,
+  ]);
 
   const handleToggleVideoMute = useCallback(() => {
     const video = videoElementRef.current;
@@ -1703,16 +1982,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     },
     [bumpControlsVisibility],
   );
-
-  const formatPlayerTime = useCallback((seconds: number): string => {
-    if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
-    const totalSec = Math.floor(seconds);
-    const hrs = Math.floor(totalSec / 3600);
-    const mins = Math.floor((totalSec % 3600) / 60);
-    const secs = totalSec % 60;
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return hrs > 0 ? `${hrs}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
-  }, []);
 
   const handleToggleGalleryFullscreen = useCallback(() => {
     const el = galleryStageRef.current as any;
@@ -1769,9 +2038,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       } catch {}
     }
     clearExternalSubtitleBlobs();
+    clockReset("manual");
+    setEmbedSeekStartAtSec(null);
+    appliedInitialSeekRef.current = false;
     attemptTokenRef.current += 1;
     setShowHeroTrailer(false);
     setTrailerFallbackToYoutube(false);
+    setResolvedTrailer(null);
+    setImdbTrailerLoaded(false);
     setIsWatchingInGallery(false);
     setIsPlayerLoading(false);
     setAllServersFailed(false);
@@ -1779,12 +2053,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setIsSubtitleMenuOpen(false);
     setSubtitleOffsetSec(0);
     setActiveTrackCues([]);
-    setVideoCurrentTime(0);
-    setVideoDuration(0);
-    setIsVideoPaused(false);
+    setLoadingSubtitleIdx(null);
     setActiveGalleryServerIdx(0);
-    setSelectedSeason(1);
-    setSelectedEpisode(1);
+    const dl = deepLinkSeRef.current;
+    if (dl && selectedItemId !== null && dl.itemId === selectedItemId) {
+      setSelectedSeason(dl.s && dl.s > 0 ? dl.s : 1);
+      setSelectedEpisode(dl.e && dl.e > 0 ? dl.e : 1);
+      deepLinkSeRef.current = null;
+    } else {
+      setSelectedSeason(1);
+      setSelectedEpisode(1);
+    }
     setIsFullSeasonEmbed(false);
     setSeasonEpisodes([]);
     setDetailServersOpen(false);
@@ -1799,6 +2078,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           setSelectedActor(null);
           setActorDetails(null);
         } else {
+          persistCurrentProgress();
           setSelectedItemId(null);
         }
       }
@@ -1965,8 +2245,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const handleQuickWatch = useCallback((item: CinemaItem) => {
     autoStartWatchRef.current = true;
-    setSelectedItemId(item.id);
-  }, []);
+    setSelectedItemId(item.id, item.mediaType);
+  }, [setSelectedItemId]);
 
   const rowProps = useMemo(() => ({
     isTouch,
@@ -1987,8 +2267,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const openWatchlistItem = useCallback((rec: { tmdb_id: number; media_type: 'movie' | 'tv' }) => {
     setActiveTab(rec.media_type === 'tv' ? 'series' : 'movies');
     setShowWatchlist(false);
-    setSelectedItemId(rec.tmdb_id);
-  }, []);
+    setSelectedItemId(rec.tmdb_id, rec.media_type);
+  }, [setSelectedItemId]);
 
   const isOpenForAudio = Boolean(detailedItem || selectedItemId);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
@@ -2003,10 +2283,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   useEffect(() => {
     setMovieActive(Boolean(detailedItem));
     registerMovieBack(() => {
+      persistCurrentProgress();
       setDetailedItem(null);
       setSelectedItemId(null);
     });
-  }, [detailedItem, setMovieActive, registerMovieBack]);
+  }, [detailedItem, setMovieActive, registerMovieBack, persistCurrentProgress, setSelectedItemId]);
 
   useEffect(() => {
     return () => { setMovieActive(false); };
@@ -2022,13 +2303,78 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     };
   }, []);
 
+  // Read deep-link parameters (?id=&type=movie|tv&s=&e=) on mount
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const idNum = Number(params.get("id"));
+      if (Number.isFinite(idNum) && idNum > 0) {
+        const rawType = params.get("type");
+        const mediaType: Media =
+          rawType === "tv" || params.get("view") === "series" ? "tv" : "movie";
+        const sNum = Number(params.get("s"));
+        const eNum = Number(params.get("e"));
+        if (mediaType === "tv" && (sNum > 0 || eNum > 0)) {
+          deepLinkSeRef.current = {
+            itemId: idNum,
+            s: sNum > 0 ? sNum : 1,
+            e: eNum > 0 ? eNum : 1,
+          };
+        }
+        setActiveTab(mediaType === "tv" ? "series" : "movies");
+        setSelectedItemId(idNum, mediaType);
+      }
+    } catch {
+      // ignore URL errors
+    }
+  }, [setSelectedItemId]);
+
+  // Keep deep-link URL parameters (&id=&type=&s=&e=) synchronized when opening/closing a title
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const url = new URL(window.location.href);
+      if (selectedItemId !== null) {
+        const effType: Media =
+          detailedItem?.mediaType ??
+          selectedMediaType ??
+          (activeTab === "series" ? "tv" : "movie");
+        url.searchParams.set("id", String(selectedItemId));
+        url.searchParams.set("type", effType);
+        if (effType === "tv") {
+          url.searchParams.set("s", String(selectedSeason));
+          url.searchParams.set("e", String(selectedEpisode));
+        } else {
+          url.searchParams.delete("s");
+          url.searchParams.delete("e");
+        }
+      } else {
+        url.searchParams.delete("id");
+        url.searchParams.delete("type");
+        url.searchParams.delete("s");
+        url.searchParams.delete("e");
+      }
+      window.history.replaceState(
+        window.history.state,
+        "",
+        url.pathname + url.search + url.hash,
+      );
+    } catch {
+      // ignore history errors
+    }
+  }, [selectedItemId, selectedMediaType, detailedItem?.mediaType, activeTab, selectedSeason, selectedEpisode]);
+
+  const prevActiveTabRef = useRef(activeTab);
+  useEffect(() => {
+    if (prevActiveTabRef.current === activeTab) return;
+    prevActiveTabRef.current = activeTab;
     setSelectedGenreId(null);
     setSearchQuery("");
     setDetailedItem(null);
     setSelectedItemId(null);
     setHeroIndex(0);
-  }, [activeTab]);
+  }, [activeTab, setSelectedItemId]);
 
   const lastHeaderHeightRef = useRef<number>(0);
   useEffect(() => {
@@ -2142,8 +2488,27 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return () => { cancelled = true; };
   }, [tmdbKey, currentLang]);
 
-  // Load Series
+  // Trigger series load when Series tab is active OR on idle after movies finish loading
   useEffect(() => {
+    if (activeTab === 'series') {
+      setSeriesLoadTriggered(true);
+      return undefined;
+    }
+    if (!moviesLoading && !seriesLoadTriggered) {
+      const w = window as any;
+      if (typeof w.requestIdleCallback === 'function') {
+        const id = w.requestIdleCallback(() => setSeriesLoadTriggered(true), { timeout: 1500 });
+        return () => w.cancelIdleCallback?.(id);
+      }
+      const timer = setTimeout(() => setSeriesLoadTriggered(true), 600);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [activeTab, moviesLoading, seriesLoadTriggered]);
+
+  // Load Series (deferred until Series tab is opened or idle after movies finish)
+  useEffect(() => {
+    if (!seriesLoadTriggered) return;
     let cancelled = false;
     setSeriesLoading(true);
 
@@ -2235,7 +2600,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     };
     loadSeries();
     return () => { cancelled = true; };
-  }, [tmdbKey, currentLang]);
+  }, [tmdbKey, currentLang, seriesLoadTriggered]);
 
   // Search Debounce
   useEffect(() => {
@@ -2285,8 +2650,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     let cancelled = false;
     setIsLoadingDetails(true);
 
-    const isTv = activeTab === 'series';
-    const mediaType: Media = isTv ? 'tv' : 'movie';
+    const mediaType: Media = selectedMediaType ?? (activeTab === 'series' ? 'tv' : 'movie');
+    const isTv = mediaType === 'tv';
 
     if (!tmdbKey) {
       const list = isTv ? FALLBACK_SERIES : FALLBACK_MOVIES;
@@ -2294,6 +2659,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       if (!cancelled && match) {
         const normalized = normalizeItem(match, mediaType, currentLang);
         setDetailedItem(normalized);
+        if (isTv && preselectedProgressItemIdRef.current !== normalized.id) {
+          preselectedProgressItemIdRef.current = normalized.id;
+          const saved = getProgress('tv', normalized.id);
+          if (saved?.season && saved.season > 0) setSelectedSeason(saved.season);
+          if (saved?.episode && saved.episode > 0) setSelectedEpisode(saved.episode);
+        }
         logPlay({
           item_type: normalized.mediaType === 'tv' ? 'series' : 'movie',
           item_id: String(normalized.id),
@@ -2315,27 +2686,31 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           `${TMDB_BASE_URL}/${detailType}/${selectedItemId}?api_key=${tmdbKey}${langParam}&include_video_language=${currentLang},en,null&append_to_response=${detailsAppend}`
         );
 
-        let imdbRating = "N/A";
         const imdbId = isTv ? detail.external_ids?.imdb_id : detail.imdb_id;
-
-        if (imdbId && omdbKey) {
-          try {
-            const omdb = await fetch(`${window.location.protocol}//www.omdbapi.com/?i=${imdbId}&apikey=${omdbKey}`).then(r => r.json());
-            if (omdb && omdb.imdbRating && omdb.imdbRating !== "N/A") {
-              imdbRating = omdb.imdbRating;
-            }
-          } catch (omdbErr) {
-            console.warn("Could not fetch ratings from OMDB API:", omdbErr);
-          }
-        }
+        const omdb = imdbId ? await fetchOmdbMeta(imdbId, omdbKey) : null;
 
         if (!cancelled) {
           const normalized = normalizeItem(detail, mediaType, currentLang);
-          const resolvedItem = {
+          const parsedImdbRating = omdb?.imdbRating ? parseFloat(omdb.imdbRating) : NaN;
+          const resolvedItem: CinemaItem = {
             ...normalized,
-            rating: imdbRating !== "N/A" ? parseFloat(imdbRating) : normalized.rating || 8.1
+            rating:
+              Number.isFinite(parsedImdbRating) && parsedImdbRating > 0
+                ? parsedImdbRating
+                : normalized.rating,
+            certification: normalized.certification || omdb?.rated,
+            rottenTomatoes: omdb?.rottenTomatoes,
+            metascore: omdb?.metascore,
+            awards: omdb?.awards,
+            boxOffice: omdb?.boxOffice,
           };
           setDetailedItem(resolvedItem);
+          if (isTv && preselectedProgressItemIdRef.current !== resolvedItem.id) {
+            preselectedProgressItemIdRef.current = resolvedItem.id;
+            const saved = getProgress('tv', resolvedItem.id);
+            if (saved?.season && saved.season > 0) setSelectedSeason(saved.season);
+            if (saved?.episode && saved.episode > 0) setSelectedEpisode(saved.episode);
+          }
           logPlay({
             item_type: resolvedItem.mediaType === 'tv' ? 'series' : 'movie',
             item_id: String(resolvedItem.id),
@@ -2352,7 +2727,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
     loadDetails();
     return () => { cancelled = true; };
-  }, [selectedItemId, activeTab, tmdbKey, currentLang, omdbKey]);
+  }, [selectedItemId, selectedMediaType, activeTab, tmdbKey, currentLang, omdbKey]);
 
   // Automatically start in-app gallery player when opened via Hero Banner or Poster Card Quick-Watch
   useEffect(() => {
@@ -2422,7 +2797,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const localizedHeroTitle = activeHeroItem ? activeHeroItem.title : "";
   const ambientBackdropItem = detailedItem || activeHeroItem;
   const ambientBackdropUrl = ambientBackdropItem
-    ? getBackdropSrc_static(ambientBackdropItem.backdropPath, ambientBackdropItem.posterPath, ambientBackdropItem.trailerKey)
+    ? getBackdropSrc_static(ambientBackdropItem.backdropPath, ambientBackdropItem.trailerKey, ambientBackdropItem.posterPath)
     : "";
 
   const isCinemaFocusActive = isWatchingInGallery && selectedItemId !== null && Boolean(detailedItem);
@@ -2784,7 +3159,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 {/* Hero Image + Side Vignette Masked Together (100% Seamless Dissolve, Zero Seam Line) */}
                 <div className="lg-cinema-hero-backdrop">
                   <img
-                    src={getBackdropSrc_static(activeHeroItem.backdropPath, activeHeroItem.posterPath, activeHeroItem.trailerKey)}
+                    src={getBackdropSrc_static(activeHeroItem.backdropPath, activeHeroItem.trailerKey, activeHeroItem.posterPath)}
+                    srcSet={
+                      activeHeroItem.backdropPath && !activeHeroItem.backdropPath.startsWith("http")
+                        ? `${TMDB_IMAGE_BASE}/w780${activeHeroItem.backdropPath} 780w, ${TMDB_IMAGE_BASE}/w1280${activeHeroItem.backdropPath} 1280w`
+                        : undefined
+                    }
+                    sizes={
+                      activeHeroItem.backdropPath && !activeHeroItem.backdropPath.startsWith("http")
+                        ? "100vw"
+                        : undefined
+                    }
+                    fetchPriority={heroIndex === 0 ? "high" : undefined}
                     alt=""
                     className="w-full h-full object-cover object-top select-none pointer-events-none scale-105 transition-transform duration-1000"
                   />
@@ -2807,25 +3193,37 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         ? (currentLang === "ar" ? "فيلم مميز" : "Featured Movie")
                         : (currentLang === "ar" ? "مسلسل مميز" : "Featured Series")}
                     </span>
-                    <span className="flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-extrabold bg-amber-400/20 border border-amber-300/40 text-amber-300 backdrop-blur-md">
-                      <Star size={11} className="fill-current" />
-                      {activeHeroItem.rating?.toFixed(1) || "8.1"}
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs text-white/90 font-bold bg-white/10 border border-white/20 backdrop-blur-md">
-                      {activeHeroItem.year || "2024"}
-                    </span>
-                    <span className="border border-white/25 bg-white/10 px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md">
-                      {activeHeroItem.certification || (activeHeroItem.mediaType === 'movie' ? "PG-13" : "TV-MA")}
-                    </span>
-                    <span className="text-xs text-white/80 font-semibold drop-shadow">
-                      {activeHeroItem.mediaType === 'movie'
-                        ? activeHeroItem.runtime ? `${activeHeroItem.runtime}${t("movies.meta.minutes")}` : `148${t("movies.meta.minutes")}`
-                        : activeHeroItem.seasons ? `${activeHeroItem.seasons} ${t("movies.meta.seasons")}` : `5 ${t("movies.meta.seasons")}`}
-                    </span>
+                    {activeHeroItem.rating > 0 && (
+                      <span className="flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-extrabold bg-amber-400/20 border border-amber-300/40 text-amber-300 backdrop-blur-md">
+                        <Star size={11} className="fill-current" />
+                        {activeHeroItem.rating.toFixed(1)}
+                      </span>
+                    )}
+                    {activeHeroItem.year && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs text-white/90 font-bold bg-white/10 border border-white/20 backdrop-blur-md">
+                        {activeHeroItem.year}
+                      </span>
+                    )}
+                    {activeHeroItem.certification && (
+                      <span className="border border-white/25 bg-white/10 px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md">
+                        {activeHeroItem.certification}
+                      </span>
+                    )}
+                    {activeHeroItem.mediaType === 'movie'
+                      ? activeHeroItem.runtime ? (
+                          <span className="text-xs text-white/80 font-semibold drop-shadow">
+                            {`${activeHeroItem.runtime}${t("movies.meta.minutes")}`}
+                          </span>
+                        ) : null
+                      : activeHeroItem.seasons ? (
+                          <span className="text-xs text-white/80 font-semibold drop-shadow">
+                            {`${activeHeroItem.seasons} ${t("movies.meta.seasons")}`}
+                          </span>
+                        ) : null}
                   </div>
 
                   <h2
-                    onClick={() => setSelectedItemId(activeHeroItem.id)}
+                    onClick={() => setSelectedItemId(activeHeroItem.id, activeHeroItem.mediaType)}
                     className="text-3xl sm:text-5xl font-black leading-tight tracking-tight select-text cursor-pointer hover:text-white/90 transition-colors drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]"
                   >
                     {localizedHeroTitle}
@@ -2843,7 +3241,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         isOpen={heroServersOpen}
                         onToggle={() => {
                           autoStartWatchRef.current = true;
-                          setSelectedItemId(activeHeroItem.id);
+                          setSelectedItemId(activeHeroItem.id, activeHeroItem.mediaType);
                         }}
                         onClose={() => setHeroServersOpen(false)}
                         buttonLabel={t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}
@@ -2869,6 +3267,84 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   </div>
                 </div>
               </section>
+            )}
+
+            {/* Continue Watching Row (Phase 5) */}
+            {continueWatchingItems.length > 0 && (
+              <div className="relative z-20 flex flex-col gap-1.5 py-2.5 px-4 sm:px-10 -mt-2">
+                <div className="flex items-center justify-between px-2">
+                  <h2 className="text-sm sm:text-lg font-extrabold text-white tracking-tight drop-shadow">
+                    {t("movies.rows.continueWatching", "Continue watching")}
+                  </h2>
+                </div>
+                <div
+                  className="nl-cinema-row flex gap-4 overflow-x-auto select-none px-3 scroll-smooth scrollbar-none snap-x snap-mandatory"
+                  style={MOVIE_ROW_SCROLL_STYLE}
+                >
+                  {continueWatchingItems.map((entry) => {
+                    const cwItem: CinemaItem = {
+                      id: entry.id,
+                      mediaType: entry.mediaType,
+                      title: entry.title,
+                      overview: "",
+                      posterPath: entry.posterPath || "",
+                      backdropPath: entry.backdropPath || "",
+                      year: "",
+                      rating: 0,
+                      genreIds: [],
+                      genreNames: [],
+                      trailerKey: "",
+                      cast: [],
+                      similar: [],
+                    };
+                    const ratio =
+                      entry.duration > 0
+                        ? entry.time / entry.duration
+                        : 0;
+                    const epBadge =
+                      entry.mediaType === "tv" && entry.season && entry.episode
+                        ? `S${entry.season}:E${entry.episode}`
+                        : undefined;
+                    return (
+                      <div key={entry.key} className="flex-shrink-0 snap-start">
+                        <MoviePosterCard
+                          item={cwItem}
+                          isTouch={isTouch}
+                          activeHoverId={activeHoverId}
+                          setActiveHoverId={setActiveHoverId}
+                          hoverTimer={hoverTimer}
+                          setSelectedItemId={(id, mt) => {
+                            if (id !== null && entry.mediaType === "tv") {
+                              deepLinkSeRef.current = {
+                                itemId: id,
+                                s: entry.season || 1,
+                                e: entry.episode || 1,
+                              };
+                            }
+                            setSelectedItemId(id, mt);
+                          }}
+                          onQuickWatch={(it) => {
+                            if (entry.mediaType === "tv") {
+                              deepLinkSeRef.current = {
+                                itemId: it.id,
+                                s: entry.season || 1,
+                                e: entry.episode || 1,
+                              };
+                            }
+                            handleQuickWatch(it);
+                          }}
+                          t={t}
+                          progressRatio={ratio}
+                          episodeBadge={epBadge}
+                          onRemoveProgress={() =>
+                            removeProgress(entry.mediaType, entry.id)
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
             {activeTab === 'movies' ? (
@@ -3014,10 +3490,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 setShowHeroTrailer(false);
                                 setTrailerFallbackToYoutube(false);
                               } else {
+                                persistCurrentProgress();
                                 setIsWatchingInGallery(false);
-                                setVideoCurrentTime(0);
-                                setVideoDuration(0);
-                                setIsVideoPaused(false);
+                                clockReset("manual");
                                 setTrailerFallbackToYoutube(!activeImdbId);
                                 setShowHeroTrailer(true);
                               }
@@ -3071,11 +3546,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         <button
                           type="button"
                           onClick={() => {
+                            persistCurrentProgress();
                             if (playerIframeRef.current) {
                               try {
                                 playerIframeRef.current.src = "about:blank";
                               } catch {}
                             }
+                            clockReset("manual");
                             setIsWatchingInGallery(false);
                             setShowHeroTrailer(false);
                             setTrailerFallbackToYoutube(false);
@@ -3115,6 +3592,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         <button
                           type="button"
                           onClick={() => {
+                            persistCurrentProgress();
                             if (playerIframeRef.current) {
                               try {
                                 playerIframeRef.current.src = "about:blank";
@@ -3167,14 +3645,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             crossOrigin="anonymous"
                             onClick={handleToggleVideoPlay}
                             onDoubleClick={handleToggleGalleryFullscreen}
-                            onPlay={() => setIsVideoPaused(false)}
-                            onPause={() => setIsVideoPaused(true)}
-                            onTimeUpdate={(e) =>
-                              setVideoCurrentTime(e.currentTarget.currentTime || 0)
-                            }
+                            onPause={() => persistCurrentProgress()}
                             onLoadedMetadata={(e) => {
-                              setVideoDuration(e.currentTarget.duration || 0);
-                              setIsVideoPaused(e.currentTarget.paused);
+                              if (
+                                !appliedInitialSeekRef.current &&
+                                detailWatchTarget?.startAt &&
+                                detailWatchTarget.startAt > 5
+                              ) {
+                                appliedInitialSeekRef.current = true;
+                                try {
+                                  e.currentTarget.currentTime = detailWatchTarget.startAt;
+                                } catch {}
+                              }
                               syncVideoTextTracks(activeSubtitleIdx);
                             }}
                             onVolumeChange={(e) => {
@@ -3236,20 +3718,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                               }
                             }}
                           >
-                            {activeSubtitlesList.map((sub, subIdx) => (
-                              <track
-                                key={`${sub.lang}-${subIdx}-${sub.url}`}
-                                kind="subtitles"
-                                src={sub.proxiedUrl || sub.url}
-                                srcLang={sub.lang}
-                                label={sub.label}
-                                default={
-                                  activeSubtitleIdx !== null
-                                    ? subIdx === activeSubtitleIdx
-                                    : Boolean(sub.default || subIdx === 0)
-                                }
-                              />
-                            ))}
+                            {activeSubtitlesList
+                              .filter((sub) => sub.loaded !== false && Boolean(sub.proxiedUrl || sub.url))
+                              .map((sub, subIdx) => (
+                                <track
+                                  key={`${sub.lang}-${subIdx}-${sub.id || sub.url}`}
+                                  kind="subtitles"
+                                  src={sub.proxiedUrl || sub.url}
+                                  srcLang={sub.lang}
+                                  label={sub.label}
+                                />
+                              ))}
                           </video>
                         )}
 
@@ -3258,30 +3737,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             playerRenderMode === "clean-embed") && (
                             <iframe
                               ref={playerIframeRef}
-                              key={`${activeGallerySource.id}-${
-                                playerRenderMode === "clean-embed"
-                                  ? (
-                                      extractedStreams[activeExtractedIdx] ||
-                                      extractedStreams[0]
-                                    )?.directUrl || activeGallerySource.url
-                                  : activeGallerySource.url
-                              }`}
+                              key={`${activeGallerySource.id}-${activeIframeUrl}`}
                               className="w-full h-full border-0 bg-black block"
-                              src={
-                                playerRenderMode === "clean-embed"
-                                  ? (
-                                      extractedStreams[activeExtractedIdx] ||
-                                      extractedStreams[0]
-                                    )?.directUrl || activeGallerySource.url
-                                  : activeGallerySource.url
-                              }
+                              src={activeIframeUrl}
                               title={`${detailedItem.title} - ${activeGallerySource.label}`}
                               width="100%"
                               height="100%"
                               frameBorder="0"
                               scrolling="no"
                               referrerPolicy="origin"
-                              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                              allow="autoplay; encrypted-media; picture-in-picture"
                               allowFullScreen
                               onLoad={() => {
                                 loadedCurrentAttemptRef.current = true;
@@ -3307,22 +3772,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           )}
 
                         {/* Live Cinema Subtitle Overlay (Rendered above video/iframe across ALL player modes) */}
-                        {!allServersFailed &&
-                          activeSubtitleIdx !== null &&
-                          Boolean(activeCueText) && (
-                            <div
-                              className="lg-cinema-subtitle-overlay"
-                              dir={
-                                activeSubtitlesList[activeSubtitleIdx]?.lang === "ar"
-                                  ? "rtl"
-                                  : "ltr"
-                              }
-                            >
-                              <span className="lg-cinema-subtitle-cue">
-                                {activeCueText}
-                              </span>
-                            </div>
-                          )}
+                        {!allServersFailed && activeSubtitleIdx !== null && (
+                          <SubtitleOverlay
+                            cues={activeTrackCues}
+                            offsetSec={subtitleOffsetSec}
+                            liftPx={isControlsVisible && controlMode === "direct" ? 56 : 0}
+                          />
+                        )}
 
                         {/* Pure Visual Eye Loader Overlay (Zero text, pointer-events-none) */}
                         {(isPlayerLoading || playerRenderMode === "extracting") && !allServersFailed && (
@@ -3351,32 +3807,30 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       </div>
                     ) : showHeroTrailer && (activeImdbId || detailedItem.trailerKey) ? (
                       <div className="relative w-full h-full bg-black">
-                        {activeImdbId && !trailerFallbackToYoutube ? (
-                          <video
-                            ref={videoElementRef}
-                            key={`imdb-trailer-${activeImdbId}`}
-                            src={`https://imdb.iamidiotareyoutoo.com/media/${encodeURIComponent(activeImdbId)}`}
-                            className="w-full h-full border-0 bg-black block object-contain cursor-pointer"
-                            controls
-                            autoPlay
-                            playsInline
-                            onPlay={() => setIsVideoPaused(false)}
-                            onPause={() => setIsVideoPaused(true)}
-                            onTimeUpdate={(e) =>
-                              setVideoCurrentTime(e.currentTarget.currentTime || 0)
-                            }
-                            onLoadedMetadata={(e) => {
-                              setVideoDuration(e.currentTarget.duration || 0);
-                              setIsVideoPaused(e.currentTarget.paused);
-                            }}
-                            onError={() => {
-                              if (detailedItem.trailerKey) {
-                                setTrailerFallbackToYoutube(true);
-                              } else {
-                                setShowHeroTrailer(false);
-                              }
-                            }}
-                          />
+                        {resolvedTrailer?.kind === "imdb" && !trailerFallbackToYoutube ? (
+                          <>
+                            <iframe
+                              key={`imdb-trailer-${resolvedTrailer.videoId}`}
+                              src={resolvedTrailer.embedUrl}
+                              title={`${detailedItem.title} - IMDb Trailer`}
+                              className="w-full h-full border-0 bg-black block"
+                              width="100%"
+                              height="100%"
+                              frameBorder="0"
+                              allow="autoplay; encrypted-media; fullscreen"
+                              allowFullScreen
+                              onLoad={() => setImdbTrailerLoaded(true)}
+                            />
+                            {detailedItem.trailerKey && (
+                              <button
+                                type="button"
+                                onClick={() => setTrailerFallbackToYoutube(true)}
+                                className="lg-cinema-action-pill absolute bottom-3 right-3 z-20 px-3 py-1 text-[11px] font-bold text-white/90 hover:text-white cursor-pointer"
+                              >
+                                YouTube
+                              </button>
+                            )}
+                          </>
                         ) : detailedItem.trailerKey ? (
                           <iframe
                             key={`yt-trailer-${detailedItem.trailerKey}`}
@@ -3389,15 +3843,19 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                             allowFullScreen
                           />
-                        ) : null}
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <EyeLoader />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <>
                         <img
                           src={getBackdropSrc_static(
                             detailedItem.backdropPath,
-                            detailedItem.posterPath,
                             detailedItem.trailerKey,
+                            detailedItem.posterPath,
                           )}
                           alt={detailedItem.title}
                           className="w-full h-full object-cover opacity-90"
@@ -3439,36 +3897,57 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             <img
                               src={getPosterSrc_static(
                                 detailedItem.posterPath,
-                                detailedItem.backdropPath,
                                 detailedItem.trailerKey,
+                                detailedItem.backdropPath,
                               )}
                               alt=""
                               className="hidden sm:block w-20 md:w-24 aspect-[2/3] object-cover rounded-2xl border border-white/35 shadow-2xl flex-shrink-0"
                             />
                             <div className="flex flex-col gap-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400/20 border border-amber-300/45 text-amber-300 backdrop-blur-md">
-                                  <Star size={11} className="fill-current" />
-                                  {detailedItem.rating?.toFixed(1) || "8.2"}
-                                </span>
-                                <span className="text-xs font-bold text-white/90">
-                                  {detailedItem.year || "2024"}
-                                </span>
-                                <span className="border border-white/30 bg-white/12 px-2 py-0.5 rounded-full text-[10px] font-bold text-white/95 backdrop-blur-md">
-                                  {detailedItem.certification ||
-                                    (detailedItem.mediaType === "movie"
-                                      ? "PG-13"
-                                      : "TV-MA")}
-                                </span>
-                                <span className="text-xs text-white/80 font-medium">
-                                  {detailedItem.mediaType === "movie"
-                                    ? detailedItem.runtime
-                                      ? `${detailedItem.runtime}${t("movies.meta.minutes")}`
-                                      : `148${t("movies.meta.minutes")}`
-                                    : detailedItem.seasons
-                                      ? `${detailedItem.seasons} ${t("movies.meta.seasons")}`
-                                      : `5 ${t("movies.meta.seasons")}`}
-                                </span>
+                                {detailedItem.rating > 0 && (
+                                  <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400/20 border border-amber-300/45 text-amber-300 backdrop-blur-md">
+                                    <Star size={11} className="fill-current" />
+                                    {detailedItem.rating.toFixed(1)}
+                                  </span>
+                                )}
+                                {detailedItem.rottenTomatoes && (
+                                  <span
+                                    className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 border border-rose-300/40 text-rose-200 backdrop-blur-md"
+                                    title={t("movies.meta.rottenTomatoes", "Rotten Tomatoes")}
+                                  >
+                                    🍅 {detailedItem.rottenTomatoes}
+                                  </span>
+                                )}
+                                {detailedItem.metascore && (
+                                  <span
+                                    className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 border border-emerald-300/40 text-emerald-200 backdrop-blur-md"
+                                    title={t("movies.meta.metascore", "Metacritic")}
+                                  >
+                                    MC {detailedItem.metascore}
+                                  </span>
+                                )}
+                                {detailedItem.year && (
+                                  <span className="text-xs font-bold text-white/90">
+                                    {detailedItem.year}
+                                  </span>
+                                )}
+                                {detailedItem.certification && (
+                                  <span className="border border-white/30 bg-white/12 px-2 py-0.5 rounded-full text-[10px] font-bold text-white/95 backdrop-blur-md">
+                                    {detailedItem.certification}
+                                  </span>
+                                )}
+                                {detailedItem.mediaType === "movie"
+                                  ? detailedItem.runtime ? (
+                                      <span className="text-xs text-white/80 font-medium">
+                                        {`${detailedItem.runtime}${t("movies.meta.minutes")}`}
+                                      </span>
+                                    ) : null
+                                  : detailedItem.seasons ? (
+                                      <span className="text-xs text-white/80 font-medium">
+                                        {`${detailedItem.seasons} ${t("movies.meta.seasons")}`}
+                                      </span>
+                                    ) : null}
                                 {detailedItem.mediaType === "tv" &&
                                   detailedItem.episodes && (
                                     <span className="text-xs text-white/80 font-medium">
@@ -3497,9 +3976,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 type="button"
                                 onClick={() => {
                                   setIsWatchingInGallery(false);
-                                  setVideoCurrentTime(0);
-                                  setVideoDuration(0);
-                                  setIsVideoPaused(false);
+                                  clockReset("manual");
                                   setTrailerFallbackToYoutube(!activeImdbId);
                                   setShowHeroTrailer(true);
                                 }}
@@ -3534,69 +4011,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         }`}
                         dir="ltr"
                       >
-                        {(playerRenderMode === "direct" || activeSubtitleIdx !== null) && (
-                          <div className="flex items-center gap-3">
-                            <span className="text-[11px] font-bold text-white/85 tabular-nums shrink-0">
-                              {formatPlayerTime(videoCurrentTime)}
-                            </span>
-                            <input
-                              type="range"
-                              min={0}
-                              max={Math.max(1, videoDuration || 7200)}
-                              step={0.5}
-                              value={Math.min(
-                                videoCurrentTime,
-                                Math.max(1, videoDuration || 7200),
-                              )}
-                              onChange={(e) => handleSeekTo(Number(e.target.value))}
-                              className="lg-cinema-seek-slider w-full"
-                              aria-label="Seek timeline"
-                            />
-                            <span className="text-[11px] font-bold text-white/75 tabular-nums shrink-0">
-                              {formatPlayerTime(videoDuration || 7200)}
-                            </span>
-                          </div>
-                        )}
+                        <CinemaTimeline
+                          mode={controlMode}
+                          videoRef={videoElementRef}
+                          fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
+                          hasSubtitles={activeTrackCues.length > 0}
+                          onIframeCommand={handleIframePlayerCommand}
+                          onCommitEmbedSeek={handleCommitEmbedSeek}
+                        />
 
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                            {(playerRenderMode === "direct" || activeSubtitleIdx !== null) && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={handleToggleVideoPlay}
-                                  className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
-                                  aria-label={isVideoPaused ? "Play" : "Pause"}
-                                >
-                                  {isVideoPaused ? (
-                                    <Play size={15} className="fill-current ms-0.5" />
-                                  ) : (
-                                    <Pause size={15} />
-                                  )}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleSeekBy(-10)}
-                                  className="lg-cinema-action-pill px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
-                                  title="-10s"
-                                >
-                                  <RotateCcw size={13} />
-                                  <span>10s</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleSeekBy(10)}
-                                  className="lg-cinema-action-pill px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
-                                  title="+10s"
-                                >
-                                  <RotateCw size={13} />
-                                  <span>10s</span>
-                                </button>
-                              </>
-                            )}
-
                             {playerRenderMode === "direct" && (
                               <div className="flex items-center gap-1.5 ps-1">
                                 <button
@@ -3693,63 +4118,26 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                       ].lang.toUpperCase()
                                     : isLoadingSubtitles
                                       ? "CC..."
-                                      : "CC"}
+                                      : "OFF"}
                                 </span>
                               </button>
 
                               {isSubtitleMenuOpen && (
-                                <div className="absolute bottom-full mb-2 right-0 w-56 max-h-64 overflow-y-auto rounded-2xl p-1.5 bg-slate-950/95 border border-white/25 backdrop-blur-2xl shadow-2xl z-[10700] flex flex-col gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveSubtitleIdx(null);
-                                      syncVideoTextTracks(null);
-                                      setIsSubtitleMenuOpen(false);
+                                <div className="absolute bottom-full right-0 mb-2 z-50">
+                                  <SubtitleSettingsPanel
+                                    tracks={activeSubtitlesList}
+                                    activeIdx={activeSubtitleIdx}
+                                    loadingIdx={loadingSubtitleIdx}
+                                    isSearching={isLoadingSubtitles}
+                                    offsetSec={subtitleOffsetSec}
+                                    onSelect={(idx) => {
+                                      setActiveSubtitleIdx(idx);
+                                      syncVideoTextTracks(idx);
                                     }}
-                                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                                      activeSubtitleIdx === null
-                                        ? "bg-rose-600/50 text-white"
-                                        : "text-white/80 hover:bg-white/10"
-                                    }`}
-                                  >
-                                    {currentLang === "ar"
-                                      ? "إيقاف الترجمة (Off)"
-                                      : "Subtitles Off"}
-                                  </button>
-                                  {isLoadingSubtitles &&
-                                    activeSubtitlesList.length === 0 && (
-                                      <div className="px-3 py-2 text-[11px] text-white/65 font-semibold">
-                                        {currentLang === "ar"
-                                          ? "جاري البحث عن الترجمات..."
-                                          : "Fetching subtitles..."}
-                                      </div>
-                                    )}
-                                  {!isLoadingSubtitles &&
-                                    activeSubtitlesList.length === 0 && (
-                                      <div className="px-3 py-2 text-[11px] text-white/60 font-semibold">
-                                        {currentLang === "ar"
-                                          ? "لا تتوفر ترجمة خارجية لهذا العرض"
-                                          : "No external subtitles found"}
-                                      </div>
-                                    )}
-                                  {activeSubtitlesList.map((sub, idx) => (
-                                    <button
-                                      key={`fs-sub-${sub.lang}-${idx}`}
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveSubtitleIdx(idx);
-                                        syncVideoTextTracks(idx);
-                                        setIsSubtitleMenuOpen(false);
-                                      }}
-                                      className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer truncate ${
-                                        activeSubtitleIdx === idx
-                                          ? "bg-rose-600/50 text-white"
-                                          : "text-white/85 hover:bg-white/10"
-                                      }`}
-                                    >
-                                      {sub.label}
-                                    </button>
-                                  ))}
+                                    onOffsetChange={setSubtitleOffsetSec}
+                                    onUploadFile={handleUploadLocalSubtitle}
+                                    onLanguagesChanged={handleRefreshSubtitlesForLanguages}
+                                  />
                                 </div>
                               )}
                             </div>
@@ -3775,70 +4163,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                       className="lg-cinema-player-controls rounded-2xl px-3.5 py-2.5 flex flex-col gap-2"
                       dir="ltr"
                     >
-                      {(playerRenderMode === "direct" || activeSubtitleIdx !== null) && (
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] font-bold text-white/85 tabular-nums shrink-0">
-                            {formatPlayerTime(videoCurrentTime)}
-                          </span>
-                          <input
-                            type="range"
-                            min={0}
-                            max={Math.max(1, videoDuration || 7200)}
-                            step={0.5}
-                            value={Math.min(
-                              videoCurrentTime,
-                              Math.max(1, videoDuration || 7200),
-                            )}
-                            onChange={(e) => handleSeekTo(Number(e.target.value))}
-                            className="lg-cinema-seek-slider w-full"
-                            aria-label="Seek timeline"
-                          />
-                          <span className="text-[11px] font-bold text-white/75 tabular-nums shrink-0">
-                            {formatPlayerTime(videoDuration || 7200)}
-                          </span>
-                        </div>
-                      )}
+                      <CinemaTimeline
+                        mode={controlMode}
+                        videoRef={videoElementRef}
+                        fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
+                        hasSubtitles={activeTrackCues.length > 0}
+                        onIframeCommand={handleIframePlayerCommand}
+                        onCommitEmbedSeek={handleCommitEmbedSeek}
+                      />
 
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          {(playerRenderMode === "direct" || activeSubtitleIdx !== null) && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={handleToggleVideoPlay}
-                                className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
-                                aria-label={isVideoPaused ? "Play" : "Pause"}
-                                title={isVideoPaused ? "Play" : "Pause"}
-                              >
-                                {isVideoPaused ? (
-                                  <Play size={15} className="fill-current ms-0.5" />
-                                ) : (
-                                  <Pause size={15} />
-                                )}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleSeekBy(-10)}
-                                className="lg-cinema-action-pill px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
-                                title="-10s"
-                              >
-                                <RotateCcw size={13} />
-                                <span>10s</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleSeekBy(10)}
-                                className="lg-cinema-action-pill px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
-                                title="+10s"
-                              >
-                                <RotateCw size={13} />
-                                <span>10s</span>
-                              </button>
-                            </>
-                          )}
-
                           {playerRenderMode === "direct" && (
                             <div className="flex items-center gap-1.5 ps-1">
                               <button
@@ -3857,7 +4192,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 type="range"
                                 min={0}
                                 max={1}
-                                step={0.05}
+                                  step={0.05}
                                 value={isVideoMuted ? 0 : videoVolume}
                                 onChange={(e) =>
                                   handleChangeVideoVolume(Number(e.target.value))
@@ -3943,63 +4278,26 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                     ].lang.toUpperCase()
                                   : isLoadingSubtitles
                                     ? "CC..."
-                                    : "CC"}
+                                    : "OFF"}
                               </span>
                             </button>
 
                             {isSubtitleMenuOpen && (
-                              <div className="absolute bottom-full mb-2 right-0 w-56 max-h-64 overflow-y-auto rounded-2xl p-1.5 bg-slate-950/95 border border-white/25 backdrop-blur-2xl shadow-2xl z-[10700] flex flex-col gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveSubtitleIdx(null);
-                                    syncVideoTextTracks(null);
-                                    setIsSubtitleMenuOpen(false);
+                              <div className="absolute bottom-full right-0 mb-2 z-50">
+                                <SubtitleSettingsPanel
+                                  tracks={activeSubtitlesList}
+                                  activeIdx={activeSubtitleIdx}
+                                  loadingIdx={loadingSubtitleIdx}
+                                  isSearching={isLoadingSubtitles}
+                                  offsetSec={subtitleOffsetSec}
+                                  onSelect={(idx) => {
+                                    setActiveSubtitleIdx(idx);
+                                    syncVideoTextTracks(idx);
                                   }}
-                                  className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                                    activeSubtitleIdx === null
-                                      ? "bg-rose-600/50 text-white"
-                                      : "text-white/80 hover:bg-white/10"
-                                  }`}
-                                >
-                                  {currentLang === "ar"
-                                    ? "إيقاف الترجمة (Off)"
-                                    : "Subtitles Off"}
-                                </button>
-                                {isLoadingSubtitles &&
-                                  activeSubtitlesList.length === 0 && (
-                                    <div className="px-3 py-2 text-[11px] text-white/65 font-semibold">
-                                      {currentLang === "ar"
-                                        ? "جاري البحث عن الترجمات..."
-                                        : "Fetching subtitles..."}
-                                    </div>
-                                  )}
-                                {!isLoadingSubtitles &&
-                                  activeSubtitlesList.length === 0 && (
-                                    <div className="px-3 py-2 text-[11px] text-white/60 font-semibold">
-                                      {currentLang === "ar"
-                                        ? "لا تتوفر ترجمة خارجية لهذا العرض"
-                                        : "No external subtitles found"}
-                                    </div>
-                                  )}
-                                {activeSubtitlesList.map((sub, idx) => (
-                                  <button
-                                    key={`norm-sub-${sub.lang}-${idx}`}
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveSubtitleIdx(idx);
-                                      syncVideoTextTracks(idx);
-                                      setIsSubtitleMenuOpen(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer truncate ${
-                                      activeSubtitleIdx === idx
-                                        ? "bg-rose-600/50 text-white"
-                                        : "text-white/85 hover:bg-white/10"
-                                    }`}
-                                  >
-                                    {sub.label}
-                                  </button>
-                                ))}
+                                  onOffsetChange={setSubtitleOffsetSec}
+                                  onUploadFile={handleUploadLocalSubtitle}
+                                  onLanguagesChanged={handleRefreshSubtitlesForLanguages}
+                                />
                               </div>
                             )}
                           </div>
@@ -4157,10 +4455,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 setShowHeroTrailer(false);
                                 setTrailerFallbackToYoutube(false);
                               } else {
+                                persistCurrentProgress();
                                 setIsWatchingInGallery(false);
-                                setVideoCurrentTime(0);
-                                setVideoDuration(0);
-                                setIsVideoPaused(false);
+                                clockReset("manual");
                                 setTrailerFallbackToYoutube(!activeImdbId);
                                 setShowHeroTrailer(true);
                               }
@@ -4357,6 +4654,51 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           </div>
                         )}
 
+                        {detailedItem.rottenTomatoes && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-white/55 font-bold">
+                              {t("movies.meta.rottenTomatoes", "Rotten Tomatoes")}
+                            </span>
+                            <span className="font-extrabold text-rose-300">
+                              {detailedItem.rottenTomatoes}
+                            </span>
+                          </div>
+                        )}
+
+                        {detailedItem.metascore && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-white/55 font-bold">
+                              {t("movies.meta.metascore", "Metacritic")}
+                            </span>
+                            <span className="font-extrabold text-emerald-300">
+                              {detailedItem.metascore}/100
+                            </span>
+                          </div>
+                        )}
+
+                        {detailedItem.boxOffice && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-white/55 font-bold">
+                              {t("movies.meta.boxOffice", "Box Office")}
+                            </span>
+                            <span className="font-extrabold text-amber-200">
+                              {detailedItem.boxOffice}
+                            </span>
+                          </div>
+                        )}
+
+                        {detailedItem.awards && (
+                          <div className="flex flex-col gap-0.5 col-span-2 sm:col-span-3">
+                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
+                              <Award size={11} />
+                              {t("movies.meta.awards", "Awards")}
+                            </span>
+                            <span className="font-extrabold text-white/95">
+                              {detailedItem.awards}
+                            </span>
+                          </div>
+                        )}
+
                         {detailedItem.directors && detailedItem.directors.length > 0 && (
                           <div className="flex flex-col gap-0.5 col-span-2">
                             <span className="text-[10px] text-white/55 font-bold">
@@ -4450,7 +4792,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             type="button"
                             onClick={() => {
                               setShowHeroTrailer(false);
-                              setSelectedItemId(sim.id);
+                              setSelectedItemId(sim.id, sim.mediaType);
                             }}
                             className="nl-poster relative w-[110px] sm:w-[126px] aspect-[2/3] flex-shrink-0 overflow-hidden cursor-pointer text-start group"
                           >
@@ -4461,10 +4803,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                             <span className="nl-poster__sheen" />
-                            <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full bg-black/65 border border-white/20 text-[9px] font-extrabold text-amber-400 flex items-center gap-0.5">
-                              <Star size={8} className="fill-current" />
-                              {sim.rating?.toFixed(1) || "7.8"}
-                            </span>
+                            {sim.rating > 0 && (
+                              <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full bg-black/65 border border-white/20 text-[9px] font-extrabold text-amber-400 flex items-center gap-0.5">
+                                <Star size={8} className="fill-current" />
+                                {sim.rating.toFixed(1)}
+                              </span>
+                            )}
                             <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
                               <p className="text-[10px] font-bold text-white truncate">{sim.title}</p>
                               <p className="text-[8.5px] text-white/65">{sim.year}</p>
@@ -4599,7 +4943,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                               setSelectedActor(null);
                               setActorDetails(null);
                               setActiveTab(work.mediaType === 'tv' ? 'series' : 'movies');
-                              setSelectedItemId(work.id);
+                              setSelectedItemId(work.id, work.mediaType);
                             }}
                             className="nl-poster relative w-[96px] sm:w-[108px] aspect-[2/3] flex-shrink-0 overflow-hidden cursor-pointer text-start group"
                           >

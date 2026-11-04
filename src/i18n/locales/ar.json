@@ -32,6 +32,7 @@
     "vote": "التصنيف",
     "genres": "التصنيفات",
     "rows": {
+      "continueWatching": "متابعة المشاهدة",
       "trending": "الرائجة الآن",
       "topRated": "الأعلى تقييماً",
       "popular": "الأكثر شعبية",
@@ -53,7 +54,11 @@
       "noTrailer": "الإعلان غير متوفر",
       "resolving": "جارٍ تحميل التفاصيل…",
       "loading": "جارٍ التحميل…",
-      "errorLoad": "تعذّر تحميل المحتوى، حاول لاحقاً"
+      "errorLoad": "تعذّر تحميل المحتوى، حاول لاحقاً",
+      "rottenTomatoes": "طماطم فاسدة",
+      "metascore": "ميتاكريتيك",
+      "awards": "الجوائز",
+      "boxOffice": "شباك التذاكر"
     },
     "player": {
       "loadingServer": "جارٍ الاتصال بـ {{server}}…",
@@ -69,7 +74,36 @@
       "season": "موسم {{num}}",
       "adLockOn": "مانع النوافذ: مفعّل",
       "adLockOff": "مانع النوافذ: متوقف",
-      "switchServer": "تبديل السيرفر ({{current}}/{{total}})"
+      "switchServer": "تبديل السيرفر ({{current}}/{{total}})",
+      "play": "تشغيل",
+      "pause": "إيقاف مؤقت",
+      "seek": "تقديم/ترجيع",
+      "bridgedTimeHint": "الوقت مباشر من السيرفر (استخدم أزرار المشغل للتقديم)",
+      "controlsInsideFrame": "أزرار التحكم موجودة داخل شاشة الفيديو"
+    },
+    "subs": {
+      "syncClock": "مزامنة الترجمة",
+      "pauseClock": "إيقاف مؤقت ساعة الترجمة",
+      "startClock": "تشغيل ساعة الترجمة",
+      "title": "الترجمة",
+      "tabTracks": "المسارات",
+      "tabStyle": "المظهر",
+      "tabSync": "المزامنة",
+      "tabLangs": "اللغات",
+      "off": "إيقاف",
+      "uploadFile": "تحميل ملف .srt / .vtt من جهازك",
+      "noTracks": "لم يتم العثور على ترجمات للغات المحددة.",
+      "size": "الحجم",
+      "color": "اللون",
+      "background": "الخلفية",
+      "bgBox": "صندوق",
+      "bgOutline": "تحديد",
+      "bgNone": "ظل",
+      "position": "الارتفاع العمودي",
+      "offset": "تعديل التوقيت",
+      "reset": "إعادة ضبط",
+      "langsHint": "اختر حتى 4 لغات للبحث عنها تلقائياً.",
+      "applyLangs": "إعادة جلب الترجمات"
     }
   },
   "series": {

@@ -32,6 +32,7 @@
     "vote": "Note",
     "genres": "Genres",
     "rows": {
+      "continueWatching": "Continuer à regarder",
       "trending": "Tendances",
       "topRated": "Les mieux notés",
       "popular": "Les plus populaires",
@@ -53,7 +54,11 @@
       "noTrailer": "Bande-annonce indisponible",
       "resolving": "Chargement des détails…",
       "loading": "Chargement…",
-      "errorLoad": "Échec du chargement, réessayez"
+      "errorLoad": "Échec du chargement, réessayez",
+      "rottenTomatoes": "Rotten Tomatoes",
+      "metascore": "Metacritic",
+      "awards": "Récompenses",
+      "boxOffice": "Box-office"
     },
     "player": {
       "loadingServer": "Connexion à {{server}}…",
@@ -69,7 +74,36 @@
       "season": "Saison {{num}}",
       "adLockOn": "Bloqueur Popups : ON",
       "adLockOff": "Bloqueur Popups : OFF",
-      "switchServer": "Changer Serveur ({{current}}/{{total}})"
+      "switchServer": "Changer Serveur ({{current}}/{{total}})",
+      "play": "Lire",
+      "pause": "Pause",
+      "seek": "Avancer/Reculer",
+      "bridgedTimeHint": "Temps en direct du serveur (utilisez les contrôles du lecteur)",
+      "controlsInsideFrame": "Les contrôles de lecture sont dans le cadre vidéo"
+    },
+    "subs": {
+      "syncClock": "Sync sous-titres",
+      "pauseClock": "Mettre en pause l'horloge des sous-titres",
+      "startClock": "Démarrer l'horloge des sous-titres",
+      "title": "Sous-titres",
+      "tabTracks": "Pistes",
+      "tabStyle": "Style",
+      "tabSync": "Synchro",
+      "tabLangs": "Langues",
+      "off": "Désactivé",
+      "uploadFile": "Charger .srt / .vtt depuis l'appareil",
+      "noTracks": "Aucun sous-titre trouvé pour les langues sélectionnées.",
+      "size": "Taille",
+      "color": "Couleur",
+      "background": "Arrière-plan",
+      "bgBox": "Boîte",
+      "bgOutline": "Contour",
+      "bgNone": "Ombre",
+      "position": "Position verticale",
+      "offset": "Décalage temporel",
+      "reset": "Réinitialiser",
+      "langsHint": "Choisissez jusqu'à 4 langues à rechercher automatiquement.",
+      "applyLangs": "Recharger les sous-titres"
     }
   },
   "series": {
