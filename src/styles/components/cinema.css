@@ -656,6 +656,141 @@
   filter: drop-shadow(0 0 8px rgba(255, 42, 56, 0.38));
 }
 
+/* Custom Animated Eye Loader (Pure visual loading state without text) */
+.nl-eye-loader-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.nl-eye-loader-wrap .eye-lid {
+  position: relative;
+  background-color: rgb(0, 0, 0);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 9px 0 2px rgba(0, 0, 0, 0.2);
+  width: 150px;
+  height: 150px;
+}
+
+.nl-eye-loader-wrap .eye {
+  position: relative;
+  background-color: #ffbc03;
+  border-radius: 50%;
+  transform: translate3d(0, 0, 0) rotate(90deg);
+  width: 120px;
+  height: 120px;
+  animation: nl-cinema-eye 5s infinite;
+}
+
+@keyframes nl-cinema-eye {
+  12%,
+  25% {
+    width: 100px;
+    height: 110px;
+  }
+
+  37%,
+  50% {
+    width: 60px;
+    height: 130px;
+  }
+
+  63%,
+  75% {
+    width: 100px;
+    height: 103px;
+  }
+
+  87% {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+.nl-eye-loader-wrap .cornea {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgb(0, 0, 0);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: nl-cinema-eye-color 5s infinite;
+}
+
+@keyframes nl-cinema-eye-color {
+  63%,
+  75% {
+    background-color: rgb(8, 20, 96);
+  }
+}
+
+.nl-eye-loader-wrap .white-pupil {
+  position: absolute;
+  top: 9%;
+  left: 10%;
+  border-radius: 50%;
+  background-color: #ffbc03;
+  width: 20px;
+  height: 20px;
+}
+
+/* Cinema Theater Mode Expansion (Active only when watching Movie/Series, NOT Trailer) */
+.nl-detail-card {
+  transition:
+    max-width 0.48s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.48s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.48s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.48s ease;
+}
+
+.nl-detail-card--theater {
+  max-width: min(94vw, 1220px) !important;
+  width: min(94vw, 1220px) !important;
+  background: rgba(4, 6, 12, 0.94) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 36px 95px rgba(0, 0, 0, 0.92),
+    0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Ultra-Sleek Semi-Transparent Top Control Bar During Active Movie Playback */
+.lg-cinema-gallery-top-bar--playing {
+  background: rgba(6, 9, 16, 0.32) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  opacity: 0.62;
+  transition:
+    opacity 0.24s ease,
+    background 0.24s ease,
+    border-color 0.24s ease;
+}
+
+.lg-cinema-gallery-top-bar--playing:hover,
+.lg-cinema-gallery-top-bar--playing:focus-within {
+  opacity: 1;
+  background: rgba(8, 12, 22, 0.68) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+}
+
+.lg-cinema-gallery-top-bar--playing .lg-cinema-action-pill,
+.lg-cinema-gallery-top-bar--playing .lg-cinema-icon-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+
+.lg-cinema-gallery-top-bar--playing .lg-cinema-action-pill:hover,
+.lg-cinema-gallery-top-bar--playing .lg-cinema-icon-pill:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.42);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .aero-glass-style,
   .nl-cinema-root,
@@ -669,3 +804,4 @@
     transform: none !important;
   }
 }
+

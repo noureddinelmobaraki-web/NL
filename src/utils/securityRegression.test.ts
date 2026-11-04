@@ -4,6 +4,12 @@ import { runInNewContext } from 'node:vm';
 import { ALL_SERVER_FRAME_ORIGINS, CINEMA_SERVERS } from '../config/servers';
 import { fetchExtractedVideos, WORKER_ENDPOINT } from '../services/videoExtractor';
 
+import {
+  recordServerFailure,
+  recordServerSuccess,
+  sortSourcesBySpeed,
+} from '../services/serverSpeedMonitor';
+
 const read = (p: string) => fs.readFileSync(p, 'utf8');
 
 describe('security and deployment regressions', () => {
@@ -63,7 +69,7 @@ describe('security and deployment regressions', () => {
     );
   });
 
-  it('posts generated target URLs to the Cloudflare Worker endpoint and normalizes extracted video streams', async () => {
+  it('posts generated target URLs to the Cloudflare Worker endpoint and normalizes extracted video streams and subtitles', async () => {
     expect(WORKER_ENDPOINT).toBe('https://broad-block-7bd7.nordinegb2018.workers.dev/');
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -74,6 +80,13 @@ describe('security and deployment regressions', () => {
           source: 'https://streamimdb.ru/embed/movie/tt0111161',
           count: 1,
           iframes_scanned: [],
+          subtitles: [
+            {
+              url: 'https://cdn.target-site.com/subs/ar.vtt',
+              lang: 'ar',
+              label: 'العربية',
+            },
+          ],
           videos: [
             {
               type: 'hls',
@@ -103,11 +116,35 @@ describe('security and deployment regressions', () => {
           directUrl: 'https://cdn.target-site.com/master.m3u8',
           proxiedUrl:
             'https://broad-block-7bd7.nordinegb2018.workers.dev/proxy?videoUrl=https%3A%2F%2Fcdn.target-site.com%2Fmaster.m3u8&referer=https%3A%2F%2Fstreamimdb.ru',
+          subtitles: [
+            {
+              url: 'https://cdn.target-site.com/subs/ar.vtt',
+              proxiedUrl:
+                'https://broad-block-7bd7.nordinegb2018.workers.dev/proxy?videoUrl=https%3A%2F%2Fcdn.target-site.com%2Fsubs%2Far.vtt&referer=https%3A%2F%2Fstreamimdb.ru%2Fembed%2Fmovie%2Ftt0111161',
+              lang: 'ar',
+              label: 'العربية',
+              default: true,
+            },
+          ],
         },
       ]);
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it('monitors server startup speed in ms and promotes the fastest working server to index 0 in cache', () => {
+    const mockSources = [
+      { id: 'server-7' },
+      { id: 'server-1' },
+      { id: 'server-2' },
+      { id: 'server-6' },
+    ];
+    recordServerFailure('server-7');
+    recordServerSuccess('server-2', 420, 'movie_278');
+    const sorted = sortSourcesBySpeed(mockSources, 'movie_278');
+    expect(sorted[0].id).toBe('server-2');
+    expect(sorted[sorted.length - 1].id).toBe('server-7');
   });
 
   it('does not cache failed app-shell responses in the service worker', () => {

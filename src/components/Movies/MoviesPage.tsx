@@ -26,9 +26,6 @@ import {
   Layers,
   RefreshCw,
   AlertTriangle,
-  ShieldCheck,
-  ShieldOff,
-  Server,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { m, AnimatePresence } from "framer-motion";
@@ -54,6 +51,12 @@ import {
   fetchExtractedVideos,
   type ExtractedVideoStream,
 } from "../../services/videoExtractor";
+import {
+  buildSpeedSortedQueue,
+  recordServerFailure,
+  recordServerSuccess,
+} from "../../services/serverSpeedMonitor";
+import { EyeLoader } from "./EyeLoader";
 import { useTopMovies } from "./useTopMovies";
 import { logPlay } from "../../features/music/data/playTracking";
 
@@ -817,9 +820,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [showHeroTrailer, setShowHeroTrailer] = useState(false);
   const [isWatchingInGallery, setIsWatchingInGallery] = useState(false);
   const [activeGalleryServerIdx, setActiveGalleryServerIdx] = useState(0);
-  const [isAdLockEnabled, setIsAdLockEnabled] = useState<boolean>(() => readInitialAdLock());
   const [isPlayerLoading, setIsPlayerLoading] = useState(false);
-  const [failoverNotice, setFailoverNotice] = useState<string | null>(null);
   const [allServersFailed, setAllServersFailed] = useState(false);
   const [isCssFullscreen, setIsCssFullscreen] = useState(false);
   const [extractedStreams, setExtractedStreams] = useState<ExtractedVideoStream[]>([]);
@@ -840,7 +841,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const hlsInstanceRef = useRef<Hls | null>(null);
   const attemptTokenRef = useRef(0);
-  const manualServerLockRef = useRef(false);
+  const playAttemptStartedAtRef = useRef<number>(0);
   const failoverQueueRef = useRef<number[]>([]);
   const failoverStepRef = useRef(0);
   const loadedCurrentAttemptRef = useRef(false);
@@ -897,98 +898,67 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     ? `${detailedItem.mediaType}_${detailedItem.id}`
     : '';
 
-  // Build ordered failover queue starting from the per-title cached server or Default Server 7 (index 0)
+  const resolveServerIdForStream = useCallback(
+    (stream?: ExtractedVideoStream | null): string => {
+      if (stream?.sourcePage) {
+        const matched = detailPlaySources.find(
+          (s) =>
+            s.url === stream.sourcePage ||
+            stream.sourcePage.includes(s.host),
+        );
+        if (matched) return matched.id;
+      }
+      return activeGallerySource?.id || detailPlaySources[0]?.id || "server-7";
+    },
+    [detailPlaySources, activeGallerySource],
+  );
+
+  // Build speed-sorted failover queue starting automatically with the user's fastest cached server
   const startGalleryWatchSession = useCallback(
     (explicitServerIdx?: number) => {
-      const total = detailPlaySources.length || 4;
-      let startIdx = 0;
+      const speedOrdered = buildSpeedSortedQueue(
+        detailPlaySources,
+        detailItemStorageKey,
+      );
+      let ordered = speedOrdered.length > 0 ? speedOrdered : [0, 1, 2, 3];
 
-      if (typeof explicitServerIdx === 'number' && explicitServerIdx >= 0) {
-        startIdx = explicitServerIdx % Math.max(1, total);
-        manualServerLockRef.current = true;
-        const chosenSource = detailPlaySources[startIdx];
-        if (chosenSource && detailItemStorageKey) {
-          savePreferredServerId(detailItemStorageKey, chosenSource.id);
-        }
-      } else {
-        manualServerLockRef.current = false;
-        const preferredId = readPreferredServerId(detailItemStorageKey);
-        if (preferredId && detailPlaySources.length > 0) {
-          const foundIdx = detailPlaySources.findIndex((s) => s.id === preferredId);
-          if (foundIdx >= 0) startIdx = foundIdx;
-        }
+      if (typeof explicitServerIdx === "number" && explicitServerIdx >= 0) {
+        const total = detailPlaySources.length || 4;
+        const startIdx = explicitServerIdx % Math.max(1, total);
+        ordered = [startIdx, ...ordered.filter((i) => i !== startIdx)];
       }
 
-      const ordered: number[] = [startIdx];
-      for (let i = 0; i < total; i++) {
-        if (i !== startIdx) ordered.push(i);
-      }
+      const firstIdx = ordered[0] ?? 0;
 
       cleanupDirectVideoPlayer();
       failoverQueueRef.current = ordered;
       failoverStepRef.current = 0;
       attemptTokenRef.current += 1;
+      playAttemptStartedAtRef.current = performance.now();
       loadedCurrentAttemptRef.current = false;
       setAllServersFailed(false);
-      setFailoverNotice(null);
       setIsPlayerLoading(true);
-      setActiveGalleryServerIdx(startIdx);
+      setActiveGalleryServerIdx(firstIdx);
+      setSelectedActor(null);
+      setActorDetails(null);
       setShowHeroTrailer(false);
       setIsWatchingInGallery(true);
     },
     [detailPlaySources, detailItemStorageKey, cleanupDirectVideoPlayer],
   );
 
-  const handleToggleAdLock = useCallback(() => {
-    setIsAdLockEnabled((prev) => {
-      const next = !prev;
-      saveAdLockState(next);
-      return next;
-    });
-    if (playerRenderMode === "iframe" || playerRenderMode === "clean-embed") {
-      setIsPlayerLoading(true);
-    }
-  }, [playerRenderMode]);
-
-  const handleCycleNextServer = useCallback(() => {
-    if (
-      (playerRenderMode === "direct" || playerRenderMode === "clean-embed") &&
-      activeExtractedIdx + 1 < extractedStreams.length
-    ) {
-      const nextStreamIdx = activeExtractedIdx + 1;
-      const nextStream = extractedStreams[nextStreamIdx];
-      setUseDirectUrlFallback(false);
-      setActiveExtractedIdx(nextStreamIdx);
-      setPlayerRenderMode(
-        nextStream?.type === "clean-embed" ? "clean-embed" : "direct",
-      );
-      setIsPlayerLoading(true);
-      return;
-    }
-    const total = detailPlaySources.length || 4;
-    const nextIdx = (activeGalleryServerIdx + 1) % Math.max(1, total);
-    startGalleryWatchSession(nextIdx);
-  }, [
-    playerRenderMode,
-    activeExtractedIdx,
-    extractedStreams,
-    detailPlaySources.length,
-    activeGalleryServerIdx,
-    startGalleryWatchSession,
-  ]);
-
-  // Advance to the next server in the failover queue (triggered only on confirmed CSP violation)
+  // Advance to the next fastest server in the failover queue
   const advanceFailoverServer = useCallback(
-    (reason: string, forceEvenIfManual = false) => {
-      if (manualServerLockRef.current && !forceEvenIfManual) {
-        setIsPlayerLoading(false);
-        return;
+    (reason: string) => {
+      const currentSrc = detailPlaySources[activeGalleryServerIdx];
+      if (currentSrc) {
+        recordServerFailure(currentSrc.id);
       }
+
       const queue = failoverQueueRef.current;
       const nextStep = failoverStepRef.current + 1;
       if (!queue.length || nextStep >= queue.length) {
         setIsPlayerLoading(false);
-        setFailoverNotice(null);
         setAllServersFailed(true);
         console.warn(`[CinemaPlayer] All servers exhausted (${reason}).`);
         return;
@@ -996,42 +966,31 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
       failoverStepRef.current = nextStep;
       const nextServerIdx = queue[nextStep];
-      const nextSrc = detailPlaySources[nextServerIdx];
       attemptTokenRef.current += 1;
+      playAttemptStartedAtRef.current = performance.now();
       loadedCurrentAttemptRef.current = false;
       setIsPlayerLoading(true);
-
-      if (nextSrc) {
-        setFailoverNotice(
-          t('movies.player.switchingTo', {
-            server: nextSrc.label,
-            defaultValue:
-              currentLang === 'ar'
-                ? `جارٍ التبديل إلى ${nextSrc.label}…`
-                : `Switching to ${nextSrc.label}…`,
-          }),
-        );
-      }
-
       setActiveGalleryServerIdx(nextServerIdx);
     },
-    [detailPlaySources, t, currentLang],
+    [detailPlaySources, activeGalleryServerIdx],
   );
 
-  // Extract direct .m3u8 / .mp4 streams or inner ad-free player via Cloudflare Worker (with automatic fallback to iframe)
+  // Extract direct .m3u8 / .mp4 streams or inner clean player via Cloudflare Worker across speed-sorted servers
   useEffect(() => {
     if (!isWatchingInGallery || !activeGallerySource || allServersFailed) {
       return undefined;
     }
 
     let cancelled = false;
+    const abortController = new AbortController();
     const currentToken = ++attemptTokenRef.current;
+    playAttemptStartedAtRef.current = performance.now();
     loadedCurrentAttemptRef.current = false;
     setIsPlayerLoading(true);
     setPlayerRenderMode("extracting");
     setUseDirectUrlFallback(false);
 
-    // 1. Generate ordered array of all 4 server URLs starting with activeGallerySource
+    // 1. Generate speed-sorted array of all 4 server URLs starting with activeGallerySource
     const generateTargetUrl = (): string[] => {
       const orderedSources: PlaySource[] = [
         activeGallerySource,
@@ -1050,20 +1009,21 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       }
 
       try {
-        // 2. Send generated URLs to Cloudflare Worker to extract pure video streams or inner clean player
-        const videos = await fetchExtractedVideos(generatedTargetUrl);
+        // 2. Query Cloudflare Worker across all 4 servers in speed order
+        const videos = await fetchExtractedVideos(
+          generatedTargetUrl,
+          abortController.signal,
+        );
         if (cancelled || attemptTokenRef.current !== currentToken) return;
 
         if (videos.length === 0) {
-          console.warn(
-            "لم يتم العثور على روابط .m3u8 أو .mp4 في الصفحة المستهدفة. التراجع تلقائياً للمشغل المدمج.",
-          );
           setExtractedStreams([]);
+          playAttemptStartedAtRef.current = performance.now();
           setPlayerRenderMode("iframe");
           return;
         }
 
-        // Prefer direct HLS/MP4 first; otherwise use clean-embed (2vcdn.skin)
+        // Prioritize direct HLS/MP4 streams across all servers first, then clean-embed streams across servers
         const directFirst = [
           ...videos.filter((v) => v.type === "hls" || v.type === "mp4"),
           ...videos.filter((v) => v.type === "clean-embed"),
@@ -1073,22 +1033,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         setExtractedStreams(directFirst);
         setActiveExtractedIdx(0);
         setUseDirectUrlFallback(false);
+        playAttemptStartedAtRef.current = performance.now();
 
         if (firstChoice.type === "clean-embed") {
           setPlayerRenderMode("clean-embed");
         } else {
           setPlayerRenderMode("direct");
-          setIsPlayerLoading(false);
         }
-        setFailoverNotice(null);
-        savePreferredServerId(detailItemStorageKey, activeGallerySource.id);
-      } catch (err) {
+      } catch {
         if (cancelled || attemptTokenRef.current !== currentToken) return;
-        console.warn(
-          "[CinemaPlayer] Worker extraction failed, falling back to iframe:",
-          err,
-        );
         setExtractedStreams([]);
+        playAttemptStartedAtRef.current = performance.now();
         setPlayerRenderMode("iframe");
       }
     }
@@ -1097,13 +1052,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
     return () => {
       cancelled = true;
+      abortController.abort();
     };
   }, [
     isWatchingInGallery,
     activeGallerySource,
     detailPlaySources,
     allServersFailed,
-    detailItemStorageKey,
   ]);
 
   // Attach HLS.js or direct MP4 stream to <video> when playerRenderMode === "direct"
@@ -1123,6 +1078,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
     if (selectedVideo.type === "clean-embed") {
       cleanupDirectVideoPlayer();
+      playAttemptStartedAtRef.current = performance.now();
       setPlayerRenderMode("clean-embed");
       return undefined;
     }
@@ -1143,6 +1099,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       return undefined;
     }
 
+    // Priority: Try next extracted server stream BEFORE falling back to standard iframe
     const handleStreamErrorFallback = () => {
       if (
         !useDirectUrlFallback &&
@@ -1151,16 +1108,22 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       ) {
         setUseDirectUrlFallback(true);
       } else if (activeExtractedIdx + 1 < extractedStreams.length) {
+        recordServerFailure(resolveServerIdForStream(selectedVideo));
         const nextIdx = activeExtractedIdx + 1;
         const nextItem = extractedStreams[nextIdx];
         setUseDirectUrlFallback(false);
+        playAttemptStartedAtRef.current = performance.now();
+        setIsPlayerLoading(true);
         setActiveExtractedIdx(nextIdx);
         if (nextItem?.type === "clean-embed") {
           cleanupDirectVideoPlayer();
           setPlayerRenderMode("clean-embed");
         }
       } else {
+        recordServerFailure(resolveServerIdForStream(selectedVideo));
         cleanupDirectVideoPlayer();
+        playAttemptStartedAtRef.current = performance.now();
+        setIsPlayerLoading(true);
         setPlayerRenderMode("iframe");
       }
     };
@@ -1170,11 +1133,22 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
+          maxBufferLength: 30,
+          backBufferLength: 30,
         });
         hlsInstanceRef.current = hls;
         hls.loadSource(url);
         hls.attachMedia(videoElement);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          const elapsedMs = Math.max(
+            120,
+            performance.now() - playAttemptStartedAtRef.current,
+          );
+          recordServerSuccess(
+            resolveServerIdForStream(selectedVideo),
+            elapsedMs,
+            detailItemStorageKey,
+          );
           setIsPlayerLoading(false);
           void videoElement.play().catch(() => {});
         });
@@ -1225,9 +1199,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     activeExtractedIdx,
     useDirectUrlFallback,
     cleanupDirectVideoPlayer,
+    resolveServerIdForStream,
+    detailItemStorageKey,
   ]);
 
-  // Monitor active iframe fallback for CSP securitypolicyviolation
+  // Monitor active iframe / clean-embed for CSP violations or stalled server timeouts
   useEffect(() => {
     if (
       !isWatchingInGallery ||
@@ -1238,6 +1214,34 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       return undefined;
     }
 
+    const advanceFromCleanEmbedOrIframe = (reason: string) => {
+      if (
+        playerRenderMode === "clean-embed" &&
+        activeExtractedIdx + 1 < extractedStreams.length
+      ) {
+        const currentStream = extractedStreams[activeExtractedIdx];
+        recordServerFailure(resolveServerIdForStream(currentStream));
+        const nextIdx = activeExtractedIdx + 1;
+        const nextItem = extractedStreams[nextIdx];
+        playAttemptStartedAtRef.current = performance.now();
+        setIsPlayerLoading(true);
+        setActiveExtractedIdx(nextIdx);
+        setPlayerRenderMode(
+          nextItem?.type === "clean-embed" ? "clean-embed" : "direct",
+        );
+        return;
+      }
+      if (playerRenderMode === "clean-embed") {
+        const currentStream = extractedStreams[activeExtractedIdx];
+        recordServerFailure(resolveServerIdForStream(currentStream));
+        playAttemptStartedAtRef.current = performance.now();
+        setIsPlayerLoading(true);
+        setPlayerRenderMode("iframe");
+        return;
+      }
+      advanceFailoverServer(reason);
+    };
+
     const onCspViolation = (e: SecurityPolicyViolationEvent) => {
       const directive = String(e.effectiveDirective || e.violatedDirective || '');
       if (!directive.startsWith('frame-src') && !directive.startsWith('child-src')) {
@@ -1246,18 +1250,25 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       const blocked = String(e.blockedURI || '');
       const matchesCurrent =
         blocked.includes(activeGallerySource.host) ||
+        blocked.includes('2vcdn.skin') ||
         (activeGallerySource.origins || []).some((orig) => blocked.startsWith(orig));
 
       if (matchesCurrent) {
-        console.warn(
-          `[CinemaPlayer] CSP blocked framing ${blocked} (${directive}). Failing over immediately.`,
-        );
-        advanceFailoverServer('csp-violation', true);
+        advanceFromCleanEmbedOrIframe('csp-violation');
       }
     };
     document.addEventListener('securitypolicyviolation', onCspViolation);
 
+    // Watchdog timeout: if iframe fails to load within server timeoutMs, automatically try next server
+    const timeoutMs = Math.max(8500, activeGallerySource.timeoutMs || 11000);
+    const watchdog = setTimeout(() => {
+      if (!loadedCurrentAttemptRef.current) {
+        advanceFromCleanEmbedOrIframe('timeout');
+      }
+    }, timeoutMs);
+
     return () => {
+      clearTimeout(watchdog);
       document.removeEventListener('securitypolicyviolation', onCspViolation);
     };
   }, [
@@ -1265,6 +1276,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     playerRenderMode,
     activeGallerySource,
     allServersFailed,
+    activeExtractedIdx,
+    extractedStreams,
+    resolveServerIdForStream,
     advanceFailoverServer,
   ]);
 
@@ -1338,7 +1352,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setShowHeroTrailer(false);
     setIsWatchingInGallery(false);
     setIsPlayerLoading(false);
-    setFailoverNotice(null);
     setAllServersFailed(false);
     setIsCssFullscreen(false);
     setActiveGalleryServerIdx(0);
@@ -1940,13 +1953,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const slideshowSlidesLength = slideshowSlides.length;
 
   useEffect(() => {
-    if (slideshowSlidesLength <= 1 || heroServersOpen) return;
+    if (slideshowSlidesLength <= 1 || heroServersOpen || selectedItemId !== null || isWatchingInGallery) return;
     const interval = setInterval(() => {
       if (document.hidden) return;
       setHeroIndex(prev => (prev + 1) % slideshowSlidesLength);
     }, 8000);
     return () => clearInterval(interval);
-  }, [slideshowSlidesLength, heroServersOpen]);
+  }, [slideshowSlidesLength, heroServersOpen, selectedItemId, isWatchingInGallery]);
 
   const activeHeroItem = slideshowSlides[heroIndex];
 
@@ -1984,24 +1997,30 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     ? getBackdropSrc_static(ambientBackdropItem.backdropPath, ambientBackdropItem.posterPath, ambientBackdropItem.trailerKey)
     : "";
 
+  const isCinemaFocusActive = isWatchingInGallery && selectedItemId !== null && Boolean(detailedItem);
+
   return createPortal(
-    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto">
-      {/* Dynamic Liquid Glass Ambient Backdrop Illumination */}
-      {ambientBackdropUrl && (
+    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto bg-black">
+      {/* Dynamic Liquid Glass Ambient Backdrop Illumination (Unmounted during active Movie playback to save GPU/RAM) */}
+      {!isCinemaFocusActive && ambientBackdropUrl && (
         <div
           className="lg-cinema-ambient-bg"
           style={{ backgroundImage: `url(${ambientBackdropUrl})` }}
           aria-hidden="true"
         />
       )}
-      <div
-        className="absolute inset-0 z-10 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 15%, rgba(16, 24, 42, 0.32) 0%, rgba(6, 9, 17, 0.86) 68%, rgba(5, 7, 14, 0.96) 100%)",
-        }}
-      />
+      {!isCinemaFocusActive && (
+        <div
+          className="absolute inset-0 z-10 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 15%, rgba(16, 24, 42, 0.32) 0%, rgba(6, 9, 17, 0.86) 68%, rgba(5, 7, 14, 0.96) 100%)",
+          }}
+        />
+      )}
 
+      {/* Main Background Grid & Hero (Completely unmounted during active Movie playback to free 100% CPU/GPU/RAM for the player) */}
+      {!isCinemaFocusActive && (
       <div
         ref={mainScrollRef}
         onScroll={handleScrollEvent}
@@ -2506,16 +2525,22 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           </>
         )}
       </div>
+      )}
 
-      {/* Liquid Glass Movie / Series Details Modal (Single Top Glass Gallery Trailer + Rich TMDB Info + Interactive Cast) */}
+      {/* Liquid Glass Movie / Series Details & Theater Stage Modal */}
       <AnimatePresence>
         {selectedItemId !== null && detailedItem && (
-          <div className="nl-detail-wrap fixed inset-0 z-[10100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/75 backdrop-blur-xl">
+          <div
+            className={`nl-detail-wrap fixed inset-0 z-[10100] flex items-center justify-center p-2 sm:p-5 overflow-y-auto ${
+              isWatchingInGallery
+                ? "bg-black"
+                : "bg-black/75 backdrop-blur-xl"
+            }`}
+          >
             <div onClick={() => setSelectedItemId(null)} className="absolute inset-0 z-0 cursor-zoom-out" />
             {isLoadingDetails ? (
-              <div className="relative z-10 flex flex-col items-center gap-3 text-white lg-cinema-glass-modal px-8 py-7 rounded-3xl">
-                <div className="w-11 h-11 border-3 border-t-rose-500 border-white/20 rounded-full animate-spin" />
-                <p className="text-white/75 text-xs font-medium">{t("movies.meta.resolving")}</p>
+              <div className="relative z-10 flex items-center justify-center p-8">
+                <EyeLoader />
               </div>
             ) : (
               <m.div
@@ -2526,16 +2551,30 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 initial={{ opacity: 0, scale: 0.94, y: 18 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.94, y: 18 }}
-                transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-                className="nl-detail-card lg-cinema-glass-modal relative w-full max-w-4xl rounded-3xl z-10 overflow-hidden my-auto max-h-[92dvh] flex flex-col"
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className={`nl-detail-card lg-cinema-glass-modal relative w-full rounded-3xl z-10 overflow-hidden my-auto max-h-[94dvh] flex flex-col ${
+                  isWatchingInGallery
+                    ? "nl-detail-card--theater"
+                    : "max-w-4xl"
+                }`}
               >
-                {/* Top 16:9 Liquid Glass Gallery Stage (Unified Movie/Series Player, Trailer & Hero Stage) */}
-                <div className="p-2.5 sm:p-3.5 pb-0 flex-shrink-0 flex flex-col gap-2">
-                  {/* Elevated Top Control Bar ABOVE Gallery Stage when Movie or Trailer is actively playing */}
+                {/* Top 16:9 Liquid Glass Gallery Stage (Expands to Cinema Theater Mode when Movie/Series plays; stays standard for Trailer) */}
+                <div
+                  className={`flex-shrink-0 flex flex-col gap-2 ${
+                    isWatchingInGallery
+                      ? "p-2 sm:p-3"
+                      : "p-2.5 sm:p-3.5 pb-0"
+                  }`}
+                >
+                  {/* Sleek Semi-Transparent Top Control Bar ABOVE Gallery Stage when Movie or Trailer is actively playing */}
                   {((isWatchingInGallery && Boolean(activeGallerySource)) ||
                     (showHeroTrailer && Boolean(detailedItem.trailerKey))) && (
                     <div
-                      className="lg-cinema-gallery-top-bar flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-2xl"
+                      className={`lg-cinema-gallery-top-bar flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-2xl ${
+                        isWatchingInGallery
+                          ? "lg-cinema-gallery-top-bar--playing"
+                          : ""
+                      }`}
                       dir="ltr"
                     >
                       <div className="flex flex-wrap items-center gap-2 min-w-0">
@@ -2586,114 +2625,15 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           </button>
                         )}
 
-                        {isWatchingInGallery && activeGallerySource && (
-                          <>
-                            {/* Live Cloudflare Worker / Player Engine Status Indicator */}
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold border whitespace-nowrap ${
-                                playerRenderMode === "direct"
-                                  ? "bg-emerald-500/25 border-emerald-300/60 text-emerald-100"
-                                  : playerRenderMode === "clean-embed"
-                                    ? "bg-sky-500/25 border-sky-300/60 text-sky-100"
-                                    : playerRenderMode === "extracting"
-                                      ? "bg-rose-500/25 border-rose-300/60 text-rose-100"
-                                      : "bg-white/12 border-white/25 text-white/85"
-                              }`}
-                              title={
-                                playerRenderMode === "direct"
-                                  ? "Cloudflare Worker Direct Stream (.m3u8 / .mp4)"
-                                  : playerRenderMode === "clean-embed"
-                                    ? "Cloudflare Worker Extracted Inner Player (2vcdn.skin • Sandbox Compatible)"
-                                    : playerRenderMode === "extracting"
-                                      ? "Scanning servers via Cloudflare Worker..."
-                                      : "Standard Server Iframe Fallback (Worker returned 0 direct video links)"
-                              }
-                            >
-                              <span
-                                className={`w-2 h-2 rounded-full ${
-                                  playerRenderMode === "direct"
-                                    ? "bg-emerald-400"
-                                    : playerRenderMode === "clean-embed"
-                                      ? "bg-sky-400"
-                                      : playerRenderMode === "extracting"
-                                        ? "bg-rose-400 animate-ping"
-                                        : "bg-amber-400"
-                                }`}
-                              />
-                              <span>
-                                {playerRenderMode === "direct"
-                                  ? currentLang === "ar"
-                                    ? "مشغّل Worker المباشر (HLS/MP4)"
-                                    : "Worker Direct (HLS/MP4)"
-                                  : playerRenderMode === "clean-embed"
-                                    ? currentLang === "ar"
-                                      ? "مشغّل Worker الصافي (بدون إعلانات)"
-                                      : "Worker Clean Player (Ad-Free)"
-                                    : playerRenderMode === "extracting"
-                                      ? currentLang === "ar"
-                                        ? "جارٍ فحص Worker..."
-                                        : "Worker Scanning..."
-                                      : currentLang === "ar"
-                                        ? "مشغّل Iframe الاحتياطي"
-                                        : "Iframe Fallback"}
-                              </span>
+                        {isWatchingInGallery &&
+                          activeGallerySource &&
+                          detailedItem.mediaType === "tv" && (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-white/10 border border-white/20 text-white/90 whitespace-nowrap">
+                              {isFullSeasonEmbed
+                                ? "Full Season"
+                                : `S${selectedSeason}:E${selectedEpisode}`}
                             </span>
-
-                            {/* Ad-Lock Sandbox Toggle Button (Blocks window.open popups by default) */}
-                            <button
-                              type="button"
-                              onClick={handleToggleAdLock}
-                              className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
-                                isAdLockEnabled
-                                  ? "!bg-emerald-500/22 !border-emerald-300/55 text-emerald-100"
-                                  : "!bg-amber-500/22 !border-amber-300/55 text-amber-100"
-                              }`}
-                              title={
-                                isAdLockEnabled
-                                  ? t("movies.player.adLockOn")
-                                  : t("movies.player.adLockOff")
-                              }
-                            >
-                              {isAdLockEnabled ? (
-                                <ShieldCheck size={14} className="text-emerald-300 shrink-0" />
-                              ) : (
-                                <ShieldOff size={14} className="text-amber-300 shrink-0" />
-                              )}
-                              <span>
-                                {isAdLockEnabled
-                                  ? t("movies.player.adLockOn")
-                                  : t("movies.player.adLockOff")}
-                              </span>
-                            </button>
-
-                            {/* Switch Server Button (Cycles through the 4 remaining servers & caches choice per title) */}
-                            <button
-                              type="button"
-                              onClick={handleCycleNextServer}
-                              className="lg-cinema-action-pill px-3 py-1.5 text-xs font-extrabold text-white hover:text-rose-100 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-                              title={t("movies.player.switchServer", {
-                                current: activeGalleryServerIdx + 1,
-                                total: detailPlaySources.length || 4,
-                              })}
-                            >
-                              <Server size={13} className="text-rose-300 shrink-0" />
-                              <span>
-                                {t("movies.player.switchServer", {
-                                  current: activeGalleryServerIdx + 1,
-                                  total: detailPlaySources.length || 4,
-                                })}
-                              </span>
-                            </button>
-
-                            {detailedItem.mediaType === "tv" && (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-400/20 border border-amber-300/45 text-amber-200 whitespace-nowrap">
-                                {isFullSeasonEmbed
-                                  ? "Full Season"
-                                  : `S${selectedSeason}:E${selectedEpisode}`}
-                              </span>
-                            )}
-                          </>
-                        )}
+                          )}
 
                         <button
                           type="button"
@@ -2788,10 +2728,22 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             controls
                             autoPlay
                             playsInline
+                            crossOrigin="anonymous"
                             onLoadedData={() => {
                               loadedCurrentAttemptRef.current = true;
+                              const currentStream =
+                                extractedStreams[activeExtractedIdx] ||
+                                extractedStreams[0];
+                              const elapsedMs = Math.max(
+                                120,
+                                performance.now() - playAttemptStartedAtRef.current,
+                              );
+                              recordServerSuccess(
+                                resolveServerIdForStream(currentStream),
+                                elapsedMs,
+                                detailItemStorageKey,
+                              );
                               setIsPlayerLoading(false);
-                              setFailoverNotice(null);
                             }}
                             onError={() => {
                               const currentStream =
@@ -2807,20 +2759,45 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 activeExtractedIdx + 1 <
                                 extractedStreams.length
                               ) {
+                                recordServerFailure(
+                                  resolveServerIdForStream(currentStream),
+                                );
                                 const nextIdx = activeExtractedIdx + 1;
                                 const nextItem = extractedStreams[nextIdx];
                                 setUseDirectUrlFallback(false);
+                                playAttemptStartedAtRef.current = performance.now();
+                                setIsPlayerLoading(true);
                                 setActiveExtractedIdx(nextIdx);
                                 if (nextItem?.type === "clean-embed") {
                                   cleanupDirectVideoPlayer();
                                   setPlayerRenderMode("clean-embed");
                                 }
                               } else {
+                                recordServerFailure(
+                                  resolveServerIdForStream(currentStream),
+                                );
                                 cleanupDirectVideoPlayer();
+                                playAttemptStartedAtRef.current = performance.now();
+                                setIsPlayerLoading(true);
                                 setPlayerRenderMode("iframe");
                               }
                             }}
-                          />
+                          >
+                            {(
+                              extractedStreams[activeExtractedIdx]?.subtitles ||
+                              extractedStreams[0]?.subtitles ||
+                              []
+                            ).map((sub, subIdx) => (
+                              <track
+                                key={`${sub.lang}-${subIdx}-${sub.url}`}
+                                kind="subtitles"
+                                src={sub.proxiedUrl || sub.url}
+                                srcLang={sub.lang}
+                                label={sub.label}
+                                default={Boolean(sub.default || subIdx === 0)}
+                              />
+                            ))}
+                          </video>
                         )}
 
                         {!allServersFailed &&
@@ -2835,7 +2812,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                       extractedStreams[0]
                                     )?.directUrl || activeGallerySource.url
                                   : activeGallerySource.url
-                              }-adlock-${isAdLockEnabled ? "1" : "0"}`}
+                              }`}
                               className="w-full h-full border-0 bg-black block"
                               src={
                                 playerRenderMode === "clean-embed"
@@ -2851,48 +2828,41 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                               frameBorder="0"
                               scrolling="no"
                               referrerPolicy="origin"
-                              sandbox={
-                                isAdLockEnabled
-                                  ? "allow-scripts allow-same-origin allow-forms allow-presentation"
-                                  : undefined
-                              }
                               allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                               allowFullScreen
                               onLoad={() => {
                                 loadedCurrentAttemptRef.current = true;
-                                setIsPlayerLoading(false);
-                                setFailoverNotice(null);
-                                savePreferredServerId(
-                                  detailItemStorageKey,
-                                  activeGallerySource.id,
+                                const elapsedMs = Math.max(
+                                  120,
+                                  performance.now() - playAttemptStartedAtRef.current,
                                 );
+                                const currentStream =
+                                  extractedStreams[activeExtractedIdx] ||
+                                  extractedStreams[0];
+                                const activeServerId =
+                                  playerRenderMode === "clean-embed"
+                                    ? resolveServerIdForStream(currentStream)
+                                    : activeGallerySource.id;
+                                recordServerSuccess(
+                                  activeServerId,
+                                  elapsedMs,
+                                  detailItemStorageKey,
+                                );
+                                setIsPlayerLoading(false);
                               }}
                             />
                           )}
 
-                        {/* Loading / Failover Toast Indicator (pointer-events-none so it never blocks clicks) */}
+                        {/* Pure Visual Eye Loader Overlay (Zero text, pointer-events-none) */}
                         {(isPlayerLoading || playerRenderMode === "extracting") && !allServersFailed && (
-                          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 bg-black/55 backdrop-blur-xs pointer-events-none">
-                            <RefreshCw
-                              size={26}
-                              className="animate-spin text-rose-400"
-                            />
-                            <span className="px-3.5 py-1 rounded-full bg-black/70 border border-white/20 text-xs font-extrabold text-white shadow-lg">
-                              {failoverNotice ||
-                                (playerRenderMode === "extracting"
-                                  ? currentLang === "ar"
-                                    ? "جارٍ سحب الفيديو الصافي عبر Cloudflare Worker…"
-                                    : "Extracting clean stream via Cloudflare Worker…"
-                                  : t("movies.player.loadingServer", {
-                                      server: `${activeGallerySource.label} (${activeGallerySource.host})`,
-                                    }))}
-                            </span>
+                          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/90 pointer-events-none">
+                            <EyeLoader />
                           </div>
                         )}
 
                         {/* All Servers Exhausted Error State with Retry Button */}
                         {allServersFailed && (
-                          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-6 text-center bg-black/90">
+                          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-6 text-center bg-black/95">
                             <AlertTriangle size={32} className="text-amber-400" />
                             <p className="text-xs sm:text-sm font-bold text-white/90 max-w-md leading-relaxed">
                               {t("movies.player.allFailed")}
@@ -3149,7 +3119,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   )}
                 </div>
 
-                {/* Scrollable Liquid Glass Body */}
+                {/* Scrollable Liquid Glass Body (Completely unmounted during active Movie/Series playback to focus 100% on the Cinema Stage) */}
+                {!isWatchingInGallery && (
                 <div className="p-5 sm:p-7 flex flex-col gap-5 overflow-y-auto">
                   {/* Action Bar: Branching Server Capsules + TIP Card + Trailer Toggle + Account Actions */}
                   <div className="flex flex-col gap-3 pb-4 border-b border-white/12">
@@ -3491,15 +3462,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                     </div>
                   )}
                 </div>
+                )}
               </m.div>
             )}
           </div>
         )}
       </AnimatePresence>
 
-      {/* Interactive Liquid Glass Actor Profile Card Modal */}
+      {/* Interactive Liquid Glass Actor Profile Card Modal (Disabled while movie is actively playing) */}
       <AnimatePresence>
-        {selectedActor && (
+        {!isWatchingInGallery && selectedActor && (
           <div className="fixed inset-0 z-[10150] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xl select-none">
             <div
               className="absolute inset-0 cursor-zoom-out"

@@ -6,6 +6,7 @@ import {
   CINEMA_SERVERS,
   extractValidImdbId,
 } from '../../config/servers';
+import { sortSourcesBySpeed } from '../../services/serverSpeedMonitor';
 
 export interface PlaySource {
   id: string;
@@ -34,7 +35,6 @@ const IMDB_MEMORY_CACHE: Record<string, string> = {};
 export const TIP_BG_URL =
   'https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/tip.webp';
 
-// Exact literal text requested by the user — do NOT modify a single character
 export const EXACT_TIP_MESSAGE =
   ' جرب  سيرفرفات بعض المرات قدر ميكونش واحد فيهم خدام  و من الافضل تفرج ب متصفح brave باش  تمنع كل الاعلانات تلقائيا ';
 
@@ -58,7 +58,7 @@ export function buildSources(item: {
   const e = Math.max(1, item.episode || 1);
   const isFullSeason = Boolean(item.fullSeason);
 
-  return CINEMA_SERVERS.map((server) => {
+  const built = CINEMA_SERVERS.map((server) => {
     const url =
       item.mediaType === 'movie'
         ? server.movie(ids)
@@ -72,6 +72,9 @@ export function buildSources(item: {
       timeoutMs: server.timeoutMs,
     };
   }).filter((src) => Boolean(src.url));
+
+  const titleKey = item.id ? `${item.mediaType}_${item.id}` : undefined;
+  return sortSourcesBySpeed(built, titleKey);
 }
 
 export function useResolvedImdbSources(
@@ -157,42 +160,11 @@ export function useResolvedImdbSources(
   return { sources, resolving, resolvedImdbId: resolvedImdbId || extractImdbId(item?.imdbId) };
 }
 
-/**
- * Floating Smart Liquid Glass TIP Card with Karaoke / Typewriter Reveal
- * Background: https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/tip.webp
- * Text color: #000000 with strong red glow
- */
 export const FloatingGlassTipCard: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   className?: string;
 }> = ({ isOpen, onClose, className = '' }) => {
-  const [typedCount, setTypedCount] = useState(0);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setTypedCount(0);
-      return undefined;
-    }
-
-    setTypedCount(0);
-    const totalLength = EXACT_TIP_MESSAGE.length;
-    const interval = setInterval(() => {
-      setTypedCount((prev) => {
-        if (prev >= totalLength) {
-          clearInterval(interval);
-          return totalLength;
-        }
-        return prev + 1;
-      });
-    }, 34);
-
-    return () => clearInterval(interval);
-  }, [isOpen]);
-
-  const visibleText = EXACT_TIP_MESSAGE.slice(0, typedCount);
-  const remainingText = EXACT_TIP_MESSAGE.slice(typedCount);
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -204,56 +176,22 @@ export const FloatingGlassTipCard: React.FC<{
           className={`lg-cinema-tip-card relative overflow-hidden rounded-2xl select-none ${className}`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Background Image Layer */}
-          <div
-            className="lg-cinema-tip-card__bg"
-            style={{ backgroundImage: `url(${TIP_BG_URL})` }}
-            aria-hidden="true"
-          />
-
-          {/* Liquid Glass Specular Rim & Subtle Frosted Overlay */}
-          <div className="lg-cinema-tip-card__sheen" aria-hidden="true" />
-
-          <div className="relative z-10 p-3.5 sm:p-4 flex flex-col gap-2">
-            {/* Top Bar: English TIP Badge + Dismiss X Button */}
-            <div className="flex items-center justify-between gap-2" dir="ltr">
-              <span className="lg-cinema-tip-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                <Sparkles size={11} className="text-red-500 animate-pulse" />
-                <span>TIP</span>
-              </span>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose();
-                }}
-                className="lg-cinema-tip-close w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95"
-                aria-label="Close Tip"
-                title="Close Tip"
-              >
-                <X size={13} strokeWidth={2.6} />
-              </button>
-            </div>
-
-            {/* Karaoke / Typewriter Message in Black with Red Glow */}
-            <p
-              dir="rtl"
-              className="lg-cinema-tip-text text-xs sm:text-[13.5px] font-black leading-relaxed text-right"
+          <div className="relative z-10 p-3.5 sm:p-4 flex items-center justify-between gap-2">
+            <span className="lg-cinema-tip-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+              <Sparkles size={11} className="text-red-500" />
+              <span>TIP</span>
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="lg-cinema-tip-close w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+              aria-label="Close Tip"
             >
-              <span>{visibleText}</span>
-              {typedCount < EXACT_TIP_MESSAGE.length && (
-                <span
-                  className="inline-block w-1.5 h-3.5 ms-0.5 align-middle bg-black rounded-sm animate-pulse"
-                  style={{
-                    boxShadow: '0 0 8px #ff0022, 0 0 14px #ff1e38',
-                  }}
-                />
-              )}
-              <span className="opacity-0 pointer-events-none select-none">
-                {remainingText}
-              </span>
-            </p>
+              <X size={13} strokeWidth={2.6} />
+            </button>
           </div>
         </m.div>
       )}
@@ -262,9 +200,8 @@ export const FloatingGlassTipCard: React.FC<{
 };
 
 /**
- * Direct Watch Now Trigger + Auto-Opening Smart TIP Window
- * Server selection buttons are intentionally removed from the UI; background server
- * resolution and smart caching handle playback directly inside the gallery player.
+ * Direct Watch Now Trigger
+ * Starts playback immediately on the fastest server in the background without server UI clutter.
  */
 export const ServerBranchesInline: React.FC<{
   item: CinemaWatchTarget;
@@ -276,25 +213,11 @@ export const ServerBranchesInline: React.FC<{
   activeServerIdx?: number | null;
   onSelectServer?: (index: number, source: PlaySource) => void;
 }> = ({
-  item,
   isOpen,
   onToggle,
   buttonLabel,
   align = 'start',
 }) => {
-  const [showTip, setShowTip] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setShowTip(false);
-      return undefined;
-    }
-    const timer = setTimeout(() => {
-      setShowTip(true);
-    }, 140);
-    return () => clearTimeout(timer);
-  }, [isOpen, item.id]);
-
   return (
     <div
       className={`relative flex flex-col gap-2.5 ${
@@ -302,7 +225,6 @@ export const ServerBranchesInline: React.FC<{
       }`}
     >
       <div className="flex flex-wrap items-center gap-2">
-        {/* Main Watch Now Trigger Button (Starts playback directly in the gallery player) */}
         <button
           type="button"
           onClick={(e) => {
@@ -318,13 +240,7 @@ export const ServerBranchesInline: React.FC<{
           <span>{buttonLabel}</span>
         </button>
       </div>
-
-      {/* Smart Floating Liquid Glass TIP Window */}
-      <FloatingGlassTipCard
-        isOpen={isOpen && showTip}
-        onClose={() => setShowTip(false)}
-        className="w-full max-w-[430px] mt-0.5"
-      />
     </div>
   );
 };
+
