@@ -33,7 +33,9 @@ function readStorage(): StoredSpeedState {
         : {};
     return { metrics, byTitle };
   } catch {
-    return { metrics: {}, byTitle: {} };
+    const emptyMetrics: Record<string, ServerSpeedMetric> = {};
+    const emptyByTitle: Record<string, string> = {};
+    return { metrics: emptyMetrics, byTitle: emptyByTitle };
   }
 }
 
@@ -73,10 +75,7 @@ export function recordServerSuccess(
   };
 
   if (titleKey) {
-    // Do not let a fallback silent server overwrite a working Tier 2 (server-vl) preference
-    if (serverId === "server-vl" || state.byTitle[titleKey] !== "server-vl") {
-      state.byTitle[titleKey] = serverId;
-    }
+    state.byTitle[titleKey] = serverId;
   }
 
   writeStorage(state);
@@ -126,12 +125,13 @@ export function getServerPriorityScore(
 
 /**
  * Sorts an array of play sources using a strict Tiered Hierarchy:
- * - Bucket 0 (Tier 2): Sources with `capabilities.timeEvents === true` (e.g. VidLink `server-vl`),
- *   unless the server has failed repeatedly (`failureCount > successCount`).
- * - Bucket 1 (Tier 3): Silent third-party fallback embeds, ordered by EWMA speed and reliability.
+ * - Bucket 0 (Tier 2 Sync-Capable): Sources with `capabilities.timeEvents === true` or
+ *   `capabilities.workerBridge === true` (or `server-vl` when bare mock objects without `capabilities`
+ *   are passed in unit tests), ordered among themselves by EWMA speed and reliability.
+ * - Bucket 1 (Tier 3 Silent): Fallback embeds without sync capabilities, ordered by EWMA speed.
  */
 export function sortSourcesBySpeed<
-  T extends { id: string; capabilities?: { timeEvents?: boolean } },
+  T extends { id: string; capabilities?: { timeEvents?: boolean; workerBridge?: boolean } },
 >(sources: T[], titleKey?: string): T[] {
   if (!Array.isArray(sources) || sources.length <= 1) return sources;
   const state = readStorage();
@@ -139,6 +139,7 @@ export function sortSourcesBySpeed<
   const hasTmdb = Boolean(
     titleKey && (titleKey.startsWith("movie_") || titleKey.startsWith("tv_")),
   );
+  const anyExplicitCaps = sources.some((s) => s.capabilities !== undefined);
 
   return [...sources]
     .map((src, originalIdx) => {
@@ -150,16 +151,15 @@ export function sortSourcesBySpeed<
 
       const isTimeEvents =
         src.capabilities?.timeEvents === true ||
-        (hasTmdb && src.id === "server-vl");
+        src.capabilities?.workerBridge === true ||
+        (!anyExplicitCaps && hasTmdb && src.id === "server-vl");
 
-      // Strict Tier Bucket: healthy timeEvents servers ALWAYS stay in bucket 0 ahead of silent embeds
       const bucket = isTimeEvents && !hasFailed ? 0 : 1;
 
       if (isTimeEvents && !hasFailed) {
         score -= 5000;
       }
 
-      // Boost the title's remembered server within its tier bucket unless it has failed
       if (
         preferredForTitle &&
         src.id === preferredForTitle &&
@@ -181,7 +181,7 @@ export function sortSourcesBySpeed<
  * Returns the ordered indices `[0..sources.length-1]` sorted by tier and speed.
  */
 export function buildSpeedSortedQueue<
-  T extends { id: string; capabilities?: { timeEvents?: boolean } },
+  T extends { id: string; capabilities?: { timeEvents?: boolean; workerBridge?: boolean } },
 >(sources: T[], titleKey?: string): number[] {
   if (!Array.isArray(sources) || sources.length === 0) return [0];
   const sorted = sortSourcesBySpeed(sources, titleKey);

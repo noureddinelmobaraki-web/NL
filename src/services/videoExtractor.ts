@@ -16,7 +16,7 @@ export interface ExtractedSubtitleTrack {
   label: string;
   default?: boolean;
   cues?: SubtitleCue[];
-  provider?: "wyzie" | "opensubtitles" | "worker" | "local";
+  provider?: "wyzie" | "opensubtitles" | "worker" | "local" | "stream";
   release?: string;
   hearingImpaired?: boolean;
   remoteUrl?: string;
@@ -36,6 +36,7 @@ interface RawSubtitleItem {
   url?: string;
   file?: string;
   src?: string;
+  referer?: string;
   lang?: string;
   srclang?: string;
   language?: string;
@@ -70,8 +71,9 @@ const SESSION_EXTRACTION_CACHE = new Map<
   { timestamp: number; streams: ExtractedVideoStream[] }
 >();
 const CACHE_TTL_MS = 1000 * 60 * 15; // 15 minutes
+export const EXTRACTION_TIMEOUT_MS = 9_000;
 
-function buildWorkerProxyUrl(targetUrl: string, refererUrl?: string): string {
+export function buildWorkerProxyUrl(targetUrl: string, refererUrl?: string): string {
   if (!targetUrl) return "";
   if (targetUrl.startsWith(WORKER_ENDPOINT)) return targetUrl;
   try {
@@ -86,7 +88,7 @@ function buildWorkerProxyUrl(targetUrl: string, refererUrl?: string): string {
   }
 }
 
-function guessLangFromLabelOrUrl(label: string, url: string): { lang: string; label: string } {
+export function guessLangFromLabelOrUrl(label: string, url: string): { lang: string; label: string } {
   const combined = `${label} ${url}`.toLowerCase();
   if (combined.includes("arab") || combined.includes("عرب") || /([._/-])ar([._/-]|$)/i.test(combined)) {
     return { lang: "ar", label: label || "العربية" };
@@ -106,19 +108,37 @@ function guessLangFromLabelOrUrl(label: string, url: string): { lang: string; la
   };
 }
 
+function expandRawSubtitleEntries(rawList: Array<RawSubtitleItem | string>): Array<RawSubtitleItem | string> {
+  const expanded: Array<RawSubtitleItem | string> = [];
+  for (const item of rawList) {
+    if (typeof item === "string" && item.includes("[")) {
+      const re = /\[([^\]]{1,40})\](https?:\/\/[^\s"',\]]+\.(?:vtt|srt)(?:\?[^\s"',\]]*)?)/gi;
+      let matched = false;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(item)) !== null) {
+        matched = true;
+        expanded.push({ label: m[1].trim(), url: m[2].trim() });
+      }
+      if (!matched) expanded.push(item);
+    } else {
+      expanded.push(item);
+    }
+  }
+  return expanded;
+}
+
 function extractSubtitlesFromResult(
   pageResult: WorkerPageResult,
   videoItem?: { subtitles?: Array<RawSubtitleItem | string>; tracks?: Array<RawSubtitleItem | string> },
 ): ExtractedSubtitleTrack[] {
-  const rawList: Array<RawSubtitleItem | string> = [
+  const rawList: Array<RawSubtitleItem | string> = expandRawSubtitleEntries([
     ...(Array.isArray(videoItem?.subtitles) ? videoItem.subtitles : []),
     ...(Array.isArray(videoItem?.tracks) ? videoItem.tracks : []),
     ...(Array.isArray(pageResult.subtitles) ? pageResult.subtitles : []),
     ...(Array.isArray(pageResult.tracks) ? pageResult.tracks : []),
     ...(Array.isArray(pageResult.captions) ? pageResult.captions : []),
-  ];
+  ]);
 
-  // Also check if any video item itself is a .vtt or .srt file
   if (Array.isArray(pageResult.videos)) {
     for (const v of pageResult.videos) {
       const candidate = v?.directUrl || v?.proxiedUrl || "";
@@ -154,10 +174,12 @@ function extractSubtitlesFromResult(
       typeof item === "object" && (item.srclang || item.lang)
         ? String(item.srclang || item.lang)
         : guessed.lang;
+    const referer =
+      typeof item === "object" && item.referer ? item.referer : pageResult.source;
 
     tracks.push({
       url: trimmed,
-      proxiedUrl: buildWorkerProxyUrl(trimmed, pageResult.source),
+      proxiedUrl: buildWorkerProxyUrl(trimmed, referer),
       lang: langCode,
       label: guessed.label,
       default:
@@ -167,15 +189,12 @@ function extractSubtitlesFromResult(
     });
   }
 
-  // Sort Arabic subtitles first if present
   tracks.sort((a, b) => (a.lang === "ar" ? -1 : b.lang === "ar" ? 1 : 0));
   return tracks;
 }
 
 /**
  * دالة استخراج روابط الفيديو (.m3u8 / .mp4) والترجمات عبر Cloudflare Worker
- * @param targetUrls - رابط الصفحة أو مصفوفة الروابط المرتبة حسب سرعة السيرفر
- * @returns مصفوفة الفيديوهات المستخرجة الجاهزة للتشغيل مع مسارات الترجمة إن وجدت
  */
 export async function fetchExtractedVideos(
   targetUrls: string | string[],
@@ -196,7 +215,7 @@ export async function fetchExtractedVideos(
   }
 
   const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(), 4_500);
+  const timeoutId = setTimeout(() => timeoutController.abort(), EXTRACTION_TIMEOUT_MS);
   const onExternalAbort = () => timeoutController.abort();
   signal?.addEventListener("abort", onExternalAbort, { once: true });
 
@@ -217,10 +236,7 @@ export async function fetchExtractedVideos(
     }
 
     const data = (await response.json()) as WorkerResponsePayload;
-
-    // توحيد شكل المخرجات سواء كان الإدخال رابطاً واحداً أو عدة روابط
     const rawResults = Array.isArray(data.results) ? data.results : [data.results];
-
     const extractedVideos: ExtractedVideoStream[] = [];
 
     for (const pageResult of rawResults) {
@@ -230,7 +246,6 @@ export async function fetchExtractedVideos(
         for (const video of pageResult.videos) {
           if (!video || (!video.proxiedUrl && !video.directUrl)) continue;
           const candidateUrl = video.directUrl || video.proxiedUrl || "";
-          // Skip subtitle files mixed into videos array (handled by extractSubtitlesFromResult)
           if (/\.(vtt|srt)(\?|#|$)/i.test(candidateUrl)) continue;
 
           const directUrl = video.directUrl || video.proxiedUrl || "";

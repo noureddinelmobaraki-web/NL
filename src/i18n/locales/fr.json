@@ -79,7 +79,12 @@
       "pause": "Pause",
       "seek": "Avancer/Reculer",
       "bridgedTimeHint": "Temps en direct du serveur (utilisez les contrôles du lecteur)",
-      "controlsInsideFrame": "Les contrôles de lecture sont dans le cadre vidéo"
+      "controlsInsideFrame": "Les contrôles de lecture sont dans le cadre vidéo",
+      "adShieldArmed": "Bouclier anti-pub",
+      "adShieldPass": "Clic traversant 8 s (pubs possibles)",
+      "adShieldPassHint": "Touchez pour réactiver le bouclier",
+      "sandboxEscape": "Le lecteur ne charge pas ? Désactiver la protection",
+      "manualSync": "Horloge manuelle des sous-titres"
     },
     "subs": {
       "syncClock": "Sync sous-titres",

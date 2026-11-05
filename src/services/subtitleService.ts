@@ -3,6 +3,7 @@ import { PUBLIC_OPENSUBTITLES_KEY, PUBLIC_WYZIE_KEY } from "../config/publicKeys
 import { WORKER_ENDPOINT, type ExtractedSubtitleTrack, type SubtitleCue } from "./videoExtractor";
 import { LEGACY_ENCODING, getLanguageLabel, normalizeLangCode } from "../features/cinema/subtitles/languages";
 import { getSubtitlePrefs } from "../features/cinema/subtitles/subtitlePrefs";
+import { dedupeCues, isHlsPlaylistText, mergeHlsVttPlaylist } from "../features/cinema/subtitles/streamSubtitles";
 
 /** "1" once the Worker routes /subs/* are deployed with the WYZIE_KEY secret (Phase 3). */
 const USE_WORKER_SUBS_PROXY = import.meta.env.VITE_USE_WORKER_SUBS_PROXY === "1";
@@ -219,18 +220,25 @@ async function downloadOpenSubtitles(fileId: number, lang: string, signal?: Abor
 
 const INFLIGHT = new Map<string, Promise<ExtractedSubtitleTrack>>();
 
-/** Downloads, decodes, ad-filters and converts a lazy track. Mutates + returns the same object. */
+/** Downloads, decodes, merges HLS WebVTT segments if needed, ad-filters and converts a lazy track. */
 export function ensureTrackLoaded(track: ExtractedSubtitleTrack, signal?: AbortSignal): Promise<ExtractedSubtitleTrack> {
   if (track.loaded !== false && Array.isArray(track.cues) && track.cues.length) return Promise.resolve(track);
-  const key = track.id || track.remoteUrl || track.url;
+  const key = track.id || track.remoteUrl || track.proxiedUrl || track.url;
   const existing = INFLIGHT.get(key);
   if (existing) return existing;
   const p = (async () => {
-    const text =
+    const src = track.remoteUrl || track.proxiedUrl || track.url;
+    let text =
       track.provider === "opensubtitles" && typeof track.osFileId === "number"
         ? await downloadOpenSubtitles(track.osFileId, track.lang, signal)
-        : await fetchSubtitleText(track.remoteUrl || track.proxiedUrl || track.url, track.lang, signal);
-    const cues = parseSubtitleCues(text);
+        : await fetchSubtitleText(src, track.lang, signal);
+    if (isHlsPlaylistText(text)) {
+      text = await mergeHlsVttPlaylist(text, src, (u) => fetchSubtitleText(u, track.lang, signal));
+    }
+    let cues = parseSubtitleCues(text);
+    if (track.provider === "stream" || track.provider === "worker" || !track.provider) {
+      cues = dedupeCues(cues);
+    }
     if (!cues.length) throw new Error("Subtitle has no cues");
     const blob = cuesToVttBlobUrl(cues);
     track.cues = cues;

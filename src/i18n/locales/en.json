@@ -79,7 +79,12 @@
       "pause": "Pause",
       "seek": "Seek",
       "bridgedTimeHint": "Live time from server (use player controls to seek)",
-      "controlsInsideFrame": "Playback controls are inside the video frame"
+      "controlsInsideFrame": "Playback controls are inside the video frame",
+      "adShieldArmed": "Ad shield",
+      "adShieldPass": "Click-through for 8s (ads may open)",
+      "adShieldPassHint": "Tap to re-arm the shield",
+      "sandboxEscape": "Player not loading? Disable protection",
+      "manualSync": "Manual subtitle clock"
     },
     "subs": {
       "syncClock": "Subtitle Sync",

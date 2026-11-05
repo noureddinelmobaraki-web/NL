@@ -50,11 +50,27 @@ import {
 import Hls from "hls.js";
 import {
   WORKER_ENDPOINT,
+  buildWorkerProxyUrl,
   fetchExtractedVideos,
+  guessLangFromLabelOrUrl,
   type ExtractedSubtitleTrack,
   type ExtractedVideoStream,
   type SubtitleCue,
 } from "../../services/videoExtractor";
+import { AdShield } from "../../features/cinema/player/AdShield";
+import { ManualSyncBar } from "../../features/cinema/player/ManualSyncBar";
+import {
+  SANDBOX_ESCAPE_HINT_MS,
+  SANDBOX_PROBE_MS,
+  getAdShieldEnabled,
+  getIframeSandbox,
+  markSandboxVerdict,
+} from "../../features/cinema/player/sandboxPolicy";
+import {
+  autoRetimeCues,
+  hlsTracksToSubtitleTracks,
+  mergeStreamFirst,
+} from "../../features/cinema/subtitles/streamSubtitles";
 import {
   createLocalSubtitleTrack,
   ensureTrackLoaded,
@@ -1100,6 +1116,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [extractedStreams, setExtractedStreams] = useState<ExtractedVideoStream[]>([]);
   const [externalSubtitles, setExternalSubtitles] = useState<ExtractedSubtitleTrack[]>([]);
   const externalSubtitlesRef = useRef<ExtractedSubtitleTrack[]>([]);
+  const [workerBridgeSubtitles, setWorkerBridgeSubtitles] = useState<ExtractedSubtitleTrack[]>([]);
+  const [adShieldEnabled] = useState<boolean>(() => getAdShieldEnabled());
+  const [sandboxNonce, setSandboxNonce] = useState(0);
+  const [showSandboxEscape, setShowSandboxEscape] = useState(false);
+  const bridgeActiveRef = useRef(false);
+  const retimedTrackIdsRef = useRef<Set<string>>(new Set());
   const [isLoadingSubtitles, setIsLoadingSubtitles] = useState(false);
   const [loadingSubtitleIdx, setLoadingSubtitleIdx] = useState<number | null>(null);
   const [subtitleOffsetSec, setSubtitleOffsetSec] = useState(0);
@@ -1164,6 +1186,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       externalSubtitlesRef.current = [];
     }
     setExternalSubtitles([]);
+    setWorkerBridgeSubtitles([]);
+    retimedTrackIdsRef.current.clear();
   }, []);
 
   useEffect(() => {
@@ -1219,6 +1243,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const activeImdbId = resolvedImdbId || detailedItem?.imdbId || "";
   const activeGallerySource =
     detailPlaySources[activeGalleryServerIdx] || detailPlaySources[0] || null;
+  const iframeSandbox = useMemo(
+    () => getIframeSandbox(activeGallerySource),
+    [activeGallerySource?.id, sandboxNonce],
+  );
+  const shieldActive =
+    (playerRenderMode === "iframe" || playerRenderMode === "clean-embed") &&
+    adShieldEnabled &&
+    Boolean((activeGallerySource?.capabilities as CinemaServerConfig["capabilities"])?.adShield);
   const [embedSeekStartAtSec, setEmbedSeekStartAtSec] = useState<number | null>(null);
   const [workerBridgeRevision, setWorkerBridgeRevision] = useState(0);
   const [seekUnsupportedToast, setSeekUnsupportedToast] = useState(false);
@@ -1380,21 +1412,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         detailPlaySources,
         detailItemStorageKey,
       );
-      let ordered = speedOrdered.length > 0 ? speedOrdered : [0, 1, 2, 3];
-
-      // Ensure sources with capabilities?.timeEvents === true are placed before sources without timeEvents
-      if (typeof explicitServerIdx !== "number") {
-        const timeEventIndices = ordered.filter(
-          (idx) => detailPlaySources[idx]?.capabilities?.timeEvents === true,
-        );
-        const silentIndices = ordered.filter(
-          (idx) => detailPlaySources[idx]?.capabilities?.timeEvents !== true,
-        );
-        ordered = [...timeEventIndices, ...silentIndices];
-      }
+      let ordered = speedOrdered.length > 0 ? speedOrdered : [0, 1, 2, 3, 4];
 
       if (typeof explicitServerIdx === "number" && explicitServerIdx >= 0) {
-        const total = detailPlaySources.length || 4;
+        const total = detailPlaySources.length || 5;
         const startIdx = explicitServerIdx % Math.max(1, total);
         ordered = [startIdx, ...ordered.filter((i) => i !== startIdx)];
       }
@@ -1528,30 +1549,28 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     selectedEpisode,
   ]);
 
-  // Tier 1 Direct Stream Extraction (.m3u8 / .mp4) -> Tier 2 (VidLink) / Tier 3 Iframe Fallback
+  // Tier 1 Parallel Direct Stream Extraction (.m3u8 / .mp4) with Hot-Upgrade -> Never blocks mounting the iframe
   useEffect(() => {
     if (!isWatchingInGallery || !activeGallerySource || allServersFailed) {
       return undefined;
     }
 
     const extractionSessionKey = `${detailItemStorageKey}_s${selectedSeason}_e${selectedEpisode}`;
-    // If we already probed Tier 1 direct extraction for this title/episode (e.g. during iframe failover),
-    // go straight to iframe mode without stalling on another Worker scrape.
+    playAttemptStartedAtRef.current = performance.now();
+    loadedCurrentAttemptRef.current = false;
+    setIsPlayerLoading(true);
+    setUseDirectUrlFallback(false);
+
+    // Mount iframe immediately so playback starts without waiting on Worker extraction
+    setPlayerRenderMode((prev) => (prev === "direct" ? "direct" : "iframe"));
+
     if (checkedExtractionKeyRef.current === extractionSessionKey) {
-      playAttemptStartedAtRef.current = performance.now();
-      setIsPlayerLoading(true);
-      setPlayerRenderMode("iframe");
       return undefined;
     }
 
     let cancelled = false;
     const abortController = new AbortController();
     const currentToken = ++attemptTokenRef.current;
-    playAttemptStartedAtRef.current = performance.now();
-    loadedCurrentAttemptRef.current = false;
-    setIsPlayerLoading(true);
-    setPlayerRenderMode("extracting");
-    setUseDirectUrlFallback(false);
 
     const orderedSources: PlaySource[] = [
       activeGallerySource,
@@ -1559,14 +1578,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     ].filter((s): s is PlaySource => Boolean(s && s.url));
     const generatedTargetUrl = orderedSources.map((s) => s.url);
 
-    async function loadAndPlayVideo() {
+    async function loadAndHotUpgradeVideo() {
       checkedExtractionKeyRef.current = extractionSessionKey;
-      if (generatedTargetUrl.length === 0) {
-        if (!cancelled && attemptTokenRef.current === currentToken) {
-          setPlayerRenderMode("iframe");
-        }
-        return;
-      }
+      if (generatedTargetUrl.length === 0) return;
 
       try {
         const videos = await fetchExtractedVideos(
@@ -1578,32 +1592,41 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           return;
         }
 
-        // Tier 1 ONLY accepts true direct streams (.m3u8 / .mp4) playable in HTML5 <video>
+        // Merge any Worker-extracted companion subtitle tracks immediately (even if staying in iframe mode!)
+        const companionSubs = videos.flatMap((v) => v.subtitles || []).map((s, i) => ({
+          ...s,
+          id: s.id || `worker:${i}:${s.lang}`,
+          provider: s.provider || ("worker" as const),
+          remoteUrl: s.proxiedUrl || s.url,
+          loaded: false,
+          label: s.label.includes("·") ? s.label : `${s.label} · Source`,
+        }));
+        if (companionSubs.length > 0) {
+          setWorkerBridgeSubtitles((prev) => mergeStreamFirst(companionSubs, prev));
+        }
+
         const directStreams = videos.filter(
           (v) => v.type === "hls" || v.type === "mp4",
         );
 
         if (directStreams.length === 0) {
-          setExtractedStreams([]);
-          playAttemptStartedAtRef.current = performance.now();
-          setPlayerRenderMode("iframe");
           return;
         }
 
-        setExtractedStreams(directStreams);
-        setActiveExtractedIdx(0);
-        setUseDirectUrlFallback(false);
-        playAttemptStartedAtRef.current = performance.now();
-        setPlayerRenderMode("direct");
+        const elapsedSinceStart = performance.now() - playAttemptStartedAtRef.current;
+        if (elapsedSinceStart <= 12_000 && clockNow() < 60) {
+          setExtractedStreams(directStreams);
+          setActiveExtractedIdx(0);
+          setUseDirectUrlFallback(false);
+          playAttemptStartedAtRef.current = performance.now();
+          setPlayerRenderMode("direct");
+        }
       } catch {
-        if (cancelled || attemptTokenRef.current !== currentToken) return;
-        setExtractedStreams([]);
-        playAttemptStartedAtRef.current = performance.now();
-        setPlayerRenderMode("iframe");
+        // Stay on active iframe smoothly
       }
     }
 
-    void loadAndPlayVideo();
+    void loadAndHotUpgradeVideo();
 
     return () => {
       cancelled = true;
@@ -1698,6 +1721,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         hls.loadSource(url);
         hls.attachMedia(videoElement);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          hls.subtitleDisplay = false;
+          hls.subtitleTrack = -1;
+          const streamTracks = hlsTracksToSubtitleTracks(hls);
+          if (streamTracks.length > 0) {
+            setExternalSubtitles((prev) => {
+              const next = mergeStreamFirst(streamTracks, prev);
+              externalSubtitlesRef.current = next;
+              return next;
+            });
+          }
           const elapsedMs = Math.max(
             120,
             performance.now() - playAttemptStartedAtRef.current,
@@ -1708,6 +1741,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             detailItemStorageKey,
           );
           setIsPlayerLoading(false);
+          const resumeSec = clockNow();
+          if (resumeSec > 5) {
+            try {
+              videoElement.currentTime = resumeSec;
+            } catch {}
+          }
           void videoElement.play().catch(() => {});
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -1856,32 +1895,45 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   }, [isWatchingInGallery, showHeroTrailer, cleanupDirectVideoPlayer, clearExternalSubtitleBlobs]);
 
   // Unified subtitle list across ALL player modes (direct, clean-embed, iframe)
+  // Stream & Worker-extracted companion tracks are listed FIRST via mergeStreamFirst.
   const activeSubtitlesList = useMemo<ExtractedSubtitleTrack[]>(() => {
     if (!isWatchingInGallery) return [];
-    const streamSubs =
+    const rawStreamSubs =
       extractedStreams[activeExtractedIdx]?.subtitles ||
       extractedStreams[0]?.subtitles ||
       [];
-    if (streamSubs.length === 0) return externalSubtitles;
-    if (externalSubtitles.length === 0) return streamSubs;
-    const combined = [...streamSubs, ...externalSubtitles];
-    const seen = new Set<string>();
-    const deduped: ExtractedSubtitleTrack[] = [];
-    for (const sub of combined) {
-      const key = sub.id ?? `${sub.lang}:${sub.proxiedUrl || sub.url}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      deduped.push({ ...sub, default: false });
-    }
-    deduped.sort((a, b) => (a.lang === "ar" && b.lang !== "ar" ? -1 : b.lang === "ar" && a.lang !== "ar" ? 1 : 0));
-    if (deduped.length > 0) {
-      const arIdx = deduped.findIndex((s) => s.lang === "ar");
+    const normalizedStreamSubs: ExtractedSubtitleTrack[] = rawStreamSubs.map((s, i) => ({
+      ...s,
+      id: s.id || `worker:stream:${i}:${s.lang}`,
+      provider: s.provider || "worker",
+      remoteUrl: s.remoteUrl || s.proxiedUrl || s.url,
+      loaded: s.loaded ?? false,
+      label: s.label.includes("·") ? s.label : `${s.label} · Source`,
+    }));
+    const sameSourceSubs = mergeStreamFirst(workerBridgeSubtitles, normalizedStreamSubs);
+    const merged = mergeStreamFirst(sameSourceSubs, externalSubtitles).map((t) => ({
+      ...t,
+      default: false,
+    }));
+    merged.sort((a, b) => {
+      const aSame = a.provider === "stream" || a.provider === "worker" ? 0 : 1;
+      const bSame = b.provider === "stream" || b.provider === "worker" ? 0 : 1;
+      if (a.lang === "ar" && b.lang !== "ar") return -1;
+      if (b.lang === "ar" && a.lang !== "ar") return 1;
+      return aSame - bSame;
+    });
+    if (merged.length > 0) {
+      const arSameIdx = merged.findIndex(
+        (s) => s.lang === "ar" && (s.provider === "stream" || s.provider === "worker"),
+      );
+      const arIdx = arSameIdx >= 0 ? arSameIdx : merged.findIndex((s) => s.lang === "ar");
       const defIdx = arIdx >= 0 ? arIdx : 0;
-      deduped[defIdx] = { ...deduped[defIdx], default: true };
+      merged[defIdx] = { ...merged[defIdx], default: true };
     }
-    return deduped;
+    return merged;
   }, [
     isWatchingInGallery,
+    workerBridgeSubtitles,
     extractedStreams,
     activeExtractedIdx,
     externalSubtitles,
@@ -1936,6 +1988,36 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       cancelled = true;
     };
   }, [isWatchingInGallery, activeSubtitleIdx, activeSubtitlesList]);
+
+  // Automatic 25fps <-> 23.976fps subtitle retiming when cues overflow real media duration
+  useEffect(() => {
+    if (
+      !isWatchingInGallery ||
+      activeSubtitleIdx === null ||
+      activeTrackCues.length === 0 ||
+      clockState.duration <= 600 ||
+      clockState.durationIsEstimated ||
+      (clockState.source !== "video" && clockState.source !== "bridge")
+    ) {
+      return;
+    }
+    const activeTrack = activeSubtitlesList[activeSubtitleIdx];
+    const trackKey = activeTrack?.id || activeTrack?.url || String(activeSubtitleIdx);
+    if (retimedTrackIdsRef.current.has(trackKey)) return;
+    const { cues: retimed, factor } = autoRetimeCues(activeTrackCues, clockState.duration);
+    retimedTrackIdsRef.current.add(trackKey);
+    if (factor !== 1) {
+      setActiveTrackCues(retimed);
+    }
+  }, [
+    isWatchingInGallery,
+    activeSubtitleIdx,
+    activeSubtitlesList,
+    activeTrackCues,
+    clockState.duration,
+    clockState.durationIsEstimated,
+    clockState.source,
+  ]);
 
   const handleRefreshSubtitlesForLanguages = useCallback(async () => {
     if (!detailedItem || !isWatchingInGallery) return;
@@ -2090,10 +2172,23 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       (playerRenderMode === "iframe" || playerRenderMode === "clean-embed"),
     iframeRef: playerIframeRef,
     allowedOrigins: bridgeAllowedOrigins,
-    sessionKey: activeIframeUrl,
+    sessionKey: `${activeGallerySource?.id ?? ""}:${activeIframeUrl}:${sandboxNonce}:${iframeSandbox ?? "none"}`,
     onEvent: (ev) => {
       if (typeof ev.currentTime === "number" && Number.isFinite(ev.currentTime)) {
-        gotTimeSinceLoadRef.current = true;
+        if (!gotTimeSinceLoadRef.current) {
+          gotTimeSinceLoadRef.current = true;
+          if (activeGallerySource) {
+            const syncElapsedMs = Math.max(
+              150,
+              performance.now() - playAttemptStartedAtRef.current,
+            );
+            recordServerSuccess(
+              activeGallerySource.id,
+              syncElapsedMs,
+              detailItemStorageKey,
+            );
+          }
+        }
       }
       const decision = syncControllerRef.current
         ? syncControllerRef.current.onReport(ev)
@@ -2125,7 +2220,75 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     onMediaData: () => {
       persistCurrentProgress();
     },
+    onSubtitlesDiscovered: (discovered) => {
+      setWorkerBridgeSubtitles((prev) => {
+        const added: ExtractedSubtitleTrack[] = discovered
+          .filter((d) => Boolean(d.url))
+          .map((item, idx) => {
+            const guessed = guessLangFromLabelOrUrl(item.label || item.lang || "", item.url);
+            const proxied = buildWorkerProxyUrl(
+              item.url,
+              item.referer || activeGallerySource?.url,
+            );
+            return {
+              id: `worker:live:${idx}:${guessed.lang}:${item.url}`,
+              provider: "worker",
+              url: item.url,
+              proxiedUrl: proxied,
+              remoteUrl: proxied,
+              lang: guessed.lang,
+              label: `${guessed.label} · Source`,
+              loaded: false,
+            };
+          });
+        return added.length > 0 ? mergeStreamFirst(added, prev) : prev;
+      });
+    },
   });
+
+  useEffect(() => {
+    bridgeActiveRef.current = bridge.active;
+    if (bridge.active && activeGallerySource && iframeSandbox) {
+      markSandboxVerdict(activeGallerySource.id, "ok");
+      setShowSandboxEscape(false);
+    }
+  }, [bridge.active, activeGallerySource, iframeSandbox]);
+
+  // Sandbox probe effect: auto-remount unsandboxed on the SAME server if sandbox blocks timeEvents
+  useEffect(() => {
+    setShowSandboxEscape(false);
+    if (
+      !isWatchingInGallery ||
+      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
+      !activeGallerySource ||
+      !iframeSandbox
+    ) {
+      return undefined;
+    }
+    const isEventServer = Boolean(
+      activeGallerySource.capabilities?.timeEvents ||
+        activeGallerySource.capabilities?.workerBridge,
+    );
+    const timer = window.setTimeout(() => {
+      if (isEventServer) {
+        if (!bridgeActiveRef.current) {
+          markSandboxVerdict(activeGallerySource.id, "refused");
+          playAttemptStartedAtRef.current = performance.now();
+          loadedCurrentAttemptRef.current = false;
+          setSandboxNonce((n) => n + 1);
+        }
+      } else {
+        setShowSandboxEscape(true);
+      }
+    }, isEventServer ? SANDBOX_PROBE_MS : SANDBOX_ESCAPE_HINT_MS);
+    return () => window.clearTimeout(timer);
+  }, [
+    isWatchingInGallery,
+    playerRenderMode,
+    activeGallerySource,
+    iframeSandbox,
+    sandboxNonce,
+  ]);
 
   const controlMode: PlayerControlMode =
     playerRenderMode === "direct"
@@ -3944,6 +4107,33 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             </span>
                           )}
 
+                        {isWatchingInGallery && detailPlaySources.length > 1 && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {detailPlaySources.map((srv, idx) => {
+                              const isCurrent = idx === activeGalleryServerIdx;
+                              return (
+                                <button
+                                  key={srv.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (idx !== activeGalleryServerIdx) {
+                                      setWorkerBridgeSubtitles([]);
+                                      startGalleryWatchSession(idx);
+                                    }
+                                  }}
+                                  className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border transition-all cursor-pointer whitespace-nowrap ${
+                                    isCurrent
+                                      ? "bg-red-600/85 border-red-400 text-white shadow"
+                                      : "bg-white/8 border-white/15 text-white/70 hover:text-white hover:bg-white/15"
+                                  }`}
+                                >
+                                  {srv.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => {
@@ -4136,42 +4326,91 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         {!allServersFailed &&
                           (playerRenderMode === "iframe" ||
                             playerRenderMode === "clean-embed") && (
-                            <iframe
-                              ref={playerIframeRef}
-                              key={`${activeGallerySource.id}-${activeIframeUrl}`}
-                              className="w-full h-full border-0 bg-black block"
-                              src={activeIframeUrl}
-                              title={`${detailedItem.title} - ${activeGallerySource.label}`}
-                              width="100%"
-                              height="100%"
-                              frameBorder="0"
-                              scrolling="no"
-                              referrerPolicy="origin"
-                              allow="autoplay; encrypted-media; picture-in-picture"
-                              allowFullScreen
-                              onLoad={() => {
-                                loadedCurrentAttemptRef.current = true;
-                                const elapsedMs = Math.max(
-                                  120,
-                                  performance.now() - playAttemptStartedAtRef.current,
-                                );
-                                const currentStream =
-                                  extractedStreams[activeExtractedIdx] ||
-                                  extractedStreams[0];
-                                const activeServerId =
-                                  playerRenderMode === "clean-embed"
-                                    ? resolveServerIdForStream(currentStream)
-                                    : activeGallerySource.id;
-                                recordServerSuccess(
-                                  activeServerId,
-                                  elapsedMs,
-                                  detailItemStorageKey,
-                                );
-                                setIsPlayerLoading(false);
-                                gotTimeSinceLoadRef.current = false;
-                                setIframeLoadStamp(Date.now());
-                              }}
-                            />
+                            <>
+                              <iframe
+                                ref={playerIframeRef}
+                                key={`${activeGallerySource.id}-${activeIframeUrl}-${sandboxNonce}-${iframeSandbox ? "sb" : "nosb"}`}
+                                className="w-full h-full border-0 bg-black block"
+                                src={activeIframeUrl}
+                                sandbox={iframeSandbox}
+                                title={`${detailedItem.title} - ${activeGallerySource.label}`}
+                                width="100%"
+                                height="100%"
+                                frameBorder="0"
+                                scrolling="no"
+                                referrerPolicy="origin"
+                                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                                allowFullScreen
+                                onLoad={() => {
+                                  loadedCurrentAttemptRef.current = true;
+                                  const elapsedMs = Math.max(
+                                    120,
+                                    performance.now() - playAttemptStartedAtRef.current,
+                                  );
+                                  const currentStream =
+                                    extractedStreams[activeExtractedIdx] ||
+                                    extractedStreams[0];
+                                  const activeServerId =
+                                    playerRenderMode === "clean-embed"
+                                      ? resolveServerIdForStream(currentStream)
+                                      : activeGallerySource.id;
+                                  recordServerSuccess(
+                                    activeServerId,
+                                    elapsedMs,
+                                    detailItemStorageKey,
+                                  );
+                                  setIsPlayerLoading(false);
+                                  gotTimeSinceLoadRef.current = false;
+                                  setIframeLoadStamp(Date.now());
+                                }}
+                              />
+                              <AdShield
+                                active={shieldActive}
+                                onTogglePlay={() => syncControllerRef.current?.userTogglePlay()}
+                                onSeekRelative={(d) =>
+                                  syncControllerRef.current?.userSeek(Math.max(0, clockNow() + d))
+                                }
+                                onToggleFullscreen={handleToggleGalleryFullscreen}
+                                onActivity={bumpControlsVisibility}
+                                labels={{
+                                  armed: t("movies.player.adShieldArmed", "Ad shield"),
+                                  passThrough: t(
+                                    "movies.player.adShieldPass",
+                                    "Click-through for 8s (ads may open)",
+                                  ),
+                                  passThroughHint: t(
+                                    "movies.player.adShieldPassHint",
+                                    "Tap to re-arm the shield",
+                                  ),
+                                }}
+                              />
+                              {showSandboxEscape && activeGallerySource && (
+                                <button
+                                  type="button"
+                                  className="nl-sandbox-escape"
+                                  onClick={() => {
+                                    markSandboxVerdict(activeGallerySource.id, "refused");
+                                    setShowSandboxEscape(false);
+                                    playAttemptStartedAtRef.current = performance.now();
+                                    loadedCurrentAttemptRef.current = false;
+                                    setSandboxNonce((n) => n + 1);
+                                  }}
+                                >
+                                  {t(
+                                    "movies.player.sandboxEscape",
+                                    "Player not loading? Disable protection",
+                                  )}
+                                </button>
+                              )}
+                              <ManualSyncBar
+                                visible={
+                                  !bridge.active &&
+                                  activeSubtitleIdx !== null &&
+                                  activeTrackCues.length > 0
+                                }
+                                label={t("movies.player.manualSync", "Manual subtitle clock")}
+                              />
+                            </>
                           )}
 
                         {seekUnsupportedToast && (

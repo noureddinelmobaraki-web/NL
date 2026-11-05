@@ -3,6 +3,19 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 export type BridgeKind = "timeupdate" | "play" | "pause" | "seeked" | "ended" | "media";
 export type BridgeTier = "worker" | "native";
 
+export interface BridgeDiscoveredSubtitle {
+  url: string;
+  label?: string;
+  lang?: string;
+  referer?: string;
+}
+
+export interface BridgeDiscoveredStream {
+  streamUrl: string;
+  streamType?: "hls" | "mp4";
+  referer?: string;
+}
+
 export interface BridgeEvent {
   kind: BridgeKind;
   currentTime?: number;
@@ -13,6 +26,8 @@ export interface BridgeEvent {
   fid?: string;
   bridgeTier?: BridgeTier;
   payload?: unknown;
+  discoveredSubtitles?: BridgeDiscoveredSubtitle[];
+  discoveredStream?: BridgeDiscoveredStream;
 }
 
 export type IframePlayerCommand =
@@ -75,6 +90,34 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
       return {
         kind: "media",
         fid: typeof d.fid === "string" ? d.fid : undefined,
+      };
+    }
+    if (d.type === "NL_SUBS" && Array.isArray(d.tracks)) {
+      const referer = typeof d.referer === "string" ? d.referer : undefined;
+      const discoveredSubtitles: BridgeDiscoveredSubtitle[] = d.tracks
+        .filter((t: any) => t && typeof t.url === "string" && t.url.trim())
+        .map((t: any) => ({
+          url: String(t.url).trim(),
+          label: typeof t.label === "string" ? t.label : undefined,
+          lang: typeof t.lang === "string" ? t.lang : undefined,
+          referer,
+        }));
+      if (discoveredSubtitles.length === 0) return null;
+      return {
+        kind: "media",
+        fid: typeof d.fid === "string" ? d.fid : undefined,
+        discoveredSubtitles,
+      };
+    }
+    if (d.type === "NL_STREAM" && typeof d.streamUrl === "string" && d.streamUrl.trim()) {
+      return {
+        kind: "media",
+        fid: typeof d.fid === "string" ? d.fid : undefined,
+        discoveredStream: {
+          streamUrl: d.streamUrl.trim(),
+          streamType: d.streamType === "mp4" ? "mp4" : "hls",
+          referer: typeof d.referer === "string" ? d.referer : undefined,
+        },
       };
     }
     if (d.type === "NL_ACK") {
@@ -253,9 +296,6 @@ export function isOriginAllowed(origin: string, allowedOrigins: string[]): boole
 
 /**
  * Checks whether source originates from the active player frame.
- * Modern browsers with Site Isolation restrict cross-origin frames inspection.
- * Safely checks root identity, parent/top window hierarchy, and falls back to
- * allowlisted origin + valid player message payload validation.
  */
 export function isFromFrame(
   source: MessageEventSource | null,
@@ -276,8 +316,6 @@ export function isFromFrame(
     // Cross-origin access restriction in Site Isolation
   }
 
-  // Fallback: If origin is allowlisted and the message is a valid player event, accept it.
-  // There is only one active movie player iframe in the cinema stage at any time.
   if (origin && allowedOrigins && isOriginAllowed(origin, allowedOrigins) && parsedEvent) {
     return true;
   }
@@ -308,6 +346,8 @@ export function useIframePlayerBridge(opts: {
   sessionKey?: string;
   onEvent?: (ev: BridgeEvent) => void;
   onMediaData?: (payload: unknown) => void;
+  onSubtitlesDiscovered?: (tracks: BridgeDiscoveredSubtitle[]) => void;
+  onStreamDiscovered?: (stream: BridgeDiscoveredStream) => void;
 }): { active: boolean; tier: BridgeTier | null } {
   const [active, setActive] = useState(false);
   const [tier, setTier] = useState<BridgeTier | null>(null);
@@ -315,6 +355,10 @@ export function useIframePlayerBridge(opts: {
   onEventRef.current = opts.onEvent;
   const onMediaRef = useRef(opts.onMediaData);
   onMediaRef.current = opts.onMediaData;
+  const onSubsRef = useRef(opts.onSubtitlesDiscovered);
+  onSubsRef.current = opts.onSubtitlesDiscovered;
+  const onStreamRef = useRef(opts.onStreamDiscovered);
+  onStreamRef.current = opts.onStreamDiscovered;
   const originsKey = opts.allowedOrigins.join("|");
   const { iframeRef, enabled, sessionKey } = opts;
 
@@ -357,9 +401,6 @@ export function useIframePlayerBridge(opts: {
         Boolean(d && typeof d === "object") &&
         (d.type === "PLAYER_EVENT" || d.__nl === 1 || d.type === "MEDIA_DATA");
 
-      // Replace recursive isFromFrame under Site Isolation:
-      // If isAllowedOrigin(e.origin) and message matches a known player format, accept it directly.
-      // There is only one active player iframe on the Movies page.
       if (
         !isKnownFormat &&
         !isFromFrame(
@@ -380,6 +421,13 @@ export function useIframePlayerBridge(opts: {
         return;
       }
       logBridgeDebug(e.origin, true, null, e.data);
+
+      if (ev.discoveredSubtitles && ev.discoveredSubtitles.length > 0) {
+        onSubsRef.current?.(ev.discoveredSubtitles);
+      }
+      if (ev.discoveredStream) {
+        onStreamRef.current?.(ev.discoveredStream);
+      }
 
       const syncCapable = isSyncCapableEvent(ev);
       if (syncCapable) {
