@@ -33,9 +33,7 @@ function readStorage(): StoredSpeedState {
         : {};
     return { metrics, byTitle };
   } catch {
-    const emptyMetrics: Record<string, ServerSpeedMetric> = {};
-    const emptyByTitle: Record<string, string> = {};
-    return { metrics: emptyMetrics, byTitle: emptyByTitle };
+    return { metrics: {}, byTitle: {} };
   }
 }
 
@@ -47,10 +45,6 @@ function writeStorage(state: StoredSpeedState): void {
   }
 }
 
-/**
- * Records a successful server playback startup and updates its EWMA latency score in cache.
- * Faster servers receive lower score values and are automatically promoted within their tier.
- */
 export function recordServerSuccess(
   serverId: string,
   durationMs: number,
@@ -75,16 +69,14 @@ export function recordServerSuccess(
   };
 
   if (titleKey) {
-    state.byTitle[titleKey] = serverId;
+    if (serverId === "server-vl" || state.byTitle[titleKey] !== "server-vl") {
+      state.byTitle[titleKey] = serverId;
+    }
   }
 
   writeStorage(state);
 }
 
-/**
- * Records a server failure or timeout, increasing its effective latency score so faster
- * working servers are prioritized ahead of it on subsequent plays.
- */
 export function recordServerFailure(serverId: string): void {
   if (!serverId) return;
   const state = readStorage();
@@ -104,9 +96,6 @@ export function recordServerFailure(serverId: string): void {
   writeStorage(state);
 }
 
-/**
- * Computes an effective priority score (lower = faster & more reliable) for a server.
- */
 export function getServerPriorityScore(
   serverId: string,
   defaultIndex: number,
@@ -115,7 +104,6 @@ export function getServerPriorityScore(
   const current = state || readStorage();
   const metric = current.metrics[serverId];
   if (!metric) {
-    // Preserve natural configuration order until measured
     return DEFAULT_BASELINE_MS + defaultIndex * 180;
   }
   const reliabilityBonus = Math.min(600, metric.successCount * 85);
@@ -123,15 +111,8 @@ export function getServerPriorityScore(
   return metric.ewmaLatencyMs - reliabilityBonus + failurePenalty;
 }
 
-/**
- * Sorts an array of play sources using a strict Tiered Hierarchy:
- * - Bucket 0 (Tier 2 Sync-Capable): Sources with `capabilities.timeEvents === true` or
- *   `capabilities.workerBridge === true` (or `server-vl` when bare mock objects without `capabilities`
- *   are passed in unit tests), ordered among themselves by EWMA speed and reliability.
- * - Bucket 1 (Tier 3 Silent): Fallback embeds without sync capabilities, ordered by EWMA speed.
- */
 export function sortSourcesBySpeed<
-  T extends { id: string; capabilities?: { timeEvents?: boolean; workerBridge?: boolean } },
+  T extends { id: string; capabilities?: { timeEvents?: boolean } },
 >(sources: T[], titleKey?: string): T[] {
   if (!Array.isArray(sources) || sources.length <= 1) return sources;
   const state = readStorage();
@@ -139,7 +120,6 @@ export function sortSourcesBySpeed<
   const hasTmdb = Boolean(
     titleKey && (titleKey.startsWith("movie_") || titleKey.startsWith("tv_")),
   );
-  const anyExplicitCaps = sources.some((s) => s.capabilities !== undefined);
 
   return [...sources]
     .map((src, originalIdx) => {
@@ -151,8 +131,7 @@ export function sortSourcesBySpeed<
 
       const isTimeEvents =
         src.capabilities?.timeEvents === true ||
-        src.capabilities?.workerBridge === true ||
-        (!anyExplicitCaps && hasTmdb && src.id === "server-vl");
+        (hasTmdb && src.id === "server-vl");
 
       const bucket = isTimeEvents && !hasFailed ? 0 : 1;
 
@@ -177,11 +156,8 @@ export function sortSourcesBySpeed<
     .map((entry) => entry.src);
 }
 
-/**
- * Returns the ordered indices `[0..sources.length-1]` sorted by tier and speed.
- */
 export function buildSpeedSortedQueue<
-  T extends { id: string; capabilities?: { timeEvents?: boolean; workerBridge?: boolean } },
+  T extends { id: string; capabilities?: { timeEvents?: boolean } },
 >(sources: T[], titleKey?: string): number[] {
   if (!Array.isArray(sources) || sources.length === 0) return [0];
   const sorted = sortSourcesBySpeed(sources, titleKey);

@@ -9,7 +9,6 @@ export function isHlsPlaylistText(text: string): boolean {
   return /^\uFEFF?\s*#EXTM3U/.test(text);
 }
 
-/** Removes the WEBVTT header block (incl. X-TIMESTAMP-MAP). Assumes MPEGTS offset == stream start (common case). */
 export function stripVttHeader(raw: string): string {
   const t = raw.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
   if (!/^WEBVTT/.test(t)) return t.trim();
@@ -26,7 +25,6 @@ function firstSubtitleMediaUri(text: string): string | null {
   return null;
 }
 
-/** Merges an HLS WebVTT media playlist (or master → first subtitle group) into one WebVTT document. */
 export async function mergeHlsVttPlaylist(
   playlistText: string,
   baseUrl: string,
@@ -85,7 +83,6 @@ export function dedupeCues(cues: SubtitleCue[]): SubtitleCue[] {
 
 const FPS_FIXES = [23.976 / 25, 24 / 25];
 
-/** If cues overflow the REAL media duration (PAL 25fps subs on a 23.976 stream), rescale them. */
 export function autoRetimeCues(
   cues: SubtitleCue[],
   mediaDurationSec: number,
@@ -94,19 +91,15 @@ export function autoRetimeCues(
   const maxEnd = cues.reduce((m, c) => Math.max(m, c.end), 0);
   if (maxEnd <= mediaDurationSec * 1.01) return { cues, factor: 1 };
   const inv = mediaDurationSec / maxEnd;
-  let best = 1;
-  let bestErr = Infinity;
   for (const f of FPS_FIXES) {
-    if (maxEnd * f > mediaDurationSec * 1.01) continue;
-    const err = Math.abs(f - inv);
-    if (err <= 0.05) {
-      best = f;
-      bestErr = err;
-      break;
+    if (maxEnd * f <= mediaDurationSec * 1.01 && Math.abs(f - inv) <= 0.05) {
+      return {
+        cues: cues.map((c) => ({ ...c, start: c.start * f, end: c.end * f })),
+        factor: f,
+      };
     }
   }
-  if (best === 1 || bestErr > 0.05) return { cues, factor: 1 };
-  return { cues: cues.map((c) => ({ ...c, start: c.start * best, end: c.end * best })), factor: best };
+  return { cues, factor: 1 };
 }
 
 interface HlsSubtitleLike {
@@ -115,7 +108,6 @@ interface HlsSubtitleLike {
   name?: string;
 }
 
-/** Maps hls.js `subtitleTracks` (already Worker-proxied because the master was rewritten) to lazy tracks. */
 export function hlsTracksToSubtitleTracks(hls: { subtitleTracks?: HlsSubtitleLike[] }): ExtractedSubtitleTrack[] {
   const list = Array.isArray(hls.subtitleTracks) ? hls.subtitleTracks : [];
   return list
@@ -136,7 +128,6 @@ export function hlsTracksToSubtitleTracks(hls: { subtitleTracks?: HlsSubtitleLik
     });
 }
 
-/** Same-source tracks first; drops later duplicates by id or proxiedUrl/url. */
 export function mergeStreamFirst(
   stream: ExtractedSubtitleTrack[],
   rest: ExtractedSubtitleTrack[],

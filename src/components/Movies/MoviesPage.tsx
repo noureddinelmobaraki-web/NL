@@ -57,15 +57,6 @@ import {
   type ExtractedVideoStream,
   type SubtitleCue,
 } from "../../services/videoExtractor";
-import { AdShield } from "../../features/cinema/player/AdShield";
-import { ManualSyncBar } from "../../features/cinema/player/ManualSyncBar";
-import {
-  SANDBOX_ESCAPE_HINT_MS,
-  SANDBOX_PROBE_MS,
-  getAdShieldEnabled,
-  getIframeSandbox,
-  markSandboxVerdict,
-} from "../../features/cinema/player/sandboxPolicy";
 import {
   autoRetimeCues,
   hlsTracksToSubtitleTracks,
@@ -1117,10 +1108,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [externalSubtitles, setExternalSubtitles] = useState<ExtractedSubtitleTrack[]>([]);
   const externalSubtitlesRef = useRef<ExtractedSubtitleTrack[]>([]);
   const [workerBridgeSubtitles, setWorkerBridgeSubtitles] = useState<ExtractedSubtitleTrack[]>([]);
-  const [adShieldEnabled] = useState<boolean>(() => getAdShieldEnabled());
-  const [sandboxNonce, setSandboxNonce] = useState(0);
-  const [showSandboxEscape, setShowSandboxEscape] = useState(false);
-  const bridgeActiveRef = useRef(false);
   const retimedTrackIdsRef = useRef<Set<string>>(new Set());
   const [isLoadingSubtitles, setIsLoadingSubtitles] = useState(false);
   const [loadingSubtitleIdx, setLoadingSubtitleIdx] = useState<number | null>(null);
@@ -1243,14 +1230,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const activeImdbId = resolvedImdbId || detailedItem?.imdbId || "";
   const activeGallerySource =
     detailPlaySources[activeGalleryServerIdx] || detailPlaySources[0] || null;
-  const iframeSandbox = useMemo(
-    () => getIframeSandbox(activeGallerySource),
-    [activeGallerySource?.id, sandboxNonce],
-  );
-  const shieldActive =
-    (playerRenderMode === "iframe" || playerRenderMode === "clean-embed") &&
-    adShieldEnabled &&
-    Boolean((activeGallerySource?.capabilities as CinemaServerConfig["capabilities"])?.adShield);
   const [embedSeekStartAtSec, setEmbedSeekStartAtSec] = useState<number | null>(null);
   const [workerBridgeRevision, setWorkerBridgeRevision] = useState(0);
   const [seekUnsupportedToast, setSeekUnsupportedToast] = useState(false);
@@ -2172,7 +2151,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       (playerRenderMode === "iframe" || playerRenderMode === "clean-embed"),
     iframeRef: playerIframeRef,
     allowedOrigins: bridgeAllowedOrigins,
-    sessionKey: `${activeGallerySource?.id ?? ""}:${activeIframeUrl}:${sandboxNonce}:${iframeSandbox ?? "none"}`,
+    sessionKey: `${activeGallerySource?.id ?? ""}:${activeIframeUrl}`,
     onEvent: (ev) => {
       if (typeof ev.currentTime === "number" && Number.isFinite(ev.currentTime)) {
         if (!gotTimeSinceLoadRef.current) {
@@ -2245,50 +2224,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       });
     },
   });
-
-  useEffect(() => {
-    bridgeActiveRef.current = bridge.active;
-    if (bridge.active && activeGallerySource && iframeSandbox) {
-      markSandboxVerdict(activeGallerySource.id, "ok");
-      setShowSandboxEscape(false);
-    }
-  }, [bridge.active, activeGallerySource, iframeSandbox]);
-
-  // Sandbox probe effect: auto-remount unsandboxed on the SAME server if sandbox blocks timeEvents
-  useEffect(() => {
-    setShowSandboxEscape(false);
-    if (
-      !isWatchingInGallery ||
-      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
-      !activeGallerySource ||
-      !iframeSandbox
-    ) {
-      return undefined;
-    }
-    const isEventServer = Boolean(
-      activeGallerySource.capabilities?.timeEvents ||
-        activeGallerySource.capabilities?.workerBridge,
-    );
-    const timer = window.setTimeout(() => {
-      if (isEventServer) {
-        if (!bridgeActiveRef.current) {
-          markSandboxVerdict(activeGallerySource.id, "refused");
-          playAttemptStartedAtRef.current = performance.now();
-          loadedCurrentAttemptRef.current = false;
-          setSandboxNonce((n) => n + 1);
-        }
-      } else {
-        setShowSandboxEscape(true);
-      }
-    }, isEventServer ? SANDBOX_PROBE_MS : SANDBOX_ESCAPE_HINT_MS);
-    return () => window.clearTimeout(timer);
-  }, [
-    isWatchingInGallery,
-    playerRenderMode,
-    activeGallerySource,
-    iframeSandbox,
-    sandboxNonce,
-  ]);
 
   const controlMode: PlayerControlMode =
     playerRenderMode === "direct"
@@ -2404,30 +2339,41 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       clearTimeout(controlsHideTimerRef.current);
       controlsHideTimerRef.current = null;
     }
-    if (isAnyFullscreen && !isVideoPaused && !isSubtitleMenuOpen) {
+    const shouldAutoHide =
+      isWatchingInGallery &&
+      !isSubtitleMenuOpen &&
+      (playerRenderMode !== "direct" || !isVideoPaused);
+    if (shouldAutoHide) {
       controlsHideTimerRef.current = setTimeout(() => {
         setIsControlsVisible(false);
-      }, 3000);
+      }, 2500);
     }
-  }, [isAnyFullscreen, isVideoPaused, isSubtitleMenuOpen]);
+  }, [isWatchingInGallery, isSubtitleMenuOpen, playerRenderMode, isVideoPaused]);
 
   useEffect(() => {
-    if (!isAnyFullscreen || isVideoPaused || isSubtitleMenuOpen) {
+    if (!isWatchingInGallery || isSubtitleMenuOpen) {
       setIsControlsVisible(true);
       if (controlsHideTimerRef.current) {
         clearTimeout(controlsHideTimerRef.current);
         controlsHideTimerRef.current = null;
       }
-      return;
+      return undefined;
     }
     bumpControlsVisibility();
+    const onGlobalActivity = () => bumpControlsVisibility();
+    window.addEventListener("mousemove", onGlobalActivity, { passive: true });
+    window.addEventListener("touchstart", onGlobalActivity, { passive: true });
+    window.addEventListener("keydown", onGlobalActivity);
     return () => {
+      window.removeEventListener("mousemove", onGlobalActivity);
+      window.removeEventListener("touchstart", onGlobalActivity);
+      window.removeEventListener("keydown", onGlobalActivity);
       if (controlsHideTimerRef.current) {
         clearTimeout(controlsHideTimerRef.current);
         controlsHideTimerRef.current = null;
       }
     };
-  }, [isAnyFullscreen, isVideoPaused, isSubtitleMenuOpen, bumpControlsVisibility]);
+  }, [isWatchingInGallery, isSubtitleMenuOpen, playerRenderMode, isVideoPaused, bumpControlsVisibility]);
 
   const handleToggleVideoPlay = useCallback(() => {
     const video = videoElementRef.current;
@@ -4038,10 +3984,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   {((isWatchingInGallery && Boolean(activeGallerySource)) ||
                     (showHeroTrailer && Boolean(activeImdbId || detailedItem.trailerKey))) && (
                     <div
-                      className={`lg-cinema-gallery-top-bar flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-2xl ${
+                      onMouseMove={bumpControlsVisibility}
+                      onTouchStart={bumpControlsVisibility}
+                      className={`lg-cinema-gallery-top-bar flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-2xl transition-all duration-300 ${
                         isWatchingInGallery
                           ? "lg-cinema-gallery-top-bar--playing"
                           : ""
+                      } ${
+                        isWatchingInGallery && !isControlsVisible
+                          ? "opacity-0 pointer-events-none"
+                          : "opacity-100"
                       }`}
                       dir="ltr"
                     >
@@ -4217,12 +4169,33 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           e.stopPropagation();
                           setIsCssFullscreen(false);
                         }}
-                        className="lg-cinema-icon-pill fixed top-4 right-4 z-[10600] !w-10 !h-10"
+                        className={`lg-cinema-icon-pill fixed top-4 right-4 z-[10600] !w-10 !h-10 transition-opacity duration-300 ${
+                          isControlsVisible
+                            ? "opacity-100"
+                            : "opacity-0 pointer-events-none"
+                        }`}
                         aria-label={t("movies.player.exitFullscreen")}
                         title={t("movies.player.exitFullscreen")}
                       >
                         <Minimize2 size={16} />
                       </button>
+                    )}
+
+                    {isWatchingInGallery && !isControlsVisible && (
+                      <>
+                        <div
+                          onMouseEnter={bumpControlsVisibility}
+                          onMouseMove={bumpControlsVisibility}
+                          onTouchStart={bumpControlsVisibility}
+                          className="absolute top-0 inset-x-0 h-5 z-30"
+                        />
+                        <div
+                          onMouseEnter={bumpControlsVisibility}
+                          onMouseMove={bumpControlsVisibility}
+                          onTouchStart={bumpControlsVisibility}
+                          className="absolute bottom-0 inset-x-0 h-4 z-30"
+                        />
+                      </>
                     )}
 
                     {isWatchingInGallery && activeGallerySource ? (
@@ -4326,91 +4299,42 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         {!allServersFailed &&
                           (playerRenderMode === "iframe" ||
                             playerRenderMode === "clean-embed") && (
-                            <>
-                              <iframe
-                                ref={playerIframeRef}
-                                key={`${activeGallerySource.id}-${activeIframeUrl}-${sandboxNonce}-${iframeSandbox ? "sb" : "nosb"}`}
-                                className="w-full h-full border-0 bg-black block"
-                                src={activeIframeUrl}
-                                sandbox={iframeSandbox}
-                                title={`${detailedItem.title} - ${activeGallerySource.label}`}
-                                width="100%"
-                                height="100%"
-                                frameBorder="0"
-                                scrolling="no"
-                                referrerPolicy="origin"
-                                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                                allowFullScreen
-                                onLoad={() => {
-                                  loadedCurrentAttemptRef.current = true;
-                                  const elapsedMs = Math.max(
-                                    120,
-                                    performance.now() - playAttemptStartedAtRef.current,
-                                  );
-                                  const currentStream =
-                                    extractedStreams[activeExtractedIdx] ||
-                                    extractedStreams[0];
-                                  const activeServerId =
-                                    playerRenderMode === "clean-embed"
-                                      ? resolveServerIdForStream(currentStream)
-                                      : activeGallerySource.id;
-                                  recordServerSuccess(
-                                    activeServerId,
-                                    elapsedMs,
-                                    detailItemStorageKey,
-                                  );
-                                  setIsPlayerLoading(false);
-                                  gotTimeSinceLoadRef.current = false;
-                                  setIframeLoadStamp(Date.now());
-                                }}
-                              />
-                              <AdShield
-                                active={shieldActive}
-                                onTogglePlay={() => syncControllerRef.current?.userTogglePlay()}
-                                onSeekRelative={(d) =>
-                                  syncControllerRef.current?.userSeek(Math.max(0, clockNow() + d))
-                                }
-                                onToggleFullscreen={handleToggleGalleryFullscreen}
-                                onActivity={bumpControlsVisibility}
-                                labels={{
-                                  armed: t("movies.player.adShieldArmed", "Ad shield"),
-                                  passThrough: t(
-                                    "movies.player.adShieldPass",
-                                    "Click-through for 8s (ads may open)",
-                                  ),
-                                  passThroughHint: t(
-                                    "movies.player.adShieldPassHint",
-                                    "Tap to re-arm the shield",
-                                  ),
-                                }}
-                              />
-                              {showSandboxEscape && activeGallerySource && (
-                                <button
-                                  type="button"
-                                  className="nl-sandbox-escape"
-                                  onClick={() => {
-                                    markSandboxVerdict(activeGallerySource.id, "refused");
-                                    setShowSandboxEscape(false);
-                                    playAttemptStartedAtRef.current = performance.now();
-                                    loadedCurrentAttemptRef.current = false;
-                                    setSandboxNonce((n) => n + 1);
-                                  }}
-                                >
-                                  {t(
-                                    "movies.player.sandboxEscape",
-                                    "Player not loading? Disable protection",
-                                  )}
-                                </button>
-                              )}
-                              <ManualSyncBar
-                                visible={
-                                  !bridge.active &&
-                                  activeSubtitleIdx !== null &&
-                                  activeTrackCues.length > 0
-                                }
-                                label={t("movies.player.manualSync", "Manual subtitle clock")}
-                              />
-                            </>
+                            <iframe
+                              ref={playerIframeRef}
+                              key={`${activeGallerySource.id}-${activeIframeUrl}`}
+                              className="w-full h-full border-0 bg-black block"
+                              src={activeIframeUrl}
+                              title={`${detailedItem.title} - ${activeGallerySource.label}`}
+                              width="100%"
+                              height="100%"
+                              frameBorder="0"
+                              scrolling="no"
+                              referrerPolicy="origin"
+                              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                              allowFullScreen
+                              onLoad={() => {
+                                loadedCurrentAttemptRef.current = true;
+                                const elapsedMs = Math.max(
+                                  120,
+                                  performance.now() - playAttemptStartedAtRef.current,
+                                );
+                                const currentStream =
+                                  extractedStreams[activeExtractedIdx] ||
+                                  extractedStreams[0];
+                                const activeServerId =
+                                  playerRenderMode === "clean-embed"
+                                    ? resolveServerIdForStream(currentStream)
+                                    : activeGallerySource.id;
+                                recordServerSuccess(
+                                  activeServerId,
+                                  elapsedMs,
+                                  detailItemStorageKey,
+                                );
+                                setIsPlayerLoading(false);
+                                gotTimeSinceLoadRef.current = false;
+                                setIframeLoadStamp(Date.now());
+                              }}
+                            />
                           )}
 
                         {seekUnsupportedToast && (
@@ -4422,14 +4346,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           </div>
                         )}
 
-                        {/* Live Cinema Subtitle Overlay (Rendered above video/iframe across ALL player modes) */}
-                        {!allServersFailed && activeSubtitleIdx !== null && (
-                          <SubtitleOverlay
-                            cues={activeTrackCues}
-                            offsetSec={subtitleOffsetSec}
-                            liftPx={isControlsVisible && controlMode === "direct" ? 56 : 0}
-                          />
-                        )}
+                        {/* Live Cinema Subtitle Overlay (Rendered ONLY in direct <video> mode; iframe servers have built-in subtitles) */}
+                        {!allServersFailed &&
+                          playerRenderMode === "direct" &&
+                          activeSubtitleIdx !== null && (
+                            <SubtitleOverlay
+                              cues={activeTrackCues}
+                              offsetSec={subtitleOffsetSec}
+                              liftPx={isControlsVisible ? 56 : 0}
+                            />
+                          )}
 
                         {/* Pure Visual Eye Loader Overlay (Zero text, pointer-events-none) */}
                         {(isPlayerLoading || playerRenderMode === "extracting") && !allServersFailed && (
@@ -4651,7 +4577,10 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                     )}
 
                     {/* Floating Liquid Glass Movie/Series Player & Subtitle Controls Bar inside Fullscreen Stage */}
-                    {isAnyFullscreen && isWatchingInGallery && !allServersFailed && (
+                    {isAnyFullscreen &&
+                      isWatchingInGallery &&
+                      playerRenderMode === "direct" &&
+                      !allServersFailed && (
                       <div
                         onClick={(e) => e.stopPropagation()}
                         onMouseMove={bumpControlsVisibility}
@@ -4809,8 +4738,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                     )}
                   </div>
 
-                  {/* External Liquid Glass Movie/Series Player & Subtitle Controls Bar Directly BELOW Gallery Stage (Always visible across ALL Movie/Series modes: direct, clean-embed, iframe) */}
-                  {!isAnyFullscreen && isWatchingInGallery && !allServersFailed && (
+                  {/* External Liquid Glass Movie/Series Player & Subtitle Controls Bar Directly BELOW Gallery Stage (Rendered ONLY in direct <video> mode; iframe servers have built-in controls) */}
+                  {!isAnyFullscreen &&
+                    isWatchingInGallery &&
+                    playerRenderMode === "direct" &&
+                    !allServersFailed && (
                     <div
                       onClick={(e) => e.stopPropagation()}
                       className="lg-cinema-player-controls rounded-2xl px-3.5 py-2.5 flex flex-col gap-2"

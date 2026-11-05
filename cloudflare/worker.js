@@ -1,5 +1,5 @@
 // NL Worker — broad-block-7bd7 (ملف واحد يُلصق في لوحة Cloudflare)
-// Routes: / (extract) · /embed · /proxy · /subs/search · /subs/file · /trailer/imdb · /meta/omdb · /tmdb/3/* · /health
+// Routes: / (Multi-Server Parallel Stream + Subtitle Harvester) · /embed · /proxy · /subs/search · /subs/file · /trailer/imdb · /meta/omdb · /tmdb/3/* · /health
 // Secrets (اختيارية حسب المسار): WYZIE_KEY, OMDB_KEY, TMDB_KEY  | KV binding (اختياري ومستحسن): NL_CACHE
 // Variable اختياري: ALLOWED_ORIGINS = "https://a.com,https://b.com"
 
@@ -9,10 +9,10 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:5173",
 ];
-const MAX_PAGES = 5;
-const EXTRACT_TIMEOUT_TOP_MS = 4000;
-const EXTRACT_TIMEOUT_NESTED_MS = 3000;
-const MAX_SUBTITLES = 20;
+const MAX_PAGES = 6;
+const EXTRACT_TIMEOUT_TOP_MS = 4200;
+const EXTRACT_TIMEOUT_NESTED_MS = 3200;
+const MAX_SUBTITLES = 24;
 const SUB_URL_RE = /https?:\/\/[^\s"'<>\\]+\.(?:vtt|srt)(?:\?[^\s"'<>\\]*)?/gi;
 const TRACK_TAG_RE = /<track\b[^>]*>/gi;
 const JSON_TRACK_RE = /\{[^{}]{0,400}?["']?(?:file|src|url)["']?\s*:\s*["']([^"']+\.(?:vtt|srt)(?:\?[^"']*)?)["'][^{}]{0,400}?\}/gi;
@@ -195,14 +195,12 @@ function cleanHeaders(src, dropLength) {
   return h;
 }
 
-/* ---------------- /embed (HTMLRewriter Bridge + Popup Guard + Subtitle/Stream Sniffer) ---------------- */
+/* ---------------- /embed (Optional HTMLRewriter Bridge) ---------------- */
 
 const EMBED_HOST_ALLOW = /^(.*\.)?(vidlink\.pro|streamimdb\.ru|imdb\.su|2embed\.cc|2embed\.skin|2vcdn\.skin|multiembed\.mov|streamingnow\.mov|vidsrc\.[a-z]+|vidplay\.[a-z]+|filemoon\.[a-z]+|streamtape\.[a-z]+|dood\.[a-z]+|mixdrop\.[a-z]+|rabbitstream\.net|megacloud\.tv|dokicloud\.one|embed\.su)$/i;
 const EMBED_AD_HOST_RE = /google|facebook|doubleclick|googlesyndication|recaptcha|popads|onclickads|acscdn|adsco|histats|exoclick|juicyads|propellerads|adsterra|clickadu|hilltopads/i;
 
-const NL_POPUP_GUARD_JS = '(function(){try{var dummyWin={closed:false,focus:function(){},blur:function(){},close:function(){},postMessage:function(){},location:{href:"about:blank",assign:function(){},replace:function(){}},document:{write:function(){},open:function(){},close:function(){}}};var B=function(){return dummyWin};try{Object.defineProperty(window,"open",{configurable:false,writable:false,value:B})}catch(e){try{window.open=B}catch(x){}}var H="";try{H=new URL(document.baseURI).hostname}catch(e){}function bad(a){try{if(!a||!a.getAttribute("href"))return false;if(a.target&&a.target!=="_self")return true;var u=new URL(a.href,document.baseURI);if(!/^https?:$/.test(u.protocol))return false;return u.hostname!==H&&u.hostname!==location.hostname}catch(e){return false}}function g(e){try{var n=e.target;while(n&&n.nodeType===1&&n.tagName!=="A")n=n.parentNode;if(n&&n.tagName==="A"&&bad(n)){e.preventDefault();e.stopImmediatePropagation()}}catch(x){}}window.addEventListener("click",g,true);window.addEventListener("auxclick",g,true);try{var oc=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){if(bad(this))return;return oc.apply(this,arguments)}}catch(e){}try{var os=HTMLFormElement.prototype.submit;HTMLFormElement.prototype.submit=function(){if(this.target&&this.target!=="_self")return;return os.apply(this,arguments)}}catch(e){}}catch(e){}})();';
-
-const NL_BRIDGE_JS = `(function(){try{if(window.__nlBridge)return;window.__nlBridge=1;var WORKER=__WORKER_ORIGIN__,PARENT=__PARENT_ORIGIN__,DEPTH=__DEPTH__;var FID=Math.random().toString(36).slice(2,10);var seq=0,cur=null,lastSent=0,readySent=false;var seenSubs={},seenStreams={};function wrap(u){try{if(!u||typeof u!=="string")return u;var a=new URL(u,document.baseURI);if(!/^https?:$/.test(a.protocol))return u;if(a.origin===WORKER)return u;if(/google|facebook|doubleclick|googlesyndication|recaptcha|popads|onclickads|acscdn|adsco|histats|exoclick|juicyads|adsterra/i.test(a.hostname))return"about:blank";if(DEPTH>=3)return u;return WORKER+"/embed?url="+encodeURIComponent(a.href)+"&parent="+encodeURIComponent(PARENT)+"&depth="+(DEPTH+1)+"&ref="+encodeURIComponent(document.baseURI)}catch(e){return u}}try{var desc=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,"src");if(desc&&desc.set){Object.defineProperty(HTMLIFrameElement.prototype,"src",{configurable:true,enumerable:desc.enumerable,get:desc.get,set:function(v){try{return desc.set.call(this,wrap(v))}catch(e){}}})}}catch(e){}var origSetAttr=null;try{origSetAttr=Element.prototype.setAttribute;Element.prototype.setAttribute=function(name,value){try{if(this&&this.tagName==="IFRAME"&&String(name).toLowerCase()==="src")value=wrap(value)}catch(e){}return origSetAttr.call(this,name,value)}}catch(e){}function post(m){try{if(window.top&&window.top!==window)window.top.postMessage(m,"*");if(window.parent&&window.parent!==window&&window.parent!==window.top)window.parent.postMessage(m,"*")}catch(e){}}function reportSub(rawUrl,label,lang){try{if(!rawUrl||typeof rawUrl!=="string")return;var abs=new URL(rawUrl,document.baseURI).href;if(!/\\.(vtt|srt)(\\?|#|$)/i.test(abs)||seenSubs[abs])return;seenSubs[abs]=1;post({__nl:1,type:"NL_SUBS",fid:FID,referer:document.baseURI,tracks:[{url:abs,label:label||"",lang:lang||""}]})}catch(e){}}function reportStream(rawUrl){try{if(!rawUrl||typeof rawUrl!=="string")return;var abs=new URL(rawUrl,document.baseURI).href;if(!/\\.(m3u8|mp4)(\\?|#|$)/i.test(abs)||seenStreams[abs])return;seenStreams[abs]=1;post({__nl:1,type:"NL_STREAM",fid:FID,streamUrl:abs,referer:document.baseURI,streamType:/\\.m3u8/i.test(abs)?"hls":"mp4"})}catch(e){}}function inspectTextForSubs(txt){try{if(!txt||typeof txt!=="string"||txt.length>500000)return;var plRe=/\\[([^\\]]{1,32})\\](https?:\\/\\/[^\\s"',\\]]+\\.(?:vtt|srt)(?:\\?[^\\s"',\\]]*)?)/gi,pm;while((pm=plRe.exec(txt))!==null)reportSub(pm[2],pm[1],pm[1]);var subRe=/https?:\\/\\/[^\\s"'<>\\\\]+\\.(?:vtt|srt)(?:\\?[^\\s"'<>\\\\]*)?/gi,sm;while((sm=subRe.exec(txt))!==null)reportSub(sm[0].replace(/\\\\\\//g,"/"),"","")}catch(e){}}try{var origFetch=window.fetch;if(origFetch){window.fetch=function(input){var u=typeof input==="string"?input:(input&&input.url)||"";if(u){reportSub(u,"","");reportStream(u)}var p=origFetch.apply(this,arguments);try{p.then(function(r){try{var ct=(r.headers&&r.headers.get("content-type"))||"";if(ct.indexOf("json")!==-1||ct.indexOf("text")!==-1){r.clone().text().then(inspectTextForSubs).catch(function(){})}}catch(x){}}).catch(function(){})}catch(x){}return p}}}catch(e){}try{var origOpen=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){try{if(typeof u==="string"){reportSub(u,"","");reportStream(u);this.addEventListener("load",function(){try{if(typeof this.responseText==="string")inspectTextForSubs(this.responseText)}catch(x){}})}}catch(x){}return origOpen.apply(this,arguments)}}catch(e){}function send(ev){try{if(!cur)return;var now=Date.now();if(ev==="timeupdate"&&now-lastSent<250)return;lastSent=now;var d=cur.duration;post({__nl:1,type:"NL_STATE",ev:ev,t:cur.currentTime||0,d:isFinite(d)&&d>0?d:0,paused:!!cur.paused,rate:cur.playbackRate||1,seq:++seq,fid:FID})}catch(e){}}function bind(v){try{if(!v||v===cur)return;cur=v;var evs=["loadedmetadata","durationchange","play","playing","pause","waiting","seeked","seeking","timeupdate","ratechange","ended"];for(var i=0;i<evs.length;i++)(function(e){try{v.addEventListener(e,function(){send(e)},true)}catch(x){}})(evs[i]);if(!readySent){readySent=true;post({__nl:1,type:"NL_READY",fid:FID})}send("loadedmetadata");if(v.currentSrc||v.src)reportStream(v.currentSrc||v.src)}catch(e){}}function wrapFrameEl(f){try{if(!f||f.tagName!=="IFRAME")return;var raw=f.getAttribute("src");if(raw){var w=wrap(raw);if(w!==raw){if(origSetAttr)origSetAttr.call(f,"src",w);else f.setAttribute("src",w)}}}catch(e){}}function scan(){try{var vs=document.getElementsByTagName("video");var best=null;for(var i=0;i<vs.length;i++){var v=vs[i];if(v.readyState>0||v.src||v.currentSrc){best=v;break}if(!best)best=v}if(best)bind(best);var trs=document.getElementsByTagName("track");for(var t=0;t<trs.length;t++){var tr=trs[t];reportSub(tr.src||tr.getAttribute("src"),tr.label||tr.getAttribute("label"),tr.srclang||tr.getAttribute("srclang"))}var fs=document.getElementsByTagName("iframe");for(var j=0;j<fs.length;j++)wrapFrameEl(fs[j])}catch(e){}}try{var origPlay=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){try{if(this&&this.tagName==="VIDEO")bind(this)}catch(e){}return origPlay.apply(this,arguments)}}catch(e){}try{var mo=new MutationObserver(function(muts){try{for(var i=0;i<muts.length;i++){var added=muts[i].addedNodes;if(!added)continue;for(var k=0;k<added.length;k++){var n=added[k];if(!n||n.nodeType!==1)continue;if(n.tagName==="IFRAME")wrapFrameEl(n);else if(n.getElementsByTagName){var ifs=n.getElementsByTagName("iframe");for(var m=0;m<ifs.length;m++)wrapFrameEl(ifs[m])}}}scan()}catch(e){}});mo.observe(document.documentElement,{childList:true,subtree:true})}catch(e){}setInterval(scan,1500);scan();window.addEventListener("message",function(e){try{var d=e.data;if(typeof d==="string"){try{d=JSON.parse(d)}catch(x){return}}if(!d||d.__nl!==1)return;if(e.source!==window.parent&&e.source!==window.top&&d.type!=="NL_CMD"){post(d);return}if(d.type!=="NL_CMD")return;if(cur){try{if(d.cmd==="seek"&&typeof d.t==="number"){cur.currentTime=Math.max(0,d.t);var dur=cur.duration;post({__nl:1,type:"NL_ACK",id:d.id,t:cur.currentTime,d:isFinite(dur)&&dur>0?dur:0,paused:!!cur.paused,fid:FID})}else if(d.cmd==="play"){var p=cur.play();if(p&&p.catch)p.catch(function(){})}else if(d.cmd==="pause"){cur.pause()}}catch(x){}}var fs=window.frames;for(var i=0;i<fs.length;i++){try{fs[i].postMessage(d,"*")}catch(x){}}}catch(e){}})}catch(e){}})();`;
+const NL_BRIDGE_JS = `(function(){try{if(window.__nlBridge)return;window.__nlBridge=1;var WORKER=__WORKER_ORIGIN__,PARENT=__PARENT_ORIGIN__,DEPTH=__DEPTH__;var FID=Math.random().toString(36).slice(2,10);var seq=0,cur=null,lastSent=0,readySent=false;function wrap(u){try{if(!u||typeof u!=="string")return u;var a=new URL(u,document.baseURI);if(!/^https?:$/.test(a.protocol))return u;if(a.origin===WORKER)return u;if(/google|facebook|doubleclick|googlesyndication|recaptcha/i.test(a.hostname))return u;if(DEPTH>=3)return u;return WORKER+"/embed?url="+encodeURIComponent(a.href)+"&parent="+encodeURIComponent(PARENT)+"&depth="+(DEPTH+1)+"&ref="+encodeURIComponent(document.baseURI)}catch(e){return u}}try{var desc=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,"src");if(desc&&desc.set){Object.defineProperty(HTMLIFrameElement.prototype,"src",{configurable:true,enumerable:desc.enumerable,get:desc.get,set:function(v){try{return desc.set.call(this,wrap(v))}catch(e){}}})}}catch(e){}var origSetAttr=null;try{origSetAttr=Element.prototype.setAttribute;Element.prototype.setAttribute=function(name,value){try{if(this&&this.tagName==="IFRAME"&&String(name).toLowerCase()==="src")value=wrap(value)}catch(e){}return origSetAttr.call(this,name,value)}}catch(e){}function post(m){try{if(window.top&&window.top!==window)window.top.postMessage(m,"*");if(window.parent&&window.parent!==window&&window.parent!==window.top)window.parent.postMessage(m,"*")}catch(e){}}function send(ev){try{if(!cur)return;var now=Date.now();if(ev==="timeupdate"&&now-lastSent<250)return;lastSent=now;var d=cur.duration;post({__nl:1,type:"NL_STATE",ev:ev,t:cur.currentTime||0,d:isFinite(d)&&d>0?d:0,paused:!!cur.paused,rate:cur.playbackRate||1,seq:++seq,fid:FID})}catch(e){}}function bind(v){try{if(!v||v===cur)return;cur=v;var evs=["loadedmetadata","durationchange","play","playing","pause","waiting","seeked","seeking","timeupdate","ratechange","ended"];for(var i=0;i<evs.length;i++)(function(e){try{v.addEventListener(e,function(){send(e)},true)}catch(x){}})(evs[i]);if(!readySent){readySent=true;post({__nl:1,type:"NL_READY",fid:FID})}send("loadedmetadata")}catch(e){}}function wrapFrameEl(f){try{if(!f||f.tagName!=="IFRAME")return;var raw=f.getAttribute("src");if(raw){var w=wrap(raw);if(w!==raw){if(origSetAttr)origSetAttr.call(f,"src",w);else f.setAttribute("src",w)}}}catch(e){}}function scan(){try{var vs=document.getElementsByTagName("video");var best=null;for(var i=0;i<vs.length;i++){var v=vs[i];if(v.readyState>0||v.src||v.currentSrc){best=v;break}if(!best)best=v}if(best)bind(best);var fs=document.getElementsByTagName("iframe");for(var j=0;j<fs.length;j++)wrapFrameEl(fs[j])}catch(e){}}try{var origPlay=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){try{if(this&&this.tagName==="VIDEO")bind(this)}catch(e){}return origPlay.apply(this,arguments)}}catch(e){}try{var mo=new MutationObserver(function(muts){try{for(var i=0;i<muts.length;i++){var added=muts[i].addedNodes;if(!added)continue;for(var k=0;k<added.length;k++){var n=added[k];if(!n||n.nodeType!==1)continue;if(n.tagName==="IFRAME")wrapFrameEl(n);else if(n.getElementsByTagName){var ifs=n.getElementsByTagName("iframe");for(var m=0;m<ifs.length;m++)wrapFrameEl(ifs[m])}}}scan()}catch(e){}});mo.observe(document.documentElement,{childList:true,subtree:true})}catch(e){}setInterval(scan,1500);scan();window.addEventListener("message",function(e){try{var d=e.data;if(typeof d==="string"){try{d=JSON.parse(d)}catch(x){return}}if(!d||d.__nl!==1)return;if(e.source!==window.parent&&e.source!==window.top&&d.type!=="NL_CMD"){post(d);return}if(d.type!=="NL_CMD")return;if(cur){try{if(d.cmd==="seek"&&typeof d.t==="number"){cur.currentTime=Math.max(0,d.t);var dur=cur.duration;post({__nl:1,type:"NL_ACK",id:d.id,t:cur.currentTime,d:isFinite(dur)&&dur>0?dur:0,paused:!!cur.paused,fid:FID})}else if(d.cmd==="play"){var p=cur.play();if(p&&p.catch)p.catch(function(){})}else if(d.cmd==="pause"){cur.pause()}}catch(x){}}var fs=window.frames;for(var i=0;i<fs.length;i++){try{fs[i].postMessage(d,"*")}catch(x){}}}catch(e){}})}catch(e){}})();`;
 
 function cleanEmbedHeaders(src, parentOrigin, workerOrigin) {
   const h = cleanHeaders(src, true);
@@ -221,7 +219,7 @@ async function handleEmbed(request, reqUrl, workerOrigin, env) {
   const allowedList = env.ALLOWED_ORIGINS
     ? env.ALLOWED_ORIGINS.split(",").map((s) => s.trim())
     : DEFAULT_ALLOWED_ORIGINS;
-  if (!parentOrigin || !allowedList.includes(parentOrigin)) {
+  if (!parentOrigin || !isAllowedOriginUrl(parentOrigin, workerOrigin, allowedList)) {
     return jsonResponse({ error: "bad_parent" }, 403);
   }
   const target = safeTarget(rawUrl);
@@ -274,28 +272,6 @@ async function handleEmbed(request, reqUrl, workerOrigin, env) {
     return Response.redirect(target.href, 302);
   }
 
-  try {
-    const cloneBody = upstream.clone().body;
-    if (cloneBody) {
-      const reader = cloneBody.getReader();
-      const decoder = new TextDecoder();
-      let bytesRead = 0;
-      let headChunk = "";
-      while (bytesRead < 4096) {
-        const { done, value } = await reader.read();
-        if (done || !value) break;
-        bytesRead += value.byteLength;
-        headChunk += decoder.decode(value, { stream: true });
-      }
-      try { await reader.cancel(); } catch {}
-      if (/cf-chl|challenge-platform/i.test(headChunk)) {
-        return Response.redirect(target.href, 302);
-      }
-    }
-  } catch {
-    return Response.redirect(target.href, 302);
-  }
-
   const finalBaseHref = new URL(upstream.url || target.href).href;
   const bridgeScript = NL_BRIDGE_JS
     .replace(/__WORKER_ORIGIN__/g, JSON.stringify(workerOrigin))
@@ -306,17 +282,9 @@ async function handleEmbed(request, reqUrl, workerOrigin, env) {
     .on("head", {
       element(el) {
         el.prepend(
-          `<base href="${finalBaseHref.replace(/"/g, "&quot;")}"><script>${NL_POPUP_GUARD_JS}${bridgeScript}</script>`,
+          `<base href="${finalBaseHref.replace(/"/g, "&quot;")}"><script>${bridgeScript}</script>`,
           { html: true },
         );
-      },
-    })
-    .on("script[src]", {
-      element(el) {
-        const s = el.getAttribute("src") || "";
-        if (/popads|onclickads|acscdn|adsco|histats|exoclick|juicyads|propellerads|adsterra|clickadu|disable-devtool/i.test(s)) {
-          el.remove();
-        }
       },
     })
     .on("iframe[src]", {
@@ -347,7 +315,7 @@ async function handleEmbed(request, reqUrl, workerOrigin, env) {
   );
 }
 
-/* ---------------- / (استخراج الفيديو + الترجمات المرفقة المتزامنة) ---------------- */
+/* ---------------- / (Multi-Server Parallel Harvester: Video + Cross-Server Subtitles) ---------------- */
 
 function unpackDeanEdwards(html) {
   const unpackedChunks = [];
@@ -436,6 +404,30 @@ function collectSubtitles(html, decodedHtml, baseUrl, out) {
   }
 }
 
+function expandMultiServerCandidates(urls) {
+  const expanded = [];
+  const seen = new Set();
+  for (const raw of urls) {
+    if (typeof raw !== "string" || !safeTarget(raw)) continue;
+    if (!seen.has(raw)) {
+      seen.add(raw);
+      expanded.push(raw);
+    }
+    // Automatically add SuperEmbed VIP directstream.php endpoint when multiembed.mov is in the list
+    try {
+      const u = new URL(raw);
+      if (u.hostname.includes("multiembed.mov") && u.pathname === "/") {
+        const vipUrl = `https://multiembed.mov/directstream.php${u.search}`;
+        if (!seen.has(vipUrl)) {
+          seen.add(vipUrl);
+          expanded.push(vipUrl);
+        }
+      }
+    } catch {}
+  }
+  return expanded.slice(0, MAX_PAGES);
+}
+
 async function handleExtract(request, reqUrl, workerOrigin) {
   let targetUrls = [];
   if (request.method === "POST") {
@@ -452,7 +444,7 @@ async function handleExtract(request, reqUrl, workerOrigin) {
     if (single) targetUrls.push(single);
     if (multi) targetUrls.push(...multi.split(",").map((u) => u.trim()).filter(Boolean));
   }
-  targetUrls = targetUrls.filter((u) => typeof u === "string" && safeTarget(u)).slice(0, MAX_PAGES);
+  targetUrls = expandMultiServerCandidates(targetUrls);
 
   if (targetUrls.length === 0) {
     return jsonResponse({
@@ -464,7 +456,29 @@ async function handleExtract(request, reqUrl, workerOrigin) {
       },
     }, 400);
   }
+
   const allResults = await Promise.all(targetUrls.map((u) => extractFromPage(u, workerOrigin)));
+
+  // Cross-Server Subtitle Fusion: pool subtitles discovered from ANY server and attach them to all extracted streams
+  const globalSubsMap = new Map();
+  for (const res of allResults) {
+    for (const s of res.subtitles || []) {
+      if (s && s.url && !globalSubsMap.has(s.url)) {
+        globalSubsMap.set(s.url, s);
+      }
+    }
+  }
+  const pooledSubs = Array.from(globalSubsMap.values()).slice(0, MAX_SUBTITLES);
+  for (const res of allResults) {
+    if (Array.isArray(res.videos) && res.videos.length > 0 && pooledSubs.length > 0) {
+      const localUrls = new Set((res.subtitles || []).map((s) => s.url));
+      res.subtitles = [
+        ...(res.subtitles || []),
+        ...pooledSubs.filter((s) => !localUrls.has(s.url)),
+      ];
+    }
+  }
+
   return jsonResponse({ total_pages: allResults.length, results: allResults.length === 1 ? allResults[0] : allResults });
 }
 
@@ -480,9 +494,11 @@ async function extractFromPage(targetUrl, workerOrigin, depth = 0) {
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         Referer: new URL(targetUrl).origin + "/",
       },
+      redirect: "follow",
       signal: AbortSignal.timeout(depth === 0 ? EXTRACT_TIMEOUT_TOP_MS : EXTRACT_TIMEOUT_NESTED_MS),
     });
     if (!response.ok) return { source: targetUrl, error: `HTTP ${response.status}`, videos: [], subtitles: [] };
+    const finalPageUrl = response.url || targetUrl;
     const html = await response.text();
 
     let decodedHtml = html;
@@ -492,22 +508,28 @@ async function extractFromPage(targetUrl, workerOrigin, depth = 0) {
     for (const b64 of html.match(/aHR0c[A-Za-z0-9+/=]{15,}/g) || []) {
       try { decodedHtml += "\n" + atob(b64); } catch (e) {}
     }
-    for (const raw of decodedHtml.match(/https?:\/\/[^\s"'<>\\]+\.(?:m3u8|mp4|mpd)(?:\?[^\s"'<>\\]*)?/gi) || []) {
-      extractedLinks.add(raw.replace(/\\\//g, "/"));
+    for (const raw of decodedHtml.match(/https?:\/\/[^\s"'<>\\`]+\.(?:m3u8|mp4|mpd)(?:\?[^\s"'<>\\`]*)?/gi) || []) {
+      const clean = raw.replace(/\\\//g, "/");
+      extractedLinks.add(clean);
+      if (!linkReferer.has(clean)) linkReferer.set(clean, finalPageUrl);
     }
     const relativeRegex = /(?:src|file|url|source|stream)\s*[:=]\s*["']([^"']+\.(?:m3u8|mp4|mpd)(?:\?[^"']*)?)["']/gi;
     let m;
     while ((m = relativeRegex.exec(decodedHtml)) !== null) {
-      try { extractedLinks.add(new URL(m[1].replace(/\\\//g, "/"), targetUrl).href); } catch (e) {}
+      try {
+        const abs = new URL(m[1].replace(/\\\//g, "/"), finalPageUrl).href;
+        extractedLinks.add(abs);
+        if (!linkReferer.has(abs)) linkReferer.set(abs, finalPageUrl);
+      } catch (e) {}
     }
-    collectSubtitles(html, decodedHtml, targetUrl, subtitles);
+    collectSubtitles(html, decodedHtml, finalPageUrl, subtitles);
 
     if (depth === 0) {
       const iframeRegex = /<iframe[^>]+src=["']([^"']+)["']/gi;
       let im;
       while ((im = iframeRegex.exec(html)) !== null) {
         try {
-          const src = new URL(im[1], targetUrl).href;
+          const src = new URL(im[1], finalPageUrl).href;
           if (safeTarget(src) && !EMBED_AD_HOST_RE.test(new URL(src).hostname)) discoveredIframes.add(src);
         } catch (e) {}
       }
@@ -525,7 +547,7 @@ async function extractFromPage(targetUrl, workerOrigin, depth = 0) {
     }
 
     const videos = Array.from(extractedLinks).map((videoUrl) => {
-      const ref = linkReferer.get(videoUrl) || targetUrl;
+      const ref = linkReferer.get(videoUrl) || finalPageUrl;
       return {
         type: videoUrl.includes(".m3u8") ? "hls" : videoUrl.includes(".mpd") ? "dash" : "mp4",
         directUrl: videoUrl,
@@ -537,7 +559,7 @@ async function extractFromPage(targetUrl, workerOrigin, depth = 0) {
       lang: s.lang || "",
       label: s.label || "",
       default: Boolean(s.default),
-      referer: s.referer || targetUrl,
+      referer: s.referer || finalPageUrl,
     }));
     return {
       source: targetUrl,

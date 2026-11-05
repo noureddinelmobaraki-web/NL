@@ -29,9 +29,7 @@ export interface CinemaServerConfig {
     startAt?: boolean;
     /** Route through Cloudflare Worker /embed HTMLRewriter bridge. */
     workerBridge?: boolean;
-    /** Cover iframe with a click-capturing overlay so ad scripts never get user activation. */
     adShield?: boolean;
-    /** iframe sandbox tokens tried first (never allow-popups). Auto-fallback handled by sandboxPolicy.ts. */
     sandbox?: string;
   };
   timeoutMs: number;
@@ -100,10 +98,11 @@ function vidlinkQuery(opts?: { startAt?: number }): string {
   return p.toString();
 }
 
-/** No allow-popups, no allow-top-navigation, no allow-modals. allow-same-origin is safe here: content is cross-origin. */
-export const SANDBOX_STRICT = 'allow-scripts allow-same-origin allow-forms allow-presentation';
+export const SANDBOX_STRICT = undefined;
 
 // Ordered with VidLink (server-vl) as the default primary server (index 0), and Servers 3, 4, 5 permanently removed.
+// All servers load their native embed URLs without iframe sandbox or /embed proxy rewriting so they never trigger
+// "Please Disable Sandbox" or JWPlayer Error 232011.
 export const CINEMA_SERVERS: CinemaServerConfig[] = [
   {
     id: 'server-vl',
@@ -111,12 +110,7 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: 'vidlink.pro',
     origins: ['https://vidlink.pro', 'https://player.vidlink.pro', 'https://cloud.vidlink.pro'],
     supports: { imdb: false, tmdb: true },
-    capabilities: {
-      timeEvents: true,
-      startAt: true,
-      adShield: true,
-      sandbox: SANDBOX_STRICT,
-    },
+    capabilities: { timeEvents: true, startAt: true },
     timeoutMs: 12000,
     movie: (ids, opts) => {
       const { tmdb } = sanitizeServerIds(ids);
@@ -135,12 +129,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: 'streamimdb.ru',
     origins: ['https://streamimdb.ru', 'https://player.imdb.su'],
     supports: { imdb: true, tmdb: true },
-    capabilities: {
-      timeEvents: true,
-      workerBridge: true,
-      adShield: true,
-      sandbox: SANDBOX_STRICT,
-    },
     timeoutMs: 12000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
@@ -159,12 +147,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: '2embed.cc',
     origins: ['https://www.2embed.cc', 'https://2embed.cc', 'https://2vcdn.skin'],
     supports: { imdb: true, tmdb: true },
-    capabilities: {
-      timeEvents: true,
-      workerBridge: true,
-      adShield: true,
-      sandbox: SANDBOX_STRICT,
-    },
     timeoutMs: 12000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
@@ -186,12 +168,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: '2embed.skin',
     origins: ['https://www.2embed.skin', 'https://2embed.skin', 'https://2vcdn.skin'],
     supports: { imdb: true, tmdb: true },
-    capabilities: {
-      timeEvents: true,
-      workerBridge: true,
-      adShield: true,
-      sandbox: SANDBOX_STRICT,
-    },
     timeoutMs: 12000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
@@ -213,12 +189,6 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
     host: 'multiembed.mov',
     origins: ['https://multiembed.mov', 'https://streamingnow.mov'],
     supports: { imdb: true, tmdb: true },
-    capabilities: {
-      timeEvents: true,
-      workerBridge: true,
-      adShield: true,
-      sandbox: SANDBOX_STRICT,
-    },
     timeoutMs: 12000,
     movie: (ids) => {
       const { imdb, tmdb } = sanitizeServerIds(ids);
@@ -241,8 +211,8 @@ export const ALL_SERVER_FRAME_ORIGINS: string[] = Array.from(
 );
 
 export const isTimeEventServer = (
-  server?: { capabilities?: { timeEvents?: boolean; workerBridge?: boolean } } | null,
-): boolean => Boolean(server?.capabilities?.timeEvents || server?.capabilities?.workerBridge);
+  server?: { capabilities?: { timeEvents?: boolean } } | null,
+): boolean => Boolean(server?.capabilities?.timeEvents);
 
 export function toWorkerEmbedUrl(
   rawUrl: string,

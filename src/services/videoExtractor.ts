@@ -130,6 +130,7 @@ function expandRawSubtitleEntries(rawList: Array<RawSubtitleItem | string>): Arr
 function extractSubtitlesFromResult(
   pageResult: WorkerPageResult,
   videoItem?: { subtitles?: Array<RawSubtitleItem | string>; tracks?: Array<RawSubtitleItem | string> },
+  crossServerItems: Array<RawSubtitleItem | string> = [],
 ): ExtractedSubtitleTrack[] {
   const rawList: Array<RawSubtitleItem | string> = expandRawSubtitleEntries([
     ...(Array.isArray(videoItem?.subtitles) ? videoItem.subtitles : []),
@@ -137,6 +138,7 @@ function extractSubtitlesFromResult(
     ...(Array.isArray(pageResult.subtitles) ? pageResult.subtitles : []),
     ...(Array.isArray(pageResult.tracks) ? pageResult.tracks : []),
     ...(Array.isArray(pageResult.captions) ? pageResult.captions : []),
+    ...crossServerItems,
   ]);
 
   if (Array.isArray(pageResult.videos)) {
@@ -193,9 +195,6 @@ function extractSubtitlesFromResult(
   return tracks;
 }
 
-/**
- * دالة استخراج روابط الفيديو (.m3u8 / .mp4) والترجمات عبر Cloudflare Worker
- */
 export async function fetchExtractedVideos(
   targetUrls: string | string[],
   signal?: AbortSignal,
@@ -237,6 +236,26 @@ export async function fetchExtractedVideos(
 
     const data = (await response.json()) as WorkerResponsePayload;
     const rawResults = Array.isArray(data.results) ? data.results : [data.results];
+
+    // Cross-Server Subtitle Pool: harvest subtitles from all probed servers so any server's video stream gets them
+    const crossServerSubs: Array<RawSubtitleItem | string> = [];
+    if (rawResults.length > 1) {
+      for (const pr of rawResults) {
+        if (!pr) continue;
+        const pageRef = pr.source;
+        for (const list of [pr.subtitles, pr.tracks, pr.captions]) {
+          if (!Array.isArray(list)) continue;
+          for (const it of list) {
+            if (typeof it === "string") {
+              crossServerSubs.push({ url: it, referer: pageRef });
+            } else if (it && typeof it === "object") {
+              crossServerSubs.push({ ...it, referer: it.referer || pageRef });
+            }
+          }
+        }
+      }
+    }
+
     const extractedVideos: ExtractedVideoStream[] = [];
 
     for (const pageResult of rawResults) {
@@ -259,7 +278,7 @@ export async function fetchExtractedVideos(
             type: video.type || (directUrl.toLowerCase().includes(".m3u8") ? "hls" : "mp4"),
             directUrl,
             proxiedUrl,
-            subtitles: extractSubtitlesFromResult(pageResult, video),
+            subtitles: extractSubtitlesFromResult(pageResult, video, crossServerSubs),
           });
         }
       }
