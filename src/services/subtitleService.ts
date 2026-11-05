@@ -102,12 +102,12 @@ export function revokeSubtitleBlobUrls(tracks?: ExtractedSubtitleTrack[] | null)
   }
 }
 
-/** UTF-8 first; fall back to the language's legacy code page (fixes broken Arabic). */
+/** UTF-8 first; fall back to the language's legacy code page or windows-1256 (fixes legacy Arabic .srt). */
 export function decodeSubtitleBytes(buf: ArrayBuffer, lang?: string): string {
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(buf);
   } catch {
-    const enc = (lang && LEGACY_ENCODING[lang]) || "windows-1252";
+    const enc = (lang && LEGACY_ENCODING[lang]) || "windows-1256";
     try { return new TextDecoder(enc).decode(buf); } catch { return new TextDecoder("utf-8").decode(buf); }
   }
 }

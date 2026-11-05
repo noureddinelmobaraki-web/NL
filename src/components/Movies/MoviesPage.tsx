@@ -1901,7 +1901,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   }, [isWatchingInGallery, showHeroTrailer, cleanupDirectVideoPlayer, clearExternalSubtitleBlobs]);
 
   // Unified subtitle list across ALL player modes (direct, clean-embed, iframe)
-  // Stream & Worker-extracted companion tracks are listed FIRST via mergeStreamFirst.
+  // Wyzie (IMDb ID search) and local uploads are prioritized ahead of server-extracted tracks for accuracy & stability.
   const activeSubtitlesList = useMemo<ExtractedSubtitleTrack[]>(() => {
     if (!isWatchingInGallery) return [];
     const rawStreamSubs =
@@ -1917,22 +1917,26 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       label: s.label.includes("·") ? s.label : `${s.label} · Source`,
     }));
     const sameSourceSubs = mergeStreamFirst(workerBridgeSubtitles, normalizedStreamSubs);
-    const merged = mergeStreamFirst(sameSourceSubs, externalSubtitles).map((t) => ({
+    const merged = mergeStreamFirst(externalSubtitles, sameSourceSubs).map((t) => ({
       ...t,
       default: false,
     }));
+    const rankProvider = (p?: string): number => {
+      if (p === "local") return 0;
+      if (p === "wyzie") return 1;
+      if (p === "opensubtitles") return 2;
+      return 3; // stream / worker
+    };
     merged.sort((a, b) => {
-      const aSame = a.provider === "stream" || a.provider === "worker" ? 0 : 1;
-      const bSame = b.provider === "stream" || b.provider === "worker" ? 0 : 1;
       if (a.lang === "ar" && b.lang !== "ar") return -1;
       if (b.lang === "ar" && a.lang !== "ar") return 1;
-      return aSame - bSame;
+      return rankProvider(a.provider) - rankProvider(b.provider);
     });
     if (merged.length > 0) {
-      const arSameIdx = merged.findIndex(
-        (s) => s.lang === "ar" && (s.provider === "stream" || s.provider === "worker"),
+      const arWyzieIdx = merged.findIndex(
+        (s) => s.lang === "ar" && (s.provider === "local" || s.provider === "wyzie"),
       );
-      const arIdx = arSameIdx >= 0 ? arSameIdx : merged.findIndex((s) => s.lang === "ar");
+      const arIdx = arWyzieIdx >= 0 ? arWyzieIdx : merged.findIndex((s) => s.lang === "ar");
       const defIdx = arIdx >= 0 ? arIdx : 0;
       merged[defIdx] = { ...merged[defIdx], default: true };
     }
@@ -1957,7 +1961,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setActiveSubtitleIdx(defaultIdx >= 0 ? defaultIdx : 0);
   }, [activeSubtitlesList]);
 
-  // Lazy-load parsed cues for the active subtitle track
+  // Lazy-load parsed cues for the active subtitle track and hide native iframe subtitles when our overlay is active
   useEffect(() => {
     let cancelled = false;
     const tokenAtStart = attemptTokenRef.current;
@@ -1969,6 +1973,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       setActiveTrackCues([]);
       setLoadingSubtitleIdx(null);
       return undefined;
+    }
+    if (playerRenderMode === "iframe" || playerRenderMode === "clean-embed") {
+      sendIframePlayerCommand(playerIframeRef.current, { type: "hideNativeSubs" });
     }
     const track = activeSubtitlesList[activeSubtitleIdx];
     if (track.loaded && Array.isArray(track.cues) && track.cues.length > 0) {
@@ -1982,6 +1989,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         if (!cancelled && attemptTokenRef.current === tokenAtStart) {
           setActiveTrackCues(loadedTrack.cues || []);
           setLoadingSubtitleIdx(null);
+          if (playerRenderMode === "iframe" || playerRenderMode === "clean-embed") {
+            sendIframePlayerCommand(playerIframeRef.current, { type: "hideNativeSubs" });
+          }
         }
       })
       .catch(() => {
@@ -1993,7 +2003,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return () => {
       cancelled = true;
     };
-  }, [isWatchingInGallery, activeSubtitleIdx, activeSubtitlesList]);
+  }, [isWatchingInGallery, activeSubtitleIdx, activeSubtitlesList, playerRenderMode]);
 
   // Automatic 25fps <-> 23.976fps subtitle retiming when cues overflow real media duration
   useEffect(() => {
@@ -2406,20 +2416,32 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return () => clearInterval(interval);
   }, [isWatchingInGallery, detailedItem, persistCurrentProgress]);
 
-  // Synchronize HTML5 <video> TextTrackList mode with activeSubtitleIdx (always hidden in direct mode so SubtitleOverlay is the sole renderer)
+  // Synchronize HTML5 <video> TextTrackList mode with activeSubtitleIdx
+  // Hidden in standard/container fullscreen so SubtitleOverlay renders without duplicate lines;
+  // "showing" when iOS Safari enters native <video> fullscreen (webkitDisplayingFullscreen) so iPhone fullscreen subtitles work natively.
   const syncVideoTextTracks = useCallback((selectedIdx: number | null) => {
     const video = videoElementRef.current;
     if (!video || !video.textTracks) return;
+    const isIosVideoFs = Boolean((video as any).webkitDisplayingFullscreen);
+    const activeMode: TextTrackMode = isIosVideoFs ? "showing" : "hidden";
     const tracks = video.textTracks;
     for (let i = 0; i < tracks.length; i += 1) {
-      tracks[i].mode = selectedIdx !== null && i === selectedIdx ? "hidden" : "disabled";
+      tracks[i].mode = selectedIdx !== null && i === selectedIdx ? activeMode : "disabled";
     }
   }, []);
 
   useEffect(() => {
     syncVideoTextTracks(activeSubtitleIdx);
     const timer = setTimeout(() => syncVideoTextTracks(activeSubtitleIdx), 250);
-    return () => clearTimeout(timer);
+    const video = videoElementRef.current;
+    const onWebkitFs = () => syncVideoTextTracks(activeSubtitleIdx);
+    video?.addEventListener("webkitbeginfullscreen", onWebkitFs);
+    video?.addEventListener("webkitendfullscreen", onWebkitFs);
+    return () => {
+      clearTimeout(timer);
+      video?.removeEventListener("webkitbeginfullscreen", onWebkitFs);
+      video?.removeEventListener("webkitendfullscreen", onWebkitFs);
+    };
   }, [activeSubtitleIdx, activeSubtitlesList, syncVideoTextTracks]);
 
   // Track native Fullscreen API state and auto-hide controls after 3s of mouse inactivity in fullscreen
@@ -4465,9 +4487,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                           </div>
                         )}
 
-                        {/* Live Cinema Subtitle Overlay (Rendered ONLY in direct <video> mode; iframe servers have built-in subtitles) */}
+                        {/* Live Cinema Subtitle Overlay (Rendered in direct <video> mode AND bridged <iframe> mode) */}
                         {!allServersFailed &&
-                          playerRenderMode === "direct" &&
+                          controlMode !== "none" &&
                           activeSubtitleIdx !== null && (
                             <SubtitleOverlay
                               cues={activeTrackCues}
@@ -4698,7 +4720,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                     {/* Floating Liquid Glass Movie/Series Player & Subtitle Controls Bar inside Fullscreen Stage */}
                     {isAnyFullscreen &&
                       isWatchingInGallery &&
-                      playerRenderMode === "direct" &&
+                      controlMode !== "none" &&
                       !allServersFailed && (
                       <div
                         onClick={(e) => e.stopPropagation()}
@@ -4710,16 +4732,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         }`}
                         dir="ltr"
                       >
-                        {controlMode !== "none" && (
-                          <CinemaTimeline
-                            mode={controlMode}
-                            videoRef={videoElementRef}
-                            fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
-                            hasSubtitles={activeTrackCues.length > 0}
-                            onUserSeek={handleUserSeek}
-                            onUserTogglePlay={handleUserTogglePlay}
-                          />
-                        )}
+                        <CinemaTimeline
+                          mode={controlMode}
+                          videoRef={videoElementRef}
+                          fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
+                          hasSubtitles={activeTrackCues.length > 0}
+                          onUserSeek={handleUserSeek}
+                          onUserTogglePlay={handleUserTogglePlay}
+                        />
 
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -4857,26 +4877,24 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                     )}
                   </div>
 
-                  {/* External Liquid Glass Movie/Series Player & Subtitle Controls Bar Directly BELOW Gallery Stage (Rendered ONLY in direct <video> mode; iframe servers have built-in controls) */}
+                  {/* External Liquid Glass Movie/Series Player & Subtitle Controls Bar Directly BELOW Gallery Stage (Rendered in direct <video> mode AND bridged <iframe> mode) */}
                   {!isAnyFullscreen &&
                     isWatchingInGallery &&
-                    playerRenderMode === "direct" &&
+                    controlMode !== "none" &&
                     !allServersFailed && (
                     <div
                       onClick={(e) => e.stopPropagation()}
                       className="lg-cinema-player-controls rounded-2xl px-3.5 py-2.5 flex flex-col gap-2"
                       dir="ltr"
                     >
-                      {controlMode !== "none" && (
-                        <CinemaTimeline
-                          mode={controlMode}
-                          videoRef={videoElementRef}
-                          fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
-                          hasSubtitles={activeTrackCues.length > 0}
-                          onUserSeek={handleUserSeek}
-                          onUserTogglePlay={handleUserTogglePlay}
-                        />
-                      )}
+                      <CinemaTimeline
+                        mode={controlMode}
+                        videoRef={videoElementRef}
+                        fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
+                        hasSubtitles={activeTrackCues.length > 0}
+                        onUserSeek={handleUserSeek}
+                        onUserTogglePlay={handleUserTogglePlay}
+                      />
 
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">

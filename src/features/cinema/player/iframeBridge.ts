@@ -33,7 +33,9 @@ export interface BridgeEvent {
 export type IframePlayerCommand =
   | { type: "seek"; time: number }
   | { type: "play" }
-  | { type: "pause" };
+  | { type: "pause" }
+  | { type: "rate"; value: number }
+  | { type: "hideNativeSubs" };
 
 const lastSeqByFid = new Map<string, number>();
 
@@ -51,9 +53,9 @@ const num = (v: unknown): number | undefined => {
 };
 
 const KIND_MAP: Record<string, BridgeKind> = {
-  timeupdate: "timeupdate", time: "timeupdate", progress: "timeupdate",
+  timeupdate: "timeupdate", time: "timeupdate", progress: "timeupdate", bind: "timeupdate",
   play: "play", playing: "play", pause: "pause", paused: "pause",
-  seeked: "seeked", seeking: "seeked", seek: "seeked", ended: "ended", complete: "ended",
+  seeked: "seeked", seeking: "seeked", seek: "seeked", ack: "seeked", ended: "ended", complete: "ended",
   loadedmetadata: "timeupdate", durationchange: "timeupdate", ratechange: "timeupdate",
 };
 
@@ -92,7 +94,7 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
         fid: typeof d.fid === "string" ? d.fid : undefined,
       };
     }
-    if (d.type === "NL_SUBS" && Array.isArray(d.tracks)) {
+    if ((d.type === "NL_SUBS" || d.type === "NL_TRACKS") && Array.isArray(d.tracks)) {
       const referer = typeof d.referer === "string" ? d.referer : undefined;
       const discoveredSubtitles: BridgeDiscoveredSubtitle[] = d.tracks
         .filter((t: any) => t && typeof t.url === "string" && t.url.trim())
@@ -217,7 +219,7 @@ export function parsePlayerMessage(raw: unknown): BridgeEvent | null {
   };
 }
 
-/** Send play / pause / seek commands to an embedded player iframe across common protocols. */
+/** Send play / pause / seek / hideNativeSubs / rate commands to an embedded player iframe across common protocols. */
 export function sendIframePlayerCommand(
   iframe: HTMLIFrameElement | null | undefined,
   cmd: IframePlayerCommand,
@@ -225,6 +227,26 @@ export function sendIframePlayerCommand(
 ): void {
   const win = iframe?.contentWindow;
   if (!win) return;
+
+  if (cmd.type === "hideNativeSubs") {
+    const msg = { __nl: 1, type: "NL_CMD", cmd: "hideNativeSubs", id };
+    try {
+      win.postMessage(msg, "*");
+    } catch {
+      // ignore cross-origin postMessage errors
+    }
+    return;
+  }
+
+  if (cmd.type === "rate") {
+    const msg = { __nl: 1, type: "NL_CMD", cmd: "rate", v: cmd.value, id };
+    try {
+      win.postMessage(msg, "*");
+    } catch {
+      // ignore cross-origin postMessage errors
+    }
+    return;
+  }
 
   const nlCmd =
     cmd.type === "seek"

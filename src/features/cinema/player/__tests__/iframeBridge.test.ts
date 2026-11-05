@@ -244,4 +244,36 @@ describe("iframeBridge", () => {
     expect(received).toContainEqual({ event: "command", func: "playVideo", args: [] });
     expect(received).toContain("play");
   });
+
+  it("parses NL_TRACKS discovered subtitles and dispatches hideNativeSubs command", async () => {
+    const { sendIframePlayerCommand } = await import("../iframeBridge");
+    const tracksEv = parsePlayerMessage({
+      __nl: 1,
+      type: "NL_TRACKS",
+      tracks: [
+        { url: "https://sub.example.com/ar.vtt", lang: "ar", label: "Arabic" },
+      ],
+    });
+    expect(tracksEv).not.toBeNull();
+    expect(tracksEv?.discoveredSubtitles).toHaveLength(1);
+    expect(tracksEv?.discoveredSubtitles?.[0]?.lang).toBe("ar");
+
+    const received: unknown[] = [];
+    const fakeIframe = {
+      contentWindow: {
+        postMessage: (msg: unknown) => {
+          received.push(msg);
+        },
+      },
+    } as unknown as HTMLIFrameElement;
+
+    sendIframePlayerCommand(fakeIframe, { type: "hideNativeSubs" });
+    expect(received).toContainEqual({
+      __nl: 1,
+      type: "NL_CMD",
+      cmd: "hideNativeSubs",
+      id: undefined,
+    });
+  });
 });
+
