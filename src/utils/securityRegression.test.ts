@@ -5,6 +5,8 @@ import { ALL_SERVER_FRAME_ORIGINS, CINEMA_SERVERS } from '../config/servers';
 import { fetchExtractedVideos, WORKER_ENDPOINT } from '../services/videoExtractor';
 
 import {
+  clearServerProbeCache,
+  probeAllServersSpeed,
   recordServerFailure,
   recordServerSuccess,
   sortSourcesBySpeed,
@@ -149,23 +151,39 @@ describe('security and deployment regressions', () => {
     }
   });
 
-  it('prioritizes Tier 2 (timeEvents) servers over Tier 3 silent servers, and sorts silent servers by speed', () => {
+  it('prioritizes the fastest measured server at index 0 and demotes failing servers via sortSourcesBySpeed and probeAllServersSpeed', async () => {
+    localStorage.clear();
+    clearServerProbeCache();
     const mockSources = [
-      { id: 'server-7' },
-      { id: 'server-1' },
-      { id: 'server-2' },
-      { id: 'server-6' },
-      { id: 'server-vl' },
+      { id: 'server-vl', url: 'https://vidlink.pro/movie/278' },
+      { id: 'server-7', url: 'https://streamimdb.ru/embed/movie/tt0111161' },
+      { id: 'server-1', url: 'https://www.2embed.cc/embed/tt0111161' },
+      { id: 'server-2', url: 'https://www.2embed.skin/embed/tt0111161' },
+      { id: 'server-6', url: 'https://multiembed.mov/directstream.php?video_id=tt0111161' },
     ];
     recordServerFailure('server-7');
     recordServerSuccess('server-2', 420, 'movie_278');
     const sorted = sortSourcesBySpeed(mockSources, 'movie_278');
-    // Tier 2 (server-vl) remains in Bucket 0 ahead of Bucket 1 silent servers
-    expect(sorted[0].id).toBe('server-vl');
-    // In Bucket 1, server-2 was promoted ahead of server-7
-    const silentSortedIds = sorted.slice(1).map((s) => s.id);
-    expect(silentSortedIds[0]).toBe('server-2');
-    expect(silentSortedIds[silentSortedIds.length - 1]).toBe('server-7');
+    // Fastest measured server (server-2) becomes index 0, and failed server-7 is demoted to the end
+    expect(sorted[0].id).toBe('server-2');
+    expect(sorted[sorted.length - 1].id).toBe('server-7');
+
+    // Live concurrent probe tests all 5 servers and promotes the fastest responding server to index 0
+    clearServerProbeCache();
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).includes('streamimdb.ru')) {
+        return new Response(null, { status: 200 });
+      }
+      throw new Error('timeout');
+    });
+    vi.stubGlobal('fetch', mockFetch);
+    try {
+      const order = await probeAllServersSpeed(mockSources, 'movie_999', 500);
+      expect(mockFetch).toHaveBeenCalledTimes(5);
+      expect(order[0]).toBe('server-7');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('does not cache failed app-shell responses in the service worker', () => {

@@ -656,11 +656,18 @@
   filter: drop-shadow(0 0 8px rgba(255, 42, 56, 0.38));
 }
 
-/* Custom Animated Eye Loader (Pure visual loading state without text) */
+/* Custom Animated Eye Loader + Ultra-Light Sheer Glass Tip Message */
 .nl-eye-loader-wrap {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 14px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  max-width: 100%;
+  padding: 6px;
 }
 
 .nl-eye-loader-wrap .eye-lid {
@@ -673,6 +680,7 @@
   box-shadow: 0 9px 0 2px rgba(0, 0, 0, 0.2);
   width: 150px;
   height: 150px;
+  flex-shrink: 0;
 }
 
 .nl-eye-loader-wrap .eye {
@@ -737,6 +745,88 @@
   background-color: #ffbc03;
   width: 20px;
   height: 20px;
+}
+
+.nl-eye-loader-msg {
+  width: min(88vw, 480px);
+  padding: 10px 16px;
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    ),
+    rgba(8, 12, 20, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: opacity, transform;
+  animation: nl-eye-msg-fade 0.22s ease-out both;
+}
+
+@keyframes nl-eye-msg-fade {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.nl-eye-loader-msg__text {
+  margin: 0;
+  direction: rtl;
+  unicode-bidi: plaintext;
+  text-align: center;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: clamp(0.78rem, 1.35vw, 0.92rem);
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.65),
+    0 0 18px rgba(255, 230, 140, 0.35),
+    0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.nl-eye-loader-bdi {
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+  padding-inline: 2px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+@media (max-width: 639px) {
+  .nl-eye-loader-wrap {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .nl-eye-loader-wrap .eye-lid {
+    transform: scale(0.82);
+    margin-block: -12px;
+  }
+
+  .nl-eye-loader-msg {
+    width: min(92vw, 340px);
+    padding: 9px 13px;
+  }
+
+  .nl-eye-loader-msg__text {
+    font-size: clamp(0.82rem, 3.6vw, 0.95rem);
+    line-height: 1.48;
+  }
 }
 
 /* Cinema Theater Mode Expansion (Active only when watching Movie/Series, NOT Trailer) */

@@ -6,7 +6,10 @@ import {
   CINEMA_SERVERS,
   extractValidImdbId,
 } from '../../config/servers';
-import { sortSourcesBySpeed } from '../../services/serverSpeedMonitor';
+import {
+  probeAllServersSpeed,
+  sortSourcesBySpeed,
+} from '../../services/serverSpeedMonitor';
 
 export interface PlaySource {
   id: string;
@@ -128,6 +131,7 @@ export function useResolvedImdbSources(
 
   const [resolvedImdbId, setResolvedImdbId] = useState<string>('');
   const [resolving, setResolving] = useState<boolean>(false);
+  const [speedRevision, setSpeedRevision] = useState<number>(0);
 
   useEffect(() => {
     if (!enabled || !itemId || !mediaType) {
@@ -194,7 +198,31 @@ export function useResolvedImdbSources(
 
   const effectiveImdbId = resolvedImdbId || extractImdbId(rawImdbId);
 
+  useEffect(() => {
+    if (!enabled || !itemId || !mediaType) return undefined;
+    let cancelled = false;
+    const titleKey = `${mediaType}_${itemId}`;
+    const initialSources = buildSources({
+      id: itemId,
+      mediaType,
+      imdbId: effectiveImdbId || undefined,
+      season,
+      episode,
+      fullSeason,
+      startAt,
+    });
+    void probeAllServersSpeed(initialSources, titleKey).then(() => {
+      if (!cancelled) {
+        setSpeedRevision((r) => r + 1);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, itemId, mediaType, effectiveImdbId, season, episode, fullSeason, startAt]);
+
   const sources = useMemo(() => {
+    void speedRevision;
     if (!itemId || !mediaType) return [];
     return buildSources({
       id: itemId,
@@ -205,7 +233,7 @@ export function useResolvedImdbSources(
       fullSeason,
       startAt,
     });
-  }, [itemId, mediaType, effectiveImdbId, season, episode, fullSeason, startAt]);
+  }, [itemId, mediaType, effectiveImdbId, season, episode, fullSeason, startAt, speedRevision]);
 
   return { sources, resolving, resolvedImdbId: effectiveImdbId };
 }

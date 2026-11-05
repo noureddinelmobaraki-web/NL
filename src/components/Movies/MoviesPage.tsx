@@ -70,6 +70,7 @@ import {
 } from "../../services/subtitleService";
 import {
   buildSpeedSortedQueue,
+  probeAllServersSpeed,
   recordServerFailure,
   recordServerSuccess,
 } from "../../services/serverSpeedMonitor";
@@ -1081,6 +1082,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         return;
       }
       const effType: Media = mediaType ?? (activeTab === "series" ? "tv" : "movie");
+      void probeAllServersSpeed(undefined, `${effType}_${id}`);
       setSelectedMediaType(effType);
       setSelectedItemIdState(id);
       const preloaded = findPreloadedCinemaItem(id, effType);
@@ -1390,7 +1392,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     [detailPlaySources, activeGallerySource],
   );
 
-  // Build speed-sorted failover queue starting automatically with the user's fastest cached server
+  // Build speed-sorted failover queue starting automatically with the user's fastest live-probed server
   const startGalleryWatchSession = useCallback(
     (explicitServerIdx?: number) => {
       const speedOrdered = buildSpeedSortedQueue(
@@ -1403,6 +1405,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         const total = detailPlaySources.length || 5;
         const startIdx = explicitServerIdx % Math.max(1, total);
         ordered = [startIdx, ...ordered.filter((i) => i !== startIdx)];
+      } else if (detailPlaySources.length > 0) {
+        void probeAllServersSpeed(detailPlaySources, detailItemStorageKey).then(() => {
+          const updatedQueue = buildSpeedSortedQueue(
+            detailPlaySourcesRef.current,
+            detailItemStorageKey,
+          );
+          if (updatedQueue.length > 0 && failoverStepRef.current === 0) {
+            failoverQueueRef.current = updatedQueue;
+          }
+        });
       }
 
       const firstIdx = ordered[0] ?? 0;
@@ -2848,6 +2860,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   );
 
   const handleQuickWatch = useCallback((item: CinemaItem) => {
+    void probeAllServersSpeed(undefined, `${item.mediaType}_${item.id}`);
     autoStartWatchRef.current = true;
     setDetailServersOpen(true);
     setShowHeroTrailer(false);
