@@ -237,14 +237,21 @@ export function sendIframePlayerCommand(
           { type: "PLAYER_COMMAND", command: "seek", currentTime: cmd.time, time: cmd.time },
           { api: "seek", set: cmd.time },
           JSON.stringify({ api: "seek", set: cmd.time }),
+          { method: "setCurrentTime", value: cmd.time },
+          JSON.stringify({ method: "setCurrentTime", value: cmd.time }),
           { event: "command", func: "seekTo", args: [cmd.time, true] },
           JSON.stringify({ event: "command", func: "seekTo", args: [cmd.time, true] }),
           { action: "seek", time: cmd.time, value: cmd.time },
+          { command: "seek", time: cmd.time },
         ]
       : [
           { type: "PLAYER_COMMAND", command: cmd.type },
+          { type: cmd.type },
+          { command: cmd.type },
           { api: cmd.type },
           JSON.stringify({ api: cmd.type }),
+          { method: cmd.type },
+          JSON.stringify({ method: cmd.type }),
           {
             event: "command",
             func: cmd.type === "play" ? "playVideo" : "pauseVideo",
@@ -256,9 +263,11 @@ export function sendIframePlayerCommand(
             args: [],
           }),
           { action: cmd.type },
+          JSON.stringify({ action: cmd.type }),
+          cmd.type,
         ];
 
-  const payloads: unknown[] = [nlCmd, ...legacyPayloads];
+  const payloads: unknown[] = [nlCmd, JSON.stringify(nlCmd), ...legacyPayloads];
 
   for (const msg of payloads) {
     try {
@@ -345,6 +354,7 @@ export function useIframePlayerBridge(opts: {
   enabled: boolean;
   sessionKey?: string;
   onEvent?: (ev: BridgeEvent) => void;
+  onReady?: (fid?: string) => void;
   onMediaData?: (payload: unknown) => void;
   onSubtitlesDiscovered?: (tracks: BridgeDiscoveredSubtitle[]) => void;
   onStreamDiscovered?: (stream: BridgeDiscoveredStream) => void;
@@ -353,6 +363,8 @@ export function useIframePlayerBridge(opts: {
   const [tier, setTier] = useState<BridgeTier | null>(null);
   const onEventRef = useRef(opts.onEvent);
   onEventRef.current = opts.onEvent;
+  const onReadyRef = useRef(opts.onReady);
+  onReadyRef.current = opts.onReady;
   const onMediaRef = useRef(opts.onMediaData);
   onMediaRef.current = opts.onMediaData;
   const onSubsRef = useRef(opts.onSubtitlesDiscovered);
@@ -421,6 +433,10 @@ export function useIframePlayerBridge(opts: {
         return;
       }
       logBridgeDebug(e.origin, true, null, e.data);
+
+      if (d && typeof d === "object" && d.__nl === 1 && d.type === "NL_READY") {
+        onReadyRef.current?.(typeof d.fid === "string" ? d.fid : undefined);
+      }
 
       if (ev.discoveredSubtitles && ev.discoveredSubtitles.length > 0) {
         onSubsRef.current?.(ev.discoveredSubtitles);

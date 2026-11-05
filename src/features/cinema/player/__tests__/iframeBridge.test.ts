@@ -223,4 +223,25 @@ describe("iframeBridge", () => {
     );
     expect(rejectedBadOrigin).toBe(false);
   });
+
+  it("sendIframePlayerCommand broadcasts play across NL_CMD, VidLink, PlayerJS, JW/Video.js, and Plyr protocols", async () => {
+    const { sendIframePlayerCommand } = await import("../iframeBridge");
+    const received: unknown[] = [];
+    const fakeIframe = {
+      contentWindow: {
+        postMessage: (msg: unknown) => {
+          received.push(msg);
+        },
+      },
+    } as unknown as HTMLIFrameElement;
+
+    sendIframePlayerCommand(fakeIframe, { type: "play" });
+
+    expect(received).toContainEqual({ __nl: 1, type: "NL_CMD", cmd: "play", id: undefined });
+    expect(received).toContainEqual({ type: "PLAYER_COMMAND", command: "play" });
+    expect(received).toContainEqual({ api: "play" });
+    expect(received).toContainEqual({ method: "play" });
+    expect(received).toContainEqual({ event: "command", func: "playVideo", args: [] });
+    expect(received).toContain("play");
+  });
 });

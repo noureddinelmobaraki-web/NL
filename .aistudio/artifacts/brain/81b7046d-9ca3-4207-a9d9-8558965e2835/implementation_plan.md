@@ -1,51 +1,84 @@
-# Surgical Fix for Movies Page Playback Pipeline & Timeline Synchronization
+# خطة تنفيذ التشغيل التلقائي الفوري (Instant Watch-Now Autoplay) في NL Cinema
 
-## Summary of Completed Work
+تهدف هذه الخطة إلى ضمان بدء تشغيل أي فيلم أو مسلسل **فور الضغط على زر "شاهد الآن" (Watch Now)** — سواء من البانر الرئيسي (Hero)، أو من زر التشغيل السريع على البطاقة، أو من داخل نافذة تفاصيل الفيلم، أو عند تبديل السيرفرات والحلقات — دون الحاجة لأي ضغطة ثانية داخل معرض المشاهدة أو داخل مشغل السيرفر المدمج.
 
-### 1. Server Configuration & Tier 2 Priority (`src/config/servers.ts`)
-- Confirmed `server-vl` (VidLink) as primary server at index `0` with `{ timeEvents: true, startAt: true }`.
-- Verified raw embed URL loading without `workerBridge: true`.
-- Allowlisted all VidLink domains (`https://vidlink.pro`, `https://player.vidlink.pro`, `https://cloud.vidlink.pro`) in CSP.
+---
 
-### 2. Speed Monitor & Priority Inversion Protection (`src/services/serverSpeedMonitor.ts`)
-- Upgraded cache storage key to `nl_cinema_server_speed_v2` to discard stale legacy timings.
-- Implemented strict two-bucket sorting: Bucket 0 (Tier 2 time-reporting servers) always precedes Bucket 1 (Tier 3 silent embeds).
-- Prevented silent fallback servers from overwriting `server-vl` in `byTitle` preferences.
+## User Review & Critical Decisions
 
-### 3. Tier 1 Stream Extraction Streamlining (`src/services/videoExtractor.ts`)
-- Restricted Tier 1 extraction strictly to direct `.m3u8` / `.mp4` streams.
-- Removed `clean-embed` promotion logic that previously hijacked playback with silent `2vcdn.skin` embeds.
-- Tightened extraction timeout to 4,500ms for fast fallback.
+بناءً على اختياراتك المؤكدة:
+1. **سلوك النقر على البطاقات مقابل زر المشاهدة**:
+   - النقر العام على بطاقة الفيلم/المسلسل في القوائم يفتح **نافذة التفاصيل (Details Modal)** أولاً لاستعراض القصة والتقييمات والمواسم.
+   - النقر على أي زر **«شاهد الآن / Watch Now»** (أو زر التشغيل السريع على البطاقة، أو اختيار حلقة/سيرفر أثناء المشاهدة) ينقل المعرض فوراً إلى وضع التشغيل النشط ويبدأ تشغيل الفيديو تلقائياً دون انتظار ضغطة إضافية.
+2. **آلية فرض التشغيل التلقائي عبر كافة السيرفرات**:
+   - حقن معاملات التشغيل التلقائي (`autoplay=1&autoPlay=true`) في روابط السيرفرات وقت التشغيل الفعلي داخل المعرض.
+   - إرسال نبضات أوامر تشغيل متكررة (`postMessage` Play Bursts) متوافقة مع جميع مشغلات الفيديو (VidLink, PlayerJS, JWPlayer, Video.js, Plyr, HTML5) فور تحميل السيرفر وحتى تأكيد تحرك عداد الوقت.
+   - الترقية التلقائية السلسة إلى المشغل الأصلي (`<video>` Direct Stream) مع تفعيل التشغيل الفوري فور استخراج الرابط المباشر.
 
-### 4. Player Bridge & Clock Synchronization (`src/features/cinema/player/iframeBridge.ts`)
-- Added `sessionKey` to cleanly reset active bridge state when switching servers or episodes.
-- Required a finite, positive `currentTime` before transitioning `active = true` to avoid stuck initial clocks.
-- Normalized `MEDIA_DATA` events to set `paused: false` when valid playback timestamps are received.
-- Supported `*.vidlink.*` wildcard origin matching under browser Site Isolation.
+---
 
-### 5. Timeline Display Guarding (`src/features/cinema/player/CinemaTimeline.tsx`)
-- Enforced `if (mode === "none") return null;` so external timeline never renders on silent Tier 3 servers.
-- Stripped dummy "Not synced — manual" UI and blind time counters.
+## 1. Overview & Core Concept
 
-### 6. Modal Memoization & IMDb Cache (`src/components/Movies/MovieSourcesModal.tsx`)
-- Added `localStorage` caching (`nl_imdb_id_cache_v1`) for resolved IMDb IDs.
-- Memoized `sources` and effect triggers strictly on primitive values to prevent mid-flight playback aborts.
+عندما يضغط المستخدم على زر **"شاهد الآن"**، يتوقع انتقالاً سينمائياً لحظياً يبدأ فيه الفيلم بالعمل فوراً دون توقف عند شاشة خلفية ثابتة أو زر تشغيل إضافي داخل إطار السيرفر (`<iframe>`).  
+يحقق النظام ذلك عبر ثلاث طبقات متزامنة:
+- **الطبقة الأولى (تنشيط المعرض اللحظي)**: منع أي إعادة ضبط لحالة `isWatchingInGallery` عند فتح الفيلم عبر زر المشاهدة السريعة أو زر البانر الرئيسي، بحيث يفتح المعرض مباشرة على المشغل النشط.
+- **الطبقة الثانية (فرض التشغيل على السيرفر المدمج)**: تزويد رابط السيرفر بمعاملات `autoplay=1` و`autoPlay=true`، وإطلاق سلسلة نبضات `postMessage` ذكية فور جهوزية الإطار (`onLoad` وعند استلام إشارات `ready`/`loadedmetadata`) لإجبار المشغل الداخلي على البدء فوراً.
+- **الطبقة الثالثة (التشغيل المباشر والترقية التلقائية)**: عند توفر بث مباشر مستخرج (HLS/MP4)، يبدأ عنصر `<video>` التشغيل تلقائياً مع معالجة ذكية لسياسات المتصفح الصوتية (تشغيل بالصوت أولاً، وفي حال حظر المتصفح يتم التشغيل التلقائي الصامت اللحظي ثم استعادة الصوت مع أول تفاعل).
 
-### 7. Instant 0ms Trailer Resolution (`src/services/trailerService.ts`)
-- Returns `{ kind: "youtube", key }` immediately at 0ms whenever TMDB provides a valid YouTube key.
-- Constrained IMDb fallback scraping to tight timeouts only when no YouTube key is present.
+---
 
-### 8. Instant Modal Open & Smooth Playback (`src/components/Movies/MoviesPage.tsx`)
-- Added `findPreloadedCinemaItem` to synchronously seed `detailedItem` on poster click (0ms open).
-- Transitioned OMDb enrichment to background non-blocking execution with LRU + `localStorage` cache (`nl_omdb_v1_`).
-- Decoupled external subtitle fetching into a non-blocking background effect so video starts playing immediately.
-- Keyed video extraction strictly on primitive media session IDs.
-- Unmounted `.lg-cinema-ambient-bg` when modal is open to eliminate GPU blur compositing stutter.
-- Removed blind window `onBlur` auto-clocking on silent servers.
+## 2. User Experience & Visual Design
 
-### 9. Verification & Quality Gates
-- `node scripts/check-csp.mjs`: PASSED (all 13 server origins verified).
-- `npx vitest run src/utils/securityRegression.test.ts src/features/cinema/player/__tests__/`: PASSED (19 of 19 tests).
-- `npx tsc --noEmit`: PASSED with 0 errors.
-- `compile_applet`: PASSED.
-- `lint_applet`: PASSED with 0 errors.
+- **استجابة فورية بضغطة واحدة (Zero-Wait Launch)**:
+  - الضغط على **Watch Now** في البانر الرئيسي أو زر التشغيل على البطاقة يفتح المعرض مباشرة في حالة التشغيل (`isWatchingInGallery = true`) ويختار أسرع سيرفر متاح تلقائياً.
+  - الضغط على **Watch Now** داخل نافذة التفاصيل يبدأ البث فوراً في نفس اللحظة دون أي شاشة وسيطة.
+- **استمرارية التشغيل عند تبديل السيرفر أو الحلقة**:
+  - عند تغيير السيرفر من الشريط العلوي أو اختيار حلقة جديدة في المسلسلات، ينتقل المشغل للسيرفر/الحلقة الجديدة مع تفعيل التشغيل التلقائي الفوري وإرسال أوامر البدء دون انتظار ضغطة ثانية.
+- **انسيابية العرض**:
+  - بمجرد بدء تدفق الثواني الأولى من الفيلم، تتوقف نبضات أوامر التشغيل التلقائية تلقائياً حتى لا تتعارض مع رغبة المستخدم إذا قرر إيقاف الفيلم مؤقتاً (`Pause`) لاحقاً.
+
+---
+
+## 3. Key Product Decisions & Trade-Offs
+
+- **حقن معاملات `autoplay` في وقت التشغيل بدلاً من تغيير القوالب الأساسية الثابتة**:
+  - *القرار*: إبقاء دوال بناء الروابط الأساسية في إعدادات السيرفرات متوافقة مع العقود البرمجية، وإضافة معاملات `autoplay=1&autoPlay=true` ديناميكياً عند توليد رابط الإطار النشط في المعرض.
+  - *الميزة*: يضمن عمل التشغيل التلقائي على جميع السيرفرات الخمسة مع الحفاظ الكامل على سلامة اختبارات الأمان والروابط القياسية.
+- **نبضات أوامر التشغيل الموقوتة والمتوقفة ذاتياً (Self-Canceling Play Bursts)**:
+  - *القرار*: إرسال أوامر التشغيل عبر `postMessage` على دفعات متدرجة (`100ms`, `450ms`, `1000ms`, `2200ms`, `3800ms`) بعد حدث `onLoad` للسيرفر، مع إيقافها فوراً بمجرد رصد `currentTime > 0` أو تفاعل المستخدم.
+  - *الميزة*: يتغلب على تفاوت سرعة تهيئة مشغلات السيرفرات المختلفة (مثل PlayerJS أو JWPlayer التي قد تتأخر نصف ثانية بعد تحميل الصفحة قبل الاستماع للأوامر) دون التسبب في إعادة تشغيل قسرية إذا أوقف المستخدم الفيديو بنفسه.
+
+---
+
+## 4. Technical Architecture & Data Strategy
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                     User Clicks "Watch Now" / Play                       │
+│        (Hero Banner / Card Quick-Play / Details CTA / Server Pill)       │
+└────────────────────────────────────┬─────────────────────────────────────┘
+                                     │
+                                     ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│             Instant Gallery Activation (MoviesPage State)                │
+│  • Sets autoStartWatchRef & isWatchingInGallery = true immediately       │
+│  • Selects fastest ranked server from ServerSpeedMonitor                 │
+└─────────────────┬──────────────────────────────────────┬─────────────────┘
+                  │                                      │
+      [Embedded Iframe Mode]                [Direct Stream Extraction]
+                  │                                      │
+                  ▼                                      ▼
+┌───────────────────────────────────┐  ┌───────────────────────────────────┐
+│   Runtime Autoplay URL + Bridge   │  │     Native <video> Auto-Start     │
+│ • Appends autoplay=1&autoPlay=true│  │ • Auto-upgrades when worker yields│
+│ • Multi-protocol postMessage      │  │   direct M3U8/MP4 stream          │
+│   bursts (VidLink, PlayerJS,      │  │ • Calls video.play() immediately  │
+│   JWPlayer, Video.js, HTML5)      │  │   with muted-autoplay fallback    │
+│ • Cancels burst once time > 0     │  │   if browser blocks unmuted start │
+└───────────────────────────────────┘  └───────────────────────────────────┘
+```
+
+- **توسيع جسر أوامر المشغل (`iframeBridge`)**:
+  - دعم صيغ الأوامر القياسية لكافة المشغلات المدمجة في السيرفرات الخمسة (`{ event: "command", func: "playVideo" }`, `{ api: "play" }`, `{ method: "play" }`, `{ command: "play" }`, `{ action: "play" }`, `{ type: "play" }`, والنص المباشر `"play"`).
+- **تزامن حالة البدء الفوري**:
+  - ربط مرجع التشغيل التلقائي (`autoStartWatchRef`) مع دورة حياة تحميل بيانات الفيلم بحيث يبدأ العرض فور توفر مصادر التشغيل دون إعادة تصفير حالة المشاهدة.

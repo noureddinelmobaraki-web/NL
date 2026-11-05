@@ -1290,19 +1290,25 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const activeIframeUrl = useMemo(() => {
     if (!activeGallerySource || !activeIframeUrlBase) return "";
     let rawUrl = activeIframeUrlBase;
-    if (
-      embedSeekStartAtSec !== null &&
-      embedSeekStartAtSec > 0 &&
-      playerRenderMode === "iframe" &&
-      activeGallerySource.capabilities?.startAt
-    ) {
-      try {
-        const u = new URL(rawUrl);
-        u.searchParams.set("startAt", String(Math.floor(embedSeekStartAtSec)));
-        rawUrl = u.toString();
-      } catch {
-        // keep rawUrl
+    try {
+      const u = new URL(rawUrl);
+      if (!u.searchParams.has("autoplay")) {
+        u.searchParams.set("autoplay", "1");
       }
+      if (!u.searchParams.has("autoPlay")) {
+        u.searchParams.set("autoPlay", "true");
+      }
+      if (
+        embedSeekStartAtSec !== null &&
+        embedSeekStartAtSec > 0 &&
+        playerRenderMode === "iframe" &&
+        activeGallerySource.capabilities?.startAt
+      ) {
+        u.searchParams.set("startAt", String(Math.floor(embedSeekStartAtSec)));
+      }
+      rawUrl = u.toString();
+    } catch {
+      // keep rawUrl
     }
     const srvCaps = activeGallerySource.capabilities as CinemaServerConfig["capabilities"];
     if (
@@ -1419,6 +1425,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       attemptTokenRef.current += 1;
       playAttemptStartedAtRef.current = performance.now();
       loadedCurrentAttemptRef.current = false;
+      gotTimeSinceLoadRef.current = false;
+      confirmedPlayingSinceLoadRef.current = false;
+      userPausedIframeRef.current = false;
       setAllServersFailed(false);
       setIsPlayerLoading(true);
       setActiveGalleryServerIdx(firstIdx);
@@ -1469,6 +1478,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       attemptTokenRef.current += 1;
       playAttemptStartedAtRef.current = performance.now();
       loadedCurrentAttemptRef.current = false;
+      gotTimeSinceLoadRef.current = false;
+      confirmedPlayingSinceLoadRef.current = false;
+      userPausedIframeRef.current = false;
       setIsPlayerLoading(true);
       setActiveGalleryServerIdx(nextServerIdx);
     },
@@ -1688,6 +1700,21 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       }
     };
 
+    const attemptImmediateVideoPlay = (targetVideo: HTMLVideoElement) => {
+      try {
+        const playPromise = targetVideo.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {
+            try {
+              targetVideo.muted = true;
+              setIsVideoMuted(true);
+              void targetVideo.play().catch(() => {});
+            } catch {}
+          });
+        }
+      } catch {}
+    };
+
     const playHlsStream = (url: string) => {
       if (Hls.isSupported()) {
         const hls = new Hls({
@@ -1726,7 +1753,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               videoElement.currentTime = resumeSec;
             } catch {}
           }
-          void videoElement.play().catch(() => {});
+          attemptImmediateVideoPlay(videoElement);
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (data.fatal) {
@@ -1745,7 +1772,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         });
       } else if (videoElement.canPlayType("application/vnd.apple.mpegurl")) {
         videoElement.src = url;
-        void videoElement.play().catch(() => {});
+        attemptImmediateVideoPlay(videoElement);
       } else {
         handleStreamErrorFallback();
       }
@@ -1753,7 +1780,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
     const playDirectVideo = (url: string) => {
       videoElement.src = url;
-      void videoElement.play().catch(() => {});
+      attemptImmediateVideoPlay(videoElement);
     };
 
     if (
@@ -2143,6 +2170,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   }, [activeIframeUrl]);
 
   const gotTimeSinceLoadRef = useRef(false);
+  const confirmedPlayingSinceLoadRef = useRef(false);
+  const userPausedIframeRef = useRef(false);
 
   // Origin-allowlisted postMessage bridge for iframe / clean-embed players
   const bridge = useIframePlayerBridge({
@@ -2152,6 +2181,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     iframeRef: playerIframeRef,
     allowedOrigins: bridgeAllowedOrigins,
     sessionKey: `${activeGallerySource?.id ?? ""}:${activeIframeUrl}`,
+    onReady: () => {
+      if (!userPausedIframeRef.current && !confirmedPlayingSinceLoadRef.current) {
+        sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
+        setTimeout(() => {
+          if (!userPausedIframeRef.current && !confirmedPlayingSinceLoadRef.current) {
+            sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
+          }
+        }, 240);
+      }
+    },
     onEvent: (ev) => {
       if (typeof ev.currentTime === "number" && Number.isFinite(ev.currentTime)) {
         if (!gotTimeSinceLoadRef.current) {
@@ -2168,6 +2207,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
             );
           }
         }
+        if (ev.currentTime > 0.25 && ev.paused === false) {
+          confirmedPlayingSinceLoadRef.current = true;
+        } else if (
+          ev.currentTime < 0.5 &&
+          (ev.paused === true || ev.kind === "pause") &&
+          !confirmedPlayingSinceLoadRef.current &&
+          !userPausedIframeRef.current
+        ) {
+          sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
+        }
+      } else if (ev.kind === "play") {
+        confirmedPlayingSinceLoadRef.current = true;
       }
       const decision = syncControllerRef.current
         ? syncControllerRef.current.onReport(ev)
@@ -2223,6 +2274,28 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         return added.length > 0 ? mergeStreamFirst(added, prev) : prev;
       });
     },
+    onStreamDiscovered: (discovered) => {
+      if (!discovered?.streamUrl) return;
+      const elapsedSinceStart = performance.now() - playAttemptStartedAtRef.current;
+      if (elapsedSinceStart <= 12_000 && clockNow() < 60 && playerRenderMode !== "direct") {
+        const proxied = buildWorkerProxyUrl(
+          discovered.streamUrl,
+          discovered.referer || activeGallerySource?.url,
+        );
+        const newStream: ExtractedVideoStream = {
+          directUrl: discovered.streamUrl,
+          proxiedUrl: proxied,
+          type: discovered.streamType === "mp4" ? "mp4" : "hls",
+          sourcePage: activeGallerySource?.url || "",
+          subtitles: [],
+        };
+        setExtractedStreams((prev) => [newStream, ...prev]);
+        setActiveExtractedIdx(0);
+        setUseDirectUrlFallback(false);
+        playAttemptStartedAtRef.current = performance.now();
+        setPlayerRenderMode("direct");
+      }
+    },
   });
 
   const controlMode: PlayerControlMode =
@@ -2233,6 +2306,37 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         : "none";
 
   const [iframeLoadStamp, setIframeLoadStamp] = useState(0);
+
+  // Automated multi-protocol postMessage play burst on iframe mount & load until playback advances
+  useEffect(() => {
+    if (
+      !isWatchingInGallery ||
+      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
+      !activeIframeUrl
+    ) {
+      return undefined;
+    }
+    const delays = [60, 250, 600, 1200, 2200, 3500, 5000];
+    const timers = delays.map((ms) =>
+      setTimeout(() => {
+        if (
+          !confirmedPlayingSinceLoadRef.current &&
+          !userPausedIframeRef.current &&
+          playerIframeRef.current
+        ) {
+          sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
+        }
+      }, ms),
+    );
+    return () => {
+      timers.forEach((tId) => clearTimeout(tId));
+    };
+  }, [
+    isWatchingInGallery,
+    playerRenderMode,
+    activeIframeUrl,
+    iframeLoadStamp,
+  ]);
 
   // 8000ms post-load watchdog: fallback from Worker /embed to raw URL if no sync-capable event was received
   useEffect(() => {
@@ -2288,6 +2392,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   }, []);
 
   const handleUserTogglePlay = useCallback(() => {
+    const st = clockGetState();
+    userPausedIframeRef.current = !st.paused;
     syncControllerRef.current?.userTogglePlay();
   }, []);
 
@@ -2521,8 +2627,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setTrailerFallbackToYoutube(false);
     setResolvedTrailer(null);
     setImdbTrailerLoaded(false);
-    setIsWatchingInGallery(false);
-    setIsPlayerLoading(false);
+    const shouldAutoStart = autoStartWatchRef.current && selectedItemId !== null;
+    setIsWatchingInGallery(shouldAutoStart);
+    setIsPlayerLoading(shouldAutoStart);
     setAllServersFailed(false);
     setIsCssFullscreen(false);
     setIsSubtitleMenuOpen(false);
@@ -2541,7 +2648,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     }
     setIsFullSeasonEmbed(false);
     setSeasonEpisodes([]);
-    setDetailServersOpen(false);
+    setDetailServersOpen(shouldAutoStart);
     setSelectedActor(null);
     setActorDetails(null);
     if (selectedItemId === null) return;
@@ -2720,8 +2827,16 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
   const handleQuickWatch = useCallback((item: CinemaItem) => {
     autoStartWatchRef.current = true;
+    setDetailServersOpen(true);
+    setShowHeroTrailer(false);
+    setIsWatchingInGallery(true);
+    setIsPlayerLoading(true);
     setSelectedItemId(item.id, item.mediaType);
-  }, [setSelectedItemId]);
+    if (selectedItemId === item.id && detailedItem?.id === item.id) {
+      autoStartWatchRef.current = false;
+      startGalleryWatchSession();
+    }
+  }, [setSelectedItemId, selectedItemId, detailedItem?.id, startGalleryWatchSession]);
 
   const rowProps = useMemo(() => ({
     isTouch,
@@ -3750,8 +3865,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                         item={activeHeroItem}
                         isOpen={heroServersOpen}
                         onToggle={() => {
-                          autoStartWatchRef.current = true;
-                          setSelectedItemId(activeHeroItem.id, activeHeroItem.mediaType);
+                          handleQuickWatch(activeHeroItem);
                         }}
                         onClose={() => setHeroServersOpen(false)}
                         buttonLabel={t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}
@@ -4332,7 +4446,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                                 );
                                 setIsPlayerLoading(false);
                                 gotTimeSinceLoadRef.current = false;
+                                confirmedPlayingSinceLoadRef.current = false;
+                                userPausedIframeRef.current = false;
                                 setIframeLoadStamp(Date.now());
+                                sendIframePlayerCommand(playerIframeRef.current, {
+                                  type: "play",
+                                });
                               }}
                             />
                           )}
@@ -5025,9 +5144,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                             isOpen={detailServersOpen}
                             onToggle={() => {
                               setDetailServersOpen(true);
-                              if (!isWatchingInGallery) {
-                                startGalleryWatchSession();
-                              }
+                              startGalleryWatchSession();
                             }}
                             onClose={() => setDetailServersOpen(false)}
                             buttonLabel={t("movies.meta.watchNow")}
