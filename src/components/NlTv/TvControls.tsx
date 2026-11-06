@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Maximize2, Minimize2, Circle, Square } from "lucide-react";

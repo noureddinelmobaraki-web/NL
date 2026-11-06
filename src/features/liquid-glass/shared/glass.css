@@ -1,0 +1,492 @@
+/**
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
+ */
+
+:root {
+  --tap: 44px;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --gutter: clamp(10px, 3.5vw, 40px);
+}
+
+.lg-stage-root,
+.lg-books-stage-root,
+.lg-audiobooks-stage-root {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  color: #ffffff;
+  user-select: none;
+  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease, filter 0.24s ease;
+  animation: lgStageMorphIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.lg-books-stage-root--morph-out {
+  opacity: 0;
+  transform: perspective(1200px) rotateY(-14deg) scale(0.94);
+  filter: blur(6px);
+}
+
+.lg-audiobooks-stage-root--morph-out {
+  opacity: 0;
+  transform: perspective(1200px) rotateY(14deg) scale(0.94);
+  filter: blur(6px);
+}
+
+@keyframes lgStageMorphIn {
+  0% {
+    opacity: 0;
+    transform: perspective(1200px) rotateY(10deg) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1200px) rotateY(0deg) scale(1);
+  }
+}
+
+.lg-stage-scroll,
+.lg-books-catalog-scroll,
+.lg-audiobooks-catalog-scroll {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: calc(var(--safe-t) + 18px) var(--gutter) calc(var(--safe-b) + 96px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.lg-stage-root button,
+.lg-stage-root [role="button"],
+.lg-books-stage-root button,
+.lg-books-stage-root [role="button"],
+.lg-audiobooks-stage-root button,
+.lg-audiobooks-stage-root [role="button"] {
+  min-height: var(--tap);
+  min-width: var(--tap);
+}
+
+/* Top Bar Shell */
+.lg-topbar-shell {
+  width: 100%;
+  max-width: 1380px;
+  padding-left: 52px;
+  padding-right: 52px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
+}
+
+@media (min-width: 1180px) {
+  .lg-topbar-shell {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+}
+
+.lg-topbar-primary-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.lg-topbar-genres-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  scrollbar-width: none;
+  min-width: 0;
+}
+
+.lg-topbar-genres-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Search Capsule (16px font-size prevents iOS Safari auto-zoom) */
+.lg-search-capsule {
+  position: relative;
+  flex: 1 1 220px;
+  min-width: 160px;
+  max-width: 340px;
+  min-height: var(--tap);
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lg-search-capsule__icon {
+  color: rgba(255, 255, 255, 0.9);
+  flex-shrink: 0;
+  z-index: 3;
+}
+
+.lg-search-capsule__input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  z-index: 3;
+}
+
+.lg-search-capsule__input::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 600;
+}
+
+.lg-search-capsule__clear {
+  width: 32px;
+  height: 32px;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: 0;
+  cursor: pointer;
+  z-index: 3;
+  flex-shrink: 0;
+}
+
+/* Filter Groups & Desktop Popover */
+.lg-branch-filter-group {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 40;
+}
+
+.lg-branch-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 120;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 210px;
+  max-width: min(310px, 92vw);
+  padding: 10px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.06) 100%),
+    rgba(10, 15, 28, 0.9);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  backdrop-filter: blur(24px) saturate(190%);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.65),
+    inset 0 1.4px 2px rgba(255, 255, 255, 0.85);
+}
+
+/* Phone Bottom Sheet (FilterSheet) */
+.lg-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.55);
+  z-index: 9500;
+}
+
+.lg-sheet {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  max-height: 75dvh;
+  overflow-y: auto;
+  padding: 12px 16px calc(var(--safe-b) + 18px);
+  border-radius: 22px 22px 0 0;
+  background: rgb(20 22 34 / 0.94);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: sheetUp 0.25s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.lg-sheet__handle {
+  width: 40px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  margin: 2px auto 8px;
+}
+
+.lg-sheet-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 6px 4px 2px;
+}
+
+.lg-sheet-options-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lg-sheet-item {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+@keyframes sheetUp {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* Filter Pills */
+.lg-filter-pill {
+  min-height: var(--tap);
+  padding: 0 14px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lg-filter-pill--sm {
+  min-height: 38px !important;
+  padding: 0 12px;
+  font-size: 0.75rem;
+}
+
+.lg-filter-pill--active {
+  color: #fff6c2 !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 215, 90, 0.16) 100%),
+    rgba(20, 28, 44, 0.38) !important;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.34),
+    0 0 16px rgba(255, 220, 96, 0.35),
+    inset 0 1.5px 2px #ffffff !important;
+}
+
+.lg-icon-round-btn {
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Dual Action Pill */
+.lg-dual-split-pill {
+  position: relative;
+  width: 100%;
+  min-height: 40px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  align-items: stretch;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.32),
+    inset 0 1.2px 1.6px rgba(255, 255, 255, 0.9);
+}
+
+.lg-dual-split-pill__half {
+  border: none;
+  min-height: 40px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lg-dual-split-pill__half--read {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.8) 0%, rgba(5, 150, 105, 0.64) 100%);
+}
+
+.lg-dual-split-pill__half--audio {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.8) 0%, rgba(126, 34, 206, 0.66) 100%);
+}
+
+.lg-dual-split-pill__divider {
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.lg-single-read-pill,
+.lg-single-audio-pill {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 999px;
+  border: none;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.lg-single-read-pill {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.78) 0%, rgba(5, 150, 105, 0.6) 100%);
+}
+
+.lg-single-audio-pill {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.78) 0%, rgba(126, 34, 206, 0.62) 100%);
+}
+
+/* Grids & Cards */
+.lg-books-grid,
+.lg-audiobooks-grid {
+  width: 100%;
+  max-width: 1380px;
+  display: grid;
+  gap: clamp(10px, 2.5vw, 22px);
+  grid-template-columns: repeat(auto-fill, minmax(clamp(140px, 18vw, 190px), 1fr));
+}
+
+.lg-mobile-filter-trigger {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .lg-topbar-shell {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    width: 100%;
+    padding-left: 48px;
+    padding-right: 0;
+  }
+
+  .lg-topbar-primary-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .lg-topbar-primary-row .lg-branch-filter-group,
+  .lg-topbar-primary-row .lg-desktop-only-pill {
+    display: none;
+  }
+
+  .lg-mobile-filter-trigger {
+    display: inline-flex;
+  }
+
+  .lg-search-capsule {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .lg-topbar-genres-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+  }
+
+  .lg-topbar-genres-row > * {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .lg-books-grid,
+  .lg-audiobooks-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lg-book-poster-frame,
+  .lg-audiobook-poster-frame {
+    aspect-ratio: 2 / 3 !important;
+    width: 100%;
+  }
+
+  .lg-book-capsule-title,
+  .lg-audiobook-capsule-title {
+    font-size: 13px !important;
+    -webkit-line-clamp: 2 !important;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .lg-book-capsule-author,
+  .lg-audiobook-capsule-author {
+    font-size: 11px !important;
+  }
+
+  .lg-dual-split-pill__half span {
+    display: none;
+  }
+
+  .lg-dual-split-pill__half {
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 340px) {
+  .lg-books-grid,
+  .lg-audiobooks-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+}

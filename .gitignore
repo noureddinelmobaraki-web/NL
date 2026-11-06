@@ -10,9 +10,12 @@ coverage/
 win12-main/
 public/win12/img/*.png
 
-# Development artifacts
+# Development & AI Studio temporary artifacts
 tmp/
 workspace/
+.aistudio/
+public/assets/aistudio/
+cdn-export/
 
 # Playwright
 /test-results/

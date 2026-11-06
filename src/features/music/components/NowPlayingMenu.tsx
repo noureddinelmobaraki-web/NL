@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { 
-  Plus, Check, Share2, Send, Music, Search, Loader2, X, User
+  Plus, Check, Share2, Send, Music, Search, Loader2, X, User, ExternalLink, Disc3
 } from 'lucide-react';
 import { useMusicStore } from '../store/musicStore';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../config/supabase';
 import { invalidateProfile } from '../../accounts/profileCache';
 import { shareSong } from '../data/shareSong';
+import { fetchOdesliLinks, type OdesliTrackLinks } from '../utils/odesli';
 import type { Track } from '../engine/types';
 
 interface NowPlayingMenuProps {
@@ -43,8 +44,10 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
   const playlists = useMusicStore((s) => s.playlists);
   const actions = useMusicStore((s) => s.actions);
 
-  const [activeModal, setActiveModal] = useState<'playlist' | 'send' | 'login-prompt' | null>(null);
+  const [activeModal, setActiveModal] = useState<'playlist' | 'send' | 'login-prompt' | 'odesli' | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [odesliLinks, setOdesliLinks] = useState<OdesliTrackLinks | null>(null);
+  const [loadingOdesli, setLoadingOdesli] = useState(false);
 
   // Playlists State
   const [newPlaylistName, setNewPlaylistName] = useState('');
@@ -143,6 +146,22 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
     };
   }, [userSearch, activeModal, user]);
 
+  useEffect(() => {
+    if (activeModal !== 'odesli') return;
+    let cancelled = false;
+    setLoadingOdesli(true);
+    fetchOdesliLinks(track)
+      .then((res) => {
+        if (!cancelled) setOdesliLinks(res);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingOdesli(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeModal, track]);
+
   // 6. Send song to selected user
   const handleSendSong = async () => {
     if (!user) {
@@ -174,6 +193,7 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
 
   const BARS = [
     { id: 'playlist', label: 'Add to Playlist', icon: Plus, action: () => setActiveModal('playlist') },
+    { id: 'odesli', label: 'Stream on Platforms (Odesli)', icon: Disc3, action: () => setActiveModal('odesli') },
     { id: 'share', label: 'Share', icon: Share2, action: handleShareSong },
     { id: 'profile', label: 'Add to Profile', icon: Music, action: handleSetProfileSong },
     { id: 'send', label: 'Send', icon: Send, action: () => { if (user) setActiveModal('send'); else setActiveModal('login-prompt'); } },
@@ -474,6 +494,77 @@ export function NowPlayingMenu({ track, onClose }: NowPlayingMenuProps) {
                           <Send size={12} /> Send Now
                         </>
                       )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </m.div>
+          </div>
+        )}
+
+        {/* Odesli Multi-Platform Smart Links Modal */}
+        {activeModal === 'odesli' && !statusMsg && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
+            <m.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-[88%] max-w-xs bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-5 flex flex-col justify-between text-white relative shadow-2xl"
+            >
+              <button
+                onClick={() => setActiveModal(null)}
+                className="absolute top-4 right-4 p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                aria-label="Close platforms modal"
+              >
+                <X size={16} />
+              </button>
+
+              <div>
+                <h4 className="text-sm font-bold tracking-wide border-b border-white/10 pb-2 mb-3 text-emerald-400">
+                  Stream on Platforms
+                </h4>
+                <p className="text-[11px] text-white/60 mb-3 truncate">
+                  {track.title} {track.artist ? `— ${track.artist}` : ''}
+                </p>
+
+                {loadingOdesli || !odesliLinks ? (
+                  <div className="flex items-center justify-center py-8 text-white/60 text-xs gap-2">
+                    <Loader2 size={14} className="animate-spin" /> Resolving Odesli smart links...
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {odesliLinks.platforms.map((platform) => (
+                      <a
+                        key={platform.id}
+                        href={platform.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-xs font-semibold text-white transition-all"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: platform.accent }}
+                          />
+                          {platform.label}
+                        </span>
+                        <ExternalLink size={13} className="text-white/60" />
+                      </a>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(odesliLinks.pageUrl);
+                          showSuccess('Universal Song.link copied!');
+                        } catch {
+                          showError('Could not copy Song.link');
+                        }
+                      }}
+                      className="w-full mt-2 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 text-emerald-300 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Copy Universal Song.link
                     </button>
                   </div>
                 )}

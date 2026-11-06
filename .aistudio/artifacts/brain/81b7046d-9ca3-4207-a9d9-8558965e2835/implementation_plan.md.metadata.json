@@ -1,6 +1,0 @@
-{
-  "summary": "Comprehensive plan for Phase 2:\n1. Gradual 80% Background Dimming over 4 seconds on Books & Audio Books stages.\n2. Performance optimization & visual clipping fixes: single-card template abstraction, stagger entrance queue (3 items/sec), pointer-interaction decoupling, and topbar popover overlap fixes.\n3. Fullscreen Reader mode toggle with top-of-screen hover exit on Desktop and tap exit on Mobile.\n4. Audiobook Background Ambient YouTube Player with 50% dimming, mute toggle, and random selection from the 268 relaxation video archive.\n5. Replaced orb text titles with custom transparent WebP images matching X and ALBUMS dimensions.",
-  "updatedAt": "2026-11-06T00:18:16.030078436Z",
-  "requestFeedback": true,
-  "userFacing": true
-}

@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
 /*
@@ -55,46 +55,11 @@ const ContactForm = lazyWithRetry(
   () => import('./components/Contact/ContactForm').then(m => ({ default: m.ContactForm })),
   'ContactForm',
 );
-const RetroWorldPage = lazyWithRetry(
-  () => import('./components/RetroWorld/RetroWorldPage').then(m => ({ default: m.RetroWorldPage })),
-  'RetroWorldPage',
-);
-const GamesPage = lazyWithRetry(
-  () => import('./components/Games/GamesPage').then(m => ({ default: m.GamesPage })),
-  'GamesPage',
-);
-const MoviesPage = lazyWithRetry(
-  () => import('./components/Movies/MoviesPage').then(m => ({ default: m.MoviesPage })),
-  'MoviesPage',
-);
-const NlTvPage = lazyWithRetry(
-  () => import('./components/NlTv/NlTvPage').then(m => ({ default: m.default })),
-  'NlTvPage',
-);
-const WindowsXpPage = lazyWithRetry(
-  () => import('./components/WindowsXp/WindowsXpPage').then(m => ({ default: m.WindowsXpPage })),
-  'WindowsXpPage',
-);
-const MusicPage = lazyWithRetry(
-  () => import('./features/music/MusicPage').then(m => ({ default: m.default })),
-  'MusicPage',
-);
-const AccountsPage = lazyWithRetry(
-  () => import('./features/accounts/AccountsPage').then(m => ({ default: m.default })),
-  'AccountsPage',
-);
-const PortraitPage = lazyWithRetry(
-  () => import('./features/portrait/PortraitPage'),
-  'portrait',
-);
-const LiquidGlassPortalPage = lazyWithRetry(
-  () => import('./features/liquid-glass/LiquidGlassPortalPage'),
-  'LiquidGlassPortalPage',
-);
 const LauncherPage = lazyWithRetry(
   () => import('./components/launcher/LauncherPage').then(m => ({ default: m.default })),
   'LauncherPage',
 );
+import { PAGES } from './context/pages';
 import { LAUNCHER_ENABLED } from './components/launcher/launcher.config';
 import { useDeviceType } from "./hooks/useDeviceType";
 import { useKeyboardDetection } from "./hooks/useKeyboardDetection";
@@ -153,9 +118,33 @@ const NL_ENTER_FADE = { opacity: 0 } as const;
 const YouTubePortal = lazy(() => import('./features/youtube/YouTubePortal'));
 
 function AppInner() {
-  const { theme, loaded, setLoaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, isPortraitOpen, isLiquidGlassOpen, liquidGlassMode, closeLiquidGlass, endTransition, openMusic } = useAppContext();
+  const {
+    theme,
+    loaded,
+    setLoaded,
+    isGamesOpen,
+    closeGames,
+    isMoviesOpen,
+    closeMovies,
+    isSeriesOpen,
+    closeSeries,
+    isTvOpen,
+    closeTv,
+    isRetroOpen,
+    closeRetro,
+    isXpOpen,
+    closeXp,
+    isMusicOpen,
+    isAccountsOpen,
+    closeAccounts,
+    isPortraitOpen,
+    isLiquidGlassOpen,
+    liquidGlassMode,
+    closeLiquidGlass,
+    endTransition,
+    openMusic,
+  } = useAppContext();
   const isAutomated = isAutomatedEnv();
-  // عند الدخول من رابط مشاركة، لا تبدأ العرض عند opacity:0 حتى لا يبقى المحتوى غير مرسوم حتى إعادة الرسم
   const bootedFromDeepLink = useRef(readPendingSong() !== null).current;
 
   useEffect(() => {
@@ -172,12 +161,32 @@ function AppInner() {
     if (!pending) return;
     if (!loaded) {
       setLoaded(true);
-      return; // اعرض الرئيسية أولًا في تزامة منفصلة، ثم افتح الموسيقى عند إعادة تشغيل التأثير (يطابق مسار التنقّل الطبيعي)
+      return;
     }
     openMusic();
   }, [loaded, openMusic, setLoaded]);
 
-  const isAnyPageActive = isGamesOpen || isTvOpen || isMoviesOpen || isSeriesOpen || isRetroOpen || isXpOpen || isMusicOpen || isAccountsOpen || isPortraitOpen || isLiquidGlassOpen;
+  const activeOverlayId = isGamesOpen
+    ? 'games'
+    : isTvOpen
+      ? 'tv'
+      : isMoviesOpen || isSeriesOpen
+        ? 'cinema'
+        : isRetroOpen
+          ? 'retro'
+          : isXpOpen
+            ? 'xp'
+            : isMusicOpen
+              ? 'music'
+              : isAccountsOpen
+                ? 'accounts'
+                : isPortraitOpen
+                  ? 'portrait'
+                  : isLiquidGlassOpen
+                    ? 'liquidGlass'
+                    : null;
+
+  const isAnyPageActive = activeOverlayId !== null;
 
   useEffect(() => {
     if (isAnyPageActive) {
@@ -187,33 +196,34 @@ function AppInner() {
     }
   }, [isAnyPageActive]);
 
-  // ── [P-FIX2] نظام الصفحة النشطة لزر الدخول/الفقاعة ──
-  // يضبط سمة data-active-page على <html>؛ يستهلكها auth-launcher.css.
-  const activePageKey = !loaded
-    ? 'welcome'
-    : isGamesOpen
-      ? 'games'
-      : isTvOpen
-        ? 'tv'
-        : isMoviesOpen || isSeriesOpen
-          ? 'cinema'
-          : isRetroOpen
-            ? 'retro'
-            : isXpOpen
-              ? 'xp'
-              : isMusicOpen
-                ? 'music'
-                : isAccountsOpen
-                  ? 'accounts'
-                  : isPortraitOpen
-                    ? 'portrait'
-                    : isLiquidGlassOpen
-                      ? 'liquidGlass'
-                      : 'home'
+  const activePageKey = !loaded ? 'welcome' : activeOverlayId ?? 'home';
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-active-page', activePageKey)
-  }, [activePageKey])
+    document.documentElement.setAttribute('data-active-page', activePageKey);
+  }, [activePageKey]);
+
+  const activeDescriptor = loaded && activeOverlayId ? PAGES[activeOverlayId] : null;
+  const ActiveOverlayComponent = activeDescriptor?.component ?? null;
+
+  const overlayProps: Record<string, unknown> =
+    activeOverlayId === 'games'
+      ? { onClose: closeGames }
+      : activeOverlayId === 'tv'
+        ? { onClose: closeTv }
+        : activeOverlayId === 'cinema'
+          ? {
+              onClose: isSeriesOpen ? closeSeries : closeMovies,
+              initialTab: isSeriesOpen ? 'series' : 'movies',
+            }
+          : activeOverlayId === 'retro'
+            ? { onClose: closeRetro }
+            : activeOverlayId === 'xp'
+              ? { onClose: closeXp }
+              : activeOverlayId === 'accounts'
+                ? { onClose: closeAccounts }
+                : activeOverlayId === 'liquidGlass'
+                  ? { onClose: closeLiquidGlass, initialMode: liquidGlassMode }
+                  : {};
 
   return (
     <>
@@ -225,159 +235,29 @@ function AppInner() {
         </>
       )}
       <AnimatePresence mode="wait" onExitComplete={endTransition}>
-        {loaded && isGamesOpen ? (
+        {activeDescriptor && ActiveOverlayComponent ? (
           <m.div
-            key="games-screen"
+            key={activeDescriptor.key}
             data-mode={theme}
-            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
+            initial={isAutomated || bootedFromDeepLink ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed inset-0 w-full h-full z-[8500] pointer-events-none"
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className={activeDescriptor.wrapperClassName}
           >
-            <SectionErrorBoundary sectionName="games">
-              <Suspense fallback={<PageLoader pageType="games" />}>
-                <GamesPage onClose={closeGames} />
-              </Suspense>
-            </SectionErrorBoundary>
-          </m.div>
-        ) : loaded && isTvOpen ? (
-          <m.div
-            key="tv-screen"
-            data-mode={theme}
-            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed inset-0 w-full h-full z-[8500]"
-          >
-            <SectionErrorBoundary sectionName="tv">
-              <Suspense fallback={<PageLoader pageType="tv" />}>
-                <NlTvPage onClose={closeTv} />
-              </Suspense>
-            </SectionErrorBoundary>
-          </m.div>
-        ) : loaded && (isMoviesOpen || isSeriesOpen) ? (
-          <m.div
-            key="cinema-screen"
-            data-mode={theme}
-            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed inset-0 w-full h-full z-[8500] pointer-events-none"
-          >
-            <SectionErrorBoundary sectionName="cinema">
-              <Suspense fallback={<PageLoader pageType="cinema" />}>
-                <MoviesPage
-                  onClose={isSeriesOpen ? closeSeries : closeMovies}
-                  initialTab={isSeriesOpen ? 'series' : 'movies'}
-                />
-              </Suspense>
-            </SectionErrorBoundary>
-          </m.div>
-        ) : loaded && isRetroOpen ? (
-          <m.div
-            key="retro-screen"
-            data-mode={theme}
-            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed inset-0 w-full h-full z-[8500]"
-          >
-            <SectionErrorBoundary sectionName="retro">
-              <Suspense fallback={<PageLoader pageType="retro" />}>
-                <RetroWorldPage onClose={closeRetro} />
-              </Suspense>
-            </SectionErrorBoundary>
-          </m.div>
-        ) : loaded && isXpOpen ? (
-          <m.div
-            key="xp-screen"
-            data-mode={theme}
-            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed inset-0 w-full h-full z-[8500]"
-          >
-            <SectionErrorBoundary sectionName="xp">
-              <Suspense fallback={<PageLoader pageType="retro" />}>
-                <WindowsXpPage onClose={closeXp} />
-              </Suspense>
-            </SectionErrorBoundary>
-          </m.div>
-        ) : loaded && isMusicOpen ? (
-          <m.div
-            key="music-screen"
-            data-mode={theme}
-            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed inset-0 w-full h-full z-[8500]"
-          >
-            <SectionErrorBoundary sectionName="music">
-              <Suspense fallback={<PageLoader pageType="retro" />}>
-                <MusicPage />
-              </Suspense>
-            </SectionErrorBoundary>
-          </m.div>
-        ) : loaded && isAccountsOpen ? (
-          <m.div
-            key="accounts-screen"
-            data-mode={theme}
-            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed inset-0 w-full h-full z-[8500]"
-          >
-            <SectionErrorBoundary sectionName="accounts">
-              <Suspense fallback={<PageLoader pageType="cinema" />}>
-                <AccountsPage onClose={closeAccounts} />
-              </Suspense>
-            </SectionErrorBoundary>
-          </m.div>
-        ) : loaded && isPortraitOpen ? (
-          <m.div
-            key="portrait"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-50"
-          >
-            <SectionErrorBoundary sectionName="portrait">
-              <Suspense fallback={<PageLoader pageType="retro" />}>
-                <PortraitPage />
-              </Suspense>
-            </SectionErrorBoundary>
-          </m.div>
-        ) : loaded && isLiquidGlassOpen ? (
-          <m.div
-            key="liquid-glass-screen"
-            data-mode={theme}
-            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed inset-0 w-full h-full z-[8500]"
-          >
-            <SectionErrorBoundary sectionName="liquidGlass">
-              <Suspense fallback={<PageLoader pageType="cinema" />}>
-                <LiquidGlassPortalPage onClose={closeLiquidGlass} initialMode={liquidGlassMode} />
+            <SectionErrorBoundary sectionName={activeDescriptor.sectionName}>
+              <Suspense fallback={<PageLoader pageType={activeDescriptor.loaderType} />}>
+                <ActiveOverlayComponent {...overlayProps} />
               </Suspense>
             </SectionErrorBoundary>
           </m.div>
         ) : (
           <m.div
             key="main-app-screen"
-            initial={(isAutomated || bootedFromDeepLink) ? false : NL_ENTER_FADE}
+            initial={isAutomated || bootedFromDeepLink ? false : NL_ENTER_FADE}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
           >
             <MainApp />
           </m.div>

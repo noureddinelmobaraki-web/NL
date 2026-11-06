@@ -24,16 +24,22 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['warn', { max: 180, skipBlankLines: true, skipComments: true }],
       'no-restricted-syntax': ['warn', {
         selector: "CallExpression[callee.object.name='useMusicStore'][callee.property.name='getState']",
         message: 'R01: استعمل useMusicStore((s) => s.tracks) بدل getState() داخل المكوّنات.',
       }],
-      
+    },
+  },
+  {
+    files: ['src/features/liquid-glass/**/*.{ts,tsx}'],
+    rules: {
+      'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }],
     },
   },
   {
     // Legacy effect-heavy files: keep exhaustive-deps off to avoid risky rewrites.
-    // TODO: These remaining high-risk files need dedicated file-specific tests before removal.
     files: [
       'src/components/Drawings/DrawingsFullscreen.tsx',
       'src/components/Lens/LensGallery.tsx',

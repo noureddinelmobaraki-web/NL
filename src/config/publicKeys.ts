@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
 // المفاتيح تُحقَن حصريًا من متغيّرات البيئة وقت البناء (VITE_TMDB_API_KEY / VITE_OMDB_API_KEY).

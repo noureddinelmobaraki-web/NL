@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
 import { useState } from "react";
