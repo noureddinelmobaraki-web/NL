@@ -13,6 +13,7 @@ import { useTubeCollections } from './hooks/useTubeCollections';
 import { useTubeTabs } from './hooks/useTubeTabs';
 import { useTubeSelection } from './hooks/useTubeSelection';
 import { useTubePagination } from './hooks/useTubePagination';
+import '../../styles/youtube-page.css';
 
 interface YouTubePortalProps {
   open: boolean;

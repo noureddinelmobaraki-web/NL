@@ -6,9 +6,7 @@ import {
   Volume2,
   VolumeX,
   Play,
-  Info,
   ChevronLeft,
-  ChevronRight,
   Star,
   Film,
   Tv,
@@ -20,7 +18,6 @@ import {
   Award,
   Users,
   Sparkles,
-  MapPin,
   Maximize2,
   Minimize2,
   Layers,
@@ -55,19 +52,11 @@ import {
   guessLangFromLabelOrUrl,
   type ExtractedSubtitleTrack,
   type ExtractedVideoStream,
-  type SubtitleCue,
 } from "../../services/videoExtractor";
 import {
-  autoRetimeCues,
   hlsTracksToSubtitleTracks,
   mergeStreamFirst,
 } from "../../features/cinema/subtitles/streamSubtitles";
-import {
-  createLocalSubtitleTrack,
-  ensureTrackLoaded,
-  fetchExternalSubtitles,
-  revokeSubtitleBlobUrls,
-} from "../../services/subtitleService";
 import {
   buildSpeedSortedQueue,
   probeAllServersSpeed,
@@ -118,731 +107,31 @@ import {
   useContinueWatching,
 } from "../../features/cinema/progress/progressStore";
 
-function NLLogo() {
-  return <span className="nl-logo" aria-label="NL" role="img">NL</span>;
-}
+import {
+  TMDB_BASE_URL,
+  TMDB_IMAGE_BASE,
+  fetchWithCache,
+  fetchOmdbMeta,
+  normalizeItem,
+  getBackdropSrc_static,
+  getPosterSrc_static,
+  MOVIE_ROW_SCROLL_STYLE,
+  type Media,
+  type CastMember,
+  type ActorDetails,
+  type CinemaItem,
+} from "./moviesDataClient";
+import {
+  NLLogo,
+  MoviePosterCard,
+  MovieRow,
+} from "./MovieGridComponents";
+import { ActorProfileModal } from "./ActorProfileModal";
+import { useCinemaSubtitles } from "./hooks/useCinemaSubtitles";
+import { useCinemaDeepLink } from "./hooks/useCinemaDeepLink";
 
-const TMDB_BASE_URL = "https://api.themoviedb.org/3";
-const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
-
-interface CacheEntry {
-  d: any;
-  t: number;
-}
-const MEMORY_CACHE: Record<string, CacheEntry> = {};
-const IN_FLIGHT: Record<string, Promise<any> | undefined> = {};
-
-export async function fetchWithCache(url: string, signal?: AbortSignal, ttlMs = 3600_000 * 24): Promise<any> {
-  const key = `cache_v2_${url.replace(/([?&])api_key=[^&]*/i, '$1api_key=_')}`;
-  const now = Date.now();
-  const fresh = (t: number) => now - t < ttlMs;
-
-  const revalidate = (): Promise<any> => {
-    if (IN_FLIGHT[key]) return IN_FLIGHT[key]!;
-    const p = (async () => {
-      try {
-        const res = await fetch(url, { signal: signal ?? AbortSignal.timeout(10_000) });
-        if (!res.ok) throw new Error("TMDB network response failed");
-        const d = await res.json();
-        const entry = { d, t: Date.now() };
-        MEMORY_CACHE[key] = entry;
-        if (!/\/search\//.test(url)) {
-          try { localStorage.setItem(key, JSON.stringify(entry)); } catch {}
-        }
-        return d;
-      } finally {
-        delete IN_FLIGHT[key];
-      }
-    })();
-    IN_FLIGHT[key] = p;
-    return p;
-  };
-
-  if (MEMORY_CACHE[key]) {
-    if (!fresh(MEMORY_CACHE[key].t)) revalidate().catch(()=>{});
-    return MEMORY_CACHE[key].d;
-  }
-
-  try {
-    const local = localStorage.getItem(key);
-    if (local) {
-      const parsed = JSON.parse(local) as CacheEntry;
-      MEMORY_CACHE[key] = parsed;
-      if (!fresh(parsed.t)) revalidate().catch(()=>{});
-      return parsed.d;
-    }
-  } catch {}
-
-  return revalidate();
-}
-
-type Media = 'movie' | 'tv';
-
-export interface CastMember {
-  id?: number;
-  name: string;
-  character: string;
-  profilePath: string;
-}
-
-export interface ActorDetails {
-  id: number;
-  name: string;
-  character?: string;
-  profilePath: string;
-  biography: string;
-  birthday?: string;
-  placeOfBirth?: string;
-  knownForDepartment?: string;
-  knownWorks: {
-    id: number;
-    mediaType: Media;
-    title: string;
-    posterPath: string;
-    year: string;
-    rating: number;
-  }[];
-}
-
-export interface CinemaItem {
-  id: number;
-  mediaType: Media;
-  title: string;
-  overview: string;
-  posterPath: string;
-  backdropPath: string;
-  year: string;
-  releaseDate?: string;
-  rating: number;
-  voteCount?: number;
-  genreIds: number[];
-  genreNames: string[];
-  trailerKey: string;
-  imdbId?: string;
-  runtime?: number;
-  seasons?: number;
-  episodes?: number;
-  tagline?: string;
-  status?: string;
-  originalLanguage?: string;
-  certification?: string;
-  rottenTomatoes?: string;
-  metascore?: string;
-  awards?: string;
-  boxOffice?: string;
-  budget?: number;
-  revenue?: number;
-  directors?: string[];
-  productionCompanies?: { id: number; name: string; logoPath: string }[];
-  cast: CastMember[];
-  similar: CinemaItem[];
-}
-
-const USE_WORKER_META = import.meta.env.VITE_USE_WORKER_META === "1";
-
-interface OmdbEnrichedMeta {
-  imdbRating?: string;
-  imdbVotes?: string;
-  metascore?: string;
-  rottenTomatoes?: string;
-  rated?: string;
-  runtime?: string;
-  awards?: string;
-  boxOffice?: string;
-  director?: string;
-  writer?: string;
-  actors?: string;
-  language?: string;
-  country?: string;
-}
-
-const OMDB_CACHE: Record<string, OmdbEnrichedMeta | null> = {};
-const OMDB_STORAGE_PREFIX = "nl_omdb_v1_";
-
-async function fetchOmdbMeta(
-  imdbId: string,
-  omdbKey?: string,
-): Promise<OmdbEnrichedMeta | null> {
-  const cleanId = (imdbId || "").trim();
-  if (!/^tt\d{5,10}$/i.test(cleanId)) return null;
-
-  if (cleanId in OMDB_CACHE) {
-    return OMDB_CACHE[cleanId];
-  }
-
-  try {
-    const rawStorage = localStorage.getItem(OMDB_STORAGE_PREFIX + cleanId);
-    if (rawStorage) {
-      const parsed = JSON.parse(rawStorage);
-      if (parsed && typeof parsed === "object") {
-        OMDB_CACHE[cleanId] = parsed;
-        return parsed;
-      }
-    }
-  } catch {
-    // ignore localStorage parse error
-  }
-
-  const cleanVal = (v: unknown): string | undefined =>
-    typeof v === "string" && v.trim() && v.trim() !== "N/A"
-      ? v.trim()
-      : undefined;
-
-  const saveToCache = (result: OmdbEnrichedMeta | null) => {
-    OMDB_CACHE[cleanId] = result;
-    if (result) {
-      try {
-        localStorage.setItem(OMDB_STORAGE_PREFIX + cleanId, JSON.stringify(result));
-      } catch {
-        // ignore quota error
-      }
-    }
-    return result;
-  };
-
-  if (USE_WORKER_META) {
-    try {
-      const r = await fetch(
-        `${WORKER_ENDPOINT}meta/omdb?i=${encodeURIComponent(cleanId)}`,
-        { signal: AbortSignal.timeout(3500) },
-      );
-      if (r.ok) {
-        const d: any = await r.json();
-        const res: OmdbEnrichedMeta = {
-          imdbRating: cleanVal(d?.imdbRating),
-          imdbVotes: cleanVal(d?.imdbVotes),
-          metascore: cleanVal(d?.metascore),
-          rottenTomatoes: cleanVal(d?.rottenTomatoes),
-          rated: cleanVal(d?.rated),
-          runtime: cleanVal(d?.runtime),
-          awards: cleanVal(d?.awards),
-          boxOffice: cleanVal(d?.boxOffice),
-          director: cleanVal(d?.director),
-          writer: cleanVal(d?.writer),
-          actors: cleanVal(d?.actors),
-          language: cleanVal(d?.language),
-          country: cleanVal(d?.country),
-        };
-        return saveToCache(res);
-      }
-    } catch {
-      // fall through to direct OMDb if key exists
-    }
-  }
-
-  if (!omdbKey) return saveToCache(null);
-  try {
-    const r = await fetch(
-      `${window.location.protocol}//www.omdbapi.com/?i=${encodeURIComponent(cleanId)}&apikey=${encodeURIComponent(omdbKey)}`,
-      { signal: AbortSignal.timeout(3500) },
-    );
-    if (!r.ok) return saveToCache(null);
-    const d: any = await r.json();
-    if (!d || d.Response === "False") return saveToCache(null);
-    const rt = Array.isArray(d.Ratings)
-      ? d.Ratings.find((x: any) => x?.Source === "Rotten Tomatoes")?.Value
-      : undefined;
-    const res: OmdbEnrichedMeta = {
-      imdbRating: cleanVal(d.imdbRating),
-      imdbVotes: cleanVal(d.imdbVotes),
-      metascore: cleanVal(d.Metascore ?? d.metascore),
-      rottenTomatoes: cleanVal(rt ?? d.rottenTomatoes),
-      rated: cleanVal(d.Rated ?? d.rated),
-      runtime: cleanVal(d.Runtime ?? d.runtime),
-      awards: cleanVal(d.Awards ?? d.awards),
-      boxOffice: cleanVal(d.BoxOffice ?? d.boxOffice),
-      director: cleanVal(d.Director ?? d.director),
-      writer: cleanVal(d.Writer ?? d.writer),
-      actors: cleanVal(d.Actors ?? d.actors),
-      language: cleanVal(d.Language ?? d.language),
-      country: cleanVal(d.Country ?? d.country),
-    };
-    return saveToCache(res);
-  } catch (omdbErr) {
-    console.warn("Could not fetch ratings from OMDB API:", omdbErr);
-    return saveToCache(null);
-  }
-}
-
-const pick = (v: any, lang: string): string => {
-  if (!v) return '';
-  if (typeof v === 'string') return v;
-  return v[lang] || v.en || '';
-};
-
-export function normalizeItem(raw: any, mediaType: Media, lang: string): CinemaItem {
-  const isTv = mediaType === 'tv';
-  const genreObjs = Array.isArray(raw.genres) && typeof raw.genres[0] === 'object' ? raw.genres : null;
-  const genreNames = genreObjs ? genreObjs.map((g: any) => g.name)
-    : Array.isArray(raw.genres) ? raw.genres : [];
-  const genreIds = genreObjs ? genreObjs.map((g: any) => g.id)
-    : Array.isArray(raw.genre_ids) ? raw.genre_ids : [];
-  const trailerKey =
-    raw.videos?.results?.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer')?.key
-    || raw.videos?.results?.find((v: any) => v.site === 'YouTube')?.key
-    || raw.trailer_key || raw.trailerKey || '';
-
-  const rawTitle = pick(isTv ? (raw.name ?? raw.title) : (raw.title ?? raw.name), lang) || "Unknown Title";
-  let rawOverview = pick(raw.overview, lang);
-  if (!rawOverview || rawOverview.trim() === '') {
-    if (lang === 'ar') rawOverview = "Synopsis currently unavailable.";
-    else if (lang === 'fr') rawOverview = "Synopsis non disponible.";
-    else rawOverview = "Overview not available.";
-  }
-
-  const fullReleaseDate = String(isTv ? (raw.first_air_date || raw.year || '') : (raw.release_date || raw.year || ''));
-
-  const directors: string[] = [];
-  if (Array.isArray(raw.credits?.crew)) {
-    raw.credits.crew
-      .filter((c: any) => c.job === 'Director' || c.job === 'Executive Producer')
-      .slice(0, 3)
-      .forEach((c: any) => {
-        if (c.name && !directors.includes(c.name)) directors.push(c.name);
-      });
-  }
-  if (Array.isArray(raw.created_by)) {
-    raw.created_by.forEach((c: any) => {
-      if (c.name && !directors.includes(c.name)) directors.push(c.name);
-    });
-  }
-
-  const prodSources = [
-    ...(Array.isArray(raw.production_companies) ? raw.production_companies : []),
-    ...(Array.isArray(raw.networks) ? raw.networks : []),
-  ];
-  const productionCompanies = prodSources.slice(0, 5).map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    logoPath: p.logo_path || '',
-  }));
-
-  let certification = '';
-  if (Array.isArray(raw.release_dates?.results)) {
-    const usRel =
-      raw.release_dates.results.find((r: any) => r.iso_3166_1 === 'US') ||
-      raw.release_dates.results[0];
-    const certObj = usRel?.release_dates?.find((d: any) => d.certification);
-    if (certObj?.certification) certification = certObj.certification;
-  }
-
-  return {
-    id: raw.id,
-    mediaType,
-    title: rawTitle,
-    overview: rawOverview,
-    posterPath: raw.poster_path || raw.posterPath || '',
-    backdropPath: raw.backdrop_path || raw.backdropPath || '',
-    year: fullReleaseDate.split('-')[0],
-    releaseDate: fullReleaseDate || undefined,
-    rating: typeof raw.vote_average === 'number' ? raw.vote_average : (typeof raw.rating === 'number' ? raw.rating : 0),
-    voteCount: typeof raw.vote_count === 'number' ? raw.vote_count : undefined,
-    genreIds,
-    genreNames,
-    trailerKey,
-    imdbId: raw.imdb_id || raw.imdbId || raw.external_ids?.imdb_id,
-    runtime: raw.runtime || (Array.isArray(raw.episode_run_time) ? raw.episode_run_time[0] : undefined) || raw.duration,
-    seasons: raw.number_of_seasons || raw.seasons,
-    episodes: raw.number_of_episodes || raw.episodes,
-    tagline: typeof raw.tagline === 'string' && raw.tagline.trim() ? raw.tagline.trim() : undefined,
-    status: typeof raw.status === 'string' ? raw.status : undefined,
-    originalLanguage: typeof raw.original_language === 'string' ? raw.original_language.toUpperCase() : undefined,
-    certification: certification || undefined,
-    budget: typeof raw.budget === 'number' && raw.budget > 0 ? raw.budget : undefined,
-    revenue: typeof raw.revenue === 'number' && raw.revenue > 0 ? raw.revenue : undefined,
-    directors: directors.length > 0 ? directors : undefined,
-    productionCompanies: productionCompanies.length > 0 ? productionCompanies : undefined,
-    cast: (raw.credits?.cast || raw.cast || []).slice(0, 12).map((c: any) => ({
-      id: c.id,
-      name: c.name,
-      character: c.character || '',
-      profilePath: c.profile_path || c.profilePath || '',
-    })),
-    similar: (raw.similar?.results || raw.similar || []).slice(0, 10).map((s: any) => normalizeItem(s, mediaType, lang)),
-  };
-}
-
-const getBackdropSrc_static = (
-  path: string | null | undefined,
-  trailerKey?: string,
-  posterPath?: string,
-) => {
-  if (path) {
-    if (path.startsWith("http")) return path;
-    return `${TMDB_IMAGE_BASE}/w1280${path}`;
-  }
-  if (posterPath) {
-    if (posterPath.startsWith("http")) return posterPath;
-    return `${TMDB_IMAGE_BASE}/w780${posterPath}`;
-  }
-  if (trailerKey) {
-    return `https://i.ytimg.com/vi/${trailerKey}/hqdefault.jpg`;
-  }
-  return "/bioBG_poster.webp";
-};
-
-const getPosterSrc_static = (
-  path: string | null | undefined,
-  trailerKey?: string,
-  backdropPath?: string,
-) => {
-  if (path) {
-    if (path.startsWith("http")) return path;
-    return `${TMDB_IMAGE_BASE}/w500${path}`;
-  }
-  if (backdropPath) {
-    if (backdropPath.startsWith("http")) return backdropPath;
-    return `${TMDB_IMAGE_BASE}/w500${backdropPath}`;
-  }
-  if (trailerKey) {
-    return `https://i.ytimg.com/vi/${trailerKey}/hqdefault.jpg`;
-  }
-  return "/bioBG_poster.webp";
-};
-
-const MOVIE_ROW_SCROLL_STYLE: React.CSSProperties = {
-  scrollbarWidth: "none",
-  msOverflowStyle: "none",
-  scrollSnapType: "x mandatory",
-};
-
-const MoviePosterCard = React.memo(
-  ({
-    item,
-    isTouch,
-    activeHoverId,
-    setActiveHoverId,
-    hoverTimer,
-    setSelectedItemId,
-    onQuickWatch,
-    t,
-    isFavorite,
-    progressRatio,
-    episodeBadge,
-    onRemoveProgress,
-  }: {
-    item: CinemaItem;
-    isTouch: boolean;
-    activeHoverId: number | null;
-    setActiveHoverId: (id: number | null) => void;
-    hoverTimer: React.MutableRefObject<any>;
-    setSelectedItemId: (id: number | null, mediaType?: Media) => void;
-    onQuickWatch?: (item: CinemaItem) => void;
-    t: any;
-    isFavorite?: boolean;
-    progressRatio?: number;
-    episodeBadge?: string;
-    onRemoveProgress?: () => void;
-  }) => {
-    const cardRef = useRef<HTMLDivElement | null>(null);
-    const [hovered, setHovered] = useState(false);
-
-    const handleMouseEnter = useCallback(() => {
-      if (isTouch) return;
-      if (hoverTimer.current) clearTimeout(hoverTimer.current);
-      setHovered(true);
-      setActiveHoverId(item.id);
-    }, [isTouch, hoverTimer, item.id, setActiveHoverId]);
-
-    const handleMouseLeave = useCallback(() => {
-      if (isTouch) return;
-      hoverTimer.current = setTimeout(() => {
-        setHovered(false);
-        setActiveHoverId(null);
-      }, 180);
-    }, [isTouch, hoverTimer, setActiveHoverId]);
-
-    useEffect(() => {
-      if (activeHoverId !== item.id) {
-        setHovered(false);
-      }
-    }, [activeHoverId, item.id]);
-
-    const isZoomed = hovered && activeHoverId === item.id && !isTouch;
-    const fallbackGenText = item.genreNames.slice(0, 2).join(" · ") || "Cinema";
-    const posterUrl = getPosterSrc_static(
-      item.posterPath,
-      item.trailerKey,
-      item.backdropPath,
-    );
-
-    return (
-      <div
-        ref={cardRef}
-        role="button"
-        tabIndex={0}
-        aria-label={item.title}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={() => setSelectedItemId(item.id, item.mediaType)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setSelectedItemId(item.id, item.mediaType);
-          }
-        }}
-        className={`nl-poster relative w-[116px] sm:w-[154px] md:w-[176px] aspect-[2/3] overflow-hidden cursor-pointer select-none flex-shrink-0 snap-start ${
-          isZoomed ? "nl-poster--hovered" : ""
-        }`}
-      >
-        {/* Top-left Favorite Heart Badge */}
-        {isFavorite && (
-          <span
-            className="absolute top-2 left-2 z-20 flex items-center justify-center w-6 h-6 rounded-full bg-red-600/90 border border-white/40 shadow-md"
-            aria-label="Favorited"
-          >
-            <Heart size={11} strokeWidth={2.5} fill="white" color="white" />
-          </span>
-        )}
-
-        {/* Episode badge or Remove button for Continue Watching */}
-        {episodeBadge && !isFavorite && (
-          <span className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded-full bg-black/70 border border-white/25 text-[9.5px] font-black text-white shadow">
-            {episodeBadge}
-          </span>
-        )}
-
-        {onRemoveProgress && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemoveProgress();
-            }}
-            aria-label={t("movies.close")}
-            title={t("movies.close")}
-            className="absolute top-2 right-2 z-30 w-6 h-6 rounded-full bg-black/75 hover:bg-rose-600 border border-white/30 text-white flex items-center justify-center text-xs font-black cursor-pointer shadow"
-          >
-            ×
-          </button>
-        )}
-
-        {/* Top-right Rating Pill */}
-        {!onRemoveProgress && item.rating > 0 && (
-          <span className="absolute top-2 right-2 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-[10px] font-extrabold text-amber-400 shadow">
-            <Star size={9} className="fill-current" />
-            {item.rating.toFixed(1)}
-          </span>
-        )}
-
-        {/* Full-Bleed Movie/Series Artwork (Always Visible on Hover Zoom) */}
-        <img
-          src={posterUrl}
-          alt={item.title}
-          loading="lazy"
-          decoding="async"
-          onError={(e) => {
-            const el = e.currentTarget;
-            if (item.trailerKey && !el.dataset.fb) {
-              el.dataset.fb = "1";
-              el.src = `https://i.ytimg.com/vi/${item.trailerKey}/hqdefault.jpg`;
-            } else if (!el.dataset.fb2) {
-              el.dataset.fb2 = "1";
-              el.src = "/bioBG_poster.webp";
-            }
-          }}
-          className={`w-full h-full object-cover select-none pointer-events-none transition-transform duration-500 ${
-            isZoomed ? "scale-105 brightness-105" : "scale-100"
-          }`}
-        />
-
-        {/* Specular Liquid Glass Sheen */}
-        <span className="nl-poster__sheen" aria-hidden="true" />
-
-        {/* Subtle resting bottom title gradient when not hovered */}
-        <div
-          className={`absolute inset-x-0 bottom-0 z-10 p-2.5 pt-8 bg-gradient-to-t from-black/90 via-black/45 to-transparent transition-opacity duration-200 ${
-            isZoomed ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
-        >
-          <p className="text-[11px] sm:text-xs font-extrabold text-white truncate drop-shadow">
-            {item.title}
-          </p>
-          <p className="text-[9px] text-white/70 font-medium truncate">
-            {[item.year, fallbackGenText].filter(Boolean).join(" · ")}
-          </p>
-        </div>
-
-        {/* Thin red Continue Watching progress bar */}
-        {typeof progressRatio === "number" && progressRatio > 0 && (
-          <div className="absolute inset-x-0 bottom-0 h-[3px] bg-white/20 z-20 pointer-events-none">
-            <div
-              className="h-full bg-[#dc2626]"
-              style={{
-                width: `${Math.min(100, Math.max(2, Math.round(progressRatio * 100)))}%`,
-              }}
-            />
-          </div>
-        )}
-
-        {/* Zoomed Liquid Glass Drawer Overlay (Ultra-light translucent finish) */}
-        <AnimatePresence>
-          {isZoomed && (
-            <m.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="nl-poster__glass-drawer flex flex-col gap-1"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between gap-1">
-                <h4 className="text-[11px] font-black text-white leading-tight line-clamp-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-                  {item.title}
-                </h4>
-                {item.year && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-white/12 border border-white/20 text-[7.5px] font-extrabold text-white/95 shrink-0">
-                    {item.year}
-                  </span>
-                )}
-              </div>
-              <p className="text-[9px] text-white/90 line-clamp-2 leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]">
-                {item.overview}
-              </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {onQuickWatch && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onQuickWatch(item);
-                    }}
-                    className="lg-cinema-primary-pill flex-1 py-1 px-2 rounded-full text-[9px] font-extrabold text-white flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Play size={9.5} className="fill-current" />
-                    <span>{t("movies.meta.watchNow") || "Watch"}</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedItemId(item.id, item.mediaType);
-                  }}
-                  className="lg-cinema-action-pill py-1 px-2 rounded-full text-[9px] font-bold text-white flex items-center justify-center gap-1 cursor-pointer"
-                  title={t("movies.meta.moreInfo") || "Details"}
-                >
-                  <Info size={9.5} />
-                </button>
-              </div>
-            </m.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  },
-);
-
-const MovieRow = React.memo(
-  ({
-    title,
-    items,
-    isTouch,
-    activeHoverId,
-    setActiveHoverId,
-    hoverTimer,
-    setSelectedItemId,
-    onQuickWatch,
-    t,
-    isFavoriteFn,
-  }: any) => {
-    const sliderRef = useRef<HTMLDivElement | null>(null);
-    const [canScrollLeft, setCanScrollLeft] = useState(false);
-    const [canScrollRight, setCanScrollRight] = useState(true);
-
-    const updateScrollState = useCallback(() => {
-      if (!sliderRef.current) return;
-      const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
-      setCanScrollLeft(Math.abs(scrollLeft) > 6);
-      setCanScrollRight(Math.abs(scrollLeft) + clientWidth < scrollWidth - 6);
-    }, []);
-
-    const handleScrollClick = useCallback((direction: "left" | "right") => {
-      if (!sliderRef.current) return;
-      const { clientWidth } = sliderRef.current;
-      const scrollAmt =
-        direction === "left" ? -clientWidth * 0.75 : clientWidth * 0.75;
-      sliderRef.current.scrollBy({ left: scrollAmt, behavior: "smooth" });
-    }, []);
-
-    const [isVisible, setIsVisible] = useState(false);
-    const rowRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            setIsVisible(true);
-            observer.disconnect();
-          }
-        },
-        { rootMargin: "240px" },
-      );
-      if (rowRef.current) observer.observe(rowRef.current);
-      return () => observer.disconnect();
-    }, []);
-
-    if (items.length === 0) return null;
-
-    return (
-      <div
-        ref={rowRef}
-        className="relative z-10 flex flex-col gap-1.5 py-2.5 px-4 sm:px-10"
-      >
-        <div className="flex items-center justify-between px-2">
-          <h2 className="text-sm sm:text-lg font-extrabold text-white tracking-tight drop-shadow">
-            {title}
-          </h2>
-        </div>
-        <div className="group/row relative w-full">
-          {canScrollLeft && !isTouch && (
-            <button
-              type="button"
-              onClick={() => handleScrollClick("left")}
-              className="lg-cinema-icon-pill absolute left-1 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer"
-              aria-label="Scroll left"
-            >
-              <ChevronLeft size={22} />
-            </button>
-          )}
-          <div
-            ref={sliderRef}
-            onScroll={updateScrollState}
-            className="nl-cinema-row flex gap-4 overflow-x-auto select-none px-3 scroll-smooth scrollbar-none snap-x snap-mandatory"
-            style={MOVIE_ROW_SCROLL_STYLE}
-          >
-            {isVisible &&
-              items.map((item: any) => (
-                <div key={item.id} className="flex-shrink-0 snap-start">
-                  <MoviePosterCard
-                    item={item}
-                    isTouch={isTouch}
-                    activeHoverId={activeHoverId}
-                    setActiveHoverId={setActiveHoverId}
-                    hoverTimer={hoverTimer}
-                    setSelectedItemId={setSelectedItemId}
-                    onQuickWatch={onQuickWatch}
-                    t={t}
-                    isFavorite={isFavoriteFn?.(item.id, item.mediaType)}
-                  />
-                </div>
-              ))}
-          </div>
-          {canScrollRight && !isTouch && (
-            <button
-              type="button"
-              onClick={() => handleScrollClick("right")}
-              className="lg-cinema-icon-pill absolute right-1 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity text-white cursor-pointer"
-              aria-label="Scroll right"
-            >
-              <ChevronRight size={22} />
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  },
-);
+export { fetchWithCache, normalizeItem };
+export type { CastMember, ActorDetails, CinemaItem };
 
 export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => void; initialTab?: 'movies' | 'series' }) {
   const { t, i18n } = useTranslation();
@@ -1107,14 +396,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const [isCssFullscreen, setIsCssFullscreen] = useState(false);
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
   const [extractedStreams, setExtractedStreams] = useState<ExtractedVideoStream[]>([]);
-  const [externalSubtitles, setExternalSubtitles] = useState<ExtractedSubtitleTrack[]>([]);
-  const externalSubtitlesRef = useRef<ExtractedSubtitleTrack[]>([]);
-  const [workerBridgeSubtitles, setWorkerBridgeSubtitles] = useState<ExtractedSubtitleTrack[]>([]);
-  const retimedTrackIdsRef = useRef<Set<string>>(new Set());
-  const [isLoadingSubtitles, setIsLoadingSubtitles] = useState(false);
-  const [loadingSubtitleIdx, setLoadingSubtitleIdx] = useState<number | null>(null);
-  const [subtitleOffsetSec, setSubtitleOffsetSec] = useState(0);
-  const [activeTrackCues, setActiveTrackCues] = useState<SubtitleCue[]>([]);
   const [activeExtractedIdx, setActiveExtractedIdx] = useState(0);
   const [useDirectUrlFallback, setUseDirectUrlFallback] = useState(false);
   const [playerRenderMode, setPlayerRenderMode] = useState<
@@ -1124,8 +405,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const isVideoPaused = clockState.paused;
   const [videoVolume, setVideoVolume] = useState(1);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
-  const [activeSubtitleIdx, setActiveSubtitleIdx] = useState<number | null>(0);
-  const [isSubtitleMenuOpen, setIsSubtitleMenuOpen] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const controlsHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedSeason, setSelectedSeason] = useState(1);
@@ -1169,29 +448,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     }
   }, []);
 
-  const clearExternalSubtitleBlobs = useCallback(() => {
-    if (externalSubtitlesRef.current.length > 0) {
-      revokeSubtitleBlobUrls(externalSubtitlesRef.current);
-      externalSubtitlesRef.current = [];
-    }
-    setExternalSubtitles([]);
-    setWorkerBridgeSubtitles([]);
-    retimedTrackIdsRef.current.clear();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (externalSubtitlesRef.current.length > 0) {
-        revokeSubtitleBlobUrls(externalSubtitlesRef.current);
-        externalSubtitlesRef.current = [];
-      }
-    };
-  }, []);
-
   // Interactive Actor Profile Card State
   const [selectedActor, setSelectedActor] = useState<CastMember | null>(null);
-  const [actorDetails, setActorDetails] = useState<ActorDetails | null>(null);
-  const [loadingActor, setLoadingActor] = useState(false);
 
   const detailDialogRef = useFocusTrap(selectedItemId !== null && !!detailedItem);
 
@@ -1230,6 +488,42 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     Boolean(detailedItem),
   );
   const activeImdbId = resolvedImdbId || detailedItem?.imdbId || "";
+
+  const {
+    setExternalSubtitles,
+    externalSubtitlesRef,
+    setWorkerBridgeSubtitles,
+    isLoadingSubtitles,
+    loadingSubtitleIdx,
+    setLoadingSubtitleIdx,
+    subtitleOffsetSec,
+    setSubtitleOffsetSec,
+    activeTrackCues,
+    setActiveTrackCues,
+    activeSubtitleIdx,
+    setActiveSubtitleIdx,
+    isSubtitleMenuOpen,
+    setIsSubtitleMenuOpen,
+    activeSubtitlesList,
+    clearExternalSubtitleBlobs,
+    handleRefreshSubtitlesForLanguages,
+    handleUploadLocalSubtitle,
+    syncVideoTextTracks,
+  } = useCinemaSubtitles({
+    isWatchingInGallery,
+    detailedItem,
+    activeImdbId,
+    selectedSeason,
+    selectedEpisode,
+    extractedStreams,
+    setExtractedStreams,
+    activeExtractedIdx,
+    playerRenderMode,
+    playerIframeRef,
+    videoElementRef,
+    attemptTokenRef,
+    clockState,
+  });
   const activeGallerySource =
     detailPlaySources[activeGalleryServerIdx] || detailPlaySources[0] || null;
   const [embedSeekStartAtSec, setEmbedSeekStartAtSec] = useState<number | null>(null);
@@ -1444,7 +738,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       setIsPlayerLoading(true);
       setActiveGalleryServerIdx(firstIdx);
       setSelectedActor(null);
-      setActorDetails(null);
       setShowHeroTrailer(false);
       setIsSubtitleMenuOpen(false);
       setIsWatchingInGallery(true);
@@ -1507,50 +800,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const checkedExtractionKeyRef = useRef<string>("");
   const detailPlaySourcesRef = useRef<PlaySource[]>(detailPlaySources);
   detailPlaySourcesRef.current = detailPlaySources;
-
-  // Background External Subtitles Loader (Decoupled so subtitle APIs NEVER block video/iframe startup)
-  useEffect(() => {
-    if (!isWatchingInGallery || !detailedItem) {
-      return undefined;
-    }
-    let cancelled = false;
-    const abortController = new AbortController();
-    setIsLoadingSubtitles(true);
-
-    void fetchExternalSubtitles({
-      tmdbId: detailedItem.id,
-      imdbId: activeImdbId || undefined,
-      mediaType: detailedItem.mediaType,
-      season: detailedItem.mediaType === "tv" ? selectedSeason : undefined,
-      episode: detailedItem.mediaType === "tv" ? selectedEpisode : undefined,
-      signal: abortController.signal,
-    })
-      .catch(() => [] as ExtractedSubtitleTrack[])
-      .then((extSubs) => {
-        if (cancelled) {
-          revokeSubtitleBlobUrls(extSubs);
-          return;
-        }
-        if (externalSubtitlesRef.current.length > 0) {
-          revokeSubtitleBlobUrls(externalSubtitlesRef.current);
-        }
-        externalSubtitlesRef.current = extSubs;
-        setExternalSubtitles(extSubs);
-        setIsLoadingSubtitles(false);
-      });
-
-    return () => {
-      cancelled = true;
-      abortController.abort();
-    };
-  }, [
-    isWatchingInGallery,
-    detailedItem?.id,
-    detailedItem?.mediaType,
-    activeImdbId,
-    selectedSeason,
-    selectedEpisode,
-  ]);
 
   // Tier 1 Parallel Direct Stream Extraction (.m3u8 / .mp4) with Hot-Upgrade -> Never blocks mounting the iframe
   useEffect(() => {
@@ -1912,194 +1161,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     }
   }, [isWatchingInGallery, showHeroTrailer, cleanupDirectVideoPlayer, clearExternalSubtitleBlobs]);
 
-  // Unified subtitle list across ALL player modes (direct, clean-embed, iframe)
-  // Wyzie (IMDb ID search) and local uploads are prioritized ahead of server-extracted tracks for accuracy & stability.
-  const activeSubtitlesList = useMemo<ExtractedSubtitleTrack[]>(() => {
-    if (!isWatchingInGallery) return [];
-    const rawStreamSubs =
-      extractedStreams[activeExtractedIdx]?.subtitles ||
-      extractedStreams[0]?.subtitles ||
-      [];
-    const normalizedStreamSubs: ExtractedSubtitleTrack[] = rawStreamSubs.map((s, i) => ({
-      ...s,
-      id: s.id || `worker:stream:${i}:${s.lang}`,
-      provider: s.provider || "worker",
-      remoteUrl: s.remoteUrl || s.proxiedUrl || s.url,
-      loaded: s.loaded ?? false,
-      label: s.label.includes("·") ? s.label : `${s.label} · Source`,
-    }));
-    const sameSourceSubs = mergeStreamFirst(workerBridgeSubtitles, normalizedStreamSubs);
-    const merged = mergeStreamFirst(externalSubtitles, sameSourceSubs).map((t) => ({
-      ...t,
-      default: false,
-    }));
-    const rankProvider = (p?: string): number => {
-      if (p === "local") return 0;
-      if (p === "wyzie") return 1;
-      if (p === "opensubtitles") return 2;
-      return 3; // stream / worker
-    };
-    merged.sort((a, b) => {
-      if (a.lang === "ar" && b.lang !== "ar") return -1;
-      if (b.lang === "ar" && a.lang !== "ar") return 1;
-      return rankProvider(a.provider) - rankProvider(b.provider);
-    });
-    if (merged.length > 0) {
-      const arWyzieIdx = merged.findIndex(
-        (s) => s.lang === "ar" && (s.provider === "local" || s.provider === "wyzie"),
-      );
-      const arIdx = arWyzieIdx >= 0 ? arWyzieIdx : merged.findIndex((s) => s.lang === "ar");
-      const defIdx = arIdx >= 0 ? arIdx : 0;
-      merged[defIdx] = { ...merged[defIdx], default: true };
-    }
-    return merged;
-  }, [
-    isWatchingInGallery,
-    workerBridgeSubtitles,
-    extractedStreams,
-    activeExtractedIdx,
-    externalSubtitles,
-  ]);
-
-  // Select default subtitle track (Arabic prioritized) whenever available tracks change
-  useEffect(() => {
-    if (activeSubtitlesList.length === 0) {
-      setActiveSubtitleIdx(null);
-      setActiveTrackCues([]);
-      setLoadingSubtitleIdx(null);
-      return;
-    }
-    const defaultIdx = activeSubtitlesList.findIndex((s) => s.default);
-    setActiveSubtitleIdx(defaultIdx >= 0 ? defaultIdx : 0);
-  }, [activeSubtitlesList]);
-
-  // Lazy-load parsed cues for the active subtitle track and hide native iframe subtitles when our overlay is active
-  useEffect(() => {
-    let cancelled = false;
-    const tokenAtStart = attemptTokenRef.current;
-    if (
-      !isWatchingInGallery ||
-      activeSubtitleIdx === null ||
-      !activeSubtitlesList[activeSubtitleIdx]
-    ) {
-      setActiveTrackCues([]);
-      setLoadingSubtitleIdx(null);
-      return undefined;
-    }
-    if (playerRenderMode === "iframe" || playerRenderMode === "clean-embed") {
-      sendIframePlayerCommand(playerIframeRef.current, { type: "hideNativeSubs" });
-    }
-    const track = activeSubtitlesList[activeSubtitleIdx];
-    if (track.loaded && Array.isArray(track.cues) && track.cues.length > 0) {
-      setActiveTrackCues(track.cues);
-      setLoadingSubtitleIdx(null);
-      return undefined;
-    }
-    setLoadingSubtitleIdx(activeSubtitleIdx);
-    void ensureTrackLoaded(track)
-      .then((loadedTrack) => {
-        if (!cancelled && attemptTokenRef.current === tokenAtStart) {
-          setActiveTrackCues(loadedTrack.cues || []);
-          setLoadingSubtitleIdx(null);
-          if (playerRenderMode === "iframe" || playerRenderMode === "clean-embed") {
-            sendIframePlayerCommand(playerIframeRef.current, { type: "hideNativeSubs" });
-          }
-        }
-      })
-      .catch(() => {
-        if (!cancelled && attemptTokenRef.current === tokenAtStart) {
-          setActiveTrackCues([]);
-          setLoadingSubtitleIdx(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isWatchingInGallery, activeSubtitleIdx, activeSubtitlesList, playerRenderMode]);
-
-  // Automatic 25fps <-> 23.976fps subtitle retiming when cues overflow real media duration
-  useEffect(() => {
-    if (
-      !isWatchingInGallery ||
-      activeSubtitleIdx === null ||
-      activeTrackCues.length === 0 ||
-      clockState.duration <= 600 ||
-      clockState.durationIsEstimated ||
-      (clockState.source !== "video" && clockState.source !== "bridge")
-    ) {
-      return;
-    }
-    const activeTrack = activeSubtitlesList[activeSubtitleIdx];
-    const trackKey = activeTrack?.id || activeTrack?.url || String(activeSubtitleIdx);
-    if (retimedTrackIdsRef.current.has(trackKey)) return;
-    const { cues: retimed, factor } = autoRetimeCues(activeTrackCues, clockState.duration);
-    retimedTrackIdsRef.current.add(trackKey);
-    if (factor !== 1) {
-      setActiveTrackCues(retimed);
-    }
-  }, [
-    isWatchingInGallery,
-    activeSubtitleIdx,
-    activeSubtitlesList,
-    activeTrackCues,
-    clockState.duration,
-    clockState.durationIsEstimated,
-    clockState.source,
-  ]);
-
-  const handleRefreshSubtitlesForLanguages = useCallback(async () => {
-    if (!detailedItem || !isWatchingInGallery) return;
-    const tokenAtStart = attemptTokenRef.current;
-    setIsLoadingSubtitles(true);
-    try {
-      const extSubs = await fetchExternalSubtitles({
-        tmdbId: detailedItem.id,
-        imdbId: activeImdbId || undefined,
-        mediaType: detailedItem.mediaType,
-        season: detailedItem.mediaType === "tv" ? selectedSeason : undefined,
-        episode: detailedItem.mediaType === "tv" ? selectedEpisode : undefined,
-      });
-      if (attemptTokenRef.current !== tokenAtStart) {
-        revokeSubtitleBlobUrls(extSubs);
-        return;
-      }
-      if (externalSubtitlesRef.current.length > 0) {
-        revokeSubtitleBlobUrls(externalSubtitlesRef.current);
-      }
-      externalSubtitlesRef.current = extSubs;
-      setExternalSubtitles(extSubs);
-      setExtractedStreams((prev) =>
-        prev.map((v) => ({
-          ...v,
-          subtitles: [
-            ...(v.subtitles || []).filter((s) => s.provider === "worker" || s.provider === "local"),
-            ...extSubs,
-          ],
-        })),
-      );
-    } catch {
-      // ignore fetch error
-    } finally {
-      if (attemptTokenRef.current === tokenAtStart) {
-        setIsLoadingSubtitles(false);
-      }
-    }
-  }, [detailedItem, isWatchingInGallery, activeImdbId, selectedSeason, selectedEpisode]);
-
-  const handleUploadLocalSubtitle = useCallback(async (file: File) => {
-    const localTrack = await createLocalSubtitleTrack(file);
-    if (!localTrack) return;
-    externalSubtitlesRef.current = [localTrack, ...externalSubtitlesRef.current];
-    setExternalSubtitles((prev) => [localTrack, ...prev]);
-    setExtractedStreams((prev) =>
-      prev.map((v) => ({
-        ...v,
-        subtitles: [localTrack, ...(v.subtitles || [])],
-      })),
-    );
-    setActiveSubtitleIdx(0);
-  }, []);
-
   // Bind HTML5 <video> element to isolated playbackClock in direct mode
   useEffect(() => {
     const v = videoElementRef.current;
@@ -2428,34 +1489,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return () => clearInterval(interval);
   }, [isWatchingInGallery, detailedItem, persistCurrentProgress]);
 
-  // Synchronize HTML5 <video> TextTrackList mode with activeSubtitleIdx
-  // Hidden in standard/container fullscreen so SubtitleOverlay renders without duplicate lines;
-  // "showing" when iOS Safari enters native <video> fullscreen (webkitDisplayingFullscreen) so iPhone fullscreen subtitles work natively.
-  const syncVideoTextTracks = useCallback((selectedIdx: number | null) => {
-    const video = videoElementRef.current;
-    if (!video || !video.textTracks) return;
-    const isIosVideoFs = Boolean((video as any).webkitDisplayingFullscreen);
-    const activeMode: TextTrackMode = isIosVideoFs ? "showing" : "hidden";
-    const tracks = video.textTracks;
-    for (let i = 0; i < tracks.length; i += 1) {
-      tracks[i].mode = selectedIdx !== null && i === selectedIdx ? activeMode : "disabled";
-    }
-  }, []);
-
-  useEffect(() => {
-    syncVideoTextTracks(activeSubtitleIdx);
-    const timer = setTimeout(() => syncVideoTextTracks(activeSubtitleIdx), 250);
-    const video = videoElementRef.current;
-    const onWebkitFs = () => syncVideoTextTracks(activeSubtitleIdx);
-    video?.addEventListener("webkitbeginfullscreen", onWebkitFs);
-    video?.addEventListener("webkitendfullscreen", onWebkitFs);
-    return () => {
-      clearTimeout(timer);
-      video?.removeEventListener("webkitbeginfullscreen", onWebkitFs);
-      video?.removeEventListener("webkitendfullscreen", onWebkitFs);
-    };
-  }, [activeSubtitleIdx, activeSubtitlesList, syncVideoTextTracks]);
-
   // Track native Fullscreen API state and auto-hide controls after 3s of mouse inactivity in fullscreen
   useEffect(() => {
     const onFsChange = () => {
@@ -2684,7 +1717,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setSeasonEpisodes([]);
     setDetailServersOpen(shouldAutoStart);
     setSelectedActor(null);
-    setActorDetails(null);
     if (selectedItemId === null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -2692,7 +1724,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
           setIsCssFullscreen(false);
         } else if (selectedActor) {
           setSelectedActor(null);
-          setActorDetails(null);
         } else {
           persistCurrentProgress();
           setSelectedItemId(null);
@@ -2763,101 +1794,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     };
   }, [detailedItem, selectedSeason, tmdbKey, currentLang]);
 
-  // Fetch Actor Details when a Cast Member is clicked
-  const handleSelectActor = useCallback(
-    async (actor: CastMember) => {
-      setSelectedActor(actor);
-      if (!actor.id || !tmdbKey) {
-        setActorDetails({
-          id: actor.id || 0,
-          name: actor.name,
-          character: actor.character,
-          profilePath: actor.profilePath,
-          biography:
-            currentLang === 'ar'
-              ? 'نبذة الممثل غير متوفرة حالياً في الوضع غير المتصل.'
-              : 'Actor biography currently unavailable.',
-          knownWorks: [],
-        });
-        return;
-      }
-
-      setLoadingActor(true);
-      try {
-        const langParam = `&language=${tmdbLang(currentLang)}`;
-        const personData = await fetchWithCache(
-          `${TMDB_BASE_URL}/person/${actor.id}?api_key=${tmdbKey}${langParam}&append_to_response=combined_credits`,
-        );
-
-        let bio = personData?.biography || '';
-        if (!bio.trim() && currentLang !== 'en') {
-          try {
-            const enPerson = await fetchWithCache(
-              `${TMDB_BASE_URL}/person/${actor.id}?api_key=${tmdbKey}&language=en-US`,
-            );
-            bio = enPerson?.biography || '';
-          } catch {}
-        }
-
-        const rawCredits: any[] = personData?.combined_credits?.cast || [];
-        const uniqueCreditsMap = new Map<number, any>();
-        rawCredits.forEach((c) => {
-          if (
-            c &&
-            c.id &&
-            (c.media_type === 'movie' || c.media_type === 'tv') &&
-            (c.poster_path || c.backdrop_path) &&
-            !uniqueCreditsMap.has(c.id)
-          ) {
-            uniqueCreditsMap.set(c.id, c);
-          }
-        });
-
-        const topCredits = Array.from(uniqueCreditsMap.values())
-          .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
-          .slice(0, 10)
-          .map((c) => ({
-            id: c.id,
-            mediaType: (c.media_type === 'tv' ? 'tv' : 'movie') as Media,
-            title: c.title || c.name || 'Untitled',
-            posterPath: c.poster_path || c.backdrop_path || '',
-            year: String(c.release_date || c.first_air_date || '').split('-')[0],
-            rating: typeof c.vote_average === 'number' ? c.vote_average : 7.5,
-          }));
-
-        setActorDetails({
-          id: actor.id,
-          name: personData?.name || actor.name,
-          character: actor.character,
-          profilePath: personData?.profile_path || actor.profilePath,
-          biography:
-            bio.trim() ||
-            (currentLang === 'ar'
-              ? 'لا تتوفر سيرة ذاتية مفصلة لهذا الممثل في قاعدة البيانات حالياً.'
-              : 'Detailed biography is not available for this actor yet.'),
-          birthday: personData?.birthday || undefined,
-          placeOfBirth: personData?.place_of_birth || undefined,
-          knownForDepartment: personData?.known_for_department || undefined,
-          knownWorks: topCredits,
-        });
-      } catch {
-        setActorDetails({
-          id: actor.id,
-          name: actor.name,
-          character: actor.character,
-          profilePath: actor.profilePath,
-          biography:
-            currentLang === 'ar'
-              ? 'تعذر تحميل تفاصيل الممثل الإضافية.'
-              : 'Could not load additional actor details.',
-          knownWorks: [],
-        });
-      } finally {
-        setLoadingActor(false);
-      }
-    },
-    [tmdbKey, currentLang],
-  );
+  const handleSelectActor = useCallback((actor: CastMember) => {
+    setSelectedActor(actor);
+  }, []);
 
   const handleQuickWatch = useCallback((item: CinemaItem) => {
     void probeAllServersSpeed(undefined, `${item.mediaType}_${item.id}`);
@@ -2928,67 +1867,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     };
   }, []);
 
-  // Read deep-link parameters (?id=&type=movie|tv&s=&e=) on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const idNum = Number(params.get("id"));
-      if (Number.isFinite(idNum) && idNum > 0) {
-        const rawType = params.get("type");
-        const mediaType: Media =
-          rawType === "tv" || params.get("view") === "series" ? "tv" : "movie";
-        const sNum = Number(params.get("s"));
-        const eNum = Number(params.get("e"));
-        if (mediaType === "tv" && (sNum > 0 || eNum > 0)) {
-          deepLinkSeRef.current = {
-            itemId: idNum,
-            s: sNum > 0 ? sNum : 1,
-            e: eNum > 0 ? eNum : 1,
-          };
-        }
-        setActiveTab(mediaType === "tv" ? "series" : "movies");
-        setSelectedItemId(idNum, mediaType);
-      }
-    } catch {
-      // ignore URL errors
-    }
-  }, [setSelectedItemId]);
-
-  // Keep deep-link URL parameters (&id=&type=&s=&e=) synchronized when opening/closing a title
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const url = new URL(window.location.href);
-      if (selectedItemId !== null) {
-        const effType: Media =
-          detailedItem?.mediaType ??
-          selectedMediaType ??
-          (activeTab === "series" ? "tv" : "movie");
-        url.searchParams.set("id", String(selectedItemId));
-        url.searchParams.set("type", effType);
-        if (effType === "tv") {
-          url.searchParams.set("s", String(selectedSeason));
-          url.searchParams.set("e", String(selectedEpisode));
-        } else {
-          url.searchParams.delete("s");
-          url.searchParams.delete("e");
-        }
-      } else {
-        url.searchParams.delete("id");
-        url.searchParams.delete("type");
-        url.searchParams.delete("s");
-        url.searchParams.delete("e");
-      }
-      window.history.replaceState(
-        window.history.state,
-        "",
-        url.pathname + url.search + url.hash,
-      );
-    } catch {
-      // ignore history errors
-    }
-  }, [selectedItemId, selectedMediaType, detailedItem?.mediaType, activeTab, selectedSeason, selectedEpisode]);
+  useCinemaDeepLink({
+    selectedItemId,
+    selectedMediaType,
+    detailedItem,
+    activeTab,
+    setActiveTab,
+    selectedSeason,
+    selectedEpisode,
+    setSelectedItemId,
+    deepLinkSeRef,
+  });
 
   const prevActiveTabRef = useRef(activeTab);
   useEffect(() => {
@@ -5562,148 +4451,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       </AnimatePresence>
 
       {/* Interactive Liquid Glass Actor Profile Card Modal (Disabled while movie is actively playing) */}
-      <AnimatePresence>
-        {!isWatchingInGallery && selectedActor && (
-          <div className="fixed inset-0 z-[10150] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xl select-none">
-            <div
-              className="absolute inset-0 cursor-zoom-out"
-              onClick={() => {
-                setSelectedActor(null);
-                setActorDetails(null);
-              }}
-            />
-            <m.div
-              role="dialog"
-              aria-modal="true"
-              aria-label={selectedActor.name}
-              initial={{ opacity: 0, scale: 0.92, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 16 }}
-              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-              className="lg-cinema-glass-modal relative z-10 w-full max-w-2xl rounded-3xl p-5 sm:p-6 overflow-y-auto max-h-[88dvh] flex flex-col gap-4"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 min-w-0">
-                  {/* Large High-Res Actor Portrait in Liquid Glass Frame */}
-                  <div className="w-28 h-36 sm:w-32 sm:h-44 rounded-2xl overflow-hidden border border-white/35 shadow-2xl flex-shrink-0 bg-white/10 relative">
-                    {(actorDetails?.profilePath || selectedActor.profilePath) ? (
-                      <img
-                        src={
-                          (actorDetails?.profilePath || selectedActor.profilePath).startsWith("http")
-                            ? (actorDetails?.profilePath || selectedActor.profilePath)
-                            : `${TMDB_IMAGE_BASE}/h632${actorDetails?.profilePath || selectedActor.profilePath}`
-                        }
-                        alt={selectedActor.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl">👤</div>
-                    )}
-                    <span className="nl-poster__sheen" />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5 text-center sm:text-start min-w-0">
-                    <span className="inline-flex self-center sm:self-start items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/25 border border-rose-300/40 text-rose-200">
-                      {actorDetails?.knownForDepartment || (currentLang === "ar" ? "ممثل" : "Acting")}
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-black text-white select-text">
-                      {actorDetails?.name || selectedActor.name}
-                    </h3>
-                    {selectedActor.character && (
-                      <p className="text-xs font-bold text-amber-300">
-                        {currentLang === "ar" ? `الدور: ${selectedActor.character}` : `Role: ${selectedActor.character}`}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-[11px] text-white/75 mt-1">
-                      {actorDetails?.birthday && (
-                        <span className="flex items-center gap-1">
-                          <Calendar size={12} className="text-sky-300" />
-                          {actorDetails.birthday}
-                        </span>
-                      )}
-                      {actorDetails?.placeOfBirth && (
-                        <span className="flex items-center gap-1">
-                          <MapPin size={12} className="text-rose-300" />
-                          {actorDetails.placeOfBirth}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedActor(null);
-                    setActorDetails(null);
-                  }}
-                  className="lg-cinema-icon-pill flex-shrink-0 hover:!bg-rose-600/45"
-                  aria-label="Close actor profile"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              {loadingActor ? (
-                <div className="py-10 flex flex-col items-center justify-center gap-2 text-white/75">
-                  <div className="w-8 h-8 border-2 border-t-rose-500 border-white/20 rounded-full animate-spin" />
-                  <span className="text-xs font-bold">
-                    {currentLang === "ar" ? "جاري جلب معلومات الممثل..." : "Loading actor profile..."}
-                  </span>
-                </div>
-              ) : (
-                <>
-                  {/* Biography */}
-                  <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/12 max-h-44 overflow-y-auto">
-                    <h4 className="text-[10px] font-bold text-white/55 uppercase tracking-widest mb-1">
-                      {currentLang === "ar" ? "السيرة الذاتية" : "Biography"}
-                    </h4>
-                    <p className="text-xs text-white/85 leading-relaxed select-text whitespace-pre-line">
-                      {actorDetails?.biography}
-                    </p>
-                  </div>
-
-                  {/* Actor's Known Works (Clickable to open directly) */}
-                  {actorDetails?.knownWorks && actorDetails.knownWorks.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <h4 className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                        {currentLang === "ar" ? "أشهر الأعمال (اضغط للفتح)" : "Known For (Click to Open)"}
-                      </h4>
-                      <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-none" style={MOVIE_ROW_SCROLL_STYLE}>
-                        {actorDetails.knownWorks.map((work) => (
-                          <button
-                            key={`${work.mediaType}-${work.id}`}
-                            type="button"
-                            onClick={() => {
-                              setSelectedActor(null);
-                              setActorDetails(null);
-                              setActiveTab(work.mediaType === 'tv' ? 'series' : 'movies');
-                              setSelectedItemId(work.id, work.mediaType);
-                            }}
-                            className="nl-poster relative w-[96px] sm:w-[108px] aspect-[2/3] flex-shrink-0 overflow-hidden cursor-pointer text-start group"
-                          >
-                            <img
-                              src={getPosterSrc_static(work.posterPath)}
-                              alt={work.title}
-                              loading="lazy"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            />
-                            <span className="nl-poster__sheen" />
-                            <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
-                              <p className="text-[9.5px] font-bold text-white truncate">{work.title}</p>
-                              <p className="text-[8px] text-white/65">{work.year}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </m.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ActorProfileModal
+        selectedActor={selectedActor}
+        isWatchingInGallery={isWatchingInGallery}
+        tmdbKey={tmdbKey}
+        currentLang={currentLang}
+        onClose={() => setSelectedActor(null)}
+        onSelectWork={(workId, mediaType) => {
+          setSelectedActor(null);
+          setActiveTab(mediaType === 'tv' ? 'series' : 'movies');
+          setSelectedItemId(workId, mediaType);
+        }}
+      />
 
     </div>,
     document.body

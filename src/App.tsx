@@ -25,7 +25,7 @@
  */
 
 import { m, AnimatePresence } from "framer-motion";
-import { useEffect, useState, Suspense, useCallback, useRef, lazy } from "react";
+import { useEffect, useState, Suspense, useCallback, lazy } from "react";
 import { savePrefs, trackVisit } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
@@ -77,7 +77,6 @@ import { HighlightsSection } from './components/sections/HighlightsSection';
 import { useTubeStore } from './features/youtube/tubeStore';
 import SongVideoTether from './features/songVideo/SongVideoTether';
 import { SongLyricsTether } from './features/songLyrics';
-import './styles/youtube-page.css';
 import { HomeInteractiveMap } from './home/HomeInteractiveMap';
 import { StationLattice, type LatticeItem } from './home/StationLattice';
 import { STREAMING_PLATFORMS, SOCIAL_CHANNELS } from './config/streaming';
@@ -100,19 +99,9 @@ import { MobileQAOverlay } from "./components/dev/MobileQAOverlay";
 import SearchOverlay from './features/search/SearchOverlay'
 import { useNavigationAudioRecovery } from './hooks/useNavigationAudioRecovery';
 import { useNavigateSection } from './hooks/useNavigateSection';
+import { usePendingSongDeepLink } from './hooks/usePendingSongDeepLink';
+import { usePlaybackHotkeys } from './hooks/usePlaybackHotkeys';
 import { initLiquidGlassPhysics } from './utils/liquidGlassPhysics';
-
-const PENDING_SONG_KEY = 'nl:pending-song';
-function readPendingSong(): string | null {
-  try {
-    const p = new URLSearchParams(window.location.search).get('song');
-    if (p && p.startsWith('fv-')) {
-      sessionStorage.setItem(PENDING_SONG_KEY, p);
-      return p;
-    }
-    return sessionStorage.getItem(PENDING_SONG_KEY);
-  } catch { return null; }
-}
 
 const NL_ENTER_FADE = { opacity: 0 } as const;
 const YouTubePortal = lazy(() => import('./features/youtube/YouTubePortal'));
@@ -145,7 +134,7 @@ function AppInner() {
     openMusic,
   } = useAppContext();
   const isAutomated = isAutomatedEnv();
-  const bootedFromDeepLink = useRef(readPendingSong() !== null).current;
+  const bootedFromDeepLink = usePendingSongDeepLink(loaded, setLoaded, openMusic);
 
   useEffect(() => {
     applyThemeUtil(theme);
@@ -155,16 +144,6 @@ function AppInner() {
   useEffect(() => {
     return initLiquidGlassPhysics();
   }, []);
-
-  useEffect(() => {
-    const pending = readPendingSong();
-    if (!pending) return;
-    if (!loaded) {
-      setLoaded(true);
-      return;
-    }
-    openMusic();
-  }, [loaded, openMusic, setLoaded]);
 
   const activeOverlayId = isGamesOpen
     ? 'games'
@@ -331,39 +310,7 @@ function MainApp() {
     setSelectedImageIndex,
   });
 
-  // Keyboard shortcuts for playback
-  const toggleAudioRef = useRef(toggleAudio);
-  const activeSongRef = useRef(activeSong);
-
-  useEffect(() => {
-    toggleAudioRef.current = toggleAudio;
-    activeSongRef.current = activeSong;
-  }, [toggleAudio, activeSong]);
-
-  const onKeyboardShortcut = useCallback((e: KeyboardEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-    switch (e.code) {
-      case 'Space':
-        e.preventDefault();
-        toggleAudioRef.current();
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        activeSongRef.current?.onNext?.();
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        activeSongRef.current?.onPrev?.();
-        break;
-    }
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => onKeyboardShortcut(e);
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onKeyboardShortcut]);
+  usePlaybackHotkeys(toggleAudio, activeSong);
 
 
 

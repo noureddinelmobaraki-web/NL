@@ -13,6 +13,7 @@ import { MeBitMobileView } from './MeBitMobileView';
 import { useMeBitPrefetch } from '../../hooks/useMeBitPrefetch';
 import ImageEditorModal from '../ImageEditorModal';
 import { useTranslation } from 'react-i18next';
+import { getLocalAssetUrl } from '../../constants/assets';
 
 export interface MeBitGalleryProps {
   isOpen: boolean;
@@ -81,7 +82,7 @@ export const MeBitGallery = ({
           title={t('mebit.edit_image', 'تعديل في Image95')}
           aria-label={t('mebit.edit_image', 'تعديل في Image95')}
         >
-          <img src="/image95/assets/icons8-windows-95-144.png" alt="" className="w-5 h-5 object-contain" />
+          <img src={getLocalAssetUrl('image95/assets/icons8-windows-95-144.png')} alt="" className="w-5 h-5 object-contain" />
         </button>
       )
     });
@@ -273,7 +274,7 @@ export const MeBitGallery = ({
                     onClick={() => setIsEditorOpen(true)}
                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#1a1a24] hover:bg-[#252535] border border-white/10 rounded text-xs text-neutral-200 transition-colors"
                   >
-                    <img src="/image95/assets/icons8-windows-95-144.png" alt="" className="w-4 h-4 object-contain" />
+                    <img src={getLocalAssetUrl('image95/assets/icons8-windows-95-144.png')} alt="" className="w-4 h-4 object-contain" />
                     <span>{t('mebit.edit_image', 'تعديل في Image95')}</span>
                   </button>
                   <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[var(--bg-glass)] rounded-full text-[var(--text-muted)] font-mono text-xs uppercase tracking-widest">

@@ -84,7 +84,7 @@ export const ROOTS: GraphNode[] = [
           {
             id: "og-albums",
             label: "OG ALBUMS",
-            icon: "/ALBUMS.webp",
+            icon: `${CDN}/ALBUMS.webp`,
             action: { kind: "open", handler: "openLiquidAlbums" },
           },
           {
@@ -136,7 +136,7 @@ export const ROOTS: GraphNode[] = [
           {
             id: "x-video",
             label: "X",
-            icon: "/X.webp",
+            icon: `${CDN}/X.webp`,
             action: { kind: "open", handler: "openLiquidX" },
           },
         ],

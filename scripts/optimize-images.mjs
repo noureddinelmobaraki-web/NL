@@ -135,7 +135,9 @@ async function generateLqipManifest() {
     { key: 'yt_highlights.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlights.webp' },
     { key: 'yt_highlightsdark.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightsdark.webp' },
     { key: 'yt_highlightslight.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightslight.webp' },
-    { key: 'yt_highlights_bit.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlights_bit.webp' }
+    { key: 'yt_highlights_bit.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlights_bit.webp' },
+    { key: 'DRAW.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/DRAW.webp' },
+    { key: 'DRAW2.webp', url: 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/DRAW2.webp' }
   ];
 
   // Add me_bits 1-9
@@ -157,29 +159,6 @@ async function generateLqipManifest() {
       }
     } catch (err) {
       console.warn(`[LQIP] Skipping LQIP for ${item.key} (download/process error):`, err.message);
-    }
-  }
-
-  // Process local gallery drawings too!
-  const localDrawings = [
-    { key: 'DRAW.webp', path: 'src/assets/images/gallery/DRAW.webp' },
-    { key: 'DRAW2.webp', path: 'src/assets/images/gallery/DRAW2.webp' }
-  ];
-
-  for (const item of localDrawings) {
-    if (fs.existsSync(item.path)) {
-      try {
-        console.log(`[LQIP] Processing local ${item.key} for LQIP...`);
-        const buffer = fs.readFileSync(item.path);
-        const lqipBase64 = await getLqipBase64(buffer);
-        if (lqipBase64) {
-          manifest[item.key] = lqipBase64;
-        }
-      } catch (err) {
-        console.warn(`[LQIP] Skipping local LQIP for ${item.key}:`, err.message);
-      }
-    } else {
-      console.warn(`[LQIP] Local drawing not found: ${item.path}`);
     }
   }
 

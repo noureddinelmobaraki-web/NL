@@ -46,7 +46,7 @@ const BIT_IMAGES = {
 } as const;
 
 const DARK_IMAGES = {
-  profile:       'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp',
+  profile:       `${CDN}/profile_img.webp`,
   photo:         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photodark.webp',
   headerBg:      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bgdark.webp',
   heroBg:        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bgdark.webp',
@@ -56,7 +56,7 @@ const DARK_IMAGES = {
 } as const;
 
 const LIGHT_IMAGES = {
-  profile:       'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp',
+  profile:       `${CDN}/profile_img.webp`,
   photo:         'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/photolight.webp',
   headerBg:      'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bglight.webp',
   heroBg:        'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bgdarklight.webp',
@@ -65,8 +65,8 @@ const LIGHT_IMAGES = {
   ytHighlights:  'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/yt_highlightslight.webp',
 } as const;
 
-export const LIGHT_PROFILE_OPENING = 'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp';
-export const LIGHT_PROFILE_MAIN    = 'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp';
+export const LIGHT_PROFILE_OPENING = `${CDN}/profile_img.webp`;
+export const LIGHT_PROFILE_MAIN    = `${CDN}/profile_img.webp`;
 
 
 // Per-theme background music URLs
@@ -112,16 +112,21 @@ export const INTRO_MUSIC_SRC = 'https://noureddinelmobaraki-web.github.io/nl-aud
 
 export const ASSETS = {
   profile: {
-    main:      'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/profile_img.webp',
+    main:      `${CDN}/profile_img.webp`,
     photo:     `${CDN}/photo.webp`,
     headerBg:  `${CDN}/header_bg.webp`,
     heroBg:    `${CDN}/hero_bg.webp`,
     footerDeco:`${CDN}/footer_deco.gif`,
+    bioPoster: `${CDN}/bioBG_poster.webp`,
+    bioWebm:   `${CDN}/bio_web.webm`,
+    bioMp4:    `${CDN}/bioBG_web.mp4`,
+    albumsOrb: `${CDN}/ALBUMS.webp`,
+    xOrb:      `${CDN}/X.webp`,
     heroBgBlurred: {
-      dark: getLocalAssetUrl('images/optimized/hero_bg.dark.blurred.webp'),
-      light: getLocalAssetUrl('images/optimized/hero_bg.light.blurred.webp'),
-      midnight: getLocalAssetUrl('images/optimized/hero_bg.midnight.blurred.webp'),
-      bit: getLocalAssetUrl('images/optimized/hero_bg.bit.blurred.webp'),
+      dark: `${CDN}/optimized/hero_bg.dark.blurred.webp`,
+      light: `${CDN}/optimized/hero_bg.light.blurred.webp`,
+      midnight: `${CDN}/optimized/hero_bg.midnight.blurred.webp`,
+      bit: `${CDN}/optimized/hero_bg.bit.blurred.webp`,
     },
     me_bits: [
       `${CDN}/me_bit_1.webp`,
@@ -200,12 +205,11 @@ export const ASSETS = {
     ]
   },
   gallery: {
-    // These are small (20-36KB) — keep them bundled locally, no CDN needed
-    draw1: new URL('../assets/images/gallery/DRAW.webp', import.meta.url).href,
-    draw2: new URL('../assets/images/gallery/DRAW2.webp', import.meta.url).href,
+    draw1: `${CDN}/DRAW.webp`,
+    draw2: `${CDN}/DRAW2.webp`,
     drawings: [
-      new URL('../assets/images/gallery/DRAW.webp', import.meta.url).href,
-      new URL('../assets/images/gallery/DRAW2.webp', import.meta.url).href,
+      `${CDN}/DRAW.webp`,
+      `${CDN}/DRAW2.webp`,
     ]
   },
   media: {
@@ -213,6 +217,11 @@ export const ASSETS = {
     lensMusic: `${CDN}/lensMusic.webm`,        // direct webm audio
     meBitMusic:`${CDN}/meBitMusic/index.m3u8`, // HLS stream
     opening:   `${CDN}/opening_final.mp4`,     // video
+    bioPoster: `${CDN}/bioBG_poster.webp`,
+    bioWebm:   `${CDN}/bio_web.webm`,
+    bioMp4:    `${CDN}/bioBG_web.mp4`,
+    albumsOrb: `${CDN}/ALBUMS.webp`,
+    xOrb:      `${CDN}/X.webp`,
   }
 };
 

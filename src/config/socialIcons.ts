@@ -2,7 +2,7 @@
 // Custom 250x250 brand icons for the Home streaming/social lattice windows.
 // Keyed by the SAME ids used in src/config/streaming.ts so the map stays in sync.
 const ICON_BASE =
-  'https://raw.githubusercontent.com/noureddinelmobaraki-web/nl-audio-cdn/main/optimized/streaming.socia.licons';
+  'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/optimized/streaming.socia.licons';
 
 // Inline 250x250 tiles for platforms with no uploaded brand file yet.
 // Permitted by the page CSP in index.html: img-src 'self' data: blob: https:

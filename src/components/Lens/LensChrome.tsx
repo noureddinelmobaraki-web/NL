@@ -1,5 +1,6 @@
 import { useViewportSize } from '../../hooks/useViewportSize';
 import { useTranslation } from 'react-i18next';
+import { getLocalAssetUrl } from '../../constants/assets';
 
 export interface LensChromeProps {
   onClose: () => void;
@@ -100,7 +101,7 @@ export const LensChrome = ({
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono rounded bg-white/10 hover:bg-white/20 text-white transition-colors"
             title={t('lens.edit_photo', 'تعديل في Image95')}
           >
-            <img src="/image95/assets/icons8-windows-95-144.png" alt="" className="w-4 h-4 object-contain" />
+            <img src={getLocalAssetUrl('image95/assets/icons8-windows-95-144.png')} alt="" className="w-4 h-4 object-contain" />
             <span className="hidden sm:inline">{t('lens.edit', 'Image95')}</span>
           </button>
 

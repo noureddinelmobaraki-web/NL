@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from 'react';
 import { m } from "framer-motion";
-import { getLocalAssetUrl, getThemedImage } from "../../constants/assets";
+import { ASSETS, getThemedImage } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
 
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
@@ -50,9 +50,9 @@ export const HeroSection = memo(() => {
   };
   const activeProfileImg = profileImages[resolvedTheme] || profileImages['dark'];
 
-  const bioPosterUrl = getLocalAssetUrl('bioBG_poster.webp');
-  const bioWebmUrl = getLocalAssetUrl('bio_web.webm');
-  const bioMp4Url = getLocalAssetUrl('bioBG_web.mp4');
+  const bioPosterUrl = ASSETS.profile.bioPoster;
+  const bioWebmUrl = ASSETS.profile.bioWebm;
+  const bioMp4Url = ASSETS.profile.bioMp4;
 
   return (
     <header 

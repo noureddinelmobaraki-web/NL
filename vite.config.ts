@@ -81,6 +81,8 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules/zustand'))        return 'zustand';
             if (id.includes('node_modules/framer-motion'))  return 'framer';
             if (id.includes('node_modules/hls.js'))         return 'hls';
+            if (id.includes('node_modules/jszip'))          return 'jszip';
+            if (id.includes('node_modules/gsap'))           return 'gsap';
             if (id.includes('src/components/Drawings/'))    return 'drawings';
             if (id.includes('src/components/lyrics/'))      return 'lyrics';
             if (id.includes('src/components/songs/'))       return 'songs-ui';

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import OsWindow from './OsWindow'; // تأكد من مسار مكوّن OsWindow لديك في المشروع
 import { useTranslation } from 'react-i18next';
+import { getLocalAssetUrl } from '../constants/assets';
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -46,9 +47,10 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
 
   if (!isOpen) return null;
 
+  const baseIndexUrl = getLocalAssetUrl('image95/index.html');
   const srcUrl = imageUrl
-    ? `/image95/index.html?src=${encodeURIComponent(imageUrl)}`
-    : '/image95/index.html';
+    ? `${baseIndexUrl}?src=${encodeURIComponent(imageUrl)}`
+    : baseIndexUrl;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-6 bg-black/70 backdrop-blur-sm pointer-events-auto">
@@ -56,7 +58,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
         <OsWindow
           title={t('lens.edit_photo', 'Image95 - Photo Editor')}
           onClose={onClose}
-          icon="/image95/assets/icons8-windows-95-144.png"
+          icon={getLocalAssetUrl('image95/assets/icons8-windows-95-144.png')}
           contentPadding={0}
           className="w-full max-w-[920px] h-[640px] max-h-[90vh] flex flex-col"
         >

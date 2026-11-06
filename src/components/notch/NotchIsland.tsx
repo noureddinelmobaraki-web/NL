@@ -9,32 +9,23 @@ import {
 import { createPortal } from "react-dom";
 import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
-  Moon,
-  Sun,
-  Grid2x2,
-  Feather,
-  Gamepad2,
-  Film,
-  Tv,
-  Joystick,
-  Monitor,
-  AudioLines,
-  Users,
   LogOut,
-  Home,
   Volume2,
   VolumeX,
   UserRound,
   Square,
   X,
-  Globe,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { useAuthOptional } from "../../context/AuthContext";
 import { audioManager } from "../../audio/audioManager";
 import type { Theme } from "../../utils/userPrefs";
-import type { SwitcherMode, SwitcherDest } from "./notch.types";
+import {
+  MODES,
+  PAGE_META,
+  buildNotchDestinations,
+  type PageKey,
+} from "./notch.constants";
 import { useNowPlayingNotch } from "./hooks/useNowPlayingNotch";
 import { useNotchMode } from "./hooks/useNotchVisibility";
 import { useSwitcherState } from "./hooks/useSwitcherState";
@@ -48,31 +39,6 @@ import { useAudioConflict } from "./hooks/useAudioConflict";
 import { useSongSurface } from "../../audio/songSurfaceBus";
 import { NotchLivePill } from "./NotchLivePill";
 import { SwitcherPanel } from "./SwitcherPanel";
-import "../../styles/components/notch-aero.css";
-
-// الأوضاع الأربعة: سِمات لصفحة الهوم (midnight = الهوم الافتراضي، لم يعد زر وضع).
-const MODES: SwitcherMode[] = [
-  { id: "dark", label: "Dark", icon: Moon },
-  { id: "light", label: "Light", icon: Sun },
-  { id: "bit", label: "Bit", icon: Grid2x2 },
-  { id: "lite", label: "Lite", icon: Feather },
-];
-
-type PageKey =
-  "home" | "games" | "cinema" | "tv" | "retro" | "xp" | "music" | "accounts" | "liquidGlass";
-
-// لكل صفحة أيقونة + لون مميّز → يتغير شكل الأورب المنكمش في كل صفحة.
-const PAGE_META: Record<PageKey, { icon: LucideIcon; accent: string }> = {
-  home: { icon: Home, accent: "#7fd0ff" },
-  games: { icon: Gamepad2, accent: "#8affc1" },
-  cinema: { icon: Film, accent: "#ff9fc0" },
-  tv: { icon: Tv, accent: "#9ec9ff" },
-  retro: { icon: Joystick, accent: "#ffd27f" },
-  xp: { icon: Monitor, accent: "#7fd0ff" },
-  music: { icon: AudioLines, accent: "#c9a8ff" },
-  accounts: { icon: Users, accent: "#8fe3ff" },
-  liquidGlass: { icon: Globe, accent: "#7fd0ff" },
-};
 
 class Boundary extends Component<
   { children: ReactNode },
@@ -250,72 +216,32 @@ function NotchIslandInner() {
     vibrate();
   };
 
-  const DESTINATIONS: SwitcherDest[] = [
-    {
-      id: "home",
-      label: "Home",
-      title: "Home",
-      icon: <Home size={16} />,
-      isActive: pageKey === "home",
-      onClick: goHome,
-    },
-    {
-      id: "games",
-      label: "Games",
-      title: "Games",
-      icon: <Gamepad2 size={16} />,
-      isActive: isGamesOpen,
-      onClick: goto(isGamesOpen, openGames, closeGames),
-    },
-    {
-      id: "cinema",
-      label: "Cinema",
-      title: "Cinema & Movies",
-      icon: <Film size={16} />,
-      isActive: isMoviesOpen,
-      onClick: goto(isMoviesOpen, openMovies, closeMovies),
-    },
-    {
-      id: "tv",
-      label: "TV",
-      title: "TV & Live",
-      icon: <Tv size={16} />,
-      isActive: isTvOpen,
-      onClick: goto(isTvOpen, openTv, closeTv),
-    },
-    {
-      id: "retro",
-      label: "Retro",
-      title: "Classic Games",
-      icon: <Joystick size={16} />,
-      isActive: isRetroOpen,
-      onClick: goto(isRetroOpen, openRetro, closeRetro),
-    },
-    {
-      id: "xp",
-      label: "Windows XP",
-      title: "Windows Desktop",
-      icon: <Monitor size={16} />,
-      isActive: isXpOpen,
-      onClick: goto(isXpOpen, openXp, closeXp),
-    },
-    {
-      id: "music",
-      label: "Music",
-      title: "Music Player",
-      icon: <AudioLines size={16} />,
-      isActive: isMusicOpen,
-      onClick: goto(isMusicOpen, openMusic, closeMusic),
-    },
-    {
-      id: "accounts",
-      label: "Accounts",
-      title: "User Directory",
-      icon: <Users size={16} />,
-      isActive: isAccountsOpen,
-      onClick: goto(isAccountsOpen, openAccounts, closeAccounts),
-    },
-  ];
+  const DESTINATIONS = buildNotchDestinations({
+    pageKey,
+    goHome,
+    goto,
+    isGamesOpen,
+    openGames,
+    closeGames,
+    isMoviesOpen,
+    openMovies,
+    closeMovies,
+    isTvOpen,
+    openTv,
+    closeTv,
+    isRetroOpen,
+    openRetro,
+    closeRetro,
+    isXpOpen,
+    openXp,
+    closeXp,
+    isMusicOpen,
+    openMusic,
+    closeMusic,
+    isAccountsOpen,
+    openAccounts,
+    closeAccounts,
+  });
 
   const collapsedMobileState: "orb" | "live" =
     mode === "live" ? "live" : "orb";

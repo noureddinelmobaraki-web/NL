@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pause, Play, Shuffle, Volume2, VolumeX } from 'lucide-react';
-import { getLocalAssetUrl } from '../../../constants/assets';
+import { ASSETS } from '../../../constants/assets';
 import {
   formatDuration,
   RotatingEarthButton,
@@ -13,8 +13,8 @@ import type { LiquidGlassMode } from './orbs/useQuadLensWebGL';
 export { LIQUID_GLASS_HLS_VIDEOS };
 
 export const LIQUID_GLASS_TITLE_IMAGES = {
-  earthX: getLocalAssetUrl('X.webp'),
-  sunAlbums: getLocalAssetUrl('ALBUMS.webp'),
+  earthX: ASSETS.profile.xOrb,
+  sunAlbums: ASSETS.profile.albumsOrb,
   booksImage: 'https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/books-removebg-preview.webp',
   audiobooksImage: 'https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/audio.books-removebg-preview.webp',
   naturalWidth: 2400,
