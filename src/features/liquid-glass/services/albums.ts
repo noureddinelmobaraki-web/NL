@@ -1,6 +1,6 @@
 /**
- * @license
- * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
+ * Copyright (c) 2026 NL Archive.
+ * SPDX-License-Identifier: MIT
  */
 
 import { z } from 'zod';
@@ -27,7 +27,6 @@ export const NL_AUDIO_CDN_ALBUMS_URL =
   'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/data/albums.json';
 export const NL_JSDELIVR_ALBUMS_URL =
   'https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/data/albums.json';
-export const LOCAL_FALLBACK_ALBUMS_URL = '/data/albums.json';
 
 let cache: Promise<LiquidGlassAlbum[]> | null = null;
 let syncAlbumsCache: LiquidGlassAlbum[] | null = null;
@@ -46,7 +45,7 @@ async function fetchAndValidateAlbums(url: string): Promise<LiquidGlassAlbum[]> 
 
 /**
  * Loads the 99 albums catalog on-demand from `nl-audio-cdn/data/albums.json`
- * (with automatic fallback to jsDelivr mirror or `/data/albums.json` before manual GitHub push).
+ * (with automatic fallback to jsDelivr mirror).
  */
 export function loadAlbums(): Promise<LiquidGlassAlbum[]> {
   if (syncAlbumsCache && syncAlbumsCache.length > 0) {
@@ -54,7 +53,6 @@ export function loadAlbums(): Promise<LiquidGlassAlbum[]> {
   }
   cache ??= fetchAndValidateAlbums(NL_AUDIO_CDN_ALBUMS_URL)
     .catch(() => fetchAndValidateAlbums(NL_JSDELIVR_ALBUMS_URL))
-    .catch(() => fetchAndValidateAlbums(LOCAL_FALLBACK_ALBUMS_URL))
     .catch((err) => {
       cache = null;
       throw err;

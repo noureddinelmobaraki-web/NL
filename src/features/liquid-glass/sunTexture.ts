@@ -1,18 +1,14 @@
 /**
- * @license
- * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
+ * Copyright (c) 2026 NL Archive.
+ * SPDX-License-Identifier: MIT
  *
- * Externalized WebP textures for Sun & Earth orbs (converted from 56KB Base64 JPEG strings).
- * Primary CDN target: https://noureddinelmobaraki-web.github.io/nl-audio-cdn/textures/
- * Local static fallback: /textures/sun.webp & /textures/earth.webp
+ * Externalized WebP textures for Sun & Earth orbs hosted on nl-audio-cdn.
  */
-
-import { getLocalAssetUrl } from '../../constants/assets';
 
 export const SUN_TEXTURE_CDN_URL =
   'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/textures/sun.webp';
 export const EARTH_TEXTURE_CDN_URL =
   'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/textures/earth.webp';
 
-export const SUN_TEXTURE_DATA_URI = getLocalAssetUrl('textures/sun.webp');
-export const EARTH_TEXTURE_DATA_URI = getLocalAssetUrl('textures/earth.webp');
+export const SUN_TEXTURE_DATA_URI = SUN_TEXTURE_CDN_URL;
+export const EARTH_TEXTURE_DATA_URI = EARTH_TEXTURE_CDN_URL;

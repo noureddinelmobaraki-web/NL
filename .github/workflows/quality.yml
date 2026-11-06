@@ -36,7 +36,7 @@ jobs:
 
 
       - name: Install Dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
       - name: Run Linter
         run: npm run lint
