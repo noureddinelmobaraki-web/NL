@@ -48,6 +48,7 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
     openRetro,
     openGames,
     openAccounts,
+    openLiquidGlass,
   } = useAppContext();
   const [activeRoot, setActiveRoot] = useState<string | null>(null);
   const [activeBranch, setActiveBranch] = useState<string | null>(null);
@@ -97,6 +98,10 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
         openRetro,
         openGames,
         openAccounts,
+        openLiquidBooks: () => openLiquidGlass('books'),
+        openLiquidAudiobooks: () => openLiquidGlass('audiobooks'),
+        openLiquidAlbums: () => openLiquidGlass('sun'),
+        openLiquidX: () => openLiquidGlass('video'),
       };
       introAudioController.fadeOut(600);
       if (action.kind === 'open') {
@@ -114,6 +119,7 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
     [
       openAccounts,
       openGames,
+      openLiquidGlass,
       openMovies,
       openMusic,
       openRetro,
@@ -160,9 +166,10 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
   }, [graph.edges, graph.nodes]);
 
   const l2RefractAttr = graph.nodes.length > 10 ? '0' : '1';
+  const denseAttr = graph.nodes.length >= 8 ? '1' : '0';
 
   return (
-    <div ref={ref} className="nl-graph-stage" data-l2-refract={l2RefractAttr}>
+    <div ref={ref} className="nl-graph-stage" data-l2-refract={l2RefractAttr} data-dense={denseAttr}>
       {canRefract ? <LiquidGlassFilter /> : null}
       <ConnectorLayer
         edges={graph.edges}

@@ -153,7 +153,7 @@ const NL_ENTER_FADE = { opacity: 0 } as const;
 const YouTubePortal = lazy(() => import('./features/youtube/YouTubePortal'));
 
 function AppInner() {
-  const { theme, loaded, setLoaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, isPortraitOpen, isLiquidGlassOpen, closeLiquidGlass, endTransition, openMusic } = useAppContext();
+  const { theme, loaded, setLoaded, isGamesOpen, closeGames, isMoviesOpen, closeMovies, isSeriesOpen, closeSeries, isTvOpen, closeTv, isRetroOpen, closeRetro, isXpOpen, closeXp, isMusicOpen, isAccountsOpen, closeAccounts, isPortraitOpen, isLiquidGlassOpen, liquidGlassMode, closeLiquidGlass, endTransition, openMusic } = useAppContext();
   const isAutomated = isAutomatedEnv();
   // عند الدخول من رابط مشاركة، لا تبدأ العرض عند opacity:0 حتى لا يبقى المحتوى غير مرسوم حتى إعادة الرسم
   const bootedFromDeepLink = useRef(readPendingSong() !== null).current;
@@ -367,7 +367,7 @@ function AppInner() {
           >
             <SectionErrorBoundary sectionName="liquidGlass">
               <Suspense fallback={<PageLoader pageType="cinema" />}>
-                <LiquidGlassPortalPage onClose={closeLiquidGlass} />
+                <LiquidGlassPortalPage onClose={closeLiquidGlass} initialMode={liquidGlassMode} />
               </Suspense>
             </SectionErrorBoundary>
           </m.div>

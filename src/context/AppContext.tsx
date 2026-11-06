@@ -126,7 +126,8 @@ interface AppContextType {
   closePortrait: () => void;
   // ── صفحة الزجاج السائل Liquid Glass ────────────────────
   isLiquidGlassOpen: boolean;
-  openLiquidGlass: () => void;
+  liquidGlassMode: 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks';
+  openLiquidGlass: (mode?: 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks' | unknown) => void;
   closeLiquidGlass: () => void;
 }
 
@@ -321,14 +322,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeAccounts = useCallback(() => navigateTo('home'), [navigateTo]);
   const openPortrait  = useCallback(() => navigateTo('portrait'), [navigateTo]);
   const closePortrait = useCallback(() => navigateTo('home'), [navigateTo]);
-  const openLiquidGlass  = useCallback(() => navigateTo('liquidGlass'), [navigateTo]);
-  const closeLiquidGlass = useCallback(() => navigateTo('home'), [navigateTo]);
+  const [liquidGlassMode, setLiquidGlassMode] = useState<'orbs' | 'video' | 'sun' | 'books' | 'audiobooks'>('orbs');
+  const openLiquidGlass  = useCallback((mode?: 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks' | unknown) => {
+    const validModes = ['orbs', 'video', 'sun', 'books', 'audiobooks'] as const;
+    const resolvedMode =
+      typeof mode === 'string' && (validModes as readonly string[]).includes(mode)
+        ? (mode as 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks')
+        : 'orbs';
+    setLiquidGlassMode(resolvedMode);
+    navigateTo('liquidGlass');
+  }, [navigateTo]);
+  const closeLiquidGlass = useCallback(() => {
+    setLiquidGlassMode('orbs');
+    navigateTo('home');
+  }, [navigateTo]);
 
   const returnToWelcome = useCallback(() => {
     gameBackRef.current = null;  setGameActive(false);
     movieBackRef.current = null; setMovieActive(false);
     seriesBackRef.current = null; setSeriesActive(false);
     tvBackRef.current = null;    setTvActive(false);
+    setLiquidGlassMode('orbs');
     dispatch({ type: 'RESET' });
     prevPageRef.current = 'home';
     try {
@@ -374,7 +388,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isMusicOpen, openMusic, closeMusic,
         isAccountsOpen, openAccounts, closeAccounts,
         isPortraitOpen, openPortrait, closePortrait,
-        isLiquidGlassOpen, openLiquidGlass, closeLiquidGlass,
+        isLiquidGlassOpen, liquidGlassMode, openLiquidGlass, closeLiquidGlass,
       }}
     >
       {children}

@@ -164,14 +164,20 @@ export function computeGraph(
 
   // ------------------------------------------------------------ level 1
   const base = isMobile ? 90 : 0;
-  const spread1 = isMobile ? 104 : 74;
-  const R1 = isMobile ? Math.min(h * 0.26, 220) : Math.min(w * 0.2, 260);
+  const spread1 = isMobile ? 112 : 76;
+  const R1 = isMobile ? Math.min(h * 0.23, 195) : Math.min(w * 0.2, 250);
   const rootPt = rootPts[activeRootId];
   const l1 = fan(rootPt, activeRoot.children.length, base, spread1, R1).map((p) => clampPt(p, w, h, pad));
 
+  const isEntReadListenCoupled =
+    activeRootId === 'ent' && (activeBranchId === 'read' || activeBranchId === 'listen');
+
+  const l1Map: Record<string, Pt> = {};
   activeRoot.children.forEach((c, i) => {
     const pos = l1[i];
-    const active = c.id === activeBranchId;
+    l1Map[c.id] = pos;
+    const isCoActive = isEntReadListenCoupled && (c.id === 'read' || c.id === 'listen');
+    const active = c.id === activeBranchId || isCoActive;
     nodes.push({
       node: c,
       level: 1,
@@ -192,15 +198,210 @@ export function computeGraph(
   });
 
   if (!activeBranchId) return { nodes, edges };
+
+  // Special interconnected geometry for Entertainment -> Read / Listen
+  if (isEntReadListenCoupled) {
+    const listenNode = activeRoot.children.find((c) => c.id === 'listen');
+    const readNode = activeRoot.children.find((c) => c.id === 'read');
+    const listenPt = l1Map['listen'] ?? rootPt;
+    const readPt = l1Map['read'] ?? rootPt;
+
+    const musicLeaf = listenNode?.children?.find((c) => c.id === 'music');
+    const albumsLeaf = listenNode?.children?.find((c) => c.id === 'og-albums');
+    const audioLeaf =
+      listenNode?.children?.find((c) => c.id === 'audiobooks') ??
+      readNode?.children?.find((c) => c.id === 'audiobooks');
+    const booksLeaf = readNode?.children?.find((c) => c.id === 'books');
+
+    if (activeBranchId === 'read') {
+      // Read opens Books, co-activates Listen, and shows Audio Books connected to BOTH Listen and Books
+      const leafX = isMobile ? w * 0.5 : Math.min(w - pad - 40, Math.max(readPt.x, listenPt.x) + Math.min(w * 0.21, 240));
+      const audioPos: Pt = isMobile
+        ? clampPt({ x: w * 0.28, y: Math.min(h - 86, Math.max(listenPt.y, readPt.y) + Math.min(h * 0.22, 165)) }, w, h, 48)
+        : clampPt({ x: leafX, y: (listenPt.y + readPt.y) * 0.5 - 18 }, w, h, pad);
+      const booksPos: Pt = isMobile
+        ? clampPt({ x: w * 0.72, y: Math.min(h - 86, Math.max(listenPt.y, readPt.y) + Math.min(h * 0.22, 165)) }, w, h, 48)
+        : clampPt({ x: leafX, y: readPt.y + 48 }, w, h, pad);
+
+      if (booksLeaf) {
+        nodes.push({
+          node: booksLeaf,
+          level: 2,
+          pos: booksPos,
+          origin: readPt,
+          dimmed: false,
+          active: false,
+          compact: false,
+          hasChildren: false,
+        });
+        edges.push({
+          id: `read->${booksLeaf.id}`,
+          fromId: 'read',
+          toId: booksLeaf.id,
+          path: curve(readPt, booksPos),
+          depth: 2,
+        });
+      }
+
+      if (audioLeaf) {
+        nodes.push({
+          node: audioLeaf,
+          level: 2,
+          pos: audioPos,
+          origin: readPt,
+          dimmed: false,
+          active: false,
+          compact: false,
+          hasChildren: false,
+        });
+        edges.push({
+          id: `listen->${audioLeaf.id}`,
+          fromId: 'listen',
+          toId: audioLeaf.id,
+          path: curve(listenPt, audioPos),
+          depth: 2,
+        });
+        if (booksLeaf) {
+          edges.push({
+            id: `${booksLeaf.id}->${audioLeaf.id}`,
+            fromId: booksLeaf.id,
+            toId: audioLeaf.id,
+            path: curve(booksPos, audioPos),
+            depth: 2,
+          });
+        }
+      }
+
+      return { nodes, edges };
+    }
+
+    // activeBranchId === 'listen':
+    // Opens NL Music, OG ALBUMS, Audio Books, AND co-opens Read -> Books connected to Audio Books
+    const leafX = Math.min(w - pad - 40, Math.max(listenPt.x, readPt.x) + Math.min(w * 0.21, 245));
+    const baseMobileY = Math.max(listenPt.y, readPt.y) + Math.min(h * 0.17, 130);
+    const rowGapMobile = Math.min(h * 0.12, 82);
+
+    const desktopCenterY = (listenPt.y + readPt.y) * 0.5;
+    const desktopStep = Math.min(h * 0.135, 86);
+
+    const musicPos: Pt = isMobile
+      ? clampPt({ x: w * 0.27, y: baseMobileY }, w, h, 46)
+      : clampPt({ x: leafX, y: desktopCenterY - desktopStep * 1.5 }, w, h, 64);
+    const albumsPos: Pt = isMobile
+      ? clampPt({ x: w * 0.73, y: baseMobileY }, w, h, 46)
+      : clampPt({ x: leafX, y: desktopCenterY - desktopStep * 0.5 }, w, h, 64);
+    const audioPos: Pt = isMobile
+      ? clampPt({ x: w * 0.27, y: baseMobileY + rowGapMobile }, w, h, 46)
+      : clampPt({ x: leafX, y: desktopCenterY + desktopStep * 0.5 }, w, h, 64);
+    const booksPos: Pt = isMobile
+      ? clampPt({ x: w * 0.73, y: baseMobileY + rowGapMobile }, w, h, 46)
+      : clampPt({ x: leafX, y: desktopCenterY + desktopStep * 1.5 }, w, h, 64);
+
+    if (musicLeaf) {
+      nodes.push({
+        node: musicLeaf,
+        level: 2,
+        pos: musicPos,
+        origin: listenPt,
+        dimmed: false,
+        active: false,
+        compact: false,
+        hasChildren: false,
+      });
+      edges.push({
+        id: `listen->${musicLeaf.id}`,
+        fromId: 'listen',
+        toId: musicLeaf.id,
+        path: curve(listenPt, musicPos),
+        depth: 2,
+      });
+    }
+
+    if (albumsLeaf) {
+      nodes.push({
+        node: albumsLeaf,
+        level: 2,
+        pos: albumsPos,
+        origin: listenPt,
+        dimmed: false,
+        active: false,
+        compact: false,
+        hasChildren: false,
+      });
+      edges.push({
+        id: `listen->${albumsLeaf.id}`,
+        fromId: 'listen',
+        toId: albumsLeaf.id,
+        path: curve(listenPt, albumsPos),
+        depth: 2,
+      });
+    }
+
+    if (audioLeaf) {
+      nodes.push({
+        node: audioLeaf,
+        level: 2,
+        pos: audioPos,
+        origin: listenPt,
+        dimmed: false,
+        active: false,
+        compact: false,
+        hasChildren: false,
+      });
+      edges.push({
+        id: `listen->${audioLeaf.id}`,
+        fromId: 'listen',
+        toId: audioLeaf.id,
+        path: curve(listenPt, audioPos),
+        depth: 2,
+      });
+    }
+
+    if (booksLeaf) {
+      nodes.push({
+        node: booksLeaf,
+        level: 2,
+        pos: booksPos,
+        origin: readPt,
+        dimmed: false,
+        active: false,
+        compact: false,
+        hasChildren: false,
+      });
+      edges.push({
+        id: `read->${booksLeaf.id}`,
+        fromId: 'read',
+        toId: booksLeaf.id,
+        path: curve(readPt, booksPos),
+        depth: 2,
+      });
+      if (audioLeaf) {
+        edges.push({
+          id: `${booksLeaf.id}->${audioLeaf.id}`,
+          fromId: booksLeaf.id,
+          toId: audioLeaf.id,
+          path: curve(booksPos, audioPos),
+          depth: 2,
+        });
+      }
+    }
+
+    return { nodes, edges };
+  }
+
   const branchIdx = activeRoot.children.findIndex((c) => c.id === activeBranchId);
   const branch = activeRoot.children[branchIdx];
   if (!branch?.children?.length) return { nodes, edges };
 
-  // ------------------------------------------------------------ level 2
+  // ------------------------------------------------------------ level 2 (standard branches e.g. Watch)
   const branchPt = l1[branchIdx];
-  const spread2 = isMobile ? 88 : 66;
-  const R2 = isMobile ? Math.min(h * 0.22, 190) : Math.min(w * 0.19, 230);
-  const l2 = fan(branchPt, branch.children.length, base, spread2, R2).map((p) => clampPt(p, w, h, pad));
+  const childCount = branch.children.length;
+  const spread2 = isMobile ? (childCount >= 3 ? 110 : 88) : (childCount >= 3 ? 78 : 66);
+  const R2 = isMobile ? Math.min(h * 0.22, 185) : Math.min(w * 0.19, 230);
+  const base2 = isMobile && branchPt.x > w * 0.62 ? 112 : base;
+  const l2 = fan(branchPt, childCount, base2, spread2, R2).map((p) =>
+    clampPt(p, w, h, isMobile ? 48 : pad),
+  );
 
   branch.children.forEach((leaf, i) => {
     const pos = l2[i];

@@ -30,5 +30,11 @@ export function warmLauncherAction(action: NodeAction): void {
     case 'openAccounts':
       void import('../../features/accounts/AccountsPage').catch(() => undefined);
       break;
+    case 'openLiquidBooks':
+    case 'openLiquidAudiobooks':
+    case 'openLiquidAlbums':
+    case 'openLiquidX':
+      void import('../../features/liquid-glass/LiquidGlassPortalPage').catch(() => undefined);
+      break;
   }
 }

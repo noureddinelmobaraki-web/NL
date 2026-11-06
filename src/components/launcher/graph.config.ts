@@ -15,7 +15,11 @@ export type OpenHandler =
   | "openXp"
   | "openRetro"
   | "openGames"
-  | "openAccounts";
+  | "openAccounts"
+  | "openLiquidBooks"
+  | "openLiquidAudiobooks"
+  | "openLiquidAlbums"
+  | "openLiquidX";
 
 export type NodeAction =
   | { kind: "open"; handler: OpenHandler } // full-screen page (genie transition)
@@ -61,7 +65,7 @@ export const ROOTS: GraphNode[] = [
   {
     id: "ent",
     label: "Entertainment",
-    tagline: "Watch & Listen",
+    tagline: "Watch, Listen & Read",
     icon: `${CDN}/ico/Entertainment.png`,
     action: { kind: "branch" },
     children: [
@@ -77,6 +81,38 @@ export const ROOTS: GraphNode[] = [
             icon: `${CDN}/ico/NL%20music.ico`,
             action: { kind: "open", handler: "openMusic" },
           },
+          {
+            id: "og-albums",
+            label: "OG ALBUMS",
+            icon: "/ALBUMS.webp",
+            action: { kind: "open", handler: "openLiquidAlbums" },
+          },
+          {
+            id: "audiobooks",
+            label: "Audio Books",
+            icon: "lucide:headphones",
+            action: { kind: "open", handler: "openLiquidAudiobooks" },
+          },
+        ],
+      },
+      {
+        id: "read",
+        label: "Read",
+        icon: "lucide:book-open",
+        action: { kind: "branch" },
+        children: [
+          {
+            id: "books",
+            label: "Books",
+            icon: "lucide:book",
+            action: { kind: "open", handler: "openLiquidBooks" },
+          },
+          {
+            id: "audiobooks",
+            label: "Audio Books",
+            icon: "lucide:headphones",
+            action: { kind: "open", handler: "openLiquidAudiobooks" },
+          },
         ],
       },
       {
@@ -85,7 +121,6 @@ export const ROOTS: GraphNode[] = [
         icon: `${CDN}/ico/Watch.png`,
         action: { kind: "branch" },
         children: [
-          // No dedicated Movies glass icon was provided -> lucide fallback for now.
           {
             id: "movies",
             label: "Movies & Series",
@@ -97,6 +132,12 @@ export const ROOTS: GraphNode[] = [
             label: "NL TV",
             icon: `${CDN}/ico/NL%20TV.ico`,
             action: { kind: "open", handler: "openTv" },
+          },
+          {
+            id: "x-video",
+            label: "X",
+            icon: "/X.webp",
+            action: { kind: "open", handler: "openLiquidX" },
           },
         ],
       },

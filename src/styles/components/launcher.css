@@ -405,6 +405,52 @@
   }
 }
 
+/* ---- Dynamic dense-mode scaling when Read/Listen/Watch multi-leaves are open ---- */
+.nl-graph-stage[data-dense="1"] .nl-node-l1 {
+  padding-block: 8px;
+  padding-inline: 14px;
+}
+.nl-graph-stage[data-dense="1"] .nl-node-l2 {
+  padding-block: 7px;
+  padding-inline: 13px;
+  gap: 8px;
+}
+.nl-graph-stage[data-dense="1"] .nl-node-l2 .nl-node-ico {
+  width: 26px;
+  height: 26px;
+}
+.nl-graph-stage[data-dense="1"] .nl-node-l2 .nl-node-label {
+  font-size: 0.88rem;
+}
+
+@media (max-width: 767px) {
+  .nl-graph-stage[data-dense="1"] .nl-node-l1 {
+    padding-block: 6px;
+    padding-inline: 10px;
+    gap: 7px;
+  }
+  .nl-graph-stage[data-dense="1"] .nl-node-l1 .nl-node-ico {
+    width: 25px;
+    height: 25px;
+  }
+  .nl-graph-stage[data-dense="1"] .nl-node-l1 .nl-node-label {
+    font-size: 0.82rem;
+  }
+  .nl-graph-stage[data-dense="1"] .nl-node-l2 {
+    padding-block: 6px;
+    padding-inline: 10px;
+    gap: 6px;
+  }
+  .nl-graph-stage[data-dense="1"] .nl-node-l2 .nl-node-ico {
+    width: 23px;
+    height: 23px;
+  }
+  .nl-graph-stage[data-dense="1"] .nl-node-l2 .nl-node-label {
+    font-size: 0.76rem;
+    max-width: 88px;
+  }
+}
+
 /* ---- Profile tether rays ---- */
 .nl-tether-box {
   position: fixed;

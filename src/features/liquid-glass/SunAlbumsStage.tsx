@@ -973,15 +973,20 @@ export const SunAlbumsStage = React.memo(function SunAlbumsStage({
         const tapX = e.clientX - rect.left;
         const tapY = e.clientY - rect.top;
         const regions = hitRegionsRef.current;
+        let matchedTile = false;
         for (let i = regions.length - 1; i >= 0; i--) {
           if (pointInPolygon(tapX, tapY, regions[i].boundary)) {
             handleSelectAlbum(regions[i].album);
+            matchedTile = true;
             break;
           }
         }
+        if (!matchedTile) {
+          onBackToOrbs();
+        }
       }
     },
-    [handleSelectAlbum],
+    [handleSelectAlbum, onBackToOrbs],
   );
 
   const handleGridPointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -1698,9 +1703,20 @@ export const SunAlbumsStage = React.memo(function SunAlbumsStage({
           className={`lg-album-detail-workspace${
             lyricsWindowOpen && activeTrack ? ' lg-album-detail-workspace--with-lyrics' : ''
           }`}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            if (
+              target.closest('.lg-album-player-column') ||
+              target.closest('.lg-ios26-lyrics-stage') ||
+              target.closest('button')
+            ) {
+              return;
+            }
+            handleBackNavigation();
+          }}
         >
           {/* Main Column: Full-Bleed Droplet Album Cover + Clear Bubble Glass Track Tubes */}
-          <div className="lg-album-player-column">
+          <div className="lg-album-player-column" onClick={(e) => e.stopPropagation()}>
             {/* Selected Album Cover with Ultra-Thin Sun/Earth Bubble Glass Rim */}
             <header className="lg-ascended-album-hero">
               <div

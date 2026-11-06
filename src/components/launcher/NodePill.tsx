@@ -8,6 +8,11 @@ import {
   Joystick,
   Feather,
   Clapperboard,
+  BookOpen,
+  Book,
+  Headphones,
+  Disc,
+  Globe,
   ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
@@ -25,6 +30,11 @@ const LUCIDE: Record<string, LucideIcon> = {
   joystick: Joystick,
   feather: Feather,
   clapperboard: Clapperboard,
+  'book-open': BookOpen,
+  book: Book,
+  headphones: Headphones,
+  disc: Disc,
+  globe: Globe,
 };
 
 /* ---- Module-level press & hover physics constants (React Compiler friendly) ---- */

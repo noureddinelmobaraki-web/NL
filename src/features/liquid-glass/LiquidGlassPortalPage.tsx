@@ -24,9 +24,14 @@ import { useLiquidGlassAudio } from './useLiquidGlassAudio';
 import { EARTH_TEXTURE_DATA_URI, SUN_TEXTURE_DATA_URI } from './sunTexture';
 import { LIQUID_GLASS_ALL_HLS_VIDEOS } from './albumsData';
 import { SunAlbumsStage } from './SunAlbumsStage';
+import { BooksStage } from './BooksStage';
+import { AudiobooksStage } from './AudiobooksStage';
+import type { AudiobookItem, BookItem } from './booksAudioService';
+
+export type LiquidGlassMode = 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks';
 
 // ============================================================================
-// [EDIT HERE: BACKGROUNDS & TITLES] — روابط الخلفيات وصور العناوين (X & ALBUMS)
+// [EDIT HERE: BACKGROUNDS & TITLES] — روابط الخلفيات وصور العناوين (X & ALBUMS & BOOKS & AUDIO BOOKS)
 // ============================================================================
 export const LIQUID_GLASS_BACKGROUNDS = {
   pc: 'https://pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev/pc.webp',
@@ -37,6 +42,8 @@ export const LIQUID_GLASS_BACKGROUNDS = {
 export const LIQUID_GLASS_TITLE_IMAGES = {
   earthX: getLocalAssetUrl('X.webp'),
   sunAlbums: getLocalAssetUrl('ALBUMS.webp'),
+  booksImage: 'https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/books-removebg-preview.webp',
+  audiobooksImage: 'https://cdn.jsdelivr.net/gh/noureddinelmobaraki-web/nl-audio-cdn@main/audio.books-removebg-preview.webp',
   naturalWidth: 2400,
   naturalHeight: 1340,
 } as const;
@@ -73,6 +80,7 @@ const GLASS_CONFIG = {
 // ============================================================================
 export interface LiquidGlassPortalPageProps {
   onClose?: () => void;
+  initialMode?: LiquidGlassMode;
   onVideoAudioActiveChange?: (isVideoAudible: boolean) => void;
   onVideoElementMount?: (mediaEl: HTMLMediaElement | null) => void;
   externalMuted?: boolean;
@@ -80,7 +88,7 @@ export interface LiquidGlassPortalPageProps {
 }
 
 // ============================================================================
-// WebGL GLSL Shaders — محرك الزجاج السائل المزدوج (فقاعة الأرض + فقاعة الشمس)
+// WebGL GLSL Shaders — محرك الزجاج السائل الرباعي (فقاعة الأرض + الشمس + الكتب + الكتب الصوتية)
 // ============================================================================
 const VERTEX_SHADER_SOURCE = `
   attribute vec2 a_position;
@@ -119,6 +127,20 @@ function buildFragmentShaderSource(): string {
     uniform float u_cornerB;
     uniform float u_wobbleB;
     uniform float u_alphaB;
+
+    // Bubble C (Books Wireframe Sphere)
+    uniform vec2 u_centerC;
+    uniform vec2 u_sizeC;
+    uniform float u_cornerC;
+    uniform float u_wobbleC;
+    uniform float u_alphaC;
+
+    // Bubble D (Audio Books Wireframe Sphere)
+    uniform vec2 u_centerD;
+    uniform vec2 u_sizeD;
+    uniform float u_cornerD;
+    uniform float u_wobbleD;
+    uniform float u_alphaD;
 
     uniform vec3 u_tint;
     uniform float u_saturation;
@@ -198,37 +220,56 @@ function buildFragmentShaderSource(): string {
       float sdfB = (u_alphaB > 0.01)
         ? sdLiquidShape(fragCoord - u_centerB, u_sizeB, u_cornerB, u_wobbleB, u_time, 2.094)
         : 1e5;
+      float sdfC = (u_alphaC > 0.01)
+        ? sdLiquidShape(fragCoord - u_centerC, u_sizeC, u_cornerC, u_wobbleC, u_time, 4.188)
+        : 1e5;
+      float sdfD = (u_alphaD > 0.01)
+        ? sdLiquidShape(fragCoord - u_centerD, u_sizeD, u_cornerD, u_wobbleD, u_time, 1.047)
+        : 1e5;
 
       vec2 coverUV = getCoverUV(v_texCoord, u_imageAspect, u_canvasAspect);
       vec3 baseTex = texture2D(u_texture, coverUV).rgb;
 
-      // Analytical soft drop shadows for both bubbles
+      // Analytical soft drop shadows for all 4 bubbles
       float shDistA = (u_alphaA > 0.01)
         ? sdLiquidShape((fragCoord - u_centerA) - u_shadowOffset, u_sizeA, u_cornerA, u_wobbleA, u_time, 0.0)
         : 1e5;
       float shDistB = (u_alphaB > 0.01)
         ? sdLiquidShape((fragCoord - u_centerB) - u_shadowOffset, u_sizeB, u_cornerB, u_wobbleB, u_time, 2.094)
         : 1e5;
+      float shDistC = (u_alphaC > 0.01)
+        ? sdLiquidShape((fragCoord - u_centerC) - u_shadowOffset, u_sizeC, u_cornerC, u_wobbleC, u_time, 4.188)
+        : 1e5;
+      float shDistD = (u_alphaD > 0.01)
+        ? sdLiquidShape((fragCoord - u_centerD) - u_shadowOffset, u_sizeD, u_cornerD, u_wobbleD, u_time, 1.047)
+        : 1e5;
 
       float shAlphaA = (1.0 - smoothstep(-u_shadowBlur * 0.25, max(u_shadowBlur, 1.0), shDistA)) * u_shadowIntensity * u_alphaA;
       float shAlphaB = (1.0 - smoothstep(-u_shadowBlur * 0.25, max(u_shadowBlur, 1.0), shDistB)) * u_shadowIntensity * u_alphaB;
-      float shadowAlpha = max(shAlphaA, shAlphaB);
+      float shAlphaC = (1.0 - smoothstep(-u_shadowBlur * 0.25, max(u_shadowBlur, 1.0), shDistC)) * u_shadowIntensity * u_alphaC;
+      float shAlphaD = (1.0 - smoothstep(-u_shadowBlur * 0.25, max(u_shadowBlur, 1.0), shDistD)) * u_shadowIntensity * u_alphaD;
+      float shadowAlpha = max(max(shAlphaA, shAlphaB), max(shAlphaC, shAlphaD));
       vec3 shadowedBackground = baseTex * (1.0 - shadowAlpha);
 
-      bool isSunBubble = (sdfB < sdfA);
-      float sdf = isSunBubble ? sdfB : sdfA;
-      float bubbleAlpha = isSunBubble ? u_alphaB : u_alphaA;
+      // Select closest active bubble (0: Earth, 1: Sun, 2: Books, 3: Audio Books)
+      int activeIdx = 0;
+      float sdf = sdfA;
+      if (sdfB < sdf) { sdf = sdfB; activeIdx = 1; }
+      if (sdfC < sdf) { sdf = sdfC; activeIdx = 2; }
+      if (sdfD < sdf) { sdf = sdfD; activeIdx = 3; }
+
+      float bubbleAlpha = (activeIdx == 1) ? u_alphaB : (activeIdx == 2) ? u_alphaC : (activeIdx == 3) ? u_alphaD : u_alphaA;
 
       if (sdf > 1.5 || bubbleAlpha <= 0.01) {
         gl_FragColor = vec4(shadowedBackground, 1.0);
         return;
       }
 
-      vec2 activeCenter = isSunBubble ? u_centerB : u_centerA;
-      vec2 activeSize = isSunBubble ? u_sizeB : u_sizeA;
-      float activeCorner = isSunBubble ? u_cornerB : u_cornerA;
-      float activeWobble = isSunBubble ? u_wobbleB : u_wobbleA;
-      float activePhase = isSunBubble ? 2.094 : 0.0;
+      vec2 activeCenter = (activeIdx == 1) ? u_centerB : (activeIdx == 2) ? u_centerC : (activeIdx == 3) ? u_centerD : u_centerA;
+      vec2 activeSize = (activeIdx == 1) ? u_sizeB : (activeIdx == 2) ? u_sizeC : (activeIdx == 3) ? u_sizeD : u_sizeA;
+      float activeCorner = (activeIdx == 1) ? u_cornerB : (activeIdx == 2) ? u_cornerC : (activeIdx == 3) ? u_cornerD : u_cornerA;
+      float activeWobble = (activeIdx == 1) ? u_wobbleB : (activeIdx == 2) ? u_wobbleC : (activeIdx == 3) ? u_wobbleD : u_wobbleA;
+      float activePhase = (activeIdx == 1) ? 2.094 : (activeIdx == 2) ? 4.188 : (activeIdx == 3) ? 1.047 : 0.0;
 
       float minHalfDim = max(min(activeSize.x, activeSize.y), 1.0);
       float normalizedInside = clamp((sdf / minHalfDim) + 1.0, 0.0, 1.0);
@@ -250,7 +291,9 @@ function buildFragmentShaderSource(): string {
       vec3 glassTex = sampleCrystalGlass(sampleUV, refractVec, rimBlurPx);
       glassTex = mix(glassTex, saturateColor(glassTex, u_saturation), rimCurve * 0.55);
 
-      vec3 activeTint = isSunBubble ? vec3(1.0, 0.985, 0.96) : u_tint;
+      vec3 activeTint = (activeIdx == 1)
+        ? vec3(1.0, 0.985, 0.96)
+        : u_tint;
       glassTex *= activeTint;
 
       float causticAngle = u_time * 0.55 + activePhase;
@@ -260,7 +303,7 @@ function buildFragmentShaderSource(): string {
       float spec2 = pow(max(dot(grad, lightDir2), 0.0), 4.0) * 0.55;
 
       float rimHighlight = smoothstep(-5.5, -0.6, sdf) * (1.0 - smoothstep(-0.6, 1.2, sdf));
-      vec3 fresnelTint = isSunBubble
+      vec3 fresnelTint = (activeIdx == 1)
         ? mix(vec3(1.0, 0.90, 0.74), vec3(1.0, 0.97, 0.90), spec1)
         : mix(vec3(0.84, 0.95, 1.0), vec3(1.0, 0.96, 0.99), spec1);
       glassTex += fresnelTint * ((spec1 + spec2) * outerMeniscus * 0.36 + rimHighlight * 0.32);
@@ -366,10 +409,64 @@ const RotatingSunButton = React.memo(function RotatingSunButton({
 });
 
 // ============================================================================
+// 3D Wireframe Sphere Orb Button (Books & Audio Books) — 36 Meridians + 12 Latitudes + 2 Axes
+// ============================================================================
+const MERIDIAN_INDICES = Array.from({ length: 36 }, (_, i) => i + 1);
+const LATITUDE_CLASSES = [
+  'l300',
+  'l290',
+  'l280',
+  'l270',
+  'l260',
+  'l235',
+  'l30',
+  'l90',
+  'l80',
+  'l70',
+  'l60',
+  'l35',
+] as const;
+
+const WireframeSphereOrbButton = React.memo(function WireframeSphereOrbButton({
+  variant,
+  onActivate,
+  ariaLabel,
+}: {
+  variant: 'books' | 'audiobooks';
+  onActivate: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={`lg-wireframe-trigger lg-wireframe-trigger--${variant}`}
+      onClick={onActivate}
+      aria-label={ariaLabel}
+    >
+      <div className="lg-wireframe-scale-wrap">
+        <div className={`lg-sphere-wrapper lg-sphere-wrapper--${variant}`}>
+          <div className="lg-wf-plane lg-wf-equator" />
+          <div className="lg-wf-plane lg-wf-prime-meridian" />
+          {MERIDIAN_INDICES.map((m) => (
+            <div key={m} className={`lg-wf-meridian lg-wf-m${m}`} />
+          ))}
+          {LATITUDE_CLASSES.map((lat) => (
+            <div key={lat} className={`lg-wf-latitude lg-wf-${lat}`} />
+          ))}
+          <div className="lg-wf-axis" />
+          <div className="lg-wf-axis lg-wf-a90" />
+        </div>
+      </div>
+    </button>
+  );
+});
+
+// ============================================================================
 // Main Single-File Component
 // ============================================================================
 export default function LiquidGlassPortalPage({
   onClose,
+  initialMode = 'orbs',
   onVideoAudioActiveChange: onVideoAudioActiveChangeProp,
   onVideoElementMount: onVideoElementMountProp,
   externalMuted: externalMutedProp,
@@ -396,31 +493,31 @@ export default function LiquidGlassPortalPage({
   }));
 
   const isMobileView = viewport.isMobile;
-  // Switch between side-by-side (PC / landscape) and stacked vertical (phone / narrow window)
+  // Switch between 4-in-a-row (wide desktop) and 2x2 balanced grid (medium desktop / tablet / phone)
   const isStackedLayout =
-    viewport.width <= 768 || (viewport.width < 920 && viewport.height > viewport.width * 1.08);
+    viewport.width < 1140 || viewport.height > viewport.width * 0.95;
 
-  // Compute dynamic fluid scale for Earth (1.0x) and Sun (1.15x) so both orbs + titles always fit
+  // Compute dynamic fluid scale so all 4 orbs + their floating titles fit inside 100dvh
   const orbScale = React.useMemo(() => {
     const w = Math.max(viewport.width, 320);
     const h = Math.max(viewport.height, 480);
     if (isStackedLayout) {
-      // Vertical stack: Earth bubble (286*s) + X title + gap + Sun bubble (329*s) + ALBUMS title
-      const maxByHeight = (h - 140) / 760;
-      const maxByWidth = (w - 40) / 360;
-      return Math.min(Math.max(Math.min(maxByHeight, maxByWidth), 0.48), 0.92);
+      // 2x2 grid: 2 columns wide, 2 rows tall (including floating titles)
+      const maxByWidth = (w - 48) / 680;
+      const maxByHeight = (h - 140) / 820;
+      return Math.min(Math.max(Math.min(maxByWidth, maxByHeight), 0.38), 0.82);
     }
-    // Horizontal side-by-side: Earth bubble (286*s) + gap + Sun bubble (329*s)
-    const maxByWidth = (w - 120) / 740;
+    // 4-in-a-row on wide desktop: Books (286*s) + Earth (286*s) + Sun (329*s) + AudioBooks (286*s) + gaps
+    const maxByWidth = (w - 140) / 1380;
     const maxByHeight = (h - 170) / 470;
-    return Math.min(Math.max(Math.min(maxByWidth, maxByHeight), 0.56), 1.08);
+    return Math.min(Math.max(Math.min(maxByWidth, maxByHeight), 0.52), 0.96);
   }, [viewport.width, viewport.height, isStackedLayout]);
 
   // WebGL texture readiness
   const [webglReady, setWebglReady] = useState(false);
 
-  // Mode: 'orbs' initially -> 'video' when Earth clicked -> 'sun' when Sun clicked
-  const [mode, setMode] = useState<'orbs' | 'video' | 'sun'>('orbs');
+  // Mode: 'orbs' initially -> 'video' (Earth) | 'sun' (Sun) | 'books' (Books) | 'audiobooks' (Audio Books)
+  const [mode, setMode] = useState<LiquidGlassMode>(initialMode);
   const [currentVideoIndex, setCurrentVideoIndex] = useState<number | null>(null);
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -435,6 +532,8 @@ export default function LiquidGlassPortalPage({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const glassBoxRef = useRef<HTMLDivElement | null>(null);
   const sunGlassBoxRef = useRef<HTMLDivElement | null>(null);
+  const booksGlassBoxRef = useRef<HTMLDivElement | null>(null);
+  const audiobooksGlassBoxRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const shuffleBagRef = useRef<number[]>([]);
@@ -444,7 +543,7 @@ export default function LiquidGlassPortalPage({
 
   // Mutable render state read inside rAF without re-creating the WebGL loop
   const renderStateRef = useRef({
-    mode: 'orbs' as 'orbs' | 'video' | 'sun',
+    mode: 'orbs' as 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks',
     isMobile: isMobileView,
     imageAspect: isMobileView ? 9 / 16 : 16 / 9,
     // Bubble A (Earth)
@@ -463,6 +562,22 @@ export default function LiquidGlassPortalPage({
     currCornerB: 164,
     currWobbleB: 1,
     currAlphaB: 1,
+    // Bubble C (Books)
+    currCenterCX: 0,
+    currCenterCY: 0,
+    currHalfCW: 142,
+    currHalfCH: 142,
+    currCornerC: 142,
+    currWobbleC: 1,
+    currAlphaC: 1,
+    // Bubble D (Audio Books)
+    currCenterDX: 0,
+    currCenterDY: 0,
+    currHalfDW: 142,
+    currHalfDH: 142,
+    currCornerD: 142,
+    currWobbleD: 1,
+    currAlphaD: 1,
     geometryInitialized: false,
     lightX: 0,
     lightY: 0,
@@ -507,12 +622,62 @@ export default function LiquidGlassPortalPage({
     onVideoAudioActiveChange?.(true);
   }, [pickNextRandomVideoIndex, onVideoAudioActiveChange]);
 
-  // ── Prepared empty handler for Sun -> opens window showing current background ──
+  // Cross-linking state between BooksStage and AudiobooksStage
+  const [crossBookQuery, setCrossBookQuery] = useState<string>('');
+  const [crossSelectedBook, setCrossSelectedBook] = useState<BookItem | null>(null);
+  const [crossAudiobookQuery, setCrossAudiobookQuery] = useState<string>('');
+  const [crossSelectedAudiobook, setCrossSelectedAudiobook] = useState<AudiobookItem | null>(null);
+
+  // Trigger initial random video if opened directly into 'video' mode from Launcher
+  const initialVideoTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (initialMode === 'video' && !initialVideoTriggeredRef.current) {
+      initialVideoTriggeredRef.current = true;
+      triggerRandomVideo();
+    } else if (initialMode && initialMode !== 'orbs') {
+      setMode(initialMode);
+    }
+  }, [initialMode, triggerRandomVideo]);
+
+  // ── Handlers for Sun (Albums), Books, and Audio Books ──
   const onOpenSunWindow = useCallback(() => {
-    // دالة مجهزة لفتح نافذة الشمس (تعرض حالياً صورة الخلفية الحالية فقط وجاهزة للبرومتات القادمة)
     setMode('sun');
     onVideoAudioActiveChange?.(false);
   }, [onVideoAudioActiveChange]);
+
+  const onOpenBooksWindow = useCallback(() => {
+    setCrossBookQuery('');
+    setCrossSelectedBook(null);
+    setMode('books');
+    onVideoAudioActiveChange?.(false);
+  }, [onVideoAudioActiveChange]);
+
+  const onOpenAudiobooksWindow = useCallback(() => {
+    setCrossAudiobookQuery('');
+    setCrossSelectedAudiobook(null);
+    setMode('audiobooks');
+    onVideoAudioActiveChange?.(false);
+  }, [onVideoAudioActiveChange]);
+
+  const handleSwitchBookToAudiobook = useCallback(
+    (query: string, matchedAudiobook?: AudiobookItem) => {
+      setCrossAudiobookQuery(query);
+      setCrossSelectedAudiobook(matchedAudiobook || null);
+      setMode('audiobooks');
+      onVideoAudioActiveChange?.(false);
+    },
+    [onVideoAudioActiveChange],
+  );
+
+  const handleSwitchAudiobookToBook = useCallback(
+    (query: string, matchedBook?: BookItem) => {
+      setCrossBookQuery(query);
+      setCrossSelectedBook(matchedBook || null);
+      setMode('books');
+      onVideoAudioActiveChange?.(false);
+    },
+    [onVideoAudioActiveChange],
+  );
 
   const handleReturnToOrbs = useCallback(() => {
     setMode('orbs');
@@ -575,7 +740,7 @@ export default function LiquidGlassPortalPage({
     renderStateRef.current.targetLightY = 0;
   }, []);
 
-  // ── WebGL Dual-Lens Liquid Glass Engine ──────────────────────────────────
+  // ── WebGL Quad-Lens Liquid Glass Engine ──────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
@@ -660,6 +825,16 @@ export default function LiquidGlassPortalPage({
       u_cornerB: gl.getUniformLocation(program, 'u_cornerB'),
       u_wobbleB: gl.getUniformLocation(program, 'u_wobbleB'),
       u_alphaB: gl.getUniformLocation(program, 'u_alphaB'),
+      u_centerC: gl.getUniformLocation(program, 'u_centerC'),
+      u_sizeC: gl.getUniformLocation(program, 'u_sizeC'),
+      u_cornerC: gl.getUniformLocation(program, 'u_cornerC'),
+      u_wobbleC: gl.getUniformLocation(program, 'u_wobbleC'),
+      u_alphaC: gl.getUniformLocation(program, 'u_alphaC'),
+      u_centerD: gl.getUniformLocation(program, 'u_centerD'),
+      u_sizeD: gl.getUniformLocation(program, 'u_sizeD'),
+      u_cornerD: gl.getUniformLocation(program, 'u_cornerD'),
+      u_wobbleD: gl.getUniformLocation(program, 'u_wobbleD'),
+      u_alphaD: gl.getUniformLocation(program, 'u_alphaD'),
       u_tint: gl.getUniformLocation(program, 'u_tint'),
       u_saturation: gl.getUniformLocation(program, 'u_saturation'),
       u_distortion: gl.getUniformLocation(program, 'u_distortion'),
@@ -722,6 +897,10 @@ export default function LiquidGlassPortalPage({
 
       const boxA = glassBoxRef.current;
       const boxB = sunGlassBoxRef.current;
+      const boxC = booksGlassBoxRef.current;
+      const boxD = audiobooksGlassBoxRef.current;
+
+      const isOrbsOrVideo = st.mode === 'orbs' || st.mode === 'video';
 
       // Measure Earth Bubble (A)
       let targetAX = st.currCenterAX;
@@ -730,9 +909,9 @@ export default function LiquidGlassPortalPage({
       let targetAHH = st.currHalfAH;
       let targetCornerA = st.currCornerA;
       const targetWobbleA = st.mode === 'orbs' ? 1.0 : 0.0;
-      const targetAlphaA = st.mode === 'sun' ? 0.0 : 1.0;
+      const targetAlphaA = isOrbsOrVideo ? 1.0 : 0.0;
 
-      if (boxA && st.mode !== 'sun') {
+      if (boxA && isOrbsOrVideo) {
         const rA = boxA.getBoundingClientRect();
         if (rA.width > 4 && rA.height > 4) {
           targetAX = (rA.left - canvasRect.left + rA.width * 0.5) * dpr;
@@ -746,7 +925,7 @@ export default function LiquidGlassPortalPage({
         }
       }
 
-      // Measure Sun Bubble (B) — dissolves cleanly when entering full-page 'sun' mode
+      // Measure Sun Bubble (B)
       let targetBX = st.currCenterBX;
       let targetBY = st.currCenterBY;
       let targetBHW = st.currHalfBW;
@@ -766,6 +945,46 @@ export default function LiquidGlassPortalPage({
         }
       }
 
+      // Measure Books Bubble (C)
+      let targetCX = st.currCenterCX;
+      let targetCY = st.currCenterCY;
+      let targetCHW = st.currHalfCW;
+      let targetCHH = st.currHalfCH;
+      let targetCornerC = st.currCornerC;
+      const targetWobbleC = st.mode === 'orbs' ? 1.0 : 0.0;
+      const targetAlphaC = st.mode === 'orbs' ? 1.0 : 0.0;
+
+      if (boxC && st.mode === 'orbs') {
+        const rC = boxC.getBoundingClientRect();
+        if (rC.width > 4 && rC.height > 4) {
+          targetCX = (rC.left - canvasRect.left + rC.width * 0.5) * dpr;
+          targetCY = (rC.top - canvasRect.top + rC.height * 0.5) * dpr;
+          targetCHW = Math.max(rC.width * 0.5 * dpr, 20);
+          targetCHH = Math.max(rC.height * 0.5 * dpr, 20);
+          targetCornerC = Math.min(targetCHW, targetCHH);
+        }
+      }
+
+      // Measure Audio Books Bubble (D)
+      let targetDX = st.currCenterDX;
+      let targetDY = st.currCenterDY;
+      let targetDHW = st.currHalfDW;
+      let targetDHH = st.currHalfDH;
+      let targetCornerD = st.currCornerD;
+      const targetWobbleD = st.mode === 'orbs' ? 1.0 : 0.0;
+      const targetAlphaD = st.mode === 'orbs' ? 1.0 : 0.0;
+
+      if (boxD && st.mode === 'orbs') {
+        const rD = boxD.getBoundingClientRect();
+        if (rD.width > 4 && rD.height > 4) {
+          targetDX = (rD.left - canvasRect.left + rD.width * 0.5) * dpr;
+          targetDY = (rD.top - canvasRect.top + rD.height * 0.5) * dpr;
+          targetDHW = Math.max(rD.width * 0.5 * dpr, 20);
+          targetDHH = Math.max(rD.height * 0.5 * dpr, 20);
+          targetCornerD = Math.min(targetDHW, targetDHH);
+        }
+      }
+
       if (!st.geometryInitialized) {
         st.currCenterAX = targetAX;
         st.currCenterAY = targetAY;
@@ -782,6 +1001,22 @@ export default function LiquidGlassPortalPage({
         st.currCornerB = targetCornerB;
         st.currWobbleB = targetWobbleB;
         st.currAlphaB = targetAlphaB;
+
+        st.currCenterCX = targetCX;
+        st.currCenterCY = targetCY;
+        st.currHalfCW = targetCHW;
+        st.currHalfCH = targetCHH;
+        st.currCornerC = targetCornerC;
+        st.currWobbleC = targetWobbleC;
+        st.currAlphaC = targetAlphaC;
+
+        st.currCenterDX = targetDX;
+        st.currCenterDY = targetDY;
+        st.currHalfDW = targetDHW;
+        st.currHalfDH = targetDHH;
+        st.currCornerD = targetCornerD;
+        st.currWobbleD = targetWobbleD;
+        st.currAlphaD = targetAlphaD;
         st.geometryInitialized = true;
       } else {
         const ease = 0.18;
@@ -800,6 +1035,22 @@ export default function LiquidGlassPortalPage({
         st.currCornerB += (targetCornerB - st.currCornerB) * ease;
         st.currWobbleB += (targetWobbleB - st.currWobbleB) * 0.14;
         st.currAlphaB += (targetAlphaB - st.currAlphaB) * 0.16;
+
+        st.currCenterCX += (targetCX - st.currCenterCX) * ease;
+        st.currCenterCY += (targetCY - st.currCenterCY) * ease;
+        st.currHalfCW += (targetCHW - st.currHalfCW) * ease;
+        st.currHalfCH += (targetCHH - st.currHalfCH) * ease;
+        st.currCornerC += (targetCornerC - st.currCornerC) * ease;
+        st.currWobbleC += (targetWobbleC - st.currWobbleC) * 0.14;
+        st.currAlphaC += (targetAlphaC - st.currAlphaC) * 0.16;
+
+        st.currCenterDX += (targetDX - st.currCenterDX) * ease;
+        st.currCenterDY += (targetDY - st.currCenterDY) * ease;
+        st.currHalfDW += (targetDHW - st.currHalfDW) * ease;
+        st.currHalfDH += (targetDHH - st.currHalfDH) * ease;
+        st.currCornerD += (targetCornerD - st.currCornerD) * ease;
+        st.currWobbleD += (targetWobbleD - st.currWobbleD) * 0.14;
+        st.currAlphaD += (targetAlphaD - st.currAlphaD) * 0.16;
       }
 
       st.lightX += (st.targetLightX - st.lightX) * 0.08;
@@ -812,6 +1063,14 @@ export default function LiquidGlassPortalPage({
       const clampedCornerB = Math.min(
         Math.max(st.currCornerB, 4),
         Math.min(st.currHalfBW, st.currHalfBH) - 0.5,
+      );
+      const clampedCornerC = Math.min(
+        Math.max(st.currCornerC, 4),
+        Math.min(st.currHalfCW, st.currHalfCH) - 0.5,
+      );
+      const clampedCornerD = Math.min(
+        Math.max(st.currCornerD, 4),
+        Math.min(st.currHalfDW, st.currHalfDH) - 0.5,
       );
 
       gl.useProgram(program);
@@ -831,6 +1090,18 @@ export default function LiquidGlassPortalPage({
       gl.uniform1f(locs.u_cornerB, clampedCornerB);
       gl.uniform1f(locs.u_wobbleB, st.currWobbleB);
       gl.uniform1f(locs.u_alphaB, st.currAlphaB);
+
+      gl.uniform2f(locs.u_centerC, st.currCenterCX, st.currCenterCY);
+      gl.uniform2f(locs.u_sizeC, st.currHalfCW, st.currHalfCH);
+      gl.uniform1f(locs.u_cornerC, clampedCornerC);
+      gl.uniform1f(locs.u_wobbleC, st.currWobbleC);
+      gl.uniform1f(locs.u_alphaC, st.currAlphaC);
+
+      gl.uniform2f(locs.u_centerD, st.currCenterDX, st.currCenterDY);
+      gl.uniform2f(locs.u_sizeD, st.currHalfDW, st.currHalfDH);
+      gl.uniform1f(locs.u_cornerD, clampedCornerD);
+      gl.uniform1f(locs.u_wobbleD, st.currWobbleD);
+      gl.uniform1f(locs.u_alphaD, st.currAlphaD);
 
       gl.uniform3f(locs.u_tint, GLASS_CONFIG.tint[0], GLASS_CONFIG.tint[1], GLASS_CONFIG.tint[2]);
       gl.uniform1f(locs.u_saturation, GLASS_CONFIG.saturation);
@@ -1201,6 +1472,14 @@ export default function LiquidGlassPortalPage({
         aria-hidden="true"
       />
 
+      {/* 2.1 Gradual 80% Background Dimming over 4 seconds for Books & Audio Books stages */}
+      <div
+        className={`lg-portal-stage-dimmer${
+          mode === 'books' || mode === 'audiobooks' ? ' lg-portal-stage-dimmer--active' : ''
+        }`}
+        aria-hidden="true"
+      />
+
       {/* 3. Top Controls: Return to Orbs button (in video mode) + Close Button (✕) */}
       {mode === 'video' && (
         <button
@@ -1217,14 +1496,20 @@ export default function LiquidGlassPortalPage({
         <button
           type="button"
           className="lg-glass-pill lg-close-btn"
-          onClick={onClose}
-          aria-label="إغلاق الصفحة"
+          onClick={() => {
+            if (mode !== 'orbs') {
+              handleReturnToOrbs();
+            } else {
+              onClose();
+            }
+          }}
+          aria-label={mode !== 'orbs' ? 'Return to Orbs' : 'Close Page'}
         >
           <X size={18} strokeWidth={2.3} />
         </button>
       )}
 
-      {/* 4. Main Centered Stage: Dynamic Dual Orbs (Earth + Sun), Video Player, or Full-Page Sun Albums */}
+      {/* 4. Main Centered Stage: Dynamic Quad Orbs (Books + Earth + Sun + Audio Books), Video Player, Sun Albums, Books, or Audio Books */}
       {mode === 'sun' ? (
         <SunAlbumsStage
           viewportWidth={viewport.width}
@@ -1235,17 +1520,96 @@ export default function LiquidGlassPortalPage({
           onAudioElementMount={onVideoElementMount}
           onBackToOrbs={handleReturnToOrbs}
         />
+      ) : mode === 'books' ? (
+        <BooksStage
+          onBackToOrbs={handleReturnToOrbs}
+          initialSearchQuery={crossBookQuery}
+          initialSelectedBook={crossSelectedBook}
+          onSwitchToAudiobook={handleSwitchBookToAudiobook}
+        />
+      ) : mode === 'audiobooks' ? (
+        <AudiobooksStage
+          externalMuted={effectiveMuted}
+          onToggleMute={handleToggleMuteClick}
+          onAudioActiveChange={onVideoAudioActiveChange}
+          onAudioElementMount={onVideoElementMount}
+          onBackToOrbs={handleReturnToOrbs}
+          initialSearchQuery={crossAudiobookQuery}
+          initialSelectedAudiobook={crossSelectedAudiobook}
+          onSwitchToBook={handleSwitchAudiobookToBook}
+        />
       ) : (
         <main
           className={`lg-stage ${
             mode === 'orbs'
               ? isStackedLayout
-                ? 'lg-stage--orbs-column'
+                ? 'lg-stage--orbs-grid'
                 : 'lg-stage--orbs-row'
               : 'lg-stage--expanded'
           }`}
+          onClick={(e) => {
+            if (mode === 'video') {
+              const target = e.target as HTMLElement;
+              if (
+                target.closest('.lg-main-glass--video') ||
+                target.closest('.lg-progress-bar') ||
+                target.closest('.lg-bottom-dock') ||
+                target.closest('button')
+              ) {
+                return;
+              }
+              handleReturnToOrbs();
+            }
+          }}
         >
-          {/* ── EARTH CELESTIAL COLUMN (Earth Liquid Glass Bubble + /X.webp Title) ── */}
+          {/* ── 1. BOOKS CELESTIAL COLUMN (3D Wireframe Sphere inside Liquid Glass Bubble + 'Books' Title) ── */}
+          <div
+            className={`lg-celestial-unit lg-celestial-unit--books${
+              mode === 'video' ? ' lg-celestial-unit--hidden' : ''
+            }`}
+          >
+            <div
+              ref={booksGlassBoxRef}
+              className={`lg-main-glass lg-main-glass--books${
+                !webglReady ? ' lg-main-glass--css-fallback' : ''
+              }`}
+            >
+              <div className="lg-main-glass__caustic lg-main-glass__caustic--books" aria-hidden="true" />
+              <div className="lg-main-glass__rim lg-main-glass__rim--books" aria-hidden="true" />
+              <div className="lg-main-glass__sheen" aria-hidden="true" />
+
+              <WireframeSphereOrbButton
+                variant="books"
+                onActivate={onOpenBooksWindow}
+                ariaLabel="اضغط لفتح مكتبة الكتب العالمية Books"
+              />
+            </div>
+
+            {mode === 'orbs' &&
+              (LIQUID_GLASS_TITLE_IMAGES.booksImage ? (
+                <img
+                  src={LIQUID_GLASS_TITLE_IMAGES.booksImage}
+                  alt="Books"
+                  width={LIQUID_GLASS_TITLE_IMAGES.naturalWidth}
+                  height={LIQUID_GLASS_TITLE_IMAGES.naturalHeight}
+                  onClick={onOpenBooksWindow}
+                  className="lg-orb-title-img lg-orb-title-img--books"
+                  decoding="async"
+                  draggable={false}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenBooksWindow}
+                  className="lg-orb-title-text lg-orb-title-text--books"
+                  aria-label="Books"
+                >
+                  Books
+                </button>
+              ))}
+          </div>
+
+          {/* ── 2. EARTH CELESTIAL COLUMN (Earth Liquid Glass Bubble + /X.webp Title) ── */}
           <div
             className={`lg-celestial-unit lg-celestial-unit--earth${
               mode === 'video' ? ' lg-celestial-unit--expanded' : ''
@@ -1307,7 +1671,7 @@ export default function LiquidGlassPortalPage({
             )}
           </div>
 
-          {/* ── SUN CELESTIAL COLUMN (Sun 1.15x Liquid Glass Bubble + /ALBUMS.webp Title) ── */}
+          {/* ── 3. SUN CELESTIAL COLUMN (Sun 1.15x Liquid Glass Bubble + /ALBUMS.webp Title) ── */}
           <div
             className={`lg-celestial-unit lg-celestial-unit--sun${
               mode === 'video' ? ' lg-celestial-unit--hidden' : ''
@@ -1342,6 +1706,56 @@ export default function LiquidGlassPortalPage({
                 draggable={false}
               />
             )}
+          </div>
+
+          {/* ── 4. AUDIO BOOKS CELESTIAL COLUMN (3D Wireframe Sphere inside Liquid Glass Bubble + 'audio books' Title) ── */}
+          <div
+            className={`lg-celestial-unit lg-celestial-unit--audiobooks${
+              mode === 'video' ? ' lg-celestial-unit--hidden' : ''
+            }`}
+          >
+            <div
+              ref={audiobooksGlassBoxRef}
+              className={`lg-main-glass lg-main-glass--audiobooks${
+                !webglReady ? ' lg-main-glass--css-fallback' : ''
+              }`}
+            >
+              <div
+                className="lg-main-glass__caustic lg-main-glass__caustic--audiobooks"
+                aria-hidden="true"
+              />
+              <div className="lg-main-glass__rim lg-main-glass__rim--audiobooks" aria-hidden="true" />
+              <div className="lg-main-glass__sheen" aria-hidden="true" />
+
+              <WireframeSphereOrbButton
+                variant="audiobooks"
+                onActivate={onOpenAudiobooksWindow}
+                ariaLabel="اضغط لفتح مكتبة الكتب الصوتية audio books"
+              />
+            </div>
+
+            {mode === 'orbs' &&
+              (LIQUID_GLASS_TITLE_IMAGES.audiobooksImage ? (
+                <img
+                  src={LIQUID_GLASS_TITLE_IMAGES.audiobooksImage}
+                  alt="audio books"
+                  width={LIQUID_GLASS_TITLE_IMAGES.naturalWidth}
+                  height={LIQUID_GLASS_TITLE_IMAGES.naturalHeight}
+                  onClick={onOpenAudiobooksWindow}
+                  className="lg-orb-title-img lg-orb-title-img--audiobooks"
+                  decoding="async"
+                  draggable={false}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenAudiobooksWindow}
+                  className="lg-orb-title-text lg-orb-title-text--audiobooks"
+                  aria-label="audio books"
+                >
+                  audio books
+                </button>
+              ))}
           </div>
 
           {/* 5. Transparent Glass Capillary Tube Progress Bar with Flowing Blood-Red Liquid */}
@@ -1430,8 +1844,8 @@ export default function LiquidGlassPortalPage({
 }
 
 // ============================================================================
-// Scoped Styles — Dual Living Circular Liquid Bubbles (Earth 1.0x + Sun 1.15x),
-// Floating Transparent Titles (/X.webp & /ALBUMS.webp), Dynamic Layout Switching
+// Scoped Styles — Quad Living Circular Liquid Bubbles (Books, Earth 1.0x, Sun 1.15x, Audio Books),
+// Floating Transparent Titles (/X.webp, /ALBUMS.webp, Books, audio books), Dynamic Layout Switching
 // ============================================================================
 const SCOPED_STYLES = `
   .lg-portal-root {
@@ -1476,6 +1890,27 @@ const SCOPED_STYLES = `
 
   .lg-webgl-canvas--ready {
     opacity: 1;
+  }
+
+  /* 4-Second Gradual 80% Background Dimming for Books & Audio Books */
+  .lg-portal-stage-dimmer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(4, 7, 14, 0.88) 0%,
+      rgba(2, 4, 8, 0.95) 100%
+    );
+    opacity: 0;
+    transition: opacity 4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .lg-portal-stage-dimmer--active {
+    opacity: 0.8;
   }
 
   /* ── Shared iOS 26 / NL VisionOS Liquid Glass Pill Surface ─────────────── */
@@ -1553,7 +1988,7 @@ const SCOPED_STYLES = `
     transform: scale(0.95);
   }
 
-  /* ── Center Stage & Dynamic Responsive Layout (Row on PC, Column on Phone) ─ */
+  /* ── Center Stage & Dynamic Responsive Layout (4-in-a-Row on Wide PC, 2x2 Grid on Tablet/Phone) ─ */
   .lg-stage {
     position: relative;
     z-index: 10;
@@ -1574,7 +2009,17 @@ const SCOPED_STYLES = `
 
   .lg-stage--orbs-row {
     flex-direction: row;
-    gap: clamp(32px, 6.5vw, 108px);
+    gap: clamp(18px, 3vw, 56px);
+  }
+
+  .lg-stage--orbs-grid {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    align-content: center;
+    justify-content: center;
+    align-items: center;
+    justify-items: center;
+    gap: clamp(12px, 2.2dvh, 28px) clamp(16px, 4vw, 48px);
   }
 
   .lg-stage--orbs-column {
@@ -1660,6 +2105,81 @@ const SCOPED_STYLES = `
     filter: drop-shadow(0 10px 22px rgba(255, 170, 75, 0.48));
   }
 
+  /* Books image title under Books wireframe orb */
+  .lg-orb-title-img--books {
+    width: calc(var(--lg-earth-bubble, 286px) * 0.62);
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.42));
+    animation: lgTitleFloatEarth 4.6s ease-in-out infinite;
+  }
+
+  .lg-orb-title-img--books:hover {
+    filter: drop-shadow(0 10px 22px rgba(56, 189, 248, 0.55));
+  }
+
+  /* audio books image title under Audio Books wireframe orb */
+  .lg-orb-title-img--audiobooks {
+    width: calc(var(--lg-earth-bubble, 286px) * 0.62);
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.42));
+    animation: lgTitleFloatSun 5.0s ease-in-out infinite;
+  }
+
+  .lg-orb-title-img--audiobooks:hover {
+    filter: drop-shadow(0 10px 22px rgba(192, 132, 252, 0.58));
+  }
+
+  /* ── Floating Crystal Titles ('Books' & 'audio books') ─────────────────── */
+  .lg-orb-title-text {
+    pointer-events: auto;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 4px 10px;
+    margin: 0;
+    font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-weight: 900;
+    font-size: calc(var(--lg-earth-bubble, 286px) * 0.145);
+    line-height: 1.1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    will-change: transform;
+    transition: transform 0.3s ease, filter 0.3s ease;
+  }
+
+  .lg-orb-title-text--books {
+    background: linear-gradient(180deg, #ffffff 0%, #bae6fd 52%, #34d399 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter:
+      drop-shadow(0 6px 16px rgba(0, 0, 0, 0.65))
+      drop-shadow(0 0 18px rgba(56, 189, 248, 0.45));
+    animation: lgTitleFloatEarth 4.6s ease-in-out infinite;
+  }
+
+  .lg-orb-title-text--books:hover {
+    filter:
+      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.75))
+      drop-shadow(0 0 26px rgba(52, 211, 153, 0.78));
+  }
+
+  .lg-orb-title-text--audiobooks {
+    background: linear-gradient(180deg, #ffffff 0%, #f5d0fe 50%, #c084fc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter:
+      drop-shadow(0 6px 16px rgba(0, 0, 0, 0.65))
+      drop-shadow(0 0 18px rgba(192, 132, 252, 0.48));
+    animation: lgTitleFloatSun 5.0s ease-in-out infinite;
+  }
+
+  .lg-orb-title-text--audiobooks:hover {
+    filter:
+      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.75))
+      drop-shadow(0 0 26px rgba(244, 114, 182, 0.78));
+  }
+
   @keyframes lgTitleFloatEarth {
     0%, 100% {
       transform: translate3d(0, 0px, 0) scale3d(1, 1, 1) rotate(0deg);
@@ -1690,7 +2210,7 @@ const SCOPED_STYLES = `
     }
   }
 
-  /* ── Liquid Glass Bubble Containers (Earth 1.0x & Sun 1.15x) ───────────── */
+  /* ── Liquid Glass Bubble Containers (Earth 1.0x, Sun 1.15x, Books 1.0x, Audio Books 1.0x) ── */
   .lg-main-glass {
     position: relative;
     pointer-events: auto;
@@ -1763,6 +2283,61 @@ const SCOPED_STYLES = `
     animation: lgBubbleWobbleSun 4.8s ease-in-out infinite;
   }
 
+  /* Books Bubble (1.0x scale — Exact same crystal-clear bubble as Earth & Sun, 100% transparent interior so background shows through the mesh!) */
+  .lg-main-glass--books {
+    width: var(--lg-earth-bubble, 286px);
+    height: var(--lg-earth-bubble, 286px);
+    border-radius: 53% 47% 52% 48% / 48% 53% 47% 52%;
+    background:
+      radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 255, 255, 0.0) 0%,
+        rgba(255, 255, 255, 0.0) 76%,
+        rgba(185, 232, 255, 0.12) 90%,
+        rgba(255, 255, 255, 0.28) 97%,
+        rgba(255, 255, 255, 0.48) 100%
+      );
+    box-shadow:
+      0 20px 48px -10px rgba(0, 0, 0, 0.32),
+      0 0 28px -4px rgba(165, 230, 255, 0.22),
+      inset 0 2px 3px rgba(255, 255, 255, 0.85),
+      inset 0 -3px 6px rgba(135, 210, 255, 0.26);
+    animation: lgBubbleWobble 4.4s ease-in-out infinite;
+  }
+
+  /* Audio Books Bubble (1.0x scale — Exact same crystal-clear bubble as Earth & Sun, 100% transparent interior so background shows through the mesh!) */
+  .lg-main-glass--audiobooks {
+    width: var(--lg-earth-bubble, 286px);
+    height: var(--lg-earth-bubble, 286px);
+    border-radius: 48% 52% 47% 53% / 52% 48% 53% 47%;
+    background:
+      radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 255, 255, 0.0) 0%,
+        rgba(255, 255, 255, 0.0) 76%,
+        rgba(185, 232, 255, 0.12) 90%,
+        rgba(255, 255, 255, 0.28) 97%,
+        rgba(255, 255, 255, 0.48) 100%
+      );
+    box-shadow:
+      0 20px 48px -10px rgba(0, 0, 0, 0.32),
+      0 0 28px -4px rgba(165, 230, 255, 0.22),
+      inset 0 2px 3px rgba(255, 255, 255, 0.85),
+      inset 0 -3px 6px rgba(135, 210, 255, 0.26);
+    animation: lgBubbleWobbleSun 4.8s ease-in-out infinite;
+  }
+
+  /* Keep the interior of Books & Audio Books bubbles 100% free of white sheen wash */
+  .lg-main-glass--books .lg-main-glass__sheen,
+  .lg-main-glass--audiobooks .lg-main-glass__sheen {
+    opacity: 0.22;
+    background: radial-gradient(
+      95% 55% at 50% 4%,
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0.0) 46%
+    );
+  }
+
   /* Video Player State (when Earth is clicked) */
   .lg-main-glass--video {
     --lg-avail-w: min(92dvw, 1080px);
@@ -1810,7 +2385,9 @@ const SCOPED_STYLES = `
 
   /* CSS fallback glass if WebGL or CORS fails */
   .lg-main-glass--css-fallback.lg-main-glass--earth,
-  .lg-main-glass--css-fallback.lg-main-glass--sun {
+  .lg-main-glass--css-fallback.lg-main-glass--sun,
+  .lg-main-glass--css-fallback.lg-main-glass--books,
+  .lg-main-glass--css-fallback.lg-main-glass--audiobooks {
     -webkit-backdrop-filter: blur(6px) saturate(145%);
     backdrop-filter: blur(6px) saturate(145%);
   }
@@ -1898,6 +2475,32 @@ const SCOPED_STYLES = `
     );
   }
 
+  .lg-main-glass__caustic--books {
+    background: conic-gradient(
+      from 110deg at 50% 50%,
+      rgba(255, 255, 255, 0.94) 0deg,
+      rgba(56, 189, 248, 0.55) 65deg,
+      rgba(255, 255, 255, 0.10) 130deg,
+      rgba(52, 211, 153, 0.55) 200deg,
+      rgba(255, 255, 255, 0.12) 265deg,
+      rgba(250, 204, 21, 0.45) 320deg,
+      rgba(255, 255, 255, 0.94) 360deg
+    );
+  }
+
+  .lg-main-glass__caustic--audiobooks {
+    background: conic-gradient(
+      from 240deg at 50% 50%,
+      rgba(255, 255, 255, 0.94) 0deg,
+      rgba(192, 132, 252, 0.58) 65deg,
+      rgba(255, 255, 255, 0.10) 130deg,
+      rgba(244, 114, 182, 0.55) 200deg,
+      rgba(255, 255, 255, 0.12) 265deg,
+      rgba(251, 191, 36, 0.45) 320deg,
+      rgba(255, 255, 255, 0.94) 360deg
+    );
+  }
+
   .lg-main-glass__rim {
     position: absolute;
     inset: 0;
@@ -1917,6 +2520,322 @@ const SCOPED_STYLES = `
       inset 0 -2px 3px rgba(255, 195, 130, 0.32),
       inset 2px 0 3px rgba(255, 255, 255, 0.30),
       inset -2px 0 3px rgba(255, 210, 155, 0.26);
+  }
+
+  .lg-main-glass__rim--books {
+    box-shadow:
+      inset 0 2px 2px rgba(255, 255, 255, 0.85),
+      inset 0 -2px 3px rgba(52, 211, 153, 0.32),
+      inset 2px 0 3px rgba(255, 255, 255, 0.30),
+      inset -2px 0 3px rgba(56, 189, 248, 0.28);
+  }
+
+  .lg-main-glass__rim--audiobooks {
+    box-shadow:
+      inset 0 2px 2px rgba(255, 255, 255, 0.85),
+      inset 0 -2px 3px rgba(192, 132, 252, 0.34),
+      inset 2px 0 3px rgba(255, 255, 255, 0.30),
+      inset -2px 0 3px rgba(244, 114, 182, 0.28);
+  }
+
+  /* ── 3D Wireframe Sphere Orbs (Books & Audio Books — 36 Meridians + 12 Latitudes + 2 Axes) ── */
+  .lg-wireframe-trigger {
+    position: relative;
+    z-index: 3;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    perspective: 900px;
+    transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), filter 0.38s ease;
+  }
+
+  .lg-wireframe-trigger--books:hover {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 22px rgba(56, 189, 248, 0.55));
+  }
+
+  .lg-wireframe-trigger--audiobooks:hover {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 22px rgba(192, 132, 252, 0.58));
+  }
+
+  .lg-wireframe-trigger:active {
+    transform: scale(0.95);
+  }
+
+  /* Scale the native 300x300 3D sphere proportionally with --lg-orb-scale */
+  .lg-wireframe-scale-wrap {
+    width: 300px;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-style: preserve-3d;
+    transform: scale(calc(0.685 * var(--lg-orb-scale, 1)));
+    transform-origin: center center;
+    pointer-events: none;
+  }
+
+  @keyframes lgWireframeRotateBooks {
+    0% {
+      transform: rotate3d(1, 1, 0.35, 0deg);
+    }
+    100% {
+      transform: rotate3d(1, 1, 0.35, 360deg);
+    }
+  }
+
+  @keyframes lgWireframeRotateAudiobooks {
+    0% {
+      transform: rotate3d(-0.85, 1, 0.45, 0deg);
+    }
+    100% {
+      transform: rotate3d(-0.85, 1, 0.45, 360deg);
+    }
+  }
+
+  .lg-sphere-wrapper {
+    transform-style: preserve-3d;
+    width: 300px;
+    height: 300px;
+    position: relative;
+  }
+
+  .lg-sphere-wrapper--books {
+    animation: lgWireframeRotateBooks 14s linear infinite;
+  }
+
+  .lg-sphere-wrapper--audiobooks {
+    animation: lgWireframeRotateAudiobooks 12.5s linear infinite;
+  }
+
+  .lg-wf-plane {
+    position: absolute;
+    transform-style: preserve-3d;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  .lg-wf-meridian,
+  .lg-wf-equator {
+    position: absolute;
+    transform-style: preserve-3d;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 50%;
+  }
+
+  /* Books & Audio Books Wireframe: See-Through Crystal Filaments (Background shows clearly through the mesh!) */
+  .lg-sphere-wrapper--books .lg-wf-meridian,
+  .lg-sphere-wrapper--books .lg-wf-equator {
+    background: transparent !important;
+    border: 1px solid rgba(15, 28, 46, 0.36);
+    box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.55);
+  }
+
+  .lg-sphere-wrapper--books .lg-wf-meridian:not(:nth-child(3n)) {
+    border-color: rgba(15, 28, 46, 0.12);
+    box-shadow: none;
+  }
+
+  .lg-sphere-wrapper--books .lg-wf-latitude {
+    background: transparent !important;
+    border: 1px solid rgba(12, 42, 52, 0.40);
+    box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.58);
+  }
+
+  .lg-sphere-wrapper--books .lg-wf-axis {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(15, 28, 46, 0.38) 50%,
+      transparent 100%
+    );
+    box-shadow: none;
+  }
+
+  /* Audio Books Variant: See-Through Crystal Filaments */
+  .lg-sphere-wrapper--audiobooks .lg-wf-meridian,
+  .lg-sphere-wrapper--audiobooks .lg-wf-equator {
+    background: transparent !important;
+    border: 1px solid rgba(32, 18, 52, 0.36);
+    box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.55);
+  }
+
+  .lg-sphere-wrapper--audiobooks .lg-wf-meridian:not(:nth-child(3n)) {
+    border-color: rgba(32, 18, 52, 0.12);
+    box-shadow: none;
+  }
+
+  .lg-sphere-wrapper--audiobooks .lg-wf-latitude {
+    background: transparent !important;
+    border: 1px solid rgba(46, 18, 58, 0.40);
+    box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.58);
+  }
+
+  .lg-sphere-wrapper--audiobooks .lg-wf-axis {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(32, 18, 52, 0.38) 50%,
+      transparent 100%
+    );
+    box-shadow: none;
+  }
+
+  .lg-wf-m1  { transform: rotateY(5deg); }
+  .lg-wf-m2  { transform: rotateY(10deg); }
+  .lg-wf-m3  { transform: rotateY(15deg); }
+  .lg-wf-m4  { transform: rotateY(20deg); }
+  .lg-wf-m5  { transform: rotateY(25deg); }
+  .lg-wf-m6  { transform: rotateY(30deg); }
+  .lg-wf-m7  { transform: rotateY(35deg); }
+  .lg-wf-m8  { transform: rotateY(40deg); }
+  .lg-wf-m9  { transform: rotateY(45deg); }
+  .lg-wf-m10 { transform: rotateY(50deg); }
+  .lg-wf-m11 { transform: rotateY(55deg); }
+  .lg-wf-m12 { transform: rotateY(60deg); }
+  .lg-wf-m13 { transform: rotateY(65deg); }
+  .lg-wf-m14 { transform: rotateY(70deg); }
+  .lg-wf-m15 { transform: rotateY(75deg); }
+  .lg-wf-m16 { transform: rotateY(80deg); }
+  .lg-wf-m17 { transform: rotateY(85deg); }
+  .lg-wf-m18 { transform: rotateY(90deg); }
+  .lg-wf-m19 { transform: rotateY(95deg); }
+  .lg-wf-m20 { transform: rotateY(100deg); }
+  .lg-wf-m21 { transform: rotateY(105deg); }
+  .lg-wf-m22 { transform: rotateY(110deg); }
+  .lg-wf-m23 { transform: rotateY(115deg); }
+  .lg-wf-m24 { transform: rotateY(120deg); }
+  .lg-wf-m25 { transform: rotateY(125deg); }
+  .lg-wf-m26 { transform: rotateY(130deg); }
+  .lg-wf-m27 { transform: rotateY(135deg); }
+  .lg-wf-m28 { transform: rotateY(140deg); }
+  .lg-wf-m29 { transform: rotateY(145deg); }
+  .lg-wf-m30 { transform: rotateY(150deg); }
+  .lg-wf-m31 { transform: rotateY(155deg); }
+  .lg-wf-m32 { transform: rotateY(160deg); }
+  .lg-wf-m33 { transform: rotateY(165deg); }
+  .lg-wf-m34 { transform: rotateY(170deg); }
+  .lg-wf-m35 { transform: rotateY(175deg); }
+  .lg-wf-m36 { transform: rotateY(180deg); }
+
+  .lg-wf-latitude {
+    position: absolute;
+    transform-style: preserve-3d;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    box-sizing: border-box;
+  }
+
+  .lg-wf-l300 {
+    width: 295px;
+    height: 295px;
+    top: 2.5px;
+    left: 2.5px;
+    transform: rotateX(90deg) translateZ(25px);
+  }
+  .lg-wf-l290 {
+    width: 280px;
+    height: 280px;
+    top: 10px;
+    left: 10px;
+    transform: rotateX(90deg) translateZ(50px);
+  }
+  .lg-wf-l280 {
+    width: 260px;
+    height: 260px;
+    top: 20px;
+    left: 20px;
+    transform: rotateX(90deg) translateZ(75px);
+  }
+  .lg-wf-l270 {
+    width: 220px;
+    height: 220px;
+    top: 40px;
+    left: 40px;
+    transform: rotateX(90deg) translateZ(100px);
+  }
+  .lg-wf-l260 {
+    width: 160px;
+    height: 160px;
+    top: 70px;
+    left: 70px;
+    transform: rotateX(90deg) translateZ(125px);
+  }
+  .lg-wf-l235 {
+    width: 60px;
+    height: 60px;
+    top: 120px;
+    left: 120px;
+    transform: rotateX(90deg) translateZ(148px);
+  }
+  .lg-wf-l30 {
+    width: 295px;
+    height: 295px;
+    top: 2.5px;
+    left: 2.5px;
+    transform: rotateX(90deg) translateZ(-25px);
+  }
+  .lg-wf-l90 {
+    width: 280px;
+    height: 280px;
+    top: 10px;
+    left: 10px;
+    transform: rotateX(90deg) translateZ(-50px);
+  }
+  .lg-wf-l80 {
+    width: 260px;
+    height: 260px;
+    top: 20px;
+    left: 20px;
+    transform: rotateX(90deg) translateZ(-75px);
+  }
+  .lg-wf-l70 {
+    width: 220px;
+    height: 220px;
+    top: 40px;
+    left: 40px;
+    transform: rotateX(90deg) translateZ(-100px);
+  }
+  .lg-wf-l60 {
+    width: 160px;
+    height: 160px;
+    top: 70px;
+    left: 70px;
+    transform: rotateX(90deg) translateZ(-125px);
+  }
+  .lg-wf-l35 {
+    width: 60px;
+    height: 60px;
+    top: 120px;
+    left: 120px;
+    transform: rotateX(90deg) translateZ(-148px);
+  }
+
+  .lg-wf-axis {
+    position: absolute;
+    width: 300px;
+    height: 1px;
+    top: calc(50% - 0.5px);
+    left: 0;
+    transform: rotateZ(90deg);
+  }
+
+  .lg-wf-axis.lg-wf-a90 {
+    transform: rotateZ(90deg) rotateX(90deg);
   }
 
   .lg-main-glass__sheen {
