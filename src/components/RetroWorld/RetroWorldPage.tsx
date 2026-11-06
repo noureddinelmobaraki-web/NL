@@ -1,19 +1,22 @@
+/**
+ * Copyright (c) 2026 NL Archive.
+ * SPDX-License-Identifier: MIT
+ */
+
 import React, { useEffect, useRef, useState } from 'react';
-import { useAppContext } from '../../context/AppContext';
+import { Volume2, VolumeX, X } from 'lucide-react';
 import Hls from 'hls.js';
 import { audioManager } from '../../audio/audioManager';
 import { ensureAutoplay } from '../../audio/ensureAutoplay';
+import { useAppContext } from '../../context/AppContext';
 import { RetroViewportProvider } from '../RetroViewportProvider';
-import { X } from 'lucide-react';
-import {
-  DEFAULT_RETRO_STATION,
-  RetroRadioTuner,
-  type RetroStation,
-} from './RetroRadioTuner';
 
 interface RetroWorldPageProps {
   onClose?: () => void;
 }
+
+const RETRO_STREAM_URL =
+  'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/Kid_Cudi_By_Design/Kid_Cudi_By_Design.m3u8';
 
 export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
   const { isRetroOpen, closeRetro } = useAppContext();
@@ -22,7 +25,6 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const [isAudioMuted, setIsAudioMuted] = useState(false);
-  const [currentStation, setCurrentStation] = useState<RetroStation>(DEFAULT_RETRO_STATION);
 
   const isAudioMutedRef = useRef(isAudioMuted);
   useEffect(() => {
@@ -43,11 +45,15 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
       if (!a) return;
       try {
         a.pause();
-      } catch {}
+      } catch {
+        /* ignore */
+      }
       try {
         a.removeAttribute('src');
         a.load();
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     };
 
     if (!isRetroOpen) {
@@ -56,7 +62,9 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
           hlsRef.current.stopLoad();
           hlsRef.current.detachMedia();
           hlsRef.current.destroy();
-        } catch {}
+        } catch {
+          /* ignore */
+        }
         hlsRef.current = null;
       }
       if (audioRef.current) {
@@ -74,43 +82,32 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
     audio.muted = isAudioMutedRef.current;
     audioManager.register('retro', audio, 0.7);
 
-    const source = currentStation.streamUrl;
-    const isHlsStream = Boolean(currentStation.isHls || source.includes('.m3u8'));
-
     const onAudioError = (e: Event) => {
-      console.warn('[RetroWorld] Audio source failed, falling back to default:', source, e);
-      if (currentStation.id !== DEFAULT_RETRO_STATION.id) {
-        setCurrentStation(DEFAULT_RETRO_STATION);
-      }
+      console.warn('[RetroWorld] Audio source failed:', RETRO_STREAM_URL, e);
     };
     audio.addEventListener('error', onAudioError);
 
     const tryPlay = () => {
       if (isRetroOpen) {
-        audioManager.play('retro').catch((err) => {
-          console.log('[RetroWorld] Autoplay prevented, waiting user gesture.', err);
+        audioManager.play('retro').catch(() => {
+          /* Autoplay prevented, waiting for user gesture */
         });
       }
     };
 
     audio.addEventListener('canplay', tryPlay);
 
-    if (isHlsStream) {
-      if (Hls.isSupported()) {
-        const hls = new Hls({ startPosition: -1 });
-        hlsRef.current = hls;
-        hls.on(Hls.Events.ERROR, (_, data) => {
-          console.error('[RetroWorld] HLS error:', data.type, data.details);
-        });
-        hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
-        hls.loadSource(source);
-        hls.attachMedia(audio);
-      } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-        audio.src = source;
-      }
-    } else {
-      audio.src = source;
-      audio.load();
+    if (Hls.isSupported()) {
+      const hls = new Hls({ startPosition: -1 });
+      hlsRef.current = hls;
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        console.error('[RetroWorld] HLS error:', data.type, data.details);
+      });
+      hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
+      hls.loadSource(RETRO_STREAM_URL);
+      hls.attachMedia(audio);
+    } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+      audio.src = RETRO_STREAM_URL;
     }
 
     const cleanupAutoplay = ensureAutoplay('retro');
@@ -125,18 +122,22 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
           hlsRef.current.stopLoad();
           hlsRef.current.detachMedia();
           hlsRef.current.destroy();
-        } catch {}
+        } catch {
+          /* ignore */
+        }
         hlsRef.current = null;
       }
       cleanupAutoplay();
       audioManager.stop('retro');
       try {
         audioManager.unregister('retro');
-      } catch {}
+      } catch {
+        /* ignore */
+      }
       purge(audioRef.current);
       audioRef.current = null;
     };
-  }, [isRetroOpen, currentStation]);
+  }, [isRetroOpen]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -192,12 +193,31 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
           <X size={18} />
         </button>
 
-        <RetroRadioTuner
-          currentStation={currentStation}
-          isMuted={isAudioMuted}
-          onSelectStation={setCurrentStation}
-          onToggleMute={() => setIsAudioMuted((m) => !m)}
-        />
+        <button
+          onClick={() => setIsAudioMuted((m) => !m)}
+          className="retro-control-btn hover:scale-105 active:scale-95 transition-transform"
+          aria-label={isAudioMuted ? 'Unmute Audio' : 'Mute Audio'}
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            zIndex: 99999,
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'rgba(0, 0, 0, 0.65)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            backdropFilter: 'blur(8px)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+          }}
+        >
+          {isAudioMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        </button>
 
         <iframe
           ref={iframeRef}
