@@ -47,6 +47,9 @@ export function useNotchNavigationActions({
     openAccounts,
     closeAccounts,
     isLiquidGlassOpen,
+    liquidGlassMode,
+    openLiquidGlass,
+    closeLiquidGlass,
   } = useAppContext();
 
   const vibrate = useCallback(() => {
@@ -74,7 +77,15 @@ export function useNotchNavigationActions({
               : isAccountsOpen
                 ? 'accounts'
                 : isLiquidGlassOpen
-                  ? 'liquidGlass'
+                  ? liquidGlassMode === 'books'
+                    ? 'books'
+                    : liquidGlassMode === 'audiobooks'
+                      ? 'audiobooks'
+                      : liquidGlassMode === 'sun'
+                        ? 'albums'
+                        : liquidGlassMode === 'video'
+                          ? 'x'
+                          : 'liquidGlass'
                   : 'home';
 
   const pageMeta = PAGE_META[pageKey];
@@ -119,6 +130,10 @@ export function useNotchNavigationActions({
     isAccountsOpen,
     openAccounts,
     closeAccounts,
+    isLiquidGlassOpen,
+    liquidGlassMode,
+    openLiquidGlass,
+    closeLiquidGlass,
   });
 
   const handleModeSelect = (id: Theme) => {

@@ -7,6 +7,7 @@ import {
   Component,
   useRef,
   useEffect,
+  useMemo,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -26,12 +27,29 @@ import { useThemeSkin } from "./hooks/useThemeSkin";
 import { useBackdropDim } from "./hooks/useBackdropDim";
 import { useAudioConflict } from "./hooks/useAudioConflict";
 import { useNotchNavigationActions } from "./hooks/useNotchNavigationActions";
+import { useFullscreenAutoHide } from "./hooks/useFullscreenAutoHide";
 import { useSongSurface } from "../../audio/songSurfaceBus";
 import { NotchLivePill } from "./NotchLivePill";
 import {
   DesktopNotchPanel,
   MobileControlCenterOverlay,
 } from "./NotchExpandedControls";
+
+const ORB_LENS_DISPLACEMENT_URI =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
+      '<defs>' +
+      '<radialGradient id="g" cx="50%" cy="50%" r="50%">' +
+      '<stop offset="0%" stop-color="#808000"/>' +
+      '<stop offset="70%" stop-color="#808000"/>' +
+      '<stop offset="92%" stop-color="#b84800"/>' +
+      '<stop offset="100%" stop-color="#48b800"/>' +
+      "</radialGradient>" +
+      "</defs>" +
+      '<rect width="64" height="64" fill="url(#g)"/>' +
+      "</svg>",
+  );
 
 class Boundary extends Component<
   { children: ReactNode },
@@ -56,6 +74,7 @@ function NotchIslandInner() {
   const isMobile = !isDesktop;
   const transport = useNowPlayingNotch();
   const onSongSurface = useSongSurface();
+  const isFullscreenHidden = useFullscreenAutoHide();
 
   const { open, branch, toggle, close, openPanel, selectBranch } =
     useSwitcherState();
@@ -108,7 +127,14 @@ function NotchIslandInner() {
     else keepAlive();
   }, [open, schedule, keepAlive]);
 
-  const hasSong = !!transport && transport.isPlaying;
+  useEffect(() => {
+    if (isFullscreenHidden && open) {
+      close();
+    }
+  }, [isFullscreenHidden, open, close]);
+
+  const hasSong = !!transport;
+  const isAudioActive = Boolean(transport?.isPlaying);
   const mode = useNotchMode({ hasSong });
   const state: "orb" | "live" | "open" = open
     ? "open"
@@ -117,7 +143,15 @@ function NotchIslandInner() {
       : "orb";
 
   const OrbIcon = pageMeta.icon;
-  const accent = pageMeta.accent;
+  const accent = transport?.accent ?? pageMeta.accent;
+
+  const hasSvgBackdrop = useMemo(() => {
+    if (!isDesktop || typeof navigator === "undefined") return false;
+    const nav = navigator as Navigator & {
+      userAgentData?: { brands?: Array<{ brand: string }> };
+    };
+    return Boolean(nav.userAgentData?.brands?.some((b) => /Chromium/.test(b.brand)));
+  }, [isDesktop]);
 
   const conflict = useAudioConflict();
 
@@ -149,6 +183,18 @@ function NotchIslandInner() {
     transform: `translate3d(${offset.x}px, ${isMobile ? 0 : offset.y}px, 0)`,
   } as React.CSSProperties;
 
+  const anchorStyle = {
+    ["--notch-accent" as string]: accent,
+    ...(isFullscreenHidden
+      ? {
+          opacity: 0,
+          pointerEvents: "none" as const,
+          visibility: "hidden" as const,
+          transform: "translateX(-50%) scale(0.6)",
+        }
+      : undefined),
+  } as React.CSSProperties;
+
   const surfaceTransition = reduceMotion
     ? { duration: 0 }
     : { type: "spring" as const, stiffness: 410, damping: 26, mass: 0.82 };
@@ -169,20 +215,54 @@ function NotchIslandInner() {
   return createPortal(
     <div
       ref={anchorRef}
-      className="notch-portal-root"
+      className={`notch-portal-root${hasSvgBackdrop ? " has-svg-backdrop" : ""}`}
       data-device={device}
       data-page={pageKey}
     >
+      {hasSvgBackdrop && (
+        <svg
+          width="0"
+          height="0"
+          style={{ position: "absolute" }}
+          aria-hidden="true"
+        >
+          <filter
+            id="notch-orb-lens"
+            x="0%"
+            y="0%"
+            width="100%"
+            height="100%"
+            colorInterpolationFilters="sRGB"
+          >
+            <feImage
+              href={ORB_LENS_DISPLACEMENT_URI}
+              result="lensMap"
+              preserveAspectRatio="none"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="lensMap"
+              scale={10}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </svg>
+      )}
+
       <div
         className="notch-anchor"
         data-device={device}
         data-page={pageKey}
+        data-fullscreen-hidden={isFullscreenHidden ? "true" : "false"}
+        style={anchorStyle}
       >
         <m.div
           ref={surfaceRef}
           data-state={islandState}
           data-cc-open={isMobile && state === "open" ? "true" : "false"}
           data-live={islandState === "live" ? "true" : "false"}
+          data-audio-active={isAudioActive ? "true" : "false"}
           data-theme-skin={theme}
           data-page={pageKey}
           data-light={lightPanel ? "true" : "false"}
@@ -226,11 +306,6 @@ function NotchIslandInner() {
             }
           }}
         >
-          <span className="notch-island__smoke" aria-hidden="true">
-            <span className="notch-island__smoke-wisp notch-island__smoke-wisp--1" />
-            <span className="notch-island__smoke-wisp notch-island__smoke-wisp--2" />
-            <span className="notch-island__smoke-core" />
-          </span>
           <span className="notch-island__gloss" aria-hidden="true" />
 
           {islandState === "live" &&
@@ -242,8 +317,27 @@ function NotchIslandInner() {
             ))}
 
           {islandState === "orb" && (
-            <span className="notch-orb" aria-hidden="true">
-              <OrbIcon size={18} strokeWidth={2.2} />
+            <span className="orb" aria-hidden="true">
+              <span className="orb__shadow" />
+              <span className="orb__aura-wrap"><span className="orb__aura" /></span>
+              <span className="orb__lens" />
+              <span className="orb__back" />
+              <span className="orb__core">
+                <span className="merc__float">
+                  <span className="merc__react">
+                    <span className="merc__beat">
+                      <span className="merc__squash">
+                        <span className="merc__lobe-orbit"><span className="merc__lobe" /></span>
+                        <span className="merc__spin"><span className="merc__body" /></span>
+                      </span>
+                    </span>
+                  </span>
+                  <span className="merc__shade" />
+                  <span className="merc__accent" />
+                </span>
+              </span>
+              <span className="orb__tint" />
+              <span className="orb__shell" />
             </span>
           )}
 

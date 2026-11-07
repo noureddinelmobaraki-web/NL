@@ -10,6 +10,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type Hls from 'hls.js';
+import { nowPlayingBus } from '../../../../audio/nowPlayingBus';
 import { fetchLyrics, getCachedLyrics, type LyricsResult } from '../../../music/data/lyrics';
 import type { LiquidGlassAlbum, LiquidGlassTrack } from '../../albumsData';
 import { getTrackYoutubeVideoId } from '../../albumsYoutubeCatalog';
@@ -333,6 +334,52 @@ export function useAlbumAudioPlayer({
     const span = Math.max(endT - startT, 0.4);
     return Math.min(Math.max((currentTime - startT) / span, 0), 1);
   }, [lyricLines, isSyncedLyrics, activeLyricIndex, currentTime, duration]);
+
+  useEffect(() => {
+    if (!activeTrack) {
+      nowPlayingBus.clear('album');
+      return undefined;
+    }
+    nowPlayingBus.publish({
+      source: 'album',
+      title: activeTrack.title,
+      subtitle: `${album.artist} • ${album.title}`,
+      artworkUrl: album.coverUrl,
+      accent: '#FF9F0A',
+      isPlaying,
+      canPrev: album.tracks.findIndex((t) => t.num === activeTrack.num) > 0,
+      canNext:
+        album.tracks.findIndex((t) => t.num === activeTrack.num) + 1 < album.tracks.length,
+      controls: {
+        toggle: () => {
+          const el = audioRef.current;
+          if (!el) return;
+          if (el.paused) void el.play().catch(() => {});
+          else el.pause();
+        },
+        prev: () => {
+          const idx = album.tracks.findIndex((t) => t.num === activeTrack.num);
+          if (idx > 0) setActiveTrack(album.tracks[idx - 1]);
+        },
+        next: () => {
+          const idx = album.tracks.findIndex((t) => t.num === activeTrack.num);
+          if (idx >= 0 && idx + 1 < album.tracks.length) setActiveTrack(album.tracks[idx + 1]);
+        },
+        stop: () => {
+          audioRef.current?.pause();
+          setActiveTrack(null);
+          setIsPlaying(false);
+          nowPlayingBus.clear('album');
+        },
+      },
+    });
+  }, [activeTrack, album, isPlaying, audioRef]);
+
+  useEffect(() => {
+    return () => {
+      nowPlayingBus.clear('album');
+    };
+  }, []);
 
   return {
     activeTrack,

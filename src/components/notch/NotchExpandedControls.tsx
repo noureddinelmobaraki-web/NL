@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import type React from 'react';
+import { useEffect, type ComponentType, type CSSProperties } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { LogOut, Volume2, VolumeX, UserRound, X } from 'lucide-react';
 import { audioManager } from '../../audio/audioManager';
@@ -12,6 +12,56 @@ import { MODES, type PageKey } from './notch.constants';
 import { NotchLivePill } from './NotchLivePill';
 import { SwitcherPanel } from './SwitcherPanel';
 import type { NotchTransport, SwitcherDest, SwitcherBranch } from './notch.types';
+
+function useBackgroundFreeze(active: boolean) {
+  useEffect(() => {
+    if (!active || typeof document === 'undefined') return undefined;
+
+    const root = document.documentElement;
+    root.dataset.islandOpen = 'true';
+
+    // Pause playing background <video> elements and resume them on cleanup
+    const bgVideos = Array.from(
+      document.querySelectorAll<HTMLVideoElement>(
+        '.nl-launcher-video, .nl-launcher-bg-media, .lg-orbs-video',
+      ),
+    );
+    const pausedVideos: HTMLVideoElement[] = [];
+    for (const v of bgVideos) {
+      if (!v.paused) {
+        try {
+          v.pause();
+          pausedVideos.push(v);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    // Set inert = true on sibling body children outside .notch-portal-root
+    const inertAdjusted: Array<{ el: HTMLElement; prevInert: boolean }> = [];
+    const bodyChildren = Array.from(document.body.children);
+    for (const child of bodyChildren) {
+      if (
+        child instanceof HTMLElement &&
+        !child.classList.contains('notch-portal-root')
+      ) {
+        inertAdjusted.push({ el: child, prevInert: Boolean(child.inert) });
+        child.inert = true;
+      }
+    }
+
+    return () => {
+      delete root.dataset.islandOpen;
+      for (const v of pausedVideos) {
+        void v.play().catch(() => {});
+      }
+      for (const { el, prevInert } of inertAdjusted) {
+        el.inert = prevInert;
+      }
+    };
+  }, [active]);
+}
 
 interface DesktopNotchPanelProps {
   visible: boolean;
@@ -78,7 +128,7 @@ export function DesktopNotchPanel({
             onMode={onMode}
           />
           <div className="notch-panel__footer" dir="ltr">
-            {transport && transport.isPlaying && (
+            {transport && (
               <div className="notch-panel__mini">
                 <NotchLivePill t={transport} onVibrate={vibrate} compact />
               </div>
@@ -137,7 +187,7 @@ interface MobileControlCenterOverlayProps {
   accent: string;
   reduceMotion: boolean;
   pageKey: PageKey;
-  OrbIcon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  OrbIcon: ComponentType<{ size?: number; strokeWidth?: number }>;
   transport: NotchTransport | null;
   destinations: SwitcherDest[];
   branch: SwitcherBranch | null;
@@ -171,6 +221,8 @@ export function MobileControlCenterOverlay({
   onProfileClick,
   onExit,
 }: MobileControlCenterOverlayProps) {
+  useBackgroundFreeze(visible);
+
   const panelTransition = reduceMotion
     ? { duration: 0 }
     : { type: 'spring' as const, stiffness: 440, damping: 28, mass: 0.72 };
@@ -183,11 +235,11 @@ export function MobileControlCenterOverlay({
           className="notch-mobile-cc-overlay"
           data-theme-skin={theme}
           data-light={lightPanel ? 'true' : 'false'}
-          style={{ ['--notch-accent' as string]: accent } as React.CSSProperties}
+          style={{ ['--notch-accent' as string]: accent } as CSSProperties}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.22 }}
+          transition={{ duration: reduceMotion ? 0 : 0.2 }}
         >
           <div
             className="notch-mobile-cc-backdrop"
@@ -208,7 +260,7 @@ export function MobileControlCenterOverlay({
             initial={
               reduceMotion
                 ? { opacity: 0 }
-                : { opacity: 0, scale: 0.86, y: 12 }
+                : { opacity: 0, scale: 0.96, y: 10 }
             }
             animate={
               reduceMotion
@@ -218,7 +270,7 @@ export function MobileControlCenterOverlay({
             exit={
               reduceMotion
                 ? { opacity: 0 }
-                : { opacity: 0, scale: 0.9, y: 8 }
+                : { opacity: 0, scale: 0.97, y: 8 }
             }
             transition={panelTransition}
             onClick={(e) => {
@@ -226,11 +278,6 @@ export function MobileControlCenterOverlay({
               schedule();
             }}
           >
-            <span className="notch-island__smoke" aria-hidden="true">
-              <span className="notch-island__smoke-wisp notch-island__smoke-wisp--1" />
-              <span className="notch-island__smoke-wisp notch-island__smoke-wisp--2" />
-              <span className="notch-island__smoke-core" />
-            </span>
             <span className="notch-island__gloss" aria-hidden="true" />
 
             <div className="notch-cc__header">
@@ -260,7 +307,7 @@ export function MobileControlCenterOverlay({
               </button>
             </div>
 
-            {transport && transport.isPlaying && (
+            {transport && (
               <div className="notch-cc__now-playing">
                 <NotchLivePill t={transport} onVibrate={vibrate} compact />
               </div>

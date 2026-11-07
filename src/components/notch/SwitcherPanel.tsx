@@ -59,22 +59,14 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
                       : mItem.label
                   }
                 >
+                  <span className="notch-tile__lum" aria-hidden="true" />
                   <span className="notch-cc__mode-top">
                     <span className="notch-cc__mode-orb">
                       <MIcon size={16} strokeWidth={2.2} />
                     </span>
-                    <span
-                      className={`notch-mini-switch ${isActive ? 'is-on' : ''}`}
-                      aria-hidden="true"
-                    >
-                      <span className="notch-mini-switch__knob" />
-                    </span>
                   </span>
                   <span className="notch-cc__mode-meta">
                     <span className="notch-cc__mode-name">{mItem.label}</span>
-                    <span className="notch-cc__mode-state">
-                      {isActive ? 'On' : 'Off'}
-                    </span>
                   </span>
                 </button>
               );
@@ -82,7 +74,7 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
           </div>
         </section>
 
-        {/* Module 2: Destinations / Go To (4x2 iOS Control Center App Plinths) */}
+        {/* Module 2: Destinations / Go To (4x3 iOS Control Center App Plinths) */}
         <section className="notch-cc__module" aria-label="Destinations">
           <header className="notch-cc__module-head">
             <span className="notch-cc__module-ico">
@@ -107,6 +99,7 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
                 aria-label={d.ariaLabel ?? d.label}
                 title={d.title ?? d.label}
               >
+                <span className="notch-tile__lum" aria-hidden="true" />
                 <span className="notch-cc__dest-orb">{d.icon}</span>
                 <span className="notch-cc__dest-label">{d.label}</span>
               </button>
@@ -132,7 +125,7 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
         const RootIcon = rt.icon;
         const isOpen = branch === rt.id;
         return (
-          <div key={rt.id} className="notch-tree__branch" data-open={isOpen}>
+          <div key={rt.id} className="notch-tree__branch" data-branch={rt.id} data-open={isOpen}>
             <button
               type="button"
               className={`notch-tree__root ${isOpen ? 'is-open' : ''}`}
@@ -141,9 +134,6 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
             >
               <span className="notch-tree__ico"><RootIcon size={16} /></span>
               <span className="notch-tree__label">{rt.label}</span>
-              <span className={`notch-toggle-track ${isOpen ? 'is-on' : ''}`} aria-hidden="true">
-                <span className="notch-toggle-thumb" />
-              </span>
               <ChevronDown className={`notch-tree__caret ${isOpen ? 'is-open' : ''}`} size={14} aria-hidden="true" />
             </button>
             <AnimatePresence initial={false}>
@@ -157,7 +147,7 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
                   exit={gridExit}
                   transition={gridTransition}
                 >
-                  <div className="notch-tree__grid-inner">
+                  <div className="notch-tree__grid-inner" data-branch={rt.id}>
                     {rt.id === 'modes'
                       ? modes.map((mItem) => {
                           const MIcon = mItem.icon;
@@ -174,12 +164,8 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
                               aria-label={isActive ? `${mItem.label} (Active — click to turn off & return to Home)` : mItem.label}
                               title={isActive ? `${mItem.label} — Turn off to return to Home` : mItem.label}
                             >
-                              <span className="notch-leaf-header">
-                                <span className="notch-tree__ico"><MIcon size={15} /></span>
-                                <span className={`notch-mini-switch ${isActive ? 'is-on' : ''}`} aria-hidden="true">
-                                  <span className="notch-mini-switch__knob" />
-                                </span>
-                              </span>
+                              <span className="notch-tile__lum" aria-hidden="true" />
+                              <span className="notch-tree__ico"><MIcon size={15} /></span>
                               <span className="notch-tree__label">{mItem.label}</span>
                             </button>
                           );
@@ -194,6 +180,7 @@ function SwitcherPanelBase({ modes, destinations, theme, reduceMotion, isMobile,
                             aria-label={d.ariaLabel ?? d.label}
                             title={d.title ?? d.label}
                           >
+                            <span className="notch-tile__lum" aria-hidden="true" />
                             <span className="notch-tree__ico">{d.icon}</span>
                             <span className="notch-tree__label">{d.label}</span>
                           </button>

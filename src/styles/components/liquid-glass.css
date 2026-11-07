@@ -176,28 +176,50 @@
     0 3px 8px rgba(0, 0, 0, 0.22);
 }
 
-/* ---- 5. Tier: FROST (Mobile / Tablet / Touch — ZERO backdrop-filter) ---- */
+/* ---- 5. Tier: FROST (Mobile / Tablet / Touch — ZERO backdrop-filter & ZERO mask-composite) ---- */
+.nl-launcher-container[data-glass="frost"] .nl-node::before,
+.nl-launcher-container[data-glass="frost"] .nl-topbar-btn::before,
+.nl-launcher-container[data-glass="frost"] .nl-sound-btn::before {
+  display: none;
+}
+
 .nl-launcher-container[data-glass="frost"] .nl-node,
 .nl-launcher-container[data-glass="frost"] .nl-topbar-btn,
 .nl-launcher-container[data-glass="frost"] .nl-sound-btn {
   --gx: 28%;
   --gy: 0%;
   --rim-angle: 200deg;
+  border: 1.5px solid transparent;
   background:
-    radial-gradient(120% 90% at 25% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
-    linear-gradient(
-      180deg,
-      rgba(58, 68, 78, 0.92),
-      rgba(20, 24, 30, 0.95) 55%,
-      rgba(10, 12, 16, 0.97)
-    );
+    /* 1. Top specular dome */
+    radial-gradient(120% 95% at 50% -25%,
+      rgba(255, 255, 255, 0.48) 0%,
+      rgba(255, 255, 255, 0.12) 38%,
+      rgba(255, 255, 255, 0) 62%) padding-box,
+    /* 2. Bottom mint caustic bounce */
+    radial-gradient(80% 60% at 50% 125%,
+      rgba(126, 240, 180, 0.24) 0%,
+      rgba(126, 240, 180, 0) 70%) padding-box,
+    /* 3. High-contrast dark glass body (zero live backdrop-filter) */
+    linear-gradient(180deg, rgba(44, 56, 66, 0.92), rgba(14, 20, 26, 0.96)) padding-box,
+    /* 4. Rim hot-spot */
+    radial-gradient(60% 140% at 22% 0%, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0) 55%) border-box,
+    /* 5. Iridescent thin-film rim (linear-gradient border-box, no mask-composite) */
+    linear-gradient(115deg,
+      rgba(184, 255, 240, 0.78) 0%,
+      rgba(126, 232, 250, 0.42) 26%,
+      rgba(195, 181, 255, 0.36) 50%,
+      rgba(255, 214, 242, 0.44) 72%,
+      rgba(184, 255, 240, 0.78) 100%) border-box;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.42),
-    inset 0 -8px 14px rgba(0, 0, 0, 0.28),
-    0 8px 20px rgba(0, 0, 0, 0.32);
-  transition: box-shadow 0.2s ease, opacity 0.2s ease;
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    inset 0 -8px 14px -6px rgba(126, 240, 180, 0.22),
+    0 6px 14px -4px rgba(0, 0, 0, 0.48);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 150ms ease;
 }
 
 /* ---- 6. Tier: LITE (Reduced motion / weak device / saveData — flat & fast) ---- */
@@ -305,6 +327,14 @@
 .nl-launcher-container[data-glass="frost"] .nl-node.is-active,
 .nl-launcher-container[data-glass="frost"] .nl-sound-btn.is-on,
 .nl-launcher-container[data-glass="frost"] .nl-topbar-btn.is-primary {
+  background:
+    radial-gradient(120% 95% at 50% -25%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 62%) padding-box,
+    radial-gradient(85% 70% at 50% 120%, rgba(126, 240, 180, 0.42) 0%, rgba(126, 240, 180, 0) 72%) padding-box,
+    linear-gradient(180deg, rgba(46, 68, 64, 0.94), rgba(14, 24, 22, 0.97)) padding-box,
+    linear-gradient(115deg,
+      rgb(var(--glass-accent)) 0%,
+      rgba(111, 208, 255, 0.65) 50%,
+      rgb(var(--glass-accent)) 100%) border-box;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.50),
     inset 0 -8px 14px rgba(0, 0, 0, 0.28),
@@ -359,13 +389,17 @@
 
 .nl-launcher-container[data-glass="frost"] .nl-node.nl-tint-midnight {
   background:
-    radial-gradient(120% 90% at 25% 0%, rgba(188, 206, 255, 0.25), transparent 55%),
+    radial-gradient(120% 90% at 25% 0%, rgba(188, 206, 255, 0.28), transparent 55%) padding-box,
     linear-gradient(
       180deg,
       rgba(54, 70, 150, 0.92),
       rgba(22, 28, 82, 0.95) 55%,
       rgba(9, 12, 36, 0.97)
-    );
+    ) padding-box,
+    linear-gradient(115deg,
+      rgba(218, 230, 255, 0.85) 0%,
+      rgba(130, 165, 255, 0.52) 50%,
+      rgba(210, 160, 255, 0.55) 100%) border-box;
 }
 
 .nl-launcher-container[data-glass="lite"] .nl-node.nl-tint-midnight {
@@ -373,7 +407,35 @@
   border-color: rgba(155, 180, 255, 0.35);
 }
 
-/* ---- 11. Connector Light Pulse (Liquid only, one-shot) ---- */
+/* ---- 11. Connector Light Pulse (Liquid) & Unitless Frost Draw (Mobile) ---- */
+.nl-launcher-container[data-glass="frost"] .nl-graph-links {
+  contain: strict;
+  pointer-events: none;
+}
+
+.nl-ray-frost {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  animation: nl-ray-frost-draw 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--ray-delay, 24ms);
+}
+
+.nl-ray-glow.nl-ray-frost {
+  opacity: 0.35;
+}
+
+@keyframes nl-ray-frost-draw {
+  0%   { stroke-dashoffset: 1; opacity: 0; }
+  20%  { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+.nl-graph-stage[data-warm="true"] .nl-node-anchor {
+  will-change: transform, opacity;
+}
+
 .nl-ray-pulse {
   stroke-dasharray: 0.12 1;
   stroke-dashoffset: 1.12;

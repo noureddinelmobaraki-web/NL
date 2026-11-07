@@ -167,6 +167,7 @@ export function initLiquidGlassPhysics(): () => void {
   };
 
   const handlePointerMove = (e: PointerEvent) => {
+    if (e.pointerType === 'touch' || window.innerWidth < 768) return;
     lastPointerEvent = e;
     if (rafId === null) {
       rafId = window.requestAnimationFrame(processPointerMove);
@@ -187,17 +188,23 @@ export function initLiquidGlassPhysics(): () => void {
   const handlePointerDown = (e: PointerEvent) => {
     if (!(e.target instanceof Element)) return;
 
+    const isTouchOrMobile = e.pointerType === 'touch' || window.innerWidth < 768;
+
     const interactiveEl = e.target.closest<HTMLElement>(LIQUID_SELECTOR);
     if (interactiveEl) {
-      updateLightPosition(interactiveEl, e.clientX, e.clientY);
+      if (!isTouchOrMobile) {
+        updateLightPosition(interactiveEl, e.clientX, e.clientY);
+      }
       interactiveEl.removeAttribute('data-liquid-rebound');
       interactiveEl.setAttribute('data-liquid-pressed', 'true');
       activePressedElements.add(interactiveEl);
     }
 
-    const surfaceEl = e.target.closest<HTMLElement>(LIQUID_SURFACE_SELECTOR);
-    if (surfaceEl && surfaceEl !== interactiveEl) {
-      updateLightPosition(surfaceEl, e.clientX, e.clientY);
+    if (!isTouchOrMobile) {
+      const surfaceEl = e.target.closest<HTMLElement>(LIQUID_SURFACE_SELECTOR);
+      if (surfaceEl && surfaceEl !== interactiveEl) {
+        updateLightPosition(surfaceEl, e.clientX, e.clientY);
+      }
     }
   };
 

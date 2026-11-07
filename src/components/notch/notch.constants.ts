@@ -13,6 +13,10 @@ import {
   Users,
   Home,
   Globe,
+  BookOpen,
+  Headphones,
+  Disc,
+  Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { SwitcherMode, SwitcherDest } from "./notch.types";
@@ -34,7 +38,11 @@ export type PageKey =
   | "xp"
   | "music"
   | "accounts"
-  | "liquidGlass";
+  | "liquidGlass"
+  | "books"
+  | "audiobooks"
+  | "albums"
+  | "x";
 
 // لكل صفحة أيقونة + لون مميّز → يتغير شكل الأورب المنكمش في كل صفحة.
 export const PAGE_META: Record<PageKey, { icon: LucideIcon; accent: string }> = {
@@ -47,6 +55,10 @@ export const PAGE_META: Record<PageKey, { icon: LucideIcon; accent: string }> = 
   music: { icon: AudioLines, accent: "#c9a8ff" },
   accounts: { icon: Users, accent: "#8fe3ff" },
   liquidGlass: { icon: Globe, accent: "#7fd0ff" },
+  books: { icon: BookOpen, accent: "#34d399" },
+  audiobooks: { icon: Headphones, accent: "#c084fc" },
+  albums: { icon: Disc, accent: "#fbbf24" },
+  x: { icon: Sparkles, accent: "#60a5fa" },
 };
 
 export interface BuildNotchDestinationsArgs {
@@ -74,6 +86,10 @@ export interface BuildNotchDestinationsArgs {
   isAccountsOpen: boolean;
   openAccounts: () => void;
   closeAccounts: () => void;
+  isLiquidGlassOpen: boolean;
+  liquidGlassMode: "orbs" | "video" | "sun" | "books" | "audiobooks";
+  openLiquidGlass: (mode?: "orbs" | "video" | "sun" | "books" | "audiobooks") => void;
+  closeLiquidGlass: () => void;
 }
 
 export function buildNotchDestinations({
@@ -101,7 +117,22 @@ export function buildNotchDestinations({
   isAccountsOpen,
   openAccounts,
   closeAccounts,
+  isLiquidGlassOpen,
+  liquidGlassMode,
+  openLiquidGlass,
+  closeLiquidGlass,
 }: BuildNotchDestinationsArgs): SwitcherDest[] {
+  const openOrToggleLiquid = (
+    targetMode: "orbs" | "video" | "sun" | "books" | "audiobooks",
+  ) => {
+    const active = isLiquidGlassOpen && liquidGlassMode === targetMode;
+    return goto(
+      active,
+      () => openLiquidGlass(targetMode),
+      closeLiquidGlass,
+    )();
+  };
+
   return [
     {
       id: "home",
@@ -166,6 +197,38 @@ export function buildNotchDestinations({
       icon: React.createElement(Users, { size: 16 }),
       isActive: isAccountsOpen,
       onClick: goto(isAccountsOpen, openAccounts, closeAccounts),
+    },
+    {
+      id: "books",
+      label: "Books",
+      title: "Books Library",
+      icon: React.createElement(BookOpen, { size: 16 }),
+      isActive: isLiquidGlassOpen && liquidGlassMode === "books",
+      onClick: () => openOrToggleLiquid("books"),
+    },
+    {
+      id: "audiobooks",
+      label: "Audio Books",
+      title: "Audio Books",
+      icon: React.createElement(Headphones, { size: 16 }),
+      isActive: isLiquidGlassOpen && liquidGlassMode === "audiobooks",
+      onClick: () => openOrToggleLiquid("audiobooks"),
+    },
+    {
+      id: "albums",
+      label: "Albums",
+      title: "Albums",
+      icon: React.createElement(Disc, { size: 16 }),
+      isActive: isLiquidGlassOpen && liquidGlassMode === "sun",
+      onClick: () => openOrToggleLiquid("sun"),
+    },
+    {
+      id: "x",
+      label: "X",
+      title: "X Stage",
+      icon: React.createElement(Sparkles, { size: 16 }),
+      isActive: isLiquidGlassOpen && liquidGlassMode === "video",
+      onClick: () => openOrToggleLiquid("video"),
     },
   ];
 }

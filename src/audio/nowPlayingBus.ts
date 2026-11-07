@@ -12,6 +12,15 @@ export interface NowPlayingControls {
   stop?: () => void;
 }
 
+export const SOURCE_ACCENTS: Record<string, string> = {
+  song: '#FF375F',
+  album: '#FF9F0A',
+  audiobook: '#BF5AF2',
+  profile: '#64D2FF',
+  lens: '#30D158',
+  mebit: '#5E5CE6',
+};
+
 export interface NowPlayingState {
   /** مفتاح مصدر audioManager (مثل 'song' أو 'profile'). */
   source: string;
@@ -21,6 +30,8 @@ export interface NowPlayingState {
   subtitle?: string;
   /** غلاف اختياري. */
   artworkUrl?: string;
+  /** لون التمييز الاختياري للجزيرة الديناميكية. */
+  accent?: string;
   /** هل يعمل الآن (لتبديل play/stop). */
   isPlaying: boolean;
   canNext?: boolean;
@@ -52,6 +63,7 @@ function shallowEqual(a: NowPlayingState | null, b: NowPlayingState | null): boo
     a.title === b.title &&
     a.subtitle === b.subtitle &&
     a.artworkUrl === b.artworkUrl &&
+    a.accent === b.accent &&
     a.isPlaying === b.isPlaying &&
     a.canNext === b.canNext &&
     a.canPrev === b.canPrev &&

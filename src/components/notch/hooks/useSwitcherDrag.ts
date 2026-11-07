@@ -3,32 +3,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const KEY = 'nl:notch:pos:v2';
 export type Pos = { x: number; y: number };
 
-const OBSTACLE_SELECTOR = [
-  'button',
-  'a[href]',
-  'input',
-  'textarea',
-  'select',
-  '[role="button"]',
-  '.nl-top-nav__button',
-  '.nl-top-nav--worm',
-  '.nl-lattice-node',
-  '.nl-lattice-node-label',
-  '.song-card',
-  '.nl-song-card',
-  '.nl-hl-player',
-  '#vault-playlist',
-  '.me-bit-cta',
-  '.nl-lens-cta',
-  '.hero-profile-container',
-  '.nl-contact-submit',
-  '.nl-contact-chip',
-  '.nlag-frame',
-  '.nlag-tabs',
-  '.nlag-close',
-  '.nlav-btn',
-  '.nlav-counter',
-].join(', ');
+interface PointerSample {
+  t: number;
+  x: number;
+  y: number;
+}
+
+const DECEL = 0.998;
+const project = (v: number) => ((v / 1000) * DECEL) / (1 - DECEL);
 
 export function clampOffset(
   base: { left: number; right: number; top: number; bottom: number },
@@ -48,18 +30,20 @@ export function clampOffset(
 }
 
 /**
- * Generates candidate positions along all 4 edges (top, right, bottom, left)
- * of the current viewport, expressed as (x, y) offsets from the default
- * top-center anchor (vw / 2, topInset).
+ * Generates the 8 canonical perimeter dock slots for Desktop:
+ * top-left, top-center, top-right, left-mid, right-mid, bottom-left, bottom-center, bottom-right
  */
-function buildPerimeterSlots(vw: number, vh: number, bw: number, bh: number): Pos[] {
-  const margin = vw < 640 ? 10 : 16;
+function buildDesktopPerimeterSlots(vw: number, vh: number, bw = 48, bh = 48): Pos[] {
+  const margin = 16;
   const topAnchorY = 14;
   const halfW = Math.max(24, bw / 2);
 
-  const minCenterX = margin + halfW;
-  const maxCenterX = Math.max(minCenterX, vw - margin - halfW);
+  const leftCX = margin + halfW;
+  const centerCX = vw / 2;
+  const rightCX = Math.max(leftCX, vw - margin - halfW);
+
   const topY = margin;
+  const midY = Math.round(vh * 0.5 - bh / 2);
   const bottomY = Math.max(topY + bh, vh - margin - bh);
 
   const toOffset = (centerX: number, topEdgeY: number): Pos => ({
@@ -67,149 +51,50 @@ function buildPerimeterSlots(vw: number, vh: number, bw: number, bh: number): Po
     y: Math.round(topEdgeY - topAnchorY),
   });
 
-  const slots: Pos[] = [
-    // Top edge (center, right-ish, left-ish, corners)
-    toOffset(vw * 0.5, topY),
-    toOffset(vw * 0.78, topY),
-    toOffset(vw * 0.22, topY),
-    toOffset(maxCenterX, topY),
-    toOffset(minCenterX, topY),
-    // Right edge (upper, upper-mid, mid, lower-mid, lower)
-    toOffset(maxCenterX, vh * 0.18),
-    toOffset(maxCenterX, vh * 0.34),
-    toOffset(maxCenterX, vh * 0.52),
-    toOffset(maxCenterX, vh * 0.68),
-    toOffset(maxCenterX, vh * 0.82),
-    // Left edge (upper, upper-mid, mid, lower-mid, lower)
-    toOffset(minCenterX, vh * 0.18),
-    toOffset(minCenterX, vh * 0.34),
-    toOffset(minCenterX, vh * 0.52),
-    toOffset(minCenterX, vh * 0.68),
-    toOffset(minCenterX, vh * 0.82),
-    // Bottom edge (corners & quarter points)
-    toOffset(maxCenterX, bottomY),
-    toOffset(minCenterX, bottomY),
-    toOffset(vw * 0.72, bottomY),
-    toOffset(vw * 0.28, bottomY),
+  return [
+    toOffset(leftCX, topY),     // top-left
+    toOffset(centerCX, topY),   // top-center
+    toOffset(rightCX, topY),    // top-right
+    toOffset(leftCX, midY),     // left-mid
+    toOffset(rightCX, midY),    // right-mid
+    toOffset(leftCX, bottomY),  // bottom-left
+    toOffset(centerCX, bottomY),// bottom-center
+    toOffset(rightCX, bottomY), // bottom-right
   ];
-
-  return slots;
 }
 
-/**
- * Snaps an arbitrary (x, y) offset to the closest point on the viewport's
- * 4-edge perimeter frame so manual drags always dock cleanly on the screen border.
- */
-function snapToPerimeterFrame(
-  rawOffset: Pos,
+function snapToDesktopSlot(
+  projectedOffset: Pos,
   vw: number,
   vh: number,
-  bw: number,
-  bh: number,
+  bw = 48,
+  bh = 48,
 ): Pos {
-  const margin = vw < 640 ? 10 : 16;
-  const topAnchorY = 14;
-  const halfW = Math.max(24, bw / 2);
-
-  const minCX = margin + halfW;
-  const maxCX = Math.max(minCX, vw - margin - halfW);
-  const minTY = margin;
-  const maxTY = Math.max(minTY, vh - margin - bh);
-
-  const cx = Math.min(maxCX, Math.max(minCX, vw / 2 + rawOffset.x));
-  const ty = Math.min(maxTY, Math.max(minTY, topAnchorY + rawOffset.y));
-
-  const dTop = Math.abs(ty - minTY);
-  const dBottom = Math.abs(maxTY - ty);
-  const dLeft = Math.abs(cx - minCX);
-  const dRight = Math.abs(maxCX - cx);
-  const minDist = Math.min(dTop, dBottom, dLeft, dRight);
-
-  let snappedCX = cx;
-  let snappedTY = ty;
-  if (minDist === dTop) snappedTY = minTY;
-  else if (minDist === dBottom) snappedTY = maxTY;
-  else if (minDist === dLeft) snappedCX = minCX;
-  else snappedCX = maxCX;
-
-  return {
-    x: Math.round(snappedCX - vw / 2),
-    y: Math.round(snappedTY - topAnchorY),
-  };
-}
-
-/**
- * Checks whether a candidate bounding box on screen overlaps any interactive UI obstacle.
- */
-function hasObstacleAtBox(
-  left: number,
-  top: number,
-  width: number,
-  height: number,
-  notchEl: HTMLElement,
-): boolean {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const pad = 4;
-  const samplePoints: Array<[number, number]> = [
-    [left + width * 0.5, top + height * 0.5],
-    [left + pad, top + pad],
-    [left + width - pad, top + pad],
-    [left + pad, top + height - pad],
-    [left + width - pad, top + height - pad],
-  ];
-
-  for (const [px, py] of samplePoints) {
-    if (px < 2 || px > vw - 2 || py < 2 || py > vh - 2) continue;
-    const stack = document.elementsFromPoint(px, py);
-    for (const el of stack) {
-      if (!(el instanceof HTMLElement)) continue;
-      if (notchEl.contains(el) || el.closest('.notch-anchor')) continue;
-      if (el === document.body || el === document.documentElement) continue;
-      const hit = el.closest(OBSTACLE_SELECTOR);
-      if (hit && !notchEl.contains(hit)) {
-        return true;
-      }
+  const slots = buildDesktopPerimeterSlots(vw, vh, bw, bh);
+  let best = slots[1]; // top-center default
+  let bestDist = Infinity;
+  for (const s of slots) {
+    const d = Math.hypot(projectedOffset.x - s.x, projectedOffset.y - s.y);
+    if (d < bestDist) {
+      bestDist = d;
+      best = s;
     }
   }
-  return false;
+  return best;
 }
 
-function snapToMobileTopEdge(
-  rawX: number,
-  dx: number,
-  baseX: number,
-  vw: number,
-  bw = 52,
-): Pos {
+function snapToMobileTopEdge(projectedX: number, vw: number, bw = 48): Pos {
   const margin = 12;
   const halfW = Math.max(24, bw / 2);
   const leftX = Math.round(margin + halfW - vw / 2);
   const centerX = 0;
   const rightX = Math.round(vw / 2 - margin - halfW);
 
-  // Pulling slightly to the right -> snaps to right (or center if nudged from far left)
-  if (dx > 12) {
-    if (baseX < leftX * 0.45 && baseX + dx < 18 && dx < vw * 0.26) {
-      return { x: centerX, y: 0 };
-    }
-    return { x: rightX, y: 0 };
-  }
-
-  // Pulling slightly to the left -> snaps to left (or center if nudged from far right)
-  if (dx < -12) {
-    if (baseX > rightX * 0.45 && baseX + dx > -18 && dx > -vw * 0.26) {
-      return { x: centerX, y: 0 };
-    }
-    return { x: leftX, y: 0 };
-  }
-
-  // Otherwise snap to nearest of [leftX, centerX, rightX]
   const slots = [leftX, centerX, rightX];
   let best = centerX;
   let bestDist = Infinity;
   for (const s of slots) {
-    const d = Math.abs(rawX - s);
+    const d = Math.abs(projectedX - s);
     if (d < bestDist) {
       bestDist = d;
       best = s;
@@ -220,16 +105,18 @@ function snapToMobileTopEdge(
 
 function readSaved(): Pos {
   if (typeof window === 'undefined') return { x: 0, y: 0 };
-  const isMobileViewport = window.innerWidth < 768;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const isMobileViewport = vw < 768;
   try {
     const s = localStorage.getItem(KEY);
     if (!s) return { x: 0, y: 0 };
     const p = JSON.parse(s);
     if (typeof p?.x === 'number' && typeof p?.y === 'number') {
       if (isMobileViewport) {
-        return snapToMobileTopEdge(p.x, 0, p.x, window.innerWidth, 52);
+        return snapToMobileTopEdge(p.x, vw, 48);
       }
-      return snapToPerimeterFrame({ x: p.x, y: p.y }, window.innerWidth, window.innerHeight, 52, 46);
+      return snapToDesktopSlot({ x: p.x, y: p.y }, vw, vh, 48, 48);
     }
   } catch {
     /* ignore */
@@ -245,7 +132,8 @@ export function useSwitcherDrag(opts: {
   const { disabled, isMobile = false, surfaceRef } = opts;
   const [offset, setOffset] = useState<Pos>(readSaved);
   const [dragging, setDragging] = useState(false);
-  const [autoDodging, setAutoDodging] = useState(false);
+  const autoDodging = false;
+
   const activeRef = useRef(false);
   const movedRef = useRef(false);
   const startRef = useRef<Pos>({ x: 0, y: 0 });
@@ -253,76 +141,29 @@ export function useSwitcherDrag(opts: {
   const offsetRef = useRef<Pos>(offset);
   offsetRef.current = offset;
 
+  const liveOffsetRef = useRef<Pos>(offset);
+  const samplesRef = useRef<PointerSample[]>([]);
+  const rafIdRef = useRef<number | null>(null);
+
   // On mobile, ensure the collapsed bubble always stays at the top of the screen (y = 0)
   useEffect(() => {
     if (!isMobile && window.innerWidth >= 768) return;
     const cur = offsetRef.current;
-    const snapped = snapToMobileTopEdge(cur.x, 0, cur.x, window.innerWidth, 52);
+    const snapped = snapToMobileTopEdge(cur.x, window.innerWidth, 48);
     if (cur.x !== snapped.x || cur.y !== 0) {
+      liveOffsetRef.current = snapped;
       setOffset(snapped);
     }
   }, [isMobile]);
 
-  // Smart obstacle detection & perimeter auto-dodge (Desktop only — disabled on mobile)
-  const checkAndDodge = useCallback(() => {
-    if (isMobile || window.innerWidth < 768) return;
-    if (disabled || activeRef.current) return;
-    const el = surfaceRef.current;
-    if (!el) return;
-
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const rect = el.getBoundingClientRect();
-    const bw = Math.max(44, rect.width);
-    const bh = Math.max(44, rect.height);
-
-    // Ensure current offset is within viewport bounds on resize
-    const current = offsetRef.current;
-    const clampedCurrent = snapToPerimeterFrame(current, vw, vh, bw, bh);
-
-    const topAnchorY = 14;
-    const curLeft = vw / 2 + clampedCurrent.x - bw / 2;
-    const curTop = topAnchorY + clampedCurrent.y;
-
-    const isBlocked = hasObstacleAtBox(curLeft, curTop, bw, bh, el);
-    if (!isBlocked) {
-      if (clampedCurrent.x !== current.x || clampedCurrent.y !== current.y) {
-        setOffset(clampedCurrent);
-      }
-      return;
-    }
-
-    // Current position covers an interactive button/element! Find nearest clear perimeter slot
-    const candidates = buildPerimeterSlots(vw, vh, bw, bh);
-    candidates.sort((a, b) => {
-      const da = Math.hypot(a.x - clampedCurrent.x, a.y - clampedCurrent.y);
-      const db = Math.hypot(b.x - clampedCurrent.x, b.y - clampedCurrent.y);
-      return da - db;
-    });
-
-    for (const slot of candidates) {
-      const sLeft = vw / 2 + slot.x - bw / 2;
-      const sTop = topAnchorY + slot.y;
-      if (!hasObstacleAtBox(sLeft, sTop, bw, bh, el)) {
-        if (Math.hypot(slot.x - current.x, slot.y - current.y) > 8) {
-          setAutoDodging(true);
-          setOffset(slot);
-          window.setTimeout(() => setAutoDodging(false), 520);
-        }
-        return;
-      }
-    }
-  }, [disabled, isMobile, surfaceRef]);
-
-  // When panel opens on DESKTOP, clamp offset so the expanded panel (330x340) never clips off-screen.
-  // On MOBILE, the expanded panel is a centered Control Center modal, so we preserve the top-edge orb offset.
+  // When panel opens on DESKTOP, clamp offset so the expanded panel (368x520) never clips off-screen.
   useEffect(() => {
     if (!disabled) return; // disabled === true means `open === true`
     if (isMobile || window.innerWidth < 768) return;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const panelW = Math.min(vw * 0.92, 340);
-    const panelH = 340;
+    const panelW = Math.min(vw * 0.94, 368);
+    const panelH = Math.min(vh * 0.84, 480);
     const margin = 12;
     const topAnchorY = 14;
     const cur = offsetRef.current;
@@ -335,46 +176,40 @@ export function useSwitcherDrag(opts: {
     const safeX = Math.round(Math.min(maxX, Math.max(minX, cur.x)));
     const safeY = Math.round(Math.min(maxY, Math.max(minY, cur.y)));
     if (safeX !== cur.x || safeY !== cur.y) {
-      setOffset({ x: safeX, y: safeY });
+      const next = { x: safeX, y: safeY };
+      liveOffsetRef.current = next;
+      setOffset(next);
     }
   }, [disabled, isMobile]);
 
   useEffect(() => {
-    if (isMobile || window.innerWidth < 768) {
-      const onMobileResize = () => {
-        const cur = offsetRef.current;
-        const snapped = snapToMobileTopEdge(cur.x, 0, cur.x, window.innerWidth, 52);
+    const onResize = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const cur = offsetRef.current;
+      if (isMobile || vw < 768) {
+        const snapped = snapToMobileTopEdge(cur.x, vw, 48);
         if (cur.x !== snapped.x || cur.y !== 0) {
+          liveOffsetRef.current = snapped;
           setOffset(snapped);
         }
-      };
-      window.addEventListener('resize', onMobileResize, { passive: true });
-      return () => window.removeEventListener('resize', onMobileResize);
-    }
-
-    let rafId = 0;
-    let timerId = 0;
-    const scheduleCheck = () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      if (timerId) window.clearTimeout(timerId);
-      timerId = window.setTimeout(() => {
-        rafId = requestAnimationFrame(checkAndDodge);
-      }, 90);
+      } else {
+        const snapped = snapToDesktopSlot(cur, vw, vh, 48, 48);
+        if (cur.x !== snapped.x || cur.y !== snapped.y) {
+          liveOffsetRef.current = snapped;
+          setOffset(snapped);
+        }
+      }
     };
-
-    scheduleCheck();
-    window.addEventListener('scroll', scheduleCheck, { passive: true, capture: true });
-    window.addEventListener('resize', scheduleCheck, { passive: true });
-    const intervalId = window.setInterval(scheduleCheck, 1400);
-
+    window.addEventListener('resize', onResize, { passive: true });
     return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      if (timerId) window.clearTimeout(timerId);
-      window.clearInterval(intervalId);
-      window.removeEventListener('scroll', scheduleCheck, true);
-      window.removeEventListener('resize', scheduleCheck);
+      window.removeEventListener('resize', onResize);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
     };
-  }, [checkAndDodge, isMobile]);
+  }, [isMobile]);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -385,6 +220,8 @@ export function useSwitcherDrag(opts: {
       setDragging(true);
       startRef.current = { x: e.clientX, y: e.clientY };
       baseRef.current = { ...offsetRef.current };
+      liveOffsetRef.current = { ...offsetRef.current };
+      samplesRef.current = [{ t: e.timeStamp, x: e.clientX, y: e.clientY }];
     },
     [disabled],
   );
@@ -397,20 +234,37 @@ export function useSwitcherDrag(opts: {
       const mobileMode = isMobile || window.innerWidth < 768;
       const dist = mobileMode ? Math.abs(dx) : Math.hypot(dx, dy);
       if (!movedRef.current && dist > 6) movedRef.current = true;
-      if (movedRef.current) {
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const margin = 10;
-        const nextX = Math.max(-vw / 2 + 28, Math.min(vw / 2 - 28, baseRef.current.x + dx));
-        if (mobileMode) {
-          setOffset({ x: Math.round(nextX), y: 0 });
-        } else {
-          const nextY = Math.max(-8, Math.min(vh - 64 - margin, baseRef.current.y + dy));
-          setOffset({ x: Math.round(nextX), y: Math.round(nextY) });
-        }
+      if (!movedRef.current) return;
+
+      const samples = samplesRef.current;
+      samples.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
+      if (samples.length > 6) samples.shift();
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const margin = 10;
+      const nextX = Math.round(
+        Math.max(-vw / 2 + 28, Math.min(vw / 2 - 28, baseRef.current.x + dx)),
+      );
+      const nextY = mobileMode
+        ? 0
+        : Math.round(Math.max(-8, Math.min(vh - 64 - margin, baseRef.current.y + dy)));
+
+      liveOffsetRef.current = { x: nextX, y: nextY };
+
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          const el = surfaceRef.current;
+          if (el) {
+            el.style.transform = `translate3d(${liveOffsetRef.current.x}px, ${
+              mobileMode ? 0 : liveOffsetRef.current.y
+            }px, 0)`;
+          }
+        });
       }
     },
-    [isMobile],
+    [isMobile, surfaceRef],
   );
 
   const onPointerUp = useCallback(
@@ -421,39 +275,57 @@ export function useSwitcherDrag(opts: {
       } catch {
         /* ignore */
       }
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
       activeRef.current = false;
       setDragging(false);
       if (!movedRef.current) return;
 
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const rect = surfaceRef.current?.getBoundingClientRect();
-      const bw = rect ? rect.width : 48;
-      const bh = rect ? rect.height : 46;
-      const mobileMode = isMobile || vw < 768;
+      const samples = samplesRef.current;
+      samples.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
+      if (samples.length > 6) samples.shift();
 
-      if (mobileMode) {
-        const dx = e.clientX - startRef.current.x;
-        const final = snapToMobileTopEdge(offsetRef.current.x, dx, baseRef.current.x, vw, bw);
-        setOffset(final);
-        try {
-          localStorage.setItem(KEY, JSON.stringify(final));
-        } catch {
-          /* ignore */
+      // Compute release velocity (px/sec) from last 100ms of pointer samples
+      let vx = 0;
+      let vy = 0;
+      const latest = samples[samples.length - 1];
+      let anchor = samples[0];
+      for (let i = samples.length - 2; i >= 0; i--) {
+        if (latest.t - samples[i].t <= 100) {
+          anchor = samples[i];
+        } else {
+          break;
         }
-        return;
+      }
+      const dt = latest.t - anchor.t;
+      if (dt > 4 && dt <= 160) {
+        vx = ((latest.x - anchor.x) / dt) * 1000;
+        vy = ((latest.y - anchor.y) / dt) * 1000;
       }
 
-      const final = snapToPerimeterFrame(offsetRef.current, vw, vh, bw, bh);
-      setOffset(final);
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const mobileMode = isMobile || vw < 768;
+      const cur = liveOffsetRef.current;
+
+      const projectedX = cur.x + project(vx);
+      const projectedY = cur.y + project(vy);
+
+      const finalPos = mobileMode
+        ? snapToMobileTopEdge(projectedX, vw, 48)
+        : snapToDesktopSlot({ x: projectedX, y: projectedY }, vw, vh, 48, 48);
+
+      liveOffsetRef.current = finalPos;
+      setOffset(finalPos);
       try {
-        localStorage.setItem(KEY, JSON.stringify(final));
+        localStorage.setItem(KEY, JSON.stringify(finalPos));
       } catch {
         /* ignore */
       }
-      window.setTimeout(checkAndDodge, 180);
     },
-    [checkAndDodge, isMobile, surfaceRef],
+    [isMobile],
   );
 
   return {

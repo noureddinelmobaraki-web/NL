@@ -148,9 +148,31 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
     [runAction],
   );
 
-  const handleIntent = useCallback((placed: PlacedNode) => {
-    if (!placed.hasChildren) warmLauncherAction(placed.node.action);
+  const warmTimerRef = useRef<number>(0);
+
+  const warmStage = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.setAttribute('data-warm', 'true');
+    if (warmTimerRef.current) window.clearTimeout(warmTimerRef.current);
+    warmTimerRef.current = window.setTimeout(() => {
+      el.removeAttribute('data-warm');
+    }, 650);
+  }, [ref]);
+
+  useEffect(() => {
+    return () => {
+      if (warmTimerRef.current) window.clearTimeout(warmTimerRef.current);
+    };
   }, []);
+
+  const handleIntent = useCallback(
+    (placed: PlacedNode) => {
+      warmStage();
+      if (!placed.hasChildren) warmLauncherAction(placed.node.action);
+    },
+    [warmStage],
+  );
 
   useEffect(() => {
     if (!import.meta.env.DEV || graph.edges.length === 0) return;
@@ -169,7 +191,13 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
   const denseAttr = graph.nodes.length >= 8 ? '1' : '0';
 
   return (
-    <div ref={ref} className="nl-graph-stage" data-l2-refract={l2RefractAttr} data-dense={denseAttr}>
+    <div
+      ref={ref}
+      className="nl-graph-stage"
+      data-l2-refract={l2RefractAttr}
+      data-dense={denseAttr}
+      onPointerDown={warmStage}
+    >
       {canRefract ? <LiquidGlassFilter /> : null}
       <ConnectorLayer
         edges={graph.edges}

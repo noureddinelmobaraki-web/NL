@@ -4,6 +4,10 @@ import type { ReactNode } from "react";
 
 export interface NotchTransport {
   title: string;
+  subtitle?: string;
+  artworkUrl?: string;
+  source?: string;
+  accent?: string;
   isPlaying: boolean;
   canPrev: boolean;
   canNext: boolean;

@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { nowPlayingBus } from '../../../../../audio/nowPlayingBus';
 import type { AudiobookChapter, AudiobookItem } from '../../../services/types';
 import { useMediaSession } from './useMediaSession';
 
@@ -277,7 +278,60 @@ export function useAudiobookPlayer({
     }
     onAudioActiveChange?.(false);
     setIsPlaying(false);
+    nowPlayingBus.clear('audiobook');
   }, [onAudioActiveChange]);
+
+  useEffect(() => {
+    if (!selectedBook) {
+      nowPlayingBus.clear('audiobook');
+      return undefined;
+    }
+    const audio = audioRef.current;
+    if (!isPlaying && (!audio || !audio.src)) {
+      return undefined;
+    }
+    nowPlayingBus.publish({
+      source: 'audiobook',
+      title: chapters[activeChapterIdx]?.title || selectedBook.title,
+      subtitle: selectedBook.author,
+      artworkUrl: selectedBook.coverUrl,
+      accent: '#BF5AF2',
+      isPlaying,
+      canPrev: activeChapterIdx > 0,
+      canNext: activeChapterIdx + 1 < chapters.length,
+      controls: {
+        toggle: () => togglePlayPause(),
+        prev: () => {
+          if (activeChapterIdx > 0) {
+            startChapterPlayback(chapters, activeChapterIdx - 1, 0);
+          }
+        },
+        next: () => {
+          if (activeChapterIdx + 1 < chapters.length) {
+            startChapterPlayback(chapters, activeChapterIdx + 1, 0);
+          }
+        },
+        stop: () => {
+          stopAudio();
+          nowPlayingBus.clear('audiobook');
+        },
+      },
+    });
+  }, [
+    selectedBook,
+    chapters,
+    activeChapterIdx,
+    isPlaying,
+    togglePlayPause,
+    startChapterPlayback,
+    stopAudio,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      nowPlayingBus.clear('audiobook');
+    };
+  }, []);
 
   useMediaSession({
     book: selectedBook,

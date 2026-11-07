@@ -49,6 +49,7 @@ export const ConnectorLayer = memo(function ConnectorLayer({
       (motionProfile === 'reduced' ? 'lite' : motionProfile === 'balanced' ? 'frost' : 'liquid'));
 
   const isLiquid = resolvedTier === 'liquid';
+  const isFrost = resolvedTier === 'frost';
   const isLite = resolvedTier === 'lite';
 
   return (
@@ -80,6 +81,57 @@ export const ConnectorLayer = memo(function ConnectorLayer({
           const siblingIndex = edgeStaggerMap?.get(edge.id) ?? idx;
           const reveal = getGlassTierRevealSpec(resolvedTier, siblingIndex);
 
+          const fromPt = nodePositions?.get(edge.fromId);
+          const toPt = nodePositions?.get(edge.toId);
+          const parsed = !fromPt || !toPt ? parsePathEndpoints(edge.path) : null;
+          const start = fromPt ?? parsed?.from ?? null;
+          const end = toPt ?? parsed?.to ?? null;
+
+          if (isFrost) {
+            return (
+              <g
+                key={edge.id}
+                className="nl-ray-frost-group"
+                style={{ '--ray-delay': `${Math.round(reveal.delay * 1000 + 24)}ms` } as React.CSSProperties}
+              >
+                <path
+                  d={edge.path}
+                  pathLength={1}
+                  className="nl-ray-glow nl-ray-frost"
+                  stroke="url(#nlRayGrad)"
+                  strokeWidth={edge.depth === 1 ? 8 : 6}
+                />
+                <path
+                  d={edge.path}
+                  pathLength={1}
+                  className="nl-ray-core nl-ray-frost"
+                  stroke="#eafff5"
+                  strokeWidth={edge.depth === 1 ? 2.2 : 1.6}
+                />
+                {start ? (
+                  <circle
+                    cx={start.x}
+                    cy={start.y}
+                    r={3}
+                    fill="#eafff5"
+                    stroke="rgba(126, 240, 180, 0.55)"
+                    strokeWidth={1.5}
+                  />
+                ) : null}
+                {end ? (
+                  <circle
+                    cx={end.x}
+                    cy={end.y}
+                    r={3}
+                    fill="#eafff5"
+                    stroke="rgba(126, 240, 180, 0.55)"
+                    strokeWidth={1.5}
+                  />
+                ) : null}
+              </g>
+            );
+          }
+
           const drawTransition: Transition = isLite
             ? INSTANT_TRANSITION
             : reveal.type === 'spring'
@@ -103,12 +155,6 @@ export const ConnectorLayer = memo(function ConnectorLayer({
                 duration: reveal.exitDuration,
                 ease: reveal.ease,
               };
-
-          const fromPt = nodePositions?.get(edge.fromId);
-          const toPt = nodePositions?.get(edge.toId);
-          const parsed = !fromPt || !toPt ? parsePathEndpoints(edge.path) : null;
-          const start = fromPt ?? parsed?.from ?? null;
-          const end = toPt ?? parsed?.to ?? null;
 
           return (
             <m.g
