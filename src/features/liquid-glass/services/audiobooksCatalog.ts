@@ -30,6 +30,20 @@ import {
 } from './crossMatch';
 import { searchAllBooks } from '../booksAudioService';
 
+/**
+ * Opt-in filter flag to hide low-quality audiobooks (default false preserves full catalog).
+ */
+export const HIDE_LOW_QUALITY_AUDIOBOOKS = false;
+
+export function isLowQualityAudiobook(item: AudiobookItem): boolean {
+  const title = (item.title || '').trim();
+  if (!title) return true;
+  const isHexOrRawId = /^[0-9a-f\s_-]{6,}$/i.test(title) || /^[a-z0-9]+(_[a-z0-9]+){2,}$/i.test(title);
+  const hasGenericNarrator = !item.author || item.author === 'Classic Narrator' || item.author === 'Unknown Author';
+  const hasMissingCover = !item.coverUrl;
+  return isHexOrRawId || (hasGenericNarrator && hasMissingCover);
+}
+
 export async function resolveBookDetails(
   book: BookItem,
   _signal?: AbortSignal,
@@ -144,6 +158,7 @@ export async function fetchAudiobooksCatalog(params: {
   const seen = new Set<string>();
   for (const item of [...iaRes, ...itunesRes, ...locRes]) {
     if (!item || !item.title) continue;
+    if (HIDE_LOW_QUALITY_AUDIOBOOKS && isLowQualityAudiobook(item)) continue;
     const key = item.iaId ? `ia:${item.iaId}` : normalizeBookKey(item.title, item.author);
     if (seen.has(key)) continue;
     seen.add(key);

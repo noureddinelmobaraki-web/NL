@@ -63,6 +63,13 @@ vi.mock('../useMovieItems', () => ({
   }),
 }))
 
+vi.mock('../components/AvatarCropModal', () => ({
+  AvatarCropModal: ({ file, onConfirm }: { file: Blob; onConfirm: (b: Blob) => void }) => {
+    queueMicrotask(() => onConfirm(file))
+    return null
+  },
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -79,16 +86,16 @@ describe('features/account/ProfilePage', () => {
   it('يعرض الهوية ويحمّل بيانات الملف', async () => {
     await renderProfile()
     expect(screen.getByRole('dialog')).toBeTruthy()
-    expect(screen.getByText('noureddinelmobaraki@gmail.com')).toBeTruthy()
+    expect(screen.getAllByText('noureddinelmobaraki@gmail.com').length).toBeGreaterThan(0)
     await waitFor(() =>
-      expect((screen.getByLabelText('الاسم الظاهر') as HTMLInputElement).value).toBe('نور'),
+      expect((screen.getByLabelText('Display Name') as HTMLInputElement).value).toBe('نور'),
     )
   })
 
   it('الحفظ يستدعي update على جدول profiles', async () => {
     await renderProfile()
     await waitFor(() => expect(mockSingle).toHaveBeenCalled())
-    fireEvent.click(screen.getByRole('button', { name: 'حفظ' }))
+    fireEvent.click(screen.getByRole('button', { name: /Save/i }))
     await waitFor(() => expect(mockUpdate).toHaveBeenCalled())
     expect(mockUpdateEq).toHaveBeenCalledWith('id', 'u1')
   })
@@ -109,15 +116,15 @@ describe('features/account/ProfilePage', () => {
 
   it('تسجيل الخروج يستدعي signOut ثم يغلق', async () => {
     await renderProfile()
-    await waitFor(() => expect(screen.getByLabelText('الاسم الظاهر')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'تسجيل الخروج' }))
+    await waitFor(() => expect(screen.getByLabelText('Display Name')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: /Log Out/i }))
     await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(mockCloseProfile).toHaveBeenCalled())
   })
 
   it('يعرض عدادات الإحصائيات من المتجر', async () => {
     await renderProfile()
-    await waitFor(() => expect(screen.getByLabelText('الاسم الظاهر')).toBeTruthy())
+    await waitFor(() => expect(screen.getByLabelText('Display Name')).toBeTruthy())
 
     // favCount = 2 (من الـ mock)
     expect(screen.getByText('2')).toBeTruthy()
@@ -127,8 +134,8 @@ describe('features/account/ProfilePage', () => {
     expect(screen.getByText('5')).toBeTruthy()
 
     // التحقق من التسميات
-    expect(screen.getByText('أغنية مفضلة')).toBeTruthy()
-    expect(screen.getByText('قائمة تشغيل')).toBeTruthy()
-    expect(screen.getByText('فيلم مفضل')).toBeTruthy()
+    expect(screen.getByText('Favorite Song')).toBeTruthy()
+    expect(screen.getByText('Playlist')).toBeTruthy()
+    expect(screen.getByText('Favorite Movie')).toBeTruthy()
   })
 })

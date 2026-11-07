@@ -1,0 +1,231 @@
+/**
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
+ */
+
+.lg-catalog-shell {
+  container-type: inline-size;
+  container-name: stage;
+  width: 100%;
+  max-width: 1680px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.lg-catalog-shell__header,
+.lg-catalog-shell__top {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  z-index: 30;
+}
+
+.lg-catalog-shell__content,
+.lg-catalog-shell__main {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* Wide Desktop (>=1200px container / >=1240px viewport): 3-Column Sticky Glass Rail Architecture */
+.lg-catalog-shell--three-col {
+  display: grid;
+  grid-template-columns: clamp(185px, 14vw, 230px) minmax(0, 1fr) clamp(195px, 15vw, 240px);
+  align-items: start;
+  gap: 22px;
+  padding-inline: 8px;
+  box-sizing: border-box;
+}
+
+@container stage (min-width: 1200px) {
+  .lg-catalog-shell--three-col {
+    display: grid;
+    grid-template-columns: clamp(185px, 14vw, 230px) minmax(0, 1fr) clamp(195px, 15vw, 240px);
+  }
+}
+
+.lg-catalog-shell__center {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+}
+
+.lg-catalog-shell--three-col .lg-catalog-shell__top {
+  position: sticky;
+  top: 0;
+  z-index: 32;
+}
+
+.lg-catalog-shell--three-col .lg-topbar-shell {
+  max-width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.lg-catalog-shell__left {
+  width: clamp(185px, 14vw, 230px);
+  box-sizing: border-box;
+}
+
+.lg-catalog-shell__right {
+  width: clamp(195px, 15vw, 240px);
+  box-sizing: border-box;
+}
+
+.lg-catalog-shell__left,
+.lg-catalog-shell__right {
+  position: sticky;
+  top: 18px;
+  max-height: calc(100dvh - 88px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  padding: 14px 12px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 100%),
+    rgba(10, 15, 28, 0.42);
+  -webkit-backdrop-filter: blur(22px) saturate(175%);
+  backdrop-filter: blur(22px) saturate(175%);
+  box-shadow:
+    0 18px 42px -12px rgba(0, 0, 0, 0.5),
+    inset 0 1.4px 2px rgba(255, 255, 255, 0.72),
+    inset 0 -1px 2px rgba(145, 210, 255, 0.2);
+  z-index: 26;
+}
+
+.lg-rail-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.lg-genre-rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lg-genre-rail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lg-genre-rail-pill {
+  width: 100%;
+  justify-content: flex-start !important;
+  padding: 0 14px !important;
+  min-height: 40px !important;
+  border-radius: 14px !important;
+  font-size: 0.79rem;
+}
+
+.lg-filter-panel-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lg-filter-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lg-filter-panel-section + .lg-filter-panel-section {
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.lg-filter-panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lg-filter-panel-btn {
+  width: 100%;
+  justify-content: flex-start !important;
+  padding: 0 12px !important;
+  min-height: 38px !important;
+  border-radius: 14px !important;
+}
+
+.lg-filter-panel-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lg-filter-panel-chip {
+  flex: 1 1 auto;
+  min-height: 34px !important;
+  padding: 0 10px !important;
+  font-size: 0.73rem !important;
+}
+
+.lg-wide-command-meta {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.lg-active-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.lg-summary-chip,
+.lg-clear-all-chip {
+  min-height: 34px !important;
+  padding: 0 11px !important;
+  font-size: 0.73rem !important;
+  gap: 5px;
+}
+
+.lg-catalog-result-count {
+  margin-left: auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(10, 15, 28, 0.44);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 0.73rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+}
+
+.lg-topbar-shell--wide .lg-search-capsule {
+  flex: 1 1 320px;
+  max-width: 520px;
+}
+
+@container stage (min-width: 1100px) {
+  .lg-catalog-shell--medium .lg-topbar-shell {
+    max-width: 1380px;
+  }
+}

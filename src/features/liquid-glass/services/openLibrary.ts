@@ -43,50 +43,65 @@ export async function directOpenLibraryTrending(
   page: number,
   signal?: AbortSignal,
 ): Promise<BookItem[]> {
+  const fallbackSearch = () =>
+    directOpenLibrarySearch(
+      subject && subject !== 'trending' && subject !== 'all'
+        ? subject
+        : 'bestseller classic fiction',
+      lang,
+      page,
+      signal,
+    );
+
   const offset = (Math.max(1, page) - 1) * 24;
   const url =
     subject && subject !== 'all' && subject !== 'trending'
       ? `https://openlibrary.org/subjects/${encodeURIComponent(subject)}.json?limit=28&offset=${offset}`
       : `https://openlibrary.org/trending/${['daily', 'weekly', 'monthly'].includes(period) ? period : 'weekly'}.json?limit=28&page=${page}`;
 
-  const r = await fetch(url, { signal });
-  if (!r.ok) return [];
-  const raw = await r.json();
-  const parsed = OpenLibraryTrendingResponseSchema.safeParse(raw);
-  const works = parsed.success && parsed.data.works ? parsed.data.works : [];
-  const out: BookItem[] = [];
+  try {
+    const r = await fetch(url, { signal });
+    if (!r.ok) return await fallbackSearch();
+    const raw = await r.json();
+    const parsed = OpenLibraryTrendingResponseSchema.safeParse(raw);
+    const works = parsed.success && parsed.data.works ? parsed.data.works : [];
+    if (works.length === 0) return await fallbackSearch();
+    const out: BookItem[] = [];
 
-  for (const w of works) {
-    const coverId = w.cover_i || w.cover_id;
-    const iaList = Array.isArray(w.ia) ? w.ia : w.ia ? [w.ia] : [];
-    const iaId = iaList[0] || '';
-    const authors = Array.isArray(w.author_name)
-      ? w.author_name.join(', ')
-      : Array.isArray(w.authors)
-        ? w.authors.map((a) => a.name).filter(Boolean).join(', ')
-        : 'Unknown Author';
-    const langCode = Array.isArray(w.language) ? String(w.language[0] || '') : '';
-    if (lang && lang !== 'all' && langCode && !langCode.toLowerCase().startsWith(lang.slice(0, 2))) {
-      continue;
+    for (const w of works) {
+      const coverId = w.cover_i || w.cover_id;
+      const iaList = Array.isArray(w.ia) ? w.ia : w.ia ? [w.ia] : [];
+      const iaId = iaList[0] || '';
+      const authors = Array.isArray(w.author_name)
+        ? w.author_name.join(', ')
+        : Array.isArray(w.authors)
+          ? w.authors.map((a) => a.name).filter(Boolean).join(', ')
+          : 'Unknown Author';
+      const langCode = Array.isArray(w.language) ? String(w.language[0] || '') : '';
+      if (lang && lang !== 'all' && langCode && !langCode.toLowerCase().startsWith(lang.slice(0, 2))) {
+        continue;
+      }
+      out.push({
+        id: `ol_${String(w.key || '').replace('/works/', '') || Math.random().toString(36).slice(2)}`,
+        title: w.title || 'Untitled',
+        author: authors,
+        year: w.first_publish_year || '',
+        language: langCode || 'en',
+        coverUrl: coverId ? `https://covers.openlibrary.org/b/id/${coverId}-L.jpg` : '',
+        isbn: Array.isArray(w.isbn) ? w.isbn[0] : '',
+        iaId,
+        ext: iaId ? 'epub' : 'pdf',
+        source: 'Open Library',
+        downloads: w.edition_count ? Number(w.edition_count) * 120 : 100,
+        directReadFormats: iaId
+          ? { embed: `https://archive.org/embed/${encodeURIComponent(iaId)}?ui=embed` }
+          : {},
+      });
     }
-    out.push({
-      id: `ol_${String(w.key || '').replace('/works/', '') || Math.random().toString(36).slice(2)}`,
-      title: w.title || 'Untitled',
-      author: authors,
-      year: w.first_publish_year || '',
-      language: langCode || 'en',
-      coverUrl: coverId ? `https://covers.openlibrary.org/b/id/${coverId}-L.jpg` : '',
-      isbn: Array.isArray(w.isbn) ? w.isbn[0] : '',
-      iaId,
-      ext: iaId ? 'epub' : 'pdf',
-      source: 'Open Library',
-      downloads: w.edition_count ? Number(w.edition_count) * 120 : 100,
-      directReadFormats: iaId
-        ? { embed: `https://archive.org/embed/${encodeURIComponent(iaId)}?ui=embed` }
-        : {},
-    });
+    return out.length > 0 ? out : await fallbackSearch();
+  } catch {
+    return fallbackSearch();
   }
-  return out;
 }
 
 export async function directOpenLibrarySearch(

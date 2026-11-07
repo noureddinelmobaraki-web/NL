@@ -49,7 +49,13 @@ try {
 
     const title = song.title || 'أغنية غير معروفة';
     const artist = song.artist || 'فنان غير معروف';
-    const coverUrl = song.coverUrl || fallbackCover;
+    const fileStr =
+      song.file || (/^\d+$/.test(sid) ? `song_${sid.padStart(3, '0')}.m4a` : '');
+    const derivedCover = fileStr
+      ? 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/xp/media/nl-fv-songs/' +
+        String(fileStr).replace(/\.[^.]+$/, '.webp')
+      : '';
+    const coverUrl = song.coverUrl || derivedCover || fallbackCover;
 
     const escapedTitle = escapeHtml(title);
     const escapedArtist = escapeHtml(artist);

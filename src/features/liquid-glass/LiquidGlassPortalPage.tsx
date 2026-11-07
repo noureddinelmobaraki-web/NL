@@ -12,14 +12,14 @@ import { ArrowLeft, X } from 'lucide-react';
 import { useBackToClose } from '../../hooks/useBackToClose';
 import { useLiquidGlassAudio } from './useLiquidGlassAudio';
 import { EARTH_TEXTURE_DATA_URI, SUN_TEXTURE_DATA_URI } from './sunTexture';
-import { SunAlbumsStage } from './SunAlbumsStage';
-import { BooksStage } from './BooksStage';
-import { AudiobooksStage } from './AudiobooksStage';
+import { SunAlbumsStage } from './stages/SunAlbumsStage/SunAlbumsStage';
+import { BooksStage } from './stages/books/BooksStage';
+import { AudiobooksStage } from './stages/audiobooks/AudiobooksStage';
 import {
   LIQUID_GLASS_HLS_VIDEOS,
   LIQUID_GLASS_TITLE_IMAGES,
   OrbsStage,
-} from './stages/OrbsStage';
+} from './stages/orbs/OrbsStage';
 import { GLASS_CONFIG } from './stages/orbs/portalShaders';
 import {
   LIQUID_GLASS_BACKGROUNDS,
@@ -91,7 +91,25 @@ export default function LiquidGlassPortalPage({
     return Math.min(Math.max(Math.min(maxByWidth, maxByHeight), 0.52), 0.96);
   }, [viewport.width, viewport.height, isStackedLayout]);
 
-  const [mode, setMode] = useState<LiquidGlassMode>(initialMode);
+  const persistStageMode = useCallback((next: LiquidGlassMode | null) => {
+    try {
+      if (next && next !== 'orbs') window.sessionStorage.setItem('nl_lg_initial_mode', next);
+      else window.sessionStorage.removeItem('nl_lg_initial_mode');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const [mode, setMode] = useState<LiquidGlassMode>(() => {
+    if (initialMode && initialMode !== 'orbs') return initialMode;
+    try {
+      const s = typeof window !== 'undefined' ? window.sessionStorage.getItem('nl_lg_initial_mode') : null;
+      if (s === 'books' || s === 'audiobooks' || s === 'sun' || s === 'video' || s === 'orbs') return s;
+    } catch {
+      /* ignore */
+    }
+    return initialMode || 'orbs';
+  });
   const [currentVideoIndex, setCurrentVideoIndex] = useState<number | null>(null);
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
   const [localMuted, setLocalMuted] = useState(false);
@@ -137,10 +155,11 @@ export default function LiquidGlassPortalPage({
 
   const triggerRandomVideo = useCallback(() => {
     const nextIdx = pickNextRandomVideoIndex();
+    persistStageMode('video');
     setMode('video');
     setCurrentVideoIndex(nextIdx);
     onVideoAudioActiveChange?.(true);
-  }, [pickNextRandomVideoIndex, onVideoAudioActiveChange]);
+  }, [pickNextRandomVideoIndex, onVideoAudioActiveChange, persistStageMode]);
 
   const [crossBookQuery, setCrossBookQuery] = useState<string>('');
   const [crossSelectedBook, setCrossSelectedBook] = useState<BookItem | null>(null);
@@ -158,48 +177,54 @@ export default function LiquidGlassPortalPage({
   }, [initialMode, triggerRandomVideo]);
 
   const onOpenSunWindow = useCallback(() => {
+    persistStageMode('sun');
     setMode('sun');
     onVideoAudioActiveChange?.(false);
-  }, [onVideoAudioActiveChange]);
+  }, [onVideoAudioActiveChange, persistStageMode]);
 
   const onOpenBooksWindow = useCallback(() => {
+    persistStageMode('books');
     setCrossBookQuery('');
     setCrossSelectedBook(null);
     setMode('books');
     onVideoAudioActiveChange?.(false);
-  }, [onVideoAudioActiveChange]);
+  }, [onVideoAudioActiveChange, persistStageMode]);
 
   const onOpenAudiobooksWindow = useCallback(() => {
+    persistStageMode('audiobooks');
     setCrossAudiobookQuery('');
     setCrossSelectedAudiobook(null);
     setMode('audiobooks');
     onVideoAudioActiveChange?.(false);
-  }, [onVideoAudioActiveChange]);
+  }, [onVideoAudioActiveChange, persistStageMode]);
 
   const handleSwitchBookToAudiobook = useCallback(
     (query: string, matchedAudiobook?: AudiobookItem) => {
+      persistStageMode('audiobooks');
       setCrossAudiobookQuery(query);
       setCrossSelectedAudiobook(matchedAudiobook || null);
       setMode('audiobooks');
       onVideoAudioActiveChange?.(false);
     },
-    [onVideoAudioActiveChange],
+    [onVideoAudioActiveChange, persistStageMode],
   );
 
   const handleSwitchAudiobookToBook = useCallback(
     (query: string, matchedBook?: BookItem) => {
+      persistStageMode('books');
       setCrossBookQuery(query);
       setCrossSelectedBook(matchedBook || null);
       setMode('books');
       onVideoAudioActiveChange?.(false);
     },
-    [onVideoAudioActiveChange],
+    [onVideoAudioActiveChange, persistStageMode],
   );
 
   const handleReturnToOrbs = useCallback(() => {
+    persistStageMode(null);
     setMode('orbs');
     onVideoAudioActiveChange?.(false);
-  }, [onVideoAudioActiveChange]);
+  }, [onVideoAudioActiveChange, persistStageMode]);
 
   useBackToClose(mode !== 'orbs', handleReturnToOrbs);
 
@@ -302,13 +327,17 @@ export default function LiquidGlassPortalPage({
 
       <canvas
         ref={canvasRef}
-        className={`lg-webgl-canvas${webglReady ? ' lg-webgl-canvas--ready' : ''}`}
+        className={`lg-webgl-canvas${
+          webglReady && (mode === 'orbs' || mode === 'video') ? ' lg-webgl-canvas--ready' : ''
+        }`}
         aria-hidden="true"
       />
 
       <div
         className={`lg-portal-stage-dimmer${
-          mode === 'books' || mode === 'audiobooks' ? ' lg-portal-stage-dimmer--active' : ''
+          mode === 'books' || mode === 'audiobooks' || mode === 'sun'
+            ? ' lg-portal-stage-dimmer--active'
+            : ''
         }`}
         aria-hidden="true"
       />
@@ -332,6 +361,11 @@ export default function LiquidGlassPortalPage({
             if (mode !== 'orbs') {
               handleReturnToOrbs();
             } else {
+              try {
+                window.sessionStorage.removeItem('nl_lg_initial_mode');
+              } catch {
+                /* ignore */
+              }
               onClose();
             }
           }}

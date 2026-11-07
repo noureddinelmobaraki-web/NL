@@ -3,21 +3,19 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  ArrowUpDown,
   Bookmark,
-  ChevronDown,
-  FileText,
-  Languages,
+  RotateCcw,
   Search,
   SlidersHorizontal,
-  Volume2,
-  VolumeX,
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useCatalogShellTier } from './CatalogShell';
+import { FilterControls } from './FilterControls';
 import { FilterSheet } from './FilterSheet';
+import { GenreNav } from './GenreNav';
 
 export interface GenreChipItem {
   readonly id: string;
@@ -51,6 +49,7 @@ export interface GlassTopBarProps {
   onToggleSavedOnly?: () => void;
   externalMuted?: boolean;
   onToggleMute?: () => void;
+  resultCount?: number;
 }
 
 export const GlassTopBar: React.FC<GlassTopBarProps> = ({
@@ -74,31 +73,109 @@ export const GlassTopBar: React.FC<GlassTopBarProps> = ({
   onToggleSavedOnly,
   externalMuted,
   onToggleMute,
+  resultCount,
 }) => {
-  const [langExpanded, setLangExpanded] = useState(false);
-  const [sortExpanded, setSortExpanded] = useState(false);
-  const [formatExpanded, setFormatExpanded] = useState(false);
+  const tier = useCatalogShellTier();
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
-  const topbarRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (topbarRef.current && !topbarRef.current.contains(event.target as Node)) {
-        setLangExpanded(false);
-        setSortExpanded(false);
-        setFormatExpanded(false);
+  const defaultGenreId = genres[0]?.id || 'trending';
+  const defaultLangId = languages[0]?.id || 'all';
+  const defaultSortId = sortOptions?.[0]?.id || 'popular';
+  const defaultFormatId = formatOptions?.[0]?.id || 'all';
+
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onClear: () => void }> = [];
+
+    if (showSavedOnly && onToggleSavedOnly) {
+      chips.push({
+        id: 'saved',
+        label: 'Saved Only',
+        onClear: () => onToggleSavedOnly(),
+      });
+    } else if (activeGenre && activeGenre !== defaultGenreId) {
+      const found = genres.find((g) => g.id === activeGenre);
+      if (found) {
+        chips.push({
+          id: `genre:${found.id}`,
+          label: found.label,
+          onClear: () => onGenreChange(defaultGenreId),
+        });
       }
     }
-    document.addEventListener('pointerdown', handleClickOutside);
-    return () => document.removeEventListener('pointerdown', handleClickOutside);
-  }, []);
 
-  const activeLangObj = languages.find((l) => l.id === language) || languages[0];
-  const activeSortObj = sortOptions?.find((s) => s.id === sortOrder) || sortOptions?.[0];
-  const activeFormatObj = formatOptions?.find((f) => f.id === extFilter) || formatOptions?.[0];
+    if (language && language !== defaultLangId) {
+      const found = languages.find((l) => l.id === language);
+      if (found) {
+        chips.push({
+          id: `lang:${found.id}`,
+          label: found.label,
+          onClear: () => onLanguageChange(defaultLangId),
+        });
+      }
+    }
+
+    if (sortOptions && onSortChange && sortOrder && sortOrder !== defaultSortId) {
+      const found = sortOptions.find((s) => s.id === sortOrder);
+      if (found) {
+        chips.push({
+          id: `sort:${found.id}`,
+          label: found.label,
+          onClear: () => onSortChange(defaultSortId),
+        });
+      }
+    }
+
+    if (formatOptions && onFormatChange && extFilter && extFilter !== defaultFormatId) {
+      const found = formatOptions.find((f) => f.id === extFilter);
+      if (found) {
+        chips.push({
+          id: `fmt:${found.id}`,
+          label: found.label,
+          onClear: () => onFormatChange(defaultFormatId),
+        });
+      }
+    }
+
+    return chips;
+  }, [
+    showSavedOnly,
+    onToggleSavedOnly,
+    activeGenre,
+    defaultGenreId,
+    genres,
+    onGenreChange,
+    language,
+    defaultLangId,
+    languages,
+    onLanguageChange,
+    sortOptions,
+    onSortChange,
+    sortOrder,
+    defaultSortId,
+    formatOptions,
+    onFormatChange,
+    extFilter,
+    defaultFormatId,
+  ]);
+
+  const handleClearAll = () => {
+    if (query) onQueryChange('');
+    if (showSavedOnly && onToggleSavedOnly) onToggleSavedOnly();
+    if (activeGenre !== defaultGenreId) onGenreChange(defaultGenreId);
+    if (language !== defaultLangId) onLanguageChange(defaultLangId);
+    if (sortOptions && onSortChange && sortOrder && sortOrder !== defaultSortId) {
+      onSortChange(defaultSortId);
+    }
+    if (formatOptions && onFormatChange && extFilter && extFilter !== defaultFormatId) {
+      onFormatChange(defaultFormatId);
+    }
+  };
 
   return (
-    <header className="lg-topbar-shell" ref={topbarRef} onClick={(e) => e.stopPropagation()}>
+    <header
+      className={`lg-topbar-shell lg-topbar-shell--${tier}`}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="lg-topbar-primary-row">
         {/* Search Input Capsule */}
         <div className="lg-track-tube lg-search-capsule">
@@ -130,9 +207,9 @@ export const GlassTopBar: React.FC<GlassTopBarProps> = ({
           type="button"
           onClick={() => setMobileSheetOpen(true)}
           className={`lg-glass-pill lg-filter-pill lg-mobile-filter-trigger ${
-            language !== 'all' ||
-            (sortOrder && sortOrder !== 'popular') ||
-            (extFilter && extFilter !== 'all') ||
+            language !== defaultLangId ||
+            (sortOrder && sortOrder !== defaultSortId) ||
+            (extFilter && extFilter !== defaultFormatId) ||
             showSavedOnly
               ? 'lg-filter-pill--active'
               : ''
@@ -143,163 +220,73 @@ export const GlassTopBar: React.FC<GlassTopBarProps> = ({
           <span>Filters</span>
         </button>
 
-        {/* Desktop Language Popover */}
-        <div className="lg-branch-filter-group">
-          <button
-            type="button"
-            onClick={() => {
-              setLangExpanded((v) => !v);
-              setSortExpanded(false);
-              setFormatExpanded(false);
-            }}
-            className={`lg-glass-pill lg-filter-pill ${
-              language !== 'all' || langExpanded ? 'lg-filter-pill--active' : ''
-            }`}
-          >
-            <Languages size={14} />
-            <span>{activeLangObj?.label}</span>
-            <ChevronDown size={13} />
-          </button>
-          <FilterSheet open={langExpanded} onClose={() => setLangExpanded(false)}>
-            {languages.map((l) => (
-              <button
-                key={l.id}
-                type="button"
-                onClick={() => {
-                  onLanguageChange(l.id);
-                  setLangExpanded(false);
-                }}
-                className={`lg-glass-pill lg-filter-pill lg-filter-pill--sm ${
-                  language === l.id ? 'lg-filter-pill--active' : ''
-                }`}
-              >
-                <span>{l.label}</span>
-              </button>
-            ))}
-          </FilterSheet>
-        </div>
+        {/* Medium Desktop (641px–1279px): Inline Single-Active Dropdown Controls */}
+        {tier === 'medium' && (
+          <FilterControls
+            variant="inline"
+            language={language}
+            languages={languages}
+            onLanguageChange={onLanguageChange}
+            sortOrder={sortOrder}
+            sortOptions={sortOptions}
+            onSortChange={onSortChange}
+            extFilter={extFilter}
+            formatOptions={formatOptions}
+            onFormatChange={onFormatChange}
+            savedCount={savedCount}
+            showSavedOnly={showSavedOnly}
+            onToggleSavedOnly={onToggleSavedOnly}
+            externalMuted={externalMuted}
+            onToggleMute={onToggleMute}
+          />
+        )}
 
-        {/* Desktop Sort Popover */}
-        {sortOptions && onSortChange && (
-          <div className="lg-branch-filter-group">
-            <button
-              type="button"
-              onClick={() => {
-                setSortExpanded((v) => !v);
-                setLangExpanded(false);
-                setFormatExpanded(false);
-              }}
-              className={`lg-glass-pill lg-filter-pill ${
-                sortOrder !== 'popular' || sortExpanded ? 'lg-filter-pill--active' : ''
-              }`}
-            >
-              <ArrowUpDown size={13} />
-              <span>{activeSortObj?.label}</span>
-              <ChevronDown size={13} />
-            </button>
-            <FilterSheet open={sortExpanded} onClose={() => setSortExpanded(false)}>
-              {sortOptions.map((s) => (
+        {/* Wide Desktop (>=1280px): Active Filter Summary Chips + Clear All + Result Count */}
+        {tier === 'wide' && (
+          <div className="lg-wide-command-meta">
+            {activeFilterChips.length > 0 && (
+              <div className="lg-active-filter-chips" aria-label="Active filters">
+                {activeFilterChips.map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={chip.onClear}
+                    className="lg-glass-pill lg-filter-pill lg-filter-pill--sm lg-filter-pill--active lg-summary-chip"
+                    title={`Remove filter: ${chip.label}`}
+                  >
+                    <span>{chip.label}</span>
+                    <X size={12} />
+                  </button>
+                ))}
                 <button
-                  key={s.id}
                   type="button"
-                  onClick={() => {
-                    onSortChange(s.id);
-                    setSortExpanded(false);
-                  }}
-                  className={`lg-glass-pill lg-filter-pill lg-filter-pill--sm ${
-                    sortOrder === s.id ? 'lg-filter-pill--active' : ''
-                  }`}
+                  onClick={handleClearAll}
+                  className="lg-glass-pill lg-filter-pill lg-filter-pill--sm lg-clear-all-chip"
                 >
-                  <span>{s.label}</span>
+                  <RotateCcw size={12} />
+                  <span>Clear all</span>
                 </button>
-              ))}
-            </FilterSheet>
+              </div>
+            )}
+            {typeof resultCount === 'number' && (
+              <span className="lg-catalog-result-count" aria-live="polite">
+                {resultCount} {resultCount === 1 ? 'title' : 'titles'}
+              </span>
+            )}
           </div>
-        )}
-
-        {/* Desktop Format Popover */}
-        {formatOptions && onFormatChange && (
-          <div className="lg-branch-filter-group">
-            <button
-              type="button"
-              onClick={() => {
-                setFormatExpanded((v) => !v);
-                setLangExpanded(false);
-                setSortExpanded(false);
-              }}
-              className={`lg-glass-pill lg-filter-pill ${
-                extFilter !== 'all' || formatExpanded ? 'lg-filter-pill--active' : ''
-              }`}
-            >
-              <FileText size={13} />
-              <span>{activeFormatObj?.label}</span>
-              <ChevronDown size={13} />
-            </button>
-            <FilterSheet open={formatExpanded} onClose={() => setFormatExpanded(false)}>
-              {formatOptions.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => {
-                    onFormatChange(f.id);
-                    setFormatExpanded(false);
-                  }}
-                  className={`lg-glass-pill lg-filter-pill lg-filter-pill--sm ${
-                    extFilter === f.id ? 'lg-filter-pill--active' : ''
-                  }`}
-                >
-                  <span>{f.label}</span>
-                </button>
-              ))}
-            </FilterSheet>
-          </div>
-        )}
-
-        {/* Desktop Saved Toggle */}
-        {onToggleSavedOnly && typeof savedCount === 'number' && (
-          <button
-            type="button"
-            onClick={onToggleSavedOnly}
-            className={`lg-glass-pill lg-filter-pill lg-desktop-only-pill ${
-              showSavedOnly ? 'lg-filter-pill--active' : ''
-            }`}
-          >
-            <Bookmark size={13} fill={showSavedOnly ? 'currentColor' : 'none'} />
-            <span>Saved ({savedCount})</span>
-          </button>
-        )}
-
-        {/* Mute / Unmute Button */}
-        {onToggleMute && typeof externalMuted === 'boolean' && (
-          <button
-            type="button"
-            onClick={onToggleMute}
-            className="lg-glass-pill lg-icon-round-btn lg-desktop-only-pill"
-            aria-label={externalMuted ? 'Unmute audio' : 'Mute audio'}
-          >
-            {externalMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-          </button>
         )}
       </div>
 
-      {/* Row 2: Horizontally Scrollable Genres */}
-      <div className="lg-topbar-genres-row">
-        {genres.map((g) => {
-          const Icon = g.icon;
-          const active = !showSavedOnly && activeGenre === g.id;
-          return (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => onGenreChange(g.id)}
-              className={`lg-glass-pill lg-filter-pill ${active ? 'lg-filter-pill--active' : ''}`}
-            >
-              <Icon size={13} />
-              <span>{g.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Row 2: Horizontally Scrollable Genres (Phone & Medium tiers) */}
+      {tier !== 'wide' && (
+        <GenreNav
+          genres={genres}
+          activeGenre={activeGenre}
+          onGenreChange={onGenreChange}
+          showSavedOnly={showSavedOnly}
+          orientation="horizontal"
+        />
+      )}
 
       {/* Mobile Combined Filter Bottom Sheet */}
       <FilterSheet open={mobileSheetOpen} onClose={() => setMobileSheetOpen(false)}>

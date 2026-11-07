@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { LyricLine, Song } from '../../types';
-import { parseLRC, LyricsWindowContent } from '../LyricsEngine';
+import { parseLRC } from '../lyrics/parseLRC';
+import { LyricsWindowContent } from '../lyrics/LyricsWindowContent';
 import { loadSession, saveSession } from '../../utils/sessionState';
 
 export interface LyricsDisplayProps {
@@ -45,8 +46,11 @@ export const LyricsDisplay = ({
     const controller = new AbortController();
     const filename = song.lrc.split('/').pop() || '';
     const encodedFilename = encodeURIComponent(filename);
+    const lrcFetchUrl = /^https?:\/\//i.test(song.lrc)
+      ? song.lrc
+      : `${import.meta.env.BASE_URL}lrc/${encodedFilename}`;
 
-    fetch(`${import.meta.env.BASE_URL}lrc/${encodedFilename}`, { signal: controller.signal })
+    fetch(lrcFetchUrl, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error('Network response was not ok');
         return res.text();

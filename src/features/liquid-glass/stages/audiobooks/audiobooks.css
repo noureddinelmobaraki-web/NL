@@ -1,54 +1,5 @@
 /* src/features/liquid-glass/stages/audiobooks/audiobooks.css */
 
-.lg-audiobooks-stage-root {
-  position: fixed;
-  inset: 0;
-  z-index: 12;
-  width: 100%;
-  height: 100dvh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
-  color: #ffffff;
-  user-select: none;
-  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease, filter 0.24s ease;
-  animation: lgAudioStageMorphIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.lg-audiobooks-stage-root--morph-out {
-  opacity: 0;
-  transform: perspective(1200px) rotateY(14deg) scale(0.94);
-  filter: blur(6px);
-}
-
-@keyframes lgAudioStageMorphIn {
-  0% {
-    opacity: 0;
-    transform: perspective(1200px) rotateY(-12deg) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: perspective(1200px) rotateY(0deg) scale(1);
-  }
-}
-
-.lg-audiobooks-catalog-scroll {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: max(18px, calc(env(safe-area-inset-top) + 12px)) clamp(14px, 3vw, 40px) 96px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
-}
-
 /* Resume Listening Strip */
 .lg-resume-tubes-strip {
   width: 100%;
@@ -96,32 +47,20 @@
   color: rgba(255, 255, 255, 0.82);
 }
 
-/* Audiobooks Grid */
-.lg-audiobooks-grid {
-  width: 100%;
-  max-width: 1380px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(182px, 1fr));
-  gap: 22px 18px;
-}
-
 .lg-audiobook-unit {
   display: flex;
   flex-direction: column;
   gap: 9px;
-  animation: lgAudioCardStaggerIn 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--card-idx, 0) * 80ms);
-  will-change: opacity, transform;
+  animation: lgCardStaggerIn 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(min(var(--card-idx, 0), 12) * 45ms);
+  will-change: auto;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
 }
 
-@keyframes lgAudioCardStaggerIn {
-  0% {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
+@media (prefers-reduced-motion: reduce) {
+  .lg-audiobook-unit {
+    animation: none !important;
   }
 }
 
@@ -321,21 +260,11 @@
 
 .lg-audiobook-poster-frame--skeleton,
 .lg-audiobook-info-capsule--skeleton {
-  animation: lgAudioPulse 1.6s ease-in-out infinite;
+  animation: lgGlassPulse 1.6s ease-in-out infinite;
 }
 
 .lg-audiobook-info-capsule--skeleton {
   height: 68px;
-}
-
-@keyframes lgAudioPulse {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 0.85;
-  }
 }
 
 /* Generous 28px seek hit area for touch thumbs */

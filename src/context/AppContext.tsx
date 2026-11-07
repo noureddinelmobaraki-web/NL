@@ -322,17 +322,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeAccounts = useCallback(() => navigateTo('home'), [navigateTo]);
   const openPortrait  = useCallback(() => navigateTo('portrait'), [navigateTo]);
   const closePortrait = useCallback(() => navigateTo('home'), [navigateTo]);
-  const [liquidGlassMode, setLiquidGlassMode] = useState<'orbs' | 'video' | 'sun' | 'books' | 'audiobooks'>('orbs');
+  const [liquidGlassMode, setLiquidGlassMode] = useState<'orbs' | 'video' | 'sun' | 'books' | 'audiobooks'>(() => {
+    if (typeof window === 'undefined') return 'orbs';
+    try {
+      const validModes = ['orbs', 'video', 'sun', 'books', 'audiobooks'] as const;
+      const stageParam = new URLSearchParams(window.location.search).get('stage');
+      if (stageParam && (validModes as readonly string[]).includes(stageParam)) {
+        return stageParam as 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks';
+      }
+      const stored = window.sessionStorage.getItem('nl_lg_initial_mode');
+      if (stored && (validModes as readonly string[]).includes(stored)) {
+        return stored as 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks';
+      }
+    } catch {
+      /* ignore */
+    }
+    return 'orbs';
+  });
   const openLiquidGlass  = useCallback((mode?: 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks' | unknown) => {
     const validModes = ['orbs', 'video', 'sun', 'books', 'audiobooks'] as const;
     const resolvedMode =
       typeof mode === 'string' && (validModes as readonly string[]).includes(mode)
         ? (mode as 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks')
         : 'orbs';
+    try {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('nl_lg_initial_mode', resolvedMode);
+      }
+    } catch {
+      /* ignore */
+    }
     setLiquidGlassMode(resolvedMode);
     navigateTo('liquidGlass');
   }, [navigateTo]);
   const closeLiquidGlass = useCallback(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('nl_lg_initial_mode');
+      }
+    } catch {
+      /* ignore */
+    }
     setLiquidGlassMode('orbs');
     navigateTo('home');
   }, [navigateTo]);
@@ -342,6 +372,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     movieBackRef.current = null; setMovieActive(false);
     seriesBackRef.current = null; setSeriesActive(false);
     tvBackRef.current = null;    setTvActive(false);
+    try {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('nl_lg_initial_mode');
+      }
+    } catch {
+      /* ignore */
+    }
     setLiquidGlassMode('orbs');
     dispatch({ type: 'RESET' });
     prevPageRef.current = 'home';

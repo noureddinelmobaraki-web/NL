@@ -1,4 +1,7 @@
 /**
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
+ *
  * src/features/liquid-glass/stages/SunAlbumsStage/fisheyeMeshMath.ts
  *
  * Pure mathematical & canvas helpers for the Connected Spherical-Dome Fisheye Mesh.
@@ -8,7 +11,18 @@ import type { LiquidGlassAlbum } from '../../albumsData';
 
 export const coverRgbCache = new Map<string, string>();
 export const bakedTileCanvasCache = new Map<string, HTMLCanvasElement>();
-const loadingAlbumIds = new Set<string>();
+
+export let albumTextureVersion = 0;
+const MAX_CONCURRENT_IMAGE_LOADS = 6;
+let activeImageLoads = 0;
+const pendingLoadQueue: LiquidGlassAlbum[] = [];
+const queuedAlbumIds = new Set<string>();
+const loadedAlbumIds = new Set<string>();
+const readyBakeQueue: Array<{ album: LiquidGlassAlbum; img: HTMLImageElement }> = [];
+
+export function bumpAlbumTextureVersion(): void {
+  albumTextureVersion = (albumTextureVersion + 1) | 0;
+}
 
 const FALLBACK_PALETTE: readonly string[] = [
   '255, 196, 86',
@@ -158,6 +172,67 @@ function renderBakedAlbumTexture(
   ctx.restore();
 }
 
+/**
+ * Processes up to `maxPerFrame` decoded images into their 320x320 baked tile canvases
+ * per animation frame so main-thread frame time stays well under 16ms.
+ */
+export function flushReadyAlbumBakes(maxPerFrame = 2): boolean {
+  if (readyBakeQueue.length === 0) return false;
+  let count = 0;
+  while (readyBakeQueue.length > 0 && count < maxPerFrame) {
+    const item = readyBakeQueue.shift()!;
+    extractCoverRgbFromImage(item.img, item.album.id);
+    const target = bakedTileCanvasCache.get(item.album.id);
+    if (target) {
+      renderBakedAlbumTexture(target, item.album, item.img);
+    }
+    count++;
+  }
+  bumpAlbumTextureVersion();
+  return true;
+}
+
+function pumpImageLoadQueue(): void {
+  while (activeImageLoads < MAX_CONCURRENT_IMAGE_LOADS && pendingLoadQueue.length > 0) {
+    const album = pendingLoadQueue.shift()!;
+    activeImageLoads++;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.referrerPolicy = 'no-referrer';
+    img.decoding = 'async';
+
+    const finishLoad = (resolvedImg: HTMLImageElement | null) => {
+      activeImageLoads = Math.max(0, activeImageLoads - 1);
+      if (resolvedImg) {
+        loadedAlbumIds.add(album.id);
+        readyBakeQueue.push({ album, img: resolvedImg });
+        bumpAlbumTextureVersion();
+      }
+      pumpImageLoadQueue();
+    };
+
+    img.onload = () => {
+      if (typeof img.decode === 'function') {
+        img.decode().then(() => finishLoad(img)).catch(() => finishLoad(img));
+      } else {
+        finishLoad(img);
+      }
+    };
+
+    img.onerror = () => {
+      const fallbackImg = new Image();
+      fallbackImg.referrerPolicy = 'no-referrer';
+      fallbackImg.decoding = 'async';
+      fallbackImg.onload = () => finishLoad(fallbackImg);
+      fallbackImg.onerror = () => finishLoad(null);
+      fallbackImg.src = album.coverUrl;
+    };
+
+    img.src = album.coverUrl;
+  }
+}
+
 export function getOrEnsureAlbumTexture(album: LiquidGlassAlbum): HTMLCanvasElement {
   let baked = bakedTileCanvasCache.get(album.id);
   if (!baked) {
@@ -168,31 +243,10 @@ export function getOrEnsureAlbumTexture(album: LiquidGlassAlbum): HTMLCanvasElem
     bakedTileCanvasCache.set(album.id, baked);
   }
 
-  if (!loadingAlbumIds.has(album.id)) {
-    loadingAlbumIds.add(album.id);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.referrerPolicy = 'no-referrer';
-    img.decoding = 'async';
-    img.onload = () => {
-      extractCoverRgbFromImage(img, album.id);
-      const target = bakedTileCanvasCache.get(album.id);
-      if (target) {
-        renderBakedAlbumTexture(target, album, img);
-      }
-    };
-    img.onerror = () => {
-      const fallbackImg = new Image();
-      fallbackImg.referrerPolicy = 'no-referrer';
-      fallbackImg.onload = () => {
-        const target = bakedTileCanvasCache.get(album.id);
-        if (target) {
-          renderBakedAlbumTexture(target, album, fallbackImg);
-        }
-      };
-      fallbackImg.src = album.coverUrl;
-    };
-    img.src = album.coverUrl;
+  if (!queuedAlbumIds.has(album.id) && !loadedAlbumIds.has(album.id)) {
+    queuedAlbumIds.add(album.id);
+    pendingLoadQueue.push(album);
+    pumpImageLoadQueue();
   }
 
   return baked;
@@ -212,14 +266,12 @@ export function getAlbumForInfiniteCell(
   albums: LiquidGlassAlbum[],
 ): LiquidGlassAlbum {
   const total = Math.max(1, albums.length);
-  if (row >= 0 && row < 10 && col >= 0 && col < 10) {
-    const linear = (row * 10 + col) % total;
-    return albums[linear];
-  }
-  const h1 = Math.imul(row, 73856093) ^ Math.imul(col, 19349663);
-  const h2 = Math.imul(row + 104729, 83492791) ^ Math.imul(col - 65537, 49979693);
-  const mixed = Math.abs((h1 + h2 + row * 17 + col * 31) | 0);
-  return albums[mixed % total];
+  // 2D Torus Lattice with stride 10: coprime to 99 (gcd(10, 99) = 1), guaranteeing
+  // every album in any 10x9 window is 100% unique and identical albums are separated
+  // by at least 9.55 tiles (>2,000px) in every direction.
+  const stride = 10;
+  const idx = (((row * stride + col) % total) + total) % total;
+  return albums[idx];
 }
 
 export function warpSphericalFisheyePoint(

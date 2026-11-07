@@ -1,4 +1,7 @@
 /**
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
+ *
  * src/features/liquid-glass/stages/SunAlbumsStage/FisheyeMeshViewport.tsx
  *
  * Interactive 2D Connected Spherical-Dome Fisheye Mesh Canvas & Pointer/Touch Handlers.
@@ -7,9 +10,11 @@
 import React, { useEffect, useRef } from 'react';
 import type { LiquidGlassAlbum } from '../../albumsData';
 import {
+  albumTextureVersion,
   BAKED_TEX_SIZE,
   coverRgbCache,
   drawWarpedTexturedTriangle,
+  flushReadyAlbumBakes,
   getAlbumForInfiniteCell,
   getInitialAlbumRgb,
   getOrEnsureAlbumTexture,
@@ -75,11 +80,23 @@ export const FisheyeMeshViewport: React.FC<FisheyeMeshViewportProps> = ({
       canvas.height = ch;
     }
 
-    const N = 4;
+    const maxN = 4;
+    const vxGrid = new Float32Array((maxN + 1) * (maxN + 1));
+    const vyGrid = new Float32Array((maxN + 1) * (maxN + 1));
     const ptOut = { x: 0, y: 0, scale: 1 };
     let rafId = 0;
 
+    let hasRenderedOnce = false;
+    let lastDrawnPanX = Number.NaN;
+    let lastDrawnPanY = Number.NaN;
+    let lastDrawnFocusX = Number.NaN;
+    let lastDrawnFocusY = Number.NaN;
+    let lastDrawnTexVersion = -1;
+    let lastDrawnN = 4;
+
     const renderMeshFrame = () => {
+      flushReadyAlbumBakes(2);
+
       if (!p.isDown) {
         p.x += p.vx;
         p.y += p.vy;
@@ -92,6 +109,36 @@ export const FisheyeMeshViewport: React.FC<FisheyeMeshViewportProps> = ({
       const focus = fisheyeFocusRef.current;
       focus.x += (focus.targetX - focus.x) * 0.24;
       focus.y += (focus.targetY - focus.y) * 0.24;
+
+      const isMovingFast = p.isDown || Math.hypot(p.vx, p.vy) > 1.5;
+      const N = isMovingFast ? 3 : 4;
+
+      const panDelta = Math.hypot(p.x - lastDrawnPanX, p.y - lastDrawnPanY);
+      const focusDelta = Math.hypot(focus.x - lastDrawnFocusX, focus.y - lastDrawnFocusY);
+      const focusTargetDelta = Math.hypot(focus.targetX - focus.x, focus.targetY - focus.y);
+
+      if (
+        hasRenderedOnce &&
+        !p.isDown &&
+        p.vx === 0 &&
+        p.vy === 0 &&
+        panDelta < 0.05 &&
+        focusDelta < 0.15 &&
+        focusTargetDelta < 0.25 &&
+        albumTextureVersion === lastDrawnTexVersion &&
+        N === lastDrawnN
+      ) {
+        rafId = requestAnimationFrame(renderMeshFrame);
+        return;
+      }
+
+      lastDrawnPanX = p.x;
+      lastDrawnPanY = p.y;
+      lastDrawnFocusX = focus.x;
+      lastDrawnFocusY = focus.y;
+      lastDrawnTexVersion = albumTextureVersion;
+      lastDrawnN = N;
+      hasRenderedOnce = true;
 
       const focusX = focus.x;
       const focusY = focus.y;
@@ -109,8 +156,7 @@ export const FisheyeMeshViewport: React.FC<FisheyeMeshViewportProps> = ({
       ctx.clearRect(0, 0, viewportWidth, viewportHeight);
 
       const newHitRegions: WarpedCellHitRegion[] = [];
-      const vxGrid = new Float32Array((N + 1) * (N + 1));
-      const vyGrid = new Float32Array((N + 1) * (N + 1));
+      const midIdx = Math.floor(N / 2);
 
       for (let r = minRow; r <= maxRow; r++) {
         const isOddRow = ((r % 2) + 2) % 2 === 1;
@@ -147,7 +193,7 @@ export const FisheyeMeshViewport: React.FC<FisheyeMeshViewportProps> = ({
               vxGrid[idx] = ptOut.x;
               vyGrid[idx] = ptOut.y;
 
-              if (i === 2 && j === 2) centerScale = ptOut.scale;
+              if (i === midIdx && j === midIdx) centerScale = ptOut.scale;
               if (ptOut.x < minX) minX = ptOut.x;
               if (ptOut.x > maxX) maxX = ptOut.x;
               if (ptOut.y < minY) minY = ptOut.y;

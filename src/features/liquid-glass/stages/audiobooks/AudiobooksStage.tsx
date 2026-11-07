@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2026 NL Archive.
- * SPDX-License-Identifier: MIT
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
  * src/features/liquid-glass/stages/audiobooks/AudiobooksStage.tsx
  *
@@ -37,6 +37,9 @@ import {
   probeWrittenBookForAudiobook,
 } from '../../booksAudioService';
 import { GlassTopBar } from '../../shared/GlassTopBar';
+import { FilterControls } from '../../shared/FilterControls';
+import { GenreNav } from '../../shared/GenreNav';
+import { CatalogShell } from '../../shared/CatalogShell';
 import '../../shared/glass.css';
 import { getRandomAmbientVideoId } from '../../youtubeBackgrounds';
 import './audiobooks.css';
@@ -217,6 +220,11 @@ export const AudiobooksStage: React.FC<AudiobooksStageProps> = ({
         target.closest('input') ||
         target.closest('.lg-audiobook-unit') ||
         target.closest('.lg-topbar-shell') ||
+        target.closest('.lg-catalog-shell__header') ||
+        target.closest('.lg-catalog-shell__left') ||
+        target.closest('.lg-catalog-shell__right') ||
+        target.closest('.lg-catalog-shell__top') ||
+        target.closest('.lg-branch-popover') ||
         target.closest('.lg-album-player-column') ||
         target.closest('.lg-resume-tubes-strip')
       ) {
@@ -251,105 +259,134 @@ export const AudiobooksStage: React.FC<AudiobooksStageProps> = ({
 
       {!selectedBook && (
         <div className="lg-audiobooks-catalog-scroll" onClick={handleStageEmptySpaceClick}>
-          <GlassTopBar
-            query={query}
-            onQueryChange={setQuery}
-            placeholder="Search audiobooks, authors, narrators..."
-            language={language}
-            onLanguageChange={(l: string) => {
-              setLanguage(l);
-              setPage(1);
-            }}
-            languages={LANGUAGES}
-            activeGenre={genre}
-            onGenreChange={(g: string) => {
-              setGenre(g);
-              setPage(1);
-            }}
-            genres={GENRES}
-            externalMuted={externalMuted}
-            onToggleMute={onToggleMute}
-          />
+          <CatalogShell
+            leftRail={
+              <GenreNav
+                genres={GENRES}
+                activeGenre={genre}
+                onGenreChange={(g: string) => {
+                  setGenre(g);
+                  setPage(1);
+                }}
+                orientation="vertical"
+              />
+            }
+            rightRail={
+              <FilterControls
+                variant="panel"
+                language={language}
+                languages={LANGUAGES}
+                onLanguageChange={(l: string) => {
+                  setLanguage(l);
+                  setPage(1);
+                }}
+                externalMuted={externalMuted}
+                onToggleMute={onToggleMute}
+              />
+            }
+            topBar={
+              <GlassTopBar
+                query={query}
+                onQueryChange={setQuery}
+                placeholder="Search audiobooks, authors, narrators..."
+                language={language}
+                onLanguageChange={(l: string) => {
+                  setLanguage(l);
+                  setPage(1);
+                }}
+                languages={LANGUAGES}
+                activeGenre={genre}
+                onGenreChange={(g: string) => {
+                  setGenre(g);
+                  setPage(1);
+                }}
+                genres={GENRES}
+                externalMuted={externalMuted}
+                onToggleMute={onToggleMute}
+                resultCount={audiobooks.length}
+              />
+            }
+          >
+            {!debouncedQuery && (
+              <ResumeStrip records={recentProgressList} onResume={openAudiobook} />
+            )}
 
-          {!debouncedQuery && (
-            <ResumeStrip records={recentProgressList} onResume={openAudiobook} />
-          )}
-
-          {loading ? (
-            <div className="lg-audiobooks-grid">
-              {Array.from({ length: 12 }).map((_, idx) => (
-                <div key={idx} className="lg-audiobook-unit">
-                  <div className="lg-audiobook-poster-frame lg-audiobook-poster-frame--skeleton">
-                    <span className="lg-main-glass__caustic" aria-hidden="true" />
-                    <span className="lg-main-glass__rim" aria-hidden="true" />
+            {loading ? (
+              <div className="lg-audiobooks-grid">
+                {Array.from({ length: 12 }).map((_, idx) => (
+                  <div key={idx} className="lg-audiobook-unit">
+                    <div className="lg-audiobook-poster-frame lg-audiobook-poster-frame--skeleton">
+                      <span className="lg-main-glass__caustic" aria-hidden="true" />
+                      <span className="lg-main-glass__rim" aria-hidden="true" />
+                    </div>
+                    <div className="lg-track-tube lg-audiobook-info-capsule lg-audiobook-info-capsule--skeleton">
+                      <span className="lg-orb-capsule-caustic" aria-hidden="true" />
+                    </div>
                   </div>
-                  <div className="lg-track-tube lg-audiobook-info-capsule lg-audiobook-info-capsule--skeleton">
-                    <span className="lg-orb-capsule-caustic" aria-hidden="true" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : audiobooks.length === 0 ? (
-            <div className="lg-empty-glass-state">
-              <div className="lg-track-tube lg-empty-glass-capsule">
-                <span className="lg-orb-capsule-caustic" aria-hidden="true" />
-                <span className="lg-orb-capsule-sheen" aria-hidden="true" />
-                <Headphones size={30} className="lg-empty-glass-icon" />
-                <p className="lg-empty-glass-title">No matching audiobooks found</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery('');
-                    setGenre('popular');
-                    setLanguage('all');
-                  }}
-                  className="lg-glass-pill lg-filter-pill lg-filter-pill--active"
-                >
-                  <RefreshCw size={14} />
-                  <span>Reset Filters</span>
-                </button>
+                ))}
               </div>
-            </div>
-          ) : (
-            <>
-              <div className="lg-audiobooks-grid" role="list">
-                {audiobooks.map((item, idx) => {
-                  const instantBook = getInstantBookMatchForAudiobook(item);
-                  const matchedBook = probedBookMap[item.id] || instantBook.matchedBook;
-                  return (
-                    <AudiobookCard
-                      key={item.id}
-                      item={item}
-                      index={idx}
-                      savedRec={progressMap[item.id]}
-                      hasBookVersion={Boolean(matchedBook || instantBook.hasBook)}
-                      onOpen={openAudiobook}
-                      onReadBook={onSwitchToBook ? triggerSwitchToWrittenBook : undefined}
-                    />
-                  );
-                })}
-              </div>
-
-              {audiobooks.length >= 12 && (
-                <div className="lg-load-more-row">
+            ) : audiobooks.length === 0 ? (
+              <div className="lg-empty-glass-state">
+                <div className="lg-track-tube lg-empty-glass-capsule">
+                  <span className="lg-orb-capsule-caustic" aria-hidden="true" />
+                  <span className="lg-orb-capsule-sheen" aria-hidden="true" />
+                  <Headphones size={30} className="lg-empty-glass-icon" />
+                  <p className="lg-empty-glass-title">No matching audiobooks found</p>
                   <button
                     type="button"
                     onClick={() => {
-                      if (loading || loadingMore) return;
-                      const next = page + 1;
-                      setPage(next);
-                      void loadCatalog(next, true);
+                      setQuery('');
+                      setGenre('popular');
+                      setLanguage('all');
                     }}
-                    disabled={loadingMore}
-                    className="lg-glass-pill lg-load-more-pill"
+                    className="lg-glass-pill lg-filter-pill lg-filter-pill--active"
                   >
-                    <RefreshCw size={15} className={loadingMore ? 'lg-spin' : ''} />
-                    <span>{loadingMore ? 'Loading...' : 'Load More Audiobooks'}</span>
+                    <RefreshCw size={14} />
+                    <span>Reset Filters</span>
                   </button>
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            ) : (
+              <>
+                <div className="lg-audiobooks-grid" role="list">
+                  {audiobooks.map((item, idx) => {
+                    const instantBook = getInstantBookMatchForAudiobook(item);
+                    const matchedBook = probedBookMap[item.id] || instantBook.matchedBook;
+                    return (
+                      <AudiobookCard
+                        key={item.id}
+                        item={item}
+                        index={idx}
+                        savedRec={progressMap[item.id]}
+                        hasBookVersion={Boolean(matchedBook || instantBook.hasBook)}
+                        onOpen={openAudiobook}
+                        onReadBook={onSwitchToBook ? triggerSwitchToWrittenBook : undefined}
+                      />
+                    );
+                  })}
+                </div>
+
+                {audiobooks.length >= 12 && (
+                  <div className="lg-load-more-row">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (loading || loadingMore) return;
+                        const next = page + 1;
+                        setPage(next);
+                        void loadCatalog(next, true);
+                      }}
+                      disabled={loadingMore}
+                      className="lg-glass-pill lg-load-more-pill"
+                    >
+                      <RefreshCw size={15} className={loadingMore ? 'lg-spin' : ''} />
+                      <span>{loadingMore ? 'Loading...' : 'Load More Audiobooks'}</span>
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </CatalogShell>
         </div>
       )}
 

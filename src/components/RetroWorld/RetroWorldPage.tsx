@@ -1,11 +1,11 @@
 /**
- * Copyright (c) 2026 NL Archive.
- * SPDX-License-Identifier: MIT
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Volume2, VolumeX, X } from 'lucide-react';
-import Hls from 'hls.js';
+import type Hls from 'hls.js';
 import { audioManager } from '../../audio/audioManager';
 import { ensureAutoplay } from '../../audio/ensureAutoplay';
 import { useAppContext } from '../../context/AppContext';
@@ -75,6 +75,7 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
       return;
     }
 
+    let cancelled = false;
     const audio = new Audio();
     audioRef.current = audio;
     audio.loop = true;
@@ -88,7 +89,7 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
     audio.addEventListener('error', onAudioError);
 
     const tryPlay = () => {
-      if (isRetroOpen) {
+      if (isRetroOpen && !cancelled) {
         audioManager.play('retro').catch(() => {
           /* Autoplay prevented, waiting for user gesture */
         });
@@ -97,28 +98,33 @@ export const RetroWorldPage: React.FC<RetroWorldPageProps> = ({ onClose }) => {
 
     audio.addEventListener('canplay', tryPlay);
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({ startPosition: -1 });
-      hlsRef.current = hls;
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        console.error('[RetroWorld] HLS error:', data.type, data.details);
-      });
-      hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
-      hls.loadSource(RETRO_STREAM_URL);
-      hls.attachMedia(audio);
-    } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+    if (audio.canPlayType('application/vnd.apple.mpegurl')) {
       audio.src = RETRO_STREAM_URL;
+    } else {
+      void import('hls.js').then(({ default: HlsCtor }) => {
+        if (cancelled) return;
+        if (HlsCtor.isSupported()) {
+          const hls = new HlsCtor({ startPosition: -1 });
+          hlsRef.current = hls;
+          hls.on(HlsCtor.Events.ERROR, (_, data) => {
+            console.error('[RetroWorld] HLS error:', data.type, data.details);
+          });
+          hls.on(HlsCtor.Events.MANIFEST_PARSED, tryPlay);
+          hls.loadSource(RETRO_STREAM_URL);
+          hls.attachMedia(audio);
+        }
+      });
     }
 
     const cleanupAutoplay = ensureAutoplay('retro');
     tryPlay();
 
     return () => {
+      cancelled = true;
       audio.removeEventListener('error', onAudioError);
       audio.removeEventListener('canplay', tryPlay);
       if (hlsRef.current) {
         try {
-          hlsRef.current.off(Hls.Events.MANIFEST_PARSED, tryPlay);
           hlsRef.current.stopLoad();
           hlsRef.current.detachMedia();
           hlsRef.current.destroy();

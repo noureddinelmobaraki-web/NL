@@ -171,7 +171,16 @@ for (const s of songs) {
   const ytid = ytMap[String(s.id)];
   index.push({ id: 'own-' + s.id, t: 'song', title: s.title, artist: 'NL', link: BASE + '/?song=' + s.id, cover: ytid ? yt(ytid, 'mqdefault') : '' });
 }
-for (const r of fv) index.push({ id: 'fv-' + r.id, t: 'library', title: r.title, artist: r.artist || '', link: BASE + '/?song=fv-' + r.id, cover: r.coverUrl || '' });
+for (const r of fv) {
+  const sid = String(r.id);
+  const fileStr = r.file || (/^\d+$/.test(sid) ? `song_${sid.padStart(3, '0')}.m4a` : '');
+  const cover =
+    r.coverUrl ||
+    (fileStr
+      ? ORIGIN + '/nl-audio-cdn/xp/media/nl-fv-songs/' + String(fileStr).replace(/\.[^.]+$/, '.webp')
+      : '');
+  index.push({ id: 'fv-' + r.id, t: 'library', title: r.title, artist: r.artist || '', link: BASE + '/?song=fv-' + r.id, cover });
+}
 for (const v of videos) index.push({ id: v.id, t: 'video', title: 'NL Drawing ' + String(v.id).replace(/^v/, ''), artist: 'NL', link: BASE + '/?drawings=1', cover: '' });
 for (const g of games) index.push({ id: g.id, t: 'game', title: g.title, artist: '', link: BASE + '/?games=1', cover: '' });
 const idxStr = JSON.stringify(index);

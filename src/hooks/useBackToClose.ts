@@ -16,22 +16,31 @@ export function useBackToClose(active: boolean, onClose: () => void): void {
   useEffect(() => {
     if (!active || typeof window === 'undefined') return undefined;
 
+    const mountedAt = performance.now();
     let poppedByBrowser = false;
-    try {
-      window.history.pushState({ ...(window.history.state || {}), lgLayer: true }, '');
-    } catch {
-      /* ignore history state errors */
-    }
+    let pushedLayer = false;
+
+    const timer = window.setTimeout(() => {
+      try {
+        window.history.pushState({ ...(window.history.state || {}), lgLayer: true }, '');
+        pushedLayer = true;
+      } catch {
+        /* ignore */
+      }
+    }, 50);
 
     const onPop = () => {
+      if (!pushedLayer) return;
       poppedByBrowser = true;
       onCloseRef.current();
     };
 
     window.addEventListener('popstate', onPop);
     return () => {
+      window.clearTimeout(timer);
       window.removeEventListener('popstate', onPop);
-      if (!poppedByBrowser && window.history.state?.lgLayer) {
+      const elapsed = performance.now() - mountedAt;
+      if (pushedLayer && !poppedByBrowser && elapsed > 120 && window.history.state?.lgLayer) {
         try {
           window.history.back();
         } catch {

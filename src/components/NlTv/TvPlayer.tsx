@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import Hls from "hls.js";
+import type Hls from "hls.js";
 import { useTranslation } from "react-i18next";
 import { Loader2, AlertCircle } from "lucide-react";
 
@@ -40,6 +40,7 @@ export function TvPlayer({
     setLoading(true);
 
     let hls: Hls | null = null;
+    let cancelled = false;
 
     const handleLoadedMetadata = () => {
       setLoading(false);
@@ -60,36 +61,41 @@ export function TvPlayer({
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       // Native Apple device support (Safari / iOS / macOS)
       video.src = url;
-    } else if (Hls.isSupported()) {
-      // Modern browser support via hls.js
-      hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 30,
-        maxBufferSize: 0,
-        maxBufferLength: 10
-      });
+    } else {
+      void import("hls.js").then(({ default: HlsCtor }) => {
+        if (cancelled) return;
+        if (HlsCtor.isSupported()) {
+          hls = new HlsCtor({
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 30,
+            maxBufferSize: 0,
+            maxBufferLength: 10
+          });
 
-      hls.loadSource(url);
-      hls.attachMedia(video);
+          hls.loadSource(url);
+          hls.attachMedia(video);
 
-      hls.on(Hls.Events.ERROR, (_evt, data) => {
-        if (data.fatal) {
-          console.warn("HLS live streaming fatal error:", data.type);
+          hls.on(HlsCtor.Events.ERROR, (_evt, data) => {
+            if (data.fatal) {
+              console.warn("HLS live streaming fatal error:", data.type);
+              setError(true);
+              onErrorState(true);
+              setLoading(false);
+            }
+          });
+        } else {
           setError(true);
           onErrorState(true);
           setLoading(false);
         }
       });
-    } else {
-      setError(true);
-      onErrorState(true);
-      setLoading(false);
     }
 
     onVideoRefReady(video);
 
     return () => {
+      cancelled = true;
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("playing", handlePlaying);

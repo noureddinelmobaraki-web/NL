@@ -15,8 +15,8 @@ import {
   type AudioManagerDiagnostics,
   type AudioSource,
   type ExternalSource,
-  type SuppressorMeta,
 } from './audioHelpers';
+import { BgSuppressionRegistry } from './bgSuppressionRegistry';
 
 export type { AudioManagerDiagnostics, AudioSource, ExternalSource };
 
@@ -25,7 +25,12 @@ class AudioManager {
   private registry = new Map<AudioSource, AudioEntry>();
   private externals = new Map<AudioSource, ExternalSource>();
   // Rule 3: BG Suppression mechanisms — Map-based with metadata (P01.1)
-  private bgSuppressors = new Map<string, SuppressorMeta>();
+  private readonly suppressions = new BgSuppressionRegistry(() => this.checkResumeBg());
+  private get bgSuppressors() { return this.suppressions.map; }
+  private set bgSuppressors(next: typeof this.suppressions.map) {
+    this.suppressions.map.clear();
+    for (const [k, v] of next) this.suppressions.map.set(k, v);
+  }
   private bgUserPaused = false;
   private fadeIntervals = new Map<HTMLAudioElement, number>();
   private onStateChange: ((isPlaying: boolean) => void) | null = null;
@@ -33,12 +38,8 @@ class AudioManager {
   private isManifestParsed = false;
   private playChain: Promise<void> = Promise.resolve();
   private stateSubscribers = new Map<AudioSource, Set<() => void>>();
-  private suppressionToken = 0;
 
-  private static readonly SUPPRESSOR_STALE_MS = 30_000;
-  private static readonly SUPPRESSOR_PURGE_INTERVAL_MS = 5_000;
   private static readonly PLAY_STEP_TIMEOUT_MS = 5_000;
-  private purgeTimer: ReturnType<typeof setInterval> | null = null;
 
   private visibilityListenersInstalled = false;
   private pendingGestureResume = false;
@@ -389,18 +390,15 @@ class AudioManager {
   }
 
   suppressBg(reason: string) {
-    this.bgSuppressors.set(reason, { reason, ts: performance.now() });
-    this.startPurgeTimerIfNeeded();
+    const myToken = this.suppressions.add(reason);
 
     const bg = this.registry.get('bg');
     if (!bg) return;
     if (!(this.active === 'bg' || !bg.element.paused)) return;
 
-    const myToken = ++this.suppressionToken;
-
     this.fadeOut(bg.element, 150).then(() => {
-      if (myToken !== this.suppressionToken) return;
-      if (this.bgSuppressors.size === 0) return;
+      if (myToken !== this.suppressions.token) return;
+      if (this.suppressions.size === 0) return;
       try {
         bg.element.pause();
         bg.element.volume = 0;
@@ -411,24 +409,13 @@ class AudioManager {
   }
 
   releaseBg(reason: string) {
-    if (this.bgSuppressors.delete(reason)) {
-      this.suppressionToken++;
-    }
-    if (this.bgSuppressors.size === 0) this.stopPurgeTimer();
+    this.suppressions.release(reason);
     this.checkResumeBg();
   }
 
   forceReleaseBgPrefix(prefix: string) {
-    let removed = 0;
-    for (const reason of this.bgSuppressors.keys()) {
-      if (reason === prefix || reason.startsWith(prefix + ':')) {
-        this.bgSuppressors.delete(reason);
-        removed++;
-      }
-    }
+    const removed = this.suppressions.forceReleasePrefix(prefix);
     if (removed > 0) {
-      this.suppressionToken++;
-      if (this.bgSuppressors.size === 0) this.stopPurgeTimer();
       this.checkResumeBg();
     }
   }
@@ -487,31 +474,15 @@ class AudioManager {
   }
 
   hasActiveSuppressor(reason?: string): boolean {
-    if (reason === undefined) return this.bgSuppressors.size > 0;
-    return this.bgSuppressors.has(reason);
+    return this.suppressions.has(reason);
   }
 
   forceReleaseBg(reason: string): number {
-    if (reason === '*') {
-      const n = this.bgSuppressors.size;
-      if (n > 0) {
-        amLog.warn(`forceReleaseBg('*') clearing ${n} suppressor(s):`,
-          Array.from(this.bgSuppressors.keys()));
-        this.bgSuppressors.clear();
-        this.stopPurgeTimer();
-        this.suppressionToken++;
-        this.checkResumeBg();
-      }
-      return n;
-    }
-    const existed = this.bgSuppressors.delete(reason);
-    if (existed) {
-      if (this.bgSuppressors.size === 0) this.stopPurgeTimer();
-      amLog.warn(`forceReleaseBg('${reason}')`);
+    const count = this.suppressions.forceRelease(reason);
+    if (count > 0) {
       this.checkResumeBg();
-      return 1;
     }
-    return 0;
+    return count;
   }
 
   recoverAudio(): void {
@@ -539,38 +510,8 @@ class AudioManager {
     }
   }
 
-  private startPurgeTimerIfNeeded(): void {
-    if (this.purgeTimer !== null) return;
-    if (typeof setInterval === 'undefined') return;
-    this.purgeTimer = setInterval(() => {
-      this.purgeStaleSuppressors();
-    }, AudioManager.SUPPRESSOR_PURGE_INTERVAL_MS);
-  }
-
-  private stopPurgeTimer(): void {
-    if (this.purgeTimer !== null) {
-      clearInterval(this.purgeTimer);
-      this.purgeTimer = null;
-    }
-  }
-
   purgeStaleSuppressors(): number {
-    const now = performance.now();
-    const threshold = AudioManager.SUPPRESSOR_STALE_MS;
-    let removed = 0;
-    this.bgSuppressors.forEach((meta, key) => {
-      if (now - meta.ts >= threshold) {
-        this.bgSuppressors.delete(key);
-        removed++;
-        amLog.warn(`Purged stale suppressor '${key}' (age=${Math.round(now - meta.ts)}ms)`);
-      }
-    });
-    if (this.bgSuppressors.size === 0) {
-      this.stopPurgeTimer();
-      this.suppressionToken++;
-      this.checkResumeBg();
-    }
-    return removed;
+    return this.suppressions.purgeStale();
   }
 
   private installVisibilityListenersIfBrowser(): void {
@@ -613,7 +554,7 @@ class AudioManager {
 
     const handler = () => {
       this.pendingGestureResume = false;
-      this.suppressionToken++;
+      this.suppressions.token++;
       const bg = this.registry.get('bg');
       if (!bg || this.bgUserPaused || this.bgSuppressors.size > 0 || (this.active && this.active !== 'bg')) {
         cleanup();

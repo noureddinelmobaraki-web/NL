@@ -3,7 +3,7 @@ import { Song, LyricLine } from '../../../types';
 import { loadSession, saveSession } from '../../../utils/sessionState';
 import { ASSETS, SONG_BG_FALLBACK } from '../../../constants/assets';
 import { preloadAllSongs, preloadSong } from '../../../hooks/useHlsAudio';
-import { parseLRC } from '../../LyricsEngine';
+import { parseLRC } from '../../lyrics/parseLRC';
 import { safeFetch, safeFetchJson, SafeFetchError } from '../../../utils/safeFetch';
 
 interface SongApiRow {
@@ -59,7 +59,7 @@ export function useSongsData(opts: { visibleIds?: Set<number | string> } = {}) {
           id: s.id,
           title: s.title,
           url: s.url,
-          lrc: s.hasLrc && s.lrcFile ? `${base}lrc/${s.lrcFile}` : null,
+          lrc: s.lrcUrl || (s.hasLrc && s.lrcFile ? `${base}lrc/${s.lrcFile}` : null),
           backgroundImage:
             (typeof s.bgIndex === 'number' && ASSETS.songs.backgrounds[s.bgIndex]) ||
             SONG_BG_FALLBACK,
@@ -151,10 +151,13 @@ export function useLrcPreload(songs: Song[], activeId: number | null) {
     targets.forEach((s, i) => {
       if (loadSession().lrcCache[s.id]?.length) return;
       const filename = s.lrc.split('/').pop() || '';
+      const lrcFetchUrl = /^https?:\/\//i.test(s.lrc)
+        ? s.lrc
+        : `${base}lrc/${encodeURIComponent(filename)}`;
       const delay = i * 60;
       const tid = setTimeout(() => {
         if (ctrl.signal.aborted) return;
-        safeFetch(`${base}lrc/${encodeURIComponent(filename)}`, {
+        safeFetch(lrcFetchUrl, {
           signal: ctrl.signal,
           timeoutMs: 8000,
           retryOnFailure: false,

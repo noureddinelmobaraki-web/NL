@@ -54,19 +54,19 @@ describe('features/account/AuthModal', () => {
   it('يعرض النافذة وأزرار المزوّدين', async () => {
     await renderModal()
     expect(screen.getByRole('dialog')).toBeTruthy()
-    expect(screen.getByText('المتابعة عبر Google')).toBeTruthy()
-    expect(screen.getByText('المتابعة عبر GitHub')).toBeTruthy()
+    expect(screen.getByText('Continue with Google')).toBeTruthy()
+    expect(screen.getByText('Continue with GitHub')).toBeTruthy()
   })
 
   it('دخول بالبريد وكلمة السر يستدعي signInWithPassword', async () => {
     await renderModal()
-    fireEvent.change(screen.getByPlaceholderText('البريد الإلكتروني'), {
+    fireEvent.change(screen.getByPlaceholderText('Email'), {
       target: { value: 'a@b.com' },
     })
-    fireEvent.change(screen.getByPlaceholderText('كلمة السر'), {
+    fireEvent.change(screen.getByPlaceholderText('Password'), {
       target: { value: 'secret123' },
     })
-    const submitBtn = screen.getAllByRole('button', { name: 'دخول' }).find(btn => btn.getAttribute('type') === 'submit')!
+    const submitBtn = screen.getAllByRole('button', { name: 'Login' }).find(btn => btn.getAttribute('type') === 'submit')!
     fireEvent.click(submitBtn)
     await waitFor(() =>
       expect(mockSignInWithPassword).toHaveBeenCalledWith({
@@ -78,17 +78,17 @@ describe('features/account/AuthModal', () => {
 
   it('إرسال رمز OTP ثم تأكيده', async () => {
     await renderModal()
-    fireEvent.change(screen.getByPlaceholderText('البريد الإلكتروني'), {
+    fireEvent.change(screen.getByPlaceholderText('Email'), {
       target: { value: 'a@b.com' },
     })
     fireEvent.click(
-      screen.getByText('الدخول برمز عبر البريد بدل كلمة السر'),
+      screen.getByText('Login with email code instead of password'),
     )
     await waitFor(() => expect(mockSignInWithOtp).toHaveBeenCalledTimes(1))
     fireEvent.change(screen.getByPlaceholderText('••••••'), {
       target: { value: '123456' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'تأكيد الرمز' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Code' }))
     await waitFor(() =>
       expect(mockVerifyOtp).toHaveBeenCalledWith({
         email: 'a@b.com',
@@ -100,7 +100,7 @@ describe('features/account/AuthModal', () => {
 
   it('أزرار OAuth تستدعي signInWithOAuth', async () => {
     await renderModal()
-    fireEvent.click(screen.getByText('المتابعة عبر Google'))
+    fireEvent.click(screen.getByText('Continue with Google'))
     await waitFor(() =>
       expect(mockSignInWithOAuth).toHaveBeenCalledWith(
         expect.objectContaining({ provider: 'google' }),
@@ -110,10 +110,10 @@ describe('features/account/AuthModal', () => {
 
   it('نسيت كلمة السر يستدعي resetPasswordForEmail', async () => {
     await renderModal()
-    fireEvent.change(screen.getByPlaceholderText('البريد الإلكتروني'), {
+    fireEvent.change(screen.getByPlaceholderText('Email'), {
       target: { value: 'a@b.com' },
     })
-    fireEvent.click(screen.getByText('نسيت كلمة السر؟'))
+    fireEvent.click(screen.getByText('Forgot Password?'))
     await waitFor(() =>
       expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
         'a@b.com',

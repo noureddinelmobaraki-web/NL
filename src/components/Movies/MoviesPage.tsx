@@ -1,3 +1,8 @@
+/**
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
+ */
+
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -5,28 +10,14 @@ import {
   Search,
   Volume2,
   VolumeX,
-  Play,
   ChevronLeft,
-  Star,
   Film,
   Tv,
-  Heart,
-  Eye,
   Bookmark,
-  Calendar,
-  Globe2,
-  Award,
-  Users,
-  Sparkles,
-  Maximize2,
-  Minimize2,
-  Layers,
-  RefreshCw,
-  AlertTriangle,
-  Subtitles,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { m, AnimatePresence } from "framer-motion";
+import { m } from "framer-motion";
+import type HlsType from "hls.js";
 import { useAppContext } from "../../context/AppContext";
 import { useMovieItems } from "../../features/account/useMovieItems";
 import { useAuth } from "../../context/AuthContext";
@@ -34,82 +25,31 @@ import { useDeviceType } from "../../hooks/useDeviceType";
 import { useMoviesMusic } from "./useMoviesMusic";
 import { useDocumentMeta } from "../../hooks/useDocumentMeta";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
-import { FALLBACK_MOVIES, FALLBACK_GENRES } from "./CuratedFallback";
-import { FALLBACK_SERIES, FALLBACK_SERIES_GENRES } from "../Series/CuratedFallback";
+import { usePreconnect } from "../../hooks/usePreconnect";
+import { FALLBACK_MOVIES } from "./CuratedFallback";
+import { FALLBACK_SERIES } from "../Series/CuratedFallback";
 import { normLang, tmdbLang } from "../../utils/lang";
 import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
 import "../../styles/components/cinema.css";
 import {
-  ServerBranchesInline,
   useResolvedImdbSources,
   type PlaySource,
 } from "./MovieSourcesModal";
-import Hls from "hls.js";
-import {
-  WORKER_ENDPOINT,
-  buildWorkerProxyUrl,
-  fetchExtractedVideos,
-  guessLangFromLabelOrUrl,
-  type ExtractedSubtitleTrack,
-  type ExtractedVideoStream,
-} from "../../services/videoExtractor";
-import {
-  hlsTracksToSubtitleTracks,
-  mergeStreamFirst,
-} from "../../features/cinema/subtitles/streamSubtitles";
-import {
-  buildSpeedSortedQueue,
-  probeAllServersSpeed,
-  recordServerFailure,
-  recordServerSuccess,
-} from "../../services/serverSpeedMonitor";
-import { EyeLoader } from "./EyeLoader";
-import { useTopMovies } from "./useTopMovies";
+import type { ExtractedVideoStream } from "../../services/videoExtractor";
+import { probeAllServersSpeed } from "../../services/serverSpeedMonitor";
 import { logPlay } from "../../features/music/data/playTracking";
 import {
-  ALL_SERVER_FRAME_ORIGINS,
-  toWorkerEmbedUrl,
-  type CinemaServerConfig,
-} from "../../config/servers";
-import {
   bindVideoElementToClock,
-  clockAnchor,
-  clockGetState,
-  clockNow,
-  clockReport,
-  clockReportedNow,
   clockReset,
-  clockSync,
   useClockState,
 } from "../../features/cinema/player/playbackClock";
 import {
-  sendIframePlayerCommand,
-  useIframePlayerBridge,
-} from "../../features/cinema/player/iframeBridge";
-import {
-  createSyncController,
-  type SyncController,
-} from "../../features/cinema/player/syncController";
-import {
-  CinemaTimeline,
-  type PlayerControlMode,
-} from "../../features/cinema/player/CinemaTimeline";
-import { SubtitleOverlay } from "../../features/cinema/subtitles/SubtitleOverlay";
-import { SubtitleSettingsPanel } from "../../features/cinema/subtitles/SubtitleSettingsPanel";
-import {
-  resolveTrailer,
-  type TrailerSource,
-} from "../../services/trailerService";
-import {
   getProgress,
   removeProgress,
-  saveProgress,
   useContinueWatching,
 } from "../../features/cinema/progress/progressStore";
-
 import {
   TMDB_BASE_URL,
-  TMDB_IMAGE_BASE,
   fetchWithCache,
   fetchOmdbMeta,
   normalizeItem,
@@ -129,11 +69,32 @@ import {
 import { ActorProfileModal } from "./ActorProfileModal";
 import { useCinemaSubtitles } from "./hooks/useCinemaSubtitles";
 import { useCinemaDeepLink } from "./hooks/useCinemaDeepLink";
+import { useCinemaCatalog } from "./hooks/useCinemaCatalog";
+import { useHeroTrailer } from "./hooks/useHeroTrailer";
+import { useServerFailover } from "./hooks/useServerFailover";
+import { useStreamExtractor } from "./hooks/useStreamExtractor";
+import { usePlayerBridgeSync } from "./hooks/usePlayerBridgeSync";
+import { CinemaHeroBanner } from "./components/CinemaHeroBanner";
+import { CinemaDetailModal } from "./components/CinemaDetailModal";
 
 export { fetchWithCache, normalizeItem };
 export type { CastMember, ActorDetails, CinemaItem };
 
-export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => void; initialTab?: 'movies' | 'series' }) {
+const CINEMA_PRECONNECT_ORIGINS = [
+  "https://image.tmdb.org",
+  "https://api.themoviedb.org",
+  "https://vidlink.pro",
+];
+
+export function MoviesPage({
+  onClose,
+  initialTab = "movies",
+}: {
+  onClose: () => void;
+  initialTab?: "movies" | "series";
+}) {
+  usePreconnect(CINEMA_PRECONNECT_ORIGINS);
+
   const { t, i18n } = useTranslation();
   const { isMobile, isTablet } = useDeviceType();
   const { setMovieActive, registerMovieBack } = useAppContext();
@@ -145,223 +106,51 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const { user } = useAuth();
   const { has, toggle, items: movieItems, watchlistCount } = useMovieItems();
 
-  const topMoviesRows = useTopMovies('movie', 20);
-  const topSeriesRows = useTopMovies('series', 20);
-  const [topMovies, setTopMovies] = useState<CinemaItem[]>([]);
-  const [topSeries, setTopSeries] = useState<CinemaItem[]>([]);
+  const {
+    topMovies,
+    topSeries,
+    activeTab,
+    setActiveTab,
+    moviesLoading,
+    seriesLoading,
+    globalError,
+    trendingMovies,
+    topRatedMovies,
+    popularMovies,
+    actionMovies,
+    horrorMovies,
+    dramaMovies,
+    sciFiMovies,
+    trendingSeries,
+    topRatedSeries,
+    popularSeries,
+    actionSeries,
+    mysterySeries,
+    dramaSeries,
+    animationSeries,
+    selectedGenreId,
+    setSelectedGenreId,
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    isSearching,
+    searchOpen,
+    setSearchOpen,
+    showWatchlist,
+    setShowWatchlist,
+    findPreloadedCinemaItem,
+    activeGenres,
+    slideshowSlides,
+    filteredList,
+  } = useCinemaCatalog({ initialTab, tmdbKey, currentLang });
 
-  const [activeTab, setActiveTab] = useState<'movies' | 'series'>(initialTab);
-  const [moviesLoading, setMoviesLoading] = useState(true);
-  const [seriesLoading, setSeriesLoading] = useState(true);
-  const [globalError, setGlobalError] = useState(false);
-
-  // Lists State
-  const [trendingMovies, setTrendingMovies] = useState<CinemaItem[]>([]);
-  const [topRatedMovies, setTopRatedMovies] = useState<CinemaItem[]>([]);
-  const [popularMovies, setPopularMovies] = useState<CinemaItem[]>([]);
-  const [actionMovies, setActionMovies] = useState<CinemaItem[]>([]);
-  const [horrorMovies, setHorrorMovies] = useState<CinemaItem[]>([]);
-  const [dramaMovies, setDramaMovies] = useState<CinemaItem[]>([]);
-  const [sciFiMovies, setSciFiMovies] = useState<CinemaItem[]>([]);
-  const [movieGenres, setMovieGenres] = useState<any[]>([]);
-
-  const [trendingSeries, setTrendingSeries] = useState<CinemaItem[]>([]);
-  const [topRatedSeries, setTopRatedSeries] = useState<CinemaItem[]>([]);
-  const [popularSeries, setPopularSeries] = useState<CinemaItem[]>([]);
-  const [actionSeries, setActionSeries] = useState<CinemaItem[]>([]);
-  const [mysterySeries, setMysterySeries] = useState<CinemaItem[]>([]);
-  const [dramaSeries, setDramaSeries] = useState<CinemaItem[]>([]);
-  const [animationSeries, setAnimationSeries] = useState<CinemaItem[]>([]);
-  const [seriesGenres, setSeriesGenres] = useState<any[]>([]);
-
-  // Resolution effects for Top items (batched 6 at a time, preserving order)
-  useEffect(() => {
-    let cancelled = false;
-    if (topMoviesRows.length === 0) {
-      setTopMovies([]);
-      return;
-    }
-    const loadTopMoviesDetails = async () => {
-      const langParam = `&language=${tmdbLang(currentLang)}`;
-
-      const allLoaded = [
-        ...trendingMovies,
-        ...topRatedMovies,
-        ...popularMovies,
-        ...actionMovies,
-        ...horrorMovies,
-        ...dramaMovies,
-        ...sciFiMovies,
-        ...FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang))
-      ];
-
-      const resolved: (CinemaItem | null)[] = new Array(topMoviesRows.length).fill(null);
-      const BATCH_SIZE = 6;
-      for (let i = 0; i < topMoviesRows.length; i += BATCH_SIZE) {
-        if (cancelled) return;
-        const slice = topMoviesRows.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          slice.map(async (row, idx) => {
-            const targetIdx = i + idx;
-            const matched = allLoaded.find(m => m.id === row.tmdb_id && m.mediaType === 'movie');
-            if (matched) {
-              resolved[targetIdx] = matched;
-              return;
-            }
-            if (!tmdbKey) return;
-            try {
-              const detail = await fetchWithCache(
-                `${TMDB_BASE_URL}/movie/${row.tmdb_id}?api_key=${tmdbKey}${langParam}`
-              );
-              if (!cancelled && detail) {
-                resolved[targetIdx] = normalizeItem(detail, 'movie', currentLang);
-              }
-            } catch (e) {
-              console.warn("Failed to fetch top movie details for ID", row.tmdb_id, e);
-            }
-          }),
-        );
-      }
-      if (!cancelled) {
-        setTopMovies(resolved.filter((x): x is CinemaItem => x !== null));
-      }
-    };
-    loadTopMoviesDetails();
-    return () => { cancelled = true; };
-  }, [topMoviesRows, trendingMovies, topRatedMovies, popularMovies, actionMovies, horrorMovies, dramaMovies, sciFiMovies, tmdbKey, currentLang]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (topSeriesRows.length === 0) {
-      setTopSeries([]);
-      return;
-    }
-    const loadTopSeriesDetails = async () => {
-      const langParam = `&language=${tmdbLang(currentLang)}`;
-
-      const allLoaded = [
-        ...trendingSeries,
-        ...topRatedSeries,
-        ...popularSeries,
-        ...actionSeries,
-        ...mysterySeries,
-        ...dramaSeries,
-        ...animationSeries,
-        ...FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang))
-      ];
-
-      const resolved: (CinemaItem | null)[] = new Array(topSeriesRows.length).fill(null);
-      const BATCH_SIZE = 6;
-      for (let i = 0; i < topSeriesRows.length; i += BATCH_SIZE) {
-        if (cancelled) return;
-        const slice = topSeriesRows.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          slice.map(async (row, idx) => {
-            const targetIdx = i + idx;
-            const matched = allLoaded.find(m => m.id === row.tmdb_id && m.mediaType === 'tv');
-            if (matched) {
-              resolved[targetIdx] = matched;
-              return;
-            }
-            if (!tmdbKey) return;
-            try {
-              const detail = await fetchWithCache(
-                `${TMDB_BASE_URL}/tv/${row.tmdb_id}?api_key=${tmdbKey}${langParam}`
-              );
-              if (!cancelled && detail) {
-                resolved[targetIdx] = normalizeItem(detail, 'tv', currentLang);
-              }
-            } catch (e) {
-              console.warn("Failed to fetch top series details for ID", row.tmdb_id, e);
-            }
-          }),
-        );
-      }
-      if (!cancelled) {
-        setTopSeries(resolved.filter((x): x is CinemaItem => x !== null));
-      }
-    };
-    loadTopSeriesDetails();
-    return () => { cancelled = true; };
-  }, [topSeriesRows, trendingSeries, topRatedSeries, popularSeries, actionSeries, mysterySeries, dramaSeries, animationSeries, tmdbKey, currentLang]);
-
-  // Filtering / Search
-  const [selectedGenreId, setSelectedGenreId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<CinemaItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [showWatchlist, setShowWatchlist] = useState(false);
-
-  // Slideshow / Modal / Server Branching States
   useDocumentMeta("movies.title", "movies.description");
 
-  const [heroIndex, setHeroIndex] = useState(0);
-  const [heroServersOpen, setHeroServersOpen] = useState(false);
   const [detailServersOpen, setDetailServersOpen] = useState(false);
-
   const [selectedItemId, setSelectedItemIdState] = useState<number | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<Media | null>(null);
   const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-
-  const findPreloadedCinemaItem = useCallback(
-    (id: number, mediaType?: Media | null): CinemaItem | null => {
-      const targetType: Media = mediaType ?? (activeTab === "series" ? "tv" : "movie");
-      const pools: CinemaItem[][] =
-        targetType === "tv"
-          ? [
-              trendingSeries,
-              topRatedSeries,
-              popularSeries,
-              actionSeries,
-              mysterySeries,
-              dramaSeries,
-              animationSeries,
-              topSeries,
-              searchResults,
-            ]
-          : [
-              trendingMovies,
-              topRatedMovies,
-              popularMovies,
-              actionMovies,
-              horrorMovies,
-              dramaMovies,
-              sciFiMovies,
-              topMovies,
-              searchResults,
-            ];
-      for (const list of pools) {
-        const match = list.find((it) => it.id === id && it.mediaType === targetType);
-        if (match) return match;
-      }
-      const fbList = targetType === "tv" ? FALLBACK_SERIES : FALLBACK_MOVIES;
-      const fbMatch = fbList.find((it: any) => it.id === id);
-      return fbMatch ? normalizeItem(fbMatch, targetType, currentLang) : null;
-    },
-    [
-      activeTab,
-      currentLang,
-      trendingSeries,
-      topRatedSeries,
-      popularSeries,
-      actionSeries,
-      mysterySeries,
-      dramaSeries,
-      animationSeries,
-      topSeries,
-      trendingMovies,
-      topRatedMovies,
-      popularMovies,
-      actionMovies,
-      horrorMovies,
-      dramaMovies,
-      sciFiMovies,
-      topMovies,
-      searchResults,
-    ],
-  );
 
   const setSelectedItemId = useCallback(
     (id: number | null, mediaType?: Media) => {
@@ -376,19 +165,20 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       setSelectedItemIdState(id);
       const preloaded = findPreloadedCinemaItem(id, effType);
       if (preloaded) {
-        setDetailedItem((prev) => (prev && prev.id === id && prev.mediaType === effType ? prev : preloaded));
+        setDetailedItem((prev) =>
+          prev && prev.id === id && prev.mediaType === effType ? prev : preloaded,
+        );
         setIsLoadingDetails(false);
       } else {
-        setDetailedItem((prev) => (prev && prev.id === id && prev.mediaType === effType ? prev : null));
+        setDetailedItem((prev) =>
+          prev && prev.id === id && prev.mediaType === effType ? prev : null,
+        );
         setIsLoadingDetails(true);
       }
     },
     [activeTab, findPreloadedCinemaItem],
   );
-  const [showHeroTrailer, setShowHeroTrailer] = useState(false);
-  const [trailerFallbackToYoutube, setTrailerFallbackToYoutube] = useState(false);
-  const [resolvedTrailer, setResolvedTrailer] = useState<TrailerSource | null>(null);
-  const [imdbTrailerLoaded, setImdbTrailerLoaded] = useState(false);
+
   const [isWatchingInGallery, setIsWatchingInGallery] = useState(false);
   const [activeGalleryServerIdx, setActiveGalleryServerIdx] = useState(0);
   const [isPlayerLoading, setIsPlayerLoading] = useState(false);
@@ -417,7 +207,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const galleryStageRef = useRef<HTMLDivElement | null>(null);
   const playerIframeRef = useRef<HTMLIFrameElement | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
-  const hlsInstanceRef = useRef<Hls | null>(null);
+  const hlsInstanceRef = useRef<HlsType | null>(null);
   const attemptTokenRef = useRef(0);
   const playAttemptStartedAtRef = useRef<number>(0);
   const failoverQueueRef = useRef<number[]>([]);
@@ -428,27 +218,8 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const deepLinkSeRef = useRef<{ itemId: number; s?: number; e?: number } | null>(null);
   const preselectedProgressItemIdRef = useRef<number | null>(null);
   const continueWatchingItems = useContinueWatching();
-  const [seriesLoadTriggered, setSeriesLoadTriggered] = useState(initialTab === 'series');
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const cleanupDirectVideoPlayer = useCallback(() => {
-    if (hlsInstanceRef.current) {
-      try {
-        hlsInstanceRef.current.destroy();
-      } catch {}
-      hlsInstanceRef.current = null;
-    }
-    if (videoElementRef.current) {
-      try {
-        videoElementRef.current.pause();
-        videoElementRef.current.removeAttribute("src");
-        videoElementRef.current.load();
-      } catch {}
-    }
-  }, []);
-
-  // Interactive Actor Profile Card State
   const [selectedActor, setSelectedActor] = useState<CastMember | null>(null);
 
   const detailDialogRef = useFocusTrap(selectedItemId !== null && !!detailedItem);
@@ -490,6 +261,27 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   const activeImdbId = resolvedImdbId || detailedItem?.imdbId || "";
 
   const {
+    heroIndex,
+    setHeroIndex,
+    heroServersOpen,
+    setHeroServersOpen,
+    showHeroTrailer,
+    setShowHeroTrailer,
+    trailerFallbackToYoutube,
+    setTrailerFallbackToYoutube,
+    resolvedTrailer,
+    setResolvedTrailer,
+    setImdbTrailerLoaded,
+  } = useHeroTrailer({
+    activeTab,
+    slideshowSlidesLength: slideshowSlides.length,
+    selectedItemId,
+    isWatchingInGallery,
+    detailedItem,
+    activeImdbId,
+  });
+
+  const {
     setExternalSubtitles,
     externalSubtitlesRef,
     setWorkerBridgeSubtitles,
@@ -524,6 +316,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     attemptTokenRef,
     clockState,
   });
+
   const activeGallerySource =
     detailPlaySources[activeGalleryServerIdx] || detailPlaySources[0] || null;
   const [embedSeekStartAtSec, setEmbedSeekStartAtSec] = useState<number | null>(null);
@@ -549,127 +342,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     };
   }, []);
 
-  const activeIframeUrlBase = useMemo(() => {
-    if (!activeGallerySource) return "";
-    return playerRenderMode === "clean-embed"
-      ? (extractedStreams[activeExtractedIdx] || extractedStreams[0])?.directUrl ||
-          activeGallerySource.url
-      : activeGallerySource.url;
-  }, [activeGallerySource, playerRenderMode, extractedStreams, activeExtractedIdx]);
-
-  const prevWatchingInGalleryRef = useRef(false);
-  useEffect(() => {
-    const wasWatching = prevWatchingInGalleryRef.current;
-    prevWatchingInGalleryRef.current = isWatchingInGallery;
-    if (!wasWatching && isWatchingInGallery) {
-      try {
-        const now = Date.now();
-        const TTL_MS = 30 * 60 * 1000;
-        const staleKeys: string[] = [];
-        for (let i = 0; i < sessionStorage.length; i += 1) {
-          const k = sessionStorage.key(i);
-          if (k && k.startsWith("nl_wb_fail_")) {
-            const raw = sessionStorage.getItem(k);
-            const ts = raw ? Number(raw) : NaN;
-            if (raw === "1" || !Number.isFinite(ts) || now - ts > TTL_MS) {
-              staleKeys.push(k);
-            }
-          }
-        }
-        staleKeys.forEach((k) => sessionStorage.removeItem(k));
-      } catch {
-        // ignore storage errors
-      }
-    }
-  }, [isWatchingInGallery]);
-
-  const activeIframeUrl = useMemo(() => {
-    if (!activeGallerySource || !activeIframeUrlBase) return "";
-    let rawUrl = activeIframeUrlBase;
-    try {
-      const u = new URL(rawUrl);
-      if (!u.searchParams.has("autoplay")) {
-        u.searchParams.set("autoplay", "1");
-      }
-      if (!u.searchParams.has("autoPlay")) {
-        u.searchParams.set("autoPlay", "true");
-      }
-      if (
-        embedSeekStartAtSec !== null &&
-        embedSeekStartAtSec > 0 &&
-        playerRenderMode === "iframe" &&
-        activeGallerySource.capabilities?.startAt
-      ) {
-        u.searchParams.set("startAt", String(Math.floor(embedSeekStartAtSec)));
-      }
-      rawUrl = u.toString();
-    } catch {
-      // keep rawUrl
-    }
-    const srvCaps = activeGallerySource.capabilities as CinemaServerConfig["capabilities"];
-    if (
-      playerRenderMode === "iframe" &&
-      srvCaps?.workerBridge === true &&
-      typeof window !== "undefined"
-    ) {
-      let wbFailed = false;
-      try {
-        const failKey = `nl_wb_fail_${activeGallerySource.id}`;
-        const rawFail = sessionStorage.getItem(failKey);
-        if (rawFail !== null) {
-          const ts = Number(rawFail);
-          if (rawFail === "1" || !Number.isFinite(ts) || Date.now() - ts > 30 * 60 * 1000) {
-            sessionStorage.removeItem(failKey);
-            wbFailed = false;
-          } else {
-            wbFailed = true;
-          }
-        }
-      } catch {
-        wbFailed = false;
-      }
-      if (!wbFailed) {
-        return toWorkerEmbedUrl(rawUrl, WORKER_ENDPOINT, window.location.origin);
-      }
-    }
-    return rawUrl;
-  }, [
-    activeGallerySource,
-    activeIframeUrlBase,
-    playerRenderMode,
-    embedSeekStartAtSec,
-    workerBridgeRevision,
-  ]);
-
   const detailItemStorageKey = detailedItem
     ? `${detailedItem.mediaType}_${detailedItem.id}`
-    : '';
-
-  const persistCurrentProgress = useCallback(() => {
-    if (!detailedItem || !isWatchingInGallery) return;
-    const st = clockGetState();
-    if (st.source !== "video" && st.source !== "bridge") return;
-    const curTime = st.source === "bridge" ? clockReportedNow() : clockNow();
-    if (curTime === null) return;
-    const durationSec =
-      st.duration > 0
-        ? st.duration
-        : detailedItem.runtime && detailedItem.runtime > 0
-          ? detailedItem.runtime * 60
-          : 0;
-    if (durationSec <= 0 || curTime <= 5) return;
-    saveProgress({
-      id: detailedItem.id,
-      mediaType: detailedItem.mediaType,
-      title: detailedItem.title,
-      posterPath: detailedItem.posterPath,
-      backdropPath: detailedItem.backdropPath,
-      season: detailedItem.mediaType === "tv" ? selectedSeason : undefined,
-      episode: detailedItem.mediaType === "tv" ? selectedEpisode : undefined,
-      time: curTime,
-      duration: durationSec,
-    });
-  }, [detailedItem, isWatchingInGallery, selectedSeason, selectedEpisode]);
+    : "";
 
   const resolveServerIdForStream = useCallback(
     (stream?: ExtractedVideoStream | null): string => {
@@ -686,473 +361,121 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     [detailPlaySources, activeGallerySource],
   );
 
-  // Build speed-sorted failover queue starting automatically with the user's fastest live-probed server
-  const startGalleryWatchSession = useCallback(
-    (explicitServerIdx?: number) => {
-      const speedOrdered = buildSpeedSortedQueue(
-        detailPlaySources,
-        detailItemStorageKey,
-      );
-      let ordered = speedOrdered.length > 0 ? speedOrdered : [0, 1, 2, 3, 4];
-
-      if (typeof explicitServerIdx === "number" && explicitServerIdx >= 0) {
-        const total = detailPlaySources.length || 5;
-        const startIdx = explicitServerIdx % Math.max(1, total);
-        ordered = [startIdx, ...ordered.filter((i) => i !== startIdx)];
-      } else if (detailPlaySources.length > 0) {
-        void probeAllServersSpeed(detailPlaySources, detailItemStorageKey).then(() => {
-          const updatedQueue = buildSpeedSortedQueue(
-            detailPlaySourcesRef.current,
-            detailItemStorageKey,
-          );
-          if (updatedQueue.length > 0 && failoverStepRef.current === 0) {
-            failoverQueueRef.current = updatedQueue;
-          }
-        });
-      }
-
-      const firstIdx = ordered[0] ?? 0;
-      const targetSource = detailPlaySources[firstIdx] || detailPlaySources[0];
-      const initialAnchorSec = targetSource?.capabilities?.startAt
-        ? (resumeStartAtSec ?? 0)
-        : 0;
-
-      cleanupDirectVideoPlayer();
-      clockAnchor(initialAnchorSec, {
-        duration: (detailedItem?.runtime ?? 0) * 60,
-        source: "manual",
-        durationIsEstimated: true,
-      });
-      setEmbedSeekStartAtSec(null);
-      appliedInitialSeekRef.current = false;
-      checkedExtractionKeyRef.current = "";
-      failoverQueueRef.current = ordered;
-      failoverStepRef.current = 0;
-      attemptTokenRef.current += 1;
-      playAttemptStartedAtRef.current = performance.now();
-      loadedCurrentAttemptRef.current = false;
-      gotTimeSinceLoadRef.current = false;
-      confirmedPlayingSinceLoadRef.current = false;
-      userPausedIframeRef.current = false;
-      setAllServersFailed(false);
-      setIsPlayerLoading(true);
-      setActiveGalleryServerIdx(firstIdx);
-      setSelectedActor(null);
-      setShowHeroTrailer(false);
-      setIsSubtitleMenuOpen(false);
-      setIsWatchingInGallery(true);
-    },
-    [
-      detailPlaySources,
-      detailItemStorageKey,
-      cleanupDirectVideoPlayer,
-      resumeStartAtSec,
-      detailedItem?.runtime,
-    ],
-  );
-
-  // Advance to the next fastest server in the failover queue
-  const advanceFailoverServer = useCallback(
-    (reason: string) => {
-      const currentSrc = detailPlaySources[activeGalleryServerIdx];
-      if (currentSrc) {
-        recordServerFailure(currentSrc.id);
-      }
-
-      const queue = failoverQueueRef.current;
-      const nextStep = failoverStepRef.current + 1;
-      if (!queue.length || nextStep >= queue.length) {
-        setIsPlayerLoading(false);
-        setAllServersFailed(true);
-        console.warn(`[CinemaPlayer] All servers exhausted (${reason}).`);
-        return;
-      }
-
-      const nextServerIdx = queue[nextStep];
-      const nextSource = detailPlaySources[nextServerIdx];
-      const nextAnchorSec = nextSource?.capabilities?.startAt
-        ? (resumeStartAtSec ?? 0)
-        : 0;
-
-      clockAnchor(nextAnchorSec, {
-        duration: (detailedItem?.runtime ?? 0) * 60,
-        source: "manual",
-        durationIsEstimated: true,
-      });
-      failoverStepRef.current = nextStep;
-      attemptTokenRef.current += 1;
-      playAttemptStartedAtRef.current = performance.now();
-      loadedCurrentAttemptRef.current = false;
-      gotTimeSinceLoadRef.current = false;
-      confirmedPlayingSinceLoadRef.current = false;
-      userPausedIframeRef.current = false;
-      setIsPlayerLoading(true);
-      setActiveGalleryServerIdx(nextServerIdx);
-    },
-    [
-      detailPlaySources,
-      activeGalleryServerIdx,
-      resumeStartAtSec,
-      detailedItem?.runtime,
-    ],
-  );
-
   const checkedExtractionKeyRef = useRef<string>("");
   const detailPlaySourcesRef = useRef<PlaySource[]>(detailPlaySources);
   detailPlaySourcesRef.current = detailPlaySources;
+  const gotTimeSinceLoadRef = useRef(false);
+  const confirmedPlayingSinceLoadRef = useRef(false);
+  const userPausedIframeRef = useRef(false);
+  const [iframeLoadStamp, setIframeLoadStamp] = useState(0);
 
-  // Tier 1 Parallel Direct Stream Extraction (.m3u8 / .mp4) with Hot-Upgrade -> Never blocks mounting the iframe
-  useEffect(() => {
-    if (!isWatchingInGallery || !activeGallerySource || allServersFailed) {
-      return undefined;
-    }
-
-    const extractionSessionKey = `${detailItemStorageKey}_s${selectedSeason}_e${selectedEpisode}`;
-    playAttemptStartedAtRef.current = performance.now();
-    loadedCurrentAttemptRef.current = false;
-    setIsPlayerLoading(true);
-    setUseDirectUrlFallback(false);
-
-    // Mount iframe immediately so playback starts without waiting on Worker extraction
-    setPlayerRenderMode((prev) => (prev === "direct" ? "direct" : "iframe"));
-
-    if (checkedExtractionKeyRef.current === extractionSessionKey) {
-      return undefined;
-    }
-
-    let cancelled = false;
-    const abortController = new AbortController();
-    const currentToken = ++attemptTokenRef.current;
-
-    const orderedSources: PlaySource[] = [
-      activeGallerySource,
-      ...detailPlaySourcesRef.current.filter((s) => s.id !== activeGallerySource.id),
-    ].filter((s): s is PlaySource => Boolean(s && s.url));
-    const generatedTargetUrl = orderedSources.map((s) => s.url);
-
-    async function loadAndHotUpgradeVideo() {
-      checkedExtractionKeyRef.current = extractionSessionKey;
-      if (generatedTargetUrl.length === 0) return;
-
-      try {
-        const videos = await fetchExtractedVideos(
-          generatedTargetUrl,
-          abortController.signal,
-        ).catch(() => [] as ExtractedVideoStream[]);
-
-        if (cancelled || attemptTokenRef.current !== currentToken) {
-          return;
-        }
-
-        // Merge any Worker-extracted companion subtitle tracks immediately (even if staying in iframe mode!)
-        const companionSubs = videos.flatMap((v) => v.subtitles || []).map((s, i) => ({
-          ...s,
-          id: s.id || `worker:${i}:${s.lang}`,
-          provider: s.provider || ("worker" as const),
-          remoteUrl: s.proxiedUrl || s.url,
-          loaded: false,
-          label: s.label.includes("·") ? s.label : `${s.label} · Source`,
-        }));
-        if (companionSubs.length > 0) {
-          setWorkerBridgeSubtitles((prev) => mergeStreamFirst(companionSubs, prev));
-        }
-
-        const directStreams = videos.filter(
-          (v) => v.type === "hls" || v.type === "mp4",
-        );
-
-        if (directStreams.length === 0) {
-          return;
-        }
-
-        const elapsedSinceStart = performance.now() - playAttemptStartedAtRef.current;
-        if (elapsedSinceStart <= 12_000 && clockNow() < 60) {
-          setExtractedStreams(directStreams);
-          setActiveExtractedIdx(0);
-          setUseDirectUrlFallback(false);
-          playAttemptStartedAtRef.current = performance.now();
-          setPlayerRenderMode("direct");
-        }
-      } catch {
-        // Stay on active iframe smoothly
-      }
-    }
-
-    void loadAndHotUpgradeVideo();
-
-    return () => {
-      cancelled = true;
-      abortController.abort();
-    };
-  }, [
+  const { cleanupDirectVideoPlayer } = useStreamExtractor({
     isWatchingInGallery,
-    activeGallerySource?.id,
-    activeGallerySource?.url,
+    activeGallerySource,
     allServersFailed,
     detailItemStorageKey,
     selectedSeason,
     selectedEpisode,
-  ]);
-
-  // Attach HLS.js or direct MP4 stream to <video> when playerRenderMode === "direct"
-  useEffect(() => {
-    if (
-      !isWatchingInGallery ||
-      playerRenderMode !== "direct" ||
-      extractedStreams.length === 0
-    ) {
-      cleanupDirectVideoPlayer();
-      return undefined;
-    }
-
-    const selectedVideo =
-      extractedStreams[activeExtractedIdx] || extractedStreams[0];
-    if (!selectedVideo) return undefined;
-
-    if (selectedVideo.type === "clean-embed") {
-      cleanupDirectVideoPlayer();
-      playAttemptStartedAtRef.current = performance.now();
-      setPlayerRenderMode("clean-embed");
-      return undefined;
-    }
-
-    const videoElement = videoElementRef.current;
-    if (!videoElement) return undefined;
-
-    cleanupDirectVideoPlayer();
-
-    // Always prefer selectedVideo.proxiedUrl to bypass CORS and Referer blocks
-    const streamUrlToPlay =
-      useDirectUrlFallback && selectedVideo.directUrl
-        ? selectedVideo.directUrl
-        : selectedVideo.proxiedUrl || selectedVideo.directUrl;
-
-    if (!streamUrlToPlay) {
-      setPlayerRenderMode("iframe");
-      return undefined;
-    }
-
-    // Priority: Try next extracted server stream BEFORE falling back to standard iframe
-    const handleStreamErrorFallback = () => {
-      if (
-        !useDirectUrlFallback &&
-        selectedVideo.directUrl &&
-        selectedVideo.directUrl !== selectedVideo.proxiedUrl
-      ) {
-        setUseDirectUrlFallback(true);
-      } else if (activeExtractedIdx + 1 < extractedStreams.length) {
-        recordServerFailure(resolveServerIdForStream(selectedVideo));
-        const nextIdx = activeExtractedIdx + 1;
-        const nextItem = extractedStreams[nextIdx];
-        setUseDirectUrlFallback(false);
-        playAttemptStartedAtRef.current = performance.now();
-        setIsPlayerLoading(true);
-        setActiveExtractedIdx(nextIdx);
-        if (nextItem?.type === "clean-embed") {
-          cleanupDirectVideoPlayer();
-          setPlayerRenderMode("clean-embed");
-        }
-      } else {
-        recordServerFailure(resolveServerIdForStream(selectedVideo));
-        cleanupDirectVideoPlayer();
-        playAttemptStartedAtRef.current = performance.now();
-        setIsPlayerLoading(true);
-        setPlayerRenderMode("iframe");
-      }
-    };
-
-    const attemptImmediateVideoPlay = (targetVideo: HTMLVideoElement) => {
-      try {
-        const playPromise = targetVideo.play();
-        if (playPromise && typeof playPromise.catch === "function") {
-          playPromise.catch(() => {
-            try {
-              targetVideo.muted = true;
-              setIsVideoMuted(true);
-              void targetVideo.play().catch(() => {});
-            } catch {}
-          });
-        }
-      } catch {}
-    };
-
-    const playHlsStream = (url: string) => {
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: false,
-          maxBufferLength: 30,
-          backBufferLength: 30,
-        });
-        hlsInstanceRef.current = hls;
-        hls.loadSource(url);
-        hls.attachMedia(videoElement);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          hls.subtitleDisplay = false;
-          hls.subtitleTrack = -1;
-          const streamTracks = hlsTracksToSubtitleTracks(hls);
-          if (streamTracks.length > 0) {
-            setExternalSubtitles((prev) => {
-              const next = mergeStreamFirst(streamTracks, prev);
-              externalSubtitlesRef.current = next;
-              return next;
-            });
-          }
-          const elapsedMs = Math.max(
-            120,
-            performance.now() - playAttemptStartedAtRef.current,
-          );
-          recordServerSuccess(
-            resolveServerIdForStream(selectedVideo),
-            elapsedMs,
-            detailItemStorageKey,
-          );
-          setIsPlayerLoading(false);
-          const resumeSec = clockNow();
-          if (resumeSec > 5) {
-            try {
-              videoElement.currentTime = resumeSec;
-            } catch {}
-          }
-          attemptImmediateVideoPlay(videoElement);
-        });
-        hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                handleStreamErrorFallback();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                hls.recoverMediaError();
-                break;
-              default:
-                handleStreamErrorFallback();
-                break;
-            }
-          }
-        });
-      } else if (videoElement.canPlayType("application/vnd.apple.mpegurl")) {
-        videoElement.src = url;
-        attemptImmediateVideoPlay(videoElement);
-      } else {
-        handleStreamErrorFallback();
-      }
-    };
-
-    const playDirectVideo = (url: string) => {
-      videoElement.src = url;
-      attemptImmediateVideoPlay(videoElement);
-    };
-
-    if (
-      selectedVideo.type === "hls" ||
-      streamUrlToPlay.toLowerCase().includes(".m3u8")
-    ) {
-      playHlsStream(streamUrlToPlay);
-    } else {
-      playDirectVideo(streamUrlToPlay);
-    }
-
-    return () => {
-      cleanupDirectVideoPlayer();
-    };
-  }, [
-    isWatchingInGallery,
-    playerRenderMode,
-    extractedStreams,
-    activeExtractedIdx,
+    playAttemptStartedAtRef,
+    loadedCurrentAttemptRef,
+    setIsPlayerLoading,
     useDirectUrlFallback,
-    cleanupDirectVideoPlayer,
-    resolveServerIdForStream,
-    detailItemStorageKey,
-  ]);
-
-  // Monitor active iframe / clean-embed for CSP violations or stalled server timeouts
-  useEffect(() => {
-    if (
-      !isWatchingInGallery ||
-      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
-      !activeGallerySource ||
-      allServersFailed
-    ) {
-      return undefined;
-    }
-
-    const advanceFromCleanEmbedOrIframe = (reason: string) => {
-      if (
-        playerRenderMode === "clean-embed" &&
-        activeExtractedIdx + 1 < extractedStreams.length
-      ) {
-        const currentStream = extractedStreams[activeExtractedIdx];
-        recordServerFailure(resolveServerIdForStream(currentStream));
-        const nextIdx = activeExtractedIdx + 1;
-        const nextItem = extractedStreams[nextIdx];
-        playAttemptStartedAtRef.current = performance.now();
-        setIsPlayerLoading(true);
-        setActiveExtractedIdx(nextIdx);
-        setPlayerRenderMode(
-          nextItem?.type === "clean-embed" ? "clean-embed" : "direct",
-        );
-        return;
-      }
-      if (playerRenderMode === "clean-embed") {
-        const currentStream = extractedStreams[activeExtractedIdx];
-        recordServerFailure(resolveServerIdForStream(currentStream));
-        playAttemptStartedAtRef.current = performance.now();
-        setIsPlayerLoading(true);
-        setPlayerRenderMode("iframe");
-        return;
-      }
-      advanceFailoverServer(reason);
-    };
-
-    const onCspViolation = (e: SecurityPolicyViolationEvent) => {
-      const directive = String(e.effectiveDirective || e.violatedDirective || '');
-      if (!directive.startsWith('frame-src') && !directive.startsWith('child-src')) {
-        return;
-      }
-      const blocked = String(e.blockedURI || '');
-      const matchesCurrent =
-        blocked.includes(activeGallerySource.host) ||
-        blocked.includes('2vcdn.skin') ||
-        (activeGallerySource.origins || []).some((orig) => blocked.startsWith(orig));
-
-      if (matchesCurrent) {
-        advanceFromCleanEmbedOrIframe('csp-violation');
-      }
-    };
-    document.addEventListener('securitypolicyviolation', onCspViolation);
-
-    // Watchdog timeout: if iframe fails to load within server timeoutMs, automatically try next server
-    const timeoutMs = Math.max(8500, activeGallerySource.timeoutMs || 11000);
-    const watchdog = setTimeout(() => {
-      if (!loadedCurrentAttemptRef.current) {
-        advanceFromCleanEmbedOrIframe('timeout');
-      }
-    }, timeoutMs);
-
-    return () => {
-      clearTimeout(watchdog);
-      document.removeEventListener('securitypolicyviolation', onCspViolation);
-    };
-  }, [
-    isWatchingInGallery,
+    setUseDirectUrlFallback,
     playerRenderMode,
+    setPlayerRenderMode,
+    checkedExtractionKeyRef,
+    attemptTokenRef,
+    detailPlaySourcesRef,
+    setWorkerBridgeSubtitles,
+    extractedStreams,
+    setExtractedStreams,
+    activeExtractedIdx,
+    setActiveExtractedIdx,
+    hlsInstanceRef,
+    videoElementRef,
+    setExternalSubtitles,
+    externalSubtitlesRef,
+    setIsVideoMuted,
+    resolveServerIdForStream,
+  });
+
+  const { startGalleryWatchSession } = useServerFailover({
+    detailPlaySources,
+    detailPlaySourcesRef,
+    detailItemStorageKey,
+    resumeStartAtSec,
+    detailedItem,
+    cleanupDirectVideoPlayer,
+    setEmbedSeekStartAtSec,
+    appliedInitialSeekRef,
+    checkedExtractionKeyRef,
+    failoverQueueRef,
+    failoverStepRef,
+    attemptTokenRef,
+    playAttemptStartedAtRef,
+    loadedCurrentAttemptRef,
+    gotTimeSinceLoadRef,
+    confirmedPlayingSinceLoadRef,
+    userPausedIframeRef,
+    setAllServersFailed,
+    setIsPlayerLoading,
+    activeGalleryServerIdx,
+    setActiveGalleryServerIdx,
+    setSelectedActor,
+    setShowHeroTrailer,
+    setIsSubtitleMenuOpen,
+    isWatchingInGallery,
+    setIsWatchingInGallery,
+    playerRenderMode,
+    setPlayerRenderMode,
     activeGallerySource,
     allServersFailed,
     activeExtractedIdx,
+    setActiveExtractedIdx,
     extractedStreams,
     resolveServerIdForStream,
-    advanceFailoverServer,
-  ]);
+  });
 
-  // Stop audio & release iframe / HLS resources when closing or stopping gallery player
+  const {
+    activeIframeUrl,
+    persistCurrentProgress,
+    controlMode,
+    handleUserSeek,
+    handleUserTogglePlay,
+  } = usePlayerBridgeSync({
+    isWatchingInGallery,
+    playerRenderMode,
+    setPlayerRenderMode,
+    activeGallerySource,
+    extractedStreams,
+    setExtractedStreams,
+    activeExtractedIdx,
+    setActiveExtractedIdx,
+    setUseDirectUrlFallback,
+    embedSeekStartAtSec,
+    setEmbedSeekStartAtSec,
+    workerBridgeRevision,
+    setWorkerBridgeRevision,
+    detailedItem,
+    selectedSeason,
+    selectedEpisode,
+    detailItemStorageKey,
+    playerIframeRef,
+    playAttemptStartedAtRef,
+    gotTimeSinceLoadRef,
+    confirmedPlayingSinceLoadRef,
+    userPausedIframeRef,
+    iframeLoadStamp,
+    setWorkerBridgeSubtitles,
+    showSeekUnsupportedToast,
+  });
+
   useEffect(() => {
     if (!isWatchingInGallery && !showHeroTrailer) {
       cleanupDirectVideoPlayer();
       if (playerIframeRef.current) {
         try {
-          playerIframeRef.current.src = 'about:blank';
+          playerIframeRef.current.src = "about:blank";
         } catch {}
       }
     }
@@ -1161,335 +484,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     }
   }, [isWatchingInGallery, showHeroTrailer, cleanupDirectVideoPlayer, clearExternalSubtitleBlobs]);
 
-  // Bind HTML5 <video> element to isolated playbackClock in direct mode
   useEffect(() => {
     const v = videoElementRef.current;
     if (!isWatchingInGallery || playerRenderMode !== "direct" || !v) return undefined;
     return bindVideoElementToClock(v);
   }, [isWatchingInGallery, playerRenderMode, extractedStreams, activeExtractedIdx]);
 
-  const syncControllerRef = useRef<SyncController | null>(null);
-  const canReloadStartAt = Boolean(
-    playerRenderMode === "iframe" && activeGallerySource?.capabilities?.startAt,
-  );
-
-  useEffect(() => {
-    if (
-      !isWatchingInGallery ||
-      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed")
-    ) {
-      syncControllerRef.current?.dispose();
-      syncControllerRef.current = null;
-      return undefined;
-    }
-
-    const ctrl = createSyncController({
-      now: () => performance.now(),
-      sendSeek: (target, id) => {
-        sendIframePlayerCommand(
-          playerIframeRef.current,
-          { type: "seek", time: target },
-          id,
-        );
-      },
-      sendPlay: () => {
-        sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
-      },
-      sendPause: () => {
-        sendIframePlayerCommand(playerIframeRef.current, { type: "pause" });
-      },
-      reloadAt: canReloadStartAt
-        ? (target) => {
-            const rounded = Math.max(0, Math.floor(target));
-            const cur = clockGetState();
-            clockAnchor(rounded, {
-              duration: cur.duration || (detailedItem?.runtime ?? 0) * 60,
-              source: "manual",
-              durationIsEstimated: cur.durationIsEstimated,
-            });
-            setEmbedSeekStartAtSec(rounded);
-          }
-        : undefined,
-      onSeekUnsupported: () => {
-        showSeekUnsupportedToast();
-      },
-    });
-    syncControllerRef.current = ctrl;
-    return () => {
-      ctrl.dispose();
-      if (syncControllerRef.current === ctrl) {
-        syncControllerRef.current = null;
-      }
-    };
-  }, [
-    isWatchingInGallery,
-    activeIframeUrlBase,
-    playerRenderMode,
-    canReloadStartAt,
-    showSeekUnsupportedToast,
-  ]);
-
-  const bridgeAllowedOrigins = useMemo(() => {
-    const set = new Set<string>(ALL_SERVER_FRAME_ORIGINS);
-    set.add("https://vidlink.pro");
-    set.add("https://player.vidlink.pro");
-    set.add("https://cloud.vidlink.pro");
-    set.add("https://*.vidlink.pro");
-    if (activeIframeUrl) {
-      try {
-        set.add(new URL(activeIframeUrl).origin);
-      } catch {
-        // ignore invalid URL
-      }
-    }
-    if (WORKER_ENDPOINT) {
-      try {
-        set.add(new URL(WORKER_ENDPOINT).origin);
-      } catch {
-        // ignore invalid URL
-      }
-    }
-    return Array.from(set);
-  }, [activeIframeUrl]);
-
-  const gotTimeSinceLoadRef = useRef(false);
-  const confirmedPlayingSinceLoadRef = useRef(false);
-  const userPausedIframeRef = useRef(false);
-
-  // Origin-allowlisted postMessage bridge for iframe / clean-embed players
-  const bridge = useIframePlayerBridge({
-    enabled:
-      isWatchingInGallery &&
-      (playerRenderMode === "iframe" || playerRenderMode === "clean-embed"),
-    iframeRef: playerIframeRef,
-    allowedOrigins: bridgeAllowedOrigins,
-    sessionKey: `${activeGallerySource?.id ?? ""}:${activeIframeUrl}`,
-    onReady: () => {
-      if (!userPausedIframeRef.current && !confirmedPlayingSinceLoadRef.current) {
-        sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
-        setTimeout(() => {
-          if (!userPausedIframeRef.current && !confirmedPlayingSinceLoadRef.current) {
-            sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
-          }
-        }, 240);
-      }
-    },
-    onEvent: (ev) => {
-      if (typeof ev.currentTime === "number" && Number.isFinite(ev.currentTime)) {
-        if (!gotTimeSinceLoadRef.current) {
-          gotTimeSinceLoadRef.current = true;
-          if (activeGallerySource) {
-            const syncElapsedMs = Math.max(
-              150,
-              performance.now() - playAttemptStartedAtRef.current,
-            );
-            recordServerSuccess(
-              activeGallerySource.id,
-              syncElapsedMs,
-              detailItemStorageKey,
-            );
-          }
-        }
-        if (ev.currentTime > 0.25 && ev.paused === false) {
-          confirmedPlayingSinceLoadRef.current = true;
-        } else if (
-          ev.currentTime < 0.5 &&
-          (ev.paused === true || ev.kind === "pause") &&
-          !confirmedPlayingSinceLoadRef.current &&
-          !userPausedIframeRef.current
-        ) {
-          sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
-        }
-      } else if (ev.kind === "play") {
-        confirmedPlayingSinceLoadRef.current = true;
-      }
-      const decision = syncControllerRef.current
-        ? syncControllerRef.current.onReport(ev)
-        : "accept";
-      if (decision === "ignore") return;
-      if (ev.currentTime !== undefined) {
-        const paused =
-          ev.paused !== undefined
-            ? ev.paused
-            : ev.kind === "pause" || ev.kind === "ended"
-              ? true
-              : ev.kind === "play" || ev.kind === "timeupdate" || ev.kind === "media"
-                ? false
-                : undefined;
-        clockReport(
-          ev.currentTime,
-          {
-            duration: ev.duration,
-            paused,
-            rate: ev.rate,
-            source: "bridge",
-          },
-          ev.kind === "timeupdate" ? 0.35 : 0,
-        );
-      } else if (ev.kind === "play" || ev.kind === "pause" || ev.kind === "ended") {
-        clockSync({ paused: ev.kind !== "play", source: "bridge" });
-      }
-    },
-    onMediaData: () => {
-      persistCurrentProgress();
-    },
-    onSubtitlesDiscovered: (discovered) => {
-      setWorkerBridgeSubtitles((prev) => {
-        const added: ExtractedSubtitleTrack[] = discovered
-          .filter((d) => Boolean(d.url))
-          .map((item, idx) => {
-            const guessed = guessLangFromLabelOrUrl(item.label || item.lang || "", item.url);
-            const proxied = buildWorkerProxyUrl(
-              item.url,
-              item.referer || activeGallerySource?.url,
-            );
-            return {
-              id: `worker:live:${idx}:${guessed.lang}:${item.url}`,
-              provider: "worker",
-              url: item.url,
-              proxiedUrl: proxied,
-              remoteUrl: proxied,
-              lang: guessed.lang,
-              label: `${guessed.label} · Source`,
-              loaded: false,
-            };
-          });
-        return added.length > 0 ? mergeStreamFirst(added, prev) : prev;
-      });
-    },
-    onStreamDiscovered: (discovered) => {
-      if (!discovered?.streamUrl) return;
-      const elapsedSinceStart = performance.now() - playAttemptStartedAtRef.current;
-      if (elapsedSinceStart <= 12_000 && clockNow() < 60 && playerRenderMode !== "direct") {
-        const proxied = buildWorkerProxyUrl(
-          discovered.streamUrl,
-          discovered.referer || activeGallerySource?.url,
-        );
-        const newStream: ExtractedVideoStream = {
-          directUrl: discovered.streamUrl,
-          proxiedUrl: proxied,
-          type: discovered.streamType === "mp4" ? "mp4" : "hls",
-          sourcePage: activeGallerySource?.url || "",
-          subtitles: [],
-        };
-        setExtractedStreams((prev) => [newStream, ...prev]);
-        setActiveExtractedIdx(0);
-        setUseDirectUrlFallback(false);
-        playAttemptStartedAtRef.current = performance.now();
-        setPlayerRenderMode("direct");
-      }
-    },
-  });
-
-  const controlMode: PlayerControlMode =
-    playerRenderMode === "direct"
-      ? "direct"
-      : bridge.active
-        ? "bridged"
-        : "none";
-
-  const [iframeLoadStamp, setIframeLoadStamp] = useState(0);
-
-  // Automated multi-protocol postMessage play burst on iframe mount & load until playback advances
-  useEffect(() => {
-    if (
-      !isWatchingInGallery ||
-      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
-      !activeIframeUrl
-    ) {
-      return undefined;
-    }
-    const delays = [60, 250, 600, 1200, 2200, 3500, 5000];
-    const timers = delays.map((ms) =>
-      setTimeout(() => {
-        if (
-          !confirmedPlayingSinceLoadRef.current &&
-          !userPausedIframeRef.current &&
-          playerIframeRef.current
-        ) {
-          sendIframePlayerCommand(playerIframeRef.current, { type: "play" });
-        }
-      }, ms),
-    );
-    return () => {
-      timers.forEach((tId) => clearTimeout(tId));
-    };
-  }, [
-    isWatchingInGallery,
-    playerRenderMode,
-    activeIframeUrl,
-    iframeLoadStamp,
-  ]);
-
-  // 8000ms post-load watchdog: fallback from Worker /embed to raw URL if no sync-capable event was received
-  useEffect(() => {
-    if (
-      !isWatchingInGallery ||
-      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
-      iframeLoadStamp === 0
-    ) {
-      return undefined;
-    }
-    const timer = setTimeout(() => {
-      const srvCaps = activeGallerySource?.capabilities as
-        | CinemaServerConfig["capabilities"]
-        | undefined;
-      if (
-        playerRenderMode === "iframe" &&
-        srvCaps?.workerBridge &&
-        activeGallerySource &&
-        !gotTimeSinceLoadRef.current
-      ) {
-        let alreadyFailed = false;
-        try {
-          const failKey = `nl_wb_fail_${activeGallerySource.id}`;
-          const raw = sessionStorage.getItem(failKey);
-          const ts = raw ? Number(raw) : NaN;
-          alreadyFailed =
-            raw !== null &&
-            raw !== "1" &&
-            Number.isFinite(ts) &&
-            Date.now() - ts <= 30 * 60 * 1000;
-          if (!alreadyFailed) {
-            sessionStorage.setItem(failKey, String(Date.now()));
-          }
-        } catch {
-          // ignore storage errors
-        }
-        if (!alreadyFailed) {
-          setWorkerBridgeRevision((r) => r + 1);
-          return;
-        }
-      }
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, [
-    isWatchingInGallery,
-    playerRenderMode,
-    iframeLoadStamp,
-    activeGallerySource,
-  ]);
-
-  const handleUserSeek = useCallback((targetSec: number) => {
-    syncControllerRef.current?.userSeek(targetSec);
-  }, []);
-
-  const handleUserTogglePlay = useCallback(() => {
-    const st = clockGetState();
-    userPausedIframeRef.current = !st.paused;
-    syncControllerRef.current?.userTogglePlay();
-  }, []);
-
-  // Save Continue Watching progress every 10s when clock source is video or bridge
-  useEffect(() => {
-    if (!isWatchingInGallery || !detailedItem) return undefined;
-    const interval = setInterval(() => {
-      persistCurrentProgress();
-    }, 10_000);
-    return () => clearInterval(interval);
-  }, [isWatchingInGallery, detailedItem, persistCurrentProgress]);
-
-  // Track native Fullscreen API state and auto-hide controls after 3s of mouse inactivity in fullscreen
   useEffect(() => {
     const onFsChange = () => {
       const doc = document as any;
@@ -1560,55 +560,6 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     bumpControlsVisibility();
   }, [playerRenderMode, bumpControlsVisibility]);
 
-  // Resolve IMDb / YouTube trailer when showHeroTrailer opens
-  useEffect(() => {
-    if (!showHeroTrailer || !detailedItem) {
-      setResolvedTrailer(null);
-      setImdbTrailerLoaded(false);
-      return undefined;
-    }
-    let cancelled = false;
-    const ctrl = new AbortController();
-    setImdbTrailerLoaded(false);
-    void resolveTrailer({
-      imdbId: activeImdbId || detailedItem.imdbId,
-      youtubeKey: detailedItem.trailerKey,
-      signal: ctrl.signal,
-    }).then((res) => {
-      if (!cancelled) {
-        setResolvedTrailer(res);
-      }
-    });
-    return () => {
-      cancelled = true;
-      ctrl.abort();
-    };
-  }, [showHeroTrailer, detailedItem, activeImdbId]);
-
-  // 7-second watchdog for IMDb trailer iframe -> fallback to YouTube if available
-  useEffect(() => {
-    if (
-      !showHeroTrailer ||
-      resolvedTrailer?.kind !== "imdb" ||
-      trailerFallbackToYoutube ||
-      imdbTrailerLoaded
-    ) {
-      return undefined;
-    }
-    const timer = setTimeout(() => {
-      if (!imdbTrailerLoaded && detailedItem?.trailerKey) {
-        setTrailerFallbackToYoutube(true);
-      }
-    }, 7000);
-    return () => clearTimeout(timer);
-  }, [
-    showHeroTrailer,
-    resolvedTrailer,
-    trailerFallbackToYoutube,
-    imdbTrailerLoaded,
-    detailedItem?.trailerKey,
-  ]);
-
   const handleToggleVideoMute = useCallback(() => {
     const video = videoElementRef.current;
     if (!video) return;
@@ -1671,18 +622,13 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       }
     } catch {}
 
-    // iOS Safari fallback: CSS fixed viewport fullscreen
     setIsCssFullscreen((v) => !v);
   }, [isCssFullscreen]);
 
   useEffect(() => {
-    setHeroServersOpen(false);
-  }, [heroIndex, activeTab]);
-
-  useEffect(() => {
     if (playerIframeRef.current) {
       try {
-        playerIframeRef.current.src = 'about:blank';
+        playerIframeRef.current.src = "about:blank";
       } catch {}
     }
     clearExternalSubtitleBlobs();
@@ -1719,7 +665,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setSelectedActor(null);
     if (selectedItemId === null) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         if (isCssFullscreen) {
           setIsCssFullscreen(false);
         } else if (selectedActor) {
@@ -1730,13 +676,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         }
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [selectedItemId]);
 
-  // Fetch TV Season Episodes when a TV Series is open in Details Modal
   useEffect(() => {
-    if (!detailedItem || detailedItem.mediaType !== 'tv') {
+    if (!detailedItem || detailedItem.mediaType !== "tv") {
       setSeasonEpisodes([]);
       return;
     }
@@ -1768,7 +713,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                 episode_number: Number(ep.episode_number) || idx + 1,
                 name:
                   ep.name ||
-                  (currentLang === 'ar' ? `الحلقة ${idx + 1}` : `Episode ${idx + 1}`),
+                  (currentLang === "ar" ? `الحلقة ${idx + 1}` : `Episode ${idx + 1}`),
               })),
             );
             setLoadingSeasonEpisodes(false);
@@ -1782,7 +727,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         setSeasonEpisodes(
           Array.from({ length: fallbackCount }, (_, idx) => ({
             episode_number: idx + 1,
-            name: currentLang === 'ar' ? `الحلقة ${idx + 1}` : `Episode ${idx + 1}`,
+            name: currentLang === "ar" ? `الحلقة ${idx + 1}` : `Episode ${idx + 1}`,
           })),
         );
         setLoadingSeasonEpisodes(false);
@@ -1798,41 +743,51 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setSelectedActor(actor);
   }, []);
 
-  const handleQuickWatch = useCallback((item: CinemaItem) => {
-    void probeAllServersSpeed(undefined, `${item.mediaType}_${item.id}`);
-    autoStartWatchRef.current = true;
-    setDetailServersOpen(true);
-    setShowHeroTrailer(false);
-    setIsWatchingInGallery(true);
-    setIsPlayerLoading(true);
-    setSelectedItemId(item.id, item.mediaType);
-    if (selectedItemId === item.id && detailedItem?.id === item.id) {
-      autoStartWatchRef.current = false;
-      startGalleryWatchSession();
-    }
-  }, [setSelectedItemId, selectedItemId, detailedItem?.id, startGalleryWatchSession]);
-
-  const rowProps = useMemo(() => ({
-    isTouch,
-    activeHoverId,
-    setActiveHoverId,
-    hoverTimer,
-    setSelectedItemId,
-    onQuickWatch: handleQuickWatch,
-    t,
-    isFavoriteFn: (id: number, mediaType: 'movie' | 'tv') => has(id, mediaType, 'favorite')
-  }), [isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, handleQuickWatch, t, has]);
-
-  const watchlistItems = useMemo(
-    () => movieItems.filter((i) => i.status === 'watchlist'),
-    [movieItems]
+  const handleQuickWatch = useCallback(
+    (item: CinemaItem) => {
+      void probeAllServersSpeed(undefined, `${item.mediaType}_${item.id}`);
+      autoStartWatchRef.current = true;
+      setDetailServersOpen(true);
+      setShowHeroTrailer(false);
+      setIsWatchingInGallery(true);
+      setIsPlayerLoading(true);
+      setSelectedItemId(item.id, item.mediaType);
+      if (selectedItemId === item.id && detailedItem?.id === item.id) {
+        autoStartWatchRef.current = false;
+        startGalleryWatchSession();
+      }
+    },
+    [setSelectedItemId, selectedItemId, detailedItem?.id, startGalleryWatchSession, setShowHeroTrailer],
   );
 
-  const openWatchlistItem = useCallback((rec: { tmdb_id: number; media_type: 'movie' | 'tv' }) => {
-    setActiveTab(rec.media_type === 'tv' ? 'series' : 'movies');
-    setShowWatchlist(false);
-    setSelectedItemId(rec.tmdb_id, rec.media_type);
-  }, [setSelectedItemId]);
+  const rowProps = useMemo(
+    () => ({
+      isTouch,
+      activeHoverId,
+      setActiveHoverId,
+      hoverTimer,
+      setSelectedItemId,
+      onQuickWatch: handleQuickWatch,
+      t,
+      isFavoriteFn: (id: number, mediaType: "movie" | "tv") =>
+        has(id, mediaType, "favorite"),
+    }),
+    [isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, handleQuickWatch, t, has],
+  );
+
+  const watchlistItems = useMemo(
+    () => movieItems.filter((i) => i.status === "watchlist"),
+    [movieItems],
+  );
+
+  const openWatchlistItem = useCallback(
+    (rec: { tmdb_id: number; media_type: "movie" | "tv" }) => {
+      setActiveTab(rec.media_type === "tv" ? "series" : "movies");
+      setShowWatchlist(false);
+      setSelectedItemId(rec.tmdb_id, rec.media_type);
+    },
+    [setActiveTab, setShowWatchlist, setSelectedItemId],
+  );
 
   const isOpenForAudio = Boolean(detailedItem || selectedItemId);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
@@ -1854,7 +809,9 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
   }, [detailedItem, setMovieActive, registerMovieBack, persistCurrentProgress, setSelectedItemId]);
 
   useEffect(() => {
-    return () => { setMovieActive(false); };
+    return () => {
+      setMovieActive(false);
+    };
   }, [setMovieActive]);
 
   useEffect(() => {
@@ -1888,7 +845,7 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     setDetailedItem(null);
     setSelectedItemId(null);
     setHeroIndex(0);
-  }, [activeTab, setSelectedItemId]);
+  }, [activeTab, setSelectedGenreId, setSearchQuery, setSelectedItemId, setHeroIndex]);
 
   const lastHeaderHeightRef = useRef<number>(0);
   useEffect(() => {
@@ -1907,266 +864,14 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     return () => ro.disconnect();
   }, []);
 
-  // Load Movies
-  useEffect(() => {
-    let cancelled = false;
-    setMoviesLoading(true);
-
-    if (!tmdbKey) {
-      if (!cancelled) {
-        setTrendingMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
-        setTopRatedMovies([...FALLBACK_MOVIES].reverse().map(r => normalizeItem(r, 'movie', currentLang)));
-        setPopularMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
-        setActionMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Action")).map(r => normalizeItem(r, 'movie', currentLang)));
-        setHorrorMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Horror")).map(r => normalizeItem(r, 'movie', currentLang)));
-        setDramaMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Drama")).map(r => normalizeItem(r, 'movie', currentLang)));
-        setSciFiMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'movie', currentLang)));
-        setMovieGenres(FALLBACK_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
-        setMoviesLoading(false);
-      }
-      return;
-    }
-
-    const loadMovies = async () => {
-      try {
-        const langParam = `&language=${tmdbLang(currentLang)}`;
-
-        const results = await Promise.allSettled([
-          fetchWithCache(`${TMDB_BASE_URL}/genre/movie/list?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/trending/movie/week?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/movie/top_rated?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/movie/popular?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=28`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=27`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=18`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=878`)
-        ]);
-
-        if (cancelled) return;
-
-        if (results[0].status === 'fulfilled' && results[0].value?.genres) {
-          setMovieGenres(results[0].value.genres);
-        } else {
-          setMovieGenres(FALLBACK_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
-        }
-
-        if (results[1].status === 'fulfilled' && results[1].value?.results?.length) {
-          setTrendingMovies(results[1].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        } else {
-          setTrendingMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
-        }
-
-        if (results[2].status === 'fulfilled' && results[2].value?.results?.length) {
-          setTopRatedMovies(results[2].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        } else {
-          setTopRatedMovies([...FALLBACK_MOVIES].reverse().map(r => normalizeItem(r, 'movie', currentLang)));
-        }
-
-        if (results[3].status === 'fulfilled' && results[3].value?.results?.length) {
-          setPopularMovies(results[3].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        } else {
-          setPopularMovies(FALLBACK_MOVIES.map(r => normalizeItem(r, 'movie', currentLang)));
-        }
-
-        if (results[4].status === 'fulfilled' && results[4].value?.results?.length) {
-          setActionMovies(results[4].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        } else {
-          setActionMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Action")).map(r => normalizeItem(r, 'movie', currentLang)));
-        }
-
-        if (results[5].status === 'fulfilled' && results[5].value?.results?.length) {
-          setHorrorMovies(results[5].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        } else {
-          setHorrorMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Horror")).map(r => normalizeItem(r, 'movie', currentLang)));
-        }
-
-        if (results[6].status === 'fulfilled' && results[6].value?.results?.length) {
-          setDramaMovies(results[6].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        } else {
-          setDramaMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Drama")).map(r => normalizeItem(r, 'movie', currentLang)));
-        }
-
-        if (results[7].status === 'fulfilled' && results[7].value?.results?.length) {
-          setSciFiMovies(results[7].value.results.map((r: any) => normalizeItem(r, 'movie', currentLang)));
-        } else {
-          setSciFiMovies(FALLBACK_MOVIES.filter(m => m.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'movie', currentLang)));
-        }
-      } catch (err) {
-        console.error("Failed to fetch TMDB Live movies, using fallbacks:", err);
-        setGlobalError(true);
-      } finally {
-        if (!cancelled) setMoviesLoading(false);
-      }
-    };
-    loadMovies();
-    return () => { cancelled = true; };
-  }, [tmdbKey, currentLang]);
-
-  // Trigger series load when Series tab is active OR on idle after movies finish loading
-  useEffect(() => {
-    if (activeTab === 'series') {
-      setSeriesLoadTriggered(true);
-      return undefined;
-    }
-    if (!moviesLoading && !seriesLoadTriggered) {
-      const w = window as any;
-      if (typeof w.requestIdleCallback === 'function') {
-        const id = w.requestIdleCallback(() => setSeriesLoadTriggered(true), { timeout: 1500 });
-        return () => w.cancelIdleCallback?.(id);
-      }
-      const timer = setTimeout(() => setSeriesLoadTriggered(true), 600);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [activeTab, moviesLoading, seriesLoadTriggered]);
-
-  // Load Series (deferred until Series tab is opened or idle after movies finish)
-  useEffect(() => {
-    if (!seriesLoadTriggered) return;
-    let cancelled = false;
-    setSeriesLoading(true);
-
-    if (!tmdbKey) {
-      if (!cancelled) {
-        setTrendingSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
-        setTopRatedSeries([...FALLBACK_SERIES].reverse().map(r => normalizeItem(r, 'tv', currentLang)));
-        setPopularSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
-        setActionSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Action") || s.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'tv', currentLang)));
-        setMysterySeries(FALLBACK_SERIES.filter(s => s.genres.includes("Mystery")).map(r => normalizeItem(r, 'tv', currentLang)));
-        setDramaSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Drama")).map(r => normalizeItem(r, 'tv', currentLang)));
-        setAnimationSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Animation")).map(r => normalizeItem(r, 'tv', currentLang)));
-        setSeriesGenres(FALLBACK_SERIES_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
-        setSeriesLoading(false);
-      }
-      return;
-    }
-
-    const loadSeries = async () => {
-      try {
-        const langParam = `&language=${tmdbLang(currentLang)}`;
-
-        const results = await Promise.allSettled([
-          fetchWithCache(`${TMDB_BASE_URL}/genre/tv/list?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/trending/tv/week?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/tv/top_rated?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/tv/popular?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=10759`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=9648`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=18`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=16`)
-        ]);
-
-        if (cancelled) return;
-
-        if (results[0].status === 'fulfilled' && results[0].value?.genres) {
-          setSeriesGenres(results[0].value.genres);
-        } else {
-          setSeriesGenres(FALLBACK_SERIES_GENRES.map(g => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
-        }
-
-        if (results[1].status === 'fulfilled' && results[1].value?.results?.length) {
-          setTrendingSeries(results[1].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        } else {
-          setTrendingSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
-        }
-
-        if (results[2].status === 'fulfilled' && results[2].value?.results?.length) {
-          setTopRatedSeries(results[2].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        } else {
-          setTopRatedSeries([...FALLBACK_SERIES].reverse().map(r => normalizeItem(r, 'tv', currentLang)));
-        }
-
-        if (results[3].status === 'fulfilled' && results[3].value?.results?.length) {
-          setPopularSeries(results[3].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        } else {
-          setPopularSeries(FALLBACK_SERIES.map(r => normalizeItem(r, 'tv', currentLang)));
-        }
-
-        if (results[4].status === 'fulfilled' && results[4].value?.results?.length) {
-          setActionSeries(results[4].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        } else {
-          setActionSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Action") || s.genres.includes("Sci-Fi")).map(r => normalizeItem(r, 'tv', currentLang)));
-        }
-
-        if (results[5].status === 'fulfilled' && results[5].value?.results?.length) {
-          setMysterySeries(results[5].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        } else {
-          setMysterySeries(FALLBACK_SERIES.filter(s => s.genres.includes("Mystery")).map(r => normalizeItem(r, 'tv', currentLang)));
-        }
-
-        if (results[6].status === 'fulfilled' && results[6].value?.results?.length) {
-          setDramaSeries(results[6].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        } else {
-          setDramaSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Drama")).map(r => normalizeItem(r, 'tv', currentLang)));
-        }
-
-        if (results[7].status === 'fulfilled' && results[7].value?.results?.length) {
-          setAnimationSeries(results[7].value.results.map((r: any) => normalizeItem(r, 'tv', currentLang)));
-        } else {
-          setAnimationSeries(FALLBACK_SERIES.filter(s => s.genres.includes("Animation")).map(r => normalizeItem(r, 'tv', currentLang)));
-        }
-      } catch (err) {
-        console.error("Failed to fetch TMDB Live series, using fallbacks:", err);
-        setGlobalError(true);
-      } finally {
-        if (!cancelled) setSeriesLoading(false);
-      }
-    };
-    loadSeries();
-    return () => { cancelled = true; };
-  }, [tmdbKey, currentLang, seriesLoadTriggered]);
-
-  // Search Debounce
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setIsSearching(false);
-      setSearchResults([]);
-      return;
-    }
-
-    const delayDebounce = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const isTv = activeTab === 'series';
-        const mediaType: Media = isTv ? 'tv' : 'movie';
-
-        if (!tmdbKey) {
-          const list = isTv ? FALLBACK_SERIES : FALLBACK_MOVIES;
-          const normalizedList = list.map(item => normalizeItem(item, mediaType, currentLang));
-          const query = searchQuery.toLowerCase();
-          const matched = normalizedList.filter(item => {
-            return item.title.toLowerCase().includes(query) || item.overview.toLowerCase().includes(query);
-          });
-          setSearchResults(matched);
-          setIsSearching(false);
-          return;
-        }
-
-        const endpoint = isTv ? 'search/tv' : 'search/movie';
-        const searchData = await fetchWithCache(
-          `${TMDB_BASE_URL}/${endpoint}?api_key=${tmdbKey}&language=${tmdbLang(currentLang)}&query=${encodeURIComponent(searchQuery)}`
-        );
-        const results = (searchData?.results || []).map((r: any) => normalizeItem(r, mediaType, currentLang));
-        setSearchResults(results);
-      } catch (err) {
-        console.error("Failed search operation:", err);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 400);
-
-    return () => clearTimeout(delayDebounce);
-  }, [searchQuery, activeTab, tmdbKey, currentLang]);
-
   // Details Modal Loader
   useEffect(() => {
     if (selectedItemId === null) return;
     let cancelled = false;
 
-    const mediaType: Media = selectedMediaType ?? (activeTab === 'series' ? 'tv' : 'movie');
-    const isTv = mediaType === 'tv';
+    const mediaType: Media = selectedMediaType ?? (activeTab === "series" ? "tv" : "movie");
+    const isTv = mediaType === "tv";
 
-    // Fast-seed from memory if detailedItem is not already set for this item
     if (!detailedItem || detailedItem.id !== selectedItemId) {
       const seeded = findPreloadedCinemaItem(selectedItemId, mediaType);
       if (seeded) {
@@ -2179,18 +884,18 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
     if (!tmdbKey) {
       const list = isTv ? FALLBACK_SERIES : FALLBACK_MOVIES;
-      const match = list.find(m => m.id === selectedItemId);
+      const match = list.find((m) => m.id === selectedItemId);
       if (!cancelled && match) {
         const normalized = normalizeItem(match, mediaType, currentLang);
         setDetailedItem(normalized);
         if (isTv && preselectedProgressItemIdRef.current !== normalized.id) {
           preselectedProgressItemIdRef.current = normalized.id;
-          const saved = getProgress('tv', normalized.id);
+          const saved = getProgress("tv", normalized.id);
           if (saved?.season && saved.season > 0) setSelectedSeason(saved.season);
           if (saved?.episode && saved.episode > 0) setSelectedEpisode(saved.episode);
         }
         logPlay({
-          item_type: normalized.mediaType === 'tv' ? 'series' : 'movie',
+          item_type: normalized.mediaType === "tv" ? "series" : "movie",
           item_id: String(normalized.id),
           media_type: normalized.mediaType,
           title: normalized.title || null,
@@ -2203,17 +908,19 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     const loadDetails = async () => {
       try {
         const langParam = `&language=${tmdbLang(currentLang)}`;
-        const detailType = isTv ? 'tv' : 'movie';
-        const detailsAppend = isTv ? 'videos,credits,similar,external_ids' : 'videos,credits,similar,release_dates';
+        const detailType = isTv ? "tv" : "movie";
+        const detailsAppend = isTv
+          ? "videos,credits,similar,external_ids"
+          : "videos,credits,similar,release_dates";
 
         const detail = await fetchWithCache(
-          `${TMDB_BASE_URL}/${detailType}/${selectedItemId}?api_key=${tmdbKey}${langParam}&include_video_language=${currentLang},en,null&append_to_response=${detailsAppend}`
+          `${TMDB_BASE_URL}/${detailType}/${selectedItemId}?api_key=${tmdbKey}${langParam}&include_video_language=${currentLang},en,null&append_to_response=${detailsAppend}`,
         );
 
         if (cancelled) return;
 
         const normalized = normalizeItem(detail, mediaType, currentLang);
-        setDetailedItem(prev => {
+        setDetailedItem((prev) => {
           if (prev && prev.id === normalized.id) {
             return {
               ...normalized,
@@ -2230,42 +937,43 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
 
         if (isTv && preselectedProgressItemIdRef.current !== normalized.id) {
           preselectedProgressItemIdRef.current = normalized.id;
-          const saved = getProgress('tv', normalized.id);
+          const saved = getProgress("tv", normalized.id);
           if (saved?.season && saved.season > 0) setSelectedSeason(saved.season);
           if (saved?.episode && saved.episode > 0) setSelectedEpisode(saved.episode);
         }
         logPlay({
-          item_type: normalized.mediaType === 'tv' ? 'series' : 'movie',
+          item_type: normalized.mediaType === "tv" ? "series" : "movie",
           item_id: String(normalized.id),
           media_type: normalized.mediaType,
           title: normalized.title || null,
         });
         setIsLoadingDetails(false);
 
-        // Non-blocking OMDb enrichment in the background
         const imdbId = isTv ? detail.external_ids?.imdb_id : detail.imdb_id;
         if (imdbId && omdbKey) {
-          fetchOmdbMeta(imdbId, omdbKey).then(omdb => {
-            if (cancelled || !omdb) return;
-            const parsedImdbRating = omdb.imdbRating ? parseFloat(omdb.imdbRating) : NaN;
-            setDetailedItem(prev => {
-              if (!prev || prev.id !== normalized.id) return prev;
-              return {
-                ...prev,
-                rating:
-                  Number.isFinite(parsedImdbRating) && parsedImdbRating > 0
-                    ? parsedImdbRating
-                    : prev.rating,
-                certification: prev.certification || omdb.rated,
-                rottenTomatoes: omdb.rottenTomatoes || prev.rottenTomatoes,
-                metascore: omdb.metascore || prev.metascore,
-                awards: omdb.awards || prev.awards,
-                boxOffice: omdb.boxOffice || prev.boxOffice,
-              };
+          fetchOmdbMeta(imdbId, omdbKey)
+            .then((omdb) => {
+              if (cancelled || !omdb) return;
+              const parsedImdbRating = omdb.imdbRating ? parseFloat(omdb.imdbRating) : NaN;
+              setDetailedItem((prev) => {
+                if (!prev || prev.id !== normalized.id) return prev;
+                return {
+                  ...prev,
+                  rating:
+                    Number.isFinite(parsedImdbRating) && parsedImdbRating > 0
+                      ? parsedImdbRating
+                      : prev.rating,
+                  certification: prev.certification || omdb.rated,
+                  rottenTomatoes: omdb.rottenTomatoes || prev.rottenTomatoes,
+                  metascore: omdb.metascore || prev.metascore,
+                  awards: omdb.awards || prev.awards,
+                  boxOffice: omdb.boxOffice || prev.boxOffice,
+                };
+              });
+            })
+            .catch((err) => {
+              console.debug("Non-blocking OMDb enrichment failed:", err);
             });
-          }).catch(err => {
-            console.debug("Non-blocking OMDb enrichment failed:", err);
-          });
         }
       } catch (err) {
         console.error("Failed loading exact item details:", err);
@@ -2274,11 +982,12 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
       }
     };
 
-    loadDetails();
-    return () => { cancelled = true; };
-  }, [selectedItemId, selectedMediaType, activeTab, tmdbKey, currentLang, omdbKey]);
+    void loadDetails();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedItemId, selectedMediaType, activeTab, tmdbKey, currentLang, omdbKey, findPreloadedCinemaItem]);
 
-  // Automatically start in-app gallery player when opened via Hero Banner or Poster Card Quick-Watch
   useEffect(() => {
     if (
       detailedItem &&
@@ -2293,67 +1002,25 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
     }
   }, [detailedItem, selectedItemId, detailPlaySources, startGalleryWatchSession]);
 
-  const activeGenres = activeTab === 'movies' ? movieGenres : seriesGenres;
-  const activeFallbackSelected = activeTab === 'movies' ? FALLBACK_MOVIES : FALLBACK_SERIES;
-  const activeLiveTrending = activeTab === 'movies' ? trendingMovies : trendingSeries;
-
-  const slideshowSlides = useMemo(() => {
-    if (activeLiveTrending.length > 0) return activeLiveTrending.slice(0, 5);
-    return activeFallbackSelected.map(r => normalizeItem(r, activeTab === 'movies' ? 'movie' : 'tv', currentLang));
-  }, [activeLiveTrending, activeFallbackSelected, activeTab, currentLang]);
-
-  const slideshowSlidesLength = slideshowSlides.length;
-
-  useEffect(() => {
-    if (slideshowSlidesLength <= 1 || heroServersOpen || selectedItemId !== null || isWatchingInGallery) return;
-    const interval = setInterval(() => {
-      if (document.hidden) return;
-      setHeroIndex(prev => (prev + 1) % slideshowSlidesLength);
-    }, 8000);
-    return () => clearInterval(interval);
-  }, [slideshowSlidesLength, heroServersOpen, selectedItemId, isWatchingInGallery]);
-
   const activeHeroItem = slideshowSlides[heroIndex];
-
-  const filteredList = useMemo(() => {
-    if (selectedGenreId === null) return [];
-    const isTv = activeTab === 'series';
-    const mediaType: Media = isTv ? 'tv' : 'movie';
-
-    if (!tmdbKey) {
-      const fallbackList = isTv ? FALLBACK_SERIES : FALLBACK_MOVIES;
-      const genreObj = (isTv ? FALLBACK_SERIES_GENRES : FALLBACK_GENRES).find(g => g.id === selectedGenreId);
-      if (!genreObj) return fallbackList.map(r => normalizeItem(r, mediaType, currentLang));
-      const genreName = genreObj.name.en;
-      return fallbackList
-        .filter((item: any) => item.genres.includes(genreName))
-        .map(r => normalizeItem(r, mediaType, currentLang));
-    }
-
-    const sourceLists = isTv
-      ? [trendingSeries, topRatedSeries, popularSeries, actionSeries, mysterySeries, dramaSeries, animationSeries]
-      : [trendingMovies, topRatedMovies, popularMovies, actionMovies, horrorMovies, dramaMovies, sciFiMovies];
-
-    const allCollected = sourceLists.flat();
-    const unique = Array.from(new Map(allCollected.map(item => [item.id, item])).values());
-    return unique.filter((item: CinemaItem) => item.genreIds?.includes(selectedGenreId));
-  }, [
-    selectedGenreId, activeTab, tmdbKey, currentLang,
-    trendingMovies, topRatedMovies, popularMovies, actionMovies, horrorMovies, dramaMovies, sciFiMovies,
-    trendingSeries, topRatedSeries, popularSeries, actionSeries, mysterySeries, dramaSeries, animationSeries
-  ]);
-
   const localizedHeroTitle = activeHeroItem ? activeHeroItem.title : "";
   const ambientBackdropItem = detailedItem || activeHeroItem;
   const ambientBackdropUrl = ambientBackdropItem
-    ? getBackdropSrc_static(ambientBackdropItem.backdropPath, ambientBackdropItem.trailerKey, ambientBackdropItem.posterPath)
+    ? getBackdropSrc_static(
+        ambientBackdropItem.backdropPath,
+        ambientBackdropItem.trailerKey,
+        ambientBackdropItem.posterPath,
+      )
     : "";
 
-  const isCinemaFocusActive = isWatchingInGallery && selectedItemId !== null && Boolean(detailedItem);
+  const isCinemaFocusActive =
+    isWatchingInGallery && selectedItemId !== null && Boolean(detailedItem);
 
   return createPortal(
-    <div dir={currentLang === "ar" ? "rtl" : "ltr"} className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto bg-black">
-      {/* Dynamic Liquid Glass Ambient Backdrop Illumination (Unmounted during active Movie playback OR modal open to save GPU/RAM and prevent stacked blur lag) */}
+    <div
+      dir={currentLang === "ar" ? "rtl" : "ltr"}
+      className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-zinc-100 font-sans overflow-hidden select-none pointer-events-auto bg-black"
+    >
       {!isCinemaFocusActive && selectedItemId === null && ambientBackdropUrl && (
         <div
           className="lg-cinema-ambient-bg"
@@ -2371,571 +1038,563 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         />
       )}
 
-      {/* Main Background Grid & Hero (Completely unmounted during active Movie playback to free 100% CPU/GPU/RAM for the player) */}
       {!isCinemaFocusActive && (
-      <div
-        ref={mainScrollRef}
-        onScroll={handleScrollEvent}
-        className="nl-cinema-scroll absolute inset-0 z-20 overflow-y-auto h-full w-full scrollbar-none"
-        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
-      >
-        {/* Unified Non-Overlapping Liquid Glass Header (CSS selector 2) */}
-        <header
-          className={`nl-cinema-header fixed top-0 inset-x-0 z-50 flex items-center justify-between gap-2 px-3 sm:px-8 py-3 transition-all duration-300 ${
-            scrolled ? "nl-cinema-header--scrolled" : "bg-gradient-to-b from-black/75 via-black/30 to-transparent"
-          }`}
+        <div
+          ref={mainScrollRef}
+          onScroll={handleScrollEvent}
+          className="nl-cinema-scroll absolute inset-0 z-20 overflow-y-auto h-full w-full scrollbar-none"
+          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
         >
-          {/* Left / Start Zone: Back button + Logo + Liquid Glass Tabs + Desktop Genres */}
-          <div className="flex items-center gap-2.5 sm:gap-5 min-w-0">
-            {(selectedItemId !== null || showWatchlist || searchQuery.trim() !== "" || selectedGenreId !== null) && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedItemId !== null) setSelectedItemId(null);
-                  else if (showWatchlist) setShowWatchlist(false);
-                  else if (searchQuery.trim() !== "" || selectedGenreId !== null) {
-                    setSearchQuery("");
-                    setSelectedGenreId(null);
-                  }
-                }}
-                className="lg-cinema-icon-pill flex-shrink-0"
-                aria-label={currentLang === "ar" ? "رجوع" : "Back"}
-                title={currentLang === "ar" ? "رجوع" : "Back"}
-              >
-                <ChevronLeft size={17} className={currentLang === "ar" ? "rotate-180" : ""} />
-              </button>
-            )}
-
-            <h1 className="text-base sm:text-2xl font-black tracking-tighter text-white drop-shadow-[0_2px_12px_rgba(229,9,20,0.55)] select-none flex-shrink-0">
-              <NLLogo />
-            </h1>
-
-            <div className="lg-cinema-pill-group scale-95 sm:scale-100 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('movies')}
-                className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === 'movies'
-                    ? 'lg-cinema-pill-btn--active'
-                    : 'text-white/75 hover:text-white'
-                }`}
-              >
-                <Film size={12} />
-                <span>{currentLang === "ar" ? "أفلام" : "Movies"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('series')}
-                className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === 'series'
-                    ? 'lg-cinema-pill-btn--active'
-                    : 'text-white/75 hover:text-white'
-                }`}
-              >
-                <Tv size={12} />
-                <span>{currentLang === "ar" ? "مسلسلات" : "Series"}</span>
-              </button>
-            </div>
-
-            {!isMobile && (
-              <nav className="hidden lg:flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+          <header
+            className={`nl-cinema-header fixed top-0 inset-x-0 z-50 flex items-center justify-between gap-2 px-3 sm:px-8 py-3 transition-all duration-300 ${
+              scrolled
+                ? "nl-cinema-header--scrolled"
+                : "bg-gradient-to-b from-black/75 via-black/30 to-transparent"
+            }`}
+          >
+            <div className="flex items-center gap-2.5 sm:gap-5 min-w-0">
+              {(selectedItemId !== null ||
+                showWatchlist ||
+                searchQuery.trim() !== "" ||
+                selectedGenreId !== null) && (
                 <button
                   type="button"
-                  onClick={() => setSelectedGenreId(null)}
-                  className={`text-[11px] font-bold px-3.5 py-1 rounded-full transition-all cursor-pointer border backdrop-blur-md ${
-                    selectedGenreId === null
-                      ? "text-white bg-white/20 border-white/40 shadow-[0_4px_14px_rgba(255,255,255,0.14)]"
-                      : "text-white/70 bg-white/6 border-white/14 hover:text-white hover:bg-white/12"
+                  onClick={() => {
+                    if (selectedItemId !== null) setSelectedItemId(null);
+                    else if (showWatchlist) setShowWatchlist(false);
+                    else if (searchQuery.trim() !== "" || selectedGenreId !== null) {
+                      setSearchQuery("");
+                      setSelectedGenreId(null);
+                    }
+                  }}
+                  className="lg-cinema-icon-pill flex-shrink-0"
+                  aria-label={currentLang === "ar" ? "رجوع" : "Back"}
+                  title={currentLang === "ar" ? "رجوع" : "Back"}
+                >
+                  <ChevronLeft size={17} className={currentLang === "ar" ? "rotate-180" : ""} />
+                </button>
+              )}
+
+              <h1 className="text-base sm:text-2xl font-black tracking-tighter text-white drop-shadow-[0_2px_12px_rgba(229,9,20,0.55)] select-none flex-shrink-0">
+                <NLLogo />
+              </h1>
+
+              <div className="lg-cinema-pill-group scale-95 sm:scale-100 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("movies")}
+                  className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === "movies"
+                      ? "lg-cinema-pill-btn--active"
+                      : "text-white/75 hover:text-white"
                   }`}
                 >
-                  {t("movies.all") || (currentLang === "ar" ? "الكل" : "All")}
+                  <Film size={12} />
+                  <span>{currentLang === "ar" ? "أفلام" : "Movies"}</span>
                 </button>
-                {activeGenres.slice(0, 6).map(g => (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("series")}
+                  className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-black rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === "series"
+                      ? "lg-cinema-pill-btn--active"
+                      : "text-white/75 hover:text-white"
+                  }`}
+                >
+                  <Tv size={12} />
+                  <span>{currentLang === "ar" ? "مسلسلات" : "Series"}</span>
+                </button>
+              </div>
+
+              {!isMobile && (
+                <nav className="hidden lg:flex items-center gap-1.5 overflow-x-auto scrollbar-none">
                   <button
                     type="button"
-                    key={g.id}
-                    onClick={() => setSelectedGenreId(g.id)}
-                    className={`text-[11px] font-bold px-3.5 py-1 rounded-full transition-all cursor-pointer border whitespace-nowrap backdrop-blur-md ${
-                      selectedGenreId === g.id
+                    onClick={() => setSelectedGenreId(null)}
+                    className={`text-[11px] font-bold px-3.5 py-1 rounded-full transition-all cursor-pointer border backdrop-blur-md ${
+                      selectedGenreId === null
                         ? "text-white bg-white/20 border-white/40 shadow-[0_4px_14px_rgba(255,255,255,0.14)]"
                         : "text-white/70 bg-white/6 border-white/14 hover:text-white hover:bg-white/12"
                     }`}
                   >
-                    {g.name}
+                    {t("movies.all") || (currentLang === "ar" ? "الكل" : "All")}
                   </button>
-                ))}
-              </nav>
-            )}
-          </div>
-
-          {/* Right / End Zone: Search + Watchlist + Sound Mute + Close Window */}
-          <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
-            <div className="relative flex items-center">
-              {isTouch ? (
-                <div className="flex items-center">
-                  <m.div
-                    animate={{ width: searchOpen ? (isMobile ? "135px" : "190px") : "0px", opacity: searchOpen ? 1 : 0 }}
-                    transition={{ ease: "easeOut", duration: 0.22 }}
-                    className="overflow-hidden"
-                  >
-                    <input
-                      type="search"
-                      placeholder={activeTab === 'movies' ? (t("movies.search") || "Search...") : (t("series.search") || "Search...")}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      dir="auto"
-                      className="w-full px-3 py-1.5 bg-white/10 border border-white/20 text-white placeholder-white/45 rounded-full text-xs focus:outline-none focus:border-white/45 backdrop-blur-md me-1.5"
-                    />
-                  </m.div>
-                  <button
-                    type="button"
-                    onClick={() => setSearchOpen(!searchOpen)}
-                    className={`lg-cinema-icon-pill ${searchOpen || searchQuery ? "border-white/40 bg-white/15" : ""}`}
-                    aria-label={currentLang === "ar" ? "بحث" : "Search"}
-                  >
-                    <Search size={15} />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <m.div
-                    animate={{ width: searchOpen ? "210px" : "0px", opacity: searchOpen ? 1 : 0 }}
-                    transition={{ ease: "easeOut", duration: 0.25 }}
-                    className="overflow-hidden"
-                  >
-                    <input
-                      type="search"
-                      placeholder={activeTab === 'movies' ? (t("movies.search") || "Search...") : (t("series.search") || "Search...")}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full px-3.5 py-1.5 bg-white/10 border border-white/25 text-white placeholder-white/50 rounded-full text-xs outline-none focus:border-white/50 backdrop-blur-md tracking-tight"
-                    />
-                  </m.div>
-                  <button
-                    type="button"
-                    onClick={() => setSearchOpen(!searchOpen)}
-                    className={`lg-cinema-icon-pill ${searchOpen || searchQuery ? "border-white/40 bg-white/15" : ""}`}
-                    aria-label={currentLang === "ar" ? "بحث" : "Search"}
-                  >
-                    <Search size={15} />
-                  </button>
-                </div>
+                  {activeGenres.slice(0, 6).map((g) => (
+                    <button
+                      type="button"
+                      key={g.id}
+                      onClick={() => setSelectedGenreId(g.id)}
+                      className={`text-[11px] font-bold px-3.5 py-1 rounded-full transition-all cursor-pointer border whitespace-nowrap backdrop-blur-md ${
+                        selectedGenreId === g.id
+                          ? "text-white bg-white/20 border-white/40 shadow-[0_4px_14px_rgba(255,255,255,0.14)]"
+                          : "text-white/70 bg-white/6 border-white/14 hover:text-white hover:bg-white/12"
+                      }`}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                </nav>
               )}
             </div>
 
-            {user && (
+            <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+              <div className="relative flex items-center">
+                {isTouch ? (
+                  <div className="flex items-center">
+                    <m.div
+                      animate={{
+                        width: searchOpen ? (isMobile ? "135px" : "190px") : "0px",
+                        opacity: searchOpen ? 1 : 0,
+                      }}
+                      transition={{ ease: "easeOut", duration: 0.22 }}
+                      className="overflow-hidden"
+                    >
+                      <input
+                        type="search"
+                        placeholder={
+                          activeTab === "movies"
+                            ? t("movies.search") || "Search..."
+                            : t("series.search") || "Search..."
+                        }
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        dir="auto"
+                        className="w-full px-3 py-1.5 bg-white/10 border border-white/20 text-white placeholder-white/45 rounded-full text-xs focus:outline-none focus:border-white/45 backdrop-blur-md me-1.5"
+                      />
+                    </m.div>
+                    <button
+                      type="button"
+                      onClick={() => setSearchOpen(!searchOpen)}
+                      className={`lg-cinema-icon-pill ${
+                        searchOpen || searchQuery ? "border-white/40 bg-white/15" : ""
+                      }`}
+                      aria-label={currentLang === "ar" ? "بحث" : "Search"}
+                    >
+                      <Search size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <m.div
+                      animate={{
+                        width: searchOpen ? "210px" : "0px",
+                        opacity: searchOpen ? 1 : 0,
+                      }}
+                      transition={{ ease: "easeOut", duration: 0.25 }}
+                      className="overflow-hidden"
+                    >
+                      <input
+                        type="search"
+                        placeholder={
+                          activeTab === "movies"
+                            ? t("movies.search") || "Search..."
+                            : t("series.search") || "Search..."
+                        }
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full px-3.5 py-1.5 bg-white/10 border border-white/25 text-white placeholder-white/50 rounded-full text-xs outline-none focus:border-white/50 backdrop-blur-md tracking-tight"
+                      />
+                    </m.div>
+                    <button
+                      type="button"
+                      onClick={() => setSearchOpen(!searchOpen)}
+                      className={`lg-cinema-icon-pill ${
+                        searchOpen || searchQuery ? "border-white/40 bg-white/15" : ""
+                      }`}
+                      aria-label={currentLang === "ar" ? "بحث" : "Search"}
+                    >
+                      <Search size={15} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => setShowWatchlist((v) => !v)}
+                  aria-pressed={showWatchlist}
+                  aria-label={currentLang === "ar" ? "قائمتي" : "Watchlist"}
+                  title={currentLang === "ar" ? "قائمتي" : "Watchlist"}
+                  className={`lg-cinema-icon-pill relative ${
+                    showWatchlist ? "!bg-amber-500/35 !border-amber-300/60 text-amber-200" : ""
+                  }`}
+                >
+                  <Bookmark size={15} fill={showWatchlist ? "currentColor" : "none"} />
+                  {watchlistCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 border border-white/40 text-white text-[9px] font-black flex items-center justify-center shadow">
+                      {watchlistCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={() => setShowWatchlist((v) => !v)}
-                aria-pressed={showWatchlist}
-                aria-label={currentLang === "ar" ? "قائمتي" : "Watchlist"}
-                title={currentLang === "ar" ? "قائمتي" : "Watchlist"}
-                className={`lg-cinema-icon-pill relative ${
-                  showWatchlist ? "!bg-amber-500/35 !border-amber-300/60 text-amber-200" : ""
-                }`}
+                onClick={toggleMute}
+                className="lg-cinema-icon-pill"
+                aria-label={
+                  isMuted
+                    ? currentLang === "ar"
+                      ? "تشغيل الصوت"
+                      : "Unmute"
+                    : currentLang === "ar"
+                      ? "كتم الصوت"
+                      : "Mute"
+                }
+                title={
+                  isMuted
+                    ? currentLang === "ar"
+                      ? "تشغيل الصوت"
+                      : "Unmute"
+                    : currentLang === "ar"
+                      ? "كتم الصوت"
+                      : "Mute"
+                }
               >
-                <Bookmark size={15} fill={showWatchlist ? 'currentColor' : 'none'} />
-                {watchlistCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 border border-white/40 text-white text-[9px] font-black flex items-center justify-center shadow">
-                    {watchlistCount}
-                  </span>
+                {isMuted ? (
+                  <VolumeX size={15} className="text-white/65" />
+                ) : (
+                  <Volume2 size={15} className="text-emerald-300" />
                 )}
               </button>
-            )}
 
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="lg-cinema-icon-pill"
-              aria-label={isMuted ? (currentLang === "ar" ? "تشغيل الصوت" : "Unmute") : (currentLang === "ar" ? "كتم الصوت" : "Mute")}
-              title={isMuted ? (currentLang === "ar" ? "تشغيل الصوت" : "Unmute") : (currentLang === "ar" ? "كتم الصوت" : "Mute")}
-            >
-              {isMuted ? <VolumeX size={15} className="text-white/65" /> : <Volume2 size={15} className="text-emerald-300" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="lg-cinema-icon-pill hover:!bg-rose-600/40 hover:!border-rose-400/60"
-              aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
-              title={currentLang === "ar" ? "إغلاق" : "Close"}
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </header>
-
-        {/* Mobile / Tablet Liquid Glass Genre Bar */}
-        {isMobile && activeGenres.length > 0 && (
-          <div
-            className="px-4 overflow-x-auto select-none overflow-y-hidden flex gap-2 scrollbar-none py-1.5 relative z-30"
-            style={{ marginTop: "calc(var(--cinema-header-h, 64px) + env(safe-area-inset-top) + 6px)" }}
-          >
-            <button
-              type="button"
-              onClick={() => setSelectedGenreId(null)}
-              className={`text-[11px] font-bold px-3.5 py-1 flex-shrink-0 rounded-full transition-all cursor-pointer border backdrop-blur-md ${
-                selectedGenreId === null
-                  ? "text-white bg-white/20 border-white/40 shadow-[0_4px_12px_rgba(255,255,255,0.12)]"
-                  : "text-white/70 bg-white/6 border-white/12"
-              }`}
-            >
-              {t("movies.all") || (currentLang === "ar" ? "الكل" : "All")}
-            </button>
-            {activeGenres.map(g => (
               <button
                 type="button"
-                key={g.id}
-                onClick={() => setSelectedGenreId(g.id)}
+                onClick={onClose}
+                className="lg-cinema-icon-pill hover:!bg-rose-600/40 hover:!border-rose-400/60"
+                aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
+                title={currentLang === "ar" ? "إغلاق" : "Close"}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </header>
+
+          {isMobile && activeGenres.length > 0 && (
+            <div
+              className="px-4 overflow-x-auto select-none overflow-y-hidden flex gap-2 scrollbar-none py-1.5 relative z-30"
+              style={{
+                marginTop:
+                  "calc(var(--cinema-header-h, 64px) + env(safe-area-inset-top) + 6px)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedGenreId(null)}
                 className={`text-[11px] font-bold px-3.5 py-1 flex-shrink-0 rounded-full transition-all cursor-pointer border backdrop-blur-md ${
-                  selectedGenreId === g.id
+                  selectedGenreId === null
                     ? "text-white bg-white/20 border-white/40 shadow-[0_4px_12px_rgba(255,255,255,0.12)]"
                     : "text-white/70 bg-white/6 border-white/12"
                 }`}
               >
-                {g.name}
+                {t("movies.all") || (currentLang === "ar" ? "الكل" : "All")}
               </button>
-            ))}
-          </div>
-        )}
-
-        {showWatchlist ? (
-          <main className="pt-24 px-4 sm:px-10 pb-24 relative z-20">
-            <div className="flex items-center gap-3 mb-6">
-              <button
-                type="button"
-                onClick={() => setShowWatchlist(false)}
-                className="lg-cinema-action-pill px-4 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
-              >
-                <span>←</span>
-                <span>{t("movies.back") || (currentLang === "ar" ? "رجوع" : "Back")}</span>
-              </button>
-              <div className="text-base sm:text-xl font-black flex items-center gap-2">
-                <Bookmark size={18} className="text-amber-400 fill-current" />
-                <span>{currentLang === "ar" ? "قائمتي للمشاهدة" : "My Watchlist"}</span>
-              </div>
-            </div>
-
-            {watchlistItems.length === 0 ? (
-              <div className="w-full py-20 flex flex-col items-center gap-3 text-center text-white/50 lg-cinema-glass-modal rounded-3xl p-10 max-w-md mx-auto">
-                <Bookmark size={32} className="text-amber-300/70" />
-                <span className="font-semibold text-sm">
-                  {currentLang === "ar" ? "لا توجد عناصر في قائمتك حتى الآن." : "Your watchlist is empty."}
-                </span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
-                {watchlistItems.map((rec) => (
-                  <div key={`${rec.tmdb_id}-${rec.media_type}`} className="relative group flex justify-center">
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      aria-label={rec.title}
-                      onClick={() => openWatchlistItem(rec)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openWatchlistItem(rec); } }}
-                      className="nl-poster relative w-[135px] sm:w-[160px] md:w-[175px] aspect-[2/3] cursor-pointer select-none flex-shrink-0"
-                    >
-                      <div className="nl-poster__sheen" />
-                      {rec.poster_path ? (
-                        <img
-                          src={getPosterSrc_static(rec.poster_path)}
-                          alt={rec.title}
-                          loading="lazy"
-                          className="w-full h-full object-cover pointer-events-none"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-white/40"><Film size={28} /></div>
-                      )}
-                      <span className="absolute top-2 inset-inline-start-2 text-[9px] font-black px-2 py-0.5 rounded-full bg-black/65 border border-white/20 backdrop-blur-md text-white">
-                        {rec.media_type === 'tv' ? (currentLang === "ar" ? "مسلسل" : "Series") : (currentLang === "ar" ? "فيلم" : "Movie")}
-                      </span>
-                      <div className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
-                        <p className="text-[11px] font-bold text-white truncate">{rec.title}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); toggle(rec.tmdb_id, rec.media_type, 'watchlist', rec.title, rec.poster_path); }}
-                      aria-label={currentLang === "ar" ? "إزالة من القائمة" : "Remove from watchlist"}
-                      className="absolute top-2 inset-inline-end-4 w-7 h-7 grid place-items-center rounded-full bg-black/75 border border-white/25 text-white opacity-0 group-hover:opacity-100 transition hover:bg-rose-600 cursor-pointer z-20"
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </main>
-        ) : searchQuery.trim() !== "" || selectedGenreId !== null ? (
-          <main className="pt-24 px-4 sm:px-10 pb-24 relative z-20">
-            <div className="flex items-center gap-3 mb-6">
-              <button
-                type="button"
-                onClick={() => { setSearchQuery(""); setSelectedGenreId(null); }}
-                className="lg-cinema-action-pill px-4 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
-              >
-                <span>←</span>
-                <span>{t("movies.back") || (currentLang === "ar" ? "رجوع" : "Back")}</span>
-              </button>
-              <div className="text-base sm:text-xl font-black text-white">
-                {selectedGenreId
-                  ? `${t("movies.genres") || (currentLang === "ar" ? "التصنيف" : "Category")}: ${activeGenres.find(g => g.id === selectedGenreId)?.name || ""}`
-                  : `${t("movies.search") || (currentLang === "ar" ? "نتائج البحث" : "Search results")}: "${searchQuery}"`}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
-              {(searchQuery ? searchResults : filteredList).map((item) => (
-                <div key={item.id} className="flex justify-center py-2">
-                  <MoviePosterCard item={item} {...rowProps} isFavorite={rowProps.isFavoriteFn?.(item.id, item.mediaType)} />
-                </div>
+              {activeGenres.map((g) => (
+                <button
+                  type="button"
+                  key={g.id}
+                  onClick={() => setSelectedGenreId(g.id)}
+                  className={`text-[11px] font-bold px-3.5 py-1 flex-shrink-0 rounded-full transition-all cursor-pointer border backdrop-blur-md ${
+                    selectedGenreId === g.id
+                      ? "text-white bg-white/20 border-white/40 shadow-[0_4px_12px_rgba(255,255,255,0.12)]"
+                      : "text-white/70 bg-white/6 border-white/12"
+                  }`}
+                >
+                  {g.name}
+                </button>
               ))}
             </div>
+          )}
 
-            {(searchQuery ? searchResults : filteredList).length === 0 && !isSearching && (
-              <div className="w-full py-20 text-center text-white/55 font-medium lg-cinema-glass-modal rounded-3xl max-w-md mx-auto">
-                {t("movies.noResults") || (currentLang === "ar" ? "لا توجد نتائج مطابقة." : "No matching titles found.")}
-              </div>
-            )}
-          </main>
-        ) : (
-          <>
-            {activeHeroItem && (
-              <section
-                className="lg-cinema-hero-stage relative flex flex-col justify-end w-full pb-12 sm:pb-16 px-6 sm:px-14"
-                style={{ minHeight: isMobile ? "58vh" : "76vh" }}
-              >
-                {/* Hero Image + Side Vignette Masked Together (100% Seamless Dissolve, Zero Seam Line) */}
-                <div className="lg-cinema-hero-backdrop">
-                  <img
-                    src={getBackdropSrc_static(activeHeroItem.backdropPath, activeHeroItem.trailerKey, activeHeroItem.posterPath)}
-                    srcSet={
-                      activeHeroItem.backdropPath && !activeHeroItem.backdropPath.startsWith("http")
-                        ? `${TMDB_IMAGE_BASE}/w780${activeHeroItem.backdropPath} 780w, ${TMDB_IMAGE_BASE}/w1280${activeHeroItem.backdropPath} 1280w`
-                        : undefined
-                    }
-                    sizes={
-                      activeHeroItem.backdropPath && !activeHeroItem.backdropPath.startsWith("http")
-                        ? "100vw"
-                        : undefined
-                    }
-                    fetchPriority={heroIndex === 0 ? "high" : undefined}
-                    alt=""
-                    className="w-full h-full object-cover object-top select-none pointer-events-none scale-105 transition-transform duration-1000"
-                  />
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background:
-                        currentLang === "ar"
-                          ? "linear-gradient(to left, rgba(5,7,14,0.84) 0%, rgba(5,7,14,0.38) 48%, rgba(5,7,14,0.12) 100%)"
-                          : "linear-gradient(to right, rgba(5,7,14,0.84) 0%, rgba(5,7,14,0.38) 48%, rgba(5,7,14,0.12) 100%)",
-                    }}
-                  />
-                </div>
-
-                {/* Frameless Cinematic Hero Content Floating Over Dissolved Gradient */}
-                <div className="relative z-10 flex flex-col max-w-3xl text-white gap-3 pt-24">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/25 border border-rose-300/40 text-rose-100 backdrop-blur-md">
-                      {activeHeroItem.mediaType === 'movie'
-                        ? (currentLang === "ar" ? "فيلم مميز" : "Featured Movie")
-                        : (currentLang === "ar" ? "مسلسل مميز" : "Featured Series")}
-                    </span>
-                    {activeHeroItem.rating > 0 && (
-                      <span className="flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-extrabold bg-amber-400/20 border border-amber-300/40 text-amber-300 backdrop-blur-md">
-                        <Star size={11} className="fill-current" />
-                        {activeHeroItem.rating.toFixed(1)}
-                      </span>
-                    )}
-                    {activeHeroItem.year && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs text-white/90 font-bold bg-white/10 border border-white/20 backdrop-blur-md">
-                        {activeHeroItem.year}
-                      </span>
-                    )}
-                    {activeHeroItem.certification && (
-                      <span className="border border-white/25 bg-white/10 px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md">
-                        {activeHeroItem.certification}
-                      </span>
-                    )}
-                    {activeHeroItem.mediaType === 'movie'
-                      ? activeHeroItem.runtime ? (
-                          <span className="text-xs text-white/80 font-semibold drop-shadow">
-                            {`${activeHeroItem.runtime}${t("movies.meta.minutes")}`}
-                          </span>
-                        ) : null
-                      : activeHeroItem.seasons ? (
-                          <span className="text-xs text-white/80 font-semibold drop-shadow">
-                            {`${activeHeroItem.seasons} ${t("movies.meta.seasons")}`}
-                          </span>
-                        ) : null}
-                  </div>
-
-                  <h2
-                    onClick={() => setSelectedItemId(activeHeroItem.id, activeHeroItem.mediaType)}
-                    className="text-3xl sm:text-5xl font-black leading-tight tracking-tight select-text cursor-pointer hover:text-white/90 transition-colors drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]"
-                  >
-                    {localizedHeroTitle}
-                  </h2>
-
-                  <p className="text-xs sm:text-sm text-white/85 tracking-wide leading-relaxed line-clamp-2 select-text max-w-xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]">
-                    {activeHeroItem.overview}
-                  </p>
-
-                  {/* Branching Liquid Glass Server Capsules + Smart Floating TIP Card (More Info button removed per request) */}
-                  <div className="flex flex-col gap-2.5 mt-1.5">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <ServerBranchesInline
-                        item={activeHeroItem}
-                        isOpen={heroServersOpen}
-                        onToggle={() => {
-                          handleQuickWatch(activeHeroItem);
-                        }}
-                        onClose={() => setHeroServersOpen(false)}
-                        buttonLabel={t("movies.meta.watchNow") || (currentLang === "ar" ? "شاهد الآن" : "Watch Now")}
-                      />
-
-                      {/* Hero Slide Indicators */}
-                      {slideshowSlidesLength > 1 && !heroServersOpen && (
-                        <div className="ms-1 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md">
-                          {slideshowSlides.map((slide, idx) => (
-                            <button
-                              key={slide.id}
-                              type="button"
-                              onClick={() => setHeroIndex(idx)}
-                              aria-label={`Slide ${idx + 1}`}
-                              className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                                idx === heroIndex ? "w-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "w-1.5 bg-white/40 hover:bg-white/70"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Continue Watching Row (Phase 5) */}
-            {continueWatchingItems.length > 0 && (
-              <div className="relative z-20 flex flex-col gap-1.5 py-2.5 px-4 sm:px-10 -mt-2">
-                <div className="flex items-center justify-between px-2">
-                  <h2 className="text-sm sm:text-lg font-extrabold text-white tracking-tight drop-shadow">
-                    {t("movies.rows.continueWatching", "Continue watching")}
-                  </h2>
-                </div>
-                <div
-                  className="nl-cinema-row flex gap-4 overflow-x-auto select-none px-3 scroll-smooth scrollbar-none snap-x snap-mandatory"
-                  style={MOVIE_ROW_SCROLL_STYLE}
+          {showWatchlist ? (
+            <main className="pt-24 px-4 sm:px-10 pb-24 relative z-20">
+              <div className="flex items-center gap-3 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setShowWatchlist(false)}
+                  className="lg-cinema-action-pill px-4 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
                 >
-                  {continueWatchingItems.map((entry) => {
-                    const cwItem: CinemaItem = {
-                      id: entry.id,
-                      mediaType: entry.mediaType,
-                      title: entry.title,
-                      overview: "",
-                      posterPath: entry.posterPath || "",
-                      backdropPath: entry.backdropPath || "",
-                      year: "",
-                      rating: 0,
-                      genreIds: [],
-                      genreNames: [],
-                      trailerKey: "",
-                      cast: [],
-                      similar: [],
-                    };
-                    const ratio =
-                      entry.duration > 0
-                        ? entry.time / entry.duration
-                        : 0;
-                    const epBadge =
-                      entry.mediaType === "tv" && entry.season && entry.episode
-                        ? `S${entry.season}:E${entry.episode}`
-                        : undefined;
-                    return (
-                      <div key={entry.key} className="flex-shrink-0 snap-start">
-                        <MoviePosterCard
-                          item={cwItem}
-                          isTouch={isTouch}
-                          activeHoverId={activeHoverId}
-                          setActiveHoverId={setActiveHoverId}
-                          hoverTimer={hoverTimer}
-                          setSelectedItemId={(id, mt) => {
-                            if (id !== null && entry.mediaType === "tv") {
-                              deepLinkSeRef.current = {
-                                itemId: id,
-                                s: entry.season || 1,
-                                e: entry.episode || 1,
-                              };
-                            }
-                            setSelectedItemId(id, mt);
-                          }}
-                          onQuickWatch={(it) => {
-                            if (entry.mediaType === "tv") {
-                              deepLinkSeRef.current = {
-                                itemId: it.id,
-                                s: entry.season || 1,
-                                e: entry.episode || 1,
-                              };
-                            }
-                            handleQuickWatch(it);
-                          }}
-                          t={t}
-                          progressRatio={ratio}
-                          episodeBadge={epBadge}
-                          onRemoveProgress={() =>
-                            removeProgress(entry.mediaType, entry.id)
-                          }
-                        />
-                      </div>
-                    );
-                  })}
+                  <span>←</span>
+                  <span>{t("movies.back") || (currentLang === "ar" ? "رجوع" : "Back")}</span>
+                </button>
+                <div className="text-base sm:text-xl font-black flex items-center gap-2">
+                  <Bookmark size={18} className="text-amber-400 fill-current" />
+                  <span>{currentLang === "ar" ? "قائمتي للمشاهدة" : "My Watchlist"}</span>
                 </div>
               </div>
-            )}
 
-            {activeTab === 'movies' ? (
-              globalError && trendingMovies.length === 0 ? (
-                <div className="w-full py-20 flex flex-col items-center gap-4 text-center relative z-20">
-                  <p className="text-white/60 font-medium">{t("movies.meta.errorLoad")}</p>
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="lg-cinema-action-pill px-5 py-2 text-white font-bold text-sm cursor-pointer"
-                  >
-                    ↻
-                  </button>
+              {watchlistItems.length === 0 ? (
+                <div className="w-full py-20 flex flex-col items-center gap-3 text-center text-white/50 lg-cinema-glass-modal rounded-3xl p-10 max-w-md mx-auto">
+                  <Bookmark size={32} className="text-amber-300/70" />
+                  <span className="font-semibold text-sm">
+                    {currentLang === "ar"
+                      ? "لا توجد عناصر في قائمتك حتى الآن."
+                      : "Your watchlist is empty."}
+                  </span>
                 </div>
-              ) : moviesLoading ? (
-                <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
-                  {[1, 2, 3, 4].map((idx) => (
-                    <div key={idx} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
-                      <div className="h-5 w-36 bg-white/10 animate-pulse rounded-full px-2" />
-                      <div className="flex gap-4 overflow-x-hidden py-4 px-2">
-                        {[1, 2, 3, 4, 5, 6].map((idx2) => (
-                          <div key={idx2} className="relative w-[135px] sm:w-[160px] md:w-[175px] aspect-[2/3] rounded-2xl overflow-hidden bg-white/5 border border-white/10 animate-pulse flex-shrink-0 nl-skeleton-card" />
-                        ))}
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+                  {watchlistItems.map((rec) => (
+                    <div
+                      key={`${rec.tmdb_id}-${rec.media_type}`}
+                      className="relative group flex justify-center"
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={rec.title}
+                        onClick={() => openWatchlistItem(rec)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openWatchlistItem(rec);
+                          }
+                        }}
+                        className="nl-poster relative w-[135px] sm:w-[160px] md:w-[175px] aspect-[2/3] cursor-pointer select-none flex-shrink-0"
+                      >
+                        <div className="nl-poster__sheen" />
+                        {rec.poster_path ? (
+                          <img
+                            src={getPosterSrc_static(rec.poster_path)}
+                            alt={rec.title}
+                            loading="lazy"
+                            className="w-full h-full object-cover pointer-events-none"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/40">
+                            <Film size={28} />
+                          </div>
+                        )}
+                        <span className="absolute top-2 inset-inline-start-2 text-[9px] font-black px-2 py-0.5 rounded-full bg-black/65 border border-white/20 backdrop-blur-md text-white">
+                          {rec.media_type === "tv"
+                            ? currentLang === "ar"
+                              ? "مسلسل"
+                              : "Series"
+                            : currentLang === "ar"
+                              ? "فيلم"
+                              : "Movie"}
+                        </span>
+                        <div className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                          <p className="text-[11px] font-bold text-white truncate">{rec.title}</p>
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggle(
+                            rec.tmdb_id,
+                            rec.media_type,
+                            "watchlist",
+                            rec.title,
+                            rec.poster_path,
+                          );
+                        }}
+                        aria-label={
+                          currentLang === "ar"
+                            ? "إزالة من القائمة"
+                            : "Remove from watchlist"
+                        }
+                        className="absolute top-2 inset-inline-end-4 w-7 h-7 grid place-items-center rounded-full bg-black/75 border border-white/25 text-white opacity-0 group-hover:opacity-100 transition hover:bg-rose-600 cursor-pointer z-20"
+                      >
+                        <X size={13} />
+                      </button>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
-                  {topMovies.length > 0 && (
-                    <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Movies"} items={topMovies} {...rowProps} />
-                  )}
-                  <MovieRow title={t("movies.rows.trending")} items={trendingMovies} {...rowProps} />
-                  <MovieRow title={t("movies.rows.topRated")} items={topRatedMovies} {...rowProps} />
-                  <MovieRow title={t("movies.rows.action")} items={actionMovies} {...rowProps} />
-                  <MovieRow title={t("movies.rows.horror")} items={horrorMovies} {...rowProps} />
-                  <MovieRow title={t("movies.rows.popular")} items={popularMovies} {...rowProps} />
-                  <MovieRow title={t("movies.rows.drama")} items={dramaMovies} {...rowProps} />
-                  <MovieRow title={t("movies.rows.scifi")} items={sciFiMovies} {...rowProps} />
+              )}
+            </main>
+          ) : searchQuery.trim() !== "" || selectedGenreId !== null ? (
+            <main className="pt-24 px-4 sm:px-10 pb-24 relative z-20">
+              <div className="flex items-center gap-3 mb-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedGenreId(null);
+                  }}
+                  className="lg-cinema-action-pill px-4 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>←</span>
+                  <span>{t("movies.back") || (currentLang === "ar" ? "رجوع" : "Back")}</span>
+                </button>
+                <div className="text-base sm:text-xl font-black text-white">
+                  {selectedGenreId
+                    ? `${
+                        t("movies.genres") || (currentLang === "ar" ? "التصنيف" : "Category")
+                      }: ${activeGenres.find((g) => g.id === selectedGenreId)?.name || ""}`
+                    : `${
+                        t("movies.search") || (currentLang === "ar" ? "نتائج البحث" : "Search results")
+                      }: "${searchQuery}"`}
                 </div>
-              )
-            ) : (
-              globalError && trendingSeries.length === 0 ? (
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+                {(searchQuery ? searchResults : filteredList).map((item) => (
+                  <div key={item.id} className="flex justify-center py-2">
+                    <MoviePosterCard
+                      item={item}
+                      {...rowProps}
+                      isFavorite={rowProps.isFavoriteFn?.(item.id, item.mediaType)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {(searchQuery ? searchResults : filteredList).length === 0 && !isSearching && (
+                <div className="w-full py-20 text-center text-white/55 font-medium lg-cinema-glass-modal rounded-3xl max-w-md mx-auto">
+                  {t("movies.noResults") ||
+                    (currentLang === "ar"
+                      ? "لا توجد نتائج مطابقة."
+                      : "No matching titles found.")}
+                </div>
+              )}
+            </main>
+          ) : (
+            <>
+              {activeHeroItem && (
+                <CinemaHeroBanner
+                  activeHeroItem={activeHeroItem}
+                  isMobile={isMobile}
+                  heroIndex={heroIndex}
+                  setHeroIndex={setHeroIndex}
+                  currentLang={currentLang}
+                  localizedHeroTitle={localizedHeroTitle}
+                  heroServersOpen={heroServersOpen}
+                  setHeroServersOpen={setHeroServersOpen}
+                  slideshowSlides={slideshowSlides}
+                  setSelectedItemId={setSelectedItemId}
+                  handleQuickWatch={handleQuickWatch}
+                  t={t}
+                />
+              )}
+
+              {continueWatchingItems.length > 0 && (
+                <div className="relative z-20 flex flex-col gap-1.5 py-2.5 px-4 sm:px-10 -mt-2">
+                  <div className="flex items-center justify-between px-2">
+                    <h2 className="text-sm sm:text-lg font-extrabold text-white tracking-tight drop-shadow">
+                      {t("movies.rows.continueWatching", "Continue watching")}
+                    </h2>
+                  </div>
+                  <div
+                    className="nl-cinema-row flex gap-4 overflow-x-auto select-none px-3 scroll-smooth scrollbar-none snap-x snap-mandatory"
+                    style={MOVIE_ROW_SCROLL_STYLE}
+                  >
+                    {continueWatchingItems.map((entry) => {
+                      const cwItem: CinemaItem = {
+                        id: entry.id,
+                        mediaType: entry.mediaType,
+                        title: entry.title,
+                        overview: "",
+                        posterPath: entry.posterPath || "",
+                        backdropPath: entry.backdropPath || "",
+                        year: "",
+                        rating: 0,
+                        genreIds: [],
+                        genreNames: [],
+                        trailerKey: "",
+                        cast: [],
+                        similar: [],
+                      };
+                      const ratio =
+                        entry.duration > 0 ? entry.time / entry.duration : 0;
+                      const epBadge =
+                        entry.mediaType === "tv" && entry.season && entry.episode
+                          ? `S${entry.season}:E${entry.episode}`
+                          : undefined;
+                      return (
+                        <div key={entry.key} className="flex-shrink-0 snap-start">
+                          <MoviePosterCard
+                            item={cwItem}
+                            isTouch={isTouch}
+                            activeHoverId={activeHoverId}
+                            setActiveHoverId={setActiveHoverId}
+                            hoverTimer={hoverTimer}
+                            setSelectedItemId={(id, mt) => {
+                              if (id !== null && entry.mediaType === "tv") {
+                                deepLinkSeRef.current = {
+                                  itemId: id,
+                                  s: entry.season || 1,
+                                  e: entry.episode || 1,
+                                };
+                              }
+                              setSelectedItemId(id, mt);
+                            }}
+                            onQuickWatch={(it) => {
+                              if (entry.mediaType === "tv") {
+                                deepLinkSeRef.current = {
+                                  itemId: it.id,
+                                  s: entry.season || 1,
+                                  e: entry.episode || 1,
+                                };
+                              }
+                              handleQuickWatch(it);
+                            }}
+                            t={t}
+                            progressRatio={ratio}
+                            episodeBadge={epBadge}
+                            onRemoveProgress={() =>
+                              removeProgress(entry.mediaType, entry.id)
+                            }
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "movies" ? (
+                globalError && trendingMovies.length === 0 ? (
+                  <div className="w-full py-20 flex flex-col items-center gap-4 text-center relative z-20">
+                    <p className="text-white/60 font-medium">{t("movies.meta.errorLoad")}</p>
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="lg-cinema-action-pill px-5 py-2 text-white font-bold text-sm cursor-pointer"
+                    >
+                      ↻
+                    </button>
+                  </div>
+                ) : moviesLoading ? (
+                  <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
+                    {[1, 2, 3, 4].map((idx) => (
+                      <div
+                        key={idx}
+                        className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden"
+                      >
+                        <div className="h-5 w-36 bg-white/10 animate-pulse rounded-full px-2" />
+                        <div className="flex gap-4 overflow-x-hidden py-4 px-2">
+                          {[1, 2, 3, 4, 5, 6].map((idx2) => (
+                            <div
+                              key={idx2}
+                              className="relative w-[135px] sm:w-[160px] md:w-[175px] aspect-[2/3] rounded-2xl overflow-hidden bg-white/5 border border-white/10 animate-pulse flex-shrink-0 nl-skeleton-card"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
+                    {topMovies.length > 0 && (
+                      <MovieRow
+                        title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Movies"}
+                        items={topMovies}
+                        {...rowProps}
+                      />
+                    )}
+                    <MovieRow title={t("movies.rows.trending")} items={trendingMovies} {...rowProps} />
+                    <MovieRow title={t("movies.rows.topRated")} items={topRatedMovies} {...rowProps} />
+                    <MovieRow title={t("movies.rows.action")} items={actionMovies} {...rowProps} />
+                    <MovieRow title={t("movies.rows.horror")} items={horrorMovies} {...rowProps} />
+                    <MovieRow title={t("movies.rows.popular")} items={popularMovies} {...rowProps} />
+                    <MovieRow title={t("movies.rows.drama")} items={dramaMovies} {...rowProps} />
+                    <MovieRow title={t("movies.rows.scifi")} items={sciFiMovies} {...rowProps} />
+                  </div>
+                )
+              ) : globalError && trendingSeries.length === 0 ? (
                 <div className="w-full py-20 flex flex-col items-center gap-4 text-center relative z-20">
                   <p className="text-white/60 font-medium">{t("movies.meta.errorLoad")}</p>
                   <button
@@ -2949,11 +1608,17 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               ) : seriesLoading ? (
                 <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
                   {[1, 2, 3, 4].map((idx) => (
-                    <div key={idx} className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden">
+                    <div
+                      key={idx}
+                      className="relative z-10 flex flex-col gap-2 py-3 px-4 sm:px-10 overflow-hidden"
+                    >
                       <div className="h-5 w-36 bg-white/10 animate-pulse rounded-full px-2" />
                       <div className="flex gap-4 overflow-x-hidden py-4 px-2">
                         {[1, 2, 3, 4, 5, 6].map((idx2) => (
-                          <div key={idx2} className="relative w-[135px] sm:w-[160px] md:w-[175px] aspect-[2/3] rounded-2xl overflow-hidden bg-white/5 border border-white/10 animate-pulse flex-shrink-0 nl-skeleton-card" />
+                          <div
+                            key={idx2}
+                            className="relative w-[135px] sm:w-[160px] md:w-[175px] aspect-[2/3] rounded-2xl overflow-hidden bg-white/5 border border-white/10 animate-pulse flex-shrink-0 nl-skeleton-card"
+                          />
                         ))}
                       </div>
                     </div>
@@ -2962,7 +1627,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
               ) : (
                 <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
                   {topSeries.length > 0 && (
-                    <MovieRow title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Series"} items={topSeries} {...rowProps} />
+                    <MovieRow
+                      title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Series"}
+                      items={topSeries}
+                      {...rowProps}
+                    />
                   )}
                   <MovieRow title={t("movies.rows.trending")} items={trendingSeries} {...rowProps} />
                   <MovieRow title={t("movies.rows.topRated")} items={topRatedSeries} {...rowProps} />
@@ -2972,1485 +1641,121 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
                   <MovieRow title={t("movies.rows.drama")} items={dramaSeries} {...rowProps} />
                   <MovieRow title={t("movies.rows.animation")} items={animationSeries} {...rowProps} />
                 </div>
-              )
-            )}
-          </>
-        )}
-      </div>
+              )}
+            </>
+          )}
+        </div>
       )}
 
-      {/* Liquid Glass Movie / Series Details & Theater Stage Modal */}
-      <AnimatePresence>
-        {selectedItemId !== null && (
-          <div
-            className={`nl-detail-wrap fixed inset-0 z-[10100] flex items-center justify-center p-2 sm:p-5 overflow-y-auto ${
-              isWatchingInGallery
-                ? "bg-black"
-                : "bg-black/75 backdrop-blur-xl"
-            }`}
-          >
-            <div onClick={() => setSelectedItemId(null)} className="absolute inset-0 z-0 cursor-zoom-out" />
-            {isLoadingDetails || !detailedItem ? (
-              <div className="relative z-10 flex items-center justify-center p-8">
-                <EyeLoader />
-              </div>
-            ) : (
-              <m.div
-                ref={detailDialogRef}
-                role="dialog"
-                aria-modal="true"
-                aria-label={detailedItem.title}
-                initial={{ opacity: 0, scale: 0.94, y: 18 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.94, y: 18 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                className={`nl-detail-card lg-cinema-glass-modal relative w-full rounded-3xl z-10 overflow-hidden my-auto max-h-[94dvh] flex flex-col ${
-                  isWatchingInGallery
-                    ? "nl-detail-card--theater"
-                    : "max-w-4xl"
-                }`}
-              >
-                {/* Top 16:9 Liquid Glass Gallery Stage (Expands to Cinema Theater Mode when Movie/Series plays; stays standard for Trailer) */}
-                <div
-                  className={`flex-shrink-0 flex flex-col gap-2 ${
-                    isWatchingInGallery
-                      ? "p-2 sm:p-3"
-                      : "p-2.5 sm:p-3.5 pb-0"
-                  }`}
-                >
-                  {/* Sleek Semi-Transparent Top Control Bar ABOVE Gallery Stage when Movie or Trailer is actively playing */}
-                  {((isWatchingInGallery && Boolean(activeGallerySource)) ||
-                    (showHeroTrailer && Boolean(activeImdbId || detailedItem.trailerKey))) && (
-                    <div
-                      onMouseMove={bumpControlsVisibility}
-                      onTouchStart={bumpControlsVisibility}
-                      className={`lg-cinema-gallery-top-bar flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-2xl transition-all duration-300 ${
-                        isWatchingInGallery
-                          ? "lg-cinema-gallery-top-bar--playing"
-                          : ""
-                      } ${
-                        isWatchingInGallery && !isControlsVisible
-                          ? "opacity-0 pointer-events-none"
-                          : "opacity-100"
-                      }`}
-                      dir="ltr"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 min-w-0">
-                        {(activeImdbId || detailedItem.trailerKey) && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (showHeroTrailer) {
-                                setShowHeroTrailer(false);
-                                setTrailerFallbackToYoutube(false);
-                              } else {
-                                persistCurrentProgress();
-                                setIsWatchingInGallery(false);
-                                clockReset("manual");
-                                setTrailerFallbackToYoutube(!activeImdbId);
-                                setShowHeroTrailer(true);
-                              }
-                            }}
-                            className={`lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
-                              showHeroTrailer
-                                ? "!bg-rose-600/45 !border-rose-300/70 text-white"
-                                : "text-white"
-                            }`}
-                          >
-                            <Film size={13} />
-                            <span>
-                              {showHeroTrailer
-                                ? currentLang === "ar"
-                                  ? "إغلاق التريلر"
-                                  : "Hide Trailer"
-                                : currentLang === "ar"
-                                  ? "تشغيل التريلر"
-                                  : "Watch Trailer"}
-                            </span>
-                          </button>
-                        )}
+      <CinemaDetailModal
+        selectedItemId={selectedItemId}
+        setSelectedItemId={setSelectedItemId}
+        isWatchingInGallery={isWatchingInGallery}
+        setIsWatchingInGallery={setIsWatchingInGallery}
+        isLoadingDetails={isLoadingDetails}
+        detailedItem={detailedItem}
+        detailDialogRef={detailDialogRef}
+        detailWatchTarget={detailWatchTarget}
+        detailServersOpen={detailServersOpen}
+        setDetailServersOpen={setDetailServersOpen}
+        startGalleryWatchSession={startGalleryWatchSession}
+        activeImdbId={activeImdbId}
+        showHeroTrailer={showHeroTrailer}
+        setShowHeroTrailer={setShowHeroTrailer}
+        setTrailerFallbackToYoutube={setTrailerFallbackToYoutube}
+        persistCurrentProgress={persistCurrentProgress}
+        currentLang={currentLang}
+        t={t}
+        user={user}
+        has={has}
+        toggle={toggle}
+        handleSelectActor={handleSelectActor}
+        playerStageProps={{
+          isWatchingInGallery,
+          setIsWatchingInGallery,
+          activeGallerySource,
+          detailPlaySources,
+          activeGalleryServerIdx,
+          showHeroTrailer,
+          setShowHeroTrailer,
+          trailerFallbackToYoutube,
+          setTrailerFallbackToYoutube,
+          resolvedTrailer,
+          setImdbTrailerLoaded,
+          activeImdbId,
+          bumpControlsVisibility,
+          isControlsVisible,
+          currentLang,
+          t,
+          persistCurrentProgress,
+          setDetailServersOpen,
+          startGalleryWatchSession,
+          isFullSeasonEmbed,
+          setIsFullSeasonEmbed,
+          selectedSeason,
+          setSelectedSeason,
+          selectedEpisode,
+          setSelectedEpisode,
+          loadingSeasonEpisodes,
+          seasonEpisodes,
+          setWorkerBridgeSubtitles,
+          playerIframeRef,
+          videoElementRef,
+          galleryStageRef,
+          isCssFullscreen,
+          setIsCssFullscreen,
+          isAnyFullscreen,
+          handleToggleGalleryFullscreen,
+          setSelectedItemId,
+          allServersFailed,
+          playerRenderMode,
+          setPlayerRenderMode,
+          handleToggleVideoPlay,
+          appliedInitialSeekRef,
+          detailWatchTarget,
+          syncVideoTextTracks,
+          activeSubtitleIdx,
+          setActiveSubtitleIdx,
+          videoVolume,
+          setVideoVolume,
+          isVideoMuted,
+          setIsVideoMuted,
+          loadedCurrentAttemptRef,
+          extractedStreams,
+          activeExtractedIdx,
+          setActiveExtractedIdx,
+          playAttemptStartedAtRef,
+          resolveServerIdForStream,
+          detailItemStorageKey,
+          isPlayerLoading,
+          setIsPlayerLoading,
+          useDirectUrlFallback,
+          setUseDirectUrlFallback,
+          cleanupDirectVideoPlayer,
+          activeSubtitlesList,
+          activeIframeUrl,
+          gotTimeSinceLoadRef,
+          confirmedPlayingSinceLoadRef,
+          userPausedIframeRef,
+          setIframeLoadStamp,
+          seekUnsupportedToast,
+          controlMode,
+          activeTrackCues,
+          subtitleOffsetSec,
+          setSubtitleOffsetSec,
+          handleUserSeek,
+          handleUserTogglePlay,
+          handleToggleVideoMute,
+          handleChangeVideoVolume,
+          isSubtitleMenuOpen,
+          setIsSubtitleMenuOpen,
+          isLoadingSubtitles,
+          loadingSubtitleIdx,
+          handleUploadLocalSubtitle,
+          handleRefreshSubtitlesForLanguages,
+        }}
+      />
 
-                        {showHeroTrailer && activeGallerySource && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDetailServersOpen(true);
-                              startGalleryWatchSession();
-                            }}
-                            className="lg-cinema-primary-pill px-3.5 py-1.5 text-xs font-black text-white flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <Play size={12} className="fill-current" />
-                            <span>
-                              {t("movies.meta.watchNow") ||
-                                (currentLang === "ar" ? "مشاهدة الآن" : "Watch Now")}
-                            </span>
-                          </button>
-                        )}
-
-                        {isWatchingInGallery &&
-                          activeGallerySource &&
-                          detailedItem.mediaType === "tv" && (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-white/10 border border-white/20 text-white/90 whitespace-nowrap">
-                              {isFullSeasonEmbed
-                                ? "Full Season"
-                                : `S${selectedSeason}:E${selectedEpisode}`}
-                            </span>
-                          )}
-
-                        {isWatchingInGallery && detailPlaySources.length > 1 && (
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {detailPlaySources.map((srv, idx) => {
-                              const isCurrent = idx === activeGalleryServerIdx;
-                              return (
-                                <button
-                                  key={srv.id}
-                                  type="button"
-                                  onClick={() => {
-                                    if (idx !== activeGalleryServerIdx) {
-                                      setWorkerBridgeSubtitles([]);
-                                      startGalleryWatchSession(idx);
-                                    }
-                                  }}
-                                  className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border transition-all cursor-pointer whitespace-nowrap ${
-                                    isCurrent
-                                      ? "bg-red-600/85 border-red-400 text-white shadow"
-                                      : "bg-white/8 border-white/15 text-white/70 hover:text-white hover:bg-white/15"
-                                  }`}
-                                >
-                                  {srv.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            persistCurrentProgress();
-                            if (playerIframeRef.current) {
-                              try {
-                                playerIframeRef.current.src = "about:blank";
-                              } catch {}
-                            }
-                            clockReset("manual");
-                            setIsWatchingInGallery(false);
-                            setShowHeroTrailer(false);
-                            setTrailerFallbackToYoutube(false);
-                            setIsCssFullscreen(false);
-                            setIsSubtitleMenuOpen(false);
-                          }}
-                          className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-white/90 hover:text-white flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-                          title={t("movies.player.showBackdrop")}
-                        >
-                          <span>{t("movies.player.showBackdrop")}</span>
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleToggleGalleryFullscreen}
-                          className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px]"
-                          aria-label={
-                            isAnyFullscreen
-                              ? t("movies.player.exitFullscreen")
-                              : t("movies.player.fullscreen")
-                          }
-                          title={
-                            isAnyFullscreen
-                              ? t("movies.player.exitFullscreen")
-                              : t("movies.player.fullscreen")
-                          }
-                        >
-                          {isAnyFullscreen ? (
-                            <Minimize2 size={15} />
-                          ) : (
-                            <Maximize2 size={15} />
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            persistCurrentProgress();
-                            if (playerIframeRef.current) {
-                              try {
-                                playerIframeRef.current.src = "about:blank";
-                              } catch {}
-                            }
-                            setSelectedItemId(null);
-                          }}
-                          className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] hover:!bg-rose-600/45 hover:!border-rose-300/60"
-                          aria-label={t("movies.close")}
-                          title={t("movies.close")}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div
-                    ref={galleryStageRef}
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseMove={bumpControlsVisibility}
-                    onTouchStart={bumpControlsVisibility}
-                    className={`lg-cinema-gallery-stage relative aspect-video w-full bg-black ${
-                      isCssFullscreen ? "lg-cinema-gallery-stage--css-fullscreen" : ""
-                    }`}
-                  >
-                    {isCssFullscreen && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsCssFullscreen(false);
-                        }}
-                        className={`lg-cinema-icon-pill fixed top-4 right-4 z-[10600] !w-10 !h-10 transition-opacity duration-300 ${
-                          isControlsVisible
-                            ? "opacity-100"
-                            : "opacity-0 pointer-events-none"
-                        }`}
-                        aria-label={t("movies.player.exitFullscreen")}
-                        title={t("movies.player.exitFullscreen")}
-                      >
-                        <Minimize2 size={16} />
-                      </button>
-                    )}
-
-                    {isWatchingInGallery && !isControlsVisible && (
-                      <>
-                        <div
-                          onMouseEnter={bumpControlsVisibility}
-                          onMouseMove={bumpControlsVisibility}
-                          onTouchStart={bumpControlsVisibility}
-                          className="absolute top-0 inset-x-0 h-5 z-30"
-                        />
-                        <div
-                          onMouseEnter={bumpControlsVisibility}
-                          onMouseMove={bumpControlsVisibility}
-                          onTouchStart={bumpControlsVisibility}
-                          className="absolute bottom-0 inset-x-0 h-4 z-30"
-                        />
-                      </>
-                    )}
-
-                    {isWatchingInGallery && activeGallerySource ? (
-                      <div className="relative w-full h-full bg-black">
-                        {!allServersFailed && playerRenderMode === "direct" && (
-                          <video
-                            ref={videoElementRef}
-                            className="w-full h-full border-0 bg-black block object-contain cursor-pointer"
-                            autoPlay
-                            playsInline
-                            crossOrigin="anonymous"
-                            onClick={handleToggleVideoPlay}
-                            onDoubleClick={handleToggleGalleryFullscreen}
-                            onPause={() => persistCurrentProgress()}
-                            onLoadedMetadata={(e) => {
-                              if (
-                                !appliedInitialSeekRef.current &&
-                                detailWatchTarget?.startAt &&
-                                detailWatchTarget.startAt > 5
-                              ) {
-                                appliedInitialSeekRef.current = true;
-                                try {
-                                  e.currentTarget.currentTime = detailWatchTarget.startAt;
-                                } catch {}
-                              }
-                              syncVideoTextTracks(activeSubtitleIdx);
-                            }}
-                            onVolumeChange={(e) => {
-                              setVideoVolume(e.currentTarget.volume);
-                              setIsVideoMuted(e.currentTarget.muted);
-                            }}
-                            onLoadedData={() => {
-                              loadedCurrentAttemptRef.current = true;
-                              const currentStream =
-                                extractedStreams[activeExtractedIdx] ||
-                                extractedStreams[0];
-                              const elapsedMs = Math.max(
-                                120,
-                                performance.now() - playAttemptStartedAtRef.current,
-                              );
-                              recordServerSuccess(
-                                resolveServerIdForStream(currentStream),
-                                elapsedMs,
-                                detailItemStorageKey,
-                              );
-                              setIsPlayerLoading(false);
-                              syncVideoTextTracks(activeSubtitleIdx);
-                            }}
-                            onError={() => {
-                              const currentStream =
-                                extractedStreams[activeExtractedIdx] ||
-                                extractedStreams[0];
-                              if (
-                                !useDirectUrlFallback &&
-                                currentStream?.directUrl &&
-                                currentStream.directUrl !== currentStream.proxiedUrl
-                              ) {
-                                setUseDirectUrlFallback(true);
-                              } else if (
-                                activeExtractedIdx + 1 <
-                                extractedStreams.length
-                              ) {
-                                recordServerFailure(
-                                  resolveServerIdForStream(currentStream),
-                                );
-                                const nextIdx = activeExtractedIdx + 1;
-                                const nextItem = extractedStreams[nextIdx];
-                                setUseDirectUrlFallback(false);
-                                playAttemptStartedAtRef.current = performance.now();
-                                setIsPlayerLoading(true);
-                                setActiveExtractedIdx(nextIdx);
-                                if (nextItem?.type === "clean-embed") {
-                                  cleanupDirectVideoPlayer();
-                                  setPlayerRenderMode("clean-embed");
-                                }
-                              } else {
-                                recordServerFailure(
-                                  resolveServerIdForStream(currentStream),
-                                );
-                                cleanupDirectVideoPlayer();
-                                playAttemptStartedAtRef.current = performance.now();
-                                setIsPlayerLoading(true);
-                                setPlayerRenderMode("iframe");
-                              }
-                            }}
-                          >
-                            {activeSubtitlesList
-                              .filter((sub) => sub.loaded !== false && Boolean(sub.proxiedUrl || sub.url))
-                              .map((sub, subIdx) => (
-                                <track
-                                  key={`${sub.lang}-${subIdx}-${sub.id || sub.url}`}
-                                  kind="subtitles"
-                                  src={sub.proxiedUrl || sub.url}
-                                  srcLang={sub.lang}
-                                  label={sub.label}
-                                />
-                              ))}
-                          </video>
-                        )}
-
-                        {!allServersFailed &&
-                          (playerRenderMode === "iframe" ||
-                            playerRenderMode === "clean-embed") && (
-                            <iframe
-                              ref={playerIframeRef}
-                              key={`${activeGallerySource.id}-${activeIframeUrl}`}
-                              className="w-full h-full border-0 bg-black block"
-                              src={activeIframeUrl}
-                              title={`${detailedItem.title} - ${activeGallerySource.label}`}
-                              width="100%"
-                              height="100%"
-                              frameBorder="0"
-                              scrolling="no"
-                              referrerPolicy="origin"
-                              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                              allowFullScreen
-                              onLoad={() => {
-                                loadedCurrentAttemptRef.current = true;
-                                const elapsedMs = Math.max(
-                                  120,
-                                  performance.now() - playAttemptStartedAtRef.current,
-                                );
-                                const currentStream =
-                                  extractedStreams[activeExtractedIdx] ||
-                                  extractedStreams[0];
-                                const activeServerId =
-                                  playerRenderMode === "clean-embed"
-                                    ? resolveServerIdForStream(currentStream)
-                                    : activeGallerySource.id;
-                                recordServerSuccess(
-                                  activeServerId,
-                                  elapsedMs,
-                                  detailItemStorageKey,
-                                );
-                                setIsPlayerLoading(false);
-                                gotTimeSinceLoadRef.current = false;
-                                confirmedPlayingSinceLoadRef.current = false;
-                                userPausedIframeRef.current = false;
-                                setIframeLoadStamp(Date.now());
-                                sendIframePlayerCommand(playerIframeRef.current, {
-                                  type: "play",
-                                });
-                              }}
-                            />
-                          )}
-
-                        {seekUnsupportedToast && (
-                          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-black/85 border border-amber-400/50 text-amber-200 text-xs font-bold shadow-lg pointer-events-none">
-                            {t(
-                              "movies.player.seekUnsupported",
-                              "This server doesn't support external seeking — use the player's own bar",
-                            )}
-                          </div>
-                        )}
-
-                        {/* Live Cinema Subtitle Overlay (Rendered in direct <video> mode AND bridged <iframe> mode) */}
-                        {!allServersFailed &&
-                          controlMode !== "none" &&
-                          activeSubtitleIdx !== null && (
-                            <SubtitleOverlay
-                              cues={activeTrackCues}
-                              offsetSec={subtitleOffsetSec}
-                              liftPx={isControlsVisible ? 56 : 0}
-                            />
-                          )}
-
-                        {/* Pure Visual Eye Loader Overlay (Zero text, pointer-events-none) */}
-                        {(isPlayerLoading || playerRenderMode === "extracting") && !allServersFailed && (
-                          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/90 pointer-events-none">
-                            <EyeLoader />
-                          </div>
-                        )}
-
-                        {/* All Servers Exhausted Error State with Retry Button */}
-                        {allServersFailed && (
-                          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-6 text-center bg-black/95">
-                            <AlertTriangle size={32} className="text-amber-400" />
-                            <p className="text-xs sm:text-sm font-bold text-white/90 max-w-md leading-relaxed">
-                              {t("movies.player.allFailed")}
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => startGalleryWatchSession(0)}
-                              className="lg-cinema-primary-pill px-5 py-2 text-xs sm:text-sm font-black text-white flex items-center gap-2 cursor-pointer"
-                            >
-                              <RefreshCw size={14} />
-                              <span>{t("movies.player.retry")}</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : showHeroTrailer && (activeImdbId || detailedItem.trailerKey) ? (
-                      <div className="relative w-full h-full bg-black">
-                        {resolvedTrailer?.kind === "imdb" && !trailerFallbackToYoutube ? (
-                          <>
-                            <iframe
-                              key={`imdb-trailer-${resolvedTrailer.videoId}`}
-                              src={resolvedTrailer.embedUrl}
-                              title={`${detailedItem.title} - IMDb Trailer`}
-                              className="w-full h-full border-0 bg-black block"
-                              width="100%"
-                              height="100%"
-                              frameBorder="0"
-                              allow="autoplay; encrypted-media; fullscreen"
-                              allowFullScreen
-                              onLoad={() => setImdbTrailerLoaded(true)}
-                            />
-                            {detailedItem.trailerKey && (
-                              <button
-                                type="button"
-                                onClick={() => setTrailerFallbackToYoutube(true)}
-                                className="lg-cinema-action-pill absolute bottom-3 right-3 z-20 px-3 py-1 text-[11px] font-bold text-white/90 hover:text-white cursor-pointer"
-                              >
-                                YouTube
-                              </button>
-                            )}
-                          </>
-                        ) : detailedItem.trailerKey ? (
-                          <iframe
-                            key={`yt-trailer-${detailedItem.trailerKey}`}
-                            src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(detailedItem.trailerKey)}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                            title={`${detailedItem.title} - Official Trailer`}
-                            className="w-full h-full border-0 bg-black block"
-                            width="100%"
-                            height="100%"
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                            allowFullScreen
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <EyeLoader />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        <img
-                          src={getBackdropSrc_static(
-                            detailedItem.backdropPath,
-                            detailedItem.trailerKey,
-                            detailedItem.posterPath,
-                          )}
-                          alt={detailedItem.title}
-                          className="w-full h-full object-cover opacity-90"
-                        />
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            background:
-                              "linear-gradient(to top, rgba(8, 12, 22, 0.96) 0%, rgba(8, 12, 22, 0.42) 52%, rgba(8, 12, 22, 0.25) 100%)",
-                          }}
-                        />
-
-                        {/* Center Liquid Glass Play Button (Starts Movie/Series directly, separated from Trailer option) */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDetailServersOpen(true);
-                            startGalleryWatchSession();
-                          }}
-                          className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/18 hover:bg-white/28 border border-white/50 backdrop-blur-xl flex items-center justify-center text-white shadow-[0_12px_36px_rgba(0,0,0,0.68),inset_0_1.5px_1px_rgba(255,255,255,0.85)] transition-transform hover:scale-110 cursor-pointer group z-10"
-                          aria-label={
-                            t("movies.meta.watchNow") ||
-                            (currentLang === "ar" ? "مشاهدة الآن" : "Watch Now")
-                          }
-                          title={
-                            t("movies.meta.watchNow") ||
-                            (currentLang === "ar" ? "مشاهدة الآن" : "Watch Now")
-                          }
-                        >
-                          <Play
-                            size={28}
-                            className="fill-current ms-1 group-hover:scale-110 transition-transform"
-                          />
-                        </button>
-
-                        {/* Bottom Overlay Info inside Gallery Stage (Only when NOT playing) */}
-                        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 flex items-end justify-between gap-4 z-10 pointer-events-none">
-                          <div className="flex items-end gap-3.5 min-w-0">
-                            <img
-                              src={getPosterSrc_static(
-                                detailedItem.posterPath,
-                                detailedItem.trailerKey,
-                                detailedItem.backdropPath,
-                              )}
-                              alt=""
-                              className="hidden sm:block w-20 md:w-24 aspect-[2/3] object-cover rounded-2xl border border-white/35 shadow-2xl flex-shrink-0"
-                            />
-                            <div className="flex flex-col gap-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {detailedItem.rating > 0 && (
-                                  <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400/20 border border-amber-300/45 text-amber-300 backdrop-blur-md">
-                                    <Star size={11} className="fill-current" />
-                                    {detailedItem.rating.toFixed(1)}
-                                  </span>
-                                )}
-                                {detailedItem.rottenTomatoes && (
-                                  <span
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 border border-rose-300/40 text-rose-200 backdrop-blur-md"
-                                    title={t("movies.meta.rottenTomatoes", "Rotten Tomatoes")}
-                                  >
-                                    🍅 {detailedItem.rottenTomatoes}
-                                  </span>
-                                )}
-                                {detailedItem.metascore && (
-                                  <span
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 border border-emerald-300/40 text-emerald-200 backdrop-blur-md"
-                                    title={t("movies.meta.metascore", "Metacritic")}
-                                  >
-                                    MC {detailedItem.metascore}
-                                  </span>
-                                )}
-                                {detailedItem.year && (
-                                  <span className="text-xs font-bold text-white/90">
-                                    {detailedItem.year}
-                                  </span>
-                                )}
-                                {detailedItem.certification && (
-                                  <span className="border border-white/30 bg-white/12 px-2 py-0.5 rounded-full text-[10px] font-bold text-white/95 backdrop-blur-md">
-                                    {detailedItem.certification}
-                                  </span>
-                                )}
-                                {detailedItem.mediaType === "movie"
-                                  ? detailedItem.runtime ? (
-                                      <span className="text-xs text-white/80 font-medium">
-                                        {`${detailedItem.runtime}${t("movies.meta.minutes")}`}
-                                      </span>
-                                    ) : null
-                                  : detailedItem.seasons ? (
-                                      <span className="text-xs text-white/80 font-medium">
-                                        {`${detailedItem.seasons} ${t("movies.meta.seasons")}`}
-                                      </span>
-                                    ) : null}
-                                {detailedItem.mediaType === "tv" &&
-                                  detailedItem.episodes && (
-                                    <span className="text-xs text-white/80 font-medium">
-                                      • {detailedItem.episodes}{" "}
-                                      {t("movies.meta.episodes")}
-                                    </span>
-                                  )}
-                              </div>
-                              <h3 className="text-xl sm:text-3xl font-black text-white select-text truncate drop-shadow-md">
-                                {detailedItem.title}
-                              </h3>
-                              {detailedItem.tagline && (
-                                <p className="text-[11px] sm:text-xs italic text-rose-200/90 truncate">
-                                  “{detailedItem.tagline}”
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Top Floating Glass Controls inside Gallery Stage (Only visible when NOT playing) */}
-                        <div className="absolute top-3.5 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
-                          <div className="pointer-events-auto">
-                            {(activeImdbId || detailedItem.trailerKey) && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsWatchingInGallery(false);
-                                  clockReset("manual");
-                                  setTrailerFallbackToYoutube(!activeImdbId);
-                                  setShowHeroTrailer(true);
-                                }}
-                                className="lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
-                              >
-                                <Film size={13} />
-                                <span>{t("movies.player.watchTrailer")}</span>
-                              </button>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedItemId(null)}
-                            className="lg-cinema-icon-pill pointer-events-auto hover:!bg-rose-600/45 hover:!border-rose-300/60"
-                            aria-label={t("movies.close")}
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Floating Liquid Glass Movie/Series Player & Subtitle Controls Bar inside Fullscreen Stage */}
-                    {isAnyFullscreen &&
-                      isWatchingInGallery &&
-                      controlMode !== "none" &&
-                      !allServersFailed && (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseMove={bumpControlsVisibility}
-                        className={`lg-cinema-player-controls lg-cinema-player-controls--fullscreen rounded-2xl px-4 py-2.5 flex flex-col gap-2 ${
-                          isControlsVisible
-                            ? "opacity-100 translate-y-0"
-                            : "opacity-0 translate-y-3 pointer-events-none"
-                        }`}
-                        dir="ltr"
-                      >
-                        <CinemaTimeline
-                          mode={controlMode}
-                          videoRef={videoElementRef}
-                          fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
-                          hasSubtitles={activeTrackCues.length > 0}
-                          onUserSeek={handleUserSeek}
-                          onUserTogglePlay={handleUserTogglePlay}
-                        />
-
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                            {playerRenderMode === "direct" && (
-                              <div className="flex items-center gap-1.5 ps-1">
-                                <button
-                                  type="button"
-                                  onClick={handleToggleVideoMute}
-                                  className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] cursor-pointer"
-                                  aria-label={isVideoMuted ? "Unmute" : "Mute"}
-                                >
-                                  {isVideoMuted || videoVolume === 0 ? (
-                                    <VolumeX size={14} />
-                                  ) : (
-                                    <Volume2 size={14} />
-                                  )}
-                                </button>
-                                <input
-                                  type="range"
-                                  min={0}
-                                  max={1}
-                                  step={0.05}
-                                  value={isVideoMuted ? 0 : videoVolume}
-                                  onChange={(e) =>
-                                    handleChangeVideoVolume(Number(e.target.value))
-                                  }
-                                  className="lg-cinema-seek-slider hidden sm:block w-20"
-                                  aria-label="Volume"
-                                />
-                              </div>
-                            )}
-
-                            {activeSubtitleIdx !== null && (
-                              <div className="flex items-center gap-1 ps-1">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setSubtitleOffsetSec((s) =>
-                                      Number((s - 0.5).toFixed(1)),
-                                    )
-                                  }
-                                  className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
-                                  title="Sync Subtitles -0.5s"
-                                >
-                                  -0.5s
-                                </button>
-                                {subtitleOffsetSec !== 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setSubtitleOffsetSec(0)}
-                                    className="px-1.5 py-0.5 rounded bg-rose-500/30 border border-rose-300/40 text-[10px] font-mono text-white cursor-pointer"
-                                    title="Reset subtitle offset"
-                                  >
-                                    {subtitleOffsetSec > 0
-                                      ? `+${subtitleOffsetSec}s`
-                                      : `${subtitleOffsetSec}s`}
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setSubtitleOffsetSec((s) =>
-                                      Number((s + 0.5).toFixed(1)),
-                                    )
-                                  }
-                                  className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
-                                  title="Sync Subtitles +0.5s"
-                                >
-                                  +0.5s
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 relative ms-auto">
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setIsSubtitleMenuOpen((prev) => !prev)
-                                }
-                                className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
-                                  activeSubtitleIdx !== null &&
-                                  activeSubtitlesList[activeSubtitleIdx]
-                                    ? "!bg-rose-600/45 !border-rose-300/70 text-white"
-                                    : "text-white/85"
-                                }`}
-                                aria-label="Subtitles (CC)"
-                                title="Subtitles (CC)"
-                              >
-                                <Subtitles size={14} />
-                                <span>
-                                  {activeSubtitleIdx !== null &&
-                                  activeSubtitlesList[activeSubtitleIdx]
-                                    ? activeSubtitlesList[
-                                        activeSubtitleIdx
-                                      ].lang.toUpperCase()
-                                    : isLoadingSubtitles
-                                      ? "CC..."
-                                      : "OFF"}
-                                </span>
-                              </button>
-
-                              {isSubtitleMenuOpen && (
-                                <div className="absolute bottom-full right-0 mb-2 z-50">
-                                  <SubtitleSettingsPanel
-                                    tracks={activeSubtitlesList}
-                                    activeIdx={activeSubtitleIdx}
-                                    loadingIdx={loadingSubtitleIdx}
-                                    isSearching={isLoadingSubtitles}
-                                    offsetSec={subtitleOffsetSec}
-                                    onSelect={(idx) => {
-                                      setActiveSubtitleIdx(idx);
-                                      syncVideoTextTracks(idx);
-                                    }}
-                                    onOffsetChange={setSubtitleOffsetSec}
-                                    onUploadFile={handleUploadLocalSubtitle}
-                                    onLanguagesChanged={handleRefreshSubtitlesForLanguages}
-                                  />
-                                </div>
-                              )}
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={handleToggleGalleryFullscreen}
-                              className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
-                              aria-label={t("movies.player.exitFullscreen")}
-                            >
-                              <Minimize2 size={15} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* External Liquid Glass Movie/Series Player & Subtitle Controls Bar Directly BELOW Gallery Stage (Rendered in direct <video> mode AND bridged <iframe> mode) */}
-                  {!isAnyFullscreen &&
-                    isWatchingInGallery &&
-                    controlMode !== "none" &&
-                    !allServersFailed && (
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      className="lg-cinema-player-controls rounded-2xl px-3.5 py-2.5 flex flex-col gap-2"
-                      dir="ltr"
-                    >
-                      <CinemaTimeline
-                        mode={controlMode}
-                        videoRef={videoElementRef}
-                        fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
-                        hasSubtitles={activeTrackCues.length > 0}
-                        onUserSeek={handleUserSeek}
-                        onUserTogglePlay={handleUserTogglePlay}
-                      />
-
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          {playerRenderMode === "direct" && (
-                            <div className="flex items-center gap-1.5 ps-1">
-                              <button
-                                type="button"
-                                onClick={handleToggleVideoMute}
-                                className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] cursor-pointer"
-                                aria-label={isVideoMuted ? "Unmute" : "Mute"}
-                              >
-                                {isVideoMuted || videoVolume === 0 ? (
-                                  <VolumeX size={14} />
-                                ) : (
-                                  <Volume2 size={14} />
-                                )}
-                              </button>
-                              <input
-                                type="range"
-                                min={0}
-                                max={1}
-                                  step={0.05}
-                                value={isVideoMuted ? 0 : videoVolume}
-                                onChange={(e) =>
-                                  handleChangeVideoVolume(Number(e.target.value))
-                                }
-                                className="lg-cinema-seek-slider hidden sm:block w-20"
-                                aria-label="Volume"
-                              />
-                            </div>
-                          )}
-
-                          {activeSubtitleIdx !== null && (
-                            <div className="flex items-center gap-1 ps-1">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSubtitleOffsetSec((s) =>
-                                    Number((s - 0.5).toFixed(1)),
-                                  )
-                                }
-                                className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
-                                title={
-                                  currentLang === "ar"
-                                    ? "تقديم الترجمة -0.5 ثانية"
-                                    : "Sync Subtitles -0.5s"
-                                }
-                              >
-                                -0.5s
-                              </button>
-                              {subtitleOffsetSec !== 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setSubtitleOffsetSec(0)}
-                                  className="px-1.5 py-0.5 rounded bg-rose-500/30 border border-rose-300/40 text-[10px] font-mono text-white cursor-pointer"
-                                  title="Reset subtitle offset"
-                                >
-                                  {subtitleOffsetSec > 0
-                                    ? `+${subtitleOffsetSec}s`
-                                    : `${subtitleOffsetSec}s`}
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSubtitleOffsetSec((s) =>
-                                    Number((s + 0.5).toFixed(1)),
-                                  )
-                                }
-                                className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
-                                title={
-                                  currentLang === "ar"
-                                    ? "تأخير الترجمة +0.5 ثانية"
-                                    : "Sync Subtitles +0.5s"
-                                }
-                              >
-                                +0.5s
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 relative ms-auto">
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setIsSubtitleMenuOpen((prev) => !prev)
-                              }
-                              className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
-                                activeSubtitleIdx !== null &&
-                                activeSubtitlesList[activeSubtitleIdx]
-                                  ? "!bg-rose-600/45 !border-rose-300/70 text-white"
-                                  : "text-white/85"
-                              }`}
-                              aria-label="Subtitles (CC)"
-                              title="Subtitles (CC)"
-                            >
-                              <Subtitles size={14} />
-                              <span>
-                                {activeSubtitleIdx !== null &&
-                                activeSubtitlesList[activeSubtitleIdx]
-                                  ? activeSubtitlesList[
-                                      activeSubtitleIdx
-                                    ].lang.toUpperCase()
-                                  : isLoadingSubtitles
-                                    ? "CC..."
-                                    : "OFF"}
-                              </span>
-                            </button>
-
-                            {isSubtitleMenuOpen && (
-                              <div className="absolute bottom-full right-0 mb-2 z-50">
-                                <SubtitleSettingsPanel
-                                  tracks={activeSubtitlesList}
-                                  activeIdx={activeSubtitleIdx}
-                                  loadingIdx={loadingSubtitleIdx}
-                                  isSearching={isLoadingSubtitles}
-                                  offsetSec={subtitleOffsetSec}
-                                  onSelect={(idx) => {
-                                    setActiveSubtitleIdx(idx);
-                                    syncVideoTextTracks(idx);
-                                  }}
-                                  onOffsetChange={setSubtitleOffsetSec}
-                                  onUploadFile={handleUploadLocalSubtitle}
-                                  onLanguagesChanged={handleRefreshSubtitlesForLanguages}
-                                />
-                              </div>
-                            )}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={handleToggleGalleryFullscreen}
-                            className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
-                            aria-label={t("movies.player.fullscreen")}
-                            title={t("movies.player.fullscreen")}
-                          >
-                            <Maximize2 size={15} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Liquid-Glass Season & Episode Selector Bar directly below Gallery Stage for TV Series */}
-                  {detailedItem.mediaType === "tv" && (
-                    <div
-                      className="lg-cinema-tv-selector-bar rounded-2xl p-3 flex flex-col gap-2.5"
-                      dir="ltr"
-                    >
-                      {/* Row 1: Seasons + Complete Season Mode */}
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 max-w-full">
-                          <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-white/70 pe-1 shrink-0">
-                            <Tv size={12} className="text-rose-400" />
-                            <span>{t("movies.meta.seasons")}</span>
-                          </span>
-                          {Array.from(
-                            { length: Math.max(1, Math.min(30, detailedItem.seasons || 1)) },
-                            (_, idx) => idx + 1,
-                          ).map((seasonNum) => {
-                            const isSeasonActive =
-                              !isFullSeasonEmbed && selectedSeason === seasonNum;
-                            return (
-                              <button
-                                key={`season-${seasonNum}`}
-                                type="button"
-                                onClick={() => {
-                                  setIsFullSeasonEmbed(false);
-                                  setSelectedSeason(seasonNum);
-                                  setSelectedEpisode(1);
-                                  setDetailServersOpen(true);
-                                  startGalleryWatchSession();
-                                }}
-                                className={`lg-cinema-tv-pill px-3 py-1 rounded-full text-xs font-extrabold shrink-0 cursor-pointer transition-all ${
-                                  isSeasonActive
-                                    ? "lg-cinema-tv-pill--active"
-                                    : "text-white/80 hover:text-white"
-                                }`}
-                              >
-                                {t("movies.player.season", { num: seasonNum })}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Complete Season (embedtvfull) Toggle Option */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsFullSeasonEmbed((prev) => !prev);
-                            setDetailServersOpen(true);
-                            startGalleryWatchSession();
-                          }}
-                          className={`lg-cinema-tv-pill px-3 py-1 rounded-full text-xs font-extrabold inline-flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
-                            isFullSeasonEmbed
-                              ? "lg-cinema-tv-pill--active"
-                              : "text-amber-200/90 hover:text-amber-100"
-                          }`}
-                          title="https://www.2embed.cc/embedtvfull/..."
-                        >
-                          <Layers size={12} />
-                          <span>{t("movies.player.fullSeason")}</span>
-                        </button>
-                      </div>
-
-                      {/* Row 2: Episodes Strip */}
-                      {!isFullSeasonEmbed && (
-                        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-white/65 pe-1 shrink-0">
-                            {t("movies.meta.episodes")}
-                          </span>
-                          {loadingSeasonEpisodes && seasonEpisodes.length === 0 ? (
-                            <span className="text-xs text-white/60 font-bold px-2">
-                              {t("movies.meta.loading")}
-                            </span>
-                          ) : (
-                            seasonEpisodes.map((ep) => {
-                              const isEpActive =
-                                selectedEpisode === ep.episode_number;
-                              return (
-                                <button
-                                  key={`ep-${selectedSeason}-${ep.episode_number}`}
-                                  type="button"
-                                  onClick={() => {
-                                    setIsFullSeasonEmbed(false);
-                                    setSelectedEpisode(ep.episode_number);
-                                    setDetailServersOpen(true);
-                                    startGalleryWatchSession();
-                                  }}
-                                  className={`lg-cinema-tv-ep-pill px-2.5 py-1 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all inline-flex items-center gap-1 ${
-                                    isEpActive
-                                      ? "lg-cinema-tv-ep-pill--active"
-                                      : "text-white/80 hover:text-white"
-                                  }`}
-                                  title={ep.name}
-                                >
-                                  <span>E{ep.episode_number}</span>
-                                  {isEpActive && ep.name && (
-                                    <span className="max-w-[140px] truncate text-[11px] opacity-95 font-semibold ms-0.5">
-                                      • {ep.name}
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Scrollable Liquid Glass Body (Completely unmounted during active Movie/Series playback to focus 100% on the Cinema Stage) */}
-                {!isWatchingInGallery && (
-                <div className="p-5 sm:p-7 flex flex-col gap-5 overflow-y-auto">
-                  {/* Action Bar: Branching Server Capsules + TIP Card + Trailer Toggle + Account Actions */}
-                  <div className="flex flex-col gap-3 pb-4 border-b border-white/12">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="flex flex-wrap items-center gap-2.5 flex-1">
-                        {detailWatchTarget && (
-                          <ServerBranchesInline
-                            item={detailWatchTarget}
-                            isOpen={detailServersOpen}
-                            onToggle={() => {
-                              setDetailServersOpen(true);
-                              startGalleryWatchSession();
-                            }}
-                            onClose={() => setDetailServersOpen(false)}
-                            buttonLabel={t("movies.meta.watchNow")}
-                          />
-                        )}
-
-                        {(activeImdbId || detailedItem.trailerKey) && !detailServersOpen && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (showHeroTrailer) {
-                                setShowHeroTrailer(false);
-                                setTrailerFallbackToYoutube(false);
-                              } else {
-                                persistCurrentProgress();
-                                setIsWatchingInGallery(false);
-                                clockReset("manual");
-                                setTrailerFallbackToYoutube(!activeImdbId);
-                                setShowHeroTrailer(true);
-                              }
-                            }}
-                            className={`lg-cinema-action-pill py-2.5 px-4 text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer ${
-                              showHeroTrailer
-                                ? "!bg-white/25 !border-white/50 text-white"
-                                : "text-white/90"
-                            }`}
-                          >
-                            <Film size={14} />
-                            <span>
-                              {showHeroTrailer
-                                ? currentLang === "ar"
-                                  ? "عرض الملصق"
-                                  : "Show Backdrop"
-                                : currentLang === "ar"
-                                  ? "التريلر الرسمي"
-                                  : "Official Trailer"}
-                            </span>
-                          </button>
-                        )}
-                      </div>
-
-                      {user && detailedItem && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {/* Favorite */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              toggle(
-                                detailedItem.id,
-                                detailedItem.mediaType,
-                                'favorite',
-                                detailedItem.title,
-                                detailedItem.posterPath
-                              )
-                            }
-                            aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'favorite')}
-                            aria-label="Add to favorites"
-                            className={[
-                              'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
-                              'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
-                              has(detailedItem.id, detailedItem.mediaType, 'favorite')
-                                ? 'bg-rose-600/40 border-rose-400/60 text-white shadow-md'
-                                : 'bg-white/6 border-white/15 text-white/75 hover:border-rose-400/50 hover:text-rose-200',
-                            ].join(' ')}
-                          >
-                            <Heart
-                              size={13}
-                              strokeWidth={2}
-                              fill={has(detailedItem.id, detailedItem.mediaType, 'favorite') ? 'currentColor' : 'none'}
-                            />
-                            <span>{currentLang === "ar" ? "مفضل" : "Favorite"}</span>
-                          </button>
-
-                          {/* Watched */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              toggle(
-                                detailedItem.id,
-                                detailedItem.mediaType,
-                                'watched',
-                                detailedItem.title,
-                                detailedItem.posterPath
-                              )
-                            }
-                            aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watched')}
-                            aria-label="Mark as watched"
-                            className={[
-                              'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
-                              'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
-                              has(detailedItem.id, detailedItem.mediaType, 'watched')
-                                ? 'bg-emerald-600/40 border-emerald-400/60 text-white shadow-md'
-                                : 'bg-white/6 border-white/15 text-white/75 hover:border-emerald-400/50 hover:text-emerald-200',
-                            ].join(' ')}
-                          >
-                            <Eye
-                              size={13}
-                              strokeWidth={2}
-                              fill={has(detailedItem.id, detailedItem.mediaType, 'watched') ? 'currentColor' : 'none'}
-                            />
-                            <span>{currentLang === "ar" ? "تمت مشاهدته" : "Watched"}</span>
-                          </button>
-
-                          {/* Watchlist */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              toggle(
-                                detailedItem.id,
-                                detailedItem.mediaType,
-                                'watchlist',
-                                detailedItem.title,
-                                detailedItem.posterPath
-                              )
-                            }
-                            aria-pressed={has(detailedItem.id, detailedItem.mediaType, 'watchlist')}
-                            aria-label="Add to watchlist"
-                            className={[
-                              'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full',
-                              'text-xs font-bold border transition-all duration-200 cursor-pointer backdrop-blur-md',
-                              has(detailedItem.id, detailedItem.mediaType, 'watchlist')
-                                ? 'bg-amber-500/40 border-amber-300/60 text-white shadow-md'
-                                : 'bg-white/6 border-white/15 text-white/75 hover:border-amber-400/50 hover:text-amber-200',
-                            ].join(' ')}
-                          >
-                            <Bookmark
-                              size={13}
-                              strokeWidth={2}
-                              fill={has(detailedItem.id, detailedItem.mediaType, 'watchlist') ? 'currentColor' : 'none'}
-                            />
-                            <span>{currentLang === "ar" ? "للمشاهدة لاحقاً" : "Watchlist"}</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Overview & Rich TMDB Metadata Grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                    {/* Left / Main Column: Storyline + Genres + Rich Metadata Badges */}
-                    <div className="lg:col-span-6 flex flex-col gap-4">
-                      <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 flex flex-col gap-2.5">
-                        <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest">
-                          {currentLang === "ar" ? "القصة والملخص" : "Storyline"}
-                        </h4>
-                        <p className="text-xs sm:text-sm text-white/90 leading-relaxed select-text">
-                          {detailedItem.overview}
-                        </p>
-                      </div>
-
-                      {/* Genres */}
-                      {detailedItem.genreNames.length > 0 && (
-                        <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 flex flex-col gap-2.5">
-                          <h4 className="text-[11px] font-bold text-white/60 uppercase tracking-widest">
-                            {t("movies.genres") || (currentLang === "ar" ? "التصنيفات" : "Genres")}
-                          </h4>
-                          <div className="flex flex-wrap gap-1.5">
-                            {detailedItem.genreNames.map((g, i) => (
-                              <span
-                                key={i}
-                                className="text-[11px] font-bold px-3.5 py-1 bg-white/10 border border-white/22 rounded-full text-white/95 shadow-sm"
-                              >
-                                {g}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Rich TMDB Facts (Release Date, Status, Language, Vote Count, Directors, Studios) */}
-                      <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                        {detailedItem.releaseDate && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
-                              <Calendar size={11} />
-                              {currentLang === "ar" ? "تاريخ الإصدار" : "Release Date"}
-                            </span>
-                            <span className="font-extrabold text-white/95">{detailedItem.releaseDate}</span>
-                          </div>
-                        )}
-
-                        {detailedItem.status && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
-                              <Sparkles size={11} />
-                              {currentLang === "ar" ? "الحالة" : "Status"}
-                            </span>
-                            <span className="font-extrabold text-emerald-300">{detailedItem.status}</span>
-                          </div>
-                        )}
-
-                        {detailedItem.originalLanguage && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
-                              <Globe2 size={11} />
-                              {currentLang === "ar" ? "اللغة الأصلية" : "Language"}
-                            </span>
-                            <span className="font-extrabold text-white/95">{detailedItem.originalLanguage}</span>
-                          </div>
-                        )}
-
-                        {detailedItem.voteCount !== undefined && detailedItem.voteCount > 0 && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
-                              <Award size={11} />
-                              {currentLang === "ar" ? "عدد التقييمات" : "Votes"}
-                            </span>
-                            <span className="font-extrabold text-amber-300">
-                              {detailedItem.voteCount.toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-
-                        {detailedItem.rottenTomatoes && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-white/55 font-bold">
-                              {t("movies.meta.rottenTomatoes", "Rotten Tomatoes")}
-                            </span>
-                            <span className="font-extrabold text-rose-300">
-                              {detailedItem.rottenTomatoes}
-                            </span>
-                          </div>
-                        )}
-
-                        {detailedItem.metascore && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-white/55 font-bold">
-                              {t("movies.meta.metascore", "Metacritic")}
-                            </span>
-                            <span className="font-extrabold text-emerald-300">
-                              {detailedItem.metascore}/100
-                            </span>
-                          </div>
-                        )}
-
-                        {detailedItem.boxOffice && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-white/55 font-bold">
-                              {t("movies.meta.boxOffice", "Box Office")}
-                            </span>
-                            <span className="font-extrabold text-amber-200">
-                              {detailedItem.boxOffice}
-                            </span>
-                          </div>
-                        )}
-
-                        {detailedItem.awards && (
-                          <div className="flex flex-col gap-0.5 col-span-2 sm:col-span-3">
-                            <span className="text-[10px] text-white/55 font-bold flex items-center gap-1">
-                              <Award size={11} />
-                              {t("movies.meta.awards", "Awards")}
-                            </span>
-                            <span className="font-extrabold text-white/95">
-                              {detailedItem.awards}
-                            </span>
-                          </div>
-                        )}
-
-                        {detailedItem.directors && detailedItem.directors.length > 0 && (
-                          <div className="flex flex-col gap-0.5 col-span-2">
-                            <span className="text-[10px] text-white/55 font-bold">
-                              {detailedItem.mediaType === 'tv'
-                                ? (currentLang === "ar" ? "صناع العمل" : "Created By")
-                                : (currentLang === "ar" ? "الإخراج" : "Director")}
-                            </span>
-                            <span className="font-extrabold text-white/95 truncate">
-                              {detailedItem.directors.join(" • ")}
-                            </span>
-                          </div>
-                        )}
-
-                        {detailedItem.productionCompanies && detailedItem.productionCompanies.length > 0 && (
-                          <div className="flex flex-col gap-1 col-span-2 sm:col-span-3 pt-1 border-t border-white/10">
-                            <span className="text-[10px] text-white/55 font-bold">
-                              {currentLang === "ar" ? "شركات وشبكات الإنتاج" : "Production & Networks"}
-                            </span>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {detailedItem.productionCompanies.map((p) => (
-                                <span
-                                  key={p.id || p.name}
-                                  className="px-2.5 py-0.5 rounded-full bg-white/8 border border-white/15 text-[10.5px] font-bold text-white/85"
-                                >
-                                  {p.name}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right Column: Interactive Cast Grid (Click any actor to open their Liquid Glass Profile) */}
-                    <div className="lg:col-span-6 p-4 rounded-2xl bg-white/[0.04] border border-white/12 flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-[11px] font-bold text-white/70 uppercase tracking-widest flex items-center gap-1.5">
-                          <Users size={13} className="text-rose-400" />
-                          <span>{t("movies.cast") || (currentLang === "ar" ? "طاقم التمثيل" : "Top Cast")}</span>
-                        </h4>
-                        <span className="text-[10px] text-sky-300/90 font-semibold">
-                          {currentLang === "ar" ? "اضغط على الممثل لعرض بطاقته وأعماله" : "Click any actor for bio & works"}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                        {detailedItem.cast.slice(0, 9).map((actor, idx) => (
-                          <button
-                            key={actor.id || idx}
-                            type="button"
-                            onClick={() => handleSelectActor(actor)}
-                            className="lg-cinema-cast-pill flex items-center gap-2.5 p-2 rounded-2xl text-start cursor-pointer group"
-                          >
-                            <div className="w-11 h-11 rounded-full bg-white/10 overflow-hidden border border-white/30 flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
-                              {actor.profilePath ? (
-                                <img
-                                  src={actor.profilePath.startsWith("http") ? actor.profilePath : `${TMDB_IMAGE_BASE}/w185${actor.profilePath}`}
-                                  className="w-full h-full object-cover select-none pointer-events-none"
-                                  alt={actor.name}
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-xs text-white/50">👤</div>
-                              )}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-[11px] font-extrabold text-white group-hover:text-rose-200 transition-colors truncate">
-                                {actor.name}
-                              </span>
-                              {actor.character && (
-                                <span className="text-[9.5px] text-white/60 truncate">
-                                  {actor.character}
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Similar / Recommended Titles Row */}
-                  {detailedItem.similar && detailedItem.similar.length > 0 && (
-                    <div className="flex flex-col gap-2.5 pt-2 border-t border-white/10">
-                      <h4 className="text-xs font-extrabold text-white/80 uppercase tracking-wider">
-                        {currentLang === "ar" ? "أعمال مشابهة قد تعجبك" : "Similar Titles You May Like"}
-                      </h4>
-                      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none" style={MOVIE_ROW_SCROLL_STYLE}>
-                        {detailedItem.similar.slice(0, 8).map((sim) => (
-                          <button
-                            key={sim.id}
-                            type="button"
-                            onClick={() => {
-                              setShowHeroTrailer(false);
-                              setSelectedItemId(sim.id, sim.mediaType);
-                            }}
-                            className="nl-poster relative w-[110px] sm:w-[126px] aspect-[2/3] flex-shrink-0 overflow-hidden cursor-pointer text-start group"
-                          >
-                            <img
-                              src={getPosterSrc_static(sim.posterPath, sim.trailerKey, sim.backdropPath)}
-                              alt={sim.title}
-                              loading="lazy"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                            <span className="nl-poster__sheen" />
-                            {sim.rating > 0 && (
-                              <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full bg-black/65 border border-white/20 text-[9px] font-extrabold text-amber-400 flex items-center gap-0.5">
-                                <Star size={8} className="fill-current" />
-                                {sim.rating.toFixed(1)}
-                              </span>
-                            )}
-                            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
-                              <p className="text-[10px] font-bold text-white truncate">{sim.title}</p>
-                              <p className="text-[8.5px] text-white/65">{sim.year}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                )}
-              </m.div>
-            )}
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Interactive Liquid Glass Actor Profile Card Modal (Disabled while movie is actively playing) */}
       <ActorProfileModal
         selectedActor={selectedActor}
         isWatchingInGallery={isWatchingInGallery}
@@ -4459,12 +1764,11 @@ export function MoviesPage({ onClose, initialTab = 'movies' }: { onClose: () => 
         onClose={() => setSelectedActor(null)}
         onSelectWork={(workId, mediaType) => {
           setSelectedActor(null);
-          setActiveTab(mediaType === 'tv' ? 'series' : 'movies');
+          setActiveTab(mediaType === "tv" ? "series" : "movies");
           setSelectedItemId(workId, mediaType);
         }}
       />
-
     </div>,
-    document.body
+    document.body,
   );
 }

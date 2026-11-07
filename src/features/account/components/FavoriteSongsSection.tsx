@@ -19,7 +19,7 @@ export function FavoriteSongsSection({ userId }: Props) {
   const allTracks = useMusicStore((s) => s.tracks);
   const catalog = useMemo(() => {
     const m = new Map<string, Track>();
-    for (const t of allTracks) m.set(t.id, t);
+    for (const t of allTracks ?? []) m.set(t.id, t);
     return m;
   }, [allTracks]);
 

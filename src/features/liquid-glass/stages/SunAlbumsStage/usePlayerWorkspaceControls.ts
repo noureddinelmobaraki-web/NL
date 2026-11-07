@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2026 NL Archive.
- * SPDX-License-Identifier: MIT
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
  * src/features/liquid-glass/stages/SunAlbumsStage/usePlayerWorkspaceControls.ts
  *

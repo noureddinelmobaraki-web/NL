@@ -20,6 +20,7 @@
     https://archive.org
     https://*.archive.org
     https://www.gutenberg.org
+    https://standardebooks.org
     https://books.google.com
     https://*.mzstatic.com;
   media-src 'self' blob: https: https://noureddinelmobaraki-web.github.io https://broad-block-7bd7.nordinegb2018.workers.dev https://imdb.iamidiotareyoutoo.com https://*.media-imdb.com https://*.ssl-images-amazon.com https://*.amazonaws.com https://archive.org https://*.archive.org https://librivox.org https://*.librivox.org https://*.mzstatic.com;
@@ -39,20 +40,18 @@
     <!-- Plausible Analytics -->
     <script defer data-domain="noureddinelmobaraki-web.github.io" src="https://plausible.io/js/script.js"></script>
 
-    <!-- CDN preconnect — critical for first paint -->
+    <!-- CDN preconnect — critical for first paint:
+         1) crossorigin: for CORS audio, fetch(), and <link rel="preload" crossorigin> requests
+         2) no-crossorigin: for no-CORS CSS background-image requests (e.g. header_bg.webp) -->
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin>
     <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io">
     <link rel="dns-prefetch" href="https://noureddinelmobaraki-web.github.io">
-    <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
-    <link rel="preconnect" href="https://api.themoviedb.org" crossorigin>
-    <link rel="preconnect" href="https://vidlink.pro" crossorigin>
-    <link rel="dns-prefetch" href="https://vidlink.pro">
 
     <!-- LCP: preload the hero background for the default (midnight) theme.
          Must byte-match --hero-bg-image-url in src/styles/themes/midnight.css.
          No crossorigin: CSS background-image fetches are no-CORS and must match. -->
     <link rel="preload" as="image" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp" fetchpriority="high">
-    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), interest-cohort=()">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
     <meta name="referrer" content="strict-origin-when-cross-origin">
 
 
@@ -85,7 +84,6 @@
     <!-- SEO -->
     <title>Nordine GB (NL) - Noureddin El Mobaraki | Official Site</title>
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-    <meta http-equiv="content-language" content="ar">
     <link rel="alternate" hreflang="x-default" href="https://noureddinelmobaraki-web.github.io/NL/">
     <meta name="description" content="Nordine GB - نور الدين المباركي - الموقع الرسمي للفنان والمنتج الموسيقي NL من الدار البيضاء. راب وهيب هوب، الأرشيف الموسيقي الكامل، وكل الإصدارات.">
     <meta name="author" content="Noureddin El Mobaraki">

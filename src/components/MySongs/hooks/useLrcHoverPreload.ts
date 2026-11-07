@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { loadSession, saveSession } from '../../../utils/sessionState';
-import { parseLRC } from '../../LyricsEngine';
+import { parseLRC } from '../../lyrics/parseLRC';
 import { safeFetch, SafeFetchError } from '../../../utils/safeFetch';
 import { Song } from '../../../types';
 

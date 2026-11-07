@@ -160,7 +160,9 @@ export function getCachedBooksCatalogSync(params: {
   const cacheKey = q
     ? `books:search:${q}:${category}:${lang}:${ext}:${page}`
     : `books:trending:${period}:${category}:${lang}:${ext}:${page}`;
-  return getSuperCacheSync<BookItem[]>(cacheKey);
+  const hit = getSuperCacheSync<BookItem[]>(cacheKey);
+  if (!q && hit && hit.length < 12) return null;
+  return hit;
 }
 
 export async function fetchTrendingBooks(params: {
@@ -180,7 +182,7 @@ export async function fetchTrendingBooks(params: {
 
   const cacheKey = `books:trending:${period}:${category}:${lang}:${ext}:${page}`;
   const cached = await getSuperCacheAsync<BookItem[]>(cacheKey);
-  if (cached && Array.isArray(cached.value) && cached.value.length > 0) {
+  if (cached && Array.isArray(cached.value) && cached.value.length >= 12) {
     registerBooksInCrossCache(cached.value);
     warmCoverImagesCache(cached.value.map((b) => b.coverUrl));
     if (Date.now() - cached.updatedAt < 45 * 60 * 1000) {
@@ -199,11 +201,13 @@ export async function fetchTrendingBooks(params: {
       const res = await fetch(u.toString(), { signal: params.signal });
       if (res.ok) {
         const json = await res.json();
-        if (Array.isArray(json?.books) && json.books.length > 0) {
+        if (Array.isArray(json?.books) && json.books.length >= 12) {
           const filtered = filterBooksByExt(json.books, ext);
           registerBooksInCrossCache(filtered);
           warmCoverImagesCache(filtered.map((b) => b.coverUrl));
-          void setSuperCache(cacheKey, filtered);
+          if (filtered.length >= 10) {
+            void setSuperCache(cacheKey, filtered);
+          }
           return filtered;
         }
       }
@@ -219,11 +223,22 @@ export async function fetchTrendingBooks(params: {
       );
       const filtered = filterBooksByExt(papers, ext);
       registerBooksInCrossCache(filtered);
-      void setSuperCache(cacheKey, filtered);
+      if (filtered.length >= 10) {
+        void setSuperCache(cacheKey, filtered);
+      }
       return filtered;
     }
 
     const isManga = category === 'manga' || category === 'comics';
+    const googleTrendingQuery = isManga
+      ? 'manga graphic novel'
+      : lang === 'ar'
+        ? subject || 'أدب روايات فلسفة تاريخ'
+        : subject || 'bestseller classic literature psychology history';
+    const olSearchQuery = isManga
+      ? 'manga comic'
+      : subject || 'classic literature bestseller';
+
     const settled = await Promise.allSettled([
       directOpenLibraryTrending(period, subject, lang, page, params.signal),
       directGutendexBooks('', lang, subject, page, params.signal),
@@ -234,10 +249,8 @@ export async function fetchTrendingBooks(params: {
         page,
         params.signal,
       ),
-      ...(isManga ? [directGoogleBooksSearch('manga graphic novel', lang, params.signal)] : []),
-      ...(lang === 'ar'
-        ? [directGoogleBooksSearch(subject || 'أدب روايات فلسفة تاريخ', 'ar', params.signal)]
-        : []),
+      directGoogleBooksSearch(googleTrendingQuery, lang, params.signal),
+      directOpenLibrarySearch(olSearchQuery, lang, page, params.signal),
     ]);
 
     const lists = settled.map((s) => (s.status === 'fulfilled' ? s.value : []));
@@ -246,12 +259,14 @@ export async function fetchTrendingBooks(params: {
     if (filtered.length > 0) {
       registerBooksInCrossCache(filtered);
       warmCoverImagesCache(filtered.map((b) => b.coverUrl));
-      void setSuperCache(cacheKey, filtered);
+      if (filtered.length >= 10) {
+        void setSuperCache(cacheKey, filtered);
+      }
     }
     return filtered;
   };
 
-  if (cached && Array.isArray(cached.value) && cached.value.length > 0) {
+  if (cached && Array.isArray(cached.value) && cached.value.length >= 12) {
     void fetchFresh().catch(() => {});
     return cached.value;
   }

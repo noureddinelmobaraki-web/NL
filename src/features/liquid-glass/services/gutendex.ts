@@ -41,7 +41,7 @@ export const STANDARD_EBOOKS_AND_ARABIC_CLASSICS: readonly BookItem[] = [
     author: 'Marcus Aurelius',
     year: 180,
     language: 'en',
-    coverUrl: 'https://standardebooks.org/images/covers/marcus-aurelius_meditations_george-long-bf0e63b4.jpg',
+    coverUrl: 'https://covers.openlibrary.org/b/id/8235116-L.jpg',
     gutenbergId: '2680',
     iaId: 'meditations00marc',
     ext: 'epub',
@@ -75,7 +75,7 @@ export const STANDARD_EBOOKS_AND_ARABIC_CLASSICS: readonly BookItem[] = [
     author: 'ابن خلدون (Ibn Khaldun)',
     year: 1377,
     language: 'ar',
-    coverUrl: 'https://archive.org/services/img/MuqaddimahIbnKhaldun',
+    coverUrl: 'https://covers.openlibrary.org/b/id/8319253-L.jpg',
     iaId: 'MuqaddimahIbnKhaldun',
     ext: 'pdf',
     source: 'التراث العربي الحر',
@@ -90,7 +90,7 @@ export const STANDARD_EBOOKS_AND_ARABIC_CLASSICS: readonly BookItem[] = [
     author: 'التراث العربي الكلاسيكي',
     year: 1706,
     language: 'ar',
-    coverUrl: 'https://archive.org/services/img/alf-layla-wa-layla',
+    coverUrl: 'https://covers.openlibrary.org/b/id/8231856-L.jpg',
     iaId: 'alf-layla-wa-layla',
     ext: 'pdf',
     source: 'التراث العربي الحر',
@@ -105,7 +105,7 @@ export const STANDARD_EBOOKS_AND_ARABIC_CLASSICS: readonly BookItem[] = [
     author: 'عبد الله بن المقفع (Ibn al-Muqaffa)',
     year: 750,
     language: 'ar',
-    coverUrl: 'https://archive.org/services/img/kalilawadimna00bidp',
+    coverUrl: 'https://covers.openlibrary.org/b/id/8225631-L.jpg',
     iaId: 'kalilawadimna00bidp',
     ext: 'pdf',
     source: 'التراث العربي الحر',
@@ -120,7 +120,7 @@ export const STANDARD_EBOOKS_AND_ARABIC_CLASSICS: readonly BookItem[] = [
     author: 'أبو العلاء المعري (Al-Ma’arri)',
     year: 1033,
     language: 'ar',
-    coverUrl: 'https://archive.org/services/img/risalatalghufran00maar',
+    coverUrl: 'https://covers.openlibrary.org/b/id/8244150-L.jpg',
     iaId: 'risalatalghufran00maar',
     ext: 'pdf',
     source: 'التراث العربي الحر',
@@ -155,7 +155,7 @@ export async function directGutendexBooks(
   page: number,
   signal?: AbortSignal,
 ): Promise<BookItem[]> {
-  const u = new URL('https://gutendex.com/books');
+  const u = new URL('https://gutendex.com/books/');
   u.searchParams.set('sort', 'popular');
   if (page > 1) u.searchParams.set('page', String(page));
   if (query) u.searchParams.set('search', query);

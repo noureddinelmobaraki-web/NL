@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ErrorData, Events } from 'hls.js';
 import { audioManager } from '../audio/audioManager';
-import { getOrCreateHls, getHlsClass, safeDetach } from '../audio/hlsPool';
+import { getOrCreateHls, getHlsClass } from '../audio/hlsPool';
 import { THEME_BG_MUSIC, ASSETS } from '../constants/assets';
 import { savePrefs, needsUserGesture } from '../utils/userPrefs';
 import type { Theme, AudioIntent } from '../utils/userPrefs';
+import { useThemeBgMusicSwap } from './useThemeBgMusicSwap';
 
 export interface UseAudioControllerProps {
   isLensGalleryOpen: boolean;
@@ -31,10 +32,6 @@ export function useAudioController({
   const meBitAudioRef = useRef<HTMLAudioElement | null>(null);
   const meBitHlsAttached = useRef(false);
   const currentBgUrlRef = useRef<string>('');
-  const themeSwapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const themeSwapAbortRef = useRef<AbortController | null>(null);
-  const themeSwapBgPausedRef = useRef<boolean>(false);  // ← NEW
-  const themeSwapInFlightUrlRef = useRef<string | null>(null);  // ← NEW
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMeBitPlaying, setIsMeBitPlaying] = useState(false);
@@ -43,11 +40,6 @@ export function useAudioController({
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
-
-  const audioIntentRef = useRef(audioIntent);
-  useEffect(() => {
-    audioIntentRef.current = audioIntent;
-  }, [audioIntent]);
 
   // Audio lifecycle for persistent sources
   useEffect(() => {
@@ -160,129 +152,13 @@ export function useAudioController({
     }
   }, []);
 
-  // ── Per-theme background music swap ──────────────────────────────
-  // Reads audioIntent / writes prefs WITHOUT entering the effect's deps.
-  const promoteIntentToPlaying = useCallback(() => {
-    if (audioIntentRef.current !== 'user-playing') {
-      setAudioIntent('user-playing');
-      savePrefs({ audioIntent: 'user-playing' });
-    }
-  }, [setAudioIntent]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const resolved = theme === 'dark' ? 'dark'
-      : theme === 'light' ? 'light'
-      : theme === 'bit' ? 'bit'
-      : theme === 'lite' ? 'lite'
-      : 'midnight';
-
-    const newUrl = THEME_BG_MUSIC[resolved] ?? ASSETS.media.music;
-
-    // ─── Robust dedup guard ──────────────────────────────────────────
-    // (a) Never run on initial mount (the init effect handles it).
-    if (!currentBgUrlRef.current) return;
-
-    // (b) URL didn't change — silent return.
-    if (currentBgUrlRef.current === newUrl) return;
-
-    // (c) An in-flight swap is already targeting this exact URL — skip.
-    if (themeSwapInFlightUrlRef.current === newUrl) return;
-
-    themeSwapInFlightUrlRef.current = newUrl;
-
-    if (themeSwapTimerRef.current) {
-      clearTimeout(themeSwapTimerRef.current);
-      themeSwapTimerRef.current = null;
-    }
-    if (themeSwapAbortRef.current) themeSwapAbortRef.current.abort();
-    const abort = new AbortController();
-    themeSwapAbortRef.current = abort;
-
-    // ▶ Mark that *this* effect is the owner of the bg-paused state.
-    audioManager.pause('bg');
-    themeSwapBgPausedRef.current = true;
-
-    const swapHls = async () => {
-      const checkAbort = () => abort.signal.aborted;
-      const prevUrl = currentBgUrlRef.current;
-
-      // ─── Detach old HLS instance ──────────────────────────────────
-      if (!audio.canPlayType('application/vnd.apple.mpegurl')) {
-        const HlsClass = await getHlsClass();
-        if (checkAbort()) return;
-        if (HlsClass.isSupported() && prevUrl) {
-          safeDetach(prevUrl);   // ← idempotent, no await needed
-        }
-      }
-      if (checkAbort()) return;
-
-      // ─── Commit new URL ───────────────────────────────────────────
-      currentBgUrlRef.current = newUrl;
-
-      // ─── Attach new HLS instance ──────────────────────────────────
-      if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-        audio.src = newUrl;
-        audio.load();
-      } else {
-        const HlsClass = await getHlsClass();
-        if (checkAbort()) { safeDetach(newUrl); return; }
-        if (HlsClass.isSupported()) {
-          const newHls = await getOrCreateHls(newUrl);
-          // ▶ CRITICAL: between the two awaits the user may have switched again.
-          if (checkAbort()) { safeDetach(newUrl); return; }
-
-          const errHandler = (_event: Events.ERROR, data: ErrorData) => {
-            if (!data.fatal) return;
-            if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) newHls.startLoad();
-            else if (data.type === HlsClass.ErrorTypes.MEDIA_ERROR) newHls.recoverMediaError();
-          };
-          newHls.on(HlsClass.Events.ERROR, errHandler);
-          newHls.attachMedia(audio);
-
-          // ▶ If abort fires *during* attachMedia, undo it.
-          if (checkAbort()) {
-            try { newHls.off(HlsClass.Events.ERROR, errHandler); } catch {}
-            safeDetach(newUrl);
-            return;
-          }
-        }
-      }
-
-      // ─── Re-register & schedule unmute ────────────────────────────
-      if (checkAbort()) return;
-      audioManager.register('bg', audio, 0.7);
-
-      themeSwapTimerRef.current = setTimeout(() => {
-        themeSwapTimerRef.current = null;
-        if (checkAbort()) return;
-        audioManager.unpauseBg();
-        themeSwapBgPausedRef.current = false;
-        themeSwapInFlightUrlRef.current = null;  // ← NEW: clear flight marker
-        promoteIntentToPlaying();  // from Prompt G2
-      }, 400);
-    };
-
-    swapHls();
-
-    return () => {
-      abort.abort();
-      if (themeSwapTimerRef.current) {
-        clearTimeout(themeSwapTimerRef.current);
-        themeSwapTimerRef.current = null;
-      }
-      if (themeSwapBgPausedRef.current) {
-        audioManager.unpauseBg();
-        themeSwapBgPausedRef.current = false;
-      }
-      themeSwapInFlightUrlRef.current = null;
-      // ▶ Final safety net: clear any leftover suppressors tagged 'theme-swap'.
-      audioManager.forceReleaseBg('theme-swap');
-    };
-  }, [theme]);
-  // ─────────────────────────────────────────────────────────────────
+  useThemeBgMusicSwap({
+    audioRef,
+    currentBgUrlRef,
+    theme,
+    audioIntent,
+    setAudioIntent,
+  });
 
   // Lens suppression (isLensGalleryOpen effect)
   useEffect(() => {

@@ -199,20 +199,24 @@ export function useQuadLensWebGL({
       }
 
       const st = renderStateRef.current;
+      if (st.mode !== 'orbs') {
+        rafId = requestAnimationFrame(renderFrame);
+        return;
+      }
+
       const canvasRect = canvas.getBoundingClientRect();
       const baseWindowCorner =
         (st.isMobile ? GLASS_CONFIG.cornerRadiusMobile : GLASS_CONFIG.cornerRadiusDesktop) * dpr;
 
-      const isOrbsOrVideo = st.mode === 'orbs' || st.mode === 'video';
-      const isOrbs = st.mode === 'orbs';
+      const isOrbs = true;
 
       const mA = measureBox(
         glassBoxRef.current,
-        isOrbsOrVideo,
+        isOrbs,
         canvasRect,
         dpr,
         st.a,
-        st.mode === 'video',
+        false,
         baseWindowCorner,
       );
       const mB = measureBox(
@@ -243,12 +247,12 @@ export function useQuadLensWebGL({
         baseWindowCorner,
       );
 
-      const targetWobble = isOrbs ? 1.0 : 0.0;
+      const targetWobble = 1.0;
       const init = st.geometryInitialized;
-      st.a = stepGeom(st.a, mA, targetWobble, isOrbsOrVideo ? 1.0 : 0.0, init);
-      st.b = stepGeom(st.b, mB, targetWobble, isOrbs ? 1.0 : 0.0, init);
-      st.c = stepGeom(st.c, mC, targetWobble, isOrbs ? 1.0 : 0.0, init);
-      st.d = stepGeom(st.d, mD, targetWobble, isOrbs ? 1.0 : 0.0, init);
+      st.a = stepGeom(st.a, mA, targetWobble, 1.0, init);
+      st.b = stepGeom(st.b, mB, targetWobble, 1.0, init);
+      st.c = stepGeom(st.c, mC, targetWobble, 1.0, init);
+      st.d = stepGeom(st.d, mD, targetWobble, 1.0, init);
       st.geometryInitialized = true;
 
       st.lightX += (st.targetLightX - st.lightX) * 0.08;

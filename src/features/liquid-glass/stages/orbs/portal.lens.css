@@ -1,0 +1,687 @@
+/* Sun Albums Stage CSS */
+.lg-sun-fullstage {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  width: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  overflow: hidden;
+  perspective: 1200px;
+}
+
+.lg-sun-backdrop-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 50% 48%,
+      rgba(6, 10, 18, 0.22) 0%,
+      rgba(4, 7, 14, 0.48) 72%,
+      rgba(2, 4, 10, 0.72) 100%
+    );
+  transition: background 0.4s ease;
+}
+
+.lg-sun-backdrop-dim--detail {
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(6, 9, 16, 0.18) 0%,
+      rgba(4, 7, 14, 0.44) 72%,
+      rgba(2, 4, 10, 0.68) 100%
+    );
+}
+
+.lg-yt-bg-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  animation: lgFadeSlideUp 0.55s ease both;
+}
+
+.lg-yt-bg-stage__album-fallback {
+  position: absolute;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(155%) brightness(0.68);
+  transform: scale(1.06);
+  opacity: 0.88;
+  transition: opacity 0.65s ease;
+}
+
+.lg-yt-bg-stage__album-fallback--dimmed {
+  opacity: 0.18;
+}
+
+.lg-yt-bg-stage__frame-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100vw, 177.78dvh);
+  height: max(100dvh, 56.25vw);
+  transform: translate(-50%, -50%) scale(1.14);
+  pointer-events: none;
+  opacity: 0;
+  filter: saturate(1.25) contrast(1.05);
+  transition: opacity 0.7s ease;
+}
+
+.lg-yt-bg-stage__frame-wrap--playing {
+  opacity: 0.54;
+}
+
+.lg-yt-bg-stage__iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: none;
+}
+
+.lg-yt-bg-stage__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(6, 9, 16, 0.16) 0%,
+      rgba(4, 7, 14, 0.45) 75%,
+      rgba(2, 4, 10, 0.74) 100%
+    );
+}
+
+.lg-brick-viewport {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.lg-brick-viewport--dragging {
+  cursor: grabbing;
+}
+
+.lg-fisheye-mesh-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.lg-album-detail-workspace {
+  position: relative;
+  z-index: 5;
+  width: min(95vw, 1220px);
+  height: 100dvh;
+  padding:
+    max(52px, calc(env(safe-area-inset-top) + 40px))
+    0
+    max(20px, calc(env(safe-area-inset-bottom) + 14px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  overflow: visible;
+}
+
+.lg-album-player-column {
+  flex: 1 1 580px;
+  max-width: 650px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  overflow: visible;
+  transition: max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lg-album-detail-workspace--with-lyrics .lg-album-player-column {
+  max-width: 560px;
+}
+
+.lg-ascended-album-hero {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  animation: lgAscendHeroIn 0.42s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+@keyframes lgAscendHeroIn {
+  0% { opacity: 0; transform: translate3d(0, 28px, 0) scale(0.84); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+.lg-ascended-album-cover--sun-bubble {
+  position: relative;
+  width: clamp(148px, 21dvh, 206px);
+  height: clamp(148px, 21dvh, 206px);
+  aspect-ratio: 1 / 1;
+  border-radius: 28% 24% 27% 25% / 25% 28% 24% 27%;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  isolation: isolate;
+  background: transparent;
+  box-shadow:
+    0 20px 48px -10px rgba(0, 0, 0, 0.56),
+    inset 0 2px 3px rgba(255, 255, 255, 0.88),
+    inset 0 -2px 4px rgba(255, 195, 130, 0.36);
+  animation: lgWaterDropletFloat 6s ease-in-out infinite;
+  will-change: border-radius, transform;
+}
+
+@keyframes lgWaterDropletFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) scale3d(1, 1, 1); }
+  33% { transform: translate3d(0, -4px, 0) scale3d(1.022, 0.982, 1); }
+  66% { transform: translate3d(0, 2px, 0) scale3d(0.985, 1.02, 1); }
+}
+
+.lg-ascended-album-cover__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
+.lg-ascended-album-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 90vw;
+}
+
+.lg-ascended-album-title {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  font-size: clamp(1.16rem, 1.0rem + 0.65vw, 1.52rem);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  background-image: linear-gradient(180deg, #ffffff 0%, #fff099 45%, #ffd447 85%, #ffba26 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #ffe678;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.72));
+}
+
+.lg-ascended-album-artist {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: clamp(0.78rem, 0.72rem + 0.22vw, 0.90rem);
+  font-weight: 600;
+  color: rgba(255, 244, 200, 0.9);
+}
+
+.lg-orb-capsule-caustic {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  pointer-events: none;
+  z-index: 3;
+  background: conic-gradient(
+    from 20deg at 50% 50%,
+    rgba(255, 255, 255, 0.94) 0deg,
+    rgba(255, 205, 135, 0.50) 60deg,
+    rgba(255, 255, 255, 0.12) 125deg,
+    rgba(195, 238, 255, 0.52) 195deg,
+    rgba(255, 255, 255, 0.12) 265deg,
+    rgba(255, 195, 125, 0.48) 320deg,
+    rgba(255, 255, 255, 0.94) 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0.92;
+}
+
+.lg-orb-capsule-sheen {
+  position: absolute;
+  inset: 2px 10px auto 10px;
+  height: 42%;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(
+    90% 85% at 30% 10%,
+    rgba(255, 255, 255, 0.36) 0%,
+    rgba(255, 255, 255, 0.08) 48%,
+    rgba(255, 255, 255, 0) 82%
+  );
+}
+
+.lg-track-tubes-list {
+  width: 100%;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: visible;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 10px 28px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.lg-track-tube {
+  position: relative;
+  width: 100%;
+  border-radius: 999px;
+  padding: 11px 16px;
+  box-sizing: border-box;
+  cursor: pointer;
+  isolation: isolate;
+  color: #ffffff;
+  background:
+    radial-gradient(
+      140% 100% at 20% 0%,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.02) 45%,
+      transparent 75%
+    );
+  -webkit-backdrop-filter: blur(8px) saturate(145%);
+  backdrop-filter: blur(8px) saturate(145%);
+  box-shadow:
+    0 14px 34px -10px rgba(0, 0, 0, 0.38),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.84),
+    inset 0 -1.5px 3px rgba(255, 195, 130, 0.26);
+  opacity: 0;
+  transform: translate3d(0, 10px, 0);
+  animation: lgTubeEnter 0.34s cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
+  animation-delay: var(--tube-delay, 0ms);
+  transition:
+    padding 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.28s ease,
+    box-shadow 0.28s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lg-track-tube--expanded-player {
+  border-radius: 32px;
+  padding: 18px 20px 18px;
+  touch-action: none;
+  background:
+    radial-gradient(
+      140% 100% at 20% 0%,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0.03) 48%,
+      transparent 78%
+    );
+  -webkit-backdrop-filter: blur(10px) saturate(155%);
+  backdrop-filter: blur(10px) saturate(155%);
+  box-shadow:
+    0 24px 56px -12px rgba(0, 0, 0, 0.48),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.88),
+    inset 0 -2px 3.5px rgba(255, 195, 130, 0.28);
+}
+
+@keyframes lgTubeEnter {
+  0% { opacity: 0; transform: translate3d(0, 10px, 0); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.lg-track-tube__header {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 28px;
+}
+
+.lg-track-tube__num {
+  min-width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65);
+  flex-shrink: 0;
+}
+
+.lg-track-tube__num--inline {
+  min-width: auto;
+  height: auto;
+  background: transparent;
+  box-shadow: none;
+  margin-right: 6px;
+}
+
+.lg-track-tube__num-glyph {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.76rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background-image: linear-gradient(180deg, #fffef5 0%, #ffec82 38%, #ffd038 78%, #ffae19 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #ffe266;
+  -webkit-text-fill-color: transparent;
+}
+
+.lg-track-tube__title-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  filter: drop-shadow(0 1.5px 2px rgba(0, 0, 0, 0.65));
+}
+
+.lg-track-tube__title {
+  font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  font-size: clamp(0.86rem, 0.8rem + 0.22vw, 0.98rem);
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-image: linear-gradient(180deg, #fffef6 0%, #ffec85 36%, #ffd13b 76%, #ffb01f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #ffe266;
+  -webkit-text-fill-color: transparent;
+}
+
+.lg-tube-play-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border: none;
+  border-radius: 50%;
+  color: #ffe578;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.85);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lg-tube-mini-spinner {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-top-color: #ffe57f;
+  animation: lgSpin 0.75s linear infinite;
+}
+
+.lg-track-tube__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.lg-tube-time-readout {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #ffe266;
+}
+
+.lg-tube-icon-btn,
+.lg-tube-lyrics-btn,
+.lg-tube-lyrics-toggle,
+.lg-tube-collapse-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border: none;
+  border-radius: 50%;
+  color: #ffe885;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.68);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.lg-tube-lyrics-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffe57f;
+  box-shadow: 0 0 8px #ffe57f;
+}
+
+.lg-expanded-player-card {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: lgFadeSlideUp 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lg-expanded-player__top,
+.lg-expanded-player__top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lg-expanded-player__identity,
+.lg-expanded-player__track-info {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.lg-expanded-player__track-info {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.lg-expanded-player__thumb-wrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 50%;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.42);
+}
+
+.lg-expanded-player__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.lg-expanded-player__thumb-wrap--playing .lg-expanded-player__thumb {
+  animation: lgSpin 18s linear infinite;
+}
+
+.lg-expanded-player__thumb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 1.4px solid rgba(255, 255, 255, 0.88);
+}
+
+.lg-expanded-player__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lg-expanded-player__song-title,
+.lg-expanded-player__track-title {
+  font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  font-size: clamp(0.92rem, 0.88rem + 0.25vw, 1.08rem);
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffe46b;
+}
+
+.lg-expanded-player__album-sub,
+.lg-expanded-player__track-sub {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 244, 198, 0.92);
+}
+
+.lg-expanded-player__top-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.lg-expanded-player__progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lg-expanded-player__time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.73rem;
+  font-weight: 800;
+  color: #ffe880;
+  padding: 0 2px;
+}
+
+.lg-expanded-player__controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.lg-player-side-btn {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.68);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lg-player-center-trio {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.lg-player-trio-btn {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1.2px 1.2px rgba(255, 255, 255, 0.82);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lg-player-trio-btn--primary {
+  width: 52px;
+  height: 52px;
+  color: #ffffff;
+  background:
+    radial-gradient(
+      circle at 32% 24%,
+      rgba(255, 255, 255, 0.34) 0%,
+      rgba(255, 255, 255, 0.08) 65%,
+      transparent 100%
+    );
+  box-shadow: inset 0 1.8px 2px #ffffff;
+}
+
+.lg-tube-seek-hit {
+  height: 28px;
+}
+
+.lg-tube-seek-track {
+  height: 11px;
+}
+
+.lg-tube-seek-fill {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 224, 96, 0.95) 50%,
+      rgba(255, 195, 55, 0.95) 100%
+    );
+  box-shadow: 0 0 12px rgba(255, 220, 82, 0.78), inset 0 1px 1.5px #ffffff;
+}
+
+.lg-tube-seek-thumb {
+  width: 15px;
+  height: 15px;
+  background:
+    radial-gradient(
+      circle at 34% 28%,
+      #ffffff 0%,
+      rgba(255, 228, 105, 0.98) 60%,
+      rgba(255, 195, 55, 0.98) 100%
+    );
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 14px rgba(255, 224, 92, 0.95), inset 0 1.5px 1.5px #ffffff;
+}
+

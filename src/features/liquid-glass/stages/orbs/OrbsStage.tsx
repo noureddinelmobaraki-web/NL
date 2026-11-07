@@ -1,14 +1,14 @@
 import React from 'react';
 import { Pause, Play, Shuffle, Volume2, VolumeX } from 'lucide-react';
-import { ASSETS } from '../../../constants/assets';
+import { ASSETS } from '../../../../constants/assets';
 import {
   formatDuration,
   RotatingEarthButton,
   RotatingSunButton,
   WireframeSphereOrbButton,
-} from './orbs/OrbTriggers';
-import { LIQUID_GLASS_HLS_VIDEOS, useOrbsHlsVideo } from './orbs/useOrbsHlsVideo';
-import type { LiquidGlassMode } from './orbs/useQuadLensWebGL';
+} from './OrbTriggers';
+import { LIQUID_GLASS_HLS_VIDEOS, useOrbsHlsVideo } from './useOrbsHlsVideo';
+import type { LiquidGlassMode } from './useQuadLensWebGL';
 
 export { LIQUID_GLASS_HLS_VIDEOS };
 

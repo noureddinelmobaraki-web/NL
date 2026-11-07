@@ -102,12 +102,12 @@ async function fetchViaApi(channelId) {
         (thumbs.medium && thumbs.medium.url) ||
         (thumbs.default && thumbs.default.url) ||
         '';
+      const defaultThumb = `https://i.ytimg.com/vi/${v.id}/maxresdefault.jpg`;
       out.push({
         id: v.id,
         title: sn.title || '',
         publishedAt: sn.publishedAt || '',
-        description: sn.description || '',
-        thumbnail: thumb,
+        ...(thumb && thumb !== defaultThumb ? { thumbnail: thumb } : {}),
         duration: parseIsoDuration(v.contentDetails && v.contentDetails.duration),
         viewCount: st.viewCount ? Number(st.viewCount) : undefined,
         likeCount: st.likeCount ? Number(st.likeCount) : undefined,
@@ -138,14 +138,11 @@ async function fetchViaRss(channelId) {
     const id = (e.match(/<yt:videoId>([^<]+)<\/yt:videoId>/) || [])[1];
     const title = (e.match(/<title>([^<]+)<\/title>/) || [])[1] || '';
     const published = (e.match(/<published>([^<]+)<\/published>/) || [])[1] || '';
-    const desc = (e.match(/<media:description>([\s\S]*?)<\/media:description>/) || [])[1] || '';
     if (!id) continue;
     out.push({
       id,
       title: decodeXml(title),
       publishedAt: published,
-      description: decodeXml(desc),
-      thumbnail: 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg',
     });
   }
   return out;

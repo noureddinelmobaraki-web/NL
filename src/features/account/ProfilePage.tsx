@@ -1,279 +1,86 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+/**
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
+ */
+
+import { lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Camera, Save, Loader2, Star, Clock, ShieldCheck, Trash2, LogOut, Music2, Bell,
 } from 'lucide-react';
-import { supabase } from '../../config/supabase';
-import { useAuth } from '../../context/AuthContext';
-import { isAdmin } from '../../config/admin';
 import { AvatarFrame } from './components/AvatarFrame';
 import { FavoriteSongsSection } from './components/FavoriteSongsSection';
 import { FavoriteMoviesSection } from './components/FavoriteMoviesSection';
 import { FeaturedPicker } from './components/FeaturedPicker';
-import { AdminDashboard } from '../admin/AdminDashboard';
 import { DeleteAccountModal } from './DeleteAccountModal';
 import { RoleBadgeChips } from './roleBadge';
-import { useMusicStore } from '../music/store/musicStore';
-import { useMovieItems } from './useMovieItems';
 import { ThemeSongBar } from './components/ThemeSongBar';
 import { ThemeSongPicker } from './components/ThemeSongPicker';
 import { InboxPanel } from './components/InboxPanel';
 import { AvatarCropModal } from './components/AvatarCropModal';
 import { AvatarPickerModal } from './components/AvatarPickerModal';
-import { uploadAvatarBlob, deleteOldAvatarIfOwned } from './utils/avatarStorage';
+import { ProfileActivityReport } from './components/ProfileActivityReport';
+import { useProfilePageState, BIO_MAX, AVATAR_TYPES } from './useProfilePageState';
 import '../../styles/components/profile-page.css';
 
-const BIO_MAX = 280;
-const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const AVATAR_MAX = 2 * 1024 * 1024;
-
-interface ProfileRow {
-  display_name: string | null;
-  avatar_url: string | null;
-  bio: string | null;
-  frame: string | null;
-  role: string | null;
-  badge: string | null;
-  admin_note: string | null;
-  admin_note_updated_at: string | null;
-  display_name_changed_at: string | null;
-  theme_song_id: string | null;
-  theme_song_autoplay: boolean | null;
-  theme_song_start: number | null;
-  theme_song_end: number | null;
-}
+const AdminDashboard = lazy(() =>
+  import('../admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })),
+);
 
 export default function ProfilePage() {
-  const { user, closeProfile, signOut } = useAuth();
-  const admin = isAdmin(user?.email);
-
-  const [loading, setLoading] = useState(true);
-  const [displayName, setDisplayName] = useState('');
-  const [bio, setBio] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [frame, setFrame] = useState<string>('none');
-  const [role, setRole] = useState<string | null>(null);
-  const [badge, setBadge] = useState<string | null>(null);
-  const [adminNote, setAdminNote] = useState<string | null>(null);
-  const [adminNoteAt, setAdminNoteAt] = useState<string | null>(null);
-  const [nameLockUntil, setNameLockUntil] = useState<Date | null>(null);
-  const [themeSong, setThemeSong] = useState<string | null>(null);
-  const [themeSongStart, setThemeSongStart] = useState<number | null>(null);
-  const [themeSongEnd, setThemeSongEnd] = useState<number | null>(null);
-  const [songPickerOpen, setSongPickerOpen] = useState(false);
-  const [cropFile, setCropFile] = useState<File | null>(null);
-  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
-
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [inboxOpen, setInboxOpen] = useState(false);
-
-  useEffect(() => {
-    document.documentElement.classList.add('nl-modal-open');
-    return () => {
-      document.documentElement.classList.remove('nl-modal-open');
-    };
-  }, []);
-
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const fileRef = useRef<HTMLInputElement | null>(null);
-
-  const [listeningReport, setListeningReport] = useState<any>(null);
-
-  const fetchUnreadCount = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase.rpc('my_suggestions_unread_count');
-      if (!error && data !== null) {
-        setUnreadCount(Number(data));
-      }
-    } catch (e) {
-      console.warn("Could not fetch unread count", e);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    void fetchUnreadCount();
-    // Poll every 30 seconds for new suggestions
-    const t = setInterval(fetchUnreadCount, 30000);
-    return () => {
-      clearInterval(t);
-    };
-  }, [user, fetchUnreadCount]);
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    const fetchListeningReport = async () => {
-      try {
-        const { data, error } = await supabase.rpc('admin_user_report', { p_user_id: user.id });
-        if (!cancelled && !error && data) {
-          setListeningReport(data);
-        }
-      } catch (e) {
-        console.warn("Could not fetch user report", e);
-      }
-    };
-    void fetchListeningReport();
-    return () => { cancelled = true; };
-  }, [user]);
-
-  const musicStorePlaylistsCount = useMusicStore((s) => s.playlists?.length ?? 0);
-  const musicStoreFavoritesCount = useMusicStore((s) => s.favorites?.length ?? 0);
-  const { favoriteCount: movieFavoritesCount } = useMovieItems();
-
-  // ---- load profile ----
-  const fetchProfile = useCallback(async () => {
-    if (!user) return;
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('display_name, avatar_url, bio, frame, role, badge, admin_note, admin_note_updated_at, display_name_changed_at, theme_song_id, theme_song_autoplay, theme_song_start, theme_song_end')
-      .eq('id', user.id)
-      .single<ProfileRow>();
-    
-    if (error) { setError(error.message); }
-    else if (data) {
-      setDisplayName(data.display_name ?? '');
-      setBio(data.bio ?? '');
-      setAvatarUrl(data.avatar_url);
-      setFrame(data.frame ?? 'none');
-      setRole(data.role);
-      setBadge(data.badge);
-      setAdminNote(data.admin_note);
-      setAdminNoteAt(data.admin_note_updated_at);
-      setThemeSong(data.theme_song_id);
-      setThemeSongStart(data.theme_song_start);
-      setThemeSongEnd(data.theme_song_end);
-      if (data.display_name_changed_at) {
-        const next = new Date(new Date(data.display_name_changed_at).getTime() + 7 * 864e5);
-        if (next > new Date()) setNameLockUntil(next);
-      }
-    }
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      void fetchProfile();
-    }
-  }, [user, fetchProfile]);
-
-  const handleRemoveThemeSong = async () => {
-    if (!user) return;
-    await supabase.from('profiles').update({
-      theme_song_id: null,
-      theme_song_start: null,
-      theme_song_end: null,
-      theme_song_autoplay: null
-    }).eq('id', user.id);
-    void fetchProfile();
-  };
-
-  const locked = !!nameLockUntil && !admin;
-  const daysLeft = nameLockUntil
-    ? Math.max(1, Math.ceil((nameLockUntil.getTime() - Date.now()) / 864e5))
-    : 0;
-
-  // ---- save (bio direct; name via rate-limited RPC) ----
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    setSaving(true); setError(null); setNotice(null);
-    try {
-      // bio (always allowed)
-      const { error: bioErr } = await supabase
-        .from('profiles')
-        .update({ bio: bio.trim().slice(0, BIO_MAX) })
-        .eq('id', user.id);
-      if (bioErr) throw new Error(bioErr.message);
-
-      // name via RPC (weekly rule, admin exempt)
-      const { data: res, error: rpcErr } = await supabase.rpc('set_display_name', {
-        p_name: displayName.trim(),
-      });
-      if (rpcErr) throw new Error(rpcErr.message);
-      const r = res as { ok: boolean; error?: string; next_allowed_at?: string };
-      if (r.ok === false) {
-        if (r.error === 'rate_limited' && r.next_allowed_at) {
-          setNameLockUntil(new Date(r.next_allowed_at));
-          setError('You can change the name only once a week.');
-        } else if (r.error === 'invalid_name') {
-          setError('Name is too short (min 2 characters).');
-        } else {
-          setError('Failed to save name.');
-        }
-      } else {
-        setNotice('Saved ✓');
-        if (!admin) {
-          const next = new Date(Date.now() + 7 * 864e5);
-          setNameLockUntil(next);
-        }
-      }
-    } catch (err) {
-      setError(String((err as Error).message));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ---- avatar: يفتح نافذة القص أولاً (بدل الرفع المباشر) ----
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    if (!AVATAR_TYPES.includes(file.type)) { setError('Unsupported format.'); return; }
-    if (file.size > AVATAR_MAX) { setError('Maximum 2MB.'); return; }
-    setError(null);
-    setCropFile(file);
-    if (fileRef.current) fileRef.current.value = '';
-  };
-
-  // ---- بعد القص: يضغط إلى 512×512 webp ويرفع ويحذف القديم ----
-  const handleCroppedBlob = async (blob: Blob) => {
-    if (!user) return;
-    setUploading(true); setError(null);
-    try {
-      const prev = avatarUrl;
-      const publicUrl = await uploadAvatarBlob(user.id, blob);
-      const { error: updErr } = await supabase
-        .from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
-      if (updErr) throw new Error(updErr.message);
-      setAvatarUrl(publicUrl);
-      setNotice('Image updated ✓');
-      void deleteOldAvatarIfOwned(prev); // تنظيف القديم (لا يُعطّل النجاح)
-    } catch (err) {
-      setError(String((err as Error).message));
-    } finally {
-      setUploading(false);
-      setCropFile(null);
-    }
-  };
-
-  // ---- تطبيق الأفاتار الافتراضية المحددة ----
-  const applyDefaultAvatar = async (webpUrl: string) => {
-    if (!user) return;
-    setUploading(true); setError(null);
-    try {
-      const prev = avatarUrl;
-      const { error: updErr } = await supabase
-        .from('profiles').update({ avatar_url: webpUrl }).eq('id', user.id);
-      if (updErr) throw new Error(updErr.message);
-      setAvatarUrl(webpUrl);
-      setNotice('Image updated ✓');
-      setAvatarPickerOpen(false);
-      void deleteOldAvatarIfOwned(prev); // احذف المرفوعة القديمة إن وُجدت
-    } catch (err) {
-      setError(String((err as Error).message));
-    } finally {
-      setUploading(false);
-    }
-  };
+  const {
+    user,
+    closeProfile,
+    signOut,
+    admin,
+    loading,
+    displayName,
+    setDisplayName,
+    bio,
+    setBio,
+    avatarUrl,
+    frame,
+    role,
+    badge,
+    adminNote,
+    adminNoteAt,
+    themeSong,
+    themeSongStart,
+    themeSongEnd,
+    songPickerOpen,
+    setSongPickerOpen,
+    cropFile,
+    setCropFile,
+    avatarPickerOpen,
+    setAvatarPickerOpen,
+    saving,
+    uploading,
+    notice,
+    error,
+    unreadCount,
+    inboxOpen,
+    setInboxOpen,
+    pickerOpen,
+    setPickerOpen,
+    adminOpen,
+    setAdminOpen,
+    deleteModalOpen,
+    setDeleteModalOpen,
+    fileRef,
+    listeningReport,
+    musicStorePlaylistsCount,
+    musicStoreFavoritesCount,
+    movieFavoritesCount,
+    fetchUnreadCount,
+    fetchProfile,
+    handleRemoveThemeSong,
+    locked,
+    daysLeft,
+    handleSave,
+    handleAvatarChange,
+    handleCroppedBlob,
+    applyDefaultAvatar,
+  } = useProfilePageState();
 
   if (!user) return null;
 
@@ -398,47 +205,7 @@ export default function ProfilePage() {
               <FavoriteMoviesSection userId={user.id} />
             </section>
 
-            {listeningReport && (
-              <section className="profile-section">
-                <h3 className="flex items-center gap-2" style={{ direction: 'rtl' }}><Clock size={16} /> Activity Stats (Activity Stats)</h3>
-                <div className="grid grid-cols-3 gap-3 my-3">
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
-                    <span className="block text-md font-bold text-sky-400">
-                      {listeningReport.song_plays ?? listeningReport.songs_played ?? listeningReport.songs_count ?? 0}
-                    </span>
-                    <span className="text-[10px] text-zinc-400">Songs listend</span>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center border-x border-white/10">
-                    <span className="block text-md font-bold text-red-400">
-                      {listeningReport.movie_plays ?? listeningReport.movies_played ?? listeningReport.movies_count ?? 0}
-                    </span>
-                    <span className="text-[10px] text-zinc-400">Movies watched</span>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
-                    <span className="block text-md font-bold text-purple-400">
-                      {listeningReport.series_plays ?? listeningReport.series_played ?? listeningReport.series_count ?? 0}
-                    </span>
-                    <span className="text-[10px] text-zinc-400">Series watched</span>
-                  </div>
-                </div>
-
-                {Array.isArray(listeningReport.recent_plays) && listeningReport.recent_plays.length > 0 && (
-                  <div className="mt-4 space-y-2 text-right" style={{ direction: 'rtl' }}>
-                    <h4 className="text-xs font-bold text-zinc-300">Latest Activities (Recent Activity)</h4>
-                    <div className="max-h-40 overflow-y-auto space-y-1.5 scrollbar-thin pr-1">
-                      {listeningReport.recent_plays.map((p: any, idx: number) => (
-                        <div key={idx} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5 text-[11px]">
-                          <span className="text-zinc-200 font-medium truncate max-w-[180px]">{p.title}</span>
-                          <span className="px-1.5 py-0.5 rounded text-[9px] bg-zinc-800 text-zinc-400 uppercase">
-                            {p.media_type === 'tv' ? 'Series' : p.media_type === 'movie' ? 'Movie' : 'Song'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
+            <ProfileActivityReport listeningReport={listeningReport} />
 
             {admin && (
               <section className="profile-section">
@@ -467,7 +234,11 @@ export default function ProfilePage() {
       </div>
 
       {pickerOpen && <FeaturedPicker userId={user.id} onClose={() => setPickerOpen(false)} />}
-      {adminOpen && <AdminDashboard onClose={() => setAdminOpen(false)} />}
+      {adminOpen && (
+        <Suspense fallback={null}>
+          <AdminDashboard onClose={() => setAdminOpen(false)} />
+        </Suspense>
+      )}
       {deleteModalOpen && (
         <DeleteAccountModal
           onClose={() => setDeleteModalOpen(false)}

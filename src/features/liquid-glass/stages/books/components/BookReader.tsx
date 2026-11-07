@@ -4,7 +4,6 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import JSZip from 'jszip';
 import {
   ExternalLink,
   Eye,
@@ -67,7 +66,10 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
     (async () => {
       try {
-        const res = await fetch(epubUrl);
+        const [{ default: JSZip }, res] = await Promise.all([
+          import('jszip'),
+          fetch(epubUrl),
+        ]);
         if (!res.ok) throw new Error('CORS or network block');
         const buf = await res.arrayBuffer();
         const zip = await JSZip.loadAsync(buf);

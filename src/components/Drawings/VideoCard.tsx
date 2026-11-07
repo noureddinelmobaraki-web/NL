@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import type { CSSProperties } from 'react';
-import Hls from 'hls.js';
+import type Hls from 'hls.js';
 import { Heart } from 'lucide-react';
 import { useResolvedTheme } from '../../hooks/useResolvedTheme';
 import { OsWindow } from '../OsWindow';
@@ -77,25 +77,33 @@ export const VideoCard = memo(({
     if (!shouldLoad || !videoRef.current) return;
     const videoEl = videoRef.current;
     const source = video.hls || video.src;
+    let cancelled = false;
 
-    if (!hlsRef.current && Hls.isSupported() && source.includes('.m3u8')) {
-      const hls = new Hls({ capLevelToPlayerSize: true, autoStartLoad: true });
-      hls.loadSource(source);
-      hls.attachMedia(videoEl);
-      hlsRef.current = hls;
-    } else if (!videoEl.src) {
-      if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-        videoEl.src = source;
-      } else {
-        videoEl.src = video.src;
-      }
-    }
-
-    if (isActive) {
-      videoEl.play().catch(() => {});
+    if (videoEl.canPlayType('application/vnd.apple.mpegurl') && source.includes('.m3u8')) {
+      if (!videoEl.src) videoEl.src = source;
+      if (isActive) videoEl.play().catch(() => {});
+    } else if (source.includes('.m3u8')) {
+      void import('hls.js').then(({ default: HlsCtor }) => {
+        if (cancelled || !videoRef.current) return;
+        if (!hlsRef.current && HlsCtor.isSupported()) {
+          const hls = new HlsCtor({ capLevelToPlayerSize: true, autoStartLoad: true });
+          hls.loadSource(source);
+          hls.attachMedia(videoEl);
+          hlsRef.current = hls;
+        } else if (!videoEl.src) {
+          videoEl.src = video.src;
+        }
+        if (isActive) {
+          videoEl.play().catch(() => {});
+        }
+      });
+    } else {
+      if (!videoEl.src) videoEl.src = video.src;
+      if (isActive) videoEl.play().catch(() => {});
     }
 
     return () => {
+      cancelled = true;
       if (hlsRef.current) {
         hlsRef.current.stopLoad();
         hlsRef.current.detachMedia();

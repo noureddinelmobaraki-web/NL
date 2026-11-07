@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2026 NL Archive.
- * SPDX-License-Identifier: MIT
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
  * Externalized WebP textures for Sun & Earth orbs hosted on nl-audio-cdn.
  */

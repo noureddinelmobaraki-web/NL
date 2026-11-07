@@ -29,10 +29,13 @@ import {
 import { useIsTouch } from '../../../../hooks/useMediaQuery';
 import { useBackToClose } from '../../../../hooks/useBackToClose';
 import { GlassTopBar } from '../../shared/GlassTopBar';
+import { FilterControls } from '../../shared/FilterControls';
+import { GenreNav } from '../../shared/GenreNav';
 import { BooksGrid } from './components/BooksGrid';
 import { BookReader } from './components/BookReader';
 import { useBooksCatalog } from './hooks/useBooksCatalog';
 import { useBookmarks } from './hooks/useBookmarks';
+import { CatalogShell } from '../../shared/CatalogShell';
 import '../../shared/glass.css';
 import './books.css';
 
@@ -197,6 +200,11 @@ export const BooksStage: React.FC<BooksStageProps> = ({
         target.closest('input') ||
         target.closest('.lg-book-unit') ||
         target.closest('.lg-topbar-shell') ||
+        target.closest('.lg-catalog-shell__header') ||
+        target.closest('.lg-catalog-shell__left') ||
+        target.closest('.lg-catalog-shell__right') ||
+        target.closest('.lg-catalog-shell__top') ||
+        target.closest('.lg-branch-popover') ||
         target.closest('.lg-reader-stage-card')
       ) {
         return;
@@ -244,57 +252,98 @@ export const BooksStage: React.FC<BooksStageProps> = ({
           className="lg-stage-scroll lg-books-catalog-scroll"
           onClick={handleStageEmptySpaceClick}
         >
-          <GlassTopBar
-            query={catalog.query}
-            onQueryChange={catalog.setQuery}
-            placeholder="Search books, authors, ISBN..."
-            language={catalog.language}
-            languages={LANGUAGES}
-            onLanguageChange={(id) => {
-              catalog.setLanguage(id);
-              catalog.setPage(1);
-            }}
-            genres={CATEGORIES}
-            activeGenre={catalog.category}
-            onGenreChange={(id) => {
-              bookmarks.setShowSavedOnly(false);
-              catalog.setCategory(id);
-              catalog.setPage(1);
-            }}
-            sortOrder={catalog.sortOrder}
-            sortOptions={SORT_OPTIONS}
-            onSortChange={catalog.setSortOrder}
-            extFilter={catalog.extFilter}
-            formatOptions={FORMAT_FILTERS}
-            onFormatChange={(id) => {
-              catalog.setExtFilter(id);
-              catalog.setPage(1);
-            }}
-            savedCount={bookmarks.savedIds.size}
-            showSavedOnly={bookmarks.showSavedOnly}
-            onToggleSavedOnly={() => bookmarks.setShowSavedOnly((v) => !v)}
-          />
-
-          <BooksGrid
-            books={displayedBooks}
-            loading={catalog.loading}
-            loadingMore={catalog.loadingMore}
-            showSavedOnly={bookmarks.showSavedOnly}
-            savedIds={bookmarks.savedIds}
-            probedAudioMap={catalog.probedAudioMap}
-            canSwitchToAudiobook={Boolean(onSwitchToAudiobook)}
-            onOpenReader={(b) => void openBookReader(b)}
-            onToggleBookmark={bookmarks.toggleBookmark}
-            onSwitchToAudiobook={(b, e) => void triggerSwitchToAudiobook(b, e)}
-            onLoadMore={catalog.handleLoadMore}
-            onResetFilters={() => {
-              bookmarks.setShowSavedOnly(false);
-              catalog.setQuery('');
-              catalog.setCategory('trending');
-              catalog.setLanguage('all');
-              catalog.setExtFilter('all');
-            }}
-          />
+          <CatalogShell
+            leftRail={
+              <GenreNav
+                genres={CATEGORIES}
+                activeGenre={catalog.category}
+                onGenreChange={(id) => {
+                  bookmarks.setShowSavedOnly(false);
+                  catalog.setCategory(id);
+                  catalog.setPage(1);
+                }}
+                showSavedOnly={bookmarks.showSavedOnly}
+                orientation="vertical"
+              />
+            }
+            rightRail={
+              <FilterControls
+                variant="panel"
+                language={catalog.language}
+                languages={LANGUAGES}
+                onLanguageChange={(id) => {
+                  catalog.setLanguage(id);
+                  catalog.setPage(1);
+                }}
+                sortOrder={catalog.sortOrder}
+                sortOptions={SORT_OPTIONS}
+                onSortChange={catalog.setSortOrder}
+                extFilter={catalog.extFilter}
+                formatOptions={FORMAT_FILTERS}
+                onFormatChange={(id) => {
+                  catalog.setExtFilter(id);
+                  catalog.setPage(1);
+                }}
+                savedCount={bookmarks.savedIds.size}
+                showSavedOnly={bookmarks.showSavedOnly}
+                onToggleSavedOnly={() => bookmarks.setShowSavedOnly((v) => !v)}
+              />
+            }
+            topBar={
+              <GlassTopBar
+                query={catalog.query}
+                onQueryChange={catalog.setQuery}
+                placeholder="Search books, authors, ISBN..."
+                language={catalog.language}
+                languages={LANGUAGES}
+                onLanguageChange={(id) => {
+                  catalog.setLanguage(id);
+                  catalog.setPage(1);
+                }}
+                genres={CATEGORIES}
+                activeGenre={catalog.category}
+                onGenreChange={(id) => {
+                  bookmarks.setShowSavedOnly(false);
+                  catalog.setCategory(id);
+                  catalog.setPage(1);
+                }}
+                sortOrder={catalog.sortOrder}
+                sortOptions={SORT_OPTIONS}
+                onSortChange={catalog.setSortOrder}
+                extFilter={catalog.extFilter}
+                formatOptions={FORMAT_FILTERS}
+                onFormatChange={(id) => {
+                  catalog.setExtFilter(id);
+                  catalog.setPage(1);
+                }}
+                savedCount={bookmarks.savedIds.size}
+                showSavedOnly={bookmarks.showSavedOnly}
+                onToggleSavedOnly={() => bookmarks.setShowSavedOnly((v) => !v)}
+                resultCount={displayedBooks.length}
+              />
+            }
+          >
+            <BooksGrid
+              books={displayedBooks}
+              loading={catalog.loading}
+              loadingMore={catalog.loadingMore}
+              showSavedOnly={bookmarks.showSavedOnly}
+              savedIds={bookmarks.savedIds}
+              probedAudioMap={catalog.probedAudioMap}
+              canSwitchToAudiobook={Boolean(onSwitchToAudiobook)}
+              onOpenReader={(b) => void openBookReader(b)}
+              onToggleBookmark={bookmarks.toggleBookmark}
+              onSwitchToAudiobook={(b, e) => void triggerSwitchToAudiobook(b, e)}
+              onLoadMore={catalog.handleLoadMore}
+              onResetFilters={() => {
+                bookmarks.setShowSavedOnly(false);
+                catalog.setQuery('');
+                catalog.setCategory('trending');
+                catalog.setLanguage('all');
+                catalog.setExtFilter('all');
+              }}
+            />
+          </CatalogShell>
         </div>
       ) : (
         <BookReader

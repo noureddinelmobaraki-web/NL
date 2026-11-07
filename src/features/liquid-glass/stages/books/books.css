@@ -8,18 +8,15 @@
   flex-direction: column;
   gap: 9px;
   animation: lgCardStaggerIn 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--card-idx, 0) * 60ms);
-  will-change: opacity, transform;
+  animation-delay: calc(min(var(--card-idx, 0), 12) * 45ms);
+  will-change: auto;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
 }
 
-@keyframes lgCardStaggerIn {
-  0% {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
+@media (prefers-reduced-motion: reduce) {
+  .lg-book-unit {
+    animation: none !important;
   }
 }
 
@@ -161,16 +158,6 @@
 
 .lg-book-info-capsule--skeleton {
   height: 68px;
-}
-
-@keyframes lgGlassPulse {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 0.85;
-  }
 }
 
 .lg-load-more-row {

@@ -1,0 +1,185 @@
+/* iOS 26 Lyrics Stage */
+.lg-ios26-lyrics-stage {
+  position: relative;
+  flex: 0 1 450px;
+  max-width: 480px;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 6px;
+  box-sizing: border-box;
+  animation: lgLyricsWindowSlideIn 0.38s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+@keyframes lgLyricsWindowSlideIn {
+  0% { opacity: 0; transform: translate3d(22px, 0, 0) scale(0.94); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+.lg-ios26-quote-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: -6px;
+  z-index: 6;
+}
+
+.lg-ios26-lyrics-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32), inset 0 1.2px 1.5px rgba(255, 255, 255, 0.85);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lg-ios26-diagonal-assembly {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lg-ios26-quote-capsule {
+  display: flex;
+  z-index: 6;
+}
+
+.lg-ios26-quote-capsule--open {
+  align-self: flex-start;
+  margin-left: 2px;
+}
+
+.lg-ios26-quote-capsule--close {
+  align-self: flex-end;
+  margin-right: 2px;
+  margin-top: -6px;
+}
+
+.lg-ios26-quote-capsule__outer-rim {
+  padding: 4.5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1.4px solid rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.42), inset 0 1.5px 2px #ffffff;
+}
+
+.lg-ios26-quote-capsule__milky-core {
+  min-width: 54px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(240, 245, 255, 0.68) 100%);
+}
+
+.lg-ios26-quote-glyph {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.95rem;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(24, 30, 48, 0.78);
+  transform: translateY(5px);
+}
+
+.lg-ios26-central-capsule {
+  position: relative;
+  width: 100%;
+  border-radius: 34px;
+  padding: 20px 24px;
+  box-sizing: border-box;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(
+      140% 100% at 20% 0%,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.02) 48%,
+      transparent 78%
+    );
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  backdrop-filter: blur(8px) saturate(150%);
+  box-shadow:
+    0 22px 52px -12px rgba(0, 0, 0, 0.46),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.88);
+}
+
+.lg-ios26-lyrics-empty {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 700;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.lg-ios26-two-line-spotlight {
+  position: relative;
+  z-index: 4;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  text-align: left;
+  isolation: isolate;
+}
+
+.lg-ios26-word-cover-aura {
+  position: absolute;
+  top: -4%;
+  left: var(--word-aura-x, 28%);
+  width: 52%;
+  height: 108%;
+  transform: translateX(-25%);
+  background-size: cover;
+  background-position: center;
+  border-radius: 999px;
+  filter: blur(15px) saturate(185%) brightness(1.06);
+  opacity: 0.65;
+  z-index: 0;
+  pointer-events: none;
+  transition: left 0.28s linear, background-image 0.35s ease;
+}
+
+.lg-ios26-line {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  width: 100%;
+  font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  font-style: italic;
+  text-align: left;
+}
+
+.lg-ios26-line--primary {
+  font-size: clamp(1.16rem, 1.02rem + 0.48vw, 1.44rem);
+  font-weight: 800;
+  line-height: 1.28;
+  color: #ffffff;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.76);
+}
+
+.lg-ios26-line--secondary {
+  font-size: clamp(0.98rem, 0.9rem + 0.34vw, 1.18rem);
+  font-weight: 700;
+  line-height: 1.32;
+  color: rgba(255, 255, 255, 0.78);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+}
+

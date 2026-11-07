@@ -266,9 +266,13 @@ NL/
 │   └── share/                      # Pre-rendered static share pages (OG / Twitter cards)
 ├── scripts/
 │   ├── generate-sitemap.mjs        # Builds sitemap.xml
+│   ├── seo-generate.mjs            # Generates SEO structured metadata
+│   ├── generate-share-pages.mjs    # Generates static OG/Twitter share pages
 │   ├── generate-sw-version.js      # Stamps the service-worker version
-│   ├── verify-lrc.mjs              # Validates .lrc lyric files
+│   ├── verify-lrc.mjs              # Validates .lrc/.sbv lyric files
+│   ├── verify-build.mjs            # Verifies bundle budgets, LRC, secrets, and CDN URLs
 │   ├── hash.mjs                    # Computes / writes CSP inline-script hashes
+│   ├── check-csp.mjs               # Validates CSP hashes against index.html / dist
 │   ├── optimize-images.mjs         # WebP encoding via sharp
 │   └── generate-posters.mjs        # Poster artwork generation
 ├── src/                            # Application source (React + TypeScript)
@@ -331,7 +335,7 @@ npm run dev
 | Script | Command | Purpose |
 | :--- | :--- | :--- |
 | `dev` | `tsx server.ts` | Local development server. |
-| `build` | `build:client && build:server && build:sitemap` | Full production build (runs `prebuild` first). |
+| `build` | `vite build && check-csp.mjs --dist && esbuild server.ts && generate-sitemap.mjs && seo-generate.mjs && generate-share-pages.mjs` | Full production build (runs `prebuild` first). |
 | `build:client` | `vite build` | Compile the client bundle. |
 | `build:server` | `esbuild server.ts → dist/server.cjs` | Bundle the server for production. |
 | `build:sitemap` | `node scripts/generate-sitemap.mjs` | Generate `sitemap.xml`. |
@@ -347,10 +351,11 @@ npm run dev
 
 | Script | Command | Purpose |
 | :--- | :--- | :--- |
-| `prebuild` | `prebuild:sw && prebuild:lrc && prebuild:csp` | Orchestrates the three hooks below. |
+| `prebuild` | `generate-sw-version.js && verify-lrc.mjs && hash.mjs --write && check-csp.mjs` | Orchestrates the pre-build hooks below. |
 | `prebuild:sw` | `node scripts/generate-sw-version.js` | Stamp a service-worker version. |
-| `prebuild:lrc` | `node scripts/verify-lrc.mjs` | Validate lyric (`.lrc`) assets. |
-| `prebuild:csp` | `node scripts/hash.mjs --write` | Recompute CSP inline-script hashes. |
+| `prebuild:lrc` | `node scripts/verify-lrc.mjs` | Validate lyric (`.lrc` / `.sbv`) assets. |
+| `prebuild:csp` | `node scripts/hash.mjs --write && node scripts/check-csp.mjs` | Recompute and verify CSP inline-script hashes. |
+| `check:csp` | `node scripts/check-csp.mjs` | Validate CSP inline-script hashes. |
 
 </details>
 

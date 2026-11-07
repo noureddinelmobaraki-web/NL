@@ -89,10 +89,13 @@ export function useSongLyrics({
 
     const filename = song.lrc.split('/').pop() || '';
     const encoded = encodeURIComponent(filename);
+    const lrcFetchUrl = /^https?:\/\//i.test(song.lrc)
+      ? song.lrc
+      : `${import.meta.env.BASE_URL}lrc/${encoded}`;
     const controller = new AbortController();
     setIsLoading(true);
 
-    fetch(`${import.meta.env.BASE_URL}lrc/${encoded}`, { signal: controller.signal })
+    fetch(lrcFetchUrl, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`LRC ${res.status}`);
         return res.text();

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import Hls from 'hls.js';
+import type Hls from 'hls.js';
 import { ACCOUNTS_BG_HLS } from '../../config/media';
 
 function shouldSkipVideo(): boolean {
@@ -22,24 +22,32 @@ export function AccountsBackgroundVideo() {
     const video = videoRef.current;
     if (!video) return;
     let hls: Hls | null = null;
+    let cancelled = false;
     const url = ACCOUNTS_BG_HLS;
 
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = url;                     // Safari / iOS أصلي
-    } else if (Hls.isSupported()) {
-      hls = new Hls({ enableWorker: true, maxBufferLength: 8, backBufferLength: 8, maxBufferSize: 0 });
-      hls.loadSource(url);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.ERROR, (_e, d) => {
-        if (d.fatal) {
-          hls?.destroy();
-          hls = null;
+      video.src = url;
+      video.play().catch(() => {});
+    } else {
+      void import('hls.js').then(({ default: HlsCtor }) => {
+        if (cancelled) return;
+        if (HlsCtor.isSupported()) {
+          hls = new HlsCtor({ enableWorker: true, maxBufferLength: 8, backBufferLength: 8, maxBufferSize: 0 });
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          hls.on(HlsCtor.Events.ERROR, (_e, d) => {
+            if (d.fatal) {
+              hls?.destroy();
+              hls = null;
+            }
+          });
         }
+        video.play().catch(() => {});
       });
     }
-    video.play().catch(() => {/* يُمنع التشغيل التلقائي أحياناً — لا بأس */});
 
     return () => {
+      cancelled = true;
       if (hls) {
         hls.stopLoad();
         hls.detachMedia();
