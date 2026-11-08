@@ -7,6 +7,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { nowPlayingBus } from '../../audio/nowPlayingBus';
+import { ensureServiceWorker } from '../../utils/registerSW';
 import { buildSources } from '../../components/Movies/MovieSourcesModal';
 import {
   buildWorkerProxyUrl,
@@ -295,13 +296,7 @@ class CinemaDownloadManager {
       return;
     }
     try {
-      const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-      const swPath = import.meta.env.PROD
-        ? `${base}/sw.js`
-        : `${base}/torrent-stream-sw.js`;
-      void navigator.serviceWorker
-        .register(swPath, { scope: `${base}/` })
-        .catch(() => {});
+      void ensureServiceWorker();
 
       navigator.serviceWorker.addEventListener(
         'message',

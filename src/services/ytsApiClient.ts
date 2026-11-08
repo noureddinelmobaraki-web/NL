@@ -3,12 +3,6 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
  * Official YTS.GG v2 API Client (Primary: https://movies-api.accel.li/api/v2/)
- * Supports:
- *  - list_movies.json (search by IMDb ID or Title, quality filters: 480p, 720p, 1080p, 1080p.x265, 2160p, 3D)
- *  - movie_details.json (with_images=true & with_cast=true)
- *  - movie_suggestions.json
- *  - movie_parental_guides.json
- *  - Non-destructive metadata, poster, backdrop, trailer & subtitle IMDb ID enrichment
  */
 
 import type { CinemaItem } from '../components/Movies/moviesDataClient';
@@ -38,12 +32,12 @@ export const YTS_RECOMMENDED_TRACKERS = [
 export interface YtsTorrentEntry {
   url: string;
   hash: string;
-  quality: string; // '480p' | '720p' | '1080p' | '2160p' | '3D'
-  type: string; // 'bluray' | 'web'
+  quality: string;
+  type: string;
   is_repack?: string;
-  video_codec?: string; // 'x264' | 'x265'
-  bit_depth?: string; // '8' | '10'
-  audio_channels?: string; // '2.0' | '5.1' | '7.1'
+  video_codec?: string;
+  bit_depth?: string;
+  audio_channels?: string;
   seeds: number;
   peers: number;
   size: string;
@@ -97,7 +91,7 @@ export interface YtsParentalGuideItem {
 }
 
 const ytsCache = new Map<string, { at: number; data: any }>();
-const CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutes
+const CACHE_TTL_MS = 1000 * 60 * 30;
 
 async function fetchYtsEndpoint<T = any>(
   endpointPath: string,
@@ -136,17 +130,6 @@ async function fetchYtsEndpoint<T = any>(
     }
   }
   return null;
-}
-
-export function buildYtsMagnetUri(
-  hash: string,
-  movieTitle: string,
-  extraTrackers: string[] = [],
-): string {
-  const cleanHash = hash.trim().toLowerCase();
-  const trackers = Array.from(new Set([...YTS_RECOMMENDED_TRACKERS, ...extraTrackers]));
-  const trParams = trackers.map((tr) => `tr=${encodeURIComponent(tr)}`).join('&');
-  return `magnet:?xt=urn:btih:${cleanHash}&dn=${encodeURIComponent(movieTitle)}&${trParams}`;
 }
 
 export async function fetchYtsListMovies(
@@ -236,11 +219,6 @@ export async function fetchYtsParentalGuides(
   return Array.isArray(data?.parental_guides) ? data!.parental_guides : [];
 }
 
-/**
- * Resolves the complete YTS movie record + ALL available torrent qualities
- * (480p, 720p, 1080p, 1080p.x265, 2160p 4K) by querying both IMDb ID and Title
- * across `list_movies.json` and `movie_details.json`.
- */
 export async function resolveYtsMovieAndTorrents(params: {
   imdbId?: string;
   title?: string;
@@ -253,14 +231,13 @@ export async function resolveYtsMovieAndTorrents(params: {
   suggestions: YtsMovieRecord[];
   parentalGuides: YtsParentalGuideItem[];
 }> {
-  const cleanImdb =
-    params.imdbId && /^tt\d+$/i.test(params.imdbId.trim()) ? params.imdbId.trim() : '';
+  const cleanImdb = params.imdbId && /^tt\d+$/i.test(params.imdbId.trim()) ? params.imdbId.trim() : '';
   const searchTitle = (params.originalTitle || params.title || '').trim();
   const targetYear = params.year ? Number(String(params.year).slice(0, 4)) : undefined;
 
   const matchedMovies: YtsMovieRecord[] = [];
-
   const tasks: Promise<void>[] = [];
+
   if (cleanImdb) {
     tasks.push(
       fetchYtsListMovies({ query_term: cleanImdb, limit: 10, with_rt_ratings: true }, params.signal).then(
@@ -344,11 +321,6 @@ export async function resolveYtsMovieAndTorrents(params: {
   };
 }
 
-/**
- * Non-destructively enriches a CinemaItem with YTS v2 metadata, HD posters,
- * backdrops, IMDb ID, YouTube trailer, certification, runtime, and cast
- * WITHOUT overwriting existing valid localized TMDB data.
- */
 export async function enrichCinemaItemWithYts(
   item: CinemaItem,
   signal?: AbortSignal,

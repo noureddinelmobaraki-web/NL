@@ -16,6 +16,7 @@ import {
   fetchExtractedVideos,
   probeVideoStream,
 } from '../../services/videoExtractor';
+import { buildSources } from '../../components/Movies/MovieSourcesModal';
 import {
   resolveYtsMovieAndTorrents,
   YTS_RECOMMENDED_TRACKERS,
@@ -24,11 +25,11 @@ export { buildCleanDownloadFileName } from './releaseParserAndFilter';
 import {
   buildCleanDownloadFileName,
   buildPublicTorrentCacheUrls,
-  evaluateSixGateReleaseSafety,
   formatBytes,
   getLiveTrackers,
   parseSceneReleaseName,
   synthesizeMagnetUri,
+  verifyReleaseSafety,
 } from './releaseParserAndFilter';
 import type {
   DiscoveredReleaseOption,
@@ -257,17 +258,24 @@ export async function discoverReleasesForMedia(
   releases: DiscoveredReleaseOption[];
   trackersCount: number;
 }> {
-  const [imdbId, baseTrackers, extractedStreamList] = await Promise.all([
+  const [imdbId, baseTrackers] = await Promise.all([
     resolveMediaImdbId(media),
     getLiveTrackers(),
-    fetchExtractedVideos(
-      media.mediaType,
-      String(media.tmdbId),
-      media.season,
-      media.episode,
-      signal,
-    ).catch(() => []),
   ]);
+
+  const topUrls = buildSources({
+    id: media.tmdbId,
+    mediaType: media.mediaType,
+    imdbId: imdbId || undefined,
+    season: media.season || 1,
+    episode: media.episode || 1,
+  })
+    .slice(0, 5)
+    .map((s) => s.url);
+
+  const extractedStreamList = await fetchExtractedVideos(topUrls, signal).catch(
+    () => [],
+  );
 
   const liveTrackers = Array.from(
     new Set([...YTS_RECOMMENDED_TRACKERS, ...baseTrackers]),
@@ -278,7 +286,7 @@ export async function discoverReleasesForMedia(
 
   const fallbackStream = extractedStreamList[0];
   const fallbackStreamUrl =
-    fallbackStream?.proxiedUrl || fallbackStream?.rawUrl;
+    fallbackStream?.directUrl || fallbackStream?.proxiedUrl;
   const fallbackStreamReferer = fallbackStream?.sourcePage;
 
   const seenHashes = new Set<string>();
@@ -296,17 +304,15 @@ export async function discoverReleasesForMedia(
       parsed.screenSize = cand.qualityHint;
     }
 
-    const safety = evaluateSixGateReleaseSafety({
+    const safety = verifyReleaseSafety({
       rawTitle: cand.rawTitle,
-      parsed,
+      infoHash: cleanHash,
       sizeBytes: cand.sizeBytes,
+      quality: parsed.screenSize,
       seeders: cand.seeders,
-      expectedMediaType: media.mediaType === 'tv' ? 'episode' : 'movie',
-      expectedSeason: media.season,
-      expectedEpisode: media.episode,
     });
 
-    if (!safety.passed) continue;
+    if (!safety.safe) continue;
 
     const { pieceLength, totalPieces } = computeRealPieceGeometry(
       cand.sizeBytes,
@@ -352,7 +358,7 @@ export async function discoverReleasesForMedia(
       pieceLength,
       totalPieces,
       verifiedSafe: true,
-      securityNotes: safety.notes,
+      securityNotes: safety.securityBadges,
       parsedMeta: parsed,
       isRealSource: true,
     });
@@ -368,7 +374,7 @@ export async function discoverReleasesForMedia(
       sizeHint: s.sizeBytes,
     })),
     ...extractedStreamList.slice(0, 3).map((s) => ({
-      url: s.rawUrl,
+      url: s.directUrl,
       referer: s.sourcePage || '',
       server: s.server,
       qualityHint: s.quality,

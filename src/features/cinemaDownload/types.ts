@@ -111,7 +111,7 @@ export interface ParsedSceneRelease {
   audioChannels: string;
   colorDepth: string[];
   releaseGroup: string;
-  container: 'mp4' | 'mkv' | 'webm' | 'avi' | 'ts';
+  container?: 'mp4' | 'mkv' | 'webm' | 'avi' | 'ts' | string;
   type: 'movie' | 'episode';
   isSafe?: boolean;
   rejectionReason?: string;
