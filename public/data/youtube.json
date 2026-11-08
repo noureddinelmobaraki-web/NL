@@ -1,15 +1,22 @@
 {
   "channelId": "UCbsSmEzYZvL24C2S75Rq4Og",
   "channelHandle": "@nourdin_el_mobaraki",
-  "updatedAt": "2026-11-08T05:59:27.900Z",
+  "updatedAt": "2026-11-08T13:23:54.345Z",
   "count": 300,
   "videos": [
+    {
+      "id": "uyh3nKi_3ZU",
+      "title": "Nordine  GB - L’Morphiniya 2",
+      "publishedAt": "2026-11-08T11:00:06Z",
+      "duration": 203,
+      "viewCount": 3
+    },
     {
       "id": "uqYhWyxMy88",
       "title": "Nordine  GB - KOUN NADDI",
       "publishedAt": "2026-11-07T18:00:36Z",
       "duration": 254,
-      "viewCount": 12
+      "viewCount": 14
     },
     {
       "id": "lfnKMMFeu5k",
@@ -24,7 +31,7 @@
       "publishedAt": "2026-11-04T21:49:11Z",
       "thumbnail": "https://i.ytimg.com/vi/P_vPf2r11ps/hqdefault.jpg",
       "duration": 272,
-      "viewCount": 56
+      "viewCount": 57
     },
     {
       "id": "UOdPVINMcWU",
@@ -38,7 +45,7 @@
       "title": "ألا كل ماشية الخيزلى",
       "publishedAt": "2026-11-01T12:00:10Z",
       "duration": 338,
-      "viewCount": 215
+      "viewCount": 216
     },
     {
       "id": "DTaCNsj8h-E",
@@ -80,7 +87,7 @@
       "title": "Nordine  GB -  Sommaire",
       "publishedAt": "2026-10-23T16:00:04Z",
       "duration": 365,
-      "viewCount": 353
+      "viewCount": 356
     },
     {
       "id": "OD8lM-cu4TA",
@@ -179,7 +186,7 @@
       "title": "Nordine  GB - Passif!",
       "publishedAt": "2026-09-20T10:30:22Z",
       "duration": 295,
-      "viewCount": 222
+      "viewCount": 223
     },
     {
       "id": "dKqhIb-MUqI",
@@ -193,7 +200,7 @@
       "title": "Nordine  GB - Under The Gun",
       "publishedAt": "2026-09-18T16:45:21Z",
       "duration": 407,
-      "viewCount": 199
+      "viewCount": 200
     },
     {
       "id": "Nw-kZu6yO78",
@@ -413,7 +420,7 @@
       "title": "Nordine  GB -  euphoria",
       "publishedAt": "2026-07-04T17:00:21Z",
       "duration": 477,
-      "viewCount": 194
+      "viewCount": 195
     },
     {
       "id": "OBruhpf2vhg",
@@ -441,7 +448,7 @@
       "title": "Nordine  GB -  Bouh!",
       "publishedAt": "2026-06-26T17:30:00Z",
       "duration": 369,
-      "viewCount": 1609
+      "viewCount": 1610
     },
     {
       "id": "JM9ebmYAoUo",
@@ -628,14 +635,14 @@
       "title": "Nordine  GB -  Tri9 Tbawe9",
       "publishedAt": "2026-04-30T16:30:23Z",
       "duration": 219,
-      "viewCount": 6570
+      "viewCount": 6573
     },
     {
       "id": "fy314pGf2-E",
       "title": "Nordine  GB -  Rak 3aref Hbali",
       "publishedAt": "2026-04-26T17:00:55Z",
       "duration": 518,
-      "viewCount": 261
+      "viewCount": 262
     },
     {
       "id": "Oz6UbKuIvAc",
@@ -740,7 +747,7 @@
       "title": "Nordine  GB -  Sommaire / من الفضاء",
       "publishedAt": "2026-03-20T18:15:08Z",
       "duration": 282,
-      "viewCount": 411
+      "viewCount": 412
     },
     {
       "id": "uHlqVh4umsA",
@@ -1006,7 +1013,7 @@
       "title": "Nordine GB -Hisuka",
       "publishedAt": "2026-01-04T09:00:26Z",
       "duration": 293,
-      "viewCount": 320,
+      "viewCount": 321,
       "likeCount": 8
     },
     {
@@ -1050,7 +1057,7 @@
       "publishedAt": "2025-12-26T23:00:46Z",
       "thumbnail": "https://i.ytimg.com/vi/WS0WFjvEYdI/hqdefault.jpg",
       "duration": 390,
-      "viewCount": 171,
+      "viewCount": 172,
       "likeCount": 5
     },
     {
@@ -1147,7 +1154,7 @@
       "title": "Nordine GB - LMORPHINIYA 12",
       "publishedAt": "2025-12-05T14:00:47Z",
       "duration": 238,
-      "viewCount": 289,
+      "viewCount": 290,
       "likeCount": 10
     },
     {
@@ -1566,7 +1573,7 @@
       "title": "𝐉𝐔𝐌𝐀𝐍𝐉𝐈",
       "publishedAt": "2025-06-09T16:30:19Z",
       "duration": 169,
-      "viewCount": 635,
+      "viewCount": 639,
       "likeCount": 15
     },
     {
@@ -1633,7 +1640,7 @@
       "title": "𝐀𝐘𝟗𝐎𝐍𝐀 𝟐",
       "publishedAt": "2025-06-05T16:30:07Z",
       "duration": 159,
-      "viewCount": 383,
+      "viewCount": 385,
       "likeCount": 9
     },
     {
@@ -1723,7 +1730,7 @@
       "title": "Supernova",
       "publishedAt": "2025-05-10T11:30:33Z",
       "duration": 241,
-      "viewCount": 502,
+      "viewCount": 503,
       "likeCount": 11
     },
     {
@@ -1907,7 +1914,7 @@
       "title": "L'Morphine //-Rak 3aref Hbali-",
       "publishedAt": "2025-04-22T19:15:56Z",
       "duration": 222,
-      "viewCount": 675,
+      "viewCount": 677,
       "likeCount": 9
     },
     {
@@ -1987,7 +1994,7 @@
       "title": "l'Morphine \"Rais M'Bolhi\"",
       "publishedAt": "2025-04-13T11:30:43Z",
       "duration": 215,
-      "viewCount": 1761,
+      "viewCount": 1762,
       "likeCount": 25
     },
     {
@@ -2229,7 +2236,7 @@
       "title": "lmorphiniya 7",
       "publishedAt": "2025-03-11T17:01:25Z",
       "duration": 241,
-      "viewCount": 2017,
+      "viewCount": 2019,
       "likeCount": 33
     },
     {
@@ -2253,7 +2260,7 @@
       "title": "rooftop",
       "publishedAt": "2025-03-06T19:00:45Z",
       "duration": 159,
-      "viewCount": 1626,
+      "viewCount": 1629,
       "likeCount": 36
     },
     {
@@ -2303,14 +2310,6 @@
       "duration": 175,
       "viewCount": 564,
       "likeCount": 11
-    },
-    {
-      "id": "rw4wby6ObqM",
-      "title": "?؟",
-      "publishedAt": "2025-03-06T19:00:39Z",
-      "duration": 170,
-      "viewCount": 199,
-      "likeCount": 5
     }
   ]
 }
