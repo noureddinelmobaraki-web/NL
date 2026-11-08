@@ -1,9 +1,10 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type PreviewServer, type ViteDevServer } from 'vite';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { ALL_SERVER_FRAME_ORIGINS } from './src/config/servers';
+import { createCinemaDownloadBridgeMiddleware } from './src/features/cinemaDownload/serverBridgeMiddleware';
 
 export default defineConfig(({ mode }) => {
   return {
@@ -12,6 +13,15 @@ export default defineConfig(({ mode }) => {
     base: process.env.VITE_BASE_PATH ?? '/NL/',
     assetsInclude: ['**/*.xml'],
     plugins: [
+      {
+        name: 'cinema-download-bridge-plugin',
+        configureServer(server: ViteDevServer) {
+          server.middlewares.use(createCinemaDownloadBridgeMiddleware());
+        },
+        configurePreviewServer(server: PreviewServer) {
+          server.middlewares.use(createCinemaDownloadBridgeMiddleware());
+        },
+      },
       {
         name: 'sync-cinema-csp-frame-src',
         transformIndexHtml(html: string) {

@@ -2,8 +2,7 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Browser Input Manager, Bencode Metainfo Decoder & Path Sanitizer
- * Ported from TorrentPlayer v0.3.3 (crates/torrentplayer-torrent/src/{source,paths,metainfo}.rs)
+ * Browser Input Manager, Bencode Metainfo Decoder, Multi-File Video Selector & WebSeed Extractor
  */
 
 import type { ParsedTorrentMetainfo, TorrentFileEntry } from './types';
@@ -13,6 +12,8 @@ export const MAX_PIECE_LEN = 64 * 1024 * 1024;     // 64 MiB
 export const BLOCK_LEN = 16 * 1024;                // 16 KiB
 
 const RESERVED_WINDOWS_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i;
+const VIDEO_EXT_REGEX = /\.(mp4|mkv|webm|avi|mov|m4v|ts|ogv)$/i;
+const PADDING_FILE_REGEX = /(^|\/)_____padding_file_/i;
 
 export function bufferToHex(buffer: ArrayBuffer | Uint8Array): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
@@ -21,6 +22,16 @@ export function bufferToHex(buffer: ArrayBuffer | Uint8Array): string {
     hex += bytes[i].toString(16).padStart(2, '0');
   }
   return hex;
+}
+
+export function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const sub = bytes.subarray(i, Math.min(bytes.length, i + chunkSize));
+    binary += String.fromCharCode(...sub);
+  }
+  return typeof btoa === 'function' ? btoa(binary) : '';
 }
 
 export function sanitizeTorrentPath(components: string[]): string {
@@ -67,6 +78,7 @@ export interface ParsedMagnetInput {
   displayName?: string;
   trackers: string[];
   webSeeds: string[];
+  exactTopicTorrentUrls: string[];
 }
 
 export function parseMagnetUriInput(rawUri: string): ParsedMagnetInput {
@@ -79,6 +91,7 @@ export function parseMagnetUriInput(rawUri: string): ParsedMagnetInput {
       infoHashHex: trimmed.toLowerCase(),
       trackers: [],
       webSeeds: [],
+      exactTopicTorrentUrls: [],
     };
   }
   let url: URL;
@@ -112,11 +125,16 @@ export function parseMagnetUriInput(rawUri: string): ParsedMagnetInput {
     ...url.searchParams.getAll('as'),
   ].filter((u) => /^https?:\/\//i.test(u));
 
+  const exactTopicTorrentUrls = url.searchParams
+    .getAll('xs')
+    .filter((u) => /^https?:\/\//i.test(u));
+
   return {
     infoHashHex,
     displayName: url.searchParams.get('dn') || undefined,
     trackers: url.searchParams.getAll('tr').filter(Boolean),
     webSeeds,
+    exactTopicTorrentUrls,
   };
 }
 
@@ -189,6 +207,23 @@ function decodeBencode(
   throw new Error(`رمز Bencode غير معروف عند الإزاحة ${offset}`);
 }
 
+function flattenBencodeStrings(
+  raw: unknown,
+  decoder: TextDecoder,
+  out: string[] = [],
+): string[] {
+  if (!raw) return out;
+  if (raw instanceof Uint8Array) {
+    const str = decoder.decode(raw).trim();
+    if (str) out.push(str);
+  } else if (Array.isArray(raw)) {
+    for (const item of raw) {
+      flattenBencodeStrings(item, decoder, out);
+    }
+  }
+  return out;
+}
+
 export async function parseTorrentFileBytes(
   rawBytes: Uint8Array,
 ): Promise<ParsedTorrentMetainfo> {
@@ -245,7 +280,7 @@ export async function parseTorrentFileBytes(
       const parts = Array.isArray(f.path)
         ? (f.path as Uint8Array[]).map((p) => decoder.decode(p))
         : [String(idx)];
-      const safeRelPath = sanitizeTorrentPath([name, ...parts]);
+      const safeRelPath = sanitizeTorrentPath(parts);
       const fileLen = Number(f.length) || 0;
       files.push({
         index: idx,
@@ -259,30 +294,80 @@ export async function parseTorrentFileBytes(
     throw new Error('ملف التورنت لا يحتوي على طول ملف صالح');
   }
 
-  const announceList: string[] = [];
-  if (root.value.announce instanceof Uint8Array) {
-    announceList.push(decoder.decode(root.value.announce));
-  }
-  if (Array.isArray(root.value['announce-list'])) {
-    for (const tier of root.value['announce-list']) {
-      if (Array.isArray(tier)) {
-        for (const tr of tier) {
-          if (tr instanceof Uint8Array) {
-            announceList.push(decoder.decode(tr));
-          }
-        }
+  // Select the main playable video file (largest video file, ignoring samples/padding)
+  const nonPaddingFiles = files.filter(
+    (f) => !PADDING_FILE_REGEX.test(f.path),
+  );
+  const videoCandidates = nonPaddingFiles.filter((f) =>
+    VIDEO_EXT_REGEX.test(f.path),
+  );
+  const candidatePool =
+    videoCandidates.length > 0
+      ? videoCandidates
+      : nonPaddingFiles.length > 0
+        ? nonPaddingFiles
+        : files;
+  const selectedFile = candidatePool.reduce((a, b) =>
+    a.length >= b.length ? a : b,
+  );
+
+  const announceList = Array.from(
+    new Set([
+      ...flattenBencodeStrings(root.value.announce, decoder),
+      ...flattenBencodeStrings(root.value['announce-list'], decoder),
+    ]),
+  );
+
+  const rawWebSeeds = Array.from(
+    new Set([
+      ...flattenBencodeStrings(root.value['url-list'], decoder),
+      ...flattenBencodeStrings(root.value.httpseeds, decoder),
+    ]),
+  ).filter((u) => /^https?:\/\//i.test(u));
+
+  // Resolve final direct WebSeed URLs for the selected file (BEP 19)
+  const resolvedWebSeeds: string[] = [];
+  for (const ws of rawWebSeeds) {
+    if (files.length === 1) {
+      if (ws.endsWith('/')) {
+        resolvedWebSeeds.push(`${ws}${encodeURIComponent(name)}`);
+      } else {
+        resolvedWebSeeds.push(ws);
       }
+    } else {
+      const base = ws.replace(/\/+$/, '');
+      const encodedParts = [name, ...selectedFile.path.split('/')]
+        .filter(Boolean)
+        .map(encodeURIComponent)
+        .join('/');
+      resolvedWebSeeds.push(`${base}/${encodedParts}`);
+      const innerEncoded = selectedFile.path
+        .split('/')
+        .filter(Boolean)
+        .map(encodeURIComponent)
+        .join('/');
+      resolvedWebSeeds.push(`${base}/${innerEncoded}`);
     }
   }
 
-  const webSeeds: string[] = [];
-  const urlList = root.value['url-list'];
-  if (urlList instanceof Uint8Array) {
-    webSeeds.push(decoder.decode(urlList));
-  } else if (Array.isArray(urlList)) {
-    for (const u of urlList) {
-      if (u instanceof Uint8Array) webSeeds.push(decoder.decode(u));
-    }
+  // Internet Archive auto-WebSeed synthesis if torrent originates from archive.org
+  const commentStr =
+    root.value.comment instanceof Uint8Array
+      ? decoder.decode(root.value.comment)
+      : '';
+  if (
+    commentStr.includes('archive.org') ||
+    announceList.some((a) => a.includes('archive.org'))
+  ) {
+    const cleanId = name.replace(/\.[^.]+$/, '');
+    const innerEncoded = selectedFile.path
+      .split('/')
+      .filter(Boolean)
+      .map(encodeURIComponent)
+      .join('/');
+    resolvedWebSeeds.push(
+      `https://archive.org/download/${encodeURIComponent(cleanId)}/${innerEncoded}`,
+    );
   }
 
   return {
@@ -294,7 +379,9 @@ export async function parseTorrentFileBytes(
     totalLength,
     pieceHashesHex,
     files,
-    announceList: Array.from(new Set(announceList)),
-    webSeeds: webSeeds.filter((u) => /^https?:\/\//i.test(u)),
+    selectedFile,
+    announceList,
+    webSeeds: Array.from(new Set(resolvedWebSeeds)),
+    rawTorrentBase64: uint8ToBase64(rawBytes),
   };
 }

@@ -11,6 +11,7 @@ import {
   Tv,
 } from 'lucide-react';
 import { useOptionalStreamPlayer } from '../hooks/useOptionalStreamPlayer';
+import { useSwarmTransportDiagnostics } from '../hooks/useSwarmTransportDiagnostics';
 import type { DownloadTaskState } from '../types';
 
 interface DownloadTaskCardProps {
@@ -52,6 +53,9 @@ export const DownloadTaskCard: React.FC<DownloadTaskCardProps> = ({
     handleVideoTimeUpdate,
   } = useOptionalStreamPlayer(task.infoHash, task.totalPieces);
 
+  const { getTransportBadge } = useSwarmTransportDiagnostics(isAr);
+  const transportBadge = getTransportBadge(task.transportMode);
+
   const isPlayerOpen = Boolean(task.isStreamingActive);
   const buckets = task.pieceMapBuckets || [];
 
@@ -80,6 +84,19 @@ export const DownloadTaskCard: React.FC<DownloadTaskCardProps> = ({
               </span>
               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/8 text-white/75 border border-white/15 shrink-0">
                 {metrics.storageBadgeLabel}
+              </span>
+              <span
+                className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${
+                  transportBadge.tone === 'emerald'
+                    ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-300/35'
+                    : transportBadge.tone === 'sky'
+                      ? 'bg-sky-500/20 text-sky-200 border border-sky-300/35'
+                      : transportBadge.tone === 'amber'
+                        ? 'bg-amber-500/20 text-amber-200 border border-amber-300/35'
+                        : 'bg-white/10 text-white/75 border border-white/15'
+                }`}
+              >
+                {transportBadge.label}
               </span>
             </div>
             <span className="text-sm sm:text-base font-black text-emerald-300 tabular-nums shrink-0">

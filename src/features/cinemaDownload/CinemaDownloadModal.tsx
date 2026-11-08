@@ -66,7 +66,6 @@ export const CinemaDownloadHost: React.FC = () => {
     retryDiscovery,
     copyMagnetLink,
     triggerDownloadOnly,
-    triggerOptionalStream,
   } = useReleaseDiscovery();
 
   const customInput = useCustomTorrentInput();
@@ -363,7 +362,6 @@ export const CinemaDownloadHost: React.FC = () => {
                         isAr={isAr}
                         onCopyMagnet={copyMagnetLink}
                         onDownloadOnly={triggerDownloadOnly}
-                        onOptionalStream={triggerOptionalStream}
                       />
                     ))
                   )

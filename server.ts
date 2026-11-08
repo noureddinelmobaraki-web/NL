@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import crypto from "crypto";
+import { createCinemaDownloadBridgeMiddleware } from "./src/features/cinemaDownload/serverBridgeMiddleware";
 
 async function startServer() {
   const app = express();
@@ -16,7 +17,8 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json());
+  app.use(express.json({ limit: "24mb" }));
+  app.use(createCinemaDownloadBridgeMiddleware());
 
   // Simple API
   app.get("/api/health", (_req, res) => {

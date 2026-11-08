@@ -2,7 +2,7 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Isolated Cinema Download & Optional Progressive Torrent Stream Manager
+ * Isolated Cinema Download & Optional Progressive Torrent Stream Manager (Part 2)
  */
 
 import { useSyncExternalStore } from 'react';
@@ -16,6 +16,7 @@ import {
   parseMagnetUriInput,
   parseTorrentFileBytes,
 } from './bencodeAndInputManager';
+import { BrowserSwarmSession } from './engine/browserSwarmClient';
 import {
   buildCleanDownloadFileName,
   computeRealPieceGeometry,
@@ -168,6 +169,7 @@ class CinemaDownloadManager {
   private worker: Worker | null = null;
   private discoveryAbort: AbortController | null = null;
   private activeLoops = new Map<string, ActiveLoopContext>();
+  private swarmSessions = new Map<string, BrowserSwarmSession>();
   private savedBitfields = new Map<string, number[]>();
   private sessionToken = '';
 
@@ -194,6 +196,7 @@ class CinemaDownloadManager {
     tasks: {},
     activeTaskIds: [],
     liveTrackersCount: 14,
+    bridgeServerAvailable: false,
   };
 
   constructor() {
@@ -208,6 +211,31 @@ class CinemaDownloadManager {
       this.initWorker();
       this.registerStreamServiceWorker();
       void this.refreshQuota();
+      void this.checkBridgeHealth();
+    }
+  }
+
+  private async checkBridgeHealth(): Promise<boolean> {
+    try {
+      const res = await fetch('/api/cinema-download/health', {
+        signal: AbortSignal.timeout(2000),
+      });
+      if (!res.ok) {
+        this.state.bridgeServerAvailable = false;
+        return false;
+      }
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        this.state.bridgeServerAvailable = false;
+        return false;
+      }
+      const data = await res.json();
+      const ok = Boolean(data?.ok);
+      this.state.bridgeServerAvailable = ok;
+      return ok;
+    } catch {
+      this.state.bridgeServerAvailable = false;
+      return false;
     }
   }
 
@@ -639,6 +667,11 @@ class CinemaDownloadManager {
         };
       }
       this.savedBitfields.delete(infoHash);
+      const swarm = this.swarmSessions.get(infoHash);
+      if (swarm) {
+        swarm.destroy();
+        this.swarmSessions.delete(infoHash);
+      }
       const task = this.state.tasks[infoHash];
       if (task) {
         if (task.blobStreamUrl) {
@@ -732,70 +765,109 @@ class CinemaDownloadManager {
       };
     }
 
+    const bridgeAlive = await this.checkBridgeHealth();
     let parsedPieceHashes: string[] = release.pieceHashesHex || [];
-    let discoveredWebSeed: string | undefined;
-    for (const cacheUrl of release.torrentCacheUrls.slice(0, 2)) {
-      try {
-        const proxiedCache = buildWorkerProxyUrl(cacheUrl);
-        const r = await fetch(proxiedCache, {
-          signal: AbortSignal.timeout(3500),
-        });
-        if (r.ok) {
-          const ab = await r.arrayBuffer();
-          if (ab.byteLength > 120) {
-            const bytes = new Uint8Array(ab);
-            if (bytes[0] === 0x64) {
-              const meta = await parseTorrentFileBytes(bytes);
-              parsedPieceHashes = meta.pieceHashesHex;
-              if (meta.webSeeds.length > 0) {
-                discoveredWebSeed = meta.webSeeds[0];
+    const discoveredWebSeeds = new Set<string>(release.webSeeds || []);
+
+    if (release.rawTorrentBase64 && bridgeAlive) {
+      await fetch('/api/cinema-download/upload-torrent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          infoHash,
+          torrentBase64: release.rawTorrentBase64,
+        }),
+      }).catch(() => {});
+    }
+
+    if (!release.rawTorrentBase64) {
+      for (const cacheUrl of release.torrentCacheUrls.slice(0, 2)) {
+        try {
+          const proxiedCache = buildWorkerProxyUrl(cacheUrl);
+          const r = await fetch(proxiedCache, {
+            signal: AbortSignal.timeout(3500),
+          });
+          if (r.ok) {
+            const ab = await r.arrayBuffer();
+            if (ab.byteLength > 120) {
+              const bytes = new Uint8Array(ab);
+              if (bytes[0] === 0x64) {
+                const meta = await parseTorrentFileBytes(bytes);
+                parsedPieceHashes = meta.pieceHashesHex;
+                release.rawTorrentBase64 = meta.rawTorrentBase64;
+                release.selectedFileOffset = meta.selectedFile.offset;
+                release.selectedFileLength = meta.selectedFile.length;
+                for (const ws of meta.webSeeds) discoveredWebSeeds.add(ws);
+                if (bridgeAlive) {
+                  await fetch('/api/cinema-download/upload-torrent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      infoHash,
+                      torrentBase64: meta.rawTorrentBase64,
+                    }),
+                  }).catch(() => {});
+                }
+                break;
               }
-              break;
             }
+          }
+        } catch {}
+      }
+    }
+
+    let swarmSession = this.swarmSessions.get(infoHash);
+    if (!swarmSession) {
+      swarmSession = new BrowserSwarmSession(
+        infoHash,
+        Array.from(discoveredWebSeeds),
+        release.selectedFileOffset || 0,
+      );
+      this.swarmSessions.set(infoHash, swarmSession);
+    }
+
+    if (bridgeAlive && release.sourceKind === 'torrent-hybrid') {
+      try {
+        const params = new URLSearchParams({
+          infoHash,
+          magnet: release.magnetUri,
+        });
+        const res = await fetch(
+          `/api/cinema-download/torrent-meta?${params.toString()}`,
+          { signal: AbortSignal.timeout(12000) },
+        );
+        const ct = res.headers.get('content-type') || '';
+        if (res.ok && ct.includes('application/json')) {
+          const meta = (await res.json()) as {
+            ok?: boolean;
+            fileSize?: number;
+            pieceLength?: number;
+            totalPieces?: number;
+            peers?: number;
+          };
+          if (meta.ok && meta.fileSize && meta.fileSize > 0) {
+            const pLen =
+              meta.pieceLength ||
+              computeRealPieceGeometry(meta.fileSize).pieceLength;
+            const tPieces =
+              meta.totalPieces || Math.max(1, Math.ceil(meta.fileSize / pLen));
+            return {
+              realSizeBytes: meta.fileSize,
+              pieceLength: pLen,
+              totalPieces: tPieces,
+              activePeers: Number(meta.peers) || release.seeders || 1,
+              pieceHashesHex: [],
+              useBridgeBackend: true,
+              transportMode: 'webtorrent-bridge',
+            };
           }
         }
       } catch {}
     }
 
-    try {
-      const params = new URLSearchParams({
-        infoHash,
-        magnet: release.magnetUri,
-      });
-      const res = await fetch(
-        `/api/cinema-download/torrent-meta?${params.toString()}`,
-        { signal: AbortSignal.timeout(6500) },
-      );
-      const ct = res.headers.get('content-type') || '';
-      if (res.ok && ct.includes('application/json')) {
-        const meta = (await res.json()) as {
-          ok?: boolean;
-          fileSize?: number;
-          pieceLength?: number;
-          totalPieces?: number;
-          peers?: number;
-        };
-        if (meta.ok && meta.fileSize && meta.fileSize > 0) {
-          const pLen =
-            meta.pieceLength ||
-            computeRealPieceGeometry(meta.fileSize).pieceLength;
-          const tPieces =
-            meta.totalPieces || Math.max(1, Math.ceil(meta.fileSize / pLen));
-          return {
-            realSizeBytes: meta.fileSize,
-            pieceLength: pLen,
-            totalPieces: tPieces,
-            activePeers: Number(meta.peers) || release.seeders || 1,
-            pieceHashesHex: [],
-            useBridgeBackend: true,
-            transportMode: 'webtorrent-bridge',
-          };
-        }
-      }
-    } catch {}
-
-    if (discoveredWebSeed) {
-      const proxiedSeed = buildWorkerProxyUrl(discoveredWebSeed);
+    const firstWebSeed = Array.from(discoveredWebSeeds)[0];
+    if (firstWebSeed) {
+      const proxiedSeed = buildWorkerProxyUrl(firstWebSeed);
       const { pieceLength, totalPieces } = computeRealPieceGeometry(
         release.sizeBytes,
       );
@@ -828,8 +900,10 @@ class CinemaDownloadManager {
       totalPieces,
       activePeers: release.seeders || 1,
       pieceHashesHex: parsedPieceHashes,
-      useBridgeBackend: true,
-      transportMode: 'webtorrent-bridge',
+      useBridgeBackend: bridgeAlive,
+      transportMode: bridgeAlive
+        ? 'webtorrent-bridge'
+        : 'browser-webrtc-swarm',
     };
   }
 
@@ -985,7 +1059,7 @@ class CinemaDownloadManager {
         if (loopState.cancelled) return;
         const pieceAbort = new AbortController();
         loopState.currentPieceAbort = pieceAbort;
-        const timeoutId = setTimeout(() => pieceAbort.abort(), 22000);
+        const timeoutId = setTimeout(() => pieceAbort.abort(), 24000);
 
         try {
           if (
@@ -1026,7 +1100,7 @@ class CinemaDownloadManager {
               }
             }
             lastErrorReason = `HTTP ${res.status} عند جلب النطاق #${pieceIndex + 1}`;
-          } else {
+          } else if (loopState.useBridgeBackend) {
             const params = new URLSearchParams({
               infoHash,
               pieceIndex: String(pieceIndex),
@@ -1075,6 +1149,30 @@ class CinemaDownloadManager {
                 break;
               }
             } else {
+              if (res.status === 404) {
+                loopState.useBridgeBackend = false;
+                this.state.bridgeServerAvailable = false;
+              }
+
+              const swarm = this.swarmSessions.get(infoHash);
+              if (swarm) {
+                const browserBuf = await swarm.fetchPieceInBrowser(
+                  pieceIndex,
+                  pieceLength,
+                  totalSize,
+                  pieceAbort.signal,
+                );
+                if (browserBuf && browserBuf.byteLength > 0) {
+                  pieceBuffer = browserBuf;
+                  currentTask.transportMode = 'browser-webrtc-swarm';
+                  currentTask.activePeers = Math.max(
+                    currentTask.activePeers,
+                    swarm.getConnectedPeersCount(),
+                  );
+                  break;
+                }
+              }
+
               const fallback = await this.resolveFallbackStreamTransport(
                 currentTask.media,
                 currentTask.release,
@@ -1113,8 +1211,31 @@ class CinemaDownloadManager {
               const errJson = await res.json().catch(() => null);
               lastErrorReason =
                 errJson?.error ||
-                `HTTP ${res.status} عند جلب القطعة #${pieceIndex + 1}`;
+                `تعذر جلب القطعة #${pieceIndex + 1} من السرب (HTTP ${res.status})`;
             }
+          } else {
+            const swarm = this.swarmSessions.get(infoHash);
+            if (swarm) {
+              const browserBuf = await swarm.fetchPieceInBrowser(
+                pieceIndex,
+                pieceLength,
+                totalSize,
+                pieceAbort.signal,
+              );
+              clearTimeout(timeoutId);
+              if (browserBuf && browserBuf.byteLength > 0) {
+                pieceBuffer = browserBuf;
+                currentTask.transportMode = 'browser-webrtc-swarm';
+                currentTask.activePeers = Math.max(
+                  currentTask.activePeers,
+                  swarm.getConnectedPeersCount(),
+                );
+                break;
+              }
+            }
+            clearTimeout(timeoutId);
+            lastErrorReason =
+              'بانتظار نظراء WebRTC أو بذور WebSeed متاحة في المتصفح';
           }
         } catch (err: any) {
           clearTimeout(timeoutId);
@@ -1328,6 +1449,7 @@ class CinemaDownloadManager {
   public openModalForMedia = (media: DownloadMediaContext): void => {
     this.initWorker();
     void this.refreshQuota();
+    void this.checkBridgeHealth();
 
     if (this.discoveryAbort) {
       this.discoveryAbort.abort();
@@ -1378,6 +1500,7 @@ class CinemaDownloadManager {
   public openTasksModal = (): void => {
     this.initWorker();
     void this.refreshQuota();
+    void this.checkBridgeHealth();
     this.state = {
       ...this.state,
       isModalOpen: true,
@@ -1413,7 +1536,9 @@ class CinemaDownloadManager {
   public addCustomTorrentFile = async (file: File): Promise<void> => {
     const ab = await file.arrayBuffer();
     const meta = await parseTorrentFileBytes(new Uint8Array(ab));
-    const parsedScene = parseSceneReleaseName(meta.name);
+    const parsedScene = parseSceneReleaseName(
+      meta.selectedFile.path || meta.name,
+    );
     const media: DownloadMediaContext = this.state.activeMedia || {
       id: Date.now(),
       tmdbId: 0,
@@ -1425,9 +1550,12 @@ class CinemaDownloadManager {
       episode: parsedScene.episode,
     };
 
+    const fileBytes = meta.selectedFile.length || meta.totalLength;
+    const { pieceLength, totalPieces } = computeRealPieceGeometry(fileBytes);
+
     const release: DiscoveredReleaseOption = {
       id: `${meta.infoHashHex}_${parsedScene.screenSize}`,
-      title: meta.name,
+      title: meta.selectedFile.path || meta.name,
       cleanFileName: buildCleanDownloadFileName(
         media,
         parsedScene.screenSize,
@@ -1436,8 +1564,8 @@ class CinemaDownloadManager {
       ),
       quality: parsedScene.screenSize,
       sourceKind: 'torrent-hybrid',
-      sizeBytes: meta.totalLength,
-      sizeFormatted: formatBytes(meta.totalLength),
+      sizeBytes: fileBytes,
+      sizeFormatted: formatBytes(fileBytes),
       seeders: 25,
       leechers: 5,
       infoHash: meta.infoHashHex,
@@ -1447,6 +1575,10 @@ class CinemaDownloadManager {
         meta.announceList,
       ),
       torrentCacheUrls: buildPublicTorrentCacheUrls(meta.infoHashHex),
+      rawTorrentBase64: meta.rawTorrentBase64,
+      selectedFileOffset: meta.selectedFile.offset,
+      selectedFileLength: meta.selectedFile.length,
+      webSeeds: meta.webSeeds,
       directStreamUrl: meta.webSeeds[0],
       videoCodec: parsedScene.videoCodec,
       audioCodec: parsedScene.audioCodec,
@@ -1454,9 +1586,10 @@ class CinemaDownloadManager {
       hdrBadges: parsedScene.colorDepth,
       sourceLabel: '.torrent File',
       releaseGroup: parsedScene.releaseGroup,
-      pieceLength: meta.pieceLength,
-      totalPieces: meta.pieceCount,
-      pieceHashesHex: meta.pieceHashesHex,
+      pieceLength,
+      totalPieces,
+      pieceHashesHex:
+        meta.files.length === 1 ? meta.pieceHashesHex : undefined,
       verifiedSafe: true,
       securityNotes: ['SHA-1 Metainfo Verified'],
       parsedMeta: parsedScene,
@@ -1506,7 +1639,11 @@ class CinemaDownloadManager {
         title,
         parsedMag.trackers.length > 0 ? parsedMag.trackers : undefined,
       ),
-      torrentCacheUrls: buildPublicTorrentCacheUrls(parsedMag.infoHashHex),
+      torrentCacheUrls: [
+        ...parsedMag.exactTopicTorrentUrls,
+        ...buildPublicTorrentCacheUrls(parsedMag.infoHashHex),
+      ],
+      webSeeds: parsedMag.webSeeds,
       directStreamUrl: parsedMag.webSeeds[0],
       videoCodec: parsedScene.videoCodec,
       audioCodec: parsedScene.audioCodec,
@@ -1818,6 +1955,11 @@ class CinemaDownloadManager {
       loop.cancelled = true;
       loop.currentPieceAbort?.abort();
     }
+    const swarm = this.swarmSessions.get(infoHash);
+    if (swarm) {
+      swarm.destroy();
+      this.swarmSessions.delete(infoHash);
+    }
 
     const task = this.state.tasks[infoHash];
     if (task) {
@@ -1837,6 +1979,11 @@ class CinemaDownloadManager {
     if (loop) {
       loop.cancelled = true;
       loop.currentPieceAbort?.abort();
+    }
+    const swarm = this.swarmSessions.get(infoHash);
+    if (swarm) {
+      swarm.destroy();
+      this.swarmSessions.delete(infoHash);
     }
     if (this.state.activeStreamingTaskHash === infoHash) {
       this.state.activeStreamingTaskHash = null;

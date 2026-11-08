@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Copy, Download, Eye, ShieldCheck } from 'lucide-react';
+import { Check, Copy, Download, ShieldCheck } from 'lucide-react';
 import type { DiscoveredReleaseOption, DownloadTaskState } from '../types';
 
 interface DownloadReleaseCardProps {
@@ -9,7 +9,6 @@ interface DownloadReleaseCardProps {
   isAr: boolean;
   onCopyMagnet: (rel: DiscoveredReleaseOption) => void;
   onDownloadOnly: (rel: DiscoveredReleaseOption) => void;
-  onOptionalStream: (rel: DiscoveredReleaseOption) => void;
 }
 
 export const DownloadReleaseCard: React.FC<DownloadReleaseCardProps> = ({
@@ -19,7 +18,6 @@ export const DownloadReleaseCard: React.FC<DownloadReleaseCardProps> = ({
   isAr,
   onCopyMagnet,
   onDownloadOnly,
-  onOptionalStream,
 }) => {
   const isThisActive =
     existingTask &&
@@ -101,20 +99,6 @@ export const DownloadReleaseCard: React.FC<DownloadReleaseCardProps> = ({
               <span>Magnet</span>
             </>
           )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onOptionalStream(release)}
-          title={
-            isAr
-              ? 'تفعيل المشاهدة الاختيارية أثناء التحميل'
-              : 'Optional: Enable Watch While Downloading'
-          }
-          className="px-3 py-2 rounded-xl bg-white/8 hover:bg-white/15 border border-white/20 text-xs font-bold text-white/85 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-        >
-          <Eye size={13} className="text-sky-300" />
-          <span>{isAr ? 'مشاهدة (اختياري)' : 'Watch (Optional)'}</span>
         </button>
 
         <button

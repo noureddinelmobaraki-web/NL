@@ -2,7 +2,7 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Isolated Cinema Download & Optional Progressive Torrent Streaming Types
+ * Isolated Cinema Download & Optional Progressive Torrent Streaming Types (Part 2)
  */
 
 import type { Media } from '../../components/Movies/moviesDataClient';
@@ -16,6 +16,7 @@ export type DownloadSourceKind =
 
 export type ActiveTransportMode =
   | 'webtorrent-bridge'
+  | 'browser-webrtc-swarm'
   | 'webseed-range'
   | 'hls-assembler'
   | 'initializing';
@@ -70,8 +71,10 @@ export interface ParsedTorrentMetainfo {
   totalLength: number;
   pieceHashesHex: string[];
   files: TorrentFileEntry[];
+  selectedFile: TorrentFileEntry;
   announceList: string[];
   webSeeds: string[];
+  rawTorrentBase64: string;
 }
 
 export interface DiscoveredReleaseOption {
@@ -87,6 +90,10 @@ export interface DiscoveredReleaseOption {
   infoHash: string;
   magnetUri: string;
   torrentCacheUrls: string[];
+  rawTorrentBase64?: string;
+  selectedFileOffset?: number;
+  selectedFileLength?: number;
+  webSeeds?: string[];
   directStreamUrl?: string;
   streamReferer?: string;
   fallbackStreamUrl?: string;
@@ -195,4 +202,5 @@ export interface CinemaDownloadSnapshot {
   tasks: Record<string, DownloadTaskState>;
   activeTaskIds: string[];
   liveTrackersCount: number;
+  bridgeServerAvailable: boolean;
 }
