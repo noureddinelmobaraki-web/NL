@@ -2,39 +2,62 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Dedicated Hybrid OPFS + Extended IndexedDB Chunk Worker & SHA-1 Verifier
- * Implements:
- * - Origin Private File System (FileSystemSyncAccessHandle) random-offset disk writes
- * - Seamless Extended IndexedDB Chunk Store spillover (`pieceChunks` store) when a movie
- *   (e.g. 3.30 GB or 7.13 GB) exceeds the browser's Free OPFS Quota (e.g. 2.13 GB),
- *   guaranteeing uninterrupted piece-by-piece downloads without fake 100% completion
- * - Hardware-accelerated crypto.subtle.digest('SHA-1')
- * - Instant <1ms cached piece read (`READ_PIECE_BUFFER`) for HTTP 206 Progressive Streaming
+ * Dedicated Hybrid OPFS Append-Only Store (TPPIECES: pieces.dat + pieces.idx)
+ * + Extended IndexedDB Spillover + 256 KiB Atomic File Merger
  */
 
 import type { DownloadStorageTargetMode } from './types';
 
+const HEADER_MAGIC = new TextEncoder().encode('TPPIECES'); // 8 bytes magic signature
+const INDEX_VERSION = 1;
+const HEADER_LEN = 36; // 8B magic + 4B version + 4B pieceCount + 20B infoHash
+const RECORD_LEN = 24; // 4B piece + 4B len + 8B offset + 8B sha1 checksum
+const STREAM_CHUNK = 256 * 1024; // 256 KiB streaming copy buffer
+
+interface PieceSlot {
+  at: number;
+  len: number;
+  inIdb: boolean;
+  verified: boolean;
+}
+
 interface TorrentSessionHandle {
   infoHash: string;
-  opfsFileName: string;
+  infoHashBytes: Uint8Array;
   originalFileName: string;
   totalSize: number;
   pieceLength: number;
+  totalPieces: number;
   opfsMaxByteLimit: number;
   storageMode: DownloadStorageTargetMode;
   isVariableSegments: boolean;
   writtenBytes: number;
+  nextDataOffset: number;
+  nextIdxOffset: number;
   expectedHashes: string[];
   bitfield: Uint8Array;
-  fileHandle: FileSystemFileHandle | null;
-  accessHandle: any | null;
-  fallbackChunks: Map<number, Uint8Array>;
+  slots: (PieceSlot | null)[];
+  dirHandle: FileSystemDirectoryHandle | null;
+  dataHandle: FileSystemFileHandle | null;
+  idxHandle: FileSystemFileHandle | null;
+  dataAccess: any | null;
+  idxAccess: any | null;
   mediaSnapshot?: unknown;
   releaseSnapshot?: unknown;
 }
 
 const sessions = new Map<string, TorrentSessionHandle>();
+const pieceWaiters = new Map<string, Set<() => void>>();
 let rootDirPromise: Promise<FileSystemDirectoryHandle | null> | null = null;
+
+function notifyWaiters(infoHash: string): void {
+  const set = pieceWaiters.get(infoHash);
+  if (!set) return;
+  for (const wake of [...set]) {
+    set.delete(wake);
+    wake();
+  }
+}
 
 function getOpfsRoot(): Promise<FileSystemDirectoryHandle | null> {
   if (!rootDirPromise) {
@@ -47,8 +70,17 @@ function getOpfsRoot(): Promise<FileSystemDirectoryHandle | null> {
   return rootDirPromise;
 }
 
-function bufferToHex(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
+function hexToBytes20(hex: string): Uint8Array {
+  const clean = hex.trim().toLowerCase().padEnd(40, '0').slice(0, 40);
+  const out = new Uint8Array(20);
+  for (let i = 0; i < 20; i++) {
+    out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16) || 0;
+  }
+  return out;
+}
+
+function bufferToHex(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let hex = '';
   for (let i = 0; i < bytes.length; i++) {
     hex += bytes[i].toString(16).padStart(2, '0');
@@ -56,17 +88,55 @@ function bufferToHex(buffer: ArrayBuffer): string {
   return hex;
 }
 
+function buildTpPiecesHeader(
+  pieceCount: number,
+  infoHashBytes: Uint8Array,
+): Uint8Array {
+  const hdr = new Uint8Array(HEADER_LEN);
+  const view = new DataView(hdr.buffer);
+  hdr.set(HEADER_MAGIC, 0);
+  view.setUint32(8, INDEX_VERSION, true);
+  view.setUint32(12, pieceCount >>> 0, true);
+  hdr.set(infoHashBytes.subarray(0, 20), 16);
+  return hdr;
+}
+
+async function buildTpPiecesRecord(
+  infoHashBytes: Uint8Array,
+  piece: number,
+  len: number,
+  at: number,
+): Promise<Uint8Array> {
+  const rec = new Uint8Array(RECORD_LEN);
+  const view = new DataView(rec.buffer);
+  view.setUint32(0, piece >>> 0, true);
+  view.setUint32(4, len >>> 0, true);
+  view.setBigUint64(8, BigInt(Math.max(0, at)), true);
+
+  const checkInput = new Uint8Array(20 + 16);
+  checkInput.set(infoHashBytes.subarray(0, 20), 0);
+  checkInput.set(rec.subarray(0, 16), 20);
+  const digest = new Uint8Array(
+    await crypto.subtle.digest('SHA-1', checkInput),
+  );
+  rec.set(digest.subarray(0, 8), 16);
+  return rec;
+}
+
 interface PersistedTorrentRecord {
   infoHash: string;
-  opfsFileName: string;
   originalFileName: string;
   totalSize: number;
   pieceLength: number;
+  totalPieces: number;
   opfsMaxByteLimit?: number;
   storageMode?: DownloadStorageTargetMode;
   isVariableSegments?: boolean;
   writtenBytes?: number;
+  nextDataOffset?: number;
+  nextIdxOffset?: number;
   bitfield: number[];
+  slots?: (PieceSlot | null)[];
   mediaSnapshot?: unknown;
   releaseSnapshot?: unknown;
   exportedToDevice?: boolean;
@@ -75,7 +145,7 @@ interface PersistedTorrentRecord {
 
 function openStateDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('BrowserTorrentCacheDB', 4);
+    const req = indexedDB.open('BrowserTorrentCacheDB', 5);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('torrents')) {
@@ -114,9 +184,7 @@ async function saveOverflowChunkToIDB(
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-  } catch {
-    // Ignore transient IDB write error
-  }
+  } catch {}
 }
 
 async function loadOverflowChunkFromIDB(
@@ -132,11 +200,7 @@ async function loadOverflowChunkFromIDB(
         .get(`${infoHash}_${pieceIndex}`);
       req.onsuccess = () => {
         const res = req.result as { buffer?: ArrayBuffer } | undefined;
-        if (res?.buffer) {
-          resolve(new Uint8Array(res.buffer));
-        } else {
-          resolve(null);
-        }
+        resolve(res?.buffer ? new Uint8Array(res.buffer) : null);
       };
       req.onerror = () => resolve(null);
     });
@@ -163,12 +227,10 @@ async function deleteOverflowChunksForHash(infoHash: string): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
     });
-  } catch {
-    // Ignore
-  }
+  } catch {}
 }
 
-async function saveBitfieldState(
+async function saveSessionStateToIDB(
   session: TorrentSessionHandle,
   exportedToDevice = false,
 ): Promise<void> {
@@ -178,15 +240,18 @@ async function saveBitfieldState(
       const tx = db.transaction('torrents', 'readwrite');
       const record: PersistedTorrentRecord = {
         infoHash: session.infoHash,
-        opfsFileName: session.opfsFileName,
         originalFileName: session.originalFileName,
         totalSize: session.totalSize,
         pieceLength: session.pieceLength,
+        totalPieces: session.totalPieces,
         opfsMaxByteLimit: session.opfsMaxByteLimit,
         storageMode: session.storageMode,
         isVariableSegments: session.isVariableSegments,
         writtenBytes: session.writtenBytes,
+        nextDataOffset: session.nextDataOffset,
+        nextIdxOffset: session.nextIdxOffset,
         bitfield: Array.from(session.bitfield),
+        slots: session.slots,
         mediaSnapshot: session.mediaSnapshot,
         releaseSnapshot: session.releaseSnapshot,
         exportedToDevice,
@@ -196,17 +261,18 @@ async function saveBitfieldState(
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-  } catch {
-    // Ignore IDB transient write errors
-  }
+  } catch {}
 }
 
-async function loadBitfieldState(
+async function loadSessionStateFromIDB(
   infoHash: string,
   totalPieces: number,
 ): Promise<{
   bitfield: Uint8Array;
+  slots: (PieceSlot | null)[];
   writtenBytes: number;
+  nextDataOffset: number;
+  nextIdxOffset: number;
   exportedToDevice: boolean;
 }> {
   try {
@@ -223,13 +289,22 @@ async function loadBitfieldState(
         ) {
           resolve({
             bitfield: new Uint8Array(res.bitfield),
+            slots:
+              Array.isArray(res.slots) && res.slots.length === totalPieces
+                ? res.slots
+                : new Array(totalPieces).fill(null),
             writtenBytes: Number(res.writtenBytes) || 0,
+            nextDataOffset: Number(res.nextDataOffset) || 0,
+            nextIdxOffset: Number(res.nextIdxOffset) || HEADER_LEN,
             exportedToDevice: Boolean(res.exportedToDevice),
           });
         } else {
           resolve({
             bitfield: new Uint8Array(totalPieces),
+            slots: new Array(totalPieces).fill(null),
             writtenBytes: 0,
+            nextDataOffset: 0,
+            nextIdxOffset: HEADER_LEN,
             exportedToDevice: false,
           });
         }
@@ -237,14 +312,20 @@ async function loadBitfieldState(
       req.onerror = () =>
         resolve({
           bitfield: new Uint8Array(totalPieces),
+          slots: new Array(totalPieces).fill(null),
           writtenBytes: 0,
+          nextDataOffset: 0,
+          nextIdxOffset: HEADER_LEN,
           exportedToDevice: false,
         });
     });
   } catch {
     return {
       bitfield: new Uint8Array(totalPieces),
+      slots: new Array(totalPieces).fill(null),
       writtenBytes: 0,
+      nextDataOffset: 0,
+      nextIdxOffset: HEADER_LEN,
       exportedToDevice: false,
     };
   }
@@ -274,9 +355,7 @@ async function deleteSavedRecord(infoHash: string): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
     });
-  } catch {
-    // Ignore
-  }
+  } catch {}
 }
 
 async function getStorageEstimateInfo() {
@@ -287,9 +366,7 @@ async function getStorageEstimateInfo() {
       const est = await navigator.storage.estimate();
       usage = est.usage || 0;
       quota = est.quota || 0;
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
   const rootDir = await getOpfsRoot();
   return {
@@ -303,15 +380,51 @@ async function getStorageEstimateInfo() {
   };
 }
 
-function sanitizeOpfsFileName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
+async function readVerifiedPieceBytes(
+  session: TorrentSessionHandle,
+  pieceIndex: number,
+): Promise<Uint8Array | null> {
+  if (session.bitfield[pieceIndex] !== 1) return null;
+  const slot = session.slots[pieceIndex];
+  if (slot) {
+    if (!slot.inIdb && session.dataAccess && slot.len > 0) {
+      try {
+        const buf = new Uint8Array(slot.len);
+        session.dataAccess.read(buf, { at: slot.at });
+        return buf;
+      } catch {}
+    }
+    const idbChunk = await loadOverflowChunkFromIDB(
+      session.infoHash,
+      pieceIndex,
+    );
+    if (idbChunk) return idbChunk;
+  }
+  return await loadOverflowChunkFromIDB(session.infoHash, pieceIndex);
+}
+
+function closeSessionHandles(session?: TorrentSessionHandle): void {
+  if (!session) return;
+  if (session.dataAccess) {
+    try {
+      session.dataAccess.flush();
+      session.dataAccess.close();
+    } catch {}
+    session.dataAccess = null;
+  }
+  if (session.idxAccess) {
+    try {
+      session.idxAccess.flush();
+      session.idxAccess.close();
+    } catch {}
+    session.idxAccess = null;
+  }
 }
 
 self.onmessage = async (event: MessageEvent) => {
   const { action, payload } = event.data || {};
 
   try {
-    // 0. Query Quota & Saved Incomplete/Completed Downloads
     if (action === 'GET_QUOTA_AND_SAVED') {
       const estimate = await getStorageEstimateInfo();
       const savedRecords = await getAllSavedRecords();
@@ -320,11 +433,7 @@ self.onmessage = async (event: MessageEvent) => {
         quota: estimate,
         savedRecords,
       });
-    }
-
-    // 1. Initialize Torrent or Stream File in Hybrid OPFS + Extended IndexedDB Chunk Store
-    // Never rejects when movie size > Free OPFS Quota: automatically activates 'hybrid-extended' mode!
-    else if (action === 'INIT') {
+    } else if (action === 'INIT') {
       const {
         infoHash,
         fileName,
@@ -339,105 +448,116 @@ self.onmessage = async (event: MessageEvent) => {
 
       const estimate = await getStorageEstimateInfo();
       const safeFreeOpfs =
-        estimate.freeBytes > 0
-          ? Math.floor(estimate.freeBytes * 0.85)
-          : size;
+        estimate.freeBytes > 0 ? Math.floor(estimate.freeBytes * 0.85) : size;
       const needsHybridExtended =
         estimate.freeBytes > 0 && size > safeFreeOpfs;
       const storageMode: DownloadStorageTargetMode = needsHybridExtended
         ? 'hybrid-extended'
         : 'opfs-cache';
-      const opfsAllocationSize = needsHybridExtended
+      const opfsMaxByteLimit = needsHybridExtended
         ? Math.max(0, Math.floor(safeFreeOpfs / pieceLen) * pieceLen)
         : size;
 
-      // Close previous session handle if re-initializing same infoHash
-      const existing = sessions.get(infoHash);
-      if (existing?.accessHandle) {
-        try {
-          existing.accessHandle.flush();
-          existing.accessHandle.close();
-        } catch {
-          // ignore
-        }
-      }
+      closeSessionHandles(sessions.get(infoHash));
 
-      const safeName = sanitizeOpfsFileName(fileName || 'movie.mp4');
-      const opfsFileName = `${infoHash}_${safeName}`;
       const totalPieces =
         explicitTotalPieces && explicitTotalPieces > 0
           ? explicitTotalPieces
           : Math.max(1, Math.ceil(size / Math.max(1, pieceLen)));
-      const { bitfield, writtenBytes, exportedToDevice } =
-        await loadBitfieldState(infoHash, totalPieces);
+
+      const loaded = await loadSessionStateFromIDB(infoHash, totalPieces);
+      const infoHashBytes = hexToBytes20(infoHash);
 
       const rootDir = await getOpfsRoot();
-      let fileHandle: FileSystemFileHandle | null = null;
-      let accessHandle: any | null = null;
+      let dirHandle: FileSystemDirectoryHandle | null = null;
+      let dataHandle: FileSystemFileHandle | null = null;
+      let idxHandle: FileSystemFileHandle | null = null;
+      let dataAccess: any | null = null;
+      let idxAccess: any | null = null;
 
-      if (rootDir && opfsAllocationSize > 0) {
+      if (rootDir && opfsMaxByteLimit > 0) {
         try {
-          fileHandle = await rootDir.getFileHandle(opfsFileName, {
+          const swarmRoot = await rootDir.getDirectoryHandle(
+            'torrentplayer-swarm',
+            { create: true },
+          );
+          dirHandle = await swarmRoot.getDirectoryHandle(infoHash, {
             create: true,
           });
-          if (typeof (fileHandle as any).createSyncAccessHandle === 'function') {
-            accessHandle = await (fileHandle as any).createSyncAccessHandle();
-            if (
-              !isVariableSegments &&
-              accessHandle.getSize() !== opfsAllocationSize
-            ) {
-              accessHandle.truncate(opfsAllocationSize);
+          dataHandle = await dirHandle.getFileHandle('pieces.dat', {
+            create: true,
+          });
+          idxHandle = await dirHandle.getFileHandle('pieces.idx', {
+            create: true,
+          });
+
+          if (typeof (dataHandle as any).createSyncAccessHandle === 'function') {
+            dataAccess = await (dataHandle as any).createSyncAccessHandle();
+            idxAccess = await (idxHandle as any).createSyncAccessHandle();
+
+            const expectedHdr = buildTpPiecesHeader(totalPieces, infoHashBytes);
+            if (idxAccess.getSize() < HEADER_LEN || loaded.writtenBytes === 0) {
+              idxAccess.truncate(0);
+              idxAccess.write(expectedHdr, { at: 0 });
+              idxAccess.flush();
+              dataAccess.truncate(0);
+              dataAccess.flush();
+              loaded.nextDataOffset = 0;
+              loaded.nextIdxOffset = HEADER_LEN;
             }
           }
         } catch {
-          accessHandle = null;
+          dataAccess = null;
+          idxAccess = null;
         }
       }
 
       const session: TorrentSessionHandle = {
         infoHash,
-        opfsFileName,
+        infoHashBytes,
         originalFileName: fileName || 'movie.mp4',
         totalSize: size,
         pieceLength: pieceLen,
-        opfsMaxByteLimit: opfsAllocationSize,
+        totalPieces,
+        opfsMaxByteLimit,
         storageMode,
         isVariableSegments: Boolean(isVariableSegments),
-        writtenBytes,
+        writtenBytes: loaded.writtenBytes,
+        nextDataOffset: loaded.nextDataOffset,
+        nextIdxOffset: loaded.nextIdxOffset,
         expectedHashes: Array.isArray(pieceHashes) ? pieceHashes : [],
-        bitfield,
-        fileHandle,
-        accessHandle,
-        fallbackChunks: new Map<number, Uint8Array>(),
+        bitfield: loaded.bitfield,
+        slots: loaded.slots,
+        dirHandle,
+        dataHandle,
+        idxHandle,
+        dataAccess,
+        idxAccess,
         mediaSnapshot,
         releaseSnapshot,
       };
-      sessions.set(infoHash, session);
-      await saveBitfieldState(session, exportedToDevice);
 
-      const completedCount = bitfield.reduce((acc, v) => acc + v, 0);
+      sessions.set(infoHash, session);
+      await saveSessionStateToIDB(session, loaded.exportedToDevice);
+
+      const completedCount = session.bitfield.reduce((acc, v) => acc + v, 0);
       const updatedEstimate = await getStorageEstimateInfo();
 
       self.postMessage({
         type: 'INIT_READY',
         infoHash,
         storageMode,
-        bitfield: Array.from(bitfield),
+        bitfield: Array.from(session.bitfield),
         completedPieces: completedCount,
         totalPieces,
         writtenBytes: session.writtenBytes,
-        exportedToDevice,
+        exportedToDevice: loaded.exportedToDevice,
         quota: updatedEstimate,
       });
-    }
-
-    // 2. Write Random-Offset Piece (Sliding-Window) or Sequential HLS Segment After SHA-1 Verification
-    else if (action === 'WRITE_PIECE') {
+    } else if (action === 'WRITE_PIECE') {
       const { infoHash, pieceIndex, buffer, expectedHash } = payload;
       const session = sessions.get(infoHash);
-      if (!session) {
-        return;
-      }
+      if (!session) return;
 
       if (session.bitfield[pieceIndex] === 1) {
         const done = session.bitfield.reduce((acc, v) => acc + v, 0);
@@ -449,13 +569,12 @@ self.onmessage = async (event: MessageEvent) => {
           pieceByteLength: 0,
           writtenBytes: session.writtenBytes,
           completedPieces: done,
-          totalPieces: session.bitfield.length,
-          progress: Number(((done / session.bitfield.length) * 100).toFixed(2)),
+          totalPieces: session.totalPieces,
+          progress: Number(((done / session.totalPieces) * 100).toFixed(2)),
         });
         return;
       }
 
-      // Hardware-accelerated SHA-1 digest on every piece
       const digestBuffer = await crypto.subtle.digest('SHA-1', buffer);
       const actualHex = bufferToHex(digestBuffer);
       const targetHash = expectedHash || session.expectedHashes[pieceIndex];
@@ -471,52 +590,60 @@ self.onmessage = async (event: MessageEvent) => {
       }
 
       const view = new Uint8Array(buffer);
-      const byteOffset = session.isVariableSegments
-        ? session.writtenBytes
-        : pieceIndex * session.pieceLength;
-
+      const appendAt = session.nextDataOffset;
       const fitsInOpfs =
+        session.dataAccess &&
         session.opfsMaxByteLimit > 0 &&
-        byteOffset + view.byteLength <= session.opfsMaxByteLimit;
+        appendAt + view.byteLength <= session.opfsMaxByteLimit;
 
-      if (fitsInOpfs && session.accessHandle) {
+      let storedInIdb = false;
+
+      if (fitsInOpfs && session.dataAccess) {
         try {
-          session.accessHandle.write(view, { at: byteOffset });
-          session.accessHandle.flush();
+          session.dataAccess.write(view, { at: appendAt });
+          session.nextDataOffset += view.byteLength;
+
+          if (session.idxAccess) {
+            const rec = await buildTpPiecesRecord(
+              session.infoHashBytes,
+              pieceIndex,
+              view.byteLength,
+              appendAt,
+            );
+            session.idxAccess.write(rec, { at: session.nextIdxOffset });
+            session.nextIdxOffset += RECORD_LEN;
+          }
         } catch {
-          await saveOverflowChunkToIDB(infoHash, pieceIndex, view);
-        }
-      } else if (
-        fitsInOpfs &&
-        session.fileHandle &&
-        typeof (session.fileHandle as any).createWritable === 'function'
-      ) {
-        try {
-          const writable = await (session.fileHandle as any).createWritable({
-            keepExistingData: true,
-          });
-          await writable.write({
-            type: 'write',
-            position: byteOffset,
-            data: view,
-          });
-          await writable.close();
-        } catch {
+          storedInIdb = true;
           await saveOverflowChunkToIDB(infoHash, pieceIndex, view);
         }
       } else {
-        // Extended IndexedDB Chunk Store spillover (handles multi-GB movies beyond OPFS quota)
+        storedInIdb = true;
         await saveOverflowChunkToIDB(infoHash, pieceIndex, view);
       }
 
+      session.slots[pieceIndex] = {
+        at: storedInIdb ? 0 : appendAt,
+        len: view.byteLength,
+        inIdb: storedInIdb,
+        verified: true,
+      };
       session.bitfield[pieceIndex] = 1;
       session.writtenBytes += view.byteLength;
-      await saveBitfieldState(session, false);
 
       const done = session.bitfield.reduce((acc, v) => acc + v, 0);
-      const total = session.bitfield.length;
-      const progress = Number(((done / total) * 100).toFixed(2));
+      const total = session.totalPieces;
+      if (done % 8 === 0 || done === total) {
+        try {
+          session.dataAccess?.flush();
+          session.idxAccess?.flush();
+        } catch {}
+        await saveSessionStateToIDB(session, false);
+      }
 
+      notifyWaiters(infoHash);
+
+      const progress = Number(((done / total) * 100).toFixed(2));
       self.postMessage({
         type: 'PIECE_VERIFIED',
         infoHash,
@@ -528,10 +655,7 @@ self.onmessage = async (event: MessageEvent) => {
         totalPieces: total,
         progress,
       });
-    }
-
-    // 3. Read Cached Piece Buffer in <1ms for Progressive Streaming
-    else if (action === 'READ_PIECE_BUFFER') {
+    } else if (action === 'READ_PIECE_BUFFER') {
       const { infoHash, pieceIndex, requestId } = payload;
       const session = sessions.get(infoHash);
       if (!session || session.bitfield[pieceIndex] !== 1) {
@@ -545,24 +669,9 @@ self.onmessage = async (event: MessageEvent) => {
         return;
       }
 
-      const byteOffset = pieceIndex * session.pieceLength;
-      const fitsInOpfs =
-        session.opfsMaxByteLimit > 0 &&
-        byteOffset + session.pieceLength <= session.opfsMaxByteLimit;
-
-      let outBuf: Uint8Array | null = null;
-      if (fitsInOpfs && session.accessHandle) {
-        const readLen = Math.min(
-          session.pieceLength,
-          Math.max(0, session.totalSize - byteOffset),
-        );
-        outBuf = new Uint8Array(readLen);
-        session.accessHandle.read(outBuf, { at: byteOffset });
-      } else {
-        outBuf = await loadOverflowChunkFromIDB(infoHash, pieceIndex);
-      }
-
+      const outBuf = await readVerifiedPieceBytes(session, pieceIndex);
       if (outBuf) {
+        const copy = outBuf.slice();
         (self as any).postMessage(
           {
             type: 'PIECE_BUFFER_RESULT',
@@ -570,9 +679,9 @@ self.onmessage = async (event: MessageEvent) => {
             infoHash,
             pieceIndex,
             found: true,
-            buffer: outBuf.buffer,
+            buffer: copy.buffer,
           },
-          [outBuf.buffer],
+          [copy.buffer],
         );
       } else {
         self.postMessage({
@@ -583,120 +692,217 @@ self.onmessage = async (event: MessageEvent) => {
           found: false,
         });
       }
-    }
+    } else if (action === 'OPEN_BYTE_RANGE' && event.ports[0]) {
+      const port = event.ports[0];
+      const { infoHash, start, end } = payload;
+      const session = sessions.get(infoHash);
+      if (!session) {
+        port.postMessage({ type: 'ERROR', message: 'Session not initialized' });
+        port.close();
+        return;
+      }
 
-    // 4. Pause / Flush Handle Safely
-    else if (action === 'PAUSE_SESSION') {
+      let aborted = false;
+      port.onmessage = (ctrl) => {
+        if (ctrl.data?.type === 'ABORT_RANGE') {
+          aborted = true;
+          notifyWaiters(infoHash);
+        }
+      };
+
+      (async () => {
+        const safeEnd = Math.min(
+          session.totalSize - 1,
+          Number(end) || session.totalSize - 1,
+        );
+        let pos = Math.max(0, Number(start) || 0);
+
+        try {
+          while (pos <= safeEnd && !aborted) {
+            const pieceIdx = Math.min(
+              session.totalPieces - 1,
+              Math.floor(pos / session.pieceLength),
+            );
+
+            while (session.bitfield[pieceIdx] !== 1 && !aborted) {
+              await new Promise<void>((resolve) => {
+                let set = pieceWaiters.get(infoHash);
+                if (!set) {
+                  set = new Set();
+                  pieceWaiters.set(infoHash, set);
+                }
+                set.add(resolve);
+              });
+            }
+            if (aborted) break;
+
+            const pieceBytes = await readVerifiedPieceBytes(session, pieceIdx);
+            if (!pieceBytes) {
+              throw new Error(`Piece ${pieceIdx} unavailable in store`);
+            }
+
+            const pieceStartByte = pieceIdx * session.pieceLength;
+            const offsetInPiece = Math.max(0, pos - pieceStartByte);
+            const availableInPiece = Math.max(
+              0,
+              pieceBytes.byteLength - offsetInPiece,
+            );
+            if (availableInPiece <= 0) break;
+
+            const toSend = Math.min(
+              availableInPiece,
+              safeEnd - pos + 1,
+              STREAM_CHUNK,
+            );
+            const slice = pieceBytes.slice(
+              offsetInPiece,
+              offsetInPiece + toSend,
+            );
+            pos += toSend;
+
+            port.postMessage(
+              { type: 'CHUNK', buffer: slice.buffer },
+              [slice.buffer],
+            );
+          }
+          if (!aborted) {
+            port.postMessage({ type: 'EOF' });
+          }
+        } catch (err: any) {
+          if (!aborted) {
+            port.postMessage({
+              type: 'ERROR',
+              message: err?.message || 'Range stream interrupted',
+            });
+          }
+        } finally {
+          port.close();
+        }
+      })();
+    } else if (action === 'PAUSE_SESSION') {
       const { infoHash } = payload;
       const session = sessions.get(infoHash);
       if (session) {
-        if (session.accessHandle) {
-          try {
-            session.accessHandle.flush();
-          } catch {
-            // ignore
-          }
-        }
-        await saveBitfieldState(session, false);
+        try {
+          session.dataAccess?.flush();
+          session.idxAccess?.flush();
+        } catch {}
+        await saveSessionStateToIDB(session, false);
       }
       self.postMessage({
         type: 'SESSION_PAUSED',
         infoHash,
       });
-    }
-
-    // 5. Close Write Handle and Export Zero-Copy Disk-Backed + Extended Chunk File
-    else if (action === 'FINALIZE_AND_EXPORT') {
-      const { infoHash } = payload;
+    } else if (action === 'FINALIZE_AND_EXPORT') {
+      const { infoHash, writableStream } = payload;
       const session = sessions.get(infoHash);
       if (!session) {
         throw new Error('لم يتم العثور على جلسة التحميل في الكاش القرصي');
       }
 
-      if (session.accessHandle) {
-        try {
-          if (session.isVariableSegments && session.writtenBytes > 0) {
-            session.accessHandle.truncate(
-              Math.min(session.writtenBytes, session.opfsMaxByteLimit),
+      try {
+        session.dataAccess?.flush();
+        session.idxAccess?.flush();
+      } catch {}
+
+      if (writableStream && typeof writableStream.write === 'function') {
+        let totalMerged = 0;
+        for (let i = 0; i < session.totalPieces; i++) {
+          const pieceBytes = await readVerifiedPieceBytes(session, i);
+          if (!pieceBytes) continue;
+          for (let off = 0; off < pieceBytes.byteLength; off += STREAM_CHUNK) {
+            const slice = pieceBytes.subarray(
+              off,
+              Math.min(pieceBytes.byteLength, off + STREAM_CHUNK),
             );
+            await writableStream.write(slice);
+            totalMerged += slice.byteLength;
           }
-          session.accessHandle.flush();
-          session.accessHandle.close();
+        }
+        await writableStream.close();
+        await saveSessionStateToIDB(session, true);
+        const estimate = await getStorageEstimateInfo();
+        self.postMessage({
+          type: 'EXPORT_READY',
+          infoHash,
+          fileName: session.originalFileName,
+          file: null,
+          savedDirectlyToDisk: true,
+          actualSizeBytes: totalMerged,
+          quota: estimate,
+        });
+        return;
+      }
+
+      let mergedFile: File | null = null;
+      if (session.dirHandle) {
+        try {
+          const outHandle = await session.dirHandle.getFileHandle(
+            session.originalFileName,
+            { create: true },
+          );
+          if (typeof (outHandle as any).createSyncAccessHandle === 'function') {
+            const outAccess = await (outHandle as any).createSyncAccessHandle();
+            outAccess.truncate(0);
+            let writePos = 0;
+            for (let i = 0; i < session.totalPieces; i++) {
+              const pieceBytes = await readVerifiedPieceBytes(session, i);
+              if (!pieceBytes) continue;
+              outAccess.write(pieceBytes, { at: writePos });
+              writePos += pieceBytes.byteLength;
+            }
+            outAccess.flush();
+            outAccess.close();
+            mergedFile = await outHandle.getFile();
+          }
         } catch {
-          // ignore
-        }
-        session.accessHandle = null;
-      }
-
-      const parts: BlobPart[] = [];
-      if (session.fileHandle && session.opfsMaxByteLimit > 0) {
-        const opfsFile = await session.fileHandle.getFile();
-        if (opfsFile.size > 0) {
-          parts.push(opfsFile);
+          mergedFile = null;
         }
       }
 
-      // Append any overflow chunks stored in Extended IndexedDB Chunk Store
-      const firstOverflowIdx =
-        session.opfsMaxByteLimit > 0
-          ? Math.floor(session.opfsMaxByteLimit / session.pieceLength)
-          : 0;
-      for (let i = firstOverflowIdx; i < session.bitfield.length; i++) {
-        const chunk =
-          (await loadOverflowChunkFromIDB(infoHash, i)) ||
-          session.fallbackChunks.get(i);
-        if (chunk) {
-          parts.push(chunk as unknown as BlobPart);
+      if (!mergedFile) {
+        const parts: BlobPart[] = [];
+        for (let i = 0; i < session.totalPieces; i++) {
+          const pieceBytes = await readVerifiedPieceBytes(session, i);
+          if (pieceBytes) {
+            parts.push(pieceBytes.slice() as unknown as BlobPart);
+          }
         }
+        const mimeType = session.originalFileName.endsWith('.ts')
+          ? 'video/mp2t'
+          : 'video/mp4';
+        mergedFile = new File(parts, session.originalFileName, {
+          type: mimeType,
+        });
       }
 
-      const mimeType = session.originalFileName.endsWith('.ts')
-        ? 'video/mp2t'
-        : 'video/mp4';
-      const diskBackedFile =
-        parts.length === 1 && parts[0] instanceof File
-          ? (parts[0] as File)
-          : new File(parts, session.originalFileName, { type: mimeType });
-
-      await saveBitfieldState(session, true);
+      await saveSessionStateToIDB(session, true);
       const estimate = await getStorageEstimateInfo();
 
       self.postMessage({
         type: 'EXPORT_READY',
         infoHash,
         fileName: session.originalFileName,
-        file: diskBackedFile,
-        actualSizeBytes: diskBackedFile.size,
+        file: mergedFile,
+        actualSizeBytes: mergedFile.size,
         quota: estimate,
       });
-    }
-
-    // 6. Cleanup & Delete File from Browser OPFS Cache + Extended IndexedDB Store
-    else if (action === 'CLEANUP_CACHE') {
-      const { infoHash, opfsFileName: explicitOpfsName } = payload;
+    } else if (action === 'CLEANUP_CACHE') {
+      const { infoHash } = payload;
       const session = sessions.get(infoHash);
-      const targetFileName = session?.opfsFileName || explicitOpfsName || '';
-
-      if (session?.accessHandle) {
-        try {
-          session.accessHandle.close();
-        } catch {
-          // ignore
-        }
-        session.accessHandle = null;
-      }
-      if (session) {
-        session.fallbackChunks.clear();
-        sessions.delete(infoHash);
-      }
+      closeSessionHandles(session);
+      sessions.delete(infoHash);
+      notifyWaiters(infoHash);
 
       const rootDir = await getOpfsRoot();
-      if (rootDir && targetFileName) {
+      if (rootDir) {
         try {
-          await rootDir.removeEntry(targetFileName);
-        } catch {
-          // Entry may already be removed
-        }
+          const swarmRoot = await rootDir.getDirectoryHandle(
+            'torrentplayer-swarm',
+            { create: false },
+          );
+          await swarmRoot.removeEntry(infoHash, { recursive: true });
+        } catch {}
       }
 
       await deleteOverflowChunksForHash(infoHash);
@@ -713,7 +919,7 @@ self.onmessage = async (event: MessageEvent) => {
     self.postMessage({
       type: 'ERROR',
       infoHash: payload?.infoHash,
-      message: err?.message || 'حدث خطأ في عامل التخزين القرصي OPFS',
+      message: err?.message || 'حدث خطأ في مخزن القطع القرصي TPPIECES OPFS',
     });
   }
 };

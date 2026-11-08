@@ -3,16 +3,15 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
  * Hybrid Release & Stream Discovery Service
- * Automatically links IMDb ID, TMDB ID, Title, Year, Season, and Episode
- * with real multi-quality Torrent Indexers (Torrentio, YTS, EZTV) AND real
- * Direct Cinema Streams (MP4 / HLS), applying the 6-gate security filter
- * and Magnet synthesizer with Zero Synthetic Fallback Hashes.
  */
 
 import { PUBLIC_TMDB_KEY } from '../../config/publicKeys';
 import { extractValidImdbId } from '../../config/servers';
 import { buildSources } from '../../components/Movies/MovieSourcesModal';
-import { fetchExtractedVideos } from '../../services/videoExtractor';
+import {
+  fetchExtractedVideos,
+  type ExtractedVideoStream,
+} from '../../services/videoExtractor';
 import {
   buildPublicTorrentCacheUrls,
   formatBytes,
@@ -51,9 +50,7 @@ export async function resolveMediaImdbId(
         return val;
       }
     }
-  } catch {
-    // ignore
-  }
+  } catch {}
 
   const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || PUBLIC_TMDB_KEY;
   if (!tmdbKey || !media.tmdbId) return '';
@@ -126,7 +123,6 @@ export function computeRealPieceGeometry(sizeBytes: number): {
   pieceLength: number;
   totalPieces: number;
 } {
-  // 2 MB pieces for large files (>= 2 GB), 1 MB pieces for standard files
   const pieceLength =
     sizeBytes >= 2 * 1024 * 1024 * 1024 ? 2 * 1024 * 1024 : 1024 * 1024;
   const totalPieces = Math.max(1, Math.ceil(sizeBytes / pieceLength));
@@ -147,12 +143,12 @@ export async function discoverReleasesForMedia(
   ]);
 
   const rawCandidates: RawIndexerCandidate[] = [];
+  const extractedDirectStreams: ExtractedVideoStream[] = [];
   const season = Math.max(1, media.season || 1);
   const episode = Math.max(1, media.episode || 1);
 
   const discoveryTasks: Promise<void>[] = [];
 
-  // 1. Server-side hybrid indexer proxy (/api/cinema-download/discover)
   if (imdbId) {
     discoveryTasks.push(
       (async () => {
@@ -165,22 +161,19 @@ export async function discoverReleasesForMedia(
           });
           const res = await fetch(
             `/api/cinema-download/discover?${params.toString()}`,
-            {
-              signal: signal || AbortSignal.timeout(6500),
-            },
+            { signal: signal || AbortSignal.timeout(4500) },
           );
           if (!res.ok) return;
+          const ct = res.headers.get('content-type') || '';
+          if (!ct.includes('application/json')) return;
           const data = (await res.json()) as { items?: RawIndexerCandidate[] };
           if (Array.isArray(data.items)) {
             rawCandidates.push(...data.items);
           }
-        } catch {
-          // Fallback to direct client discovery
-        }
+        } catch {}
       })(),
     );
 
-    // 2. Direct Client-side Torrentio P2P swarm lookup
     discoveryTasks.push(
       (async () => {
         try {
@@ -224,13 +217,10 @@ export async function discoverReleasesForMedia(
               seeders: seedMatch ? Number(seedMatch[1]) : 18,
             });
           }
-        } catch {
-          // Ignore
-        }
+        } catch {}
       })(),
     );
 
-    // 3. Direct Client-side YTS Lookup for Movies
     if (media.mediaType === 'movie') {
       discoveryTasks.push(
         (async () => {
@@ -257,15 +247,12 @@ export async function discoverReleasesForMedia(
                 });
               }
             }
-          } catch {
-            // Ignore
-          }
+          } catch {}
         })(),
       );
     }
   }
 
-  // 4. Real Extracted Direct Video Streams (MP4 / HLS .m3u8 from Cinema servers)
   discoveryTasks.push(
     (async () => {
       try {
@@ -276,9 +263,10 @@ export async function discoverReleasesForMedia(
           season,
           episode,
         });
-        const topUrls = playSources.slice(0, 4).map((s) => s.url);
+        const topUrls = playSources.slice(0, 5).map((s) => s.url);
         if (topUrls.length === 0) return;
         const streams = await fetchExtractedVideos(topUrls, signal);
+        extractedDirectStreams.push(...streams);
         streams.slice(0, 4).forEach((st, idx) => {
           const streamUrl = st.proxiedUrl || st.directUrl;
           if (!streamUrl) return;
@@ -293,7 +281,7 @@ export async function discoverReleasesForMedia(
             infoHash: normalizeInfoHash('', hashSeed),
             sizeBytes:
               qual === '1080p' ? 1450 * 1024 * 1024 : 780 * 1024 * 1024,
-            seeders: 100,
+            seeders: 150,
             leechers: 0,
             quality: qual,
             videoCodec: 'H.264',
@@ -302,15 +290,25 @@ export async function discoverReleasesForMedia(
             isDirectStream: true,
           });
         });
-      } catch {
-        // Ignore stream extractor timeout
-      }
+      } catch {}
     })(),
   );
 
   await Promise.allSettled(discoveryTasks);
 
-  // Deduplicate by infoHash & apply 6-gate safety filter (ONLY real torrents or real direct streams)
+  const primaryFallbackStream =
+    extractedDirectStreams.find((s) => s.type === 'mp4') ||
+    extractedDirectStreams[0];
+  const fallbackUrl = primaryFallbackStream
+    ? primaryFallbackStream.proxiedUrl || primaryFallbackStream.directUrl
+    : undefined;
+  const fallbackType: 'mp4' | 'hls' | undefined = primaryFallbackStream
+    ? primaryFallbackStream.type === 'hls' ||
+      primaryFallbackStream.directUrl.includes('.m3u8')
+      ? 'hls'
+      : 'mp4'
+    : undefined;
+
   const seenHashes = new Set<string>();
   const verifiedReleases: DiscoveredReleaseOption[] = [];
   const fallbackYear = media.year ? Number(media.year.slice(0, 4)) : undefined;
@@ -318,9 +316,7 @@ export async function discoverReleasesForMedia(
   for (const cand of rawCandidates) {
     const isRealDirect = Boolean(cand.isDirectStream && cand.directStreamUrl);
     const isRealTorrent = isValidRealHexInfoHash(cand.infoHash);
-    if (!isRealDirect && !isRealTorrent) {
-      continue;
-    }
+    if (!isRealDirect && !isRealTorrent) continue;
 
     const cleanHash = isRealTorrent
       ? cand.infoHash.trim().toLowerCase()
@@ -333,7 +329,7 @@ export async function discoverReleasesForMedia(
 
     const defaultSize =
       quality === '2160p'
-        ? 5.8 * 1024 * 1024 * 1024
+        ? 5.2 * 1024 * 1024 * 1024
         : quality === '1080p'
           ? 1.95 * 1024 * 1024 * 1024
           : quality === '720p'
@@ -359,14 +355,11 @@ export async function discoverReleasesForMedia(
     seenHashes.add(cleanHash);
 
     const { pieceLength, totalPieces } = computeRealPieceGeometry(sizeBytes);
-    const ext =
-      isRealDirect && cand.source.includes('HLS') ? 'ts' : 'mp4';
-
     const cleanFileName = buildCleanDownloadFileName(
       media,
       quality,
       parsed.videoCodec,
-      ext,
+      'mp4',
     );
 
     verifiedReleases.push({
@@ -388,6 +381,9 @@ export async function discoverReleasesForMedia(
       torrentCacheUrls: buildPublicTorrentCacheUrls(cleanHash),
       directStreamUrl: cand.directStreamUrl,
       streamReferer: cand.streamReferer,
+      fallbackStreamUrl: fallbackUrl,
+      fallbackStreamType: fallbackType,
+      fallbackStreamReferer: primaryFallbackStream?.sourcePage,
       videoCodec: cand.videoCodec || parsed.videoCodec,
       audioCodec: parsed.audioCodec,
       audioChannels: parsed.audioChannels,
@@ -403,7 +399,6 @@ export async function discoverReleasesForMedia(
     });
   }
 
-  // Sort: prefer Direct Streams & high-seeder torrents so the fastest real sources appear at the top of each quality tier
   const qualityRank: Record<DownloadQualityTier, number> = {
     '2160p': 4,
     '1080p': 3,

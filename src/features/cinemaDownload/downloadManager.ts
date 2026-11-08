@@ -2,30 +2,40 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Isolated Cinema Download & Progressive Torrent Stream Manager
- * Coordinates:
- * - Real Magnet / WebTorrent Swarm Bridge (/api/cinema-download/torrent-meta & /piece)
- * - Sliding-Window Priority Scheduler (Header [0,1] + Tail [N-1] -> Playhead Window -> Sequential)
- * - HTTP 206 Partial Content Byte-Range Video Streamer (/api/cinema-download/range-stream + Service Worker)
- * - Dynamic Seek Reprioritization (/api/cinema-download/seek-priority) when jumping to any minute
- * - Hybrid OPFS + Extended IndexedDB Chunk Worker (never stops or fakes 100% when movie > 2.13 GB OPFS)
- * - Hand-off to Main Cinema Player (`nl:cinema-progressive-torrent-stream` custom event)
+ * Isolated Cinema Download & Optional Progressive Torrent Stream Manager
  */
 
 import { useSyncExternalStore } from 'react';
 import { nowPlayingBus } from '../../audio/nowPlayingBus';
+import { buildSources } from '../../components/Movies/MovieSourcesModal';
 import {
+  buildWorkerProxyUrl,
+  fetchExtractedVideos,
+} from '../../services/videoExtractor';
+import {
+  parseMagnetUriInput,
+  parseTorrentFileBytes,
+} from './bencodeAndInputManager';
+import {
+  buildCleanDownloadFileName,
   computeRealPieceGeometry,
   discoverReleasesForMedia,
 } from './releaseDiscoveryService';
-import { formatBytes } from './releaseParserAndFilter';
+import {
+  buildPublicTorrentCacheUrls,
+  formatBytes,
+  parseSceneReleaseName,
+  synthesizeMagnetUri,
+} from './releaseParserAndFilter';
 import {
   byteOffsetToPieceIndex,
   computePieceMapBuckets,
   isHeaderAndTailComplete,
+  SeekGate,
   selectNextPieceToDownload,
 } from './slidingWindowScheduler';
 import type {
+  ActiveTransportMode,
   CinemaDownloadSnapshot,
   DiscoveredReleaseOption,
   DownloadMediaContext,
@@ -35,10 +45,14 @@ import type {
 interface ActiveLoopContext {
   cancelled: boolean;
   hlsSegments?: string[];
+  directRangeUrl?: string;
+  directRangeReferer?: string;
+  useBridgeBackend: boolean;
   bytesTransferredInSession: number;
   sessionStartTimeMs: number;
   isRecentSeek: boolean;
   currentPieceAbort: AbortController | null;
+  seekGate: SeekGate;
 }
 
 function isDirectDiskPickerSupported(): boolean {
@@ -50,18 +64,103 @@ function isDirectDiskPickerSupported(): boolean {
 
 export function buildProgressiveRangeStreamUrl(
   release: DiscoveredReleaseOption,
+  sessionToken?: string,
 ): string {
+  if (release.directStreamUrl) {
+    return release.directStreamUrl;
+  }
+  if (release.fallbackStreamUrl) {
+    return release.fallbackStreamUrl;
+  }
+  const base =
+    typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL
+      ? import.meta.env.BASE_URL.replace(/\/+$/, '')
+      : '';
   const params = new URLSearchParams({
     infoHash: release.infoHash,
     magnet: release.magnetUri,
+    size: String(release.sizeBytes),
+    pieceLen: String(release.pieceLength),
   });
-  if (release.directStreamUrl && release.sourceKind !== 'direct-hls') {
-    params.set('directUrl', release.directStreamUrl);
-    if (release.streamReferer) {
-      params.set('referer', release.streamReferer);
+  if (sessionToken) {
+    params.set('t', sessionToken);
+  }
+  return `${base}/__tp_stream__/${release.infoHash}?${params.toString()}`;
+}
+
+async function resolveHlsSegmentsClientSide(
+  playlistUrl: string,
+  referer?: string,
+): Promise<string[]> {
+  const fetchViaProxy = async (targetUrl: string): Promise<string> => {
+    const proxied = targetUrl.startsWith('https://broad-block-7bd7.')
+      ? targetUrl
+      : buildWorkerProxyUrl(targetUrl, referer);
+    const res = await fetch(proxied, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.text();
+  };
+
+  let manifestText = await fetchViaProxy(playlistUrl);
+  let activeBaseUrl = playlistUrl;
+
+  if (manifestText.includes('#EXT-X-STREAM-INF')) {
+    const lines = manifestText.split(/\r?\n/);
+    let bestBw = -1;
+    let bestUri = '';
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('#EXT-X-STREAM-INF')) {
+        const bwMatch = line.match(/BANDWIDTH=(\d+)/i);
+        const bw = bwMatch ? Number(bwMatch[1]) : 0;
+        for (let j = i + 1; j < lines.length; j++) {
+          const nextLine = lines[j].trim();
+          if (!nextLine) continue;
+          if (!nextLine.startsWith('#')) {
+            if (bw >= bestBw) {
+              bestBw = bw;
+              try {
+                const rawUrl = new URL(nextLine, playlistUrl);
+                const innerTarget = rawUrl.searchParams.get('videoUrl');
+                bestUri = innerTarget || rawUrl.toString();
+              } catch {
+                bestUri = nextLine;
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
+    if (bestUri) {
+      activeBaseUrl = bestUri;
+      manifestText = await fetchViaProxy(bestUri);
     }
   }
-  return `/api/cinema-download/range-stream?${params.toString()}`;
+
+  const segments: string[] = [];
+  for (const rawLine of manifestText.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line.startsWith('#EXT-X-MAP:')) {
+      const uriMatch = line.match(/URI="([^"]+)"/i);
+      if (uriMatch?.[1]) {
+        try {
+          segments.push(new URL(uriMatch[1], activeBaseUrl).toString());
+        } catch {}
+      }
+    } else if (!line.startsWith('#')) {
+      try {
+        segments.push(new URL(line, activeBaseUrl).toString());
+      } catch {}
+    }
+  }
+
+  return segments.map((seg) =>
+    seg.startsWith('https://broad-block-7bd7.')
+      ? seg
+      : buildWorkerProxyUrl(seg, referer || activeBaseUrl),
+  );
 }
 
 class CinemaDownloadManager {
@@ -70,6 +169,7 @@ class CinemaDownloadManager {
   private discoveryAbort: AbortController | null = null;
   private activeLoops = new Map<string, ActiveLoopContext>();
   private savedBitfields = new Map<string, number[]>();
+  private sessionToken = '';
 
   private state: CinemaDownloadSnapshot = {
     isModalOpen: false,
@@ -93,11 +193,18 @@ class CinemaDownloadManager {
     },
     tasks: {},
     activeTaskIds: [],
-    liveTrackersCount: 11,
+    liveTrackersCount: 14,
   };
 
   constructor() {
     if (typeof window !== 'undefined') {
+      const rnd = new Uint8Array(16);
+      if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+        crypto.getRandomValues(rnd);
+      }
+      this.sessionToken = Array.from(rnd, (b) =>
+        b.toString(16).padStart(2, '0'),
+      ).join('');
       this.initWorker();
       this.registerStreamServiceWorker();
       void this.refreshQuota();
@@ -109,15 +216,39 @@ class CinemaDownloadManager {
       return;
     }
     try {
+      const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+      const swPath = import.meta.env.PROD
+        ? `${base}/sw.js`
+        : `${base}/torrent-stream-sw.js`;
       void navigator.serviceWorker
-        .register('/torrent-stream-sw.js')
+        .register(swPath, { scope: `${base}/` })
         .catch(() => {});
+
       navigator.serviceWorker.addEventListener(
         'message',
         (event: MessageEvent) => {
           const data = event.data;
-          if (
-            data &&
+          if (!data) return;
+
+          if (data.type === 'SW_OPEN_RANGE' && event.ports[0] && this.worker) {
+            if (
+              typeof data.infoHash === 'string' &&
+              typeof data.start === 'number'
+            ) {
+              this.seekStreamToByteOffset(data.infoHash, data.start, false);
+            }
+            this.worker.postMessage(
+              {
+                action: 'OPEN_BYTE_RANGE',
+                payload: {
+                  infoHash: data.infoHash,
+                  start: data.start,
+                  end: data.end,
+                },
+              },
+              [event.ports[0]],
+            );
+          } else if (
             data.type === 'TORRENT_SW_SEEK_RANGE' &&
             typeof data.infoHash === 'string' &&
             typeof data.byteStart === 'number'
@@ -126,9 +257,7 @@ class CinemaDownloadManager {
           }
         },
       );
-    } catch {
-      // ignore SW registration issues in restricted environments
-    }
+    } catch {}
   }
 
   private emit(): void {
@@ -141,9 +270,7 @@ class CinemaDownloadManager {
     this.listeners.forEach((cb) => {
       try {
         cb();
-      } catch {
-        // ignore listener error
-      }
+      } catch {}
     });
   }
 
@@ -210,9 +337,7 @@ class CinemaDownloadManager {
           directDiskSupported: isDirectDiskPickerSupported(),
         };
         this.emit();
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
   }
 
@@ -260,6 +385,7 @@ class CinemaDownloadManager {
               release,
               status: isDone ? 'completed' : 'paused',
               storageMode: rec.storageMode || 'opfs-cache',
+              transportMode: 'initializing',
               progressPct: pct,
               completedPieces: done,
               totalPieces: total,
@@ -269,17 +395,23 @@ class CinemaDownloadManager {
               etaSeconds: null,
               verifiedPiecesCount: done,
               corruptPiecesRetried: 0,
+              bannedPeersCount: 0,
               activePeers: release.seeders || 1,
               exportedToDevice: Boolean(rec.exportedToDevice),
               cacheCleared: false,
-              streamUrl: buildProgressiveRangeStreamUrl(release),
+              isStreamingActive: false,
+              showPieceMap: false,
+              streamUrl: buildProgressiveRangeStreamUrl(
+                release,
+                this.sessionToken,
+              ),
               headerAndTailReady: isHeaderAndTailComplete(bf, total),
               playheadPieceIndex: 0,
-              priorityPhase: 'header-tail',
+              priorityPhase: 'sequential',
               pieceMapBuckets: computePieceMapBuckets(bf, total, 0),
               statusMessage: isDone
-                ? 'مكتمل في كاش المتصفح القرصي — جاهز للمشاهدة أو النقل للجهاز'
-                : `محفوظ في الكاش (${done}/${total} قطعة) — جاهز للاستئناف أو المشاهدة الفورية`,
+                ? 'مكتمل 100% في مخزن TPPIECES القرصي — جاهز للحفظ الفوري على جهازك'
+                : `محفوظ في الكاش (${done}/${total} قطعة موثقة) — اضغط استئناف لإكمال التحميل`,
               startedAt: rec.updatedAt || Date.now(),
               updatedAt: rec.updatedAt || Date.now(),
             };
@@ -334,13 +466,12 @@ class CinemaDownloadManager {
           : Math.round(
               (completedPieces / Math.max(1, totalPieces)) * task.totalBytes,
             );
-      task.status = completedPieces >= totalPieces ? 'exporting' : 'downloading';
+      task.status =
+        completedPieces >= totalPieces ? 'exporting' : 'downloading';
       task.statusMessage =
         completedPieces > 0 && completedPieces < totalPieces
-          ? `تم استئناف الكاش (${completedPieces}/${totalPieces} قطعة) — النافذة المنزلقة نشطة...`
-          : task.storageMode === 'hybrid-extended'
-            ? 'تم تفعيل الكاش الهجين الممتد (OPFS + IndexedDB) لتجاوز سقف المساحة — جاري خطف الرأس والذيل أولاً...'
-            : 'تم حجز الكاش القرصي OPFS — جاري خطف قطعتي الرأس والذيل (Header + Tail) أولاً...';
+          ? `تم استئناف التحميل من الكاش (${completedPieces}/${totalPieces} قطعة موثقة بـ SHA-1)...`
+          : 'تم تهيئة مخزن TPPIECES القرصي — جاري سحب وتوثيق القطع...';
       task.updatedAt = Date.now();
       this.emit();
 
@@ -388,7 +519,8 @@ class CinemaDownloadManager {
           : task.downloadedBytes + (pieceByteLength || 0);
 
       if (
-        task.release.sourceKind === 'direct-hls' &&
+        (task.release.sourceKind === 'direct-hls' ||
+          task.transportMode === 'hls-assembler') &&
         completedPieces > 0 &&
         totalPieces > 0
       ) {
@@ -410,7 +542,8 @@ class CinemaDownloadManager {
       task.totalPieces = totalPieces;
       task.verifiedPiecesCount = completedPieces;
       task.progressPct = Number(
-        progress ?? ((completedPieces / Math.max(1, totalPieces)) * 100).toFixed(1),
+        progress ??
+          ((completedPieces / Math.max(1, totalPieces)) * 100).toFixed(1),
       );
       task.downloadedBytes = actualDownloaded;
       task.speedBytesPerSec = speed;
@@ -422,16 +555,7 @@ class CinemaDownloadManager {
         task.playheadPieceIndex || 0,
       );
 
-      const phaseLabel =
-        task.priorityPhase === 'header-tail'
-          ? 'خطف الرأس والذيل (Header+Tail)'
-          : task.priorityPhase === 'seek-window'
-            ? `أولوية القفز الزمني (قطعة #${(task.playheadPieceIndex || 0) + 1})`
-            : task.priorityPhase === 'playhead-window'
-              ? `نافذة المشاهدة الأمامية (#${(task.playheadPieceIndex || 0) + 1})`
-              : 'التحميل التتابعي';
-
-      task.statusMessage = `${phaseLabel}: تم توثيق ${completedPieces}/${totalPieces} قطعة بـ SHA-1 (${formatBytes(actualDownloaded)})`;
+      task.statusMessage = `جاري التحميل: تم توثيق ${completedPieces}/${totalPieces} قطعة بـ SHA-1 (${formatBytes(actualDownloaded)} من ${formatBytes(task.totalBytes)})`;
       task.updatedAt = now;
 
       if (completedPieces >= totalPieces) {
@@ -439,7 +563,7 @@ class CinemaDownloadManager {
         task.speedBytesPerSec = 0;
         task.etaSeconds = 0;
         task.statusMessage =
-          'اكتمل فحص جميع القطع الفعلية 100% بـ SHA-1! جاري النقل التلقائي لجهازك...';
+          'اكتمل التحميل وفحص جميع القطع 100% بـ SHA-1! جاري الدمج الذري ونقل الملف لجهازك...';
         this.emit();
         this.worker?.postMessage({
           action: 'FINALIZE_AND_EXPORT',
@@ -453,11 +577,20 @@ class CinemaDownloadManager {
       const task = this.state.tasks[infoHash];
       if (!task) return;
       task.corruptPiecesRetried += 1;
+      task.bannedPeersCount += 1;
       task.statusMessage =
-        reason || 'قطعة تالفة — جاري إعادة طلبها من نظير آخر';
+        reason ||
+        'تم رصد قطعة تالفة وحظر المرسل (Smart Ban) — جاري إعادة الجلب';
       this.emit();
     } else if (msg.type === 'EXPORT_READY') {
-      const { infoHash, fileName, file, actualSizeBytes, quota } = msg;
+      const {
+        infoHash,
+        fileName,
+        file,
+        savedDirectlyToDisk,
+        actualSizeBytes,
+        quota,
+      } = msg;
       if (quota) {
         this.state.quota = {
           ...this.state.quota,
@@ -478,10 +611,18 @@ class CinemaDownloadManager {
         task.exportedToDevice = true;
         task.speedBytesPerSec = 0;
         task.etaSeconds = 0;
-        task.statusMessage = `تم نقل الملف الكامل (${formatBytes(task.downloadedBytes)}) إلى مجلد التنزيلات في جهازك! يمكنك الآن تأكيد تفريغ الكاش.`;
+        if (file instanceof File && !task.blobStreamUrl) {
+          try {
+            task.blobStreamUrl = URL.createObjectURL(file);
+            task.streamUrl = task.blobStreamUrl;
+          } catch {}
+        }
+        task.statusMessage = savedDirectlyToDisk
+          ? `تم حفظ الملف المدمج (${formatBytes(task.downloadedBytes)}) مباشرة على قرص جهازك بنجاح!`
+          : `اكتمل تنزيل الملف (${formatBytes(task.downloadedBytes)}) إلى مجلد التنزيلات في جهازك!`;
         task.updatedAt = Date.now();
       }
-      if (file) {
+      if (file && !savedDirectlyToDisk) {
         this.triggerBrowserNativeSave(
           file,
           fileName || task?.release.cleanFileName || 'movie.mp4',
@@ -500,6 +641,12 @@ class CinemaDownloadManager {
       this.savedBitfields.delete(infoHash);
       const task = this.state.tasks[infoHash];
       if (task) {
+        if (task.blobStreamUrl) {
+          try {
+            URL.revokeObjectURL(task.blobStreamUrl);
+          } catch {}
+          task.blobStreamUrl = undefined;
+        }
         task.cacheCleared = true;
         task.statusMessage =
           'تم تفريغ كاش المتصفح القرصي بالكامل واستعادة المساحة الحرة.';
@@ -517,11 +664,8 @@ class CinemaDownloadManager {
     }
   }
 
-  /**
-   * Resolves real metadata (exact file size, piece count, active peers, or HLS segment list)
-   * from the server Magnet/WebTorrent bridge before starting the download.
-   */
   private async resolveRealSourceMetadata(
+    media: DownloadMediaContext,
     release: DiscoveredReleaseOption,
     infoHash: string,
   ): Promise<{
@@ -529,77 +673,150 @@ class CinemaDownloadManager {
     pieceLength: number;
     totalPieces: number;
     activePeers: number;
+    pieceHashesHex: string[];
     hlsSegments?: string[];
+    directRangeUrl?: string;
+    directRangeReferer?: string;
+    useBridgeBackend: boolean;
+    transportMode: ActiveTransportMode;
   }> {
     if (release.sourceKind === 'direct-hls' && release.directStreamUrl) {
       try {
-        const params = new URLSearchParams({
-          url: release.directStreamUrl,
-        });
-        if (release.streamReferer) {
-          params.set('referer', release.streamReferer);
-        }
-        const res = await fetch(
-          `/api/cinema-download/hls-segments?${params.toString()}`,
-          { signal: AbortSignal.timeout(12000) },
+        const segments = await resolveHlsSegmentsClientSide(
+          release.directStreamUrl,
+          release.streamReferer,
         );
-        if (res.ok) {
-          const data = (await res.json()) as {
-            segments?: string[];
-            totalSegments?: number;
+        if (segments.length > 0) {
+          return {
+            realSizeBytes: release.sizeBytes,
+            pieceLength: Math.max(
+              65536,
+              Math.round(release.sizeBytes / segments.length),
+            ),
+            totalPieces: segments.length,
+            activePeers: 120,
+            pieceHashesHex: [],
+            hlsSegments: segments,
+            useBridgeBackend: false,
+            transportMode: 'hls-assembler',
           };
-          if (Array.isArray(data.segments) && data.segments.length > 0) {
-            return {
-              realSizeBytes: release.sizeBytes,
-              pieceLength: Math.max(
-                65536,
-                Math.round(release.sizeBytes / data.segments.length),
-              ),
-              totalPieces: data.segments.length,
-              activePeers: 100,
-              hlsSegments: data.segments,
-            };
-          }
         }
-      } catch {
-        // Ignore
-      }
+      } catch {}
     }
 
-    if (release.sourceKind === 'torrent-hybrid') {
+    if (release.sourceKind === 'direct-mp4' && release.directStreamUrl) {
+      const proxiedUrl = buildWorkerProxyUrl(
+        release.directStreamUrl,
+        release.streamReferer,
+      );
+      let exactSize = release.sizeBytes;
       try {
-        const params = new URLSearchParams({
-          infoHash,
-          magnet: release.magnetUri,
+        const headRes = await fetch(proxiedUrl, {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(5000),
         });
-        const res = await fetch(
-          `/api/cinema-download/torrent-meta?${params.toString()}`,
-          { signal: AbortSignal.timeout(18000) },
-        );
-        if (res.ok) {
-          const meta = (await res.json()) as {
-            fileSize?: number;
-            pieceLength?: number;
-            totalPieces?: number;
-            peers?: number;
-          };
-          if (meta.fileSize && meta.fileSize > 0) {
-            const pLen =
-              meta.pieceLength ||
-              computeRealPieceGeometry(meta.fileSize).pieceLength;
-            const tPieces =
-              meta.totalPieces || Math.max(1, Math.ceil(meta.fileSize / pLen));
-            return {
-              realSizeBytes: meta.fileSize,
-              pieceLength: pLen,
-              totalPieces: tPieces,
-              activePeers: Number(meta.peers) || release.seeders || 1,
-            };
+        const cl = Number(headRes.headers.get('content-length') || 0);
+        if (cl > 1024 * 1024) exactSize = cl;
+      } catch {}
+      const { pieceLength, totalPieces } = computeRealPieceGeometry(exactSize);
+      return {
+        realSizeBytes: exactSize,
+        pieceLength,
+        totalPieces,
+        activePeers: 100,
+        pieceHashesHex: [],
+        directRangeUrl: proxiedUrl,
+        directRangeReferer: release.streamReferer,
+        useBridgeBackend: false,
+        transportMode: 'webseed-range',
+      };
+    }
+
+    let parsedPieceHashes: string[] = release.pieceHashesHex || [];
+    let discoveredWebSeed: string | undefined;
+    for (const cacheUrl of release.torrentCacheUrls.slice(0, 2)) {
+      try {
+        const proxiedCache = buildWorkerProxyUrl(cacheUrl);
+        const r = await fetch(proxiedCache, {
+          signal: AbortSignal.timeout(3500),
+        });
+        if (r.ok) {
+          const ab = await r.arrayBuffer();
+          if (ab.byteLength > 120) {
+            const bytes = new Uint8Array(ab);
+            if (bytes[0] === 0x64) {
+              const meta = await parseTorrentFileBytes(bytes);
+              parsedPieceHashes = meta.pieceHashesHex;
+              if (meta.webSeeds.length > 0) {
+                discoveredWebSeed = meta.webSeeds[0];
+              }
+              break;
+            }
           }
         }
-      } catch {
-        // Fallback to discovered size geometry
+      } catch {}
+    }
+
+    try {
+      const params = new URLSearchParams({
+        infoHash,
+        magnet: release.magnetUri,
+      });
+      const res = await fetch(
+        `/api/cinema-download/torrent-meta?${params.toString()}`,
+        { signal: AbortSignal.timeout(6500) },
+      );
+      const ct = res.headers.get('content-type') || '';
+      if (res.ok && ct.includes('application/json')) {
+        const meta = (await res.json()) as {
+          ok?: boolean;
+          fileSize?: number;
+          pieceLength?: number;
+          totalPieces?: number;
+          peers?: number;
+        };
+        if (meta.ok && meta.fileSize && meta.fileSize > 0) {
+          const pLen =
+            meta.pieceLength ||
+            computeRealPieceGeometry(meta.fileSize).pieceLength;
+          const tPieces =
+            meta.totalPieces || Math.max(1, Math.ceil(meta.fileSize / pLen));
+          return {
+            realSizeBytes: meta.fileSize,
+            pieceLength: pLen,
+            totalPieces: tPieces,
+            activePeers: Number(meta.peers) || release.seeders || 1,
+            pieceHashesHex: [],
+            useBridgeBackend: true,
+            transportMode: 'webtorrent-bridge',
+          };
+        }
       }
+    } catch {}
+
+    if (discoveredWebSeed) {
+      const proxiedSeed = buildWorkerProxyUrl(discoveredWebSeed);
+      const { pieceLength, totalPieces } = computeRealPieceGeometry(
+        release.sizeBytes,
+      );
+      return {
+        realSizeBytes: release.sizeBytes,
+        pieceLength,
+        totalPieces,
+        activePeers: release.seeders || 15,
+        pieceHashesHex: parsedPieceHashes,
+        directRangeUrl: proxiedSeed,
+        useBridgeBackend: false,
+        transportMode: 'webseed-range',
+      };
+    }
+
+    const fallbackResult = await this.resolveFallbackStreamTransport(
+      media,
+      release,
+    );
+    if (fallbackResult) {
+      return fallbackResult;
     }
 
     const { pieceLength, totalPieces } = computeRealPieceGeometry(
@@ -610,48 +827,122 @@ class CinemaDownloadManager {
       pieceLength,
       totalPieces,
       activePeers: release.seeders || 1,
+      pieceHashesHex: parsedPieceHashes,
+      useBridgeBackend: true,
+      transportMode: 'webtorrent-bridge',
     };
   }
 
-  /**
-   * Sliding-Window Priority Download Loop (Secret #1 + #4):
-   * Continuously selects the highest-priority missing piece:
-   * 1. Header [0, 1] + Tail [N-1, N-2] First
-   * 2. Active Playhead / Seek Window [playheadPiece .. playheadPiece + 9]
-   * 3. Sequential Forward Fill
-   * If the user seeks in the video player, `currentPieceAbort` cancels any low-priority
-   * in-flight piece so the seek target piece is fetched immediately!
-   */
+  private async resolveFallbackStreamTransport(
+    media: DownloadMediaContext,
+    release: DiscoveredReleaseOption,
+  ): Promise<{
+    realSizeBytes: number;
+    pieceLength: number;
+    totalPieces: number;
+    activePeers: number;
+    pieceHashesHex: string[];
+    hlsSegments?: string[];
+    directRangeUrl?: string;
+    directRangeReferer?: string;
+    useBridgeBackend: boolean;
+    transportMode: ActiveTransportMode;
+  } | null> {
+    let streamUrl = release.fallbackStreamUrl || release.directStreamUrl;
+    let streamType = release.fallbackStreamType;
+    let streamRef =
+      release.fallbackStreamReferer || release.streamReferer || '';
+
+    if (!streamUrl && media.tmdbId > 0) {
+      try {
+        const playSources = buildSources({
+          id: media.tmdbId,
+          mediaType: media.mediaType,
+          imdbId: media.imdbId,
+          season: media.season || 1,
+          episode: media.episode || 1,
+        });
+        const topUrls = playSources.slice(0, 5).map((s) => s.url);
+        if (topUrls.length > 0) {
+          const extracted = await fetchExtractedVideos(topUrls);
+          const best =
+            extracted.find((s) => s.type === 'mp4') || extracted[0];
+          if (best) {
+            streamUrl = best.proxiedUrl || best.directUrl;
+            streamType =
+              best.type === 'hls' || best.directUrl.includes('.m3u8')
+                ? 'hls'
+                : 'mp4';
+            streamRef = best.sourcePage;
+            release.fallbackStreamUrl = streamUrl;
+            release.fallbackStreamType = streamType;
+            release.fallbackStreamReferer = streamRef;
+          }
+        }
+      } catch {}
+    }
+
+    if (!streamUrl) return null;
+
+    if (streamType === 'hls' || streamUrl.includes('.m3u8')) {
+      try {
+        const segments = await resolveHlsSegmentsClientSide(
+          streamUrl,
+          streamRef,
+        );
+        if (segments.length > 0) {
+          return {
+            realSizeBytes: release.sizeBytes,
+            pieceLength: Math.max(
+              65536,
+              Math.round(release.sizeBytes / segments.length),
+            ),
+            totalPieces: segments.length,
+            activePeers: Math.max(25, release.seeders || 25),
+            pieceHashesHex: [],
+            hlsSegments: segments,
+            useBridgeBackend: false,
+            transportMode: 'hls-assembler',
+          };
+        }
+      } catch {}
+    } else {
+      const proxied = streamUrl.startsWith('https://broad-block-7bd7.')
+        ? streamUrl
+        : buildWorkerProxyUrl(streamUrl, streamRef);
+      let exactSize = release.sizeBytes;
+      try {
+        const headRes = await fetch(proxied, {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(4500),
+        });
+        const cl = Number(headRes.headers.get('content-length') || 0);
+        if (cl > 1024 * 1024) exactSize = cl;
+      } catch {}
+      const { pieceLength, totalPieces } = computeRealPieceGeometry(exactSize);
+      return {
+        realSizeBytes: exactSize,
+        pieceLength,
+        totalPieces,
+        activePeers: Math.max(25, release.seeders || 25),
+        pieceHashesHex: [],
+        directRangeUrl: proxied,
+        directRangeReferer: streamRef,
+        useBridgeBackend: false,
+        transportMode: 'webseed-range',
+      };
+    }
+
+    return null;
+  }
+
   private async runPieceDownloadLoop(
     infoHash: string,
     initialBitfield: number[],
   ): Promise<void> {
-    const prevLoop = this.activeLoops.get(infoHash);
-    if (prevLoop) {
-      prevLoop.cancelled = true;
-      prevLoop.currentPieceAbort?.abort();
-    }
-
+    const loopState = this.activeLoops.get(infoHash);
     const task = this.state.tasks[infoHash];
-    if (!task) return;
-
-    const loopState: ActiveLoopContext = {
-      cancelled: false,
-      hlsSegments: prevLoop?.hlsSegments,
-      bytesTransferredInSession: 0,
-      sessionStartTimeMs: Date.now(),
-      isRecentSeek: false,
-      currentPieceAbort: null,
-    };
-    this.activeLoops.set(infoHash, loopState);
-
-    const totalPieces = task.totalPieces;
-    const pieceLength = task.release.pieceLength;
-    const totalSize = task.totalBytes;
-    const isHls =
-      task.release.sourceKind === 'direct-hls' &&
-      Array.isArray(loopState.hlsSegments) &&
-      loopState.hlsSegments.length > 0;
+    if (!task || !loopState) return;
 
     let consecutiveFailures = 0;
 
@@ -659,18 +950,20 @@ class CinemaDownloadManager {
       const currentTask = this.state.tasks[infoHash];
       if (!currentTask || currentTask.status !== 'downloading') return;
 
+      const totalPieces = currentTask.totalPieces;
+      const pieceLength = currentTask.release.pieceLength;
+      const totalSize = currentTask.totalBytes;
       const currentBf = this.savedBitfields.get(infoHash) || initialBitfield;
+
       const selection = selectNextPieceToDownload(
         currentBf,
         totalPieces,
         currentTask.playheadPieceIndex || 0,
         loopState.isRecentSeek,
+        Boolean(currentTask.isStreamingActive),
       );
 
-      if (!selection) {
-        // All pieces verified!
-        return;
-      }
+      if (!selection) return;
 
       const { pieceIndex, phase, headerAndTailReady } = selection;
       currentTask.activeDownloadingPieceIndex = pieceIndex;
@@ -692,83 +985,151 @@ class CinemaDownloadManager {
         if (loopState.cancelled) return;
         const pieceAbort = new AbortController();
         loopState.currentPieceAbort = pieceAbort;
-        const timeoutId = setTimeout(() => pieceAbort.abort(), 28000);
+        const timeoutId = setTimeout(() => pieceAbort.abort(), 22000);
 
         try {
-          const params = new URLSearchParams({
-            infoHash,
-            pieceIndex: String(pieceIndex),
-            pieceLength: String(pieceLength),
-            totalSize: String(totalSize),
-            magnet: currentTask.release.magnetUri,
-          });
-
-          if (isHls && loopState.hlsSegments?.[pieceIndex]) {
-            params.set('segmentUrl', loopState.hlsSegments[pieceIndex]);
-            if (currentTask.release.streamReferer) {
-              params.set('referer', currentTask.release.streamReferer);
-            }
-          } else if (currentTask.release.directStreamUrl) {
-            params.set('directUrl', currentTask.release.directStreamUrl);
-            if (currentTask.release.streamReferer) {
-              params.set('referer', currentTask.release.streamReferer);
-            }
-          }
-
-          const res = await fetch(
-            `/api/cinema-download/piece?${params.toString()}`,
-            {
-              signal: pieceAbort.signal,
-            },
-          );
-          clearTimeout(timeoutId);
-
           if (
-            res.ok &&
-            res.headers.get('Content-Type')?.includes('application/octet-stream')
+            !loopState.useBridgeBackend &&
+            Array.isArray(loopState.hlsSegments) &&
+            loopState.hlsSegments[pieceIndex]
           ) {
-            expectedSha1 = res.headers.get('X-Piece-SHA1') || undefined;
-            const peersHeader = res.headers.get('X-Active-Peers');
-            if (peersHeader) {
-              currentTask.activePeers =
-                Number(peersHeader) || currentTask.activePeers;
+            const segUrl = loopState.hlsSegments[pieceIndex];
+            const res = await fetch(segUrl, { signal: pieceAbort.signal });
+            clearTimeout(timeoutId);
+            if (res.ok) {
+              const buf = await res.arrayBuffer();
+              if (buf && buf.byteLength > 0) {
+                pieceBuffer = buf;
+                break;
+              }
             }
-            const realFileSizeHeader = res.headers.get('X-Real-File-Size');
-            if (realFileSizeHeader && Number(realFileSizeHeader) > 0) {
-              currentTask.totalBytes = Number(realFileSizeHeader);
-              currentTask.release.sizeBytes = Number(realFileSizeHeader);
-              currentTask.release.sizeFormatted = formatBytes(
-                Number(realFileSizeHeader),
-              );
+            lastErrorReason = `HTTP ${res.status} عند سحب المقطع #${pieceIndex + 1}`;
+          } else if (
+            !loopState.useBridgeBackend &&
+            loopState.directRangeUrl
+          ) {
+            const byteStart = pieceIndex * pieceLength;
+            const byteEnd = Math.min(
+              totalSize - 1,
+              byteStart + pieceLength - 1,
+            );
+            const res = await fetch(loopState.directRangeUrl, {
+              headers: { Range: `bytes=${byteStart}-${byteEnd}` },
+              signal: pieceAbort.signal,
+            });
+            clearTimeout(timeoutId);
+            if (res.ok || res.status === 206) {
+              const buf = await res.arrayBuffer();
+              if (buf && buf.byteLength > 0) {
+                pieceBuffer = buf.slice(0, byteEnd - byteStart + 1);
+                break;
+              }
             }
-            const buf = await res.arrayBuffer();
-            if (buf && buf.byteLength > 0) {
-              pieceBuffer = buf;
-              break;
-            }
+            lastErrorReason = `HTTP ${res.status} عند جلب النطاق #${pieceIndex + 1}`;
           } else {
-            const errJson = await res.json().catch(() => null);
-            lastErrorReason =
-              errJson?.error ||
-              `HTTP ${res.status} عند جلب القطعة #${pieceIndex + 1}`;
+            const params = new URLSearchParams({
+              infoHash,
+              pieceIndex: String(pieceIndex),
+              pieceLength: String(pieceLength),
+              totalSize: String(totalSize),
+              magnet: currentTask.release.magnetUri,
+            });
+            if (
+              Array.isArray(loopState.hlsSegments) &&
+              loopState.hlsSegments[pieceIndex]
+            ) {
+              params.set('segmentUrl', loopState.hlsSegments[pieceIndex]);
+            } else if (currentTask.release.directStreamUrl) {
+              params.set('directUrl', currentTask.release.directStreamUrl);
+            }
+
+            const res = await fetch(
+              `/api/cinema-download/piece?${params.toString()}`,
+              { signal: pieceAbort.signal },
+            );
+            clearTimeout(timeoutId);
+
+            if (
+              res.ok &&
+              res.headers
+                .get('Content-Type')
+                ?.includes('application/octet-stream')
+            ) {
+              expectedSha1 = res.headers.get('X-Piece-SHA1') || undefined;
+              const peersHeader = res.headers.get('X-Active-Peers');
+              if (peersHeader) {
+                currentTask.activePeers =
+                  Number(peersHeader) || currentTask.activePeers;
+              }
+              const realFileSizeHeader = res.headers.get('X-Real-File-Size');
+              if (realFileSizeHeader && Number(realFileSizeHeader) > 0) {
+                currentTask.totalBytes = Number(realFileSizeHeader);
+                currentTask.release.sizeBytes = Number(realFileSizeHeader);
+                currentTask.release.sizeFormatted = formatBytes(
+                  Number(realFileSizeHeader),
+                );
+              }
+              const buf = await res.arrayBuffer();
+              if (buf && buf.byteLength > 0) {
+                pieceBuffer = buf;
+                break;
+              }
+            } else {
+              const fallback = await this.resolveFallbackStreamTransport(
+                currentTask.media,
+                currentTask.release,
+              );
+              if (
+                fallback &&
+                (fallback.hlsSegments?.length || fallback.directRangeUrl)
+              ) {
+                loopState.useBridgeBackend = false;
+                loopState.hlsSegments = fallback.hlsSegments;
+                loopState.directRangeUrl = fallback.directRangeUrl;
+                loopState.directRangeReferer = fallback.directRangeReferer;
+                currentTask.transportMode = fallback.transportMode;
+                currentTask.totalPieces = fallback.totalPieces;
+                currentTask.release.pieceLength = fallback.pieceLength;
+                currentTask.release.totalPieces = fallback.totalPieces;
+                const newBf = new Array(fallback.totalPieces).fill(0);
+                this.savedBitfields.set(infoHash, newBf);
+                this.worker?.postMessage({
+                  action: 'INIT',
+                  payload: {
+                    infoHash,
+                    fileName: currentTask.release.cleanFileName,
+                    size: fallback.realSizeBytes,
+                    pieceLen: fallback.pieceLength,
+                    totalPieces: fallback.totalPieces,
+                    isVariableSegments: Boolean(fallback.hlsSegments?.length),
+                    pieceHashes: [],
+                    mediaSnapshot: currentTask.media,
+                    releaseSnapshot: currentTask.release,
+                  },
+                });
+                return;
+              }
+
+              const errJson = await res.json().catch(() => null);
+              lastErrorReason =
+                errJson?.error ||
+                `HTTP ${res.status} عند جلب القطعة #${pieceIndex + 1}`;
+            }
           }
         } catch (err: any) {
           clearTimeout(timeoutId);
           if (pieceAbort.signal.aborted && !loopState.cancelled) {
-            // Aborted because user seeked to a new timestamp — immediately loop to new playhead piece!
             abortedBySeek = true;
             break;
           }
           lastErrorReason =
             err?.message || 'انتهت مهلة الاتصال بالسرب أو الخادم';
         }
-        await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
       }
 
       if (loopState.cancelled) return;
-      if (abortedBySeek) {
-        continue;
-      }
+      if (abortedBySeek) continue;
 
       if (!pieceBuffer || pieceBuffer.byteLength === 0) {
         consecutiveFailures += 1;
@@ -777,7 +1138,7 @@ class CinemaDownloadManager {
           currentTask.speedBytesPerSec = 0;
           currentTask.etaSeconds = null;
           currentTask.errorMessage = lastErrorReason;
-          currentTask.statusMessage = `توقف مؤقت: تعذر جلب القطعة #${pieceIndex + 1} من السرب (${lastErrorReason || 'لا يوجد نظراء مستجيبون حالياً'}) — اضغط استئناف أو جرب جودة أخرى.`;
+          currentTask.statusMessage = `توقف مؤقت: تعذر جلب القطعة #${pieceIndex + 1} (${lastErrorReason || 'لا يوجد استجابة حالياً'}) — اضغط استئناف للمحاولة مجدداً.`;
           currentTask.updatedAt = Date.now();
           this.emit();
           return;
@@ -818,10 +1179,6 @@ class CinemaDownloadManager {
     }
   }
 
-  /**
-   * Reprioritizes the Sliding-Window Scheduler and the backend WebTorrent swarm
-   * immediately when the user seeks to a byte offset or timestamp (Secret #1 & #2).
-   */
   public seekStreamToByteOffset = (
     infoHash: string,
     byteOffset: number,
@@ -846,20 +1203,19 @@ class CinemaDownloadManager {
       task.totalPieces,
       targetPiece,
     );
-    task.statusMessage = `قفز زمني فوري (Sliding-Window Seek): تم توجيه الأولوية القصوى للقطعة #${targetPiece + 1} (${formatBytes(byteOffset)})...`;
+    task.statusMessage = `قفز زمني فوري: تم توجيه الأولوية القصوى للقطعة #${targetPiece + 1} (${formatBytes(byteOffset)})...`;
     task.updatedAt = Date.now();
 
     const loop = this.activeLoops.get(infoHash);
     if (loop) {
       loop.isRecentSeek = true;
-      // If the target piece is not yet cached, abort the old piece fetch so the loop immediately fetches targetPiece!
       if (bf[targetPiece] !== 1) {
         loop.currentPieceAbort?.abort();
       }
     }
     this.emit();
 
-    if (notifyBackend && task.release.sourceKind === 'torrent-hybrid') {
+    if (notifyBackend && loop?.useBridgeBackend) {
       void fetch('/api/cinema-download/seek-priority', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -874,6 +1230,11 @@ class CinemaDownloadManager {
   };
 
   public seekStreamToProgress = (infoHash: string, ratio0to1: number): void => {
+    const loop = this.activeLoops.get(infoHash);
+    if (loop) {
+      loop.seekGate.request(ratio0to1);
+      return;
+    }
     const task = this.state.tasks[infoHash];
     if (!task) return;
     const clamped = Math.max(0, Math.min(0.995, ratio0to1));
@@ -898,13 +1259,9 @@ class CinemaDownloadManager {
       setTimeout(() => {
         try {
           URL.revokeObjectURL(objectUrl);
-        } catch {
-          // ignore
-        }
-      }, 15000);
-    } catch {
-      // ignore in headless environments
-    }
+        } catch {}
+      }, 20000);
+    } catch {}
   }
 
   private syncDynamicIsland(): void {
@@ -945,7 +1302,7 @@ class CinemaDownloadManager {
           ? `${formatBytes(activeTask.speedBytesPerSec)}/s`
           : activeTask.status === 'paused'
             ? 'متوقف مؤقتاً'
-            : 'نافذة منزلقة نشطة'
+            : 'جاري التحميل'
       }`,
       artworkUrl: activeTask.media.posterUrl,
       accent: '#38BDF8',
@@ -967,8 +1324,6 @@ class CinemaDownloadManager {
       },
     });
   }
-
-  // ── Public UI Actions ────────────────────────────────────────────────────
 
   public openModalForMedia = (media: DownloadMediaContext): void => {
     this.initWorker();
@@ -1055,11 +1410,121 @@ class CinemaDownloadManager {
     this.emit();
   };
 
-  /**
-   * Starts real Magnet / Torrent / Stream download using the Hybrid OPFS + Extended
-   * IndexedDB Chunk Worker and Sliding-Window Piece Scheduler.
-   * Never fakes 100% completion!
-   */
+  public addCustomTorrentFile = async (file: File): Promise<void> => {
+    const ab = await file.arrayBuffer();
+    const meta = await parseTorrentFileBytes(new Uint8Array(ab));
+    const parsedScene = parseSceneReleaseName(meta.name);
+    const media: DownloadMediaContext = this.state.activeMedia || {
+      id: Date.now(),
+      tmdbId: 0,
+      mediaType: parsedScene.type === 'episode' ? 'tv' : 'movie',
+      title: parsedScene.cleanTitle || meta.name,
+      year: parsedScene.year ? String(parsedScene.year) : undefined,
+      posterUrl: '/profile_img-192.webp',
+      season: parsedScene.season,
+      episode: parsedScene.episode,
+    };
+
+    const release: DiscoveredReleaseOption = {
+      id: `${meta.infoHashHex}_${parsedScene.screenSize}`,
+      title: meta.name,
+      cleanFileName: buildCleanDownloadFileName(
+        media,
+        parsedScene.screenSize,
+        parsedScene.videoCodec,
+        'mp4',
+      ),
+      quality: parsedScene.screenSize,
+      sourceKind: 'torrent-hybrid',
+      sizeBytes: meta.totalLength,
+      sizeFormatted: formatBytes(meta.totalLength),
+      seeders: 25,
+      leechers: 5,
+      infoHash: meta.infoHashHex,
+      magnetUri: synthesizeMagnetUri(
+        meta.infoHashHex,
+        meta.name,
+        meta.announceList,
+      ),
+      torrentCacheUrls: buildPublicTorrentCacheUrls(meta.infoHashHex),
+      directStreamUrl: meta.webSeeds[0],
+      videoCodec: parsedScene.videoCodec,
+      audioCodec: parsedScene.audioCodec,
+      audioChannels: parsedScene.audioChannels,
+      hdrBadges: parsedScene.colorDepth,
+      sourceLabel: '.torrent File',
+      releaseGroup: parsedScene.releaseGroup,
+      pieceLength: meta.pieceLength,
+      totalPieces: meta.pieceCount,
+      pieceHashesHex: meta.pieceHashesHex,
+      verifiedSafe: true,
+      securityNotes: ['SHA-1 Metainfo Verified'],
+      parsedMeta: parsedScene,
+      isRealSource: true,
+    };
+
+    await this.startDownload(media, release, false);
+  };
+
+  public addCustomMagnetLink = async (rawMagnet: string): Promise<void> => {
+    const parsedMag = parseMagnetUriInput(rawMagnet);
+    const title =
+      parsedMag.displayName || `Magnet_${parsedMag.infoHashHex.slice(0, 8)}`;
+    const parsedScene = parseSceneReleaseName(title);
+    const media: DownloadMediaContext = this.state.activeMedia || {
+      id: Date.now(),
+      tmdbId: 0,
+      mediaType: parsedScene.type === 'episode' ? 'tv' : 'movie',
+      title: parsedScene.cleanTitle || title,
+      year: parsedScene.year ? String(parsedScene.year) : undefined,
+      posterUrl: '/profile_img-192.webp',
+      season: parsedScene.season,
+      episode: parsedScene.episode,
+    };
+
+    const estBytes = 1.8 * 1024 * 1024 * 1024;
+    const { pieceLength, totalPieces } = computeRealPieceGeometry(estBytes);
+
+    const release: DiscoveredReleaseOption = {
+      id: `${parsedMag.infoHashHex}_${parsedScene.screenSize}`,
+      title,
+      cleanFileName: buildCleanDownloadFileName(
+        media,
+        parsedScene.screenSize,
+        parsedScene.videoCodec,
+        'mp4',
+      ),
+      quality: parsedScene.screenSize,
+      sourceKind: 'torrent-hybrid',
+      sizeBytes: estBytes,
+      sizeFormatted: formatBytes(estBytes),
+      seeders: 20,
+      leechers: 4,
+      infoHash: parsedMag.infoHashHex,
+      magnetUri: synthesizeMagnetUri(
+        parsedMag.infoHashHex,
+        title,
+        parsedMag.trackers.length > 0 ? parsedMag.trackers : undefined,
+      ),
+      torrentCacheUrls: buildPublicTorrentCacheUrls(parsedMag.infoHashHex),
+      directStreamUrl: parsedMag.webSeeds[0],
+      videoCodec: parsedScene.videoCodec,
+      audioCodec: parsedScene.audioCodec,
+      audioChannels: parsedScene.audioChannels,
+      hdrBadges: parsedScene.colorDepth,
+      sourceLabel: 'Magnet Link',
+      releaseGroup: parsedScene.releaseGroup,
+      pieceLength,
+      totalPieces,
+      verifiedSafe: true,
+      securityNotes: ['Magnet BTIH Verified'],
+      parsedMeta: parsedScene,
+      isRealSource: true,
+    };
+
+    await this.startDownload(media, release, false);
+  };
+
   public startDownload = async (
     media: DownloadMediaContext,
     release: DiscoveredReleaseOption,
@@ -1075,7 +1540,10 @@ class CinemaDownloadManager {
     const initialDone = savedBf
       ? savedBf.reduce((a, b) => a + b, 0)
       : existing?.completedPieces || 0;
-    const streamUrl = buildProgressiveRangeStreamUrl(release);
+    const streamUrl = buildProgressiveRangeStreamUrl(
+      release,
+      this.sessionToken,
+    );
 
     const needsHybridExtended =
       this.state.quota.freeBytes > 0 &&
@@ -1088,6 +1556,7 @@ class CinemaDownloadManager {
       release,
       status: 'initializing',
       storageMode: needsHybridExtended ? 'hybrid-extended' : 'opfs-cache',
+      transportMode: 'initializing',
       progressPct: Number(
         ((initialDone / Math.max(1, release.totalPieces)) * 100).toFixed(1),
       ),
@@ -1099,33 +1568,42 @@ class CinemaDownloadManager {
       etaSeconds: null,
       verifiedPiecesCount: initialDone,
       corruptPiecesRetried: 0,
+      bannedPeersCount: 0,
       activePeers: release.seeders || 1,
       exportedToDevice: false,
       cacheCleared: false,
-      isStreamingActive: enableInstantStream || existing?.isStreamingActive,
+      isStreamingActive: Boolean(enableInstantStream),
+      showPieceMap: Boolean(enableInstantStream),
       streamUrl,
       headerAndTailReady: savedBf
         ? isHeaderAndTailComplete(savedBf, release.totalPieces)
         : false,
       playheadPieceIndex: existing?.playheadPieceIndex || 0,
-      priorityPhase: 'header-tail',
+      priorityPhase: enableInstantStream ? 'header-tail' : 'sequential',
       pieceMapBuckets: computePieceMapBuckets(
         savedBf || new Array(release.totalPieces).fill(0),
         release.totalPieces,
         0,
       ),
       statusMessage:
-        'جاري الاتصال برابط الـ Magnet الفعلي وجلب جدول الملفات من السرب (WebTorrent)...',
+        'جاري تهيئة محرك التحميل المتعدد المسارات وحجز مخزن TPPIECES القرصي...',
       startedAt: Date.now(),
       updatedAt: Date.now(),
     };
+
     if (enableInstantStream) {
       this.state.activeStreamingTaskHash = infoHash;
+    } else if (this.state.activeStreamingTaskHash === infoHash) {
+      this.state.activeStreamingTaskHash = null;
     }
     this.state.activeTab = 'tasks';
     this.emit();
 
-    const resolved = await this.resolveRealSourceMetadata(release, infoHash);
+    const resolved = await this.resolveRealSourceMetadata(
+      media,
+      release,
+      infoHash,
+    );
     const task = this.state.tasks[infoHash];
     if (!task) return;
 
@@ -1136,14 +1614,35 @@ class CinemaDownloadManager {
     task.release.totalPieces = resolved.totalPieces;
     task.totalPieces = resolved.totalPieces;
     task.activePeers = resolved.activePeers;
+    task.transportMode = resolved.transportMode;
+    task.streamUrl = buildProgressiveRangeStreamUrl(
+      task.release,
+      this.sessionToken,
+    );
+
+    const prevLoop = this.activeLoops.get(infoHash);
+    if (prevLoop) {
+      prevLoop.cancelled = true;
+      prevLoop.currentPieceAbort?.abort();
+    }
 
     this.activeLoops.set(infoHash, {
       cancelled: false,
       hlsSegments: resolved.hlsSegments,
+      directRangeUrl: resolved.directRangeUrl,
+      directRangeReferer: resolved.directRangeReferer,
+      useBridgeBackend: resolved.useBridgeBackend,
       bytesTransferredInSession: 0,
       sessionStartTimeMs: Date.now(),
       isRecentSeek: false,
       currentPieceAbort: null,
+      seekGate: new SeekGate((ratio) => {
+        const current = this.state.tasks[infoHash];
+        if (!current) return;
+        const clamped = Math.max(0, Math.min(0.995, ratio));
+        const byteOffset = Math.floor(clamped * current.totalBytes);
+        this.seekStreamToByteOffset(infoHash, byteOffset, true);
+      }),
     });
 
     if (this.worker) {
@@ -1156,7 +1655,7 @@ class CinemaDownloadManager {
           pieceLen: resolved.pieceLength,
           totalPieces: resolved.totalPieces,
           isVariableSegments: Boolean(resolved.hlsSegments?.length),
-          pieceHashes: [],
+          pieceHashes: resolved.pieceHashesHex,
           mediaSnapshot: media,
           releaseSnapshot: task.release,
         },
@@ -1173,10 +1672,6 @@ class CinemaDownloadManager {
     }
   };
 
-  /**
-   * Starts Progressive Torrent Streaming + OPFS Caching simultaneously,
-   * opening the live HTTP 206 player inside the Download Studio Modal.
-   */
   public startProgressiveStream = async (
     media: DownloadMediaContext,
     release: DiscoveredReleaseOption,
@@ -1186,7 +1681,10 @@ class CinemaDownloadManager {
     const existing = this.state.tasks[infoHash];
     if (existing) {
       existing.isStreamingActive = true;
-      existing.streamUrl = buildProgressiveRangeStreamUrl(release);
+      existing.showPieceMap = true;
+      existing.streamUrl =
+        existing.blobStreamUrl ||
+        buildProgressiveRangeStreamUrl(release, this.sessionToken);
       this.state.activeStreamingTaskHash = infoHash;
       this.state.activeTab = 'tasks';
       if (existing.status === 'paused') {
@@ -1203,10 +1701,6 @@ class CinemaDownloadManager {
     }
   };
 
-  /**
-   * Hands off the active Progressive Torrent HTTP 206 Stream directly to
-   * the Main Cinema Player on `MoviesPage.tsx` while continuing OPFS background caching!
-   */
   public openInMainCinemaPlayer = (
     infoHash: string,
     explicitMedia?: DownloadMediaContext,
@@ -1218,7 +1712,9 @@ class CinemaDownloadManager {
     if (!media || !release) return;
 
     const streamUrl =
-      task?.streamUrl || buildProgressiveRangeStreamUrl(release);
+      task?.blobStreamUrl ||
+      task?.streamUrl ||
+      buildProgressiveRangeStreamUrl(release, this.sessionToken);
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
@@ -1238,10 +1734,17 @@ class CinemaDownloadManager {
   public toggleStreamPlayerForTask = (infoHash: string): void => {
     const task = this.state.tasks[infoHash];
     if (!task) return;
-    const nextState =
-      this.state.activeStreamingTaskHash === infoHash ? null : infoHash;
-    task.isStreamingActive = Boolean(nextState);
-    this.state.activeStreamingTaskHash = nextState;
+    const nextState = !task.isStreamingActive;
+    task.isStreamingActive = nextState;
+    task.showPieceMap = nextState;
+    this.state.activeStreamingTaskHash = nextState ? infoHash : null;
+    this.emit();
+  };
+
+  public togglePieceMapForTask = (infoHash: string): void => {
+    const task = this.state.tasks[infoHash];
+    if (!task) return;
+    task.showPieceMap = !task.showPieceMap;
     this.emit();
   };
 
@@ -1258,7 +1761,7 @@ class CinemaDownloadManager {
     task.status = 'paused';
     task.speedBytesPerSec = 0;
     task.etaSeconds = null;
-    task.statusMessage = `متوقف مؤقتاً (${task.completedPieces}/${task.totalPieces} قطعة حقيقية محفوظة — جاهز للاستئناف)`;
+    task.statusMessage = `متوقف مؤقتاً (${task.completedPieces}/${task.totalPieces} قطعة محفوظة في TPPIECES — جاهز للاستئناف)`;
     task.updatedAt = Date.now();
     this.worker?.postMessage({
       action: 'PAUSE_SESSION',
@@ -1277,9 +1780,30 @@ class CinemaDownloadManager {
     );
   };
 
-  public reExportTask = (infoHash: string): void => {
+  public reExportTask = async (infoHash: string): Promise<void> => {
     const task = this.state.tasks[infoHash];
     if (!task) return;
+
+    if (isDirectDiskPickerSupported()) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: task.release.cleanFileName || 'movie.mp4',
+        });
+        const writableStream = await handle.createWritable();
+        task.statusMessage =
+          'جاري الدمج الذري بشرائح 256 KiB والكتابة المباشرة لقرص جهازك...';
+        this.emit();
+        this.worker?.postMessage(
+          {
+            action: 'FINALIZE_AND_EXPORT',
+            payload: { infoHash, writableStream },
+          },
+          [writableStream],
+        );
+        return;
+      } catch {}
+    }
+
     task.statusMessage = 'جاري إعادة نقل الملف من الكاش القرصي إلى جهازك...';
     this.emit();
     this.worker?.postMessage({

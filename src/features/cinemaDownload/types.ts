@@ -2,7 +2,7 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Isolated Cinema Download & Progressive Torrent Streaming Types
+ * Isolated Cinema Download & Optional Progressive Torrent Streaming Types
  */
 
 import type { Media } from '../../components/Movies/moviesDataClient';
@@ -13,6 +13,12 @@ export type DownloadSourceKind =
   | 'torrent-hybrid'
   | 'direct-mp4'
   | 'direct-hls';
+
+export type ActiveTransportMode =
+  | 'webtorrent-bridge'
+  | 'webseed-range'
+  | 'hls-assembler'
+  | 'initializing';
 
 export interface DownloadMediaContext {
   id: number;
@@ -48,6 +54,26 @@ export interface ParsedReleaseMetadata {
   container?: string;
 }
 
+export interface TorrentFileEntry {
+  index: number;
+  path: string;
+  offset: number;
+  length: number;
+}
+
+export interface ParsedTorrentMetainfo {
+  infoHashHex: string;
+  infoHashBytes: Uint8Array;
+  name: string;
+  pieceLength: number;
+  pieceCount: number;
+  totalLength: number;
+  pieceHashesHex: string[];
+  files: TorrentFileEntry[];
+  announceList: string[];
+  webSeeds: string[];
+}
+
 export interface DiscoveredReleaseOption {
   id: string;
   title: string;
@@ -63,6 +89,9 @@ export interface DiscoveredReleaseOption {
   torrentCacheUrls: string[];
   directStreamUrl?: string;
   streamReferer?: string;
+  fallbackStreamUrl?: string;
+  fallbackStreamType?: 'mp4' | 'hls';
+  fallbackStreamReferer?: string;
   videoCodec: string;
   audioCodec: string;
   audioChannels: string;
@@ -71,6 +100,7 @@ export interface DiscoveredReleaseOption {
   releaseGroup: string;
   pieceLength: number;
   totalPieces: number;
+  pieceHashesHex?: string[];
   verifiedSafe: boolean;
   securityNotes: string[];
   parsedMeta: ParsedReleaseMetadata;
@@ -91,10 +121,11 @@ export type DownloadStorageTargetMode =
   | 'direct-disk';
 
 export type SlidingWindowPriorityPhase =
+  | 'sequential'
   | 'header-tail'
+  | 'critical-phase'
   | 'seek-window'
-  | 'playhead-window'
-  | 'sequential';
+  | 'playhead-window';
 
 export type PieceMapBucketKind =
   | 'empty'
@@ -109,6 +140,7 @@ export interface DownloadTaskState {
   release: DiscoveredReleaseOption;
   status: DownloadTaskLifecycleStatus;
   storageMode: DownloadStorageTargetMode;
+  transportMode: ActiveTransportMode;
   progressPct: number;
   completedPieces: number;
   totalPieces: number;
@@ -118,6 +150,7 @@ export interface DownloadTaskState {
   etaSeconds: number | null;
   verifiedPiecesCount: number;
   corruptPiecesRetried: number;
+  bannedPeersCount: number;
   activePeers: number;
   exportedToDevice: boolean;
   cacheCleared: boolean;
@@ -125,9 +158,11 @@ export interface DownloadTaskState {
   errorMessage?: string;
   startedAt: number;
   updatedAt: number;
-  // Progressive Torrent Streaming & Sliding-Window Seeking State
-  isStreamingActive?: boolean;
+  // Strictly opt-in streaming & piece map visualization (OFF by default)
+  isStreamingActive: boolean;
+  showPieceMap: boolean;
   streamUrl?: string;
+  blobStreamUrl?: string;
   headerAndTailReady?: boolean;
   playheadPieceIndex?: number;
   activeDownloadingPieceIndex?: number;

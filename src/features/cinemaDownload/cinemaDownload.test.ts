@@ -4,8 +4,9 @@
  *
  * Unit tests for the isolated Cinema Download System:
  * - Scene Release Parser & 6-Gate Security Filter
+ * - Bencode & Magnet Input Manager (Hex + Base32 + Path Sanitizer)
  * - Magnet URI Synthesizer & Real Multi-GB Piece Geometry
- * - Sliding-Window Priority Scheduler (Header+Tail First, Playhead Read-Ahead, Seek Reprioritization)
+ * - Sliding-Window Priority Scheduler (Download-First Sequential vs Active Streaming Deadline Mode + SeekGate)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -18,16 +19,21 @@ import {
   verifyReleaseSafety,
 } from './releaseParserAndFilter';
 import {
+  parseMagnetUriInput,
+  sanitizeTorrentPath,
+} from './bencodeAndInputManager';
+import {
   buildCleanDownloadFileName,
   computeRealPieceGeometry,
 } from './releaseDiscoveryService';
 import {
   byteOffsetToPieceIndex,
   computePieceMapBuckets,
+  SeekGate,
   selectNextPieceToDownload,
 } from './slidingWindowScheduler';
 
-describe('Cinema Download Release Parser & 6-Gate Security Filter', () => {
+describe('Cinema Download Release Parser, Bencode Input & Scheduler', () => {
   it('parses complex 4K TV episode release names accurately', () => {
     const raw =
       'Severance.S02E04.Woes.Hollow.2160p.ATVP.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX';
@@ -63,6 +69,24 @@ describe('Cinema Download Release Parser & 6-Gate Security Filter', () => {
       seeders: 50,
     });
     expect(rtlOverrideAttempt.safe).toBe(false);
+  });
+
+  it('parses Magnet URIs (Hex & Base32) and sanitizes torrent paths safely', () => {
+    const parsedHex = parseMagnetUriInput(
+      'magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&ws=https%3A%2F%2Fwebseed.example.com%2Fsintel.mp4',
+    );
+    expect(parsedHex.infoHashHex).toBe(
+      '08ada5a7a6183aae1e09d831df6748d566095a10',
+    );
+    expect(parsedHex.displayName).toBe('Sintel');
+    expect(parsedHex.trackers).toContain('wss://tracker.openwebtorrent.com');
+    expect(parsedHex.webSeeds).toContain(
+      'https://webseed.example.com/sintel.mp4',
+    );
+
+    const safePath = sanitizeTorrentPath(['..', 'CON.mp4', 'video.mp4']);
+    expect(safePath).not.toContain('..');
+    expect(safePath).toContain('video.mp4');
   });
 
   it('accepts valid media releases and synthesizes magnet + public cache URLs', () => {
@@ -117,29 +141,36 @@ describe('Cinema Download Release Parser & 6-Gate Security Filter', () => {
     );
   });
 
-  it('prioritizes Header [0, 1] + Tail [N-1, N-2] first, then Playhead/Seek Window, then Sequential', () => {
+  it('uses Download-First Sequential Mode when streaming is OFF, and Deadline/Header+Tail Mode when streaming is ON', async () => {
     const totalPieces = 1000;
     const bf = new Uint8Array(totalPieces);
 
-    // Step 1: Must pick piece 0, 1, 999, 998 first (Header + Tail for moov/Cues)
-    const p1 = selectNextPieceToDownload(bf, totalPieces, 0);
-    expect(p1?.pieceIndex).toBe(0);
-    expect(p1?.phase).toBe('header-tail');
+    // Mode A: Download-First Sequential (isStreamingActive = false)
+    const seq0 = selectNextPieceToDownload(bf, totalPieces, 0, false, false);
+    expect(seq0?.pieceIndex).toBe(0);
+    expect(seq0?.phase).toBe('sequential');
     bf[0] = 1;
 
-    const p2 = selectNextPieceToDownload(bf, totalPieces, 0);
-    expect(p2?.pieceIndex).toBe(1);
+    const seq1 = selectNextPieceToDownload(bf, totalPieces, 0, false, false);
+    expect(seq1?.pieceIndex).toBe(1);
+    expect(seq1?.phase).toBe('sequential');
     bf[1] = 1;
 
-    const p3 = selectNextPieceToDownload(bf, totalPieces, 0);
+    const seq2 = selectNextPieceToDownload(bf, totalPieces, 0, false, false);
+    expect(seq2?.pieceIndex).toBe(2);
+    expect(seq2?.phase).toBe('sequential');
+
+    // Mode B: Active Streaming Mode (isStreamingActive = true) -> Tail [999, 998] prioritized before piece 2!
+    const p3 = selectNextPieceToDownload(bf, totalPieces, 0, false, true);
     expect(p3?.pieceIndex).toBe(999);
+    expect(p3?.phase).toBe('header-tail');
     bf[999] = 1;
 
-    const p4 = selectNextPieceToDownload(bf, totalPieces, 0);
+    const p4 = selectNextPieceToDownload(bf, totalPieces, 0, false, true);
     expect(p4?.pieceIndex).toBe(998);
     bf[998] = 1;
 
-    // Step 2: When user seeks to minute 55:00 (e.g. piece 540), scheduler immediately prioritizes [540..549]
+    // Seek to piece 540 while streaming -> critical-phase
     const seekTarget = byteOffsetToPieceIndex(
       540 * 1048576,
       1048576,
@@ -147,14 +178,32 @@ describe('Cinema Download Release Parser & 6-Gate Security Filter', () => {
     );
     expect(seekTarget).toBe(540);
 
-    const pSeek = selectNextPieceToDownload(bf, totalPieces, seekTarget, true);
+    const pSeek = selectNextPieceToDownload(
+      bf,
+      totalPieces,
+      seekTarget,
+      true,
+      true,
+    );
     expect(pSeek?.pieceIndex).toBe(540);
-    expect(pSeek?.phase).toBe('seek-window');
+    expect(pSeek?.phase).toBe('critical-phase');
     expect(pSeek?.headerAndTailReady).toBe(true);
 
     const buckets = computePieceMapBuckets(bf, totalPieces, seekTarget, 48);
     expect(buckets.length).toBe(48);
     expect(buckets).toContain('playhead-window');
     expect(buckets).toContain('header-tail');
+
+    // SeekGate coalescing test
+    const applied: number[] = [];
+    const gate = new SeekGate(async (r) => {
+      await new Promise((res) => setTimeout(res, 5));
+      applied.push(r);
+    });
+    gate.request(0.1);
+    gate.request(0.2);
+    gate.request(0.75);
+    await new Promise((res) => setTimeout(res, 25));
+    expect(applied[applied.length - 1]).toBe(0.75);
   });
 });

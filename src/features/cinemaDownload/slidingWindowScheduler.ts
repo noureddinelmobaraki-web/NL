@@ -2,13 +2,7 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Sliding-Window Piece Priority Scheduler (Secret #1)
- * Replaces Rarest-First random torrent piece selection with a 3-tier priority queue:
- * 1. Priority 1 (Header + Tail First): Pieces [0, 1] and [totalPieces - 2, totalPieces - 1]
- *    so MP4 `moov` atoms and MKV `Cues` seek tables are available within seconds.
- * 2. Priority 2 (Playhead Read-Ahead / Dynamic Seek Window): The 10 contiguous pieces
- *    [playheadPiece .. playheadPiece + 9] directly in front of the viewer's current timestamp.
- * 3. Priority 3 (Sequential Forward Fill): Remaining missing pieces in sequential order.
+ * TorrentPlayer v0.3.3 Deadline & Sliding-Window Piece Priority Scheduler + SeekGate
  */
 
 import type {
@@ -17,11 +11,41 @@ import type {
 } from './types';
 
 export const READ_AHEAD_WINDOW_PIECES = 10;
+export const CRITICAL_WINDOW_PIECES = 4;
 
 export interface NextPieceSelection {
   pieceIndex: number;
   phase: SlidingWindowPriorityPhase;
   headerAndTailReady: boolean;
+}
+
+export class SeekGate {
+  private inflight = false;
+  private pendingTarget: number | null = null;
+
+  constructor(
+    private readonly applySeek: (targetRatio: number) => Promise<void> | void,
+  ) {}
+
+  public request(targetRatio: number): void {
+    this.pendingTarget = targetRatio;
+    if (!this.inflight) {
+      void this.drain();
+    }
+  }
+
+  private async drain(): Promise<void> {
+    this.inflight = true;
+    try {
+      while (this.pendingTarget !== null) {
+        const next = this.pendingTarget;
+        this.pendingTarget = null;
+        await this.applySeek(next);
+      }
+    } finally {
+      this.inflight = false;
+    }
+  }
 }
 
 export function getHeaderAndTailIndices(totalPieces: number): number[] {
@@ -40,15 +64,12 @@ export function isHeaderAndTailComplete(
   return critical.every((idx) => bitfield[idx] === 1);
 }
 
-/**
- * Selects the next missing piece (`bitfield[i] === 0`) according to the
- * 3-tier Sliding-Window Priority algorithm.
- */
 export function selectNextPieceToDownload(
   bitfield: ArrayLike<number>,
   totalPieces: number,
   playheadPiece = 0,
   isRecentSeek = false,
+  isStreamingActive = false,
 ): NextPieceSelection | null {
   const safeTotal = Math.max(1, totalPieces);
   const clampedPlayhead = Math.max(
@@ -56,7 +77,46 @@ export function selectNextPieceToDownload(
     Math.min(safeTotal - 1, Math.floor(playheadPiece || 0)),
   );
 
-  // Tier 1: Header [0, 1] + Tail [N-1, N-2] First (container metadata & seek index)
+  const headerAndTailDone = isHeaderAndTailComplete(bitfield, safeTotal);
+
+  // Mode A: Download-First Sequential Mode (default when streaming is OFF)
+  if (!isStreamingActive) {
+    for (let idx = 0; idx < safeTotal; idx++) {
+      if (bitfield[idx] !== 1) {
+        return {
+          pieceIndex: idx,
+          phase: 'sequential',
+          headerAndTailReady: headerAndTailDone,
+        };
+      }
+    }
+    return null;
+  }
+
+  // Mode B: Active Streaming Mode (Critical Phase + Header/Tail + Playhead Read-Ahead)
+  const critEnd = Math.min(
+    safeTotal - 1,
+    clampedPlayhead + CRITICAL_WINDOW_PIECES - 1,
+  );
+  let critTotal = 0;
+  let critDone = 0;
+  for (let idx = clampedPlayhead; idx <= critEnd; idx++) {
+    critTotal++;
+    if (bitfield[idx] === 1) critDone++;
+  }
+
+  if (isRecentSeek && critDone * 2 < critTotal) {
+    for (let idx = clampedPlayhead; idx <= critEnd; idx++) {
+      if (bitfield[idx] !== 1) {
+        return {
+          pieceIndex: idx,
+          phase: 'critical-phase',
+          headerAndTailReady: headerAndTailDone,
+        };
+      }
+    }
+  }
+
   const headerTail = getHeaderAndTailIndices(safeTotal);
   for (const idx of headerTail) {
     if (bitfield[idx] !== 1) {
@@ -68,7 +128,6 @@ export function selectNextPieceToDownload(
     }
   }
 
-  // Tier 2: Playhead Read-Ahead / Seek Critical Window [playhead .. playhead + 9]
   const windowEnd = Math.min(
     safeTotal - 1,
     clampedPlayhead + READ_AHEAD_WINDOW_PIECES - 1,
@@ -83,7 +142,6 @@ export function selectNextPieceToDownload(
     }
   }
 
-  // Tier 3A: Sequential forward from playhead window to end of file
   for (let idx = windowEnd + 1; idx < safeTotal; idx++) {
     if (bitfield[idx] !== 1) {
       return {
@@ -94,7 +152,6 @@ export function selectNextPieceToDownload(
     }
   }
 
-  // Tier 3B: Wrap around to fill any skipped pieces before playhead
   for (let idx = 0; idx < clampedPlayhead; idx++) {
     if (bitfield[idx] !== 1) {
       return {
@@ -108,10 +165,6 @@ export function selectNextPieceToDownload(
   return null;
 }
 
-/**
- * Converts a target byte offset or playback timestamp ratio into the corresponding
- * piece index (`targetPiece = Math.floor(byteOffset / pieceLength)`).
- */
 export function byteOffsetToPieceIndex(
   byteOffset: number,
   pieceLength: number,
@@ -122,10 +175,6 @@ export function byteOffsetToPieceIndex(
   return Math.max(0, Math.min(Math.max(1, totalPieces) - 1, raw));
 }
 
-/**
- * Downsamples a bitfield of arbitrary length (e.g. 1,680 pieces) into `bucketCount`
- * visual segments for the Live Sliding-Window Piece Bar in the UI.
- */
 export function computePieceMapBuckets(
   bitfield: ArrayLike<number>,
   totalPieces: number,
@@ -152,7 +201,6 @@ export function computePieceMapBuckets(
       Math.floor(((b + 1) / count) * safeTotal) - 1,
     );
 
-    let allVerified = true;
     let someVerified = false;
     let inPlayheadWindow = false;
     const isHeaderOrTail = b === 0 || b === count - 1;
@@ -160,18 +208,16 @@ export function computePieceMapBuckets(
     for (let i = startIdx; i <= endIdx; i++) {
       if (bitfield[i] === 1) {
         someVerified = true;
-      } else {
-        allVerified = false;
       }
       if (i >= clampedPlayhead && i <= windowEnd) {
         inPlayheadWindow = true;
       }
     }
 
-    if (inPlayheadWindow) {
-      buckets[b] = 'playhead-window';
-    } else if (allVerified || someVerified) {
+    if (someVerified) {
       buckets[b] = isHeaderOrTail ? 'header-tail' : 'verified';
+    } else if (inPlayheadWindow) {
+      buckets[b] = 'playhead-window';
     } else {
       buckets[b] = 'empty';
     }

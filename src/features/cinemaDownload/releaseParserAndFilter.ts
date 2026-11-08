@@ -66,29 +66,33 @@ export async function getLiveTrackers(): Promise<string[]> {
     ...WEBRTC_WSS_TRACKERS,
   ]);
 
-  try {
-    const res = await fetch('https://cf.trackerslist.com/best.txt', {
-      signal: AbortSignal.timeout(2800),
-    });
-    if (res.ok) {
-      const text = await res.text();
-      for (const line of text.split(/\r?\n/)) {
-        const trimmed = line.trim();
-        if (
-          trimmed &&
-          (trimmed.startsWith('udp://') ||
-            trimmed.startsWith('http://') ||
-            trimmed.startsWith('https://') ||
-            trimmed.startsWith('wss://'))
-        ) {
-          collected.add(trimmed);
+  const trackerSources = [
+    'https://cf.trackerslist.com/best.txt',
+    'https://newtrackon.com/api/stable',
+  ];
+
+  await Promise.allSettled(
+    trackerSources.map(async (url) => {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(2600) });
+        if (!res.ok) return;
+        const text = await res.text();
+        for (const line of text.split(/\r?\n/)) {
+          const trimmed = line.trim();
+          if (
+            trimmed &&
+            (trimmed.startsWith('udp://') ||
+              trimmed.startsWith('http://') ||
+              trimmed.startsWith('https://') ||
+              trimmed.startsWith('wss://'))
+          ) {
+            collected.add(trimmed);
+          }
+          if (collected.size >= 28) break;
         }
-        if (collected.size >= 24) break;
-      }
-    }
-  } catch {
-    // Fallback to BASE_UDP_AND_HTTP_TRACKERS
-  }
+      } catch {}
+    }),
+  );
 
   cachedLiveTrackers = Array.from(collected);
   lastTrackerFetchAt = Date.now();

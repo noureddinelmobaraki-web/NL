@@ -172,6 +172,110 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const requestUrl = request.url;
 
+  // ── TPPIECES OPFS HTTP 206 Virtual Video Streamer (/__tp_stream__/) ──
+  if (
+    requestUrl.includes('/__tp_stream__/') ||
+    requestUrl.includes('/virtual-torrent-stream/')
+  ) {
+    event.respondWith(
+      (async () => {
+        const url = new URL(requestUrl);
+        const pathParts = url.pathname.split('/').filter(Boolean);
+        const pathHash = pathParts[pathParts.length - 1] || '';
+        const infoHash = (
+          url.searchParams.get('infoHash') ||
+          pathHash ||
+          ''
+        ).toLowerCase();
+        const totalSize = Number(url.searchParams.get('size') || 0);
+        const rangeHeader = request.headers.get('Range') || '';
+
+        let status = 200;
+        let start = 0;
+        let end = totalSize > 0 ? totalSize - 1 : 2 * 1024 * 1024 - 1;
+        if (rangeHeader && rangeHeader.startsWith('bytes=')) {
+          const parts = rangeHeader.replace(/bytes=/, '').split('-');
+          const parsedStart = parseInt(parts[0], 10);
+          if (!Number.isNaN(parsedStart) && parsedStart >= 0) {
+            status = 206;
+            start = parsedStart;
+            const rawEnd =
+              parts[1] && parts[1].length > 0
+                ? parseInt(parts[1], 10)
+                : totalSize > 0
+                  ? totalSize - 1
+                  : start + 2 * 1024 * 1024 - 1;
+            end =
+              totalSize > 0
+                ? Math.min(totalSize - 1, Math.max(start, rawEnd))
+                : rawEnd;
+          }
+        }
+
+        const allClients = await self.clients.matchAll({
+          includeUncontrolled: true,
+          type: 'window',
+        });
+        const targetClient = allClients[0];
+        if (targetClient && infoHash) {
+          const channel = new MessageChannel();
+          const stream = new ReadableStream({
+            start(controller) {
+              channel.port1.onmessage = (msgEvent) => {
+                const msg = msgEvent.data;
+                if (!msg) return;
+                if (msg.type === 'CHUNK' && msg.buffer) {
+                  controller.enqueue(new Uint8Array(msg.buffer));
+                } else if (msg.type === 'EOF') {
+                  try {
+                    controller.close();
+                  } catch {}
+                  channel.port1.close();
+                } else if (msg.type === 'ERROR') {
+                  try {
+                    controller.error(new Error(msg.message || 'Stream error'));
+                  } catch {}
+                  channel.port1.close();
+                }
+              };
+              targetClient.postMessage(
+                { type: 'SW_OPEN_RANGE', infoHash, start, end },
+                [channel.port2],
+              );
+            },
+            cancel() {
+              try {
+                channel.port1.postMessage({ type: 'ABORT_RANGE' });
+                channel.port1.close();
+              } catch {}
+            },
+          });
+
+          const headers = new Headers({
+            'Content-Type': 'video/mp4',
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'no-store',
+          });
+          if (totalSize > 0) {
+            headers.set('Content-Length', String(Math.max(0, end - start + 1)));
+            if (status === 206) {
+              headers.set(
+                'Content-Range',
+                `bytes ${start}-${end}/${totalSize}`,
+              );
+            }
+          }
+          return new Response(stream, { status, headers });
+        }
+
+        return new Response('Torrent stream session not active', {
+          status: 503,
+        });
+      })(),
+    );
+    return;
+  }
+
   // ── Supabase API pass-through ──────────────────────────
   // Never cache Supabase REST, Auth, or Realtime requests.
   // They must always go to the network.

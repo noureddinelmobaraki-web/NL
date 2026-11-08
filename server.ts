@@ -16,6 +16,8 @@ async function startServer() {
     next();
   });
 
+  app.use(express.json());
+
   // Simple API
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
@@ -174,6 +176,10 @@ async function startServer() {
   let wtClientPromise: Promise<any> | null = null;
   let memoryChunkStoreMod: any = null;
   const torrentLastAccess = new Map<string, number>();
+  const pendingTorrents = new Map<
+    string,
+    Promise<{ torrent: any; mainFile: any }>
+  >();
 
   const DEFAULT_BRIDGE_TRACKERS = [
     "udp://tracker.opentrackr.org:1337/announce",
@@ -272,119 +278,133 @@ async function startServer() {
     magnetUri?: string,
     timeoutMs = 15000,
   ): Promise<{ torrent: any; mainFile: any }> {
-    const client = await getWebTorrentClient();
     const cleanHash = infoHash.trim().toLowerCase();
-    torrentLastAccess.set(cleanHash, Date.now());
-
-    // Clean up idle torrents older than 10 minutes to free memory
-    for (const tor of client.torrents || []) {
-      const h = String(tor.infoHash || "").toLowerCase();
-      const last = torrentLastAccess.get(h) || Date.now();
-      if (h !== cleanHash && Date.now() - last > 10 * 60 * 1000) {
-        try {
-          tor.destroy();
-          torrentLastAccess.delete(h);
-        } catch {}
-      }
+    const inflight = pendingTorrents.get(cleanHash);
+    if (inflight) {
+      return inflight;
     }
 
-    let torrent = (client.torrents || []).find(
-      (t: any) => String(t.infoHash || "").toLowerCase() === cleanHash,
-    );
+    const promise = (async () => {
+      const client = await getWebTorrentClient();
+      torrentLastAccess.set(cleanHash, Date.now());
 
-    if (!torrent) {
-      const cachedTorrentBuf =
-        await fetchTorrentBufferFromPublicCache(cleanHash);
-      // Merge trackers from the incoming magnet URI with default bridge trackers
-      const mergedTrackers = new Set<string>(DEFAULT_BRIDGE_TRACKERS);
-      if (magnetUri) {
-        try {
-          const qIdx = magnetUri.indexOf("?");
-          if (qIdx >= 0) {
-            const sp = new URLSearchParams(magnetUri.slice(qIdx + 1));
-            for (const tr of sp.getAll("tr")) {
-              if (tr) mergedTrackers.add(tr);
+      // Clean up idle torrents older than 10 minutes to free memory
+      for (const tor of client.torrents || []) {
+        const h = String(tor.infoHash || "").toLowerCase();
+        const last = torrentLastAccess.get(h) || Date.now();
+        if (h !== cleanHash && Date.now() - last > 10 * 60 * 1000) {
+          try {
+            tor.destroy();
+            torrentLastAccess.delete(h);
+          } catch {}
+        }
+      }
+
+      let torrent = (client.torrents || []).find(
+        (t: any) => String(t.infoHash || "").toLowerCase() === cleanHash,
+      );
+
+      if (!torrent) {
+        const cachedTorrentBuf =
+          await fetchTorrentBufferFromPublicCache(cleanHash);
+        const mergedTrackers = new Set<string>(DEFAULT_BRIDGE_TRACKERS);
+        if (magnetUri) {
+          try {
+            const qIdx = magnetUri.indexOf("?");
+            if (qIdx >= 0) {
+              const sp = new URLSearchParams(magnetUri.slice(qIdx + 1));
+              for (const tr of sp.getAll("tr")) {
+                if (tr) mergedTrackers.add(tr);
+              }
             }
-          }
-        } catch {}
-      }
-      const announceList = Array.from(mergedTrackers);
-      const targetId =
-        cachedTorrentBuf ||
-        magnetUri ||
-        `magnet:?xt=urn:btih:${cleanHash}&tr=${announceList.map(encodeURIComponent).join("&tr=")}`;
+          } catch {}
+        }
+        const announceList = Array.from(mergedTrackers);
+        const targetId =
+          cachedTorrentBuf ||
+          magnetUri ||
+          `magnet:?xt=urn:btih:${cleanHash}&tr=${announceList.map(encodeURIComponent).join("&tr=")}`;
 
-      const addOpts: Record<string, unknown> = {
-        announce: announceList,
-      };
-      if (memoryChunkStoreMod) {
-        addOpts.store = memoryChunkStoreMod;
-      }
-      torrent = client.add(targetId, addOpts);
-    }
-
-    if (!torrent.ready) {
-      await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(() => {
-          cleanup();
-          reject(
-            new Error("انتهت مهلة انتظار استجابة النظراء في سرب التورنت"),
-          );
-        }, timeoutMs);
-
-        const onReady = () => {
-          cleanup();
-          resolve();
+        const addOpts: Record<string, unknown> = {
+          announce: announceList,
         };
-        const onError = (err: Error) => {
-          cleanup();
-          reject(err);
-        };
-        const cleanup = () => {
-          clearTimeout(timer);
-          torrent.removeListener("ready", onReady);
-          torrent.removeListener("error", onError);
-        };
-
-        torrent.once("ready", onReady);
-        torrent.once("error", onError);
-      });
-    }
-
-    const files: any[] = torrent.files || [];
-    if (files.length === 0) {
-      throw new Error("لا توجد ملفات فيديو داخل هذا التورنت");
-    }
-
-    const videoFiles = files.filter((f) =>
-      /\.(mp4|mkv|webm|avi|mov|m4v|ts)$/i.test(String(f.name || "")),
-    );
-    const pool = videoFiles.length > 0 ? videoFiles : files;
-    const mainFile = pool.reduce((a, b) => (a.length >= b.length ? a : b));
-
-    // Deselect non-main files so 100% of swarm bandwidth goes to the video
-    for (const f of files) {
-      if (f !== mainFile && typeof f.deselect === "function") {
-        f.deselect();
-      }
-    }
-
-    // Secret #1: Prioritize Header (first 2 MB) + Tail (last 2 MB for MP4 moov / MKV Cues) immediately!
-    const fileLen = Number(mainFile.length) || 0;
-    if (fileLen > 0) {
-      const twoMB = Math.min(fileLen, 2 * 1024 * 1024);
-      markFileByteRangeCritical(torrent, mainFile, 0, twoMB - 1);
-      if (fileLen > twoMB) {
-        markFileByteRangeCritical(
-          torrent,
-          mainFile,
-          Math.max(0, fileLen - twoMB),
-          fileLen - 1,
+        if (memoryChunkStoreMod) {
+          addOpts.store = memoryChunkStoreMod;
+        }
+        const existingAgain = (client.torrents || []).find(
+          (t: any) => String(t.infoHash || "").toLowerCase() === cleanHash,
         );
+        torrent = existingAgain || client.add(targetId, addOpts);
       }
-    }
 
-    return { torrent, mainFile };
+      if (!torrent.ready) {
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(() => {
+            cleanup();
+            reject(
+              new Error("انتهت مهلة انتظار استجابة النظراء في سرب التورنت"),
+            );
+          }, timeoutMs);
+
+          const onReady = () => {
+            cleanup();
+            resolve();
+          };
+          const onError = (err: Error) => {
+            cleanup();
+            reject(err);
+          };
+          const cleanup = () => {
+            clearTimeout(timer);
+            torrent.removeListener("ready", onReady);
+            torrent.removeListener("error", onError);
+          };
+
+          torrent.once("ready", onReady);
+          torrent.once("error", onError);
+        });
+      }
+
+      const files: any[] = torrent.files || [];
+      if (files.length === 0) {
+        throw new Error("لا توجد ملفات فيديو داخل هذا التورنت");
+      }
+
+      const videoFiles = files.filter((f) =>
+        /\.(mp4|mkv|webm|avi|mov|m4v|ts)$/i.test(String(f.name || "")),
+      );
+      const pool = videoFiles.length > 0 ? videoFiles : files;
+      const mainFile = pool.reduce((a, b) => (a.length >= b.length ? a : b));
+
+      for (const f of files) {
+        if (f !== mainFile && typeof f.deselect === "function") {
+          f.deselect();
+        }
+      }
+
+      const fileLen = Number(mainFile.length) || 0;
+      if (fileLen > 0) {
+        const twoMB = Math.min(fileLen, 2 * 1024 * 1024);
+        markFileByteRangeCritical(torrent, mainFile, 0, twoMB - 1);
+        if (fileLen > twoMB) {
+          markFileByteRangeCritical(
+            torrent,
+            mainFile,
+            Math.max(0, fileLen - twoMB),
+            fileLen - 1,
+          );
+        }
+      }
+
+      return { torrent, mainFile };
+    })();
+
+    pendingTorrents.set(cleanHash, promise);
+    try {
+      return await promise;
+    } finally {
+      pendingTorrents.delete(cleanHash);
+    }
   }
 
   function readStreamRangeToBuffer(
