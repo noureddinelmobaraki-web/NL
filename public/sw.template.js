@@ -168,118 +168,186 @@ async function trimCache(cacheName) {
   }
 }
 
+const TP_MIME_BY_EXT = {
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  webm: 'video/webm',
+  mkv: 'video/x-matroska',
+  mov: 'video/quicktime',
+  avi: 'video/x-msvideo',
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+};
+
+function tpGetMimeFromFilename(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  return TP_MIME_BY_EXT[ext] || 'video/mp4';
+}
+
+const TP_STREAM_RE = /^\/(?:__tp_stream__|virtual-torrent-stream)\/([a-f0-9]{40})(?:\/(.*))?$/i;
+
+function tpParseRange(rangeHeader, totalSize) {
+  if (!rangeHeader || !rangeHeader.startsWith('bytes=') || totalSize <= 0) {
+    return { start: 0, end: Math.max(0, totalSize - 1), partial: false, satisfiable: true };
+  }
+  const spec = rangeHeader.slice(6).split(',')[0].trim();
+  const dash = spec.indexOf('-');
+  if (dash < 0) return { start: 0, end: 0, partial: true, satisfiable: false };
+  const startStr = spec.slice(0, dash).trim();
+  const endStr = spec.slice(dash + 1).trim();
+  let start = 0;
+  let end = totalSize - 1;
+  if (startStr === '') {
+    const suffix = parseInt(endStr, 10);
+    if (!Number.isFinite(suffix) || suffix <= 0) {
+      return { start: 0, end: 0, partial: true, satisfiable: false };
+    }
+    start = Math.max(0, totalSize - suffix);
+  } else {
+    start = parseInt(startStr, 10);
+    if (endStr !== '') {
+      end = parseInt(endStr, 10);
+    }
+  }
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || start >= totalSize || end < start) {
+    return { start: 0, end: 0, partial: true, satisfiable: false };
+  }
+  end = Math.min(end, totalSize - 1);
+  return { start, end, partial: true, satisfiable: true };
+}
+
+async function tpPickClient(event) {
+  if (event.clientId) {
+    const direct = await self.clients.get(event.clientId);
+    if (direct) return direct;
+  }
+  const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  return list.find((c) => c.focused) || list.find((c) => c.visibilityState === 'visible') || list[0] || null;
+}
+
+async function tpHandleStream(event, url, infoHash, fileTail) {
+  const request = event.request;
+  const totalSize = parseInt(url.searchParams.get('size') || '0', 10);
+  const nameParam = url.searchParams.get('name') || fileTail || 'video.mp4';
+  const mime = url.searchParams.get('mime') || tpGetMimeFromFilename(nameParam);
+
+  if (!Number.isFinite(totalSize) || totalSize <= 0) {
+    return new Response('Missing valid size parameter', { status: 400 });
+  }
+
+  const range = tpParseRange(request.headers.get('Range'), totalSize);
+  if (!range.satisfiable) {
+    return new Response(null, {
+      status: 416,
+      headers: { 'Content-Range': `bytes */${totalSize}` },
+    });
+  }
+
+  const contentLength = range.end - range.start + 1;
+  const headers = new Headers({
+    'Content-Type': mime,
+    'Accept-Ranges': 'bytes',
+    'Content-Length': String(contentLength),
+    'Cache-Control': 'no-store, no-transform',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  if (range.partial) {
+    headers.set('Content-Range', `bytes ${range.start}-${range.end}/${totalSize}`);
+  }
+  if (request.method === 'HEAD') {
+    return new Response(null, { status: range.partial ? 206 : 200, headers });
+  }
+
+  const client = await tpPickClient(event);
+  if (!client) {
+    const magnetParam = url.searchParams.get('magnet') || '';
+    const bridgeStreamUrl = `/api/cinema-download/stream?infoHash=${encodeURIComponent(infoHash)}&magnet=${encodeURIComponent(magnetParam)}`;
+    return fetch(bridgeStreamUrl, {
+      headers: request.headers.get('Range')
+        ? { Range: request.headers.get('Range') }
+        : {},
+    });
+  }
+
+  const channel = new MessageChannel();
+  const port = channel.port1;
+  let timer = null;
+  const clearTimer = () => {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+
+  const stream = new ReadableStream({
+    start(controller) {
+      timer = setTimeout(() => {
+        try { controller.error(new Error('Stream range timeout (15s)')); } catch {}
+        try { port.postMessage({ type: 'CANCEL' }); port.close(); } catch {}
+      }, 15000);
+
+      port.onmessage = (msgEv) => {
+        const msg = msgEv.data;
+        if (!msg || typeof msg !== 'object') return;
+        const buf = msg.buf || msg.buffer;
+        if (msg.type === 'CHUNK' && buf instanceof ArrayBuffer) {
+          clearTimer();
+          try { controller.enqueue(new Uint8Array(buf)); } catch {}
+        } else if (msg.type === 'EOF') {
+          clearTimer();
+          try { controller.close(); } catch {}
+          try { port.close(); } catch {}
+        } else if (msg.type === 'ERROR') {
+          clearTimer();
+          try { controller.error(new Error(msg.message || 'OPFS range error')); } catch {}
+          try { port.close(); } catch {}
+        }
+      };
+
+      client.postMessage(
+        {
+          type: 'SW_OPEN_RANGE',
+          infoHash: infoHash.toLowerCase(),
+          start: range.start,
+          end: range.end,
+        },
+        [channel.port2],
+      );
+    },
+    pull() {
+      try { port.postMessage({ type: 'PULL' }); } catch {}
+    },
+    cancel() {
+      clearTimer();
+      try { port.postMessage({ type: 'CANCEL' }); port.close(); } catch {}
+    },
+  });
+
+  return new Response(stream, {
+    status: range.partial ? 206 : 200,
+    headers,
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const requestUrl = request.url;
 
-  // ── TPPIECES OPFS HTTP 206 Virtual Video Streamer (/__tp_stream__/) ──
+  try {
+    const parsedUrl = new URL(requestUrl);
+    if (parsedUrl.origin === self.location.origin) {
+      const m = TP_STREAM_RE.exec(parsedUrl.pathname);
+      if (m) {
+        event.respondWith(tpHandleStream(event, parsedUrl, m[1], m[2] || ''));
+        return;
+      }
+    }
+  } catch {}
+
+  // ── Supabase & API pass-through ──────────────────────────
   if (
-    requestUrl.includes('/__tp_stream__/') ||
-    requestUrl.includes('/virtual-torrent-stream/')
-  ) {
-    event.respondWith(
-      (async () => {
-        const url = new URL(requestUrl);
-        const pathParts = url.pathname.split('/').filter(Boolean);
-        const pathHash = pathParts[pathParts.length - 1] || '';
-        const infoHash = (
-          url.searchParams.get('infoHash') ||
-          pathHash ||
-          ''
-        ).toLowerCase();
-        const totalSize = Number(url.searchParams.get('size') || 0);
-        const rangeHeader = request.headers.get('Range') || '';
-
-        let status = 200;
-        let start = 0;
-        let end = totalSize > 0 ? totalSize - 1 : 2 * 1024 * 1024 - 1;
-        if (rangeHeader && rangeHeader.startsWith('bytes=')) {
-          const parts = rangeHeader.replace(/bytes=/, '').split('-');
-          const parsedStart = parseInt(parts[0], 10);
-          if (!Number.isNaN(parsedStart) && parsedStart >= 0) {
-            status = 206;
-            start = parsedStart;
-            const rawEnd =
-              parts[1] && parts[1].length > 0
-                ? parseInt(parts[1], 10)
-                : totalSize > 0
-                  ? totalSize - 1
-                  : start + 2 * 1024 * 1024 - 1;
-            end =
-              totalSize > 0
-                ? Math.min(totalSize - 1, Math.max(start, rawEnd))
-                : rawEnd;
-          }
-        }
-
-        const allClients = await self.clients.matchAll({
-          includeUncontrolled: true,
-          type: 'window',
-        });
-        const targetClient = allClients[0];
-        if (targetClient && infoHash) {
-          const channel = new MessageChannel();
-          const stream = new ReadableStream({
-            start(controller) {
-              channel.port1.onmessage = (msgEvent) => {
-                const msg = msgEvent.data;
-                if (!msg) return;
-                if (msg.type === 'CHUNK' && msg.buffer) {
-                  controller.enqueue(new Uint8Array(msg.buffer));
-                } else if (msg.type === 'EOF') {
-                  try {
-                    controller.close();
-                  } catch {}
-                  channel.port1.close();
-                } else if (msg.type === 'ERROR') {
-                  try {
-                    controller.error(new Error(msg.message || 'Stream error'));
-                  } catch {}
-                  channel.port1.close();
-                }
-              };
-              targetClient.postMessage(
-                { type: 'SW_OPEN_RANGE', infoHash, start, end },
-                [channel.port2],
-              );
-            },
-            cancel() {
-              try {
-                channel.port1.postMessage({ type: 'ABORT_RANGE' });
-                channel.port1.close();
-              } catch {}
-            },
-          });
-
-          const headers = new Headers({
-            'Content-Type': 'video/mp4',
-            'Accept-Ranges': 'bytes',
-            'Cache-Control': 'no-store',
-          });
-          if (totalSize > 0) {
-            headers.set('Content-Length', String(Math.max(0, end - start + 1)));
-            if (status === 206) {
-              headers.set(
-                'Content-Range',
-                `bytes ${start}-${end}/${totalSize}`,
-              );
-            }
-          }
-          return new Response(stream, { status, headers });
-        }
-
-        return new Response('Torrent stream session not active', {
-          status: 503,
-        });
-      })(),
-    );
-    return;
-  }
-
-  // ── Supabase API pass-through ──────────────────────────
-  // Never cache Supabase REST, Auth, or Realtime requests.
-  // They must always go to the network.
-  if (
+    requestUrl.includes('/api/cinema-download/') ||
     requestUrl.includes('.supabase.co') ||
     requestUrl.includes('.supabase.com') ||
     requestUrl.includes('supabase.io') ||

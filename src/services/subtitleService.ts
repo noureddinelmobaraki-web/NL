@@ -4,6 +4,7 @@ import { WORKER_ENDPOINT, type ExtractedSubtitleTrack, type SubtitleCue } from "
 import { LEGACY_ENCODING, getLanguageLabel, normalizeLangCode } from "../features/cinema/subtitles/languages";
 import { getSubtitlePrefs } from "../features/cinema/subtitles/subtitlePrefs";
 import { dedupeCues, isHlsPlaylistText, mergeHlsVttPlaylist } from "../features/cinema/subtitles/streamSubtitles";
+import { fetchYtsListMovies } from "./ytsApiClient";
 
 /** "1" once the Worker routes /subs/* are deployed with the WYZIE_KEY secret (Phase 3). */
 const USE_WORKER_SUBS_PROXY = import.meta.env.VITE_USE_WORKER_SUBS_PROXY === "1";
@@ -14,6 +15,8 @@ const MAX_VERSIONS_PER_LANG = 6;
 export interface SubtitleFetchParams {
   tmdbId: number;
   imdbId?: string;
+  title?: string;
+  year?: string | number;
   mediaType: "movie" | "tv";
   season?: number;
   episode?: number;
@@ -289,6 +292,22 @@ export async function createLocalSubtitleTrack(file: File): Promise<ExtractedSub
  * and eagerly loads only the best track of the preferred language so subtitles start instantly.
  */
 export async function fetchExternalSubtitles(params: SubtitleFetchParams): Promise<ExtractedSubtitleTrack[]> {
+  if (params.mediaType === "movie" && !params.imdbId && params.title) {
+    try {
+      const ytsMovies = await fetchYtsListMovies({ query_term: params.title, limit: 3 }, params.signal);
+      const targetYear = params.year ? Number(String(params.year).slice(0, 4)) : undefined;
+      const match =
+        ytsMovies.find(
+          (m) => m.imdb_code && (!targetYear || !m.year || Math.abs(m.year - targetYear) <= 1),
+        ) || ytsMovies.find((m) => m.imdb_code);
+      if (match?.imdb_code) {
+        params = { ...params, imdbId: match.imdb_code };
+      }
+    } catch {
+      // ignore YTS lookup error
+    }
+  }
+
   const prefs = getSubtitlePrefs();
   const langs = (params.languages?.length ? params.languages : prefs.languages).slice(0, 8);
   const cacheKey = `${params.mediaType}:${params.tmdbId}:${params.season ?? 0}:${params.episode ?? 0}:${langs.join(",")}`;

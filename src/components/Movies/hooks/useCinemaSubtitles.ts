@@ -91,7 +91,9 @@ export function useCinemaSubtitles({
 
     void fetchExternalSubtitles({
       tmdbId: detailedItem.id,
-      imdbId: activeImdbId || undefined,
+      imdbId: activeImdbId || detailedItem.imdbId || undefined,
+      title: detailedItem.title,
+      year: detailedItem.year,
       mediaType: detailedItem.mediaType,
       season: detailedItem.mediaType === "tv" ? selectedSeason : undefined,
       episode: detailedItem.mediaType === "tv" ? selectedEpisode : undefined,
@@ -275,6 +277,8 @@ export function useCinemaSubtitles({
         tmdbId: detailedItem.id,
         imdbId: activeImdbId || undefined,
         mediaType: detailedItem.mediaType,
+        title: detailedItem.title,
+        year: detailedItem.year,
         season: detailedItem.mediaType === "tv" ? selectedSeason : undefined,
         episode: detailedItem.mediaType === "tv" ? selectedEpisode : undefined,
       });

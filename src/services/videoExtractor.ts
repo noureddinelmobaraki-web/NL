@@ -300,3 +300,162 @@ export async function fetchExtractedVideos(
     signal?.removeEventListener("abort", onExternalAbort);
   }
 }
+
+export const WORKER_BASE_URL = WORKER_ENDPOINT.replace(/\/+$/, "");
+
+export interface StreamProbeResult {
+  ok: boolean;
+  kind: "mp4" | "mkv" | "hls" | "html_error" | "blocked" | "unreachable" | "invalid";
+  isVerifiedContainer?: boolean;
+  supportsRange?: boolean;
+  totalBytes?: number;
+  upstreamStatus?: number;
+  contentType?: string;
+  proxiedUrl?: string;
+}
+
+export interface DiscoveredDirectStreamItem {
+  id: string;
+  server: string;
+  quality: string;
+  type: "mp4" | "mkv" | "hls" | "dash";
+  supportsByteRange: boolean;
+  sizeBytes?: number;
+  referer?: string;
+  directUrl: string;
+  proxiedUrl: string;
+}
+
+export interface DiscoveredTorrentStreamItem {
+  infoHash: string;
+  title: string;
+  quality: string;
+  videoCodec?: string;
+  audioChannels?: string;
+  bitDepth?: string;
+  seeds: number;
+  peers?: number;
+  sizeLabel?: string;
+  sizeBytes?: number;
+  fileIdx?: number;
+  directTorrentUrl?: string;
+  torrentFileUrl: string;
+}
+
+export interface DirectExtractionBundle {
+  streams: DiscoveredDirectStreamItem[];
+  torrents: DiscoveredTorrentStreamItem[];
+}
+
+export function buildWorkerTorrentCacheUrl(
+  infoHash: string,
+  directTorrentUrl?: string,
+): string {
+  const clean = infoHash.trim().toUpperCase();
+  const u = new URL("/torrent-cache", WORKER_BASE_URL);
+  u.searchParams.set("hash", clean);
+  if (directTorrentUrl) {
+    u.searchParams.set("torrentUrl", directTorrentUrl);
+  }
+  return u.toString();
+}
+
+export async function probeVideoStream(
+  videoUrl: string,
+  referer = "",
+  signal?: AbortSignal,
+): Promise<StreamProbeResult> {
+  try {
+    let rawTarget = videoUrl;
+    let rawReferer = referer;
+    try {
+      const parsed = new URL(videoUrl);
+      if (parsed.origin === WORKER_BASE_URL && parsed.pathname === "/proxy") {
+        rawTarget = parsed.searchParams.get("videoUrl") || videoUrl;
+        rawReferer = parsed.searchParams.get("referer") || referer;
+      }
+    } catch {}
+
+    const probeUrl = new URL("/probe", WORKER_BASE_URL);
+    probeUrl.searchParams.set("videoUrl", rawTarget);
+    if (rawReferer) probeUrl.searchParams.set("referer", rawReferer);
+
+    const res = await fetch(probeUrl.toString(), {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: signal ?? AbortSignal.timeout(7500),
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as StreamProbeResult;
+      if (typeof data?.ok === "boolean") return data;
+    }
+
+    const proxied = buildWorkerProxyUrl(rawTarget, rawReferer);
+    const fallbackRes = await fetch(proxied, {
+      method: "GET",
+      headers: { Range: "bytes=0-1" },
+      signal: signal ?? AbortSignal.timeout(7500),
+    });
+    const ct = (fallbackRes.headers.get("Content-Type") || "").toLowerCase();
+    const cr = fallbackRes.headers.get("Content-Range") || "";
+    try { await fallbackRes.body?.cancel(); } catch {}
+
+    if (ct.includes("mpegurl") || ct.includes("m3u8") || rawTarget.includes(".m3u8")) {
+      return { ok: true, kind: "hls", supportsRange: false, proxiedUrl: proxied };
+    }
+    if (fallbackRes.status === 206) {
+      const m = cr.match(/\/(\d+)$/);
+      return {
+        ok: true,
+        kind: "mp4",
+        supportsRange: true,
+        totalBytes: m ? parseInt(m[1], 10) : undefined,
+        upstreamStatus: 206,
+        contentType: ct,
+        proxiedUrl: proxied,
+      };
+    }
+    return { ok: false, kind: "blocked", upstreamStatus: fallbackRes.status, contentType: ct };
+  } catch {
+    return { ok: false, kind: "unreachable" };
+  }
+}
+
+export async function extractDirectCinemaBundle(params: {
+  imdbId?: string;
+  tmdbId?: string | number;
+  type: "movie" | "tv";
+  season?: number;
+  episode?: number;
+  title?: string;
+  year?: string | number;
+  signal?: AbortSignal;
+}): Promise<DirectExtractionBundle> {
+  const streams: DiscoveredDirectStreamItem[] = [];
+  const torrents: DiscoveredTorrentStreamItem[] = [];
+
+  try {
+    const u = new URL("/streams/direct", WORKER_BASE_URL);
+    if (params.imdbId) u.searchParams.set("imdbId", params.imdbId);
+    if (params.tmdbId) u.searchParams.set("tmdbId", String(params.tmdbId));
+    u.searchParams.set("type", params.type);
+    if (params.season) u.searchParams.set("season", String(params.season));
+    if (params.episode) u.searchParams.set("episode", String(params.episode));
+    if (params.title) u.searchParams.set("title", params.title);
+    if (params.year) u.searchParams.set("year", String(params.year));
+
+    const r = await fetch(u.toString(), {
+      headers: { Accept: "application/json" },
+      signal: params.signal ?? AbortSignal.timeout(8000),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      if (Array.isArray(data?.directStreams)) streams.push(...data.directStreams);
+      if (Array.isArray(data?.torrents)) torrents.push(...data.torrents);
+    }
+  } catch {}
+
+  return { streams, torrents };
+}
+

@@ -1,69 +1,52 @@
-/**
- * @license
- * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
- *
- * Smart Custom Hook: Strictly Opt-In Watch-While-Downloading Player & Piece Map Controls
- */
-
-import { useCallback } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { cinemaDownloadManager } from '../downloadManager';
+import type { CinemaDownloadSnapshot } from '../types';
+import { useCinemaDownloadSelector } from './useCinemaDownloadSelector';
 
-export function useOptionalStreamPlayer(infoHash: string, totalPieces: number) {
-  const toggleStreamPlayer = useCallback(() => {
-    cinemaDownloadManager.toggleStreamPlayerForTask(infoHash);
+/** Strictly opt-in: nothing streams unless `isStreamingActive` was toggled by the user. */
+export function useOptionalStreamPlayer(infoHash: string) {
+  const sel = useMemo(() => (s: CinemaDownloadSnapshot) => {
+    const t = s.tasks[infoHash];
+    return {
+      isStreamingActive: Boolean(t?.isStreamingActive),
+      showPieceMap: Boolean(t?.showPieceMap),
+      streamUrl: t?.streamUrl,
+      headerAndTailReady: Boolean(t?.headerAndTailReady),
+      totalPieces: t?.totalPieces ?? 1,
+      playheadPieceIndex: t?.playheadPieceIndex ?? 0,
+      pieceMapBuckets: t?.showPieceMap ? t.pieceMapBuckets : undefined,
+      activeDownloadingPieceIndex: t?.activeDownloadingPieceIndex,
+    };
+  }, [infoHash]);
+  const st = useCinemaDownloadSelector(sel);
+  const lastSeekAt = useRef(0);
+
+  const seekToRatio = useCallback((r: number) => {
+    cinemaDownloadManager.seekStreamToProgress(infoHash, Math.min(1, Math.max(0, r)));
   }, [infoHash]);
 
-  const togglePieceMap = useCallback(() => {
-    cinemaDownloadManager.togglePieceMapForTask(infoHash);
-  }, [infoHash]);
+  const onSeeking = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = e.currentTarget;
+    if (!Number.isFinite(v.duration) || v.duration <= 0) return;
+    const now = Date.now();
+    if (now - lastSeekAt.current < 300) return; // debounce scrubbing
+    lastSeekAt.current = now;
+    seekToRatio(v.currentTime / v.duration);
+  }, [seekToRatio]);
 
-  const openInMainCinema = useCallback(() => {
-    cinemaDownloadManager.openInMainCinemaPlayer(infoHash);
-  }, [infoHash]);
-
-  const seekToRatio = useCallback(
-    (ratio0to1: number) => {
-      cinemaDownloadManager.seekStreamToProgress(infoHash, ratio0to1);
-    },
-    [infoHash],
-  );
-
-  const handleVideoSeeking = useCallback(
-    (e: React.SyntheticEvent<HTMLVideoElement>) => {
-      const v = e.currentTarget;
-      if (v.duration && Number.isFinite(v.duration) && v.duration > 0) {
-        cinemaDownloadManager.seekStreamToProgress(
-          infoHash,
-          v.currentTime / v.duration,
-        );
-      }
-    },
-    [infoHash],
-  );
-
-  const handleVideoTimeUpdate = useCallback(
-    (
-      e: React.SyntheticEvent<HTMLVideoElement>,
-      currentPlayheadPiece = 0,
-    ) => {
-      const v = e.currentTarget;
-      if (v.duration && Number.isFinite(v.duration) && v.duration > 0) {
-        const ratio = v.currentTime / v.duration;
-        const targetP = Math.floor(ratio * Math.max(1, totalPieces));
-        if (Math.abs(targetP - currentPlayheadPiece) >= 3) {
-          cinemaDownloadManager.seekStreamToProgress(infoHash, ratio);
-        }
-      }
-    },
-    [infoHash, totalPieces],
-  );
+  const onTimeUpdate = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = e.currentTarget;
+    if (!Number.isFinite(v.duration) || v.duration <= 0) return;
+    const target = Math.floor((v.currentTime / v.duration) * st.totalPieces);
+    if (Math.abs(target - st.playheadPieceIndex) >= 3) seekToRatio(v.currentTime / v.duration);
+  }, [seekToRatio, st.totalPieces, st.playheadPieceIndex]);
 
   return {
-    toggleStreamPlayer,
-    togglePieceMap,
-    openInMainCinema,
-    seekToRatio,
-    handleVideoSeeking,
-    handleVideoTimeUpdate,
+    ...st,
+    canPlay: st.isStreamingActive && Boolean(st.streamUrl) && st.headerAndTailReady,
+    toggleStreamPlayer: useCallback(() => cinemaDownloadManager.toggleStreamPlayerForTask(infoHash), [infoHash]),
+    togglePieceMap: useCallback(() => cinemaDownloadManager.togglePieceMapForTask(infoHash), [infoHash]),
+    openInMainCinema: useCallback(() => cinemaDownloadManager.openInMainCinemaPlayer(infoHash), [infoHash]),
+    seekToRatio, onSeeking, onTimeUpdate,
   };
 }

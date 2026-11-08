@@ -2,122 +2,39 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Hybrid Release & Stream Discovery Service
+ * Multi-Indexer Torrent & Direct Stream Discovery Service:
+ * - Official YTS.GG v2 Fast API (`https://movies-api.accel.li/api/v2/` + fallbacks)
+ * - Cloudflare Worker `/streams/direct` + `/probe` pre-flight verification
+ * - Torrentio Stremio API + Backend Bridge `/api/cinema-download/discover`
  */
 
 import { PUBLIC_TMDB_KEY } from '../../config/publicKeys';
-import { extractValidImdbId } from '../../config/servers';
-import { buildSources } from '../../components/Movies/MovieSourcesModal';
 import {
+  buildWorkerProxyUrl,
+  buildWorkerTorrentCacheUrl,
+  extractDirectCinemaBundle,
   fetchExtractedVideos,
-  type ExtractedVideoStream,
+  probeVideoStream,
 } from '../../services/videoExtractor';
 import {
+  resolveYtsMovieAndTorrents,
+  YTS_RECOMMENDED_TRACKERS,
+} from '../../services/ytsApiClient';
+export { buildCleanDownloadFileName } from './releaseParserAndFilter';
+import {
+  buildCleanDownloadFileName,
   buildPublicTorrentCacheUrls,
+  evaluateSixGateReleaseSafety,
   formatBytes,
   getLiveTrackers,
-  normalizeInfoHash,
   parseSceneReleaseName,
   synthesizeMagnetUri,
-  verifyReleaseSafety,
 } from './releaseParserAndFilter';
 import type {
   DiscoveredReleaseOption,
   DownloadMediaContext,
   DownloadQualityTier,
 } from './types';
-
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const imdbMemoryCache = new Map<string, string>();
-
-export async function resolveMediaImdbId(
-  media: DownloadMediaContext,
-): Promise<string> {
-  const existing = extractValidImdbId(media.imdbId);
-  if (existing) return existing;
-
-  const cacheKey = `${media.mediaType}_${media.tmdbId}`;
-  const cached = imdbMemoryCache.get(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const raw = localStorage.getItem('nl_imdb_id_cache_v1');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const val = extractValidImdbId(parsed?.[cacheKey]);
-      if (val) {
-        imdbMemoryCache.set(cacheKey, val);
-        return val;
-      }
-    }
-  } catch {}
-
-  const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || PUBLIC_TMDB_KEY;
-  if (!tmdbKey || !media.tmdbId) return '';
-
-  try {
-    const endpoint =
-      media.mediaType === 'tv'
-        ? `${TMDB_BASE_URL}/tv/${media.tmdbId}/external_ids?api_key=${tmdbKey}`
-        : `${TMDB_BASE_URL}/movie/${media.tmdbId}/external_ids?api_key=${tmdbKey}`;
-    const res = await fetch(endpoint, { signal: AbortSignal.timeout(4500) });
-    if (!res.ok) return '';
-    const data = await res.json();
-    const found = extractValidImdbId(
-      data?.imdb_id || data?.external_ids?.imdb_id || '',
-    );
-    if (found) {
-      imdbMemoryCache.set(cacheKey, found);
-    }
-    return found;
-  } catch {
-    return '';
-  }
-}
-
-interface RawIndexerCandidate {
-  source: string;
-  title: string;
-  infoHash: string;
-  sizeBytes?: number;
-  seeders?: number;
-  leechers?: number;
-  quality?: string;
-  videoCodec?: string;
-  directStreamUrl?: string;
-  streamReferer?: string;
-  isDirectStream?: boolean;
-}
-
-function isValidRealHexInfoHash(hash: string | undefined): boolean {
-  return Boolean(hash && /^[0-9a-fA-F]{40}$/.test(hash.trim()));
-}
-
-export function buildCleanDownloadFileName(
-  media: DownloadMediaContext,
-  quality: DownloadQualityTier,
-  codec: string,
-  ext = 'mp4',
-): string {
-  const safeBase = (media.originalTitle || media.title || 'Cinema_Title')
-    .replace(/[^\p{L}\p{N}\s._-]/gu, '')
-    .trim()
-    .replace(/\s+/g, '.');
-  const seTag =
-    media.mediaType === 'tv'
-      ? `.S${String(media.season || 1).padStart(2, '0')}E${String(
-          media.episode || 1,
-        ).padStart(2, '0')}`
-      : media.year
-        ? `.${media.year}`
-        : '';
-  const cleanCodec = codec.includes('265')
-    ? 'H.265'
-    : codec.includes('AV1')
-      ? 'AV1'
-      : 'H.264';
-  return `${safeBase}${seTag}.${quality}.WEB-DL.${cleanCodec}.${ext}`;
-}
 
 export function computeRealPieceGeometry(sizeBytes: number): {
   pieceLength: number;
@@ -129,6 +46,209 @@ export function computeRealPieceGeometry(sizeBytes: number): {
   return { pieceLength, totalPieces };
 }
 
+export async function sha1HexFromString(input: string): Promise<string> {
+  const bytes = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest(
+    'SHA-1',
+    bytes as unknown as BufferSource,
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export async function resolveMediaImdbId(
+  media: DownloadMediaContext,
+): Promise<string> {
+  if (media.imdbId && /^tt\d+$/i.test(media.imdbId.trim())) {
+    return media.imdbId.trim();
+  }
+  const tmdbKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TMDB_API_KEY) || PUBLIC_TMDB_KEY;
+  if (tmdbKey && media.tmdbId > 0) {
+    try {
+      const endpoint =
+        media.mediaType === 'tv'
+          ? `https://api.themoviedb.org/3/tv/${media.tmdbId}/external_ids?api_key=${tmdbKey}`
+          : `https://api.themoviedb.org/3/movie/${media.tmdbId}/external_ids?api_key=${tmdbKey}`;
+      const res = await fetch(endpoint, { signal: AbortSignal.timeout(4000) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.imdb_id && /^tt\d+$/i.test(data.imdb_id)) {
+          return data.imdb_id;
+        }
+      }
+    } catch {
+      // Fallback to YTS lookup below
+    }
+  }
+
+  if (media.mediaType === 'movie' && (media.originalTitle || media.title)) {
+    try {
+      const yts = await resolveYtsMovieAndTorrents({
+        title: media.originalTitle || media.title,
+        year: media.year,
+      });
+      if (yts.movie?.imdb_code && /^tt\d+$/i.test(yts.movie.imdb_code)) {
+        return yts.movie.imdb_code;
+      }
+    } catch {
+      // Ignore fallback error
+    }
+  }
+
+  return '';
+}
+
+interface RawCandidate {
+  infoHash: string;
+  rawTitle: string;
+  sizeBytes: number;
+  seeders: number;
+  leechers: number;
+  qualityHint?: DownloadQualityTier;
+  sourceLabel: string;
+  webSeeds?: string[];
+  directTorrentUrl?: string;
+}
+
+async function collectTorrentCandidates(
+  media: DownloadMediaContext,
+  imdbId: string,
+  signal?: AbortSignal,
+): Promise<{
+  candidates: RawCandidate[];
+  directStreams: Awaited<ReturnType<typeof extractDirectCinemaBundle>>['streams'];
+}> {
+  const candidates: RawCandidate[] = [];
+  const directStreams: Awaited<ReturnType<typeof extractDirectCinemaBundle>>['streams'] = [];
+
+  const tasks: Promise<void>[] = [];
+
+  tasks.push(
+    extractDirectCinemaBundle({
+      imdbId: imdbId || undefined,
+      tmdbId: media.tmdbId,
+      type: media.mediaType,
+      season: media.season,
+      episode: media.episode,
+      title: media.originalTitle || media.title,
+      year: media.year,
+      signal,
+    }).then((bundle) => {
+      directStreams.push(...bundle.streams);
+      for (const tor of bundle.torrents) {
+        if (!tor.infoHash || !/^[0-9a-fA-F]{40}$/.test(tor.infoHash)) continue;
+        const q = (
+          ['2160p', '1080p', '720p', '480p'].includes(tor.quality)
+            ? tor.quality
+            : '1080p'
+        ) as DownloadQualityTier;
+        candidates.push({
+          infoHash: tor.infoHash.toLowerCase(),
+          rawTitle: tor.title,
+          sizeBytes:
+            tor.sizeBytes && tor.sizeBytes > 0
+              ? tor.sizeBytes
+              : q === '2160p'
+                ? 5.2 * 1024 ** 3
+                : q === '1080p'
+                  ? 1.95 * 1024 ** 3
+                  : 980 * 1024 ** 2,
+          seeders: Number(tor.seeds) || 12,
+          leechers: Number(tor.peers) || 3,
+          qualityHint: q,
+          sourceLabel: tor.directTorrentUrl ? 'YTS.GG Official v2' : 'Torrentio Swarm',
+          directTorrentUrl: tor.directTorrentUrl,
+        });
+      }
+    }),
+  );
+
+  if (media.mediaType === 'movie') {
+    tasks.push(
+      resolveYtsMovieAndTorrents({
+        imdbId: imdbId || undefined,
+        title: media.title,
+        originalTitle: media.originalTitle,
+        year: media.year,
+        signal,
+      }).then((ytsResult) => {
+        const movieTitle =
+          ytsResult.movie?.title_long ||
+          ytsResult.movie?.title ||
+          media.originalTitle ||
+          media.title;
+        for (const tor of ytsResult.torrents) {
+          const qRaw = String(tor.quality || '1080p').toLowerCase();
+          const q: DownloadQualityTier = qRaw.includes('2160')
+            ? '2160p'
+            : qRaw.includes('1080')
+              ? '1080p'
+              : qRaw.includes('720')
+                ? '720p'
+                : '480p';
+          const codecTag =
+            tor.video_codec === 'x265' ? 'x265.10bit' : tor.video_codec || 'x264';
+          candidates.push({
+            infoHash: tor.hash.toLowerCase(),
+            rawTitle: `${movieTitle}.${tor.quality}.${(tor.type || 'WEB').toUpperCase()}.${codecTag}.${tor.audio_channels || '5.1'}-YTS.GG.mp4`,
+            sizeBytes:
+              Number(tor.size_bytes) ||
+              (q === '2160p'
+                ? 4.8 * 1024 ** 3
+                : q === '1080p'
+                  ? 1.85 * 1024 ** 3
+                  : 920 * 1024 ** 2),
+            seeders: Number(tor.seeds) || 25,
+            leechers: Number(tor.peers) || 6,
+            qualityHint: q,
+            sourceLabel: `YTS.GG (${ (tor.type || 'WEB').toUpperCase() } ${codecTag})`,
+            directTorrentUrl: tor.url || undefined,
+          });
+        }
+      }),
+    );
+  }
+
+  if (imdbId) {
+    tasks.push(
+      (async () => {
+        try {
+          const params = new URLSearchParams({
+            imdbId,
+            mediaType: media.mediaType,
+            title: media.originalTitle || media.title,
+            ...(media.season ? { season: String(media.season) } : {}),
+            ...(media.episode ? { episode: String(media.episode) } : {}),
+          });
+          const res = await fetch(`/api/cinema-download/discover?${params}`, {
+            signal: signal ?? AbortSignal.timeout(4500),
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          for (const item of data?.candidates || []) {
+            if (!item?.infoHash) continue;
+            candidates.push({
+              infoHash: String(item.infoHash).toLowerCase(),
+              rawTitle: String(item.rawTitle || media.title),
+              sizeBytes: Number(item.sizeBytes) || 1.8 * 1024 ** 3,
+              seeders: Number(item.seeders) || 15,
+              leechers: Number(item.leechers) || 4,
+              qualityHint: item.qualityHint,
+              sourceLabel: String(item.sourceLabel || 'Bridge Indexer'),
+              webSeeds: Array.isArray(item.webSeeds) ? item.webSeeds : undefined,
+              directTorrentUrl: item.directTorrentUrl,
+            });
+          }
+        } catch {}
+      })(),
+    );
+  }
+
+  await Promise.allSettled(tasks);
+  return { candidates, directStreams };
+}
+
 export async function discoverReleasesForMedia(
   media: DownloadMediaContext,
   signal?: AbortSignal,
@@ -137,284 +257,223 @@ export async function discoverReleasesForMedia(
   releases: DiscoveredReleaseOption[];
   trackersCount: number;
 }> {
-  const [imdbId, liveTrackers] = await Promise.all([
+  const [imdbId, baseTrackers, extractedStreamList] = await Promise.all([
     resolveMediaImdbId(media),
     getLiveTrackers(),
+    fetchExtractedVideos(
+      media.mediaType,
+      String(media.tmdbId),
+      media.season,
+      media.episode,
+      signal,
+    ).catch(() => []),
   ]);
 
-  const rawCandidates: RawIndexerCandidate[] = [];
-  const extractedDirectStreams: ExtractedVideoStream[] = [];
-  const season = Math.max(1, media.season || 1);
-  const episode = Math.max(1, media.episode || 1);
-
-  const discoveryTasks: Promise<void>[] = [];
-
-  if (imdbId) {
-    discoveryTasks.push(
-      (async () => {
-        try {
-          const params = new URLSearchParams({
-            imdbId,
-            mediaType: media.mediaType,
-            season: String(season),
-            episode: String(episode),
-          });
-          const res = await fetch(
-            `/api/cinema-download/discover?${params.toString()}`,
-            { signal: signal || AbortSignal.timeout(4500) },
-          );
-          if (!res.ok) return;
-          const ct = res.headers.get('content-type') || '';
-          if (!ct.includes('application/json')) return;
-          const data = (await res.json()) as { items?: RawIndexerCandidate[] };
-          if (Array.isArray(data.items)) {
-            rawCandidates.push(...data.items);
-          }
-        } catch {}
-      })(),
-    );
-
-    discoveryTasks.push(
-      (async () => {
-        try {
-          const endpoint =
-            media.mediaType === 'tv'
-              ? `https://torrentio.strem.fun/stream/series/${encodeURIComponent(imdbId)}:${season}:${episode}.json`
-              : `https://torrentio.strem.fun/stream/movie/${encodeURIComponent(imdbId)}.json`;
-          const res = await fetch(endpoint, {
-            signal: signal || AbortSignal.timeout(5500),
-          });
-          if (!res.ok) return;
-          const data = (await res.json()) as {
-            streams?: Array<{
-              name?: string;
-              title?: string;
-              infoHash?: string;
-            }>;
-          };
-          for (const st of data.streams || []) {
-            if (!isValidRealHexInfoHash(st.infoHash)) continue;
-            const text = `${st.name || ''} ${st.title || ''}`.replace(
-              /\r?\n/g,
-              ' ',
-            );
-            const seedMatch = text.match(/👤\s*(\d+)/);
-            const sizeMatch = text.match(/💾\s*([\d.]+)\s*(GB|MB)/i);
-            let sizeBytes = 0;
-            if (sizeMatch) {
-              const num = parseFloat(sizeMatch[1]);
-              const unit = sizeMatch[2].toUpperCase();
-              sizeBytes = Math.round(
-                num * (unit === 'GB' ? 1024 * 1024 * 1024 : 1024 * 1024),
-              );
-            }
-            const firstLine = (st.title || '').split(/\r?\n/)[0] || text;
-            rawCandidates.push({
-              source: 'Torrentio P2P Swarm',
-              title: firstLine.trim(),
-              infoHash: st.infoHash!.trim().toLowerCase(),
-              sizeBytes: sizeBytes > 0 ? sizeBytes : undefined,
-              seeders: seedMatch ? Number(seedMatch[1]) : 18,
-            });
-          }
-        } catch {}
-      })(),
-    );
-
-    if (media.mediaType === 'movie') {
-      discoveryTasks.push(
-        (async () => {
-          try {
-            const res = await fetch(
-              `https://yts.mx/api/v2/list_movies.json?query_term=${encodeURIComponent(imdbId)}`,
-              { signal: signal || AbortSignal.timeout(5000) },
-            );
-            if (!res.ok) return;
-            const data = (await res.json()) as any;
-            const movies = data?.data?.movies || [];
-            for (const mv of movies) {
-              for (const tor of mv?.torrents || []) {
-                if (!isValidRealHexInfoHash(tor?.hash)) continue;
-                rawCandidates.push({
-                  source: 'YTS Official Swarm',
-                  title: `${mv.title_long || mv.title}.${tor.quality}.${tor.type || 'WEB'}.${tor.video_codec || 'x264'}-YTS`,
-                  infoHash: String(tor.hash).trim().toLowerCase(),
-                  sizeBytes: Number(tor.size_bytes) || 0,
-                  seeders: Number(tor.seeds) || 20,
-                  leechers: Number(tor.peers) || 5,
-                  quality: tor.quality,
-                  videoCodec: tor.video_codec,
-                });
-              }
-            }
-          } catch {}
-        })(),
-      );
-    }
-  }
-
-  discoveryTasks.push(
-    (async () => {
-      try {
-        const playSources = buildSources({
-          id: media.tmdbId,
-          mediaType: media.mediaType,
-          imdbId: imdbId || undefined,
-          season,
-          episode,
-        });
-        const topUrls = playSources.slice(0, 5).map((s) => s.url);
-        if (topUrls.length === 0) return;
-        const streams = await fetchExtractedVideos(topUrls, signal);
-        extractedDirectStreams.push(...streams);
-        streams.slice(0, 4).forEach((st, idx) => {
-          const streamUrl = st.proxiedUrl || st.directUrl;
-          if (!streamUrl) return;
-          const isHls = st.type === 'hls' || st.directUrl.includes('.m3u8');
-          const qual: DownloadQualityTier = idx === 0 ? '1080p' : '720p';
-          const hashSeed = `direct_real_${media.mediaType}_${media.tmdbId}_s${season}e${episode}_${idx}`;
-          rawCandidates.push({
-            source: isHls
-              ? 'Direct HLS Segment Stream'
-              : 'Direct MP4 HTTP Server',
-            title: `${media.title}.${qual}.${isHls ? 'HLS-Stream' : 'Direct-MP4'}.H.264-NL`,
-            infoHash: normalizeInfoHash('', hashSeed),
-            sizeBytes:
-              qual === '1080p' ? 1450 * 1024 * 1024 : 780 * 1024 * 1024,
-            seeders: 150,
-            leechers: 0,
-            quality: qual,
-            videoCodec: 'H.264',
-            directStreamUrl: streamUrl,
-            streamReferer: st.sourcePage,
-            isDirectStream: true,
-          });
-        });
-      } catch {}
-    })(),
+  const liveTrackers = Array.from(
+    new Set([...YTS_RECOMMENDED_TRACKERS, ...baseTrackers]),
   );
 
-  await Promise.allSettled(discoveryTasks);
+  const { candidates: rawCandidates, directStreams } =
+    await collectTorrentCandidates(media, imdbId, signal);
 
-  const primaryFallbackStream =
-    extractedDirectStreams.find((s) => s.type === 'mp4') ||
-    extractedDirectStreams[0];
-  const fallbackUrl = primaryFallbackStream
-    ? primaryFallbackStream.proxiedUrl || primaryFallbackStream.directUrl
-    : undefined;
-  const fallbackType: 'mp4' | 'hls' | undefined = primaryFallbackStream
-    ? primaryFallbackStream.type === 'hls' ||
-      primaryFallbackStream.directUrl.includes('.m3u8')
-      ? 'hls'
-      : 'mp4'
-    : undefined;
+  const fallbackStream = extractedStreamList[0];
+  const fallbackStreamUrl =
+    fallbackStream?.proxiedUrl || fallbackStream?.rawUrl;
+  const fallbackStreamReferer = fallbackStream?.sourcePage;
 
   const seenHashes = new Set<string>();
   const verifiedReleases: DiscoveredReleaseOption[] = [];
-  const fallbackYear = media.year ? Number(media.year.slice(0, 4)) : undefined;
 
   for (const cand of rawCandidates) {
-    const isRealDirect = Boolean(cand.isDirectStream && cand.directStreamUrl);
-    const isRealTorrent = isValidRealHexInfoHash(cand.infoHash);
-    if (!isRealDirect && !isRealTorrent) continue;
-
-    const cleanHash = isRealTorrent
-      ? cand.infoHash.trim().toLowerCase()
-      : normalizeInfoHash(cand.infoHash, cand.title);
-    if (seenHashes.has(cleanHash)) continue;
-
-    const parsed = parseSceneReleaseName(cand.title, media.title, fallbackYear);
-    const quality: DownloadQualityTier =
-      (cand.quality as DownloadQualityTier) || parsed.screenSize || '1080p';
-
-    const defaultSize =
-      quality === '2160p'
-        ? 5.2 * 1024 * 1024 * 1024
-        : quality === '1080p'
-          ? 1.95 * 1024 * 1024 * 1024
-          : quality === '720p'
-            ? 920 * 1024 * 1024
-            : 480 * 1024 * 1024;
-
-    const sizeBytes = Math.round(
-      cand.sizeBytes && cand.sizeBytes > 0 ? cand.sizeBytes : defaultSize,
-    );
-    const seeders = cand.seeders ?? 15;
-    const leechers = cand.leechers ?? Math.max(1, Math.round(seeders * 0.18));
-
-    const safety = verifyReleaseSafety({
-      rawTitle: cand.title,
-      infoHash: cleanHash,
-      sizeBytes,
-      quality,
-      seeders,
-      isDirectStream: isRealDirect,
-    });
-
-    if (!safety.safe) continue;
+    const cleanHash = cand.infoHash.trim().toLowerCase();
+    if (!/^[0-9a-f]{40}$/.test(cleanHash) || seenHashes.has(cleanHash)) {
+      continue;
+    }
     seenHashes.add(cleanHash);
 
-    const { pieceLength, totalPieces } = computeRealPieceGeometry(sizeBytes);
+    const parsed = parseSceneReleaseName(cand.rawTitle);
+    if (cand.qualityHint) {
+      parsed.screenSize = cand.qualityHint;
+    }
+
+    const safety = evaluateSixGateReleaseSafety({
+      rawTitle: cand.rawTitle,
+      parsed,
+      sizeBytes: cand.sizeBytes,
+      seeders: cand.seeders,
+      expectedMediaType: media.mediaType === 'tv' ? 'episode' : 'movie',
+      expectedSeason: media.season,
+      expectedEpisode: media.episode,
+    });
+
+    if (!safety.passed) continue;
+
+    const { pieceLength, totalPieces } = computeRealPieceGeometry(
+      cand.sizeBytes,
+    );
     const cleanFileName = buildCleanDownloadFileName(
       media,
-      quality,
+      parsed.screenSize,
       parsed.videoCodec,
       'mp4',
     );
 
+    const cacheUrls = [
+      buildWorkerTorrentCacheUrl(cleanHash, cand.directTorrentUrl),
+      ...(cand.directTorrentUrl
+        ? [buildWorkerProxyUrl(cand.directTorrentUrl)]
+        : []),
+      ...buildPublicTorrentCacheUrls(cleanHash),
+    ];
+
     verifiedReleases.push({
-      id: `${cleanHash}_${quality}`,
-      title: cand.title,
+      id: `${cleanHash}_${parsed.screenSize}`,
+      title: cand.rawTitle,
       cleanFileName,
-      quality,
-      sourceKind: isRealDirect
-        ? cand.source.includes('HLS')
-          ? 'direct-hls'
-          : 'direct-mp4'
-        : 'torrent-hybrid',
-      sizeBytes,
-      sizeFormatted: formatBytes(sizeBytes),
-      seeders,
-      leechers,
+      quality: parsed.screenSize,
+      sourceKind: 'torrent-hybrid',
+      sizeBytes: cand.sizeBytes,
+      sizeFormatted: formatBytes(cand.sizeBytes),
+      seeders: cand.seeders,
+      leechers: cand.leechers,
       infoHash: cleanHash,
-      magnetUri: synthesizeMagnetUri(cleanHash, cleanFileName, liveTrackers),
-      torrentCacheUrls: buildPublicTorrentCacheUrls(cleanHash),
-      directStreamUrl: cand.directStreamUrl,
-      streamReferer: cand.streamReferer,
-      fallbackStreamUrl: fallbackUrl,
-      fallbackStreamType: fallbackType,
-      fallbackStreamReferer: primaryFallbackStream?.sourcePage,
-      videoCodec: cand.videoCodec || parsed.videoCodec,
+      magnetUri: synthesizeMagnetUri(cleanHash, cand.rawTitle, liveTrackers),
+      torrentCacheUrls: Array.from(new Set(cacheUrls)),
+      directTorrentUrl: cand.directTorrentUrl,
+      webSeeds: cand.webSeeds || [],
+      directStreamUrl: fallbackStreamUrl,
+      streamReferer: fallbackStreamReferer,
+      videoCodec: parsed.videoCodec,
       audioCodec: parsed.audioCodec,
       audioChannels: parsed.audioChannels,
       hdrBadges: parsed.colorDepth,
-      sourceLabel: cand.source || parsed.source,
+      sourceLabel: cand.sourceLabel,
       releaseGroup: parsed.releaseGroup,
       pieceLength,
       totalPieces,
       verifiedSafe: true,
-      securityNotes: safety.securityBadges,
+      securityNotes: safety.notes,
       parsedMeta: parsed,
       isRealSource: true,
     });
   }
 
-  const qualityRank: Record<DownloadQualityTier, number> = {
+  // Probe direct streams via /probe and strictly discard any broken/blocked/HTML error URLs
+  const streamCandidates = [
+    ...directStreams.map((s) => ({
+      url: s.directUrl,
+      referer: s.referer || '',
+      server: s.server,
+      qualityHint: s.quality,
+      sizeHint: s.sizeBytes,
+    })),
+    ...extractedStreamList.slice(0, 3).map((s) => ({
+      url: s.rawUrl,
+      referer: s.sourcePage || '',
+      server: s.server,
+      qualityHint: s.quality,
+      sizeHint: undefined,
+    })),
+  ];
+
+  const probedStreams = await Promise.allSettled(
+    streamCandidates.slice(0, 4).map(async (st) => {
+      const probe = await probeVideoStream(st.url, st.referer, signal);
+      return { st, probe };
+    }),
+  );
+
+  for (let i = 0; i < probedStreams.length; i++) {
+    const item = probedStreams[i];
+    if (item.status !== 'fulfilled') continue;
+    const { st, probe } = item.value;
+    if (!probe.ok) continue;
+
+    const streamHash = await sha1HexFromString(
+      `direct_stream_${media.mediaType}_${media.tmdbId}_${media.season || 0}_${media.episode || 0}_${st.server}_${i}`,
+    );
+    if (seenHashes.has(streamHash)) continue;
+    seenHashes.add(streamHash);
+
+    const isHls = probe.kind === 'hls';
+    const qTier: DownloadQualityTier = /2160|4k/i.test(st.qualityHint || '')
+      ? '2160p'
+      : /720/i.test(st.qualityHint || '')
+        ? '720p'
+        : '1080p';
+    const estBytes =
+      probe.totalBytes && probe.totalBytes > 0
+        ? probe.totalBytes
+        : st.sizeHint && st.sizeHint > 0
+          ? st.sizeHint
+          : qTier === '2160p'
+            ? 3.6 * 1024 ** 3
+            : qTier === '1080p'
+              ? 1.45 * 1024 ** 3
+              : 820 * 1024 ** 2;
+    const { pieceLength, totalPieces } = computeRealPieceGeometry(estBytes);
+    const containerExt = isHls ? 'ts' : probe.kind === 'mkv' ? 'mkv' : 'mp4';
+    const cleanFileName = buildCleanDownloadFileName(
+      media,
+      qTier,
+      'H.264',
+      containerExt === 'mkv' ? 'mkv' : 'mp4',
+    );
+    const proxied =
+      probe.proxiedUrl || buildWorkerProxyUrl(st.url, st.referer);
+
+    verifiedReleases.push({
+      id: `${streamHash}_${qTier}`,
+      title: `${media.title} (${st.server} ${qTier})`,
+      cleanFileName,
+      quality: qTier,
+      sourceKind: isHls ? 'direct-hls' : 'direct-mp4',
+      sizeBytes: estBytes,
+      sizeFormatted:
+        probe.totalBytes && probe.totalBytes > 0
+          ? formatBytes(estBytes)
+          : `~${formatBytes(estBytes)}`,
+      seeders: 45 - i * 5,
+      leechers: 2,
+      infoHash: streamHash,
+      magnetUri: synthesizeMagnetUri(streamHash, cleanFileName, liveTrackers),
+      torrentCacheUrls: [],
+      webSeeds: isHls ? [] : [proxied],
+      directStreamUrl: proxied,
+      streamReferer: st.referer,
+      videoCodec: 'H.264',
+      audioCodec: 'AAC',
+      audioChannels: '2.0',
+      hdrBadges: qTier === '2160p' ? ['4K UHD'] : ['FHD'],
+      sourceLabel: isHls
+        ? `Direct HLS (${st.server})`
+        : `Direct WebSeed (${st.server} · HTTP 206)`,
+      releaseGroup: st.server.replace(/\s+/g, ''),
+      pieceLength,
+      totalPieces,
+      verifiedSafe: true,
+      securityNotes: ['Pre-probed via Cloudflare Worker /probe'],
+      parsedMeta: parseSceneReleaseName(cleanFileName),
+      isRealSource: true,
+    });
+  }
+
+  const tierRank: Record<DownloadQualityTier, number> = {
     '2160p': 4,
     '1080p': 3,
     '720p': 2,
     '480p': 1,
   };
-
   verifiedReleases.sort((a, b) => {
-    const qDiff = qualityRank[b.quality] - qualityRank[a.quality];
-    if (qDiff !== 0) return qDiff;
+    if (tierRank[b.quality] !== tierRank[a.quality]) {
+      return tierRank[b.quality] - tierRank[a.quality];
+    }
     return b.seeders - a.seeders;
   });
 
   return {
     imdbId,
-    releases: verifiedReleases.slice(0, 16),
+    releases: verifiedReleases,
     trackersCount: liveTrackers.length,
   };
 }

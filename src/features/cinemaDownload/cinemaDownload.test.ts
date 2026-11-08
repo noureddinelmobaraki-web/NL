@@ -19,6 +19,8 @@ import {
   verifyReleaseSafety,
 } from './releaseParserAndFilter';
 import {
+  computeSelectedFileGeometry,
+  getLocalPieceSlice,
   parseMagnetUriInput,
   sanitizeTorrentPath,
 } from './bencodeAndInputManager';
@@ -32,6 +34,10 @@ import {
   SeekGate,
   selectNextPieceToDownload,
 } from './slidingWindowScheduler';
+import {
+  TransportFailoverController,
+  stageOrderFor,
+} from './engine/transportFailoverMachine';
 
 describe('Cinema Download Release Parser, Bencode Input & Scheduler', () => {
   it('parses complex 4K TV episode release names accurately', () => {
@@ -141,7 +147,7 @@ describe('Cinema Download Release Parser, Bencode Input & Scheduler', () => {
     );
   });
 
-  it('uses Download-First Sequential Mode when streaming is OFF, and Deadline/Header+Tail Mode when streaming is ON', async () => {
+  it('uses Download-First Sequential Mode when streaming is OFF, skips in-flight pieces (2), and uses Deadline Mode when streaming is ON', async () => {
     const totalPieces = 1000;
     const bf = new Uint8Array(totalPieces);
 
@@ -151,9 +157,16 @@ describe('Cinema Download Release Parser, Bencode Input & Scheduler', () => {
     expect(seq0?.phase).toBe('sequential');
     bf[0] = 1;
 
-    const seq1 = selectNextPieceToDownload(bf, totalPieces, 0, false, false);
-    expect(seq1?.pieceIndex).toBe(1);
-    expect(seq1?.phase).toBe('sequential');
+    // Mark piece 1 as in-flight (2): scheduler must skip piece 1 and pick piece 2
+    bf[1] = 2;
+    const seqSkipInFlight = selectNextPieceToDownload(
+      bf,
+      totalPieces,
+      0,
+      false,
+      false,
+    );
+    expect(seqSkipInFlight?.pieceIndex).toBe(2);
     bf[1] = 1;
 
     const seq2 = selectNextPieceToDownload(bf, totalPieces, 0, false, false);
@@ -206,4 +219,86 @@ describe('Cinema Download Release Parser, Bencode Input & Scheduler', () => {
     await new Promise((res) => setTimeout(res, 25));
     expect(applied[applied.length - 1]).toBe(0.75);
   });
+
+  it('computes accurate multi-file piece slices with first/last boundary trimming', () => {
+    // 3 files in torrent: [0..1000) NFO, [1000..51000) Video (50,000 bytes), [51000..52000) SRT
+    // Piece length = 16,384 bytes
+    const geom = computeSelectedFileGeometry({
+      pieceLength: 16384,
+      torrentTotalLength: 52000,
+      torrentPieceCount: Math.ceil(52000 / 16384),
+      fileIndex: 1,
+      fileOffset: 1000,
+      fileLength: 50000,
+    });
+    expect(geom.firstPieceIndex).toBe(0);
+    expect(geom.firstPieceByteOffset).toBe(1000);
+    expect(geom.lastPieceIndex).toBe(3);
+    expect(geom.filePieceCount).toBe(4);
+
+    const slice0 = getLocalPieceSlice(geom, 0);
+    expect(slice0.torrentPieceIndex).toBe(0);
+    expect(slice0.trimStart).toBe(1000);
+    expect(slice0.trimEnd).toBe(16384);
+    expect(slice0.length).toBe(15384);
+    expect(slice0.fileStart).toBe(0);
+
+    const slice3 = getLocalPieceSlice(geom, 3);
+    expect(slice3.torrentPieceIndex).toBe(3);
+    expect(slice3.trimStart).toBe(0);
+    expect(slice3.length).toBe(50000 - (15384 + 16384 + 16384));
+    expect(slice3.fileStart + slice3.length).toBe(50000);
+  });
+
+  it('fails over across transport stages when bridge returns 404 and webseed succeeds', async () => {
+    const abort = new AbortController();
+    const order = stageOrderFor({ sourceKind: 'torrent-hybrid' } as any);
+    expect(order).toEqual(['bridge', 'webseed', 'webrtc', 'hls-stream']);
+
+    const ctrl = new TransportFailoverController({
+      order,
+      signal: abort.signal,
+      frozenGeometry: null,
+      canChangeGeometry: () => true,
+      onDiagnostics: () => {},
+      probe: async (stage) => {
+        if (stage === 'bridge') {
+          return {
+            ok: false,
+            detail: 'Bridge not deployed',
+            httpStatus: 404,
+            permanent: true,
+          };
+        }
+        if (stage === 'webseed') {
+          return {
+            ok: true,
+            detail: '1-byte probe OK (206)',
+            transport: {
+              stage: 'webseed',
+              mode: 'webseed-range',
+              useBridgeBackend: false,
+              directRangeUrl: 'https://example.com/movie.mp4',
+              peers: 0,
+              httpSources: 1,
+              geometry: {
+                sizeBytes: 100 * 1024 * 1024,
+                pieceLength: 1024 * 1024,
+                totalPieces: 100,
+                isVariableSegments: false,
+                pieceHashesHex: [],
+              },
+            },
+          };
+        }
+        return { ok: false, detail: 'Skipped', permanent: true };
+      },
+    });
+
+    const resolved = await ctrl.resolveFrom();
+    expect(resolved?.stage).toBe('webseed');
+    expect(ctrl.diagnostics.stageOutcomes.bridge).toBe('failed');
+    expect(ctrl.diagnostics.stageOutcomes.webseed).toBe('ok');
+  });
 });
+

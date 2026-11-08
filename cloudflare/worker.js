@@ -22,7 +22,8 @@ const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
   "Access-Control-Allow-Headers": "*",
-  "Access-Control-Expose-Headers": "*",
+  "Access-Control-Expose-Headers":
+    "Content-Length, Content-Range, Accept-Ranges, Content-Type, X-NL-Stream-Type, X-NL-Upstream-Status, X-NL-Cache",
 };
 
 export default {
@@ -45,7 +46,10 @@ export default {
     if (!isAllowedCaller(request, env)) return jsonResponse({ error: "origin_not_allowed" }, 403);
 
     try {
-      if (path === "/proxy") return await handleProxy(request, reqUrl, workerOrigin);
+      if (path === "/proxy" || path === "/webseed-proxy") return await handleProxy(request, reqUrl, workerOrigin);
+      if (path === "/probe") return await handleStreamProbe(reqUrl, workerOrigin);
+      if (path === "/torrent-cache") return await withCache(request, env, ctx, 86400, () => handleTorrentCache(reqUrl));
+      if (path === "/streams/direct") return await withCache(request, env, ctx, 1800, () => handleDirectStreams(reqUrl, workerOrigin));
       if (path === "/subs/search") return await withCache(request, env, ctx, 3600, () => wyzieSearch(reqUrl, env, workerOrigin));
       if (path === "/subs/file") return await withCache(request, env, ctx, 86400, () => wyzieFile(reqUrl, env));
       if (path === "/trailer/imdb") return await withCache(request, env, ctx, 604800, () => imdbTrailer(reqUrl));
@@ -135,55 +139,608 @@ async function withCache(request, env, ctx, ttl, producer) {
   return res;
 }
 
-/* ---------------- /proxy ---------------- */
+/* ---------------- /proxy, /probe, /torrent-cache, /streams/direct ---------------- */
+
+function buildUpstreamHeaders(targetUrl, referer, rangeHeader) {
+  const h = new Headers({
+    "User-Agent": UA,
+    Accept: "*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "cross-site",
+  });
+  if (referer) {
+    h.set("Referer", referer);
+    try {
+      h.set("Origin", new URL(referer).origin);
+    } catch {}
+  } else if (targetUrl) {
+    h.set("Referer", targetUrl.origin + "/");
+  }
+  if (rangeHeader) {
+    h.set("Range", rangeHeader);
+  }
+  return h;
+}
+
+async function fetchWithHeaderTimeout(url, init, timeoutMs = 14000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    clearTimeout(timer);
+    return response;
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
+  }
+}
 
 async function handleProxy(request, reqUrl, workerOrigin) {
   const videoUrl = reqUrl.searchParams.get("videoUrl");
   const referer = reqUrl.searchParams.get("referer") || "";
-  if (!videoUrl) return jsonResponse({ error: "المعامل videoUrl مفقود" }, 400);
+  if (!videoUrl) return jsonResponse({ error: "missing_videoUrl" }, 400);
+
   const target = safeTarget(videoUrl);
-  if (!target) return jsonResponse({ error: "رابط غير مسموح" }, 400);
+  if (!target) return jsonResponse({ error: "invalid_target" }, 400);
 
-  const h = new Headers({ "User-Agent": UA, Accept: "*/*" });
-  if (referer) {
-    h.set("Referer", referer);
-    try { h.set("Origin", new URL(referer).origin); } catch (e) {}
-  }
-  if (request.headers.has("Range")) h.set("Range", request.headers.get("Range"));
-
+  const rangeHeader = request.headers.get("Range") || "";
   const method = request.method === "HEAD" ? "HEAD" : "GET";
-  const upstream = await fetch(target.href, { method, headers: h, redirect: "follow" });
+
+  let upstream;
+  try {
+    upstream = await fetchWithHeaderTimeout(
+      target.href,
+      {
+        method,
+        headers: buildUpstreamHeaders(target, referer, rangeHeader),
+      },
+      14000,
+    );
+  } catch (err) {
+    return jsonResponse(
+      { error: "upstream_unreachable", detail: String((err && err.message) || err) },
+      502,
+    );
+  }
+
+  if ((upstream.status === 403 || upstream.status === 503) && referer) {
+    try {
+      const minimalHeaders = new Headers({ "User-Agent": UA, Accept: "*/*" });
+      if (rangeHeader) minimalHeaders.set("Range", rangeHeader);
+      const retry = await fetchWithHeaderTimeout(
+        target.href,
+        { method, headers: minimalHeaders },
+        10000,
+      );
+      if (retry.ok || retry.status === 206) {
+        try { await upstream.body?.cancel(); } catch {}
+        upstream = retry;
+      } else {
+        try { await retry.body?.cancel(); } catch {}
+      }
+    } catch {}
+  }
+
   const ct = (upstream.headers.get("Content-Type") || "").toLowerCase();
-  const isSubtitleFile = /\.(vtt|srt)(\?|$)/i.test(target.pathname) || ct.includes("text/vtt") || ct.includes("subrip");
-  const looksPlaylist = !isSubtitleFile && (videoUrl.includes(".m3u8") || ct.includes("mpegurl") || ct.includes("m3u8"));
-  const maybeText = !isSubtitleFile && (ct.startsWith("text/") || /\.txt(\?|$)/i.test(target.pathname));
+  const isSubtitleFile =
+    /\.(vtt|srt)(\?|$)/i.test(target.pathname) ||
+    ct.includes("text/vtt") ||
+    ct.includes("subrip");
 
-  const len = parseInt(upstream.headers.get("Content-Length") || "0", 10);
-  const smallOpaque =
-    ct.includes("octet-stream") &&
-    len > 0 &&
-    len < 1_000_000 &&
-    !/\.(mp4|ts|m4s)(\?|$)/i.test(target.pathname);
+  if (
+    !isSubtitleFile &&
+    (upstream.status >= 400 ||
+      (ct.includes("text/html") && !/\.(m3u8|txt)(\?|$)/i.test(target.pathname)))
+  ) {
+    try { await upstream.body?.cancel(); } catch {}
+    return jsonResponse(
+      {
+        error: "upstream_rejected_or_html",
+        upstreamStatus: upstream.status,
+        contentType: ct,
+        target: target.hostname,
+      },
+      upstream.status >= 400 ? upstream.status : 502,
+    );
+  }
 
-  if (method === "GET" && upstream.ok && !isSubtitleFile && (looksPlaylist || maybeText || smallOpaque)) {
-    const buf = await upstream.arrayBuffer(); // نقرأ bytes وليس text
-    const head = new TextDecoder().decode(buf.slice(0, 32)).replace(/^\uFEFF/, "").trimStart();
+  if (
+    rangeHeader &&
+    !/^bytes=0-/i.test(rangeHeader) &&
+    upstream.status === 200
+  ) {
+    try { await upstream.body?.cancel(); } catch {}
+    return jsonResponse(
+      { error: "range_ignored_by_upstream", upstreamStatus: 200 },
+      502,
+    );
+  }
+
+  const isKnownBinarySegment = /\.(mp4|mkv|webm|ts|m4s|aac|mp3|torrent)(\?|$)/i.test(target.pathname);
+  const looksPlaylist =
+    !isSubtitleFile &&
+    (videoUrl.includes(".m3u8") ||
+      ct.includes("mpegurl") ||
+      ct.includes("m3u8") ||
+      /\.(txt|m3u8)(\?|$)/i.test(target.pathname));
+
+  const lenHeader = upstream.headers.get("Content-Length");
+  const len = lenHeader ? parseInt(lenHeader, 10) : -1;
+  const shouldSniffHead =
+    method === "GET" &&
+    (upstream.status === 200 || upstream.status === 206) &&
+    !isSubtitleFile &&
+    !rangeHeader &&
+    (looksPlaylist || (!isKnownBinarySegment && (len === -1 || (len > 0 && len < 1_000_000))));
+
+  if (shouldSniffHead) {
+    const buf = await upstream.arrayBuffer();
+    const head = new TextDecoder()
+      .decode(buf.slice(0, 64))
+      .replace(/^\uFEFF/, "")
+      .trimStart();
+
     if (head.startsWith("#EXTM3U")) {
       const text = new TextDecoder().decode(buf);
       const base = new URL(upstream.url || target.href);
-      return new Response(rewritePlaylist(text, base, workerOrigin, referer || target.origin + "/"), {
-        status: 200,
-        headers: { ...CORS, "Content-Type": "application/vnd.apple.mpegurl", "Cache-Control": "no-cache" },
-      });
+      return new Response(
+        rewritePlaylist(text, base, workerOrigin, referer || target.origin + "/"),
+        {
+          status: 200,
+          headers: {
+            ...CORS,
+            "Content-Type": "application/vnd.apple.mpegurl",
+            "X-NL-Stream-Type": "hls",
+            "Cache-Control": "no-cache",
+          },
+        },
+      );
     }
-    // ليس playlist -> نعيد البيانات كما هي دون إفساد (مقاطع .ts مموّهة كنص)
-    return new Response(buf, { status: upstream.status, headers: cleanHeaders(upstream.headers, true) });
+
+    const outHeaders = cleanHeaders(upstream.headers, true);
+    outHeaders.set("X-NL-Stream-Type", "binary");
+    outHeaders.set("X-NL-Upstream-Status", String(upstream.status));
+    return new Response(buf, { status: upstream.status, headers: outHeaders });
   }
 
+  const outHeaders = cleanHeaders(upstream.headers, false);
+  outHeaders.set("X-NL-Stream-Type", looksPlaylist ? "hls" : "binary");
+  outHeaders.set("X-NL-Upstream-Status", String(upstream.status));
   return new Response(method === "HEAD" ? null : upstream.body, {
     status: upstream.status,
-    headers: cleanHeaders(upstream.headers, false),
+    headers: outHeaders,
   });
+}
+
+async function handleStreamProbe(reqUrl, workerOrigin) {
+  const rawVideoUrl = reqUrl.searchParams.get("videoUrl") || "";
+  const referer = reqUrl.searchParams.get("referer") || "";
+  const target = safeTarget(rawVideoUrl);
+  if (!target) return jsonResponse({ ok: false, kind: "invalid" }, 400);
+
+  try {
+    let res = await fetchWithHeaderTimeout(
+      target.href,
+      {
+        method: "GET",
+        headers: buildUpstreamHeaders(target, referer, "bytes=0-127"),
+      },
+      7500,
+    );
+
+    if ((res.status === 403 || res.status === 503) && referer) {
+      try {
+        const retry = await fetchWithHeaderTimeout(
+          target.href,
+          {
+            method: "GET",
+            headers: new Headers({ "User-Agent": UA, Accept: "*/*", Range: "bytes=0-127" }),
+          },
+          6000,
+        );
+        if (retry.ok || retry.status === 206) {
+          try { await res.body?.cancel(); } catch {}
+          res = retry;
+        } else {
+          try { await retry.body?.cancel(); } catch {}
+        }
+      } catch {}
+    }
+
+    const ct = (res.headers.get("Content-Type") || "").toLowerCase();
+    const contentRange = res.headers.get("Content-Range") || "";
+    const contentLength = parseInt(res.headers.get("Content-Length") || "0", 10);
+
+    if (res.status >= 400) {
+      try { await res.body?.cancel(); } catch {}
+      return jsonResponse({
+        ok: false,
+        kind: "blocked",
+        upstreamStatus: res.status,
+        contentType: ct,
+      });
+    }
+
+    const reader = res.body ? res.body.getReader() : null;
+    const headChunk = reader ? await reader.read() : { value: new Uint8Array(0) };
+    try { await reader?.cancel(); } catch {}
+    const bytes = headChunk.value ? headChunk.value.subarray(0, 128) : new Uint8Array(0);
+    const headText = new TextDecoder().decode(bytes).replace(/^\uFEFF/, "").trimStart();
+
+    const proxiedUrl = `${workerOrigin}/proxy?videoUrl=${encodeURIComponent(target.href)}&referer=${encodeURIComponent(referer || target.origin + "/")}`;
+
+    if (headText.startsWith("#EXTM3U") || ct.includes("mpegurl") || ct.includes("m3u8")) {
+      return jsonResponse({
+        ok: true,
+        kind: "hls",
+        supportsRange: false,
+        upstreamStatus: res.status,
+        contentType: "application/vnd.apple.mpegurl",
+        proxiedUrl,
+      });
+    }
+
+    if (headText.startsWith("<!DOCTYPE") || headText.startsWith("<html") || ct.includes("text/html")) {
+      return jsonResponse({
+        ok: false,
+        kind: "html_error",
+        upstreamStatus: res.status,
+        contentType: ct,
+      });
+    }
+
+    let totalBytes = 0;
+    const crMatch = contentRange.match(/\/(\d+)$/);
+    if (crMatch) {
+      totalBytes = parseInt(crMatch[1], 10);
+    } else if (res.status === 200 && contentLength > 0) {
+      totalBytes = contentLength;
+    }
+
+    const isMp4Magic =
+      bytes.length >= 8 &&
+      bytes[4] === 0x66 &&
+      bytes[5] === 0x74 &&
+      bytes[6] === 0x79 &&
+      bytes[7] === 0x70;
+    const isMkvMagic =
+      bytes.length >= 4 &&
+      bytes[0] === 0x1a &&
+      bytes[1] === 0x45 &&
+      bytes[2] === 0xdf &&
+      bytes[3] === 0xa3;
+
+    const supportsRange = res.status === 206 || Boolean(crMatch);
+
+    return jsonResponse({
+      ok: true,
+      kind: isMkvMagic ? "mkv" : "mp4",
+      isVerifiedContainer: isMp4Magic || isMkvMagic || ct.startsWith("video/"),
+      supportsRange,
+      totalBytes,
+      upstreamStatus: res.status,
+      contentType: ct,
+      proxiedUrl,
+    });
+  } catch (err) {
+    return jsonResponse({
+      ok: false,
+      kind: "unreachable",
+      detail: String((err && err.message) || err),
+    });
+  }
+}
+
+async function handleTorrentCache(reqUrl) {
+  const hash = (
+    reqUrl.searchParams.get("hash") ||
+    reqUrl.searchParams.get("infoHash") ||
+    ""
+  ).trim().toUpperCase();
+  const directTorrentUrl = (reqUrl.searchParams.get("torrentUrl") || "").trim();
+
+  if (!/^[A-F0-9]{40}$/.test(hash) && !safeTarget(directTorrentUrl)) {
+    return jsonResponse({ error: "invalid_infohash" }, 400);
+  }
+
+  const mirrors = [
+    ...(safeTarget(directTorrentUrl) ? [directTorrentUrl] : []),
+    ...(/^[A-F0-9]{40}$/.test(hash)
+      ? [
+          `https://itorrents.org/torrent/${hash}.torrent`,
+          `https://btcache.me/torrent/${hash}`,
+          `https://torrage.info/torrent.php?h=${hash}`,
+        ]
+      : []),
+  ];
+
+  for (const url of mirrors) {
+    try {
+      const r = await fetchWithHeaderTimeout(
+        url,
+        {
+          headers: {
+            "User-Agent": UA,
+            Accept: "application/x-bittorrent,application/octet-stream;q=0.9,*/*;q=0.1",
+            Referer: new URL(url).origin + "/",
+          },
+        },
+        6000,
+      );
+      if (!r.ok) {
+        try { await r.body?.cancel(); } catch {}
+        continue;
+      }
+      const ct = (r.headers.get("Content-Type") || "").toLowerCase();
+      if (ct.includes("text/html")) {
+        try { await r.body?.cancel(); } catch {}
+        continue;
+      }
+      const buf = await r.arrayBuffer();
+      if (buf.byteLength < 64 || buf.byteLength > 12 * 1024 * 1024) continue;
+      const u8 = new Uint8Array(buf);
+      const ascii = new TextDecoder().decode(u8.subarray(0, Math.min(u8.length, 4096)));
+      if (u8[0] !== 0x64 || !ascii.includes("4:info")) continue;
+
+      return new Response(buf, {
+        status: 200,
+        headers: {
+          ...CORS,
+          "Content-Type": "application/x-bittorrent",
+          "Content-Disposition": `attachment; filename="${hash || "movie"}.torrent"`,
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
+    } catch {}
+  }
+
+  return jsonResponse({ error: "torrent_not_found_in_caches", hash }, 404);
+}
+
+async function handleDirectStreams(reqUrl, workerOrigin) {
+  const imdbId = (reqUrl.searchParams.get("imdbId") || "").trim();
+  const tmdbId = (reqUrl.searchParams.get("tmdbId") || "").trim();
+  const type = reqUrl.searchParams.get("type") === "tv" ? "tv" : "movie";
+  const season = parseInt(reqUrl.searchParams.get("season") || "1", 10) || 1;
+  const episode = parseInt(reqUrl.searchParams.get("episode") || "1", 10) || 1;
+  const title = (reqUrl.searchParams.get("title") || "").trim();
+  const year = (reqUrl.searchParams.get("year") || "").trim();
+
+  const tasks = [
+    resolveInternetArchiveDirect(imdbId, title, year, workerOrigin),
+    resolveVixsrcHls(tmdbId, type, season, episode, workerOrigin),
+    resolveTorrentioStreams(imdbId, type, season, episode, workerOrigin),
+  ];
+
+  if (type === "movie" && (imdbId || title)) {
+    tasks.push(resolveYtsTorrents(imdbId, title, year, workerOrigin));
+  }
+
+  const settled = await Promise.allSettled(tasks);
+  const directStreams = [];
+  const torrents = [];
+  const subtitles = [];
+
+  for (const item of settled) {
+    if (item.status !== "fulfilled" || !item.value) continue;
+    if (Array.isArray(item.value.streams)) directStreams.push(...item.value.streams);
+    if (Array.isArray(item.value.torrents)) torrents.push(...item.value.torrents);
+    if (Array.isArray(item.value.subtitles)) subtitles.push(...item.value.subtitles);
+  }
+
+  return jsonResponse({
+    imdbId,
+    tmdbId,
+    type,
+    directStreams,
+    torrents,
+    subtitles,
+  });
+}
+
+async function resolveYtsTorrents(imdbId, title, year, workerOrigin) {
+  const mirrors = [
+    "https://movies-api.accel.li/api/v2",
+    "https://yts.gg/api/v2",
+    "https://yts.mx/api/v2",
+  ];
+  const queryTerm = /^tt\d{5,10}$/.test(imdbId) ? imdbId : title;
+  if (!queryTerm) return { torrents: [] };
+
+  const collectedMovies = [];
+  for (const base of mirrors) {
+    try {
+      const listRes = await fetchWithHeaderTimeout(
+        `${base}/list_movies.json?query_term=${encodeURIComponent(queryTerm)}&with_rt_ratings=true&limit=10`,
+        { headers: { "User-Agent": UA, Accept: "application/json" } },
+        4500,
+      );
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const movies = listData?.data?.movies;
+        if (Array.isArray(movies) && movies.length > 0) {
+          collectedMovies.push(...movies);
+          const firstId = movies[0]?.id;
+          if (firstId) {
+            try {
+              const detRes = await fetchWithHeaderTimeout(
+                `${base}/movie_details.json?movie_id=${encodeURIComponent(String(firstId))}&with_images=true&with_cast=true`,
+                { headers: { "User-Agent": UA, Accept: "application/json" } },
+                4000,
+              );
+              if (detRes.ok) {
+                const detData = await detRes.json();
+                if (detData?.data?.movie) collectedMovies.push(detData.data.movie);
+              }
+            } catch {}
+          }
+          break;
+        }
+      }
+    } catch {}
+  }
+
+  const seenHashes = new Set();
+  const torrents = [];
+  for (const movie of collectedMovies) {
+    for (const t of movie?.torrents || []) {
+      if (!t || !t.hash || !/^[a-fA-F0-9]{40}$/.test(t.hash)) continue;
+      const hash = String(t.hash).toUpperCase();
+      if (seenHashes.has(hash)) continue;
+      seenHashes.add(hash);
+
+      const codecTag = t.video_codec === "x265" ? "x265.10bit" : t.video_codec || "x264";
+      const directTorrentParam = t.url ? `&torrentUrl=${encodeURIComponent(t.url)}` : "";
+
+      torrents.push({
+        infoHash: hash,
+        title: `${movie.title_long || movie.title}.${t.quality}.${(t.type || "WEB").toUpperCase()}.${codecTag}-YTS.GG`,
+        quality: t.quality || "1080p",
+        videoCodec: t.video_codec === "x265" ? "H.265 / HEVC" : "H.264",
+        audioChannels: t.audio_channels || "2.0",
+        bitDepth: t.bit_depth === "10" ? "10-bit" : undefined,
+        seeds: Number(t.seeds) || 0,
+        peers: Number(t.peers) || 0,
+        sizeLabel: t.size || "",
+        sizeBytes: Number(t.size_bytes) || 0,
+        directTorrentUrl: t.url || undefined,
+        torrentFileUrl: `${workerOrigin}/torrent-cache?hash=${hash}${directTorrentParam}`,
+      });
+    }
+  }
+
+  return { torrents };
+}
+
+async function resolveInternetArchiveDirect(imdbId, title, year, workerOrigin) {
+  if (!title && !imdbId) return { streams: [] };
+  try {
+    const qParts = [];
+    if (imdbId && /^tt\d+$/i.test(imdbId)) {
+      qParts.push(`(external-identifier:"urn:imdb:${imdbId}" OR "${imdbId}")`);
+    } else if (title) {
+      qParts.push(`title:("${title.replace(/"/g, "")}")`);
+      if (year) qParts.push(`year:(${year})`);
+    }
+    qParts.push(`mediatype:(movies)`);
+    const q = qParts.join(" AND ");
+    const searchUrl = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(q)}&fl[]=identifier,title&rows=3&page=1&output=json`;
+    const r = await fetchWithHeaderTimeout(searchUrl, { headers: { "User-Agent": UA, Accept: "application/json" } }, 4500);
+    if (!r.ok) return { streams: [] };
+    const data = await r.json();
+    const docs = data?.response?.docs || [];
+    const streams = [];
+    for (const doc of docs.slice(0, 2)) {
+      if (!doc?.identifier) continue;
+      const metaRes = await fetchWithHeaderTimeout(
+        `https://archive.org/metadata/${encodeURIComponent(doc.identifier)}`,
+        { headers: { "User-Agent": UA, Accept: "application/json" } },
+        4500,
+      );
+      if (!metaRes.ok) continue;
+      const meta = await metaRes.json();
+      const files = Array.isArray(meta?.files) ? meta.files : [];
+      const videoFile = files.find(
+        (f) => f?.name && /\.(mp4|mkv)$/i.test(f.name) && !/sample|thumb|trailer/i.test(f.name) && Number(f.size) > 25 * 1024 * 1024,
+      );
+      if (!videoFile) continue;
+      const directUrl = `https://archive.org/download/${encodeURIComponent(doc.identifier)}/${encodeURIComponent(videoFile.name)}`;
+      streams.push({
+        id: `ia-${doc.identifier}`,
+        server: "Internet Archive Direct",
+        quality: /1080/i.test(videoFile.name) ? "1080p" : "720p",
+        type: /\.mkv$/i.test(videoFile.name) ? "mkv" : "mp4",
+        supportsByteRange: true,
+        sizeBytes: Number(videoFile.size) || 0,
+        referer: "https://archive.org/",
+        directUrl,
+        proxiedUrl: `${workerOrigin}/proxy?videoUrl=${encodeURIComponent(directUrl)}&referer=${encodeURIComponent("https://archive.org/")}`,
+      });
+    }
+    return { streams };
+  } catch {
+    return { streams: [] };
+  }
+}
+
+async function resolveVixsrcHls(tmdbId, type, season, episode, workerOrigin) {
+  if (!tmdbId) return { streams: [] };
+  try {
+    const pageUrl =
+      type === "tv"
+        ? `https://vixsrc.to/tv/${encodeURIComponent(tmdbId)}/${season}/${episode}`
+        : `https://vixsrc.to/movie/${encodeURIComponent(tmdbId)}`;
+    const r = await fetchWithHeaderTimeout(pageUrl, { headers: { "User-Agent": UA, Referer: "https://vixsrc.to/" } }, 4500);
+    if (!r.ok) return { streams: [] };
+    const html = await r.text();
+    const m3u8Match = html.match(/https?:\/\/[^\s"'<>\\]+\.m3u8(?:\?[^\s"'<>\\]*)?/i);
+    if (!m3u8Match) return { streams: [] };
+    const directUrl = m3u8Match[0];
+    return {
+      streams: [
+        {
+          id: `vixsrc-${tmdbId}`,
+          server: "VixSrc Direct HLS",
+          quality: "1080p",
+          type: "hls",
+          supportsByteRange: false,
+          referer: pageUrl,
+          directUrl,
+          proxiedUrl: `${workerOrigin}/proxy?videoUrl=${encodeURIComponent(directUrl)}&referer=${encodeURIComponent(pageUrl)}`,
+        },
+      ],
+    };
+  } catch {
+    return { streams: [] };
+  }
+}
+
+async function resolveTorrentioStreams(imdbId, type, season, episode, workerOrigin) {
+  if (!/^tt\d{5,10}$/i.test(imdbId)) return { torrents: [] };
+  try {
+    const path =
+      type === "tv"
+        ? `series/${imdbId}:${season}:${episode}.json`
+        : `movie/${imdbId}.json`;
+    const r = await fetchWithHeaderTimeout(
+      `https://torrentio.strem.fun/sort=seeders/${path}`,
+      { headers: { "User-Agent": UA, Accept: "application/json" } },
+      5000,
+    );
+    if (!r.ok) return { torrents: [] };
+    const data = await r.json();
+    const list = Array.isArray(data?.streams) ? data.streams : [];
+    const torrents = [];
+    for (const s of list.slice(0, 15)) {
+      if (!s?.infoHash || !/^[0-9a-fA-F]{40}$/.test(s.infoHash)) continue;
+      const hash = String(s.infoHash).toUpperCase();
+      const rawTitle = `${s.name || ""} ${s.title || ""}`.replace(/\r?\n/g, " ").trim();
+      const seedMatch = rawTitle.match(/👤\s*(\d+)/);
+      const sizeMatch = rawTitle.match(/💾\s*([\d.]+\s*(?:GB|MB))/i);
+      const qMatch = rawTitle.match(/\b(2160p|4k|1080p|720p|480p)\b/i);
+      torrents.push({
+        infoHash: hash,
+        title: rawTitle,
+        quality: qMatch ? (qMatch[1].toLowerCase() === "4k" ? "2160p" : qMatch[1].toLowerCase()) : "1080p",
+        seeds: seedMatch ? parseInt(seedMatch[1], 10) : 10,
+        sizeLabel: sizeMatch ? sizeMatch[1] : "",
+        fileIdx: typeof s.fileIdx === "number" ? s.fileIdx : undefined,
+        torrentFileUrl: `${workerOrigin}/torrent-cache?hash=${hash}`,
+      });
+    }
+    return { torrents };
+  } catch {
+    return { torrents: [] };
+  }
 }
 
 function rewritePlaylist(text, base, workerOrigin, referer) {

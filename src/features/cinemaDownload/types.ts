@@ -1,15 +1,24 @@
-/**
- * @license
- * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
- *
- * Isolated Cinema Download & Optional Progressive Torrent Streaming Types (Part 2)
- */
-
-import type { Media } from '../../components/Movies/moviesDataClient';
+import type { SelectedFileGeometry } from './bencodeAndInputManager';
 
 export type DownloadQualityTier = '2160p' | '1080p' | '720p' | '480p';
 
-export type DownloadSourceKind =
+export type DownloadStorageTargetMode =
+  | 'opfs-cache'
+  | 'direct-disk'
+  | 'hybrid-extended';
+
+export type DownloadTaskStatus =
+  | 'idle'
+  | 'discovering'
+  | 'initializing'
+  | 'downloading'
+  | 'paused'
+  | 'verifying'
+  | 'exporting'
+  | 'completed'
+  | 'error';
+
+export type ReleaseSourceKind =
   | 'torrent-hybrid'
   | 'direct-mp4'
   | 'direct-hls';
@@ -21,30 +30,80 @@ export type ActiveTransportMode =
   | 'hls-assembler'
   | 'initializing';
 
+export type CandidateTransportStage = 'bridge' | 'webseed' | 'webrtc' | 'hls-stream';
+export type TransportStage = 'probing' | CandidateTransportStage | 'fallback-needed';
+export type StageProbeOutcome = 'pending' | 'probing' | 'ok' | 'failed' | 'skipped';
+
+export interface TransportAttemptLogEntry {
+  at: number;
+  stage: CandidateTransportStage;
+  kind: 'probe' | 'piece';
+  ok: boolean;
+  detail: string;
+  httpStatus?: number;
+}
+
+export interface TransportDiagnostics {
+  stage: TransportStage;
+  probingStage: CandidateTransportStage | null;
+  committedStage: CandidateTransportStage | null;
+  stageOutcomes: Record<CandidateTransportStage, StageProbeOutcome>;
+  attemptInStage: number;
+  maxAttemptsInStage: number;
+  nextRetryAt: number | null;
+  webrtcPeers: number;
+  bridgePeers: number;
+  httpSources: number;
+  lastError: string | null;
+  autoReprobeRound: number;
+  geometrySwitchBlocked: boolean;
+  log: TransportAttemptLogEntry[];
+}
+
+export interface TransportGeometry {
+  sizeBytes: number;
+  pieceLength: number;
+  totalPieces: number;
+  isVariableSegments: boolean;
+  pieceHashesHex: string[];
+  fileGeometry?: SelectedFileGeometry | null;
+}
+
+export interface ResolvedTransport {
+  stage: CandidateTransportStage;
+  mode: ActiveTransportMode;
+  geometry: TransportGeometry;
+  useBridgeBackend: boolean;
+  directRangeUrl?: string;
+  directRangeReferer?: string;
+  hlsSegments?: string[];
+  peers: number;
+  httpSources: number;
+}
+
 export interface DownloadMediaContext {
   id: number;
   tmdbId: number;
   imdbId?: string;
-  mediaType: Media;
+  mediaType: 'movie' | 'tv';
   title: string;
   originalTitle?: string;
   year?: string;
   posterUrl: string;
   backdropUrl?: string;
-  rating?: number;
-  runtimeMinutes?: number;
   season?: number;
   episode?: number;
   episodeTitle?: string;
+  runtimeMinutes?: string | number;
+  rating?: number;
 }
 
-export interface ParsedReleaseMetadata {
+export interface ParsedSceneRelease {
   rawTitle: string;
   cleanTitle: string;
   year?: number;
   season?: number;
   episode?: number;
-  type: 'movie' | 'episode';
   screenSize: DownloadQualityTier;
   source: string;
   videoCodec: string;
@@ -52,8 +111,13 @@ export interface ParsedReleaseMetadata {
   audioChannels: string;
   colorDepth: string[];
   releaseGroup: string;
-  container?: string;
+  container: 'mp4' | 'mkv' | 'webm' | 'avi' | 'ts';
+  type: 'movie' | 'episode';
+  isSafe?: boolean;
+  rejectionReason?: string;
 }
+
+export type ParsedReleaseMetadata = ParsedSceneRelease;
 
 export interface TorrentFileEntry {
   index: number;
@@ -75,6 +139,7 @@ export interface ParsedTorrentMetainfo {
   announceList: string[];
   webSeeds: string[];
   rawTorrentBase64: string;
+  geometry?: SelectedFileGeometry;
 }
 
 export interface DiscoveredReleaseOption {
@@ -82,7 +147,7 @@ export interface DiscoveredReleaseOption {
   title: string;
   cleanFileName: string;
   quality: DownloadQualityTier;
-  sourceKind: DownloadSourceKind;
+  sourceKind: ReleaseSourceKind;
   sizeBytes: number;
   sizeFormatted: string;
   seeders: number;
@@ -90,10 +155,12 @@ export interface DiscoveredReleaseOption {
   infoHash: string;
   magnetUri: string;
   torrentCacheUrls: string[];
+  directTorrentUrl?: string;
   rawTorrentBase64?: string;
   selectedFileOffset?: number;
   selectedFileLength?: number;
-  webSeeds?: string[];
+  fileGeometry?: SelectedFileGeometry;
+  webSeeds: string[];
   directStreamUrl?: string;
   streamReferer?: string;
   fallbackStreamUrl?: string;
@@ -110,42 +177,47 @@ export interface DiscoveredReleaseOption {
   pieceHashesHex?: string[];
   verifiedSafe: boolean;
   securityNotes: string[];
-  parsedMeta: ParsedReleaseMetadata;
-  isRealSource?: boolean;
+  parsedMeta: ParsedSceneRelease;
+  isRealSource: boolean;
 }
 
-export type DownloadTaskLifecycleStatus =
-  | 'initializing'
-  | 'downloading'
-  | 'paused'
-  | 'exporting'
-  | 'completed'
-  | 'error';
+export interface StorageQuotaInfo {
+  usageBytes: number;
+  quotaBytes: number;
+  freeBytes: number;
+  usageMB: number;
+  quotaMB: number;
+  freeGB: number;
+  opfsSupported: boolean;
+  directSaveSupported?: boolean;
+  directDiskSupported?: boolean;
+  persisted: boolean;
+}
 
-export type DownloadStorageTargetMode =
-  | 'opfs-cache'
-  | 'hybrid-extended'
-  | 'direct-disk';
+export type BrowserStorageQuotaInfo = StorageQuotaInfo;
 
-export type SlidingWindowPriorityPhase =
-  | 'sequential'
-  | 'header-tail'
-  | 'critical-phase'
-  | 'seek-window'
-  | 'playhead-window';
-
-export type PieceMapBucketKind =
+export type PieceBucketState =
   | 'empty'
   | 'header-tail'
   | 'playhead-window'
   | 'verified';
+
+export type PieceMapBucketKind = PieceBucketState;
+
+export type SlidingWindowPriorityPhase =
+  | 'header-tail'
+  | 'seek-window'
+  | 'deadline-window'
+  | 'playhead-window'
+  | 'sequential'
+  | 'critical-phase';
 
 export interface DownloadTaskState {
   taskId: string;
   infoHash: string;
   media: DownloadMediaContext;
   release: DiscoveredReleaseOption;
-  status: DownloadTaskLifecycleStatus;
+  status: DownloadTaskStatus;
   storageMode: DownloadStorageTargetMode;
   transportMode: ActiveTransportMode;
   progressPct: number;
@@ -161,32 +233,20 @@ export interface DownloadTaskState {
   activePeers: number;
   exportedToDevice: boolean;
   cacheCleared: boolean;
-  statusMessage: string;
-  errorMessage?: string;
-  startedAt: number;
-  updatedAt: number;
-  // Strictly opt-in streaming & piece map visualization (OFF by default)
   isStreamingActive: boolean;
   showPieceMap: boolean;
   streamUrl?: string;
   blobStreamUrl?: string;
-  headerAndTailReady?: boolean;
-  playheadPieceIndex?: number;
+  headerAndTailReady: boolean;
+  playheadPieceIndex: number;
   activeDownloadingPieceIndex?: number;
-  priorityPhase?: SlidingWindowPriorityPhase;
-  pieceMapBuckets?: PieceMapBucketKind[];
-}
-
-export interface BrowserStorageQuotaInfo {
-  usageBytes: number;
-  quotaBytes: number;
-  freeBytes: number;
-  usageMB: number;
-  quotaMB: number;
-  freeGB: number;
-  persisted: boolean;
-  opfsSupported: boolean;
-  directDiskSupported: boolean;
+  priorityPhase: SlidingWindowPriorityPhase;
+  pieceMapBuckets?: PieceBucketState[];
+  statusMessage: string;
+  errorMessage?: string;
+  diagnostics?: TransportDiagnostics;
+  startedAt: number;
+  updatedAt: number;
 }
 
 export interface CinemaDownloadSnapshot {
@@ -197,10 +257,9 @@ export interface CinemaDownloadSnapshot {
   discoveryError: string | null;
   selectedQualityFilter: DownloadQualityTier | 'all';
   activeTab: 'discover' | 'tasks';
-  activeStreamingTaskHash: string | null;
-  quota: BrowserStorageQuotaInfo;
   tasks: Record<string, DownloadTaskState>;
-  activeTaskIds: string[];
+  activeStreamingTaskHash: string | null;
+  quota: StorageQuotaInfo;
   liveTrackersCount: number;
-  bridgeServerAvailable: boolean;
+  bridgeHealthy: boolean;
 }

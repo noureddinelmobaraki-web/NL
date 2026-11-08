@@ -7,6 +7,7 @@
  */
 
 import type {
+  DownloadMediaContext,
   DownloadQualityTier,
   ParsedReleaseMetadata,
 } from './types';
@@ -174,6 +175,24 @@ export function formatBytes(bytes: number): string {
   return `${mb.toFixed(1)} MB`;
 }
 
+export function formatSpeed(bytesPerSec: number): string {
+  if (!Number.isFinite(bytesPerSec) || bytesPerSec <= 0) return '0 KB/s';
+  if (bytesPerSec >= 1024 * 1024) {
+    return `${(bytesPerSec / (1024 * 1024)).toFixed(2)} MB/s`;
+  }
+  return `${Math.round(bytesPerSec / 1024)} KB/s`;
+}
+
+export function formatEta(seconds: number | null): string {
+  if (seconds === null || !Number.isFinite(seconds) || seconds <= 0) return '--:--';
+  if (seconds > 86400) return '>24h';
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  if (hrs > 0) return `${hrs}h ${String(mins).padStart(2, '0')}m`;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
 /**
  * Scene & P2P Release Name Parser (guessit / parsett style).
  * Example input:
@@ -268,6 +287,12 @@ export function parseSceneReleaseName(
     cleanTitle = prefix.replace(/[._-]+/g, ' ').trim() || normalized;
   }
 
+  let container: 'mp4' | 'mkv' | 'webm' | 'avi' | 'ts' = 'mp4';
+  if (/\.mkv$/i.test(normalized)) container = 'mkv';
+  else if (/\.webm$/i.test(normalized)) container = 'webm';
+  else if (/\.avi$/i.test(normalized)) container = 'avi';
+  else if (/\.ts$/i.test(normalized)) container = 'ts';
+
   return {
     rawTitle: normalized,
     cleanTitle,
@@ -282,6 +307,7 @@ export function parseSceneReleaseName(
     audioCodec,
     audioChannels,
     releaseGroup,
+    container,
   };
 }
 
@@ -347,3 +373,62 @@ export function verifyReleaseSafety(params: {
     securityBadges,
   };
 }
+
+export function evaluateSixGateReleaseSafety(params: {
+  rawTitle: string;
+  parsed?: ParsedReleaseMetadata;
+  infoHash?: string;
+  sizeBytes: number;
+  seeders: number;
+  expectedMediaType?: 'movie' | 'episode';
+  expectedSeason?: number;
+  expectedEpisode?: number;
+  isDirectStream?: boolean;
+}): {
+  passed: boolean;
+  safe: boolean;
+  reasons: string[];
+  securityBadges: string[];
+} {
+  const quality = (params.parsed?.screenSize || '1080p') as DownloadQualityTier;
+  const res = verifyReleaseSafety({
+    rawTitle: params.rawTitle,
+    infoHash: params.infoHash || '',
+    sizeBytes: params.sizeBytes,
+    quality,
+    seeders: params.seeders,
+    isDirectStream: params.isDirectStream,
+  });
+  return {
+    ...res,
+    passed: res.safe,
+  };
+}
+
+
+export function buildCleanDownloadFileName(
+  media: DownloadMediaContext,
+  quality: string,
+  videoCodec: string,
+  extension = 'mp4',
+): string {
+  const safeTitle = (media.title || 'Video')
+    .replace(/[^\w\s.-]/g, '')
+    .trim()
+    .replace(/\s+/g, '.');
+  const year = media.year ? `.${media.year}` : '';
+  const tvPart =
+    media.mediaType === 'tv'
+      ? `.S${String(media.season || 1).padStart(2, '0')}E${String(media.episode || 1).padStart(2, '0')}`
+      : '';
+  const qPart = quality ? `.${quality}` : '';
+  const cPart =
+    videoCodec.includes('265') || videoCodec.includes('HEVC')
+      ? '.H.265'
+      : videoCodec.includes('264') || videoCodec.includes('AVC')
+        ? '.H.264'
+        : '';
+  const ext = extension.replace(/^\./, '');
+  return `${safeTitle}${year}${tvPart}${qPart}.WEB-DL${cPart}.${ext}`;
+}
+

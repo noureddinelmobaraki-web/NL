@@ -16,10 +16,14 @@ export default defineConfig(({ mode }) => {
       {
         name: 'cinema-download-bridge-plugin',
         configureServer(server: ViteDevServer) {
-          server.middlewares.use(createCinemaDownloadBridgeMiddleware());
+          if (process.env.CINEMA_BRIDGE_MOUNTED !== '1') {
+            server.middlewares.use(createCinemaDownloadBridgeMiddleware());
+          }
         },
         configurePreviewServer(server: PreviewServer) {
-          server.middlewares.use(createCinemaDownloadBridgeMiddleware());
+          if (process.env.CINEMA_BRIDGE_MOUNTED !== '1') {
+            server.middlewares.use(createCinemaDownloadBridgeMiddleware());
+          }
         },
       },
       {

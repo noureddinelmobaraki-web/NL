@@ -77,6 +77,7 @@ import { usePlayerBridgeSync } from "./hooks/usePlayerBridgeSync";
 import { CinemaHeroBanner } from "./components/CinemaHeroBanner";
 import { CinemaDetailModal } from "./components/CinemaDetailModal";
 import { CinemaHeaderDownloadButton } from "../../features/cinemaDownload";
+import { enrichCinemaItemWithYts } from "../../services/ytsApiClient";
 
 export { fetchWithCache, normalizeItem };
 export type { CastMember, ActorDetails, CinemaItem };
@@ -84,6 +85,7 @@ export type { CastMember, ActorDetails, CinemaItem };
 const CINEMA_PRECONNECT_ORIGINS = [
   "https://image.tmdb.org",
   "https://api.themoviedb.org",
+  "https://movies-api.accel.li",
   "https://vidlink.pro",
 ];
 
@@ -942,6 +944,15 @@ export function MoviesPage({
       if (!cancelled && match) {
         const normalized = normalizeItem(match, mediaType, currentLang);
         setDetailedItem(normalized);
+        if (!isTv) {
+          enrichCinemaItemWithYts(normalized)
+            .then((enriched) => {
+              if (!cancelled && enriched) {
+                setDetailedItem((prev) => (prev && prev.id === normalized.id ? enriched : prev));
+              }
+            })
+            .catch(() => {});
+        }
         if (isTv && preselectedProgressItemIdRef.current !== normalized.id) {
           preselectedProgressItemIdRef.current = normalized.id;
           const saved = getProgress("tv", normalized.id);
@@ -1002,6 +1013,34 @@ export function MoviesPage({
           title: normalized.title || null,
         });
         setIsLoadingDetails(false);
+
+        if (!isTv) {
+          enrichCinemaItemWithYts(normalized)
+            .then((enriched) => {
+              if (cancelled || !enriched) return;
+              setDetailedItem((prev) => {
+                if (!prev || prev.id !== normalized.id) return prev;
+                return {
+                  ...prev,
+                  imdbId: prev.imdbId || enriched.imdbId,
+                  posterPath: prev.posterPath || enriched.posterPath,
+                  backdropPath: prev.backdropPath || enriched.backdropPath,
+                  trailerKey: prev.trailerKey || enriched.trailerKey,
+                  rating: prev.rating && prev.rating > 0 ? prev.rating : enriched.rating,
+                  runtime: prev.runtime || enriched.runtime,
+                  certification: prev.certification || enriched.certification,
+                  overview:
+                    !prev.overview ||
+                    prev.overview.includes("unavailable") ||
+                    prev.overview.includes("not available")
+                      ? enriched.overview
+                      : prev.overview,
+                  cast: prev.cast?.length ? prev.cast : enriched.cast,
+                };
+              });
+            })
+            .catch(() => {});
+        }
 
         const imdbId = isTv ? detail.external_ids?.imdb_id : detail.imdb_id;
         if (imdbId && omdbKey) {

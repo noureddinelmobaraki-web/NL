@@ -1,108 +1,81 @@
-/**
- * @license
- * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
- *
- * Smart Custom Hook: Release Filtering, Magnet Clipboard State & Download Triggers
- */
-
 import { useCallback, useMemo, useState } from 'react';
-import {
-  cinemaDownloadManager,
-  useCinemaDownloadState,
-} from '../downloadManager';
-import type { DiscoveredReleaseOption, DownloadQualityTier } from '../types';
+import { cinemaDownloadManager } from '../downloadManager';
+import { copyMagnet, saveTorrentFile } from '../services/externalHandoff';
+import { proxify } from '../engine/transportProbes';
+import type { CinemaDownloadSnapshot, DiscoveredReleaseOption, DownloadQualityTier } from '../types';
+import { useCinemaDownloadSelector } from './useCinemaDownloadSelector';
+
+export type ReleaseSortKey = 'seeders' | 'size-desc' | 'size-asc' | 'quality';
+const QUALITY_RANK: Record<DownloadQualityTier, number> = { '2160p': 4, '1080p': 3, '720p': 2, '480p': 1 };
+
+const select = (s: CinemaDownloadSnapshot) => ({
+  activeMedia: s.activeMedia,
+  isDiscovering: s.isDiscovering,
+  discoveredReleases: s.discoveredReleases,
+  discoveryError: s.discoveryError,
+  selectedQualityFilter: s.selectedQualityFilter,
+  liveTrackersCount: s.liveTrackersCount,
+});
 
 export function useReleaseDiscovery() {
-  const {
-    activeMedia,
-    isDiscovering,
-    discoveredReleases,
-    discoveryError,
-    selectedQualityFilter,
-    liveTrackersCount,
-    tasks,
-  } = useCinemaDownloadState();
-
+  const st = useCinemaDownloadSelector(select);
+  const [sortKey, setSortKey] = useState<ReleaseSortKey>('seeders');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [torrentExportState, setTorrentExportState] = useState<Record<string, 'saving' | 'saved' | 'magnet-only'>>({});
 
-  const filteredReleases = useMemo(
-    () =>
-      selectedQualityFilter === 'all'
-        ? discoveredReleases
-        : discoveredReleases.filter(
-            (r) => r.quality === selectedQualityFilter,
-          ),
-    [discoveredReleases, selectedQualityFilter],
-  );
+  const filteredReleases = useMemo(() => {
+    const list = st.selectedQualityFilter === 'all'
+      ? [...st.discoveredReleases]
+      : st.discoveredReleases.filter((r) => r.quality === st.selectedQualityFilter);
+    const cmp: Record<ReleaseSortKey, (a: DiscoveredReleaseOption, b: DiscoveredReleaseOption) => number> = {
+      seeders: (a, b) => b.seeders - a.seeders,
+      'size-desc': (a, b) => b.sizeBytes - a.sizeBytes,
+      'size-asc': (a, b) => a.sizeBytes - b.sizeBytes,
+      quality: (a, b) => QUALITY_RANK[b.quality] - QUALITY_RANK[a.quality] || b.seeders - a.seeders,
+    };
+    return list.sort(cmp[sortKey]);
+  }, [st.discoveredReleases, st.selectedQualityFilter, sortKey]);
 
-  const setQualityFilter = useCallback(
-    (filter: DownloadQualityTier | 'all') => {
-      cinemaDownloadManager.setQualityFilter(filter);
-    },
-    [],
-  );
+  const qualityCounts = useMemo(() => {
+    const c: Record<string, number> = { all: st.discoveredReleases.length };
+    for (const r of st.discoveredReleases) c[r.quality] = (c[r.quality] ?? 0) + 1;
+    return c;
+  }, [st.discoveredReleases]);
 
+  const setQualityFilter = useCallback((f: DownloadQualityTier | 'all') => cinemaDownloadManager.setQualityFilter(f), []);
   const retryDiscovery = useCallback(() => {
-    if (activeMedia) {
-      cinemaDownloadManager.openModalForMedia(activeMedia);
-    }
-  }, [activeMedia]);
+    if (st.activeMedia) cinemaDownloadManager.openModalForMedia(st.activeMedia);
+  }, [st.activeMedia]);
 
-  const copyMagnetLink = useCallback((rel: DiscoveredReleaseOption) => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      void navigator.clipboard.writeText(rel.magnetUri);
+  const copyMagnetLink = useCallback(async (rel: DiscoveredReleaseOption) => {
+    if (await copyMagnet(rel)) {
       setCopiedId(rel.id);
-      setTimeout(() => setCopiedId(null), 2000);
+      setTimeout(() => setCopiedId((c) => (c === rel.id ? null : c)), 2_000);
     }
   }, []);
 
-  /**
-   * Starts pure download-first task (`enableInstantStream = false`).
-   */
-  const triggerDownloadOnly = useCallback(
-    (rel: DiscoveredReleaseOption) => {
-      if (!activeMedia) return;
-      const existing = tasks[rel.infoHash];
-      if (existing) {
-        cinemaDownloadManager.setActiveTab('tasks');
-        if (existing.status === 'paused') {
-          cinemaDownloadManager.resumeTask(rel.infoHash);
-        }
-      } else {
-        void cinemaDownloadManager.startDownload(activeMedia, rel, false);
-      }
-    },
-    [activeMedia, tasks],
-  );
+  const exportTorrentFile = useCallback(async (rel: DiscoveredReleaseOption) => {
+    setTorrentExportState((s) => ({ ...s, [rel.id]: 'saving' }));
+    const ok = await saveTorrentFile(rel, async (url) => {
+      const r = await fetch(proxify(url), { signal: AbortSignal.timeout(5_000) });
+      return r.ok ? r.arrayBuffer() : null;
+    });
+    if (!ok) await copyMagnet(rel);
+    setTorrentExportState((s) => ({ ...s, [rel.id]: ok ? 'saved' : 'magnet-only' }));
+  }, []);
 
-  /**
-   * Starts download AND explicitly enables the optional progressive stream player.
-   */
-  const triggerOptionalStream = useCallback(
-    (rel: DiscoveredReleaseOption) => {
-      if (!activeMedia) return;
-      void cinemaDownloadManager.startProgressiveStream(
-        activeMedia,
-        rel,
-        false,
-      );
-    },
-    [activeMedia],
-  );
+  /** Download-first: never enables streaming. */
+  const triggerDownload = useCallback((rel: DiscoveredReleaseOption) => {
+    const media = cinemaDownloadManager.getSnapshot().activeMedia;
+    if (!media) return;
+    const existing = cinemaDownloadManager.getSnapshot().tasks[rel.infoHash];
+    cinemaDownloadManager.setActiveTab('tasks');
+    if (!existing) void cinemaDownloadManager.startDownload(media, rel, false);
+    else if (existing.status === 'paused' || existing.status === 'error') cinemaDownloadManager.resumeTask(rel.infoHash);
+  }, []);
 
   return {
-    activeMedia,
-    isDiscovering,
-    discoveredReleases,
-    filteredReleases,
-    discoveryError,
-    selectedQualityFilter,
-    liveTrackersCount,
-    copiedId,
-    setQualityFilter,
-    retryDiscovery,
-    copyMagnetLink,
-    triggerDownloadOnly,
-    triggerOptionalStream,
+    ...st, filteredReleases, qualityCounts, sortKey, setSortKey, copiedId, torrentExportState,
+    setQualityFilter, retryDiscovery, copyMagnetLink, exportTorrentFile, triggerDownload,
   };
 }
