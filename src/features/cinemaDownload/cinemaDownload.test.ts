@@ -38,6 +38,17 @@ import {
   TransportFailoverController,
   stageOrderFor,
 } from './engine/transportFailoverMachine';
+import {
+  buildBep10ExtendedHandshake,
+  buildExtendedBtHandshake,
+  generatePeerIdBytes,
+  hexToBytes20,
+  parseBep10Handshake,
+  parseCompactIpv4Peers,
+  peerHasPiece,
+  verifyIncomingBtHandshake,
+  wrapRawInfoDictAsTorrent,
+} from './engine/edgeTcpWireProtocol';
 
 describe('Cinema Download Release Parser, Bencode Input & Scheduler', () => {
   it('parses complex 4K TV episode release names accurately', () => {
@@ -250,10 +261,44 @@ describe('Cinema Download Release Parser, Bencode Input & Scheduler', () => {
     expect(slice3.fileStart + slice3.length).toBe(50000);
   });
 
-  it('fails over across transport stages when bridge returns 404 and webseed succeeds', async () => {
+  it('encodes/decodes BEP-10 Edge TCP wire frames and filters bogon/Cloudflare compact peers', () => {
+    const hashHex = '08ada5a7a6183aae1e09d831df6748d566095a10';
+    const hashBytes = hexToBytes20(hashHex);
+    const peerId = generatePeerIdBytes();
+    const hs = buildExtendedBtHandshake(hashBytes, peerId);
+    expect(hs.byteLength).toBe(68);
+    expect(verifyIncomingBtHandshake(hs, hashBytes)).toEqual({
+      valid: true,
+      supportsBep10: true,
+    });
+
+    const extFrame = buildBep10ExtendedHandshake();
+    expect(extFrame[4]).toBe(20);
+    const parsedExt = parseBep10Handshake(extFrame.subarray(5));
+    expect(parsedExt.utMetadataId).toBe(1);
+
+    // 1st peer: 93.184.216.34:51413 (valid public), 2nd: 127.0.0.1:6881 (loopback), 3rd: 104.16.1.1:6881 (Cloudflare)
+    const compact = new Uint8Array([
+      93, 184, 216, 34, 0xc8, 0xd5,
+      127, 0, 0, 1, 0x1a, 0xe1,
+      104, 16, 1, 1, 0x1a, 0xe1,
+    ]);
+    expect(parseCompactIpv4Peers(compact)).toEqual(['93.184.216.34:51413']);
+
+    const bf = new Uint8Array([0b10100000]);
+    expect(peerHasPiece(bf, new Set(), 0)).toBe(true);
+    expect(peerHasPiece(bf, new Set(), 1)).toBe(false);
+    expect(peerHasPiece(bf, new Set(), 2)).toBe(true);
+    expect(peerHasPiece(bf, new Set([9]), 9)).toBe(true);
+
+    const wrapped = wrapRawInfoDictAsTorrent(new Uint8Array([0x64, 0x65]));
+    expect(new TextDecoder().decode(wrapped)).toBe('d4:infodee');
+  });
+
+  it('fails over across transport stages including edge-tcp when bridge and webseed are unavailable', async () => {
     const abort = new AbortController();
-    const order = stageOrderFor({ sourceKind: 'torrent-hybrid' } as any);
-    expect(order).toEqual(['bridge', 'webseed', 'webrtc', 'hls-stream']);
+    const order = stageOrderFor({ sourceKind: 'torrent-hybrid' } as never);
+    expect(order).toEqual(['bridge', 'webseed', 'edge-tcp', 'webrtc', 'hls-stream']);
 
     const ctrl = new TransportFailoverController({
       order,

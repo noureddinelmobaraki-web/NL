@@ -18,6 +18,7 @@ import {
   parseTorrentFileBytes,
 } from './bencodeAndInputManager';
 import { BrowserSwarmSession } from './engine/browserSwarmClient';
+import { EdgeTcpSwarmSession } from './engine/edgeTcpSwarmClient';
 import { fetchPiece } from './engine/pieceFetchers';
 import {
   TransportFailoverController,
@@ -26,6 +27,7 @@ import {
 } from './engine/transportFailoverMachine';
 import {
   probeBridge,
+  probeEdgeTcp,
   probeHlsStream,
   probeWebRtc,
   probeWebSeed,
@@ -67,6 +69,7 @@ import type {
 const STAGE_LABELS_AR: Record<CandidateTransportStage, string> = {
   bridge: 'جسر الخادم',
   webseed: 'بذور الويب HTTP',
+  'edge-tcp': 'نفق Edge TCP',
   webrtc: 'سرب WebRTC',
   'hls-stream': 'بث HLS/MP4 مستخرج',
 };
@@ -222,6 +225,7 @@ class CinemaDownloadManager {
   private pendingRetryStage = new Map<string, CandidateTransportStage | null>();
   private speedTicker: ReturnType<typeof setInterval> | null = null;
   private swarmSessions = new Map<string, BrowserSwarmSession>();
+  private edgeSwarmSessions = new Map<string, EdgeTcpSwarmSession>();
   private savedBitfields = new Map<string, number[]>();
   private inFlight = new Map<string, Set<number>>();
   private sessionToken = '';
@@ -644,6 +648,11 @@ class CinemaDownloadManager {
         swarm.destroy();
         this.swarmSessions.delete(infoHash);
       }
+      const edgeSwarm = this.edgeSwarmSessions.get(infoHash);
+      if (edgeSwarm) {
+        edgeSwarm.destroy();
+        this.edgeSwarmSessions.delete(infoHash);
+      }
       const task = this.state.tasks[infoHash];
       if (task) {
         if (task.blobStreamUrl) {
@@ -747,6 +756,30 @@ class CinemaDownloadManager {
       s.setGeometry(geom);
     }
     return s;
+  }
+
+  private getOrCreateEdgeSwarm(
+    infoHash: string,
+    release: DiscoveredReleaseOption,
+    meta: ParsedTorrentMetainfo | null,
+  ): EdgeTcpSwarmSession {
+    let magnetTrackers: string[] = [];
+    try {
+      magnetTrackers = parseMagnetUriInput(release.magnetUri).trackers;
+    } catch {}
+    const trackers = Array.from(
+      new Set([...(meta?.announceList ?? []), ...magnetTrackers]),
+    );
+    const geom = meta?.geometry ?? release.fileGeometry ?? null;
+    let session = this.edgeSwarmSessions.get(infoHash);
+    if (!session) {
+      session = new EdgeTcpSwarmSession(infoHash, trackers, geom);
+      this.edgeSwarmSessions.set(infoHash, session);
+    } else {
+      session.addTrackers(trackers);
+      if (geom) session.setGeometry(geom);
+    }
+    return session;
   }
 
   private async resolveFallbackStreamTransport(
@@ -907,6 +940,23 @@ class CinemaDownloadManager {
           signal: cancel.signal,
           getSwarm: () =>
             this.getOrCreateSwarm(infoHash, current.release, meta),
+          getEdgeSwarm: () =>
+            this.getOrCreateEdgeSwarm(infoHash, current.release, meta),
+          onMetainfoResolved: (resolvedMeta) => {
+            meta = resolvedMeta;
+            current.release.rawTorrentBase64 = resolvedMeta.rawTorrentBase64;
+            current.release.selectedFileOffset = resolvedMeta.selectedFile.offset;
+            current.release.selectedFileLength = resolvedMeta.selectedFile.length;
+            current.release.fileGeometry = resolvedMeta.geometry;
+            current.release.pieceHashesHex = resolvedMeta.pieceHashesHex;
+            if (resolvedMeta.geometry && resolvedMeta.geometry.fileLength > 0) {
+              current.release.sizeBytes = resolvedMeta.geometry.fileLength;
+              current.release.sizeFormatted = formatBytes(resolvedMeta.geometry.fileLength);
+              current.release.pieceLength = resolvedMeta.geometry.pieceLength;
+              current.release.totalPieces = resolvedMeta.geometry.filePieceCount;
+            }
+            this.metainfoCache.set(infoHash, resolvedMeta);
+          },
           resolveStreamFallback: () =>
             this.resolveFallbackStreamTransport(current.media, current.release),
         };
@@ -915,6 +965,8 @@ class CinemaDownloadManager {
             return probeBridge(env);
           case 'webseed':
             return probeWebSeed(env);
+          case 'edge-tcp':
+            return probeEdgeTcp(env);
           case 'webrtc':
             return probeWebRtc(env);
           case 'hls-stream':
@@ -1103,6 +1155,8 @@ class CinemaDownloadManager {
         return 12;
       case 'bridge':
         return 8;
+      case 'edge-tcp':
+        return Math.min(6, Math.max(3, t.peers || 4));
       case 'webrtc':
         return Math.min(16, Math.max(6, (t.peers || 1) * 2));
       default:
@@ -1222,6 +1276,7 @@ class CinemaDownloadManager {
           seekSignal: loop.seek.signal,
           cancelSignal: loop.cancel.signal,
           swarm: this.swarmSessions.get(infoHash) ?? null,
+          edgeSwarm: this.edgeSwarmSessions.get(infoHash) ?? null,
         });
 
         if ('aborted' in result) {
@@ -1272,13 +1327,17 @@ class CinemaDownloadManager {
           loop.controller.updateLiveCounters(
             loop.transport.stage === 'bridge'
               ? { bridgePeers: result.peers }
-              : { webrtcPeers: result.peers },
+              : loop.transport.stage === 'edge-tcp'
+                ? { edgeTcpPeers: result.peers }
+                : { webrtcPeers: result.peers },
           );
         }
 
         const byteLen = result.buffer.byteLength;
         const bytesKind =
-          loop.transport.stage === 'webrtc' ? 'torrent-piece' : 'file-slice';
+          loop.transport.stage === 'webrtc' || loop.transport.stage === 'edge-tcp'
+            ? 'torrent-piece'
+            : 'file-slice';
         if (this.worker) {
           this.worker.postMessage(
             {
@@ -1356,6 +1415,11 @@ class CinemaDownloadManager {
         : `جاري التحميل: ${completedPieces}/${totalPieces} قطعة (${formatBytes(downloaded)} من ${formatBytes(task.totalBytes)})`,
     });
     if (done) {
+      const edgeSwarm = this.edgeSwarmSessions.get(infoHash);
+      if (edgeSwarm) {
+        edgeSwarm.destroy();
+        this.edgeSwarmSessions.delete(infoHash);
+      }
       this.worker?.postMessage({
         action: 'FINALIZE_AND_EXPORT',
         payload: { infoHash },
@@ -1946,6 +2010,11 @@ class CinemaDownloadManager {
   public pauseTask = (infoHash: string): void => {
     this.stopLoop(infoHash);
     this.clearReprobe(infoHash);
+    const edgeSwarm = this.edgeSwarmSessions.get(infoHash);
+    if (edgeSwarm) {
+      edgeSwarm.destroy();
+      this.edgeSwarmSessions.delete(infoHash);
+    }
     this.worker?.postMessage({
       action: 'PAUSE_SESSION',
       payload: { infoHash },
@@ -2051,6 +2120,11 @@ class CinemaDownloadManager {
       swarm.destroy();
       this.swarmSessions.delete(infoHash);
     }
+    const edgeSwarm = this.edgeSwarmSessions.get(infoHash);
+    if (edgeSwarm) {
+      edgeSwarm.destroy();
+      this.edgeSwarmSessions.delete(infoHash);
+    }
 
     if (this.state.tasks[infoHash]) {
       this.patchTask(infoHash, {
@@ -2072,6 +2146,11 @@ class CinemaDownloadManager {
     if (swarm) {
       swarm.destroy();
       this.swarmSessions.delete(infoHash);
+    }
+    const edgeSwarm = this.edgeSwarmSessions.get(infoHash);
+    if (edgeSwarm) {
+      edgeSwarm.destroy();
+      this.edgeSwarmSessions.delete(infoHash);
     }
     if (this.state.activeStreamingTaskHash === infoHash) {
       this.state.activeStreamingTaskHash = null;

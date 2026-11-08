@@ -1,6 +1,7 @@
 import type { ResolvedTransport } from '../types';
 import { anySignal } from './abortUtils';
 import type { BrowserSwarmSession } from './browserSwarmClient';
+import type { EdgeTcpSwarmSession } from './edgeTcpSwarmClient';
 import { isPermanentHttpStatus } from './transportProbes';
 
 export type PieceFetchResult =
@@ -18,11 +19,14 @@ export interface PieceRequest {
   seekSignal: AbortSignal;
   cancelSignal: AbortSignal;
   swarm: BrowserSwarmSession | null;
+  edgeSwarm?: EdgeTcpSwarmSession | null;
   timeoutMs?: number;
 }
 
 export async function fetchPiece(req: PieceRequest): Promise<PieceFetchResult> {
-  const timeout = AbortSignal.timeout(req.timeoutMs ?? 30_000);
+  const timeout = AbortSignal.timeout(
+    req.timeoutMs ?? (req.transport.stage === 'edge-tcp' ? 45_000 : 30_000),
+  );
   const signal = anySignal([req.seekSignal, req.cancelSignal, timeout]);
   const { transport: t, pieceIndex } = req;
 
@@ -68,6 +72,27 @@ export async function fetchPiece(req: PieceRequest): Promise<PieceFetchResult> {
         expectedSha1: res.headers.get('X-Piece-SHA1') || undefined,
         peers: Number(res.headers.get('X-Active-Peers')) || undefined,
         realSize: Number(res.headers.get('X-Real-File-Size')) || undefined,
+      };
+    }
+
+    if (t.stage === 'edge-tcp' && req.edgeSwarm) {
+      const buf = await req.edgeSwarm.fetchPieceInBrowser(
+        pieceIndex,
+        req.pieceLength,
+        req.totalSize,
+        signal,
+      );
+      if (buf && buf.byteLength) {
+        return {
+          ok: true,
+          buffer: buf,
+          peers: req.edgeSwarm.getSeederPeersCount() || req.edgeSwarm.getConnectedPeersCount(),
+        };
+      }
+      return {
+        ok: false,
+        reason: 'Edge TCP peer stalled or choked on piece',
+        permanent: false,
       };
     }
 

@@ -25,12 +25,13 @@ export type ReleaseSourceKind =
 
 export type ActiveTransportMode =
   | 'webtorrent-bridge'
+  | 'edge-tcp-swarm'
   | 'browser-webrtc-swarm'
   | 'webseed-range'
   | 'hls-assembler'
   | 'initializing';
 
-export type CandidateTransportStage = 'bridge' | 'webseed' | 'webrtc' | 'hls-stream';
+export type CandidateTransportStage = 'bridge' | 'webseed' | 'edge-tcp' | 'webrtc' | 'hls-stream';
 export type TransportStage = 'probing' | CandidateTransportStage | 'fallback-needed';
 export type StageProbeOutcome = 'pending' | 'probing' | 'ok' | 'failed' | 'skipped';
 
@@ -53,6 +54,7 @@ export interface TransportDiagnostics {
   nextRetryAt: number | null;
   webrtcPeers: number;
   bridgePeers: number;
+  edgeTcpPeers: number;
   httpSources: number;
   lastError: string | null;
   autoReprobeRound: number;

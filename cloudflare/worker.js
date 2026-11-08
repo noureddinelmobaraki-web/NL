@@ -3,6 +3,8 @@
 // Secrets (اختيارية حسب المسار): WYZIE_KEY, OMDB_KEY, TMDB_KEY  | KV binding (اختياري ومستحسن): NL_CACHE
 // Variable اختياري: ALLOWED_ORIGINS = "https://a.com,https://b.com"
 
+import { connect } from "cloudflare:sockets";
+
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const DEFAULT_ALLOWED_ORIGINS = [
   "https://noureddinelmobaraki-web.github.io",
@@ -38,6 +40,7 @@ export default {
     if (path === "/health") {
       return jsonResponse({
         ok: true,
+        btTunnel: true,
         kvCache: Boolean(env.NL_CACHE),
         secrets: { wyzie: Boolean(env.WYZIE_KEY), omdb: Boolean(env.OMDB_KEY), tmdb: Boolean(env.TMDB_KEY) },
         time: new Date().toISOString(),
@@ -46,6 +49,8 @@ export default {
     if (!isAllowedCaller(request, env)) return jsonResponse({ error: "origin_not_allowed" }, 403);
 
     try {
+      if (path === "/bt-peers") return await withCache(request, env, ctx, 45, () => handleBtPeers(reqUrl));
+      if (path === "/bt-tunnel") return handleBtTunnel(request, reqUrl, ctx);
       if (path === "/proxy" || path === "/webseed-proxy") return await handleProxy(request, reqUrl, workerOrigin, ctx);
       if (path === "/batch-pieces") return await handleBatchPieces(request, reqUrl, workerOrigin, ctx);
       if (path === "/probe") return await handleStreamProbe(reqUrl, workerOrigin);
@@ -2576,5 +2581,343 @@ async function handleAudiobookTracks(reqUrl) {
     200,
     43200,
   );
+}
+
+/* ---------------- BitTorrent Edge TCP Tunnel (/bt-peers & /bt-tunnel) ---------------- */
+
+const BT_BASE_HTTP_TRACKERS = [
+  "http://tracker.opentrackr.org:1337/announce",
+  "https://tracker.tamersunion.org:443/announce",
+  "http://tracker.openbittorrent.com:80/announce",
+  "http://tracker.gbitt.info:80/announce",
+  "https://tracker.gbitt.info:443/announce",
+  "http://tracker.bt4g.com:2095/announce",
+  "http://tracker.files.fm:6969/announce",
+  "http://tracker.dler.org:6969/announce",
+  "http://open.acgnxtracker.com:80/announce",
+  "https://tracker.lilithraws.org:443/announce",
+  "https://tr.burnabyhighstar.com:443/announce",
+  "http://tracker1.bt.moack.co.kr:80/announce",
+  "https://tracker.moeblog.cn:443/announce",
+  "http://tracker.mywaifu.best:6969/announce",
+  "http://bittorrent-tracker.e-n-c-r-y-p-t.net:1337/announce",
+];
+
+let cachedDynamicHttpTrackers = [];
+let cachedDynamicHttpTrackersAt = 0;
+
+async function getDynamicHttpTrackers() {
+  if (cachedDynamicHttpTrackers.length > 0 && Date.now() - cachedDynamicHttpTrackersAt < 30 * 60 * 1000) {
+    return cachedDynamicHttpTrackers;
+  }
+  const found = [];
+  try {
+    const r = await fetch("https://cf.trackerslist.com/http.txt", {
+      headers: { "User-Agent": UA },
+      signal: AbortSignal.timeout(2200),
+    });
+    if (r.ok) {
+      const txt = await r.text();
+      for (const line of txt.split(/\r?\n/)) {
+        const u = line.trim();
+        if ((u.startsWith("http://") || u.startsWith("https://")) && safeTarget(u)) {
+          found.push(u);
+          if (found.length >= 10) break;
+        }
+      }
+    } else {
+      try { await r.body?.cancel(); } catch {}
+    }
+  } catch {}
+  if (found.length > 0) {
+    cachedDynamicHttpTrackers = found;
+    cachedDynamicHttpTrackersAt = Date.now();
+  }
+  return cachedDynamicHttpTrackers;
+}
+
+function isCloudflareOrPrivateIpv4(a, b, c) {
+  if (a === 0 || a === 10 || a === 127 || a >= 224) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true;
+  if (a === 192 && b === 0 && (c === 0 || c === 2)) return true;
+  if (a === 198 && (b === 18 || b === 19)) return true;
+  if (a === 198 && b === 51 && c === 100) return true;
+  if (a === 203 && b === 0 && c === 113) return true;
+  // Block Cloudflare edge ranges (disallowed by cloudflare:sockets)
+  if (a === 1 && (b === 1 || b === 0) && (c === 1 || c === 0)) return true;
+  if (a === 104 && b >= 16 && b <= 31) return true;
+  if (a === 172 && b >= 64 && b <= 71) return true;
+  if (a === 162 && (b === 158 || b === 159)) return true;
+  if (a === 108 && b === 162) return true;
+  if (a === 198 && b === 41 && c >= 128) return true;
+  if (a === 188 && b === 114 && c >= 96 && c <= 111) return true;
+  if (a === 190 && b === 93 && c >= 240) return true;
+  if (a === 197 && b === 234 && c >= 240 && c <= 243) return true;
+  return false;
+}
+
+function isSafePublicPeer(host, port) {
+  if (!Number.isInteger(port) || port < 80 || port > 65535) return false;
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (!m) return false;
+  const a = Number(m[1]);
+  const b = Number(m[2]);
+  const c = Number(m[3]);
+  const d = Number(m[4]);
+  if (a > 255 || b > 255 || c > 255 || d > 255) return false;
+  return !isCloudflareOrPrivateIpv4(a, b, c);
+}
+
+function hexToRaw20(hex) {
+  const out = new Uint8Array(20);
+  for (let i = 0; i < 20; i++) {
+    out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+}
+
+function percentEncodeRawBytes(bytes) {
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) {
+    out += "%" + bytes[i].toString(16).padStart(2, "0").toUpperCase();
+  }
+  return out;
+}
+
+function makeTrackerPeerIdEnc() {
+  const prefix = "-NL0100-";
+  const bytes = new Uint8Array(20);
+  for (let i = 0; i < prefix.length; i++) bytes[i] = prefix.charCodeAt(i);
+  for (let i = prefix.length; i < 20; i++) bytes[i] = 48 + Math.floor(Math.random() * 10);
+  return percentEncodeRawBytes(bytes);
+}
+
+function decodeBencodeLight(buf, offset = 0, depth = 0) {
+  if (depth > 24 || offset >= buf.length) return null;
+  const ch = buf[offset];
+  if (ch === 0x69) {
+    const end = buf.indexOf(0x65, offset + 1);
+    if (end === -1) return null;
+    const num = Number(new TextDecoder().decode(buf.subarray(offset + 1, end)));
+    return Number.isFinite(num) ? { value: num, next: end + 1 } : null;
+  }
+  if (ch === 0x6c) {
+    const arr = [];
+    let cur = offset + 1;
+    while (cur < buf.length && buf[cur] !== 0x65) {
+      const item = decodeBencodeLight(buf, cur, depth + 1);
+      if (!item) return null;
+      arr.push(item.value);
+      cur = item.next;
+    }
+    return cur < buf.length ? { value: arr, next: cur + 1 } : null;
+  }
+  if (ch === 0x64) {
+    const obj = Object.create(null);
+    let cur = offset + 1;
+    while (cur < buf.length && buf[cur] !== 0x65) {
+      const k = decodeBencodeLight(buf, cur, depth + 1);
+      if (!k || !(k.value instanceof Uint8Array)) return null;
+      const key = new TextDecoder().decode(k.value);
+      const v = decodeBencodeLight(buf, k.next, depth + 1);
+      if (!v) return null;
+      obj[key] = v.value;
+      cur = v.next;
+    }
+    return cur < buf.length ? { value: obj, next: cur + 1 } : null;
+  }
+  if (ch >= 0x30 && ch <= 0x39) {
+    const colon = buf.indexOf(0x3a, offset);
+    if (colon === -1) return null;
+    const len = Number(new TextDecoder().decode(buf.subarray(offset, colon)));
+    if (!Number.isInteger(len) || len < 0 || colon + 1 + len > buf.length) return null;
+    return { value: buf.subarray(colon + 1, colon + 1 + len), next: colon + 1 + len };
+  }
+  return null;
+}
+
+function extractPeersFromTrackerPayload(buf) {
+  const parsed = decodeBencodeLight(buf, 0, 0);
+  if (!parsed || typeof parsed.value !== "object" || !parsed.value) return [];
+  const rawPeers = parsed.value.peers;
+  const result = [];
+  if (rawPeers instanceof Uint8Array && rawPeers.byteLength >= 6) {
+    const usable = rawPeers.byteLength - (rawPeers.byteLength % 6);
+    for (let i = 0; i < usable; i += 6) {
+      const ip = `${rawPeers[i]}.${rawPeers[i + 1]}.${rawPeers[i + 2]}.${rawPeers[i + 3]}`;
+      const port = (rawPeers[i + 4] << 8) | rawPeers[i + 5];
+      if (isSafePublicPeer(ip, port)) result.push(`${ip}:${port}`);
+    }
+  } else if (Array.isArray(rawPeers)) {
+    for (const entry of rawPeers) {
+      if (!entry || typeof entry !== "object") continue;
+      const ipStr = entry.ip instanceof Uint8Array ? new TextDecoder().decode(entry.ip).trim() : "";
+      const port = Number(entry.port);
+      if (isSafePublicPeer(ipStr, port)) result.push(`${ipStr}:${port}`);
+    }
+  }
+  return result;
+}
+
+async function announceHttpTracker(trackerUrl, infoHashEnc, peerIdEnc) {
+  const sep = trackerUrl.includes("?") ? "&" : "?";
+  const target =
+    `${trackerUrl}${sep}info_hash=${infoHashEnc}&peer_id=${peerIdEnc}` +
+    `&port=6881&uploaded=0&downloaded=0&left=1073741824&compact=1&numwant=80&event=started`;
+  try {
+    const res = await fetch(target, {
+      headers: { "User-Agent": "qBittorrent/4.6.5", Accept: "*/*" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(3200),
+    });
+    if (!res.ok) {
+      try { await res.body?.cancel(); } catch {}
+      return [];
+    }
+    const ab = await res.arrayBuffer();
+    if (!ab || ab.byteLength === 0 || ab.byteLength > 131072) return [];
+    return extractPeersFromTrackerPayload(new Uint8Array(ab));
+  } catch {
+    return [];
+  }
+}
+
+async function handleBtPeers(reqUrl) {
+  const hash = (reqUrl.searchParams.get("infoHash") || "").trim().toLowerCase();
+  if (!/^[0-9a-f]{40}$/.test(hash)) {
+    return jsonResponse({ ok: false, btPeersEndpoint: true, error: "invalid_infoHash" }, 400);
+  }
+  const extraTrackers = reqUrl.searchParams
+    .getAll("tr")
+    .map((t) => t.trim())
+    .filter((t) => (t.startsWith("http://") || t.startsWith("https://")) && safeTarget(t));
+  const dynamicTrackers = await getDynamicHttpTrackers();
+  const trackers = Array.from(
+    new Set([...extraTrackers, ...BT_BASE_HTTP_TRACKERS, ...dynamicTrackers]),
+  ).slice(0, 15);
+
+  const infoHashEnc = percentEncodeRawBytes(hexToRaw20(hash));
+  const peerIdEnc = makeTrackerPeerIdEnc();
+  const peerSet = new Set();
+  let trackersResponded = 0;
+  let cursor = 0;
+
+  // Strictly <= 5 concurrent tracker fetches to respect Cloudflare Free 6-connection limit
+  const workers = Array.from({ length: Math.min(5, trackers.length) }, async () => {
+    while (cursor < trackers.length && peerSet.size < 120) {
+      const idx = cursor++;
+      const list = await announceHttpTracker(trackers[idx], infoHashEnc, peerIdEnc);
+      if (list.length > 0) {
+        trackersResponded++;
+        for (const p of list) {
+          peerSet.add(p);
+          if (peerSet.size >= 120) break;
+        }
+      }
+    }
+  });
+  await Promise.allSettled(workers);
+
+  return jsonResponse(
+    {
+      ok: true,
+      btPeersEndpoint: true,
+      infoHash: hash,
+      peers: Array.from(peerSet),
+      trackersQueried: trackers.length,
+      trackersResponded,
+    },
+    200,
+    45,
+  );
+}
+
+function handleBtTunnel(request, reqUrl, ctx) {
+  const upgrade = (request.headers.get("Upgrade") || "").toLowerCase();
+  if (upgrade !== "websocket") {
+    return jsonResponse({ ok: true, btTunnelEndpoint: true, upgradeRequired: true }, 426);
+  }
+  const host = (reqUrl.searchParams.get("host") || "").trim();
+  const port = Number(reqUrl.searchParams.get("port") || "0");
+  if (!isSafePublicPeer(host, port)) {
+    return jsonResponse({ ok: false, error: "disallowed_peer_address" }, 403);
+  }
+
+  const pair = new WebSocketPair();
+  const clientWs = pair[0];
+  const serverWs = pair[1];
+  serverWs.accept();
+
+  let closed = false;
+  let socket = null;
+  let writer = null;
+
+  const closeAll = () => {
+    if (closed) return;
+    closed = true;
+    try { if (writer) writer.releaseLock(); } catch {}
+    try { if (socket) socket.close(); } catch {}
+    try { serverWs.close(1000, "closed"); } catch {}
+  };
+
+  try {
+    socket = connect({ hostname: host, port }, { secureTransport: "off", allowHalfOpen: false });
+    writer = socket.writable.getWriter();
+  } catch {
+    closeAll();
+    return new Response(null, { status: 101, webSocket: clientWs });
+  }
+
+  const openGate = Promise.race([
+    socket.opened,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("tcp_connect_timeout")), 7000)),
+  ]);
+
+  let writeChain = openGate.then(() => undefined);
+  writeChain.catch(() => closeAll());
+
+  serverWs.addEventListener("message", (ev) => {
+    if (closed || !writer) return;
+    const chunk =
+      ev.data instanceof ArrayBuffer
+        ? new Uint8Array(ev.data)
+        : typeof ev.data === "string"
+          ? new TextEncoder().encode(ev.data)
+          : null;
+    if (!chunk || chunk.byteLength === 0) return;
+    writeChain = writeChain
+      .then(() => {
+        if (!closed && writer) return writer.write(chunk);
+      })
+      .catch(() => closeAll());
+  });
+
+  serverWs.addEventListener("close", () => closeAll());
+  serverWs.addEventListener("error", () => closeAll());
+
+  ctx.waitUntil(
+    (async () => {
+      try {
+        await openGate;
+        const reader = socket.readable.getReader();
+        while (!closed) {
+          const { done, value } = await reader.read();
+          if (done || !value) break;
+          if (value.byteLength > 0 && !closed) {
+            serverWs.send(value);
+          }
+        }
+      } catch {
+        // Socket reset or closed by remote BitTorrent peer
+      } finally {
+        closeAll();
+      }
+    })(),
+  );
+
+  return new Response(null, { status: 101, webSocket: clientWs });
 }
 

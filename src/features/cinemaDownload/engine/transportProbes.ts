@@ -8,6 +8,7 @@ import type {
 } from '../types';
 import { abortableSleep, withTimeout } from './abortUtils';
 import type { BrowserSwarmSession } from './browserSwarmClient';
+import type { EdgeTcpSwarmSession } from './edgeTcpSwarmClient';
 import type { StageProbeResult } from './transportFailoverMachine';
 
 export const PROXY_PREFIX = 'https://broad-block-7bd7.';
@@ -31,6 +32,8 @@ export interface ProbeEnv {
   frozen: TransportGeometry | null;
   signal: AbortSignal;
   getSwarm: () => BrowserSwarmSession;
+  getEdgeSwarm: () => EdgeTcpSwarmSession;
+  onMetainfoResolved?: (meta: ParsedTorrentMetainfo) => void;
   resolveStreamFallback: () => Promise<LegacyStreamSource | null>;
 }
 
@@ -187,6 +190,63 @@ export async function probeWebSeed(env: ProbeEnv): Promise<StageProbeResult> {
     last = r.detail;
   }
   return { ok: false, detail: last, permanent: false };
+}
+
+export async function probeEdgeTcp(env: ProbeEnv, waitMs = 14_000): Promise<StageProbeResult> {
+  const swarm = env.getEdgeSwarm();
+  const disc = await swarm.startDiscovery(env.signal);
+  if (!disc.ok && disc.workerMissing) {
+    return { ok: false, detail: disc.detail, permanent: true };
+  }
+
+  const started = Date.now();
+  while (Date.now() - started < waitMs) {
+    const seeders = swarm.getSeederPeersCount();
+    if (seeders > 0) {
+      let activeMeta = env.metainfo;
+      if (!activeMeta && !env.frozen?.pieceHashesHex.length) {
+        const fetched = await swarm.resolveMetainfoFromPeers(env.signal, 10_000);
+        if (!fetched) {
+          return {
+            ok: false,
+            detail: 'Connected to TCP peers, but BEP-9 metadata was not delivered in time',
+            permanent: false,
+          };
+        }
+        activeMeta = fetched;
+        env.onMetainfoResolved?.(fetched);
+      }
+
+      const geometry = torrentGeometry({ ...env, metainfo: activeMeta });
+      return {
+        ok: true,
+        detail: `${seeders} TCP seeder(s) via Cloudflare Edge (${swarm.getConnectedPeersCount()} connected)`,
+        transport: {
+          stage: 'edge-tcp',
+          mode: 'edge-tcp-swarm',
+          geometry,
+          useBridgeBackend: false,
+          peers: seeders,
+          httpSources: 0,
+        },
+      };
+    }
+    await abortableSleep(500, env.signal);
+  }
+
+  const connected = swarm.getConnectedPeersCount();
+  if (connected > 0) {
+    return {
+      ok: false,
+      detail: `Connected to ${connected} TCP peer(s) with 0% pieces`,
+      permanent: false,
+    };
+  }
+  return {
+    ok: false,
+    detail: disc.ok ? '0 TCP BitTorrent seeders accepted tunnel handshake' : disc.detail,
+    permanent: false,
+  };
 }
 
 export async function probeWebRtc(env: ProbeEnv, waitMs = 12_000): Promise<StageProbeResult> {

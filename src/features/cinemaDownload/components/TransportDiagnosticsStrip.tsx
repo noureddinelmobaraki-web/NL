@@ -18,6 +18,7 @@ export const TransportDiagnosticsStrip: React.FC<{ infoHash: string; isAr: boole
         <span className="font-extrabold text-white">{view.headline}</span>
         <span className="flex items-center gap-2 text-white/70 tabular-nums">
           <Users size={12} />
+          {d.edgeTcpPeers > 0 && <span className="text-emerald-300 font-bold">TCP {d.edgeTcpPeers} ·</span>}
           <span>WebRTC {d.webrtcPeers}</span>
           {d.bridgePeers > 0 && <span>· Bridge {d.bridgePeers}</span>}
           {d.httpSources > 0 && <span>· HTTP {d.httpSources}</span>}

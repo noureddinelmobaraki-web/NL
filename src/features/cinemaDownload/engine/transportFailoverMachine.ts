@@ -33,11 +33,12 @@ export const DEFAULT_FAILOVER_POLICY: FailoverPolicy = {
   logLimit: 14,
 };
 
-export const ALL_STAGES: CandidateTransportStage[] = ['bridge', 'webseed', 'webrtc', 'hls-stream'];
+export const ALL_STAGES: CandidateTransportStage[] = ['bridge', 'webseed', 'edge-tcp', 'webrtc', 'hls-stream'];
 
 export const STAGE_LABELS: Record<CandidateTransportStage, { ar: string; en: string }> = {
   bridge: { ar: 'جسر الخادم (TCP/UDP/DHT)', en: 'Server Bridge (TCP/UDP/DHT)' },
   webseed: { ar: 'بذور الويب HTTP 206', en: 'HTTP WebSeed (206)' },
+  'edge-tcp': { ar: 'نفق Edge TCP (BitTorrent)', en: 'Edge TCP Swarm (Worker)' },
   webrtc: { ar: 'سرب WebRTC داخل المتصفح', en: 'Browser WebRTC Swarm' },
   'hls-stream': { ar: 'بث مستخرج HLS/MP4', en: 'Extracted HLS/MP4 Stream' },
 };
@@ -69,7 +70,7 @@ export function stageOrderFor(release: DiscoveredReleaseOption): CandidateTransp
     case 'direct-mp4':
       return ['webseed', 'hls-stream'];
     default:
-      return ['bridge', 'webseed', 'webrtc', 'hls-stream'];
+      return ['bridge', 'webseed', 'edge-tcp', 'webrtc', 'hls-stream'];
   }
 }
 
@@ -106,6 +107,7 @@ export function createInitialDiagnostics(order: CandidateTransportStage[]): Tran
     nextRetryAt: null,
     webrtcPeers: 0,
     bridgePeers: 0,
+    edgeTcpPeers: 0,
     httpSources: 0,
     lastError: null,
     autoReprobeRound: 0,
@@ -168,11 +170,24 @@ export class TransportFailoverController {
     this.publish();
   }
 
-  updateLiveCounters(counters: { webrtcPeers?: number; bridgePeers?: number }): void {
+  updateLiveCounters(counters: {
+    webrtcPeers?: number;
+    bridgePeers?: number;
+    edgeTcpPeers?: number;
+  }): void {
     const nextWebrtc = counters.webrtcPeers ?? this.diag.webrtcPeers;
     const nextBridge = counters.bridgePeers ?? this.diag.bridgePeers;
-    if (nextWebrtc !== this.diag.webrtcPeers || nextBridge !== this.diag.bridgePeers) {
-      this.patch({ webrtcPeers: nextWebrtc, bridgePeers: nextBridge });
+    const nextEdgeTcp = counters.edgeTcpPeers ?? this.diag.edgeTcpPeers;
+    if (
+      nextWebrtc !== this.diag.webrtcPeers ||
+      nextBridge !== this.diag.bridgePeers ||
+      nextEdgeTcp !== this.diag.edgeTcpPeers
+    ) {
+      this.patch({
+        webrtcPeers: nextWebrtc,
+        bridgePeers: nextBridge,
+        edgeTcpPeers: nextEdgeTcp,
+      });
     }
   }
 
@@ -282,6 +297,7 @@ export class TransportFailoverController {
           nextRetryAt: null,
           webrtcPeers: stage === 'webrtc' ? result.transport.peers : this.diag.webrtcPeers,
           bridgePeers: stage === 'bridge' ? result.transport.peers : this.diag.bridgePeers,
+          edgeTcpPeers: stage === 'edge-tcp' ? result.transport.peers : this.diag.edgeTcpPeers,
           httpSources: Math.max(this.diag.httpSources, result.transport.httpSources),
         });
         return result.transport;
@@ -291,6 +307,7 @@ export class TransportFailoverController {
       this.patch({
         lastError: `${stage}: ${result.detail}`,
         webrtcPeers: stage === 'webrtc' ? 0 : this.diag.webrtcPeers,
+        edgeTcpPeers: stage === 'edge-tcp' ? 0 : this.diag.edgeTcpPeers,
       });
 
       if (result.permanent) break;
