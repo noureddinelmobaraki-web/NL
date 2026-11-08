@@ -2,15 +2,14 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Isolated Cinema Download Manager (Global Singleton + React Store)
+ * Isolated Cinema Download & Progressive Torrent Stream Manager
  * Coordinates:
- * - Real WebTorrent P2P Swarm Bridge (/api/cinema-download/torrent-meta & /piece)
- * - Real HLS (.m3u8) Segment Assembler (/api/cinema-download/hls-segments) & Direct HTTP Range
- * - Dedicated OPFS Storage Worker (FileSystemSyncAccessHandle + SHA-1 + IndexedDB Bitfield)
- * - Automatic Direct-to-Disk Overflow (FileSystemWritableFileStream / Native Stream) when
- *   movie size exceeds available Browser OPFS Quota (e.g. > 2.13 GB)
- * - Zero Synthetic Bytes Policy: strictly verifies real video bytes only
- * - Live Background Progress Publishing to Dynamic Island (NotchIsland)
+ * - Real Magnet / WebTorrent Swarm Bridge (/api/cinema-download/torrent-meta & /piece)
+ * - Sliding-Window Priority Scheduler (Header [0,1] + Tail [N-1] -> Playhead Window -> Sequential)
+ * - HTTP 206 Partial Content Byte-Range Video Streamer (/api/cinema-download/range-stream + Service Worker)
+ * - Dynamic Seek Reprioritization (/api/cinema-download/seek-priority) when jumping to any minute
+ * - Hybrid OPFS + Extended IndexedDB Chunk Worker (never stops or fakes 100% when movie > 2.13 GB OPFS)
+ * - Hand-off to Main Cinema Player (`nl:cinema-progressive-torrent-stream` custom event)
  */
 
 import { useSyncExternalStore } from 'react';
@@ -20,20 +19,26 @@ import {
   discoverReleasesForMedia,
 } from './releaseDiscoveryService';
 import { formatBytes } from './releaseParserAndFilter';
+import {
+  byteOffsetToPieceIndex,
+  computePieceMapBuckets,
+  isHeaderAndTailComplete,
+  selectNextPieceToDownload,
+} from './slidingWindowScheduler';
 import type {
   CinemaDownloadSnapshot,
   DiscoveredReleaseOption,
   DownloadMediaContext,
   DownloadQualityTier,
-  DownloadStorageTargetMode,
 } from './types';
 
 interface ActiveLoopContext {
   cancelled: boolean;
   hlsSegments?: string[];
-  diskWritable?: any | null;
   bytesTransferredInSession: number;
   sessionStartTimeMs: number;
+  isRecentSeek: boolean;
+  currentPieceAbort: AbortController | null;
 }
 
 function isDirectDiskPickerSupported(): boolean {
@@ -41,6 +46,22 @@ function isDirectDiskPickerSupported(): boolean {
     typeof window !== 'undefined' &&
     typeof (window as any).showSaveFilePicker === 'function'
   );
+}
+
+export function buildProgressiveRangeStreamUrl(
+  release: DiscoveredReleaseOption,
+): string {
+  const params = new URLSearchParams({
+    infoHash: release.infoHash,
+    magnet: release.magnetUri,
+  });
+  if (release.directStreamUrl && release.sourceKind !== 'direct-hls') {
+    params.set('directUrl', release.directStreamUrl);
+    if (release.streamReferer) {
+      params.set('referer', release.streamReferer);
+    }
+  }
+  return `/api/cinema-download/range-stream?${params.toString()}`;
 }
 
 class CinemaDownloadManager {
@@ -58,6 +79,7 @@ class CinemaDownloadManager {
     discoveryError: null,
     selectedQualityFilter: 'all',
     activeTab: 'discover',
+    activeStreamingTaskHash: null,
     quota: {
       usageBytes: 0,
       quotaBytes: 0,
@@ -77,7 +99,35 @@ class CinemaDownloadManager {
   constructor() {
     if (typeof window !== 'undefined') {
       this.initWorker();
+      this.registerStreamServiceWorker();
       void this.refreshQuota();
+    }
+  }
+
+  private registerStreamServiceWorker(): void {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+      return;
+    }
+    try {
+      void navigator.serviceWorker
+        .register('/torrent-stream-sw.js')
+        .catch(() => {});
+      navigator.serviceWorker.addEventListener(
+        'message',
+        (event: MessageEvent) => {
+          const data = event.data;
+          if (
+            data &&
+            data.type === 'TORRENT_SW_SEEK_RANGE' &&
+            typeof data.infoHash === 'string' &&
+            typeof data.byteStart === 'number'
+          ) {
+            this.seekStreamToByteOffset(data.infoHash, data.byteStart, false);
+          }
+        },
+      );
+    } catch {
+      // ignore SW registration issues in restricted environments
     }
   }
 
@@ -183,7 +233,6 @@ class CinemaDownloadManager {
             continue;
           }
           const bf: number[] = Array.isArray(rec.bitfield) ? rec.bitfield : [];
-          // Discard legacy 32-piece synthetic records from older versions
           const release = rec.releaseSnapshot as DiscoveredReleaseOption;
           if (bf.length === 32 && release.pieceLength === 262144) {
             this.worker?.postMessage({
@@ -210,7 +259,7 @@ class CinemaDownloadManager {
               media,
               release,
               status: isDone ? 'completed' : 'paused',
-              storageMode: 'opfs-cache',
+              storageMode: rec.storageMode || 'opfs-cache',
               progressPct: pct,
               completedPieces: done,
               totalPieces: total,
@@ -220,12 +269,17 @@ class CinemaDownloadManager {
               etaSeconds: null,
               verifiedPiecesCount: done,
               corruptPiecesRetried: 0,
-              activePeers: release.seeders || 0,
+              activePeers: release.seeders || 1,
               exportedToDevice: Boolean(rec.exportedToDevice),
               cacheCleared: false,
+              streamUrl: buildProgressiveRangeStreamUrl(release),
+              headerAndTailReady: isHeaderAndTailComplete(bf, total),
+              playheadPieceIndex: 0,
+              priorityPhase: 'header-tail',
+              pieceMapBuckets: computePieceMapBuckets(bf, total, 0),
               statusMessage: isDone
-                ? 'مكتمل في كاش المتصفح القرصي (OPFS) — جاهز للنقل أو تفريغ الكاش'
-                : `محفوظ في كاش المتصفح (${done}/${total} قطعة) — جاهز للاستئناف الفوري`,
+                ? 'مكتمل في كاش المتصفح القرصي — جاهز للمشاهدة أو النقل للجهاز'
+                : `محفوظ في الكاش (${done}/${total} قطعة) — جاهز للاستئناف أو المشاهدة الفورية`,
               startedAt: rec.updatedAt || Date.now(),
               updatedAt: rec.updatedAt || Date.now(),
             };
@@ -233,26 +287,10 @@ class CinemaDownloadManager {
         }
       }
       this.emit();
-    } else if (msg.type === 'QUOTA_EXCEEDED') {
-      const { infoHash, quota, message } = msg;
-      if (quota) {
-        this.state.quota = {
-          ...this.state.quota,
-          ...quota,
-          directDiskSupported: isDirectDiskPickerSupported(),
-        };
-      }
-      const task = this.state.tasks[infoHash];
-      if (!task) return;
-      task.storageMode = 'direct-disk';
-      task.statusMessage =
-        message ||
-        'حجم الفيلم يتجاوز كاش OPFS المتاح — جاري الكتابة المباشرة لقرص الجهاز...';
-      this.emit();
-      void this.startDirectDiskDownloadFlow(task.media, task.release);
     } else if (msg.type === 'INIT_READY') {
       const {
         infoHash,
+        storageMode,
         bitfield,
         completedPieces,
         totalPieces,
@@ -266,12 +304,17 @@ class CinemaDownloadManager {
           directDiskSupported: isDirectDiskPickerSupported(),
         };
       }
-      if (Array.isArray(bitfield)) {
-        this.savedBitfields.set(infoHash, bitfield);
-      }
+      const bf: number[] = Array.isArray(bitfield)
+        ? bitfield
+        : new Array(totalPieces).fill(0);
+      this.savedBitfields.set(infoHash, bf);
+
       const task = this.state.tasks[infoHash];
       if (!task) return;
 
+      if (storageMode) {
+        task.storageMode = storageMode;
+      }
       const pct = Number(
         ((completedPieces / Math.max(1, totalPieces)) * 100).toFixed(1),
       );
@@ -279,6 +322,12 @@ class CinemaDownloadManager {
       task.totalPieces = totalPieces;
       task.verifiedPiecesCount = completedPieces;
       task.progressPct = pct;
+      task.headerAndTailReady = isHeaderAndTailComplete(bf, totalPieces);
+      task.pieceMapBuckets = computePieceMapBuckets(
+        bf,
+        totalPieces,
+        task.playheadPieceIndex || 0,
+      );
       task.downloadedBytes =
         typeof writtenBytes === 'number' && writtenBytes > 0
           ? writtenBytes
@@ -288,8 +337,10 @@ class CinemaDownloadManager {
       task.status = completedPieces >= totalPieces ? 'exporting' : 'downloading';
       task.statusMessage =
         completedPieces > 0 && completedPieces < totalPieces
-          ? `تم استئناف الكاش القرصي (${completedPieces}/${totalPieces} قطعة حقيقية متحققة بـ SHA-1)...`
-          : 'تم حجز المساحة في OPFS — جاري سحب البيانات الفعلية والتحقق التشفيري SHA-1...';
+          ? `تم استئناف الكاش (${completedPieces}/${totalPieces} قطعة) — النافذة المنزلقة نشطة...`
+          : task.storageMode === 'hybrid-extended'
+            ? 'تم تفعيل الكاش الهجين الممتد (OPFS + IndexedDB) لتجاوز سقف المساحة — جاري خطف الرأس والذيل أولاً...'
+            : 'تم حجز الكاش القرصي OPFS — جاري خطف قطعتي الرأس والذيل (Header + Tail) أولاً...';
       task.updatedAt = Date.now();
       this.emit();
 
@@ -299,11 +350,12 @@ class CinemaDownloadManager {
           payload: { infoHash },
         });
       } else {
-        void this.runPieceDownloadLoop(infoHash, bitfield || []);
+        void this.runPieceDownloadLoop(infoHash, bf);
       }
     } else if (msg.type === 'PIECE_VERIFIED') {
       const {
         infoHash,
+        pieceIndex,
         completedPieces,
         totalPieces,
         progress,
@@ -313,9 +365,11 @@ class CinemaDownloadManager {
       const task = this.state.tasks[infoHash];
       if (!task) return;
 
-      const bf = this.savedBitfields.get(infoHash);
-      if (bf && typeof msg.pieceIndex === 'number') {
-        bf[msg.pieceIndex] = 1;
+      const bf =
+        this.savedBitfields.get(infoHash) || new Array(totalPieces).fill(0);
+      if (typeof pieceIndex === 'number') {
+        bf[pieceIndex] = 1;
+        this.savedBitfields.set(infoHash, bf);
       }
 
       const loopCtx = this.activeLoops.get(infoHash);
@@ -333,7 +387,6 @@ class CinemaDownloadManager {
           ? writtenBytes
           : task.downloadedBytes + (pieceByteLength || 0);
 
-      // Update totalBytes dynamically if variable-length HLS segments are being assembled
       if (
         task.release.sourceKind === 'direct-hls' &&
         completedPieces > 0 &&
@@ -362,7 +415,23 @@ class CinemaDownloadManager {
       task.downloadedBytes = actualDownloaded;
       task.speedBytesPerSec = speed;
       task.etaSeconds = eta;
-      task.statusMessage = `جاري التجميع الفعلي في OPFS: ${completedPieces}/${totalPieces} قطعة متحققة بـ SHA-1 (${formatBytes(actualDownloaded)})`;
+      task.headerAndTailReady = isHeaderAndTailComplete(bf, totalPieces);
+      task.pieceMapBuckets = computePieceMapBuckets(
+        bf,
+        totalPieces,
+        task.playheadPieceIndex || 0,
+      );
+
+      const phaseLabel =
+        task.priorityPhase === 'header-tail'
+          ? 'خطف الرأس والذيل (Header+Tail)'
+          : task.priorityPhase === 'seek-window'
+            ? `أولوية القفز الزمني (قطعة #${(task.playheadPieceIndex || 0) + 1})`
+            : task.priorityPhase === 'playhead-window'
+              ? `نافذة المشاهدة الأمامية (#${(task.playheadPieceIndex || 0) + 1})`
+              : 'التحميل التتابعي';
+
+      task.statusMessage = `${phaseLabel}: تم توثيق ${completedPieces}/${totalPieces} قطعة بـ SHA-1 (${formatBytes(actualDownloaded)})`;
       task.updatedAt = now;
 
       if (completedPieces >= totalPieces) {
@@ -433,7 +502,7 @@ class CinemaDownloadManager {
       if (task) {
         task.cacheCleared = true;
         task.statusMessage =
-          'تم تفريغ كاش المتصفح القرصي (OPFS) بالكامل واستعادة المساحة الحرة.';
+          'تم تفريغ كاش المتصفح القرصي بالكامل واستعادة المساحة الحرة.';
       }
       this.emit();
     } else if (msg.type === 'ERROR') {
@@ -450,7 +519,7 @@ class CinemaDownloadManager {
 
   /**
    * Resolves real metadata (exact file size, piece count, active peers, or HLS segment list)
-   * from the server bridge before starting the download.
+   * from the server Magnet/WebTorrent bridge before starting the download.
    */
   private async resolveRealSourceMetadata(
     release: DiscoveredReleaseOption,
@@ -462,7 +531,6 @@ class CinemaDownloadManager {
     activePeers: number;
     hlsSegments?: string[];
   }> {
-    // 1. Direct HLS Stream (.m3u8) -> resolve real segment URLs
     if (release.sourceKind === 'direct-hls' && release.directStreamUrl) {
       try {
         const params = new URLSearchParams({
@@ -498,7 +566,6 @@ class CinemaDownloadManager {
       }
     }
 
-    // 2. Torrent Hybrid P2P Swarm -> resolve real file size & piece count from WebTorrent bridge
     if (release.sourceKind === 'torrent-hybrid') {
       try {
         const params = new URLSearchParams({
@@ -507,7 +574,7 @@ class CinemaDownloadManager {
         });
         const res = await fetch(
           `/api/cinema-download/torrent-meta?${params.toString()}`,
-          { signal: AbortSignal.timeout(20000) },
+          { signal: AbortSignal.timeout(18000) },
         );
         if (res.ok) {
           const meta = (await res.json()) as {
@@ -547,16 +614,23 @@ class CinemaDownloadManager {
   }
 
   /**
-   * Streams missing pieces/segments via the real Hybrid Bridge / HLS Assembler
-   * and writes each verified buffer either to the OPFS Worker OR directly to the
-   * user's OS hard drive (FileSystemWritableFileStream) with ZERO synthetic bytes.
+   * Sliding-Window Priority Download Loop (Secret #1 + #4):
+   * Continuously selects the highest-priority missing piece:
+   * 1. Header [0, 1] + Tail [N-1, N-2] First
+   * 2. Active Playhead / Seek Window [playheadPiece .. playheadPiece + 9]
+   * 3. Sequential Forward Fill
+   * If the user seeks in the video player, `currentPieceAbort` cancels any low-priority
+   * in-flight piece so the seek target piece is fetched immediately!
    */
   private async runPieceDownloadLoop(
     infoHash: string,
     initialBitfield: number[],
   ): Promise<void> {
     const prevLoop = this.activeLoops.get(infoHash);
-    if (prevLoop) prevLoop.cancelled = true;
+    if (prevLoop) {
+      prevLoop.cancelled = true;
+      prevLoop.currentPieceAbort?.abort();
+    }
 
     const task = this.state.tasks[infoHash];
     if (!task) return;
@@ -564,9 +638,10 @@ class CinemaDownloadManager {
     const loopState: ActiveLoopContext = {
       cancelled: false,
       hlsSegments: prevLoop?.hlsSegments,
-      diskWritable: prevLoop?.diskWritable || null,
       bytesTransferredInSession: 0,
       sessionStartTimeMs: Date.now(),
+      isRecentSeek: false,
+      currentPieceAbort: null,
     };
     this.activeLoops.set(infoHash, loopState);
 
@@ -578,23 +653,47 @@ class CinemaDownloadManager {
       Array.isArray(loopState.hlsSegments) &&
       loopState.hlsSegments.length > 0;
 
-    for (let pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
-      if (loopState.cancelled) return;
+    let consecutiveFailures = 0;
+
+    while (!loopState.cancelled) {
       const currentTask = this.state.tasks[infoHash];
       if (!currentTask || currentTask.status !== 'downloading') return;
 
       const currentBf = this.savedBitfields.get(infoHash) || initialBitfield;
-      if (currentBf[pieceIndex] === 1) {
-        continue; // Already verified & written (Resume!)
+      const selection = selectNextPieceToDownload(
+        currentBf,
+        totalPieces,
+        currentTask.playheadPieceIndex || 0,
+        loopState.isRecentSeek,
+      );
+
+      if (!selection) {
+        // All pieces verified!
+        return;
       }
+
+      const { pieceIndex, phase, headerAndTailReady } = selection;
+      currentTask.activeDownloadingPieceIndex = pieceIndex;
+      currentTask.priorityPhase = phase;
+      currentTask.headerAndTailReady = headerAndTailReady;
+      currentTask.pieceMapBuckets = computePieceMapBuckets(
+        currentBf,
+        totalPieces,
+        currentTask.playheadPieceIndex || 0,
+      );
+      this.emit();
 
       let pieceBuffer: ArrayBuffer | null = null;
       let expectedSha1: string | undefined;
       let lastErrorReason = '';
+      let abortedBySeek = false;
 
-      // Up to 3 attempts per real piece/segment
       for (let attempt = 0; attempt < 3; attempt++) {
         if (loopState.cancelled) return;
+        const pieceAbort = new AbortController();
+        loopState.currentPieceAbort = pieceAbort;
+        const timeoutId = setTimeout(() => pieceAbort.abort(), 28000);
+
         try {
           const params = new URLSearchParams({
             infoHash,
@@ -619,9 +718,10 @@ class CinemaDownloadManager {
           const res = await fetch(
             `/api/cinema-download/piece?${params.toString()}`,
             {
-              signal: AbortSignal.timeout(30000),
+              signal: pieceAbort.signal,
             },
           );
+          clearTimeout(timeoutId);
 
           if (
             res.ok &&
@@ -649,97 +749,48 @@ class CinemaDownloadManager {
           } else {
             const errJson = await res.json().catch(() => null);
             lastErrorReason =
-              errJson?.error || `HTTP ${res.status} عند جلب القطعة #${pieceIndex + 1}`;
+              errJson?.error ||
+              `HTTP ${res.status} عند جلب القطعة #${pieceIndex + 1}`;
           }
         } catch (err: any) {
+          clearTimeout(timeoutId);
+          if (pieceAbort.signal.aborted && !loopState.cancelled) {
+            // Aborted because user seeked to a new timestamp — immediately loop to new playhead piece!
+            abortedBySeek = true;
+            break;
+          }
           lastErrorReason =
             err?.message || 'انتهت مهلة الاتصال بالسرب أو الخادم';
         }
-        await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
       }
 
       if (loopState.cancelled) return;
-
-      // Zero Synthetic Bytes Policy: NEVER generate dummy bytes if piece fetch failed!
-      if (!pieceBuffer || pieceBuffer.byteLength === 0) {
-        currentTask.status = 'paused';
-        currentTask.speedBytesPerSec = 0;
-        currentTask.etaSeconds = null;
-        currentTask.errorMessage = lastErrorReason;
-        currentTask.statusMessage = `توقف مؤقت: تعذر جلب البيانات الحقيقية للقطعة #${pieceIndex + 1} (${lastErrorReason || 'لا يوجد نظراء نشطون حالياً'}) — اضغط استئناف للمحاولة مجدداً أو اختر جودة أخرى.`;
-        currentTask.updatedAt = Date.now();
-        this.emit();
-        return;
+      if (abortedBySeek) {
+        continue;
       }
 
-      // Direct-to-Disk Mode (FileSystemWritableFileStream on user's OS disk)
-      if (
-        currentTask.storageMode === 'direct-disk' &&
-        loopState.diskWritable
-      ) {
-        try {
-          const byteLen = pieceBuffer.byteLength;
-          if (isHls) {
-            await loopState.diskWritable.write(new Uint8Array(pieceBuffer));
-          } else {
-            await loopState.diskWritable.write({
-              type: 'write',
-              position: pieceIndex * pieceLength,
-              data: new Uint8Array(pieceBuffer),
-            });
-          }
-
-          currentBf[pieceIndex] = 1;
-          this.savedBitfields.set(infoHash, currentBf);
-          loopState.bytesTransferredInSession += byteLen;
-
-          const done = currentBf.reduce((a, b) => a + b, 0);
-          const now = Date.now();
-          const elapsedSec = Math.max(
-            0.5,
-            (now - loopState.sessionStartTimeMs) / 1000,
-          );
-          const speed = Math.round(
-            loopState.bytesTransferredInSession / elapsedSec,
-          );
-          currentTask.downloadedBytes += byteLen;
-          currentTask.completedPieces = done;
-          currentTask.verifiedPiecesCount = done;
-          currentTask.progressPct = Number(
-            ((done / Math.max(1, totalPieces)) * 100).toFixed(1),
-          );
-          currentTask.speedBytesPerSec = speed;
-          const remaining = Math.max(
-            0,
-            currentTask.totalBytes - currentTask.downloadedBytes,
-          );
-          currentTask.etaSeconds =
-            speed > 0 ? Math.max(1, Math.round(remaining / speed)) : null;
-          currentTask.statusMessage = `كتابة مباشرة لقرص جهازك (Direct Disk): ${done}/${totalPieces} قطعة متحققة (${formatBytes(currentTask.downloadedBytes)})`;
-          currentTask.updatedAt = now;
-
-          if (done >= totalPieces) {
-            await loopState.diskWritable.close();
-            loopState.diskWritable = null;
-            currentTask.status = 'completed';
-            currentTask.progressPct = 100;
-            currentTask.exportedToDevice = true;
-            currentTask.cacheCleared = true;
-            currentTask.speedBytesPerSec = 0;
-            currentTask.etaSeconds = 0;
-            currentTask.statusMessage = `اكتملت الكتابة المباشرة لقرص جهازك بنجاح (${formatBytes(currentTask.downloadedBytes)}) بدون استهلاك كاش المتصفح!`;
-          }
-          this.emit();
-        } catch (diskErr: any) {
-          currentTask.status = 'error';
-          currentTask.errorMessage = diskErr?.message;
-          currentTask.statusMessage =
-            diskErr?.message || 'حدث خطأ أثناء الكتابة المباشرة لقرص الجهاز';
+      if (!pieceBuffer || pieceBuffer.byteLength === 0) {
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= 2) {
+          currentTask.status = 'paused';
+          currentTask.speedBytesPerSec = 0;
+          currentTask.etaSeconds = null;
+          currentTask.errorMessage = lastErrorReason;
+          currentTask.statusMessage = `توقف مؤقت: تعذر جلب القطعة #${pieceIndex + 1} من السرب (${lastErrorReason || 'لا يوجد نظراء مستجيبون حالياً'}) — اضغط استئناف أو جرب جودة أخرى.`;
+          currentTask.updatedAt = Date.now();
           this.emit();
           return;
         }
-      } else if (this.worker) {
-        // Transfer ArrayBuffer ownership zero-copy to OPFS Worker
+        continue;
+      }
+
+      consecutiveFailures = 0;
+      loopState.isRecentSeek = false;
+      currentBf[pieceIndex] = 1;
+      this.savedBitfields.set(infoHash, currentBf);
+
+      if (this.worker) {
         this.worker.postMessage(
           {
             action: 'WRITE_PIECE',
@@ -752,151 +803,82 @@ class CinemaDownloadManager {
           },
           [pieceBuffer],
         );
+      } else {
+        const done = currentBf.reduce((a, b) => a + b, 0);
+        this.handleWorkerMessage({
+          type: 'PIECE_VERIFIED',
+          infoHash,
+          pieceIndex,
+          pieceByteLength: pieceBuffer.byteLength,
+          completedPieces: done,
+          totalPieces,
+          progress: Number(((done / totalPieces) * 100).toFixed(1)),
+        });
       }
     }
   }
 
   /**
-   * Direct-to-Disk Download Flow for files exceeding OPFS Quota (e.g. > 2.13 GB)
-   * or when the user explicitly clicks "Direct Disk Save".
+   * Reprioritizes the Sliding-Window Scheduler and the backend WebTorrent swarm
+   * immediately when the user seeks to a byte offset or timestamp (Secret #1 & #2).
    */
-  public startDirectDiskDownloadFlow = async (
-    media: DownloadMediaContext,
-    release: DiscoveredReleaseOption,
-  ): Promise<void> => {
-    const infoHash = release.infoHash;
-    let writableStream: any | null = null;
-
-    // 1. Try Chromium Native FileSystemWritableFileStream (writes directly to OS hard drive with progress & pause/resume)
-    if (isDirectDiskPickerSupported()) {
-      try {
-        const handle = await (window as any).showSaveFilePicker({
-          suggestedName: release.cleanFileName,
-          types: [
-            {
-              description: 'Video File',
-              accept: {
-                'video/mp4': ['.mp4', '.mkv'],
-                'video/mp2t': ['.ts'],
-              },
-            },
-          ],
-        });
-        writableStream = await handle.createWritable();
-      } catch (err: any) {
-        if (err?.name === 'AbortError') {
-          return; // User cancelled save picker
-        }
-        writableStream = null;
-      }
-    }
-
-    // 2. If showSaveFilePicker is unavailable, trigger direct native HTTP stream from backend bridge
-    if (!writableStream) {
-      const params = new URLSearchParams({
-        infoHash,
-        magnet: release.magnetUri,
-        fileName: release.cleanFileName,
-      });
-      if (release.directStreamUrl && release.sourceKind !== 'direct-hls') {
-        params.set('directUrl', release.directStreamUrl);
-        if (release.streamReferer) {
-          params.set('referer', release.streamReferer);
-        }
-      }
-      const streamUrl = `/api/cinema-download/stream-file?${params.toString()}`;
-      if (typeof document !== 'undefined') {
-        const link = document.createElement('a');
-        link.href = streamUrl;
-        link.download = release.cleanFileName;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      }
-
-      this.state.tasks[infoHash] = {
-        taskId: infoHash,
-        infoHash,
-        media,
-        release,
-        status: 'completed',
-        storageMode: 'direct-disk',
-        progressPct: 100,
-        completedPieces: release.totalPieces,
-        totalPieces: release.totalPieces,
-        downloadedBytes: release.sizeBytes,
-        totalBytes: release.sizeBytes,
-        speedBytesPerSec: 0,
-        etaSeconds: 0,
-        verifiedPiecesCount: release.totalPieces,
-        corruptPiecesRetried: 0,
-        activePeers: release.seeders || 1,
-        exportedToDevice: true,
-        cacheCleared: true,
-        statusMessage:
-          'تم تحويل التدفق المباشر لمدير تنزيلات المتصفح الأساسي لحفظ الملف الكامل مباشرة على قرص جهازك (تجاوز حد OPFS).',
-        startedAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      this.state.activeTab = 'tasks';
-      this.emit();
-      return;
-    }
-
-    // 3. Stream verified pieces/segments directly into writableStream on disk
-    this.state.tasks[infoHash] = {
-      taskId: infoHash,
-      infoHash,
-      media,
-      release,
-      status: 'initializing',
-      storageMode: 'direct-disk',
-      progressPct: 0,
-      completedPieces: 0,
-      totalPieces: release.totalPieces,
-      downloadedBytes: 0,
-      totalBytes: release.sizeBytes,
-      speedBytesPerSec: 0,
-      etaSeconds: null,
-      verifiedPiecesCount: 0,
-      corruptPiecesRetried: 0,
-      activePeers: release.seeders || 1,
-      exportedToDevice: false,
-      cacheCleared: true,
-      statusMessage:
-        'جاري الاتصال بالسرب لجلب البيانات الحقيقية والكتابة المباشرة لقرص جهازك (Direct Disk)...',
-      startedAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    this.state.activeTab = 'tasks';
-    this.emit();
-
-    const resolved = await this.resolveRealSourceMetadata(release, infoHash);
+  public seekStreamToByteOffset = (
+    infoHash: string,
+    byteOffset: number,
+    notifyBackend = true,
+  ): void => {
     const task = this.state.tasks[infoHash];
     if (!task) return;
 
-    task.totalBytes = resolved.realSizeBytes;
-    task.release.sizeBytes = resolved.realSizeBytes;
-    task.release.sizeFormatted = formatBytes(resolved.realSizeBytes);
-    task.release.pieceLength = resolved.pieceLength;
-    task.release.totalPieces = resolved.totalPieces;
-    task.totalPieces = resolved.totalPieces;
-    task.activePeers = resolved.activePeers;
-    task.status = 'downloading';
-    task.statusMessage = `بدأت الكتابة المباشرة لقرص جهازك (${resolved.totalPieces} قطعة حقيقية)...`;
+    const targetPiece = byteOffsetToPieceIndex(
+      byteOffset,
+      task.release.pieceLength,
+      task.totalPieces,
+    );
+    if (task.playheadPieceIndex === targetPiece) return;
 
-    const bf = new Array(resolved.totalPieces).fill(0);
-    this.savedBitfields.set(infoHash, bf);
-    this.activeLoops.set(infoHash, {
-      cancelled: false,
-      hlsSegments: resolved.hlsSegments,
-      diskWritable: writableStream,
-      bytesTransferredInSession: 0,
-      sessionStartTimeMs: Date.now(),
-    });
+    const bf =
+      this.savedBitfields.get(infoHash) || new Array(task.totalPieces).fill(0);
+    task.playheadPieceIndex = targetPiece;
+    task.priorityPhase = 'seek-window';
+    task.pieceMapBuckets = computePieceMapBuckets(
+      bf,
+      task.totalPieces,
+      targetPiece,
+    );
+    task.statusMessage = `قفز زمني فوري (Sliding-Window Seek): تم توجيه الأولوية القصوى للقطعة #${targetPiece + 1} (${formatBytes(byteOffset)})...`;
+    task.updatedAt = Date.now();
+
+    const loop = this.activeLoops.get(infoHash);
+    if (loop) {
+      loop.isRecentSeek = true;
+      // If the target piece is not yet cached, abort the old piece fetch so the loop immediately fetches targetPiece!
+      if (bf[targetPiece] !== 1) {
+        loop.currentPieceAbort?.abort();
+      }
+    }
     this.emit();
 
-    void this.runPieceDownloadLoop(infoHash, bf);
+    if (notifyBackend && task.release.sourceKind === 'torrent-hybrid') {
+      void fetch('/api/cinema-download/seek-priority', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          infoHash,
+          magnet: task.release.magnetUri,
+          byteOffset,
+          windowBytes: 12 * 1024 * 1024,
+        }),
+      }).catch(() => {});
+    }
+  };
+
+  public seekStreamToProgress = (infoHash: string, ratio0to1: number): void => {
+    const task = this.state.tasks[infoHash];
+    if (!task) return;
+    const clamped = Math.max(0, Math.min(0.995, ratio0to1));
+    const byteOffset = Math.floor(clamped * task.totalBytes);
+    this.seekStreamToByteOffset(infoHash, byteOffset, true);
   };
 
   public triggerBrowserNativeSave(
@@ -925,11 +907,6 @@ class CinemaDownloadManager {
     }
   }
 
-  /**
-   * Publishes active background download state to Dynamic Island (NotchIsland)
-   * when no song/album/audiobook is currently playing, so users can monitor
-   * and control downloads from anywhere in the app even after leaving MoviesPage.
-   */
   private syncDynamicIsland(): void {
     const allTasks = Object.values(this.state.tasks);
     const activeTask =
@@ -968,7 +945,7 @@ class CinemaDownloadManager {
           ? `${formatBytes(activeTask.speedBytesPerSec)}/s`
           : activeTask.status === 'paused'
             ? 'متوقف مؤقتاً'
-            : 'جاري التحميل الفعلي'
+            : 'نافذة منزلقة نشطة'
       }`,
       artworkUrl: activeTask.media.posterUrl,
       accent: '#38BDF8',
@@ -1078,24 +1055,19 @@ class CinemaDownloadManager {
     this.emit();
   };
 
+  /**
+   * Starts real Magnet / Torrent / Stream download using the Hybrid OPFS + Extended
+   * IndexedDB Chunk Worker and Sliding-Window Piece Scheduler.
+   * Never fakes 100% completion!
+   */
   public startDownload = async (
     media: DownloadMediaContext,
     release: DiscoveredReleaseOption,
-    forceMode?: DownloadStorageTargetMode,
+    enableInstantStream = false,
   ): Promise<void> => {
     this.initWorker();
     await this.ensurePersistentStorage();
     await this.refreshQuota();
-
-    // Automatically switch to Direct-to-Disk if the movie exceeds 90% of Free OPFS Quota (e.g. 3.30 GB or 7.13 GB > 2.13 GB OPFS)
-    const exceedsOpfsQuota =
-      this.state.quota.freeBytes > 0 &&
-      release.sizeBytes > this.state.quota.freeBytes * 0.92;
-
-    if (forceMode === 'direct-disk' || exceedsOpfsQuota) {
-      await this.startDirectDiskDownloadFlow(media, release);
-      return;
-    }
 
     const infoHash = release.infoHash;
     const existing = this.state.tasks[infoHash];
@@ -1103,6 +1075,11 @@ class CinemaDownloadManager {
     const initialDone = savedBf
       ? savedBf.reduce((a, b) => a + b, 0)
       : existing?.completedPieces || 0;
+    const streamUrl = buildProgressiveRangeStreamUrl(release);
+
+    const needsHybridExtended =
+      this.state.quota.freeBytes > 0 &&
+      release.sizeBytes > this.state.quota.freeBytes * 0.85;
 
     this.state.tasks[infoHash] = {
       taskId: infoHash,
@@ -1110,7 +1087,7 @@ class CinemaDownloadManager {
       media,
       release,
       status: 'initializing',
-      storageMode: 'opfs-cache',
+      storageMode: needsHybridExtended ? 'hybrid-extended' : 'opfs-cache',
       progressPct: Number(
         ((initialDone / Math.max(1, release.totalPieces)) * 100).toFixed(1),
       ),
@@ -1125,11 +1102,26 @@ class CinemaDownloadManager {
       activePeers: release.seeders || 1,
       exportedToDevice: false,
       cacheCleared: false,
+      isStreamingActive: enableInstantStream || existing?.isStreamingActive,
+      streamUrl,
+      headerAndTailReady: savedBf
+        ? isHeaderAndTailComplete(savedBf, release.totalPieces)
+        : false,
+      playheadPieceIndex: existing?.playheadPieceIndex || 0,
+      priorityPhase: 'header-tail',
+      pieceMapBuckets: computePieceMapBuckets(
+        savedBf || new Array(release.totalPieces).fill(0),
+        release.totalPieces,
+        0,
+      ),
       statusMessage:
-        'جاري الاتصال بالسرب الحقيقي وفحص حجم الملف الفعلي وحجز مساحة OPFS...',
+        'جاري الاتصال برابط الـ Magnet الفعلي وجلب جدول الملفات من السرب (WebTorrent)...',
       startedAt: Date.now(),
       updatedAt: Date.now(),
     };
+    if (enableInstantStream) {
+      this.state.activeStreamingTaskHash = infoHash;
+    }
     this.state.activeTab = 'tasks';
     this.emit();
 
@@ -1145,21 +1137,13 @@ class CinemaDownloadManager {
     task.totalPieces = resolved.totalPieces;
     task.activePeers = resolved.activePeers;
 
-    // Re-check quota with the resolved real byte size from the torrent swarm
-    if (
-      this.state.quota.freeBytes > 0 &&
-      resolved.realSizeBytes > this.state.quota.freeBytes * 0.92
-    ) {
-      await this.startDirectDiskDownloadFlow(media, task.release);
-      return;
-    }
-
     this.activeLoops.set(infoHash, {
       cancelled: false,
       hlsSegments: resolved.hlsSegments,
-      diskWritable: null,
       bytesTransferredInSession: 0,
       sessionStartTimeMs: Date.now(),
+      isRecentSeek: false,
+      currentPieceAbort: null,
     });
 
     if (this.worker) {
@@ -1181,6 +1165,7 @@ class CinemaDownloadManager {
       this.handleWorkerMessage({
         type: 'INIT_READY',
         infoHash,
+        storageMode: task.storageMode,
         bitfield: new Array(resolved.totalPieces).fill(0),
         completedPieces: 0,
         totalPieces: resolved.totalPieces,
@@ -1188,9 +1173,84 @@ class CinemaDownloadManager {
     }
   };
 
+  /**
+   * Starts Progressive Torrent Streaming + OPFS Caching simultaneously,
+   * opening the live HTTP 206 player inside the Download Studio Modal.
+   */
+  public startProgressiveStream = async (
+    media: DownloadMediaContext,
+    release: DiscoveredReleaseOption,
+    openInCinemaStage = false,
+  ): Promise<void> => {
+    const infoHash = release.infoHash;
+    const existing = this.state.tasks[infoHash];
+    if (existing) {
+      existing.isStreamingActive = true;
+      existing.streamUrl = buildProgressiveRangeStreamUrl(release);
+      this.state.activeStreamingTaskHash = infoHash;
+      this.state.activeTab = 'tasks';
+      if (existing.status === 'paused') {
+        void this.startDownload(media, release, true);
+      } else {
+        this.emit();
+      }
+    } else {
+      void this.startDownload(media, release, true);
+    }
+
+    if (openInCinemaStage) {
+      this.openInMainCinemaPlayer(infoHash, media, release);
+    }
+  };
+
+  /**
+   * Hands off the active Progressive Torrent HTTP 206 Stream directly to
+   * the Main Cinema Player on `MoviesPage.tsx` while continuing OPFS background caching!
+   */
+  public openInMainCinemaPlayer = (
+    infoHash: string,
+    explicitMedia?: DownloadMediaContext,
+    explicitRelease?: DiscoveredReleaseOption,
+  ): void => {
+    const task = this.state.tasks[infoHash];
+    const media = explicitMedia || task?.media;
+    const release = explicitRelease || task?.release;
+    if (!media || !release) return;
+
+    const streamUrl =
+      task?.streamUrl || buildProgressiveRangeStreamUrl(release);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('nl:cinema-progressive-torrent-stream', {
+          detail: {
+            infoHash,
+            media,
+            release,
+            streamUrl,
+          },
+        }),
+      );
+    }
+    this.closeModal();
+  };
+
+  public toggleStreamPlayerForTask = (infoHash: string): void => {
+    const task = this.state.tasks[infoHash];
+    if (!task) return;
+    const nextState =
+      this.state.activeStreamingTaskHash === infoHash ? null : infoHash;
+    task.isStreamingActive = Boolean(nextState);
+    this.state.activeStreamingTaskHash = nextState;
+    this.emit();
+  };
+
   public pauseTask = (infoHash: string): void => {
     const loop = this.activeLoops.get(infoHash);
-    if (loop) loop.cancelled = true;
+    if (loop) {
+      loop.cancelled = true;
+      loop.currentPieceAbort?.abort();
+    }
 
     const task = this.state.tasks[infoHash];
     if (!task) return;
@@ -1210,13 +1270,17 @@ class CinemaDownloadManager {
   public resumeTask = (infoHash: string): void => {
     const task = this.state.tasks[infoHash];
     if (!task) return;
-    void this.startDownload(task.media, task.release, task.storageMode);
+    void this.startDownload(
+      task.media,
+      task.release,
+      Boolean(task.isStreamingActive),
+    );
   };
 
   public reExportTask = (infoHash: string): void => {
     const task = this.state.tasks[infoHash];
     if (!task) return;
-    task.statusMessage = 'جاري إعادة نقل الملف من كاش القرص OPFS إلى جهازك...';
+    task.statusMessage = 'جاري إعادة نقل الملف من الكاش القرصي إلى جهازك...';
     this.emit();
     this.worker?.postMessage({
       action: 'FINALIZE_AND_EXPORT',
@@ -1226,7 +1290,10 @@ class CinemaDownloadManager {
 
   public confirmClearCache = (infoHash: string): void => {
     const loop = this.activeLoops.get(infoHash);
-    if (loop) loop.cancelled = true;
+    if (loop) {
+      loop.cancelled = true;
+      loop.currentPieceAbort?.abort();
+    }
 
     const task = this.state.tasks[infoHash];
     if (task) {
@@ -1243,7 +1310,13 @@ class CinemaDownloadManager {
 
   public removeTaskFromList = (infoHash: string): void => {
     const loop = this.activeLoops.get(infoHash);
-    if (loop) loop.cancelled = true;
+    if (loop) {
+      loop.cancelled = true;
+      loop.currentPieceAbort?.abort();
+    }
+    if (this.state.activeStreamingTaskHash === infoHash) {
+      this.state.activeStreamingTaskHash = null;
+    }
     this.worker?.postMessage({
       action: 'CLEANUP_CACHE',
       payload: { infoHash },

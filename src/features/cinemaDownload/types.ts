@@ -2,53 +2,50 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Isolated Cinema Download System — Type Definitions (OPFS + Direct Disk + Real WebTorrent / HLS Assembler)
+ * Isolated Cinema Download & Progressive Torrent Streaming Types
  */
 
-export type DownloadMediaType = 'movie' | 'tv';
+import type { Media } from '../../components/Movies/moviesDataClient';
 
 export type DownloadQualityTier = '2160p' | '1080p' | '720p' | '480p';
 
 export type DownloadSourceKind =
   | 'torrent-hybrid'
-  | 'webrtc-p2p'
   | 'direct-mp4'
   | 'direct-hls';
-
-export type DownloadStorageTargetMode = 'opfs-cache' | 'direct-disk';
 
 export interface DownloadMediaContext {
   id: number;
   tmdbId: number;
   imdbId?: string;
-  mediaType: DownloadMediaType;
+  mediaType: Media;
   title: string;
   originalTitle?: string;
   year?: string;
   posterUrl: string;
   backdropUrl?: string;
+  rating?: number;
+  runtimeMinutes?: number;
   season?: number;
   episode?: number;
   episodeTitle?: string;
-  runtimeMinutes?: number;
-  rating?: number;
 }
 
 export interface ParsedReleaseMetadata {
   rawTitle: string;
   cleanTitle: string;
   year?: number;
-  type: 'movie' | 'episode';
   season?: number;
   episode?: number;
-  episodeTitle?: string;
+  type: 'movie' | 'episode';
   screenSize: DownloadQualityTier;
   source: string;
   videoCodec: string;
-  colorDepth: string[];
   audioCodec: string;
   audioChannels: string;
+  colorDepth: string[];
   releaseGroup: string;
+  container?: string;
 }
 
 export interface DiscoveredReleaseOption {
@@ -75,39 +72,43 @@ export interface DiscoveredReleaseOption {
   pieceLength: number;
   totalPieces: number;
   verifiedSafe: boolean;
-  isRealSource: boolean;
   securityNotes: string[];
   parsedMeta: ParsedReleaseMetadata;
+  isRealSource?: boolean;
 }
 
-export interface StorageQuotaInfo {
-  usageBytes: number;
-  quotaBytes: number;
-  freeBytes: number;
-  usageMB: number;
-  quotaMB: number;
-  freeGB: number;
-  persisted: boolean;
-  opfsSupported: boolean;
-  directDiskSupported: boolean;
-}
-
-export type DownloadTaskStatus =
+export type DownloadTaskLifecycleStatus =
   | 'initializing'
   | 'downloading'
   | 'paused'
-  | 'verifying'
   | 'exporting'
   | 'completed'
   | 'error';
+
+export type DownloadStorageTargetMode =
+  | 'opfs-cache'
+  | 'hybrid-extended'
+  | 'direct-disk';
+
+export type SlidingWindowPriorityPhase =
+  | 'header-tail'
+  | 'seek-window'
+  | 'playhead-window'
+  | 'sequential';
+
+export type PieceMapBucketKind =
+  | 'empty'
+  | 'header-tail'
+  | 'playhead-window'
+  | 'verified';
 
 export interface DownloadTaskState {
   taskId: string;
   infoHash: string;
   media: DownloadMediaContext;
   release: DiscoveredReleaseOption;
+  status: DownloadTaskLifecycleStatus;
   storageMode: DownloadStorageTargetMode;
-  status: DownloadTaskStatus;
   progressPct: number;
   completedPieces: number;
   totalPieces: number;
@@ -124,6 +125,26 @@ export interface DownloadTaskState {
   errorMessage?: string;
   startedAt: number;
   updatedAt: number;
+  // Progressive Torrent Streaming & Sliding-Window Seeking State
+  isStreamingActive?: boolean;
+  streamUrl?: string;
+  headerAndTailReady?: boolean;
+  playheadPieceIndex?: number;
+  activeDownloadingPieceIndex?: number;
+  priorityPhase?: SlidingWindowPriorityPhase;
+  pieceMapBuckets?: PieceMapBucketKind[];
+}
+
+export interface BrowserStorageQuotaInfo {
+  usageBytes: number;
+  quotaBytes: number;
+  freeBytes: number;
+  usageMB: number;
+  quotaMB: number;
+  freeGB: number;
+  persisted: boolean;
+  opfsSupported: boolean;
+  directDiskSupported: boolean;
 }
 
 export interface CinemaDownloadSnapshot {
@@ -134,7 +155,8 @@ export interface CinemaDownloadSnapshot {
   discoveryError: string | null;
   selectedQualityFilter: DownloadQualityTier | 'all';
   activeTab: 'discover' | 'tasks';
-  quota: StorageQuotaInfo;
+  activeStreamingTaskHash: string | null;
+  quota: BrowserStorageQuotaInfo;
   tasks: Record<string, DownloadTaskState>;
   activeTaskIds: string[];
   liveTrackersCount: number;

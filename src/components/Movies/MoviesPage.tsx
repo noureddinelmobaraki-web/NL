@@ -561,6 +561,59 @@ export function MoviesPage({
     bumpControlsVisibility();
   }, [playerRenderMode, bumpControlsVisibility]);
 
+  useEffect(() => {
+    const onProgressiveTorrentStream = (e: Event) => {
+      const custom = e as CustomEvent<{
+        infoHash: string;
+        media: { id: number; mediaType: Media; season?: number; episode?: number };
+        streamUrl: string;
+      }>;
+      const detail = custom.detail;
+      if (!detail || !detail.streamUrl || !detail.media) return;
+
+      const s = detail.media.season || 1;
+      const ep = detail.media.episode || 1;
+      const storageKey = `${detail.media.mediaType}_${detail.media.id}`;
+
+      if (selectedItemId !== detail.media.id) {
+        deepLinkSeRef.current = { itemId: detail.media.id, s, e: ep };
+        setSelectedItemId(detail.media.id, detail.media.mediaType);
+      } else {
+        setSelectedSeason(s);
+        setSelectedEpisode(ep);
+      }
+
+      setTimeout(() => {
+        checkedExtractionKeyRef.current = `${storageKey}_s${s}_e${ep}`;
+        setAllServersFailed(false);
+        setShowHeroTrailer(false);
+        setUseDirectUrlFallback(false);
+        setExtractedStreams([
+          {
+            type: "mp4",
+            directUrl: detail.streamUrl,
+            proxiedUrl: detail.streamUrl,
+            sourcePage: detail.streamUrl,
+          },
+        ]);
+        setActiveExtractedIdx(0);
+        setIsWatchingInGallery(true);
+        setIsPlayerLoading(false);
+        setPlayerRenderMode("direct");
+      }, 60);
+    };
+
+    window.addEventListener(
+      "nl:cinema-progressive-torrent-stream",
+      onProgressiveTorrentStream,
+    );
+    return () =>
+      window.removeEventListener(
+        "nl:cinema-progressive-torrent-stream",
+        onProgressiveTorrentStream,
+      );
+  }, [selectedItemId, setSelectedItemId]);
+
   const handleToggleVideoMute = useCallback(() => {
     const video = videoElementRef.current;
     if (!video) return;

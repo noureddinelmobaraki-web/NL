@@ -2,9 +2,8 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Isolated Glass Download Studio Modal & Global Background Floating Pill
- * Mounted at the application root so downloads continue seamlessly in the
- * background across all pages even after closing MoviesPage.
+ * Isolated Glass Download Studio Modal, Progressive Torrent HTTP 206 Player,
+ * Interactive Sliding-Window Piece Map Bar, & Global Background Floating Pill.
  */
 
 import React, { useState } from 'react';
@@ -26,6 +25,8 @@ import {
   FolderDown,
   RefreshCw,
   AlertCircle,
+  Tv,
+  Zap,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { normLang } from '../../utils/lang';
@@ -53,6 +54,7 @@ export const CinemaDownloadHost: React.FC = () => {
     discoveryError,
     selectedQualityFilter,
     activeTab,
+    activeStreamingTaskHash,
     quota,
     tasks,
     liveTrackersCount,
@@ -99,7 +101,7 @@ export const CinemaDownloadHost: React.FC = () => {
             exit={{ opacity: 0, y: 20, scale: 0.94 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             dir={isAr ? 'rtl' : 'ltr'}
-            className="fixed bottom-4 inset-inline-end-4 z-[10250] max-w-[340px] w-[calc(100vw-2rem)] rounded-2xl p-3 text-white select-none shadow-2xl border border-white/25"
+            className="fixed bottom-4 inset-inline-end-4 z-[10250] max-w-[350px] w-[calc(100vw-2rem)] rounded-2xl p-3 text-white select-none shadow-2xl border border-white/25"
             style={{
               background:
                 'linear-gradient(165deg, rgba(255,255,255,0.16) 0%, rgba(10,16,28,0.88) 100%)',
@@ -122,7 +124,7 @@ export const CinemaDownloadHost: React.FC = () => {
                     {activeBackgroundTask.media.title}
                   </p>
                   <span className="text-[11px] font-black text-sky-300 tabular-nums shrink-0">
-                    {activeBackgroundTask.progressPct.toFixed(0)}%
+                    {activeBackgroundTask.progressPct.toFixed(1)}%
                   </span>
                 </div>
                 <p className="text-[10px] text-white/70 truncate mt-0.5 tabular-nums">
@@ -213,7 +215,7 @@ export const CinemaDownloadHost: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Main Glass Download Studio Modal */}
+      {/* Main Glass Download & Progressive Stream Studio Modal */}
       <AnimatePresence>
         {isModalOpen && (
           <div
@@ -230,23 +232,23 @@ export const CinemaDownloadHost: React.FC = () => {
               aria-modal="true"
               aria-label={
                 isAr
-                  ? 'نافذة التحميل عبر الكاش القرصي OPFS والكتابة المباشرة للقرص'
-                  : 'OPFS & Direct Disk Browser Download Studio'
+                  ? 'مركز التحميل والبث التقدمي عبر التورنت (OPFS + HTTP 206)'
+                  : 'Progressive Torrent Streaming & OPFS Download Studio'
               }
               initial={{ opacity: 0, scale: 0.95, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-              className="relative z-10 w-full max-w-2xl max-h-[90dvh] rounded-3xl overflow-hidden flex flex-col text-white border border-white/25 shadow-2xl"
+              className="relative z-10 w-full max-w-3xl max-h-[92dvh] rounded-3xl overflow-hidden flex flex-col text-white border border-white/25 shadow-2xl"
               style={{
                 background:
-                  'linear-gradient(165deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.04) 45%, rgba(8,12,22,0.92) 100%), rgba(8,12,22,0.86)',
+                  'linear-gradient(165deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.04) 45%, rgba(8,12,22,0.92) 100%), rgba(8,12,22,0.88)',
                 backdropFilter: 'blur(26px) saturate(190%)',
                 WebkitBackdropFilter: 'blur(26px) saturate(190%)',
               }}
             >
               {/* Modal Top Header */}
-              <div className="px-4 sm:px-6 py-4 border-b border-white/14 flex items-center justify-between gap-3">
+              <div className="px-4 sm:px-6 py-3.5 border-b border-white/14 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-9 h-9 rounded-2xl bg-sky-500/20 border border-sky-300/40 flex items-center justify-center text-sky-300 shrink-0">
                     <Download size={18} />
@@ -254,8 +256,8 @@ export const CinemaDownloadHost: React.FC = () => {
                   <div className="min-w-0">
                     <h3 className="text-sm sm:text-base font-black text-white truncate">
                       {isAr
-                        ? 'مركز التحميل المباشر بالمتصفح (OPFS + Direct Disk)'
-                        : 'Direct Browser Download Studio (OPFS + Direct Disk)'}
+                        ? 'استوديو تحميل التورنت والبث التقدمي الفوري (OPFS + HTTP 206)'
+                        : 'Magnet Download & Progressive Stream Studio (OPFS + HTTP 206)'}
                     </h3>
                     <p className="text-[11px] text-white/65 truncate tabular-nums">
                       <HardDrive
@@ -264,11 +266,11 @@ export const CinemaDownloadHost: React.FC = () => {
                       />
                       {quota.freeGB > 0
                         ? isAr
-                          ? `كاش OPFS المتاح: ${quota.freeGB} GB · المستخدم: ${quota.usageMB} MB · ${liveTrackersCount} تراكر نشط`
-                          : `Free OPFS Quota: ${quota.freeGB} GB · Used: ${quota.usageMB} MB · ${liveTrackersCount} Live Trackers`
+                          ? `كاش OPFS: ${quota.freeGB} GB (+ تخزين ممتد غير محدود) · المستخدم: ${quota.usageMB} MB · ${liveTrackersCount} تراكر حي`
+                          : `Free OPFS: ${quota.freeGB} GB (+ Extended Store) · Used: ${quota.usageMB} MB · ${liveTrackersCount} Trackers`
                         : isAr
-                          ? 'تجميع مباشر على القرص مع تحويل تلقائي للكتابة المباشرة عند تجاوز OPFS'
-                          : 'Zero-RAM OPFS Disk Staging & Auto Direct-Disk Overflow'}
+                          ? 'النافذة المنزلقة (Sliding-Window) + بث جزئي HTTP 206 + كاش OPFS ممتد'
+                          : 'Sliding-Window Priority + HTTP 206 Byte-Range Seeking + OPFS'}
                     </p>
                   </div>
                 </div>
@@ -283,13 +285,13 @@ export const CinemaDownloadHost: React.FC = () => {
                 </button>
               </div>
 
-              {/* Active Media Context Card (if opened from a Movie or Series) */}
+              {/* Active Media Context Card */}
               {activeMedia && (
-                <div className="px-4 sm:px-6 py-3.5 bg-white/[0.04] border-b border-white/12 flex items-center gap-3.5">
+                <div className="px-4 sm:px-6 py-3 bg-white/[0.04] border-b border-white/12 flex items-center gap-3.5">
                   <img
                     src={activeMedia.posterUrl}
                     alt={activeMedia.title}
-                    className="w-12 h-16 sm:w-14 sm:h-20 rounded-xl object-cover border border-white/25 shadow-md shrink-0"
+                    className="w-11 h-15 sm:w-12 sm:h-16 rounded-xl object-cover border border-white/25 shadow-md shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -303,7 +305,7 @@ export const CinemaDownloadHost: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-white/70 mt-1 flex-wrap tabular-nums">
+                    <div className="flex items-center gap-2 text-xs text-white/70 mt-0.5 flex-wrap tabular-nums">
                       <span>
                         {activeMedia.mediaType === 'tv'
                           ? isAr
@@ -327,20 +329,12 @@ export const CinemaDownloadHost: React.FC = () => {
                           </span>
                         </>
                       )}
-                      {activeMedia.episodeTitle && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span className="truncate max-w-[180px]">
-                            {activeMedia.episodeTitle}
-                          </span>
-                        </>
-                      )}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Segmented Navigation Bar: Discover Releases vs Active/Saved OPFS Tasks */}
+              {/* Segmented Navigation Bar */}
               <div className="px-4 sm:px-6 py-2.5 border-b border-white/10 flex items-center justify-between gap-2 flex-wrap bg-black/20">
                 <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/8 border border-white/15">
                   <button
@@ -354,7 +348,9 @@ export const CinemaDownloadHost: React.FC = () => {
                         : 'text-white/70 hover:text-white'
                     }`}
                   >
-                    {isAr ? 'خيارات الجودات والروابط' : 'Qualities & Sources'}
+                    {isAr
+                      ? 'ملفات التورنت والجودات (Magnet)'
+                      : 'Magnet Releases & Qualities'}
                   </button>
                   <button
                     type="button"
@@ -367,8 +363,8 @@ export const CinemaDownloadHost: React.FC = () => {
                   >
                     <span>
                       {isAr
-                        ? 'التحميلات والكاش القرصي'
-                        : 'Downloads & OPFS Cache'}
+                        ? 'التحميل الحي والبث الفوري (OPFS + 206)'
+                        : 'Live Downloads & Instant Stream'}
                     </span>
                     {allTasks.length > 0 && (
                       <span className="px-1.5 py-0.2 rounded-full bg-sky-500 text-white text-[10px] font-black tabular-nums">
@@ -410,8 +406,8 @@ export const CinemaDownloadHost: React.FC = () => {
                       <Sparkles size={26} className="text-sky-300/80" />
                       <p className="text-xs sm:text-sm font-bold">
                         {isAr
-                          ? 'اختر أي فيلم أو مسلسل واضغط على زر "تحميل" بجانب زر المشاهدة لجلب جميع الجودات تلقائياً.'
-                          : 'Select any movie or series and click "Download" next to Watch Now to fetch available qualities.'}
+                          ? 'اختر أي فيلم أو مسلسل واضغط على زر "تحميل" بجانب زر المشاهدة لجلب ملفات الـ Magnet الحقيقية.'
+                          : 'Select any movie or series and click "Download" next to Watch Now to fetch real Magnet releases.'}
                       </p>
                     </div>
                   ) : isDiscovering ? (
@@ -422,13 +418,13 @@ export const CinemaDownloadHost: React.FC = () => {
                       />
                       <p className="text-xs sm:text-sm font-extrabold text-white/90">
                         {isAr
-                          ? 'جاري ربط المعرف العالمي (IMDb) وفحص السرب الحقيقي ومصادر البث...'
-                          : 'Linking IMDb ID & scanning real BitTorrent swarms and direct streams...'}
+                          ? 'جاري ربط المعرف العالمي (IMDb) واستخراج روابط الـ Magnet الحقيقية والتراكرات...'
+                          : 'Linking IMDb ID & discovering real Magnet swarms and trackers...'}
                       </p>
                       <p className="text-[11px] text-white/55">
                         {isAr
-                          ? 'يتم جلب المصادر الحقيقية فقط مع تطبيق بوابات الفلترة الـ 6 لحظر الامتدادات التنفيذية'
-                          : 'Discovering real verified video streams & applying 6-stage malware filter'}
+                          ? 'يتم تجهيز النافذة المنزلقة (Header + Tail First) لدعم المشاهدة الفورية والقفز الزمني'
+                          : 'Preparing Sliding-Window (Header + Tail First) for instant streaming & seeking'}
                       </p>
                     </div>
                   ) : discoveryError ? (
@@ -453,8 +449,8 @@ export const CinemaDownloadHost: React.FC = () => {
                       <AlertCircle size={24} className="text-amber-300" />
                       <p className="text-xs sm:text-sm font-extrabold text-white/90">
                         {isAr
-                          ? 'لم يتم العثور على ملفات فيديو حقيقية متاحة في السرب لهذه الجودة حالياً.'
-                          : 'No verified real video swarms or direct streams found for this filter right now.'}
+                          ? 'لم يتم العثور على ملفات تورنت حقيقية لهذه الجودة حالياً.'
+                          : 'No verified real torrent swarms found for this filter right now.'}
                       </p>
                       <button
                         type="button"
@@ -475,9 +471,9 @@ export const CinemaDownloadHost: React.FC = () => {
                         (existingTask.status === 'downloading' ||
                           existingTask.status === 'initializing' ||
                           existingTask.status === 'exporting');
-                      const exceedsOpfs =
+                      const usesHybridExtended =
                         quota.freeBytes > 0 &&
-                        rel.sizeBytes > quota.freeBytes * 0.92;
+                        rel.sizeBytes > quota.freeBytes * 0.85;
 
                       return (
                         <div
@@ -538,21 +534,16 @@ export const CinemaDownloadHost: React.FC = () => {
                             </div>
 
                             <div className="flex items-center gap-1.5 text-[10px] mt-0.5 flex-wrap">
-                              {exceedsOpfs ? (
-                                <span className="text-amber-300 font-bold flex items-center gap-1">
-                                  <HardDrive size={12} className="shrink-0" />
-                                  {isAr
-                                    ? `أكبر من كاش OPFS (${quota.freeGB} GB) · سيتم الحفظ المباشر لقرص جهازك تلقائياً (Direct Disk)`
-                                    : `Exceeds OPFS Quota (${quota.freeGB} GB) · Auto Direct-to-Disk Streaming`}
-                                </span>
-                              ) : (
-                                <span className="text-emerald-300/90 flex items-center gap-1">
-                                  <ShieldCheck size={12} className="shrink-0" />
-                                  {isAr
-                                    ? 'مصدر حقيقي · تجميع في OPFS مع تحقق SHA-1 أو حفظ مباشر للقرص'
-                                    : 'Real Source · OPFS Disk Cache with SHA-1 or Direct Disk Save'}
-                                </span>
-                              )}
+                              <span className="text-emerald-300/90 flex items-center gap-1">
+                                <ShieldCheck size={12} className="shrink-0" />
+                                {usesHybridExtended
+                                  ? isAr
+                                    ? 'كاش هجين ممتد (OPFS + IndexedDB) يتجاوز حد المساحة · يدعم المشاهدة الفورية والقفز الزمني HTTP 206'
+                                    : 'Hybrid Extended Cache (OPFS + IDB) · Instant HTTP 206 Streaming & Seeking'
+                                  : isAr
+                                    ? 'النافذة المنزلقة (Header+Tail First) · مشاهدة فورية مع القفز لأي دقيقة + حفظ في OPFS'
+                                    : 'Sliding-Window (Header+Tail First) · Instant HTTP 206 Stream & OPFS Cache'}
+                              </span>
                             </div>
                           </div>
 
@@ -583,29 +574,29 @@ export const CinemaDownloadHost: React.FC = () => {
                               )}
                             </button>
 
-                            {!exceedsOpfs && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  void cinemaDownloadManager.startDownload(
-                                    activeMedia,
-                                    rel,
-                                    'direct-disk',
-                                  );
-                                }}
-                                title={
-                                  isAr
-                                    ? 'كتابة مباشرة لقرص الجهاز بدون المرور على كاش OPFS'
-                                    : 'Write directly to device disk bypassing OPFS cache'
-                                }
-                                className="px-2.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 border border-amber-300/45 text-xs font-extrabold text-amber-100 flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                              >
-                                <HardDrive size={13} />
-                                <span>
-                                  {isAr ? 'حفظ مباشر للقرص' : 'Direct Disk'}
-                                </span>
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void cinemaDownloadManager.startProgressiveStream(
+                                  activeMedia,
+                                  rel,
+                                  false,
+                                );
+                              }}
+                              title={
+                                isAr
+                                  ? 'مشاهدة فورية مع القفز الزمني العشوائي (HTTP 206) أثناء التحميل في الكاش'
+                                  : 'Instant Progressive Stream with Byte-Range Seeking while caching in OPFS'
+                              }
+                              className="px-3 py-2 rounded-xl bg-fuchsia-500/25 hover:bg-fuchsia-500/40 border border-fuchsia-300/50 text-xs font-extrabold text-fuchsia-100 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                            >
+                              <Zap size={13} className="text-fuchsia-300" />
+                              <span>
+                                {isAr
+                                  ? 'بث فوري + تحميل'
+                                  : 'Stream & Download'}
+                              </span>
+                            </button>
 
                             <button
                               type="button"
@@ -621,6 +612,7 @@ export const CinemaDownloadHost: React.FC = () => {
                                   void cinemaDownloadManager.startDownload(
                                     activeMedia,
                                     rel,
+                                    false,
                                   );
                                 }
                               }}
@@ -630,23 +622,19 @@ export const CinemaDownloadHost: React.FC = () => {
                               <span>
                                 {isThisActive
                                   ? isAr
-                                    ? `جاري التحميل (${existingTask.progressPct.toFixed(0)}%)`
-                                    : `Downloading (${existingTask.progressPct.toFixed(0)}%)`
+                                    ? `جاري التحميل (${existingTask.progressPct.toFixed(1)}%)`
+                                    : `Downloading (${existingTask.progressPct.toFixed(1)}%)`
                                   : existingTask?.status === 'paused'
                                     ? isAr
-                                      ? `استئناف (${existingTask.progressPct.toFixed(0)}%)`
-                                      : `Resume (${existingTask.progressPct.toFixed(0)}%)`
+                                      ? `استئناف (${existingTask.progressPct.toFixed(1)}%)`
+                                      : `Resume (${existingTask.progressPct.toFixed(1)}%)`
                                     : existingTask?.status === 'completed'
                                       ? isAr
                                         ? 'عرض المكتمل'
                                         : 'View Completed'
-                                      : exceedsOpfs
-                                        ? isAr
-                                          ? 'تحميل مباشر للقرص'
-                                          : 'Direct Disk Download'
-                                        : isAr
-                                          ? 'تحميل بالمتصفح'
-                                          : 'Browser Download'}
+                                      : isAr
+                                        ? 'تحميل التورنت'
+                                        : 'Download Magnet'}
                               </span>
                             </button>
                           </div>
@@ -659,8 +647,8 @@ export const CinemaDownloadHost: React.FC = () => {
                     <FolderDown size={28} className="text-sky-300/75" />
                     <p className="text-xs sm:text-sm font-bold">
                       {isAr
-                        ? 'لا توجد تحميلات نشطة أو محفوظة في كاش المتصفح (OPFS) حالياً.'
-                        : 'No active or cached downloads in OPFS storage.'}
+                        ? 'لا توجد تحميلات أو جلسات بث تقدمي نشطة حالياً.'
+                        : 'No active downloads or progressive streams right now.'}
                     </p>
                     {activeMedia && (
                       <button
@@ -671,8 +659,8 @@ export const CinemaDownloadHost: React.FC = () => {
                         className="px-4 py-2 rounded-xl bg-white/12 hover:bg-white/20 border border-white/20 text-xs font-extrabold text-white cursor-pointer mt-1"
                       >
                         {isAr
-                          ? 'استعراض جودات التحميل المتاحة'
-                          : 'Browse Available Qualities'}
+                          ? 'استعراض ملفات التورنت المتاحة'
+                          : 'Browse Available Magnet Releases'}
                       </button>
                     )}
                   </div>
@@ -684,6 +672,10 @@ export const CinemaDownloadHost: React.FC = () => {
                       task.status === 'exporting';
                     const isPaused = task.status === 'paused';
                     const isCompleted = task.status === 'completed';
+                    const isPlayerOpen =
+                      activeStreamingTaskHash === task.infoHash ||
+                      Boolean(task.isStreamingActive);
+                    const buckets = task.pieceMapBuckets || [];
 
                     return (
                       <div
@@ -698,7 +690,7 @@ export const CinemaDownloadHost: React.FC = () => {
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                 <h5 className="text-xs sm:text-sm font-black text-white truncate">
                                   {task.media.title}
                                   {task.media.mediaType === 'tv' && (
@@ -718,17 +710,24 @@ export const CinemaDownloadHost: React.FC = () => {
                                 </h5>
                                 <span
                                   className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 ${
-                                    task.storageMode === 'direct-disk'
-                                      ? 'bg-amber-400/20 text-amber-200 border border-amber-300/40'
+                                    task.storageMode === 'hybrid-extended'
+                                      ? 'bg-fuchsia-400/20 text-fuchsia-200 border border-fuchsia-300/40'
                                       : 'bg-sky-400/20 text-sky-200 border border-sky-300/40'
                                   }`}
                                 >
-                                  {task.storageMode === 'direct-disk'
+                                  {task.storageMode === 'hybrid-extended'
                                     ? isAr
-                                      ? 'قرص مباشر Direct Disk'
-                                      : 'Direct Disk'
+                                      ? 'كاش ممتد OPFS + IDB'
+                                      : 'Hybrid OPFS + IDB'
                                     : 'OPFS Cache'}
                                 </span>
+                                {task.headerAndTailReady && (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-400/20 text-amber-200 border border-amber-300/40 shrink-0">
+                                    {isAr
+                                      ? 'الرأس والذيل جاهزان للقفز'
+                                      : 'Header+Tail Ready'}
+                                  </span>
+                                )}
                               </div>
                               <span className="text-xs sm:text-sm font-black text-sky-300 tabular-nums shrink-0">
                                 {task.progressPct.toFixed(1)}%
@@ -762,34 +761,194 @@ export const CinemaDownloadHost: React.FC = () => {
                               )}
                             </p>
 
-                            {/* Progress Bar */}
-                            <div className="w-full h-2 rounded-full bg-white/12 overflow-hidden mt-2">
-                              <div
-                                className={`h-full rounded-full transition-transform duration-200 origin-left ${
-                                  isCompleted
-                                    ? 'bg-emerald-400'
-                                    : isPaused
-                                      ? 'bg-amber-400'
-                                      : 'bg-sky-400'
-                                }`}
-                                style={{
-                                  transform: `scaleX(${Math.max(
-                                    0.02,
-                                    task.progressPct / 100,
-                                  )})`,
-                                }}
-                              />
-                            </div>
+                            {/* Interactive Sliding-Window Piece Map Bar (Secret #1 Visualization & Click-to-Seek) */}
+                            {buckets.length > 0 && (
+                              <div className="mt-2.5 flex flex-col gap-1">
+                                <div className="flex items-center justify-between text-[10px] text-white/65 tabular-nums">
+                                  <span>
+                                    {isAr
+                                      ? 'خريطة القطع الحية للنافذة المنزلقة (اضغط على أي موضع للقفز الزمني الفوري):'
+                                      : 'Live Sliding-Window Piece Map (Click any point to seek priority):'}
+                                  </span>
+                                  {typeof task.activeDownloadingPieceIndex ===
+                                    'number' &&
+                                    isRunning && (
+                                      <span className="text-fuchsia-300 font-bold">
+                                        {isAr
+                                          ? `القطعة النشطة: #${task.activeDownloadingPieceIndex + 1}`
+                                          : `Active Piece: #${task.activeDownloadingPieceIndex + 1}`}
+                                      </span>
+                                    )}
+                                </div>
+                                <div
+                                  className="grid gap-0.5 h-3 w-full rounded-lg bg-black/40 p-0.5 border border-white/10"
+                                  style={{
+                                    gridTemplateColumns: `repeat(${buckets.length}, minmax(0, 1fr))`,
+                                  }}
+                                >
+                                  {buckets.map((kind, bIdx) => (
+                                    <button
+                                      key={bIdx}
+                                      type="button"
+                                      onClick={() =>
+                                        cinemaDownloadManager.seekStreamToProgress(
+                                          task.infoHash,
+                                          bIdx / buckets.length,
+                                        )
+                                      }
+                                      title={
+                                        isAr
+                                          ? `قفز أولوية السرب إلى الموضع ${Math.round((bIdx / buckets.length) * 100)}%`
+                                          : `Seek swarm priority to ${Math.round((bIdx / buckets.length) * 100)}%`
+                                      }
+                                      className={`h-full rounded-[2px] cursor-pointer transition-opacity hover:opacity-100 ${
+                                        kind === 'playhead-window'
+                                          ? 'bg-fuchsia-400'
+                                          : kind === 'header-tail'
+                                            ? 'bg-amber-400'
+                                            : kind === 'verified'
+                                              ? 'bg-sky-400'
+                                              : 'bg-white/12 hover:bg-white/30'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <div className="flex items-center gap-3 text-[10px] text-white/55 flex-wrap">
+                                  <span className="flex items-center gap-1">
+                                    <span className="w-2 h-2 rounded-xs bg-amber-400 inline-block" />
+                                    {isAr
+                                      ? 'الرأس والذيل (moov/Cues)'
+                                      : 'Header & Tail (moov/Cues)'}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <span className="w-2 h-2 rounded-xs bg-fuchsia-400 inline-block" />
+                                    {isAr
+                                      ? 'نافذة المشاهدة / القفز الحالية'
+                                      : 'Playhead / Seek Window'}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <span className="w-2 h-2 rounded-xs bg-sky-400 inline-block" />
+                                    {isAr
+                                      ? 'قطع موثقة في الكاش (SHA-1)'
+                                      : 'Verified Cached Pieces'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
 
-                            <p className="text-[11px] text-white/80 mt-1.5 font-semibold">
+                            <p className="text-[11px] text-white/85 mt-1.5 font-semibold">
                               {task.statusMessage}
                             </p>
                           </div>
                         </div>
 
-                        {/* Task Action Controls: Pause / Resume / Export / Confirm Cache Cleanup */}
+                        {/* Embedded Progressive HTTP 206 Video Streamer inside Modal */}
+                        {isPlayerOpen && task.streamUrl && (
+                          <div className="rounded-2xl overflow-hidden bg-black border border-white/20 flex flex-col">
+                            <div className="px-3 py-2 bg-white/[0.06] border-b border-white/12 flex items-center justify-between gap-2 flex-wrap">
+                              <span className="text-[11px] font-extrabold text-fuchsia-200 flex items-center gap-1.5">
+                                <Zap size={13} className="text-fuchsia-300" />
+                                {isAr
+                                  ? 'مشغل البث التقدمي الفوري (HTTP 206 Byte-Range Seeking) — يمكنك التقديم لأي دقيقة فوراً'
+                                  : 'Progressive Torrent Player (HTTP 206 Byte-Range Seeking) — Seek to any timestamp'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  cinemaDownloadManager.openInMainCinemaPlayer(
+                                    task.infoHash,
+                                  )
+                                }
+                                className="px-3 py-1 rounded-lg bg-sky-500/30 hover:bg-sky-500/45 border border-sky-300/50 text-[11px] font-black text-white flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Tv size={12} />
+                                <span>
+                                  {isAr
+                                    ? 'فتح في مشغل السينما الرئيسي بالصفحة'
+                                    : 'Watch in Main Cinema Player'}
+                                </span>
+                              </button>
+                            </div>
+                            <video
+                              key={task.streamUrl}
+                              src={task.streamUrl}
+                              controls
+                              autoPlay
+                              playsInline
+                              className="w-full aspect-video bg-black object-contain"
+                              onSeeking={(e) => {
+                                const v = e.currentTarget;
+                                if (v.duration && Number.isFinite(v.duration) && v.duration > 0) {
+                                  cinemaDownloadManager.seekStreamToProgress(
+                                    task.infoHash,
+                                    v.currentTime / v.duration,
+                                  );
+                                }
+                              }}
+                              onTimeUpdate={(e) => {
+                                const v = e.currentTarget;
+                                if (v.duration && Number.isFinite(v.duration) && v.duration > 0) {
+                                  const ratio = v.currentTime / v.duration;
+                                  const targetP = Math.floor(
+                                    ratio * task.totalPieces,
+                                  );
+                                  if (
+                                    Math.abs(
+                                      targetP - (task.playheadPieceIndex || 0),
+                                    ) >= 3
+                                  ) {
+                                    cinemaDownloadManager.seekStreamToProgress(
+                                      task.infoHash,
+                                      ratio,
+                                    );
+                                  }
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Task Action Controls */}
                         <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-white/10">
                           <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                cinemaDownloadManager.toggleStreamPlayerForTask(
+                                  task.infoHash,
+                                )
+                              }
+                              className="px-3 py-1.5 rounded-xl bg-fuchsia-500/25 hover:bg-fuchsia-500/40 border border-fuchsia-300/45 text-xs font-extrabold text-fuchsia-100 flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Zap size={13} />
+                              <span>
+                                {isPlayerOpen
+                                  ? isAr
+                                    ? 'إخفاء المشغل المصغر'
+                                    : 'Hide Mini Player'
+                                  : isAr
+                                    ? 'مشاهدة فورية أثناء التحميل'
+                                    : 'Watch Progressive Stream'}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                cinemaDownloadManager.openInMainCinemaPlayer(
+                                  task.infoHash,
+                                )
+                              }
+                              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-extrabold text-white flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Tv size={13} />
+                              <span>
+                                {isAr
+                                  ? 'مشغل السينما الرئيسي'
+                                  : 'Main Cinema Player'}
+                              </span>
+                            </button>
+
                             {isRunning && (
                               <button
                                 type="button"
@@ -820,56 +979,50 @@ export const CinemaDownloadHost: React.FC = () => {
                               </button>
                             )}
 
-                            {isCompleted &&
-                              task.storageMode === 'opfs-cache' &&
-                              !task.cacheCleared && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      cinemaDownloadManager.reExportTask(
-                                        task.infoHash,
-                                      )
-                                    }
-                                    className="px-3.5 py-1.5 rounded-xl bg-white/12 hover:bg-white/20 border border-white/25 text-xs font-extrabold text-white flex items-center gap-1.5 cursor-pointer"
-                                  >
-                                    <FolderDown size={13} />
-                                    <span>
-                                      {isAr
-                                        ? 'حفظ للجهاز مجدداً'
-                                        : 'Save to Device Again'}
-                                    </span>
-                                  </button>
+                            {isCompleted && !task.cacheCleared && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    cinemaDownloadManager.reExportTask(
+                                      task.infoHash,
+                                    )
+                                  }
+                                  className="px-3.5 py-1.5 rounded-xl bg-white/12 hover:bg-white/20 border border-white/25 text-xs font-extrabold text-white flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <FolderDown size={13} />
+                                  <span>
+                                    {isAr
+                                      ? 'حفظ للجهاز مجدداً'
+                                      : 'Save to Device Again'}
+                                  </span>
+                                </button>
 
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      cinemaDownloadManager.confirmClearCache(
-                                        task.infoHash,
-                                      )
-                                    }
-                                    className="px-3.5 py-1.5 rounded-xl bg-emerald-500/30 hover:bg-emerald-500/45 border border-emerald-300/55 text-xs font-black text-emerald-100 flex items-center gap-1.5 cursor-pointer shadow-sm"
-                                  >
-                                    <CheckCircle2 size={13} />
-                                    <span>
-                                      {isAr
-                                        ? 'تأكيد وتفريغ كاش المتصفح (OPFS)'
-                                        : 'Confirm & Clean OPFS Cache'}
-                                    </span>
-                                  </button>
-                                </>
-                              )}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    cinemaDownloadManager.confirmClearCache(
+                                      task.infoHash,
+                                    )
+                                  }
+                                  className="px-3.5 py-1.5 rounded-xl bg-emerald-500/30 hover:bg-emerald-500/45 border border-emerald-300/55 text-xs font-black text-emerald-100 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                >
+                                  <CheckCircle2 size={13} />
+                                  <span>
+                                    {isAr
+                                      ? 'تأكيد وتفريغ الكاش القرصي'
+                                      : 'Confirm & Clean Cache'}
+                                  </span>
+                                </button>
+                              </>
+                            )}
 
                             {task.cacheCleared && (
                               <span className="text-[11px] font-bold text-emerald-300 flex items-center gap-1">
                                 <CheckCircle2 size={13} />
-                                {task.storageMode === 'direct-disk'
-                                  ? isAr
-                                    ? 'تم الحفظ المباشر لقرص جهازك بدون استهلاك كاش المتصفح'
-                                    : 'Saved directly to device disk with zero OPFS usage'
-                                  : isAr
-                                    ? 'تم النقل للجهاز وتفريغ الكاش بنجاح'
-                                    : 'Saved to device & OPFS cache cleaned'}
+                                {isAr
+                                  ? 'تم النقل للجهاز وتفريغ الكاش بنجاح'
+                                  : 'Saved to device & cache cleaned'}
                               </span>
                             )}
                           </div>
@@ -899,11 +1052,11 @@ export const CinemaDownloadHost: React.FC = () => {
               <div className="px-4 sm:px-6 py-3 border-t border-white/12 bg-black/30 flex items-center justify-between gap-2 text-[11px] text-white/65">
                 <span>
                   {isAr
-                    ? '💡 يستمر التحميل في الخلفية حتى لو أغلقت هذه النافذة أو خرجت من صفحة الأفلام.'
-                    : '💡 Downloads continue in the background even if you close this window or leave Movies.'}
+                    ? '💡 كل قطعة تشاهدها عبر البث التقدمي (HTTP 206) تُحفظ تلقائياً في كاش المتصفح (OPFS) لتكتمل نسختك دون إعادة تحميل.'
+                    : '💡 Every piece watched via HTTP 206 Progressive Stream is automatically cached in OPFS.'}
                 </span>
                 <span className="font-bold text-sky-300 shrink-0">
-                  WebTorrent + HLS + OPFS/Disk
+                  Sliding-Window + HTTP 206 + OPFS
                 </span>
               </div>
             </m.div>

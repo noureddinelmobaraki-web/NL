@@ -243,6 +243,30 @@ async function startServer() {
     return null;
   }
 
+  function markFileByteRangeCritical(
+    torrent: any,
+    mainFile: any,
+    byteStart: number,
+    byteEnd: number,
+  ): void {
+    try {
+      if (!torrent || typeof torrent.critical !== "function") return;
+      const tPieceLen = Math.max(16384, Number(torrent.pieceLength) || 262144);
+      const fileOffset = Number(mainFile.offset) || 0;
+      const fileLen = Number(mainFile.length) || 0;
+      const clampedStart = Math.max(0, Math.min(fileLen - 1, byteStart));
+      const clampedEnd = Math.max(
+        clampedStart,
+        Math.min(fileLen - 1, byteEnd),
+      );
+      const startPiece = Math.floor((fileOffset + clampedStart) / tPieceLen);
+      const endPiece = Math.floor((fileOffset + clampedEnd) / tPieceLen);
+      torrent.critical(startPiece, Math.max(startPiece, endPiece));
+    } catch {
+      // ignore if critical range is out of bounds
+    }
+  }
+
   async function ensureActiveTorrent(
     infoHash: string,
     magnetUri?: string,
@@ -269,14 +293,29 @@ async function startServer() {
     );
 
     if (!torrent) {
-      const cachedTorrentBuf = await fetchTorrentBufferFromPublicCache(cleanHash);
+      const cachedTorrentBuf =
+        await fetchTorrentBufferFromPublicCache(cleanHash);
+      // Merge trackers from the incoming magnet URI with default bridge trackers
+      const mergedTrackers = new Set<string>(DEFAULT_BRIDGE_TRACKERS);
+      if (magnetUri) {
+        try {
+          const qIdx = magnetUri.indexOf("?");
+          if (qIdx >= 0) {
+            const sp = new URLSearchParams(magnetUri.slice(qIdx + 1));
+            for (const tr of sp.getAll("tr")) {
+              if (tr) mergedTrackers.add(tr);
+            }
+          }
+        } catch {}
+      }
+      const announceList = Array.from(mergedTrackers);
       const targetId =
         cachedTorrentBuf ||
         magnetUri ||
-        `magnet:?xt=urn:btih:${cleanHash}&tr=${DEFAULT_BRIDGE_TRACKERS.map(encodeURIComponent).join("&tr=")}`;
+        `magnet:?xt=urn:btih:${cleanHash}&tr=${announceList.map(encodeURIComponent).join("&tr=")}`;
 
       const addOpts: Record<string, unknown> = {
-        announce: DEFAULT_BRIDGE_TRACKERS,
+        announce: announceList,
       };
       if (memoryChunkStoreMod) {
         addOpts.store = memoryChunkStoreMod;
@@ -288,7 +327,9 @@ async function startServer() {
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => {
           cleanup();
-          reject(new Error("انتهت مهلة انتظار استجابة النظراء في سرب التورنت"));
+          reject(
+            new Error("انتهت مهلة انتظار استجابة النظراء في سرب التورنت"),
+          );
         }, timeoutMs);
 
         const onReady = () => {
@@ -328,6 +369,21 @@ async function startServer() {
       }
     }
 
+    // Secret #1: Prioritize Header (first 2 MB) + Tail (last 2 MB for MP4 moov / MKV Cues) immediately!
+    const fileLen = Number(mainFile.length) || 0;
+    if (fileLen > 0) {
+      const twoMB = Math.min(fileLen, 2 * 1024 * 1024);
+      markFileByteRangeCritical(torrent, mainFile, 0, twoMB - 1);
+      if (fileLen > twoMB) {
+        markFileByteRangeCritical(
+          torrent,
+          mainFile,
+          Math.max(0, fileLen - twoMB),
+          fileLen - 1,
+        );
+      }
+    }
+
     return { torrent, mainFile };
   }
 
@@ -335,7 +391,7 @@ async function startServer() {
     mainFile: any,
     start: number,
     end: number,
-    timeoutMs = 18000,
+    timeoutMs = 22000,
   ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
@@ -375,10 +431,11 @@ async function startServer() {
       const { torrent, mainFile } = await ensureActiveTorrent(
         infoHash,
         magnetUri || undefined,
-        14000,
+        15000,
       );
       const fileSize = Number(mainFile.length) || 0;
-      const chunkLen = fileSize >= 2 * 1024 * 1024 * 1024 ? 2 * 1024 * 1024 : 1024 * 1024;
+      const chunkLen =
+        fileSize >= 2 * 1024 * 1024 * 1024 ? 2 * 1024 * 1024 : 1024 * 1024;
       const totalPieces = Math.max(1, Math.ceil(fileSize / chunkLen));
 
       res.json({
@@ -388,13 +445,53 @@ async function startServer() {
         fileSize,
         pieceLength: chunkLen,
         totalPieces,
-        numPeers: Number(torrent.numPeers) || 1,
+        peers: Math.max(1, Number(torrent.numPeers) || 1),
       });
     } catch (err: any) {
       res.status(504).json({
         ok: false,
         error: err?.message || "تعذر الاتصال بموزعي هذا التورنت حالياً",
       });
+    }
+  });
+
+  // 1B. Dynamic Seek Reprioritization Endpoint (Sliding-Window Seek Priority)
+  app.post("/api/cinema-download/seek-priority", async (req, res) => {
+    const infoHash = String(req.body?.infoHash || "")
+      .trim()
+      .toLowerCase();
+    const magnetUri = String(req.body?.magnet || "").trim();
+    const byteOffset = Math.max(0, Number(req.body?.byteOffset) || 0);
+    const windowBytes = Math.max(
+      2 * 1024 * 1024,
+      Number(req.body?.windowBytes) || 12 * 1024 * 1024,
+    );
+
+    if (!/^[0-9a-f]{40}$/.test(infoHash)) {
+      res.status(400).json({ ok: false });
+      return;
+    }
+
+    try {
+      const { torrent, mainFile } = await ensureActiveTorrent(
+        infoHash,
+        magnetUri || undefined,
+        10000,
+      );
+      markFileByteRangeCritical(
+        torrent,
+        mainFile,
+        byteOffset,
+        byteOffset + windowBytes - 1,
+      );
+      res.json({
+        ok: true,
+        infoHash,
+        byteOffset,
+        peers: Math.max(1, Number(torrent.numPeers) || 1),
+      });
+    } catch {
+      res.status(202).json({ ok: false });
     }
   });
 
@@ -424,7 +521,6 @@ async function startServer() {
       let manifestText = await r1.text();
       let activePlaylistUrl = playlistUrl;
 
-      // If Master Playlist (#EXT-X-STREAM-INF), select the highest bandwidth variant
       if (manifestText.includes("#EXT-X-STREAM-INF")) {
         const lines = manifestText.split(/\r?\n/);
         let bestBw = -1;
@@ -494,7 +590,7 @@ async function startServer() {
     }
   });
 
-  // 3. Real Binary Piece & Segment Fetcher (Zero Synthetic Bytes!)
+  // 3. Real Binary Piece & Segment Fetcher with Sliding-Window Swarm Priority (Zero Synthetic Bytes!)
   app.get("/api/cinema-download/piece", async (req, res) => {
     const infoHash = String(req.query.infoHash || "").trim().toLowerCase();
     const magnetUri = String(req.query.magnet || "").trim();
@@ -503,7 +599,10 @@ async function startServer() {
       4 * 1024 * 1024,
       Math.max(16384, Number(req.query.pieceLength) || 1048576),
     );
-    const totalSize = Math.max(pieceLength, Number(req.query.totalSize) || pieceLength);
+    const totalSize = Math.max(
+      pieceLength,
+      Number(req.query.totalSize) || pieceLength,
+    );
     const directUrl = String(req.query.directUrl || "").trim();
     const segmentUrl = String(req.query.segmentUrl || "").trim();
     const referer = String(req.query.referer || "").trim();
@@ -520,7 +619,9 @@ async function startServer() {
           signal: AbortSignal.timeout(12000),
         });
         if (!upstream.ok) {
-          res.status(502).json({ error: `فشل سحب مقطع الفيديو HTTP ${upstream.status}` });
+          res
+            .status(502)
+            .json({ error: `فشل سحب مقطع الفيديو HTTP ${upstream.status}` });
           return;
         }
         const arrBuf = await upstream.arrayBuffer();
@@ -574,21 +675,25 @@ async function startServer() {
             return;
           }
         }
-        res.status(502).json({ error: "الخادم المباشر لم يعد بيانات صالحة لهذه القطعة" });
+        res
+          .status(502)
+          .json({ error: "الخادم المباشر لم يعد بيانات صالحة لهذه القطعة" });
         return;
       } catch (err: any) {
-        res.status(502).json({ error: err?.message || "فشل الاتصال برابط الفيديو المباشر" });
+        res.status(502).json({
+          error: err?.message || "فشل الاتصال برابط الفيديو المباشر",
+        });
         return;
       }
     }
 
-    // Path C: Real WebTorrent Swarm Byte-Range Read
+    // Path C: Real WebTorrent Swarm Byte-Range Read with Sliding-Window Priority
     if (/^[0-9a-f]{40}$/.test(infoHash)) {
       try {
         const { torrent, mainFile } = await ensureActiveTorrent(
           infoHash,
           magnetUri || undefined,
-          15000,
+          16000,
         );
         const trueFileSize = Number(mainFile.length) || totalSize;
         if (byteStart >= trueFileSize) {
@@ -596,7 +701,20 @@ async function startServer() {
           return;
         }
         const byteEnd = Math.min(trueFileSize - 1, byteStart + pieceLength - 1);
-        const buf = await readStreamRangeToBuffer(mainFile, byteStart, byteEnd, 20000);
+        // Mark this piece + next 3 pieces critical in the BitTorrent swarm!
+        markFileByteRangeCritical(
+          torrent,
+          mainFile,
+          byteStart,
+          Math.min(trueFileSize - 1, byteEnd + 3 * pieceLength),
+        );
+
+        const buf = await readStreamRangeToBuffer(
+          mainFile,
+          byteStart,
+          byteEnd,
+          24000,
+        );
         const sha1 = crypto.createHash("sha1").update(buf).digest("hex");
 
         res.setHeader("Content-Type", "application/octet-stream");
@@ -604,8 +722,14 @@ async function startServer() {
         res.setHeader("X-Piece-SHA1", sha1);
         res.setHeader("X-Piece-Length", String(buf.length));
         res.setHeader("X-Real-File-Size", String(trueFileSize));
-        res.setHeader("X-Real-File-Name", encodeURIComponent(String(mainFile.name || "")));
-        res.setHeader("X-Active-Peers", String(Number(torrent.numPeers) || 1));
+        res.setHeader(
+          "X-Real-File-Name",
+          encodeURIComponent(String(mainFile.name || "")),
+        );
+        res.setHeader(
+          "X-Active-Peers",
+          String(Math.max(1, Number(torrent.numPeers) || 1)),
+        );
         res.setHeader("Cache-Control", "no-store");
         res.send(buf);
         return;
@@ -613,7 +737,7 @@ async function startServer() {
         res.status(504).json({
           error:
             err?.message ||
-            "لم يستجب نظراء التورنت في الوقت المحدد — يرجى اختيار جودة أخرى أو البث المباشر",
+            "لم يستجب نظراء التورنت في الوقت المحدد — يرجى الضغط على استئناف أو اختيار جودة أخرى",
         });
         return;
       }
@@ -622,7 +746,137 @@ async function startServer() {
     res.status(400).json({ error: "طلب قطعة غير مكتمل المعطيات" });
   });
 
-  // 4. Direct Native Browser Stream Download (Bypasses OPFS Quota Limit on Any Browser)
+  // 4. HTTP 206 Partial Content Progressive Torrent & Direct Video Streamer (Secret #2)
+  // Powers instant `<video>` playback + arbitrary byte-range time seeking (e.g. jumping to 55:00)
+  app.get("/api/cinema-download/range-stream", async (req, res) => {
+    const infoHash = String(req.query.infoHash || "").trim().toLowerCase();
+    const magnetUri = String(req.query.magnet || "").trim();
+    const directUrl = String(req.query.directUrl || "").trim();
+    const referer = String(req.query.referer || "").trim();
+    const rangeHeader = String(req.headers.range || "");
+
+    // Direct HTTP URL Range Proxy
+    if (directUrl && /^https?:\/\//i.test(directUrl)) {
+      try {
+        const headers: Record<string, string> = {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        };
+        if (rangeHeader) headers.Range = rangeHeader;
+        if (referer) headers.Referer = referer;
+        const upstream = await fetch(directUrl, {
+          headers,
+          signal: AbortSignal.timeout(15000),
+        });
+        res.status(upstream.status);
+        upstream.headers.forEach((val, key) => {
+          const low = key.toLowerCase();
+          if (
+            low === "content-type" ||
+            low === "content-length" ||
+            low === "content-range" ||
+            low === "accept-ranges"
+          ) {
+            res.setHeader(key, val);
+          }
+        });
+        res.setHeader("Accept-Ranges", "bytes");
+        if (upstream.body) {
+          const reader = upstream.body.getReader();
+          const pump = async () => {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (!res.writableEnded) {
+                res.write(Buffer.from(value));
+              }
+            }
+            if (!res.writableEnded) res.end();
+          };
+          req.on("close", () => {
+            try {
+              reader.cancel();
+            } catch {}
+          });
+          await pump();
+        } else {
+          res.end();
+        }
+        return;
+      } catch (err: any) {
+        res.status(502).send(err?.message || "Direct range stream error");
+        return;
+      }
+    }
+
+    // Real Magnet / WebTorrent HTTP 206 Byte-Range Streamer
+    if (!/^[0-9a-f]{40}$/.test(infoHash)) {
+      res.status(400).send("Invalid infoHash for HTTP 206 range stream");
+      return;
+    }
+
+    try {
+      const { torrent, mainFile } = await ensureActiveTorrent(
+        infoHash,
+        magnetUri || undefined,
+        18000,
+      );
+      const totalSize = Number(mainFile.length) || 0;
+      if (totalSize <= 0) {
+        res.status(404).send("Empty torrent video file");
+        return;
+      }
+
+      let start = 0;
+      let end = totalSize - 1;
+
+      if (rangeHeader && rangeHeader.startsWith("bytes=")) {
+        const parts = rangeHeader.replace(/bytes=/, "").split("-");
+        const parsedStart = parseInt(parts[0], 10);
+        if (!Number.isNaN(parsedStart) && parsedStart >= 0) {
+          start = Math.min(totalSize - 1, parsedStart);
+        }
+        if (parts[1] && parts[1].length > 0) {
+          const parsedEnd = parseInt(parts[1], 10);
+          if (!Number.isNaN(parsedEnd) && parsedEnd >= start) {
+            end = Math.min(totalSize - 1, parsedEnd);
+          }
+        }
+      }
+
+      // Dynamic Seek Reprioritization: mark 12 MB ahead of the requested byte offset as critical!
+      markFileByteRangeCritical(
+        torrent,
+        mainFile,
+        start,
+        Math.min(totalSize - 1, start + 12 * 1024 * 1024),
+      );
+
+      const contentLength = end - start + 1;
+      res.status(rangeHeader ? 206 : 200);
+      res.setHeader("Content-Type", "video/mp4");
+      res.setHeader("Accept-Ranges", "bytes");
+      if (rangeHeader) {
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${totalSize}`);
+      }
+      res.setHeader("Content-Length", String(contentLength));
+      res.setHeader("Cache-Control", "no-store");
+
+      const stream = mainFile.createReadStream({ start, end });
+      req.on("close", () => {
+        try {
+          stream.destroy();
+        } catch {}
+      });
+      stream.on("error", () => {
+        if (!res.writableEnded) res.end();
+      });
+      stream.pipe(res);
+    } catch (err: any) {
+      res.status(504).send(err?.message || "Torrent range stream timeout");
+    }
+  });
+
+  // 5. Direct Native Browser Stream Download
   app.get("/api/cinema-download/stream-file", async (req, res) => {
     const infoHash = String(req.query.infoHash || "").trim().toLowerCase();
     const magnetUri = String(req.query.magnet || "").trim();

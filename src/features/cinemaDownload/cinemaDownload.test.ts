@@ -2,8 +2,10 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * Unit tests for the isolated Cinema Download System (Parser, 6-Gate Security Filter,
- * Magnet Synthesizer, Real Piece Geometry, and Download Manager).
+ * Unit tests for the isolated Cinema Download System:
+ * - Scene Release Parser & 6-Gate Security Filter
+ * - Magnet URI Synthesizer & Real Multi-GB Piece Geometry
+ * - Sliding-Window Priority Scheduler (Header+Tail First, Playhead Read-Ahead, Seek Reprioritization)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -19,6 +21,11 @@ import {
   buildCleanDownloadFileName,
   computeRealPieceGeometry,
 } from './releaseDiscoveryService';
+import {
+  byteOffsetToPieceIndex,
+  computePieceMapBuckets,
+  selectNextPieceToDownload,
+} from './slidingWindowScheduler';
 
 describe('Cinema Download Release Parser & 6-Gate Security Filter', () => {
   it('parses complex 4K TV episode release names accurately', () => {
@@ -108,5 +115,46 @@ describe('Cinema Download Release Parser & 6-Gate Security Filter', () => {
     expect(cleanName).toBe(
       'The.Shawshank.Redemption.1994.2160p.WEB-DL.H.265.mp4',
     );
+  });
+
+  it('prioritizes Header [0, 1] + Tail [N-1, N-2] first, then Playhead/Seek Window, then Sequential', () => {
+    const totalPieces = 1000;
+    const bf = new Uint8Array(totalPieces);
+
+    // Step 1: Must pick piece 0, 1, 999, 998 first (Header + Tail for moov/Cues)
+    const p1 = selectNextPieceToDownload(bf, totalPieces, 0);
+    expect(p1?.pieceIndex).toBe(0);
+    expect(p1?.phase).toBe('header-tail');
+    bf[0] = 1;
+
+    const p2 = selectNextPieceToDownload(bf, totalPieces, 0);
+    expect(p2?.pieceIndex).toBe(1);
+    bf[1] = 1;
+
+    const p3 = selectNextPieceToDownload(bf, totalPieces, 0);
+    expect(p3?.pieceIndex).toBe(999);
+    bf[999] = 1;
+
+    const p4 = selectNextPieceToDownload(bf, totalPieces, 0);
+    expect(p4?.pieceIndex).toBe(998);
+    bf[998] = 1;
+
+    // Step 2: When user seeks to minute 55:00 (e.g. piece 540), scheduler immediately prioritizes [540..549]
+    const seekTarget = byteOffsetToPieceIndex(
+      540 * 1048576,
+      1048576,
+      totalPieces,
+    );
+    expect(seekTarget).toBe(540);
+
+    const pSeek = selectNextPieceToDownload(bf, totalPieces, seekTarget, true);
+    expect(pSeek?.pieceIndex).toBe(540);
+    expect(pSeek?.phase).toBe('seek-window');
+    expect(pSeek?.headerAndTailReady).toBe(true);
+
+    const buckets = computePieceMapBuckets(bf, totalPieces, seekTarget, 48);
+    expect(buckets.length).toBe(48);
+    expect(buckets).toContain('playhead-window');
+    expect(buckets).toContain('header-tail');
   });
 });
