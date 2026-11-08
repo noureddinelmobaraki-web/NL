@@ -13,6 +13,7 @@ import { PAGES } from './context/pages';
 import { NotchIsland } from "./components/notch/NotchIsland";
 import { NowPlayingBridge } from './audio/NowPlayingBridge';
 import { MusicEngineHost } from './features/music/MusicEngineHost';
+import { CinemaDownloadHost } from './features/cinemaDownload';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { isAutomatedEnv } from './utils/env';
 import { usePendingSongDeepLink } from './hooks/usePendingSongDeepLink';
@@ -126,6 +127,7 @@ function AppStageRouter() {
           <NotchIsland />
           <NowPlayingBridge />
           <MusicEngineHost />
+          <CinemaDownloadHost />
         </>
       )}
       <AnimatePresence mode="wait" onExitComplete={endTransition}>

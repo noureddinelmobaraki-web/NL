@@ -76,6 +76,7 @@ import { useStreamExtractor } from "./hooks/useStreamExtractor";
 import { usePlayerBridgeSync } from "./hooks/usePlayerBridgeSync";
 import { CinemaHeroBanner } from "./components/CinemaHeroBanner";
 import { CinemaDetailModal } from "./components/CinemaDetailModal";
+import { CinemaHeaderDownloadButton } from "../../features/cinemaDownload";
 
 export { fetchWithCache, normalizeItem };
 export type { CastMember, ActorDetails, CinemaItem };
@@ -1228,6 +1229,8 @@ export function MoviesPage({
                   )}
                 </button>
               )}
+
+              <CinemaHeaderDownloadButton currentLang={currentLang} />
 
               <button
                 type="button"

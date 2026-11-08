@@ -19,6 +19,7 @@ export const SOURCE_ACCENTS: Record<string, string> = {
   profile: '#64D2FF',
   lens: '#30D158',
   mebit: '#5E5CE6',
+  download: '#38BDF8',
 };
 
 export interface NowPlayingState {

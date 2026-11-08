@@ -5,6 +5,7 @@
 
 import { Star } from "lucide-react";
 import { ServerBranchesInline } from "../MovieSourcesModal";
+import { CinemaDownloadTriggerButton } from "../../../features/cinemaDownload";
 import {
   TMDB_IMAGE_BASE,
   getBackdropSrc_static,
@@ -144,6 +145,11 @@ export function CinemaHeroBanner({
                 t("movies.meta.watchNow") ||
                 (currentLang === "ar" ? "شاهد الآن" : "Watch Now")
               }
+            />
+
+            <CinemaDownloadTriggerButton
+              item={activeHeroItem}
+              currentLang={currentLang}
             />
 
             {slideshowSlidesLength > 1 && !heroServersOpen && (

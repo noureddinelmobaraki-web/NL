@@ -44,6 +44,7 @@ import {
   type Media,
   type CinemaItem,
 } from "../moviesDataClient";
+import { CinemaDownloadTriggerButton } from "../../../features/cinemaDownload";
 
 interface CinemaPlayerStageProps {
   detailedItem: CinemaItem;
@@ -291,6 +292,20 @@ export function CinemaPlayerStage({
                 </span>
               </button>
             )}
+
+            <CinemaDownloadTriggerButton
+              item={detailedItem}
+              imdbId={activeImdbId}
+              season={selectedSeason}
+              episode={selectedEpisode}
+              episodeTitle={
+                seasonEpisodes.find(
+                  (ep) => ep.episode_number === selectedEpisode,
+                )?.name
+              }
+              currentLang={currentLang}
+              compact
+            />
 
             {isWatchingInGallery &&
               activeGallerySource &&

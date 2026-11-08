@@ -18,6 +18,7 @@ import {
 import { m, AnimatePresence } from "framer-motion";
 import { EyeLoader } from "../EyeLoader";
 import { ServerBranchesInline } from "../MovieSourcesModal";
+import { CinemaDownloadTriggerButton } from "../../../features/cinemaDownload";
 import { clockReset } from "../../../features/cinema/player/playbackClock";
 import {
   TMDB_IMAGE_BASE,
@@ -133,6 +134,19 @@ export function CinemaDetailModal({
                             buttonLabel={t("movies.meta.watchNow")}
                           />
                         )}
+
+                        <CinemaDownloadTriggerButton
+                          item={detailedItem}
+                          imdbId={activeImdbId}
+                          season={playerStageProps.selectedSeason}
+                          episode={playerStageProps.selectedEpisode}
+                          episodeTitle={
+                            playerStageProps.seasonEpisodes.find(
+                              (ep) => ep.episode_number === playerStageProps.selectedEpisode,
+                            )?.name
+                          }
+                          currentLang={currentLang}
+                        />
 
                         {(activeImdbId || detailedItem.trailerKey) && !detailServersOpen && (
                           <button
