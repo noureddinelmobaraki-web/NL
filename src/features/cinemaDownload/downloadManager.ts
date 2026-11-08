@@ -1087,6 +1087,63 @@ class CinemaDownloadManager {
     if (bf) bf[idx] = 2; // 2 = in-flight (scheduler treats non-zero as "taken")
   }
 
+  private releaseInFlight(infoHash: string, idx: number): void {
+    this.inFlight.get(infoHash)?.delete(idx);
+    const bf = this.savedBitfields.get(infoHash);
+    if (bf && bf[idx] === 2) {
+      bf[idx] = 0;
+    }
+  }
+
+  private getConcurrencyForTransport(t: ResolvedTransport): number {
+    switch (t.stage) {
+      case 'hls-stream':
+        return 16;
+      case 'webseed':
+        return 12;
+      case 'bridge':
+        return 8;
+      case 'webrtc':
+        return Math.min(16, Math.max(6, (t.peers || 1) * 2));
+      default:
+        return 8;
+    }
+  }
+
+  private triggerCloudflareEdgePrefetch(
+    directRangeUrl: string | undefined,
+    referer: string | undefined,
+    startPieceIndex: number,
+    pieceLength: number,
+    totalPieces: number,
+    totalSize: number,
+  ): void {
+    if (!directRangeUrl || !directRangeUrl.includes('broad-block-7bd7')) return;
+    const targetPieces = [startPieceIndex + 1, startPieceIndex + 2].filter(
+      (idx) => idx < totalPieces,
+    );
+    if (targetPieces.length === 0) return;
+
+    const ranges = targetPieces.map((idx) => {
+      const s = idx * pieceLength;
+      const e = Math.min(totalSize - 1, s + pieceLength - 1);
+      return `${s}-${e}`;
+    });
+
+    try {
+      const parsed = new URL(directRangeUrl);
+      parsed.pathname = '/batch-pieces';
+      parsed.searchParams.set('ranges', ranges.join(','));
+      if (referer) parsed.searchParams.set('referer', referer);
+
+      fetch(parsed.toString(), {
+        method: 'GET',
+        headers: { 'X-Prefetch': '1' },
+        keepalive: true,
+      }).catch(() => {});
+    } catch {}
+  }
+
   private async runPieceDownloadLoop(
     infoHash: string,
     initialBitfield: number[],
@@ -1095,121 +1152,155 @@ class CinemaDownloadManager {
     if (!loop) return;
     this.ensureSpeedTicker();
 
-    while (!loop.cancel.signal.aborted) {
-      const task = this.state.tasks[infoHash];
-      if (!task || task.status !== 'downloading') return;
-      const bf = this.savedBitfields.get(infoHash) || initialBitfield;
+    const concurrency = this.getConcurrencyForTransport(loop.transport);
 
-      const sel = selectNextPieceToDownload(
-        bf,
-        task.totalPieces,
-        task.playheadPieceIndex || 0,
-        loop.isRecentSeek,
-        Boolean(task.isStreamingActive),
-      );
-      if (!sel) return;
+    const runSingleWorker = async (_workerId: number): Promise<void> => {
+      while (!loop.cancel.signal.aborted) {
+        const task = this.state.tasks[infoHash];
+        if (!task || task.status !== 'downloading') return;
+        const bf = this.savedBitfields.get(infoHash) || initialBitfield;
 
-      if (task.activeDownloadingPieceIndex !== sel.pieceIndex) {
-        this.patchTask(infoHash, {
-          activeDownloadingPieceIndex: sel.pieceIndex,
-          priorityPhase: sel.phase,
-          headerAndTailReady: sel.headerAndTailReady,
-          ...(task.showPieceMap
-            ? {
-                pieceMapBuckets: computePieceMapBuckets(
-                  bf.map((b) => (b === 1 ? 1 : 0)),
-                  task.totalPieces,
-                  task.playheadPieceIndex || 0,
-                ),
-              }
-            : {}),
-        });
-      }
+        const sel = selectNextPieceToDownload(
+          bf,
+          task.totalPieces,
+          task.playheadPieceIndex || 0,
+          loop.isRecentSeek,
+          Boolean(task.isStreamingActive),
+        );
+        if (!sel) {
+          const inFlightSet = this.inFlight.get(infoHash);
+          if (inFlightSet && inFlightSet.size > 0) {
+            await new Promise((r) => setTimeout(r, 120));
+            continue;
+          }
+          return;
+        }
 
-      if (loop.seek.signal.aborted) loop.seek = new AbortController();
-      const result = await fetchPiece({
-        infoHash,
-        magnetUri: task.release.magnetUri,
-        pieceIndex: sel.pieceIndex,
-        pieceLength: loop.transport.geometry.pieceLength,
-        totalSize: loop.transport.geometry.sizeBytes,
-        transport: loop.transport,
-        seekSignal: loop.seek.signal,
-        cancelSignal: loop.cancel.signal,
-        swarm: this.swarmSessions.get(infoHash) ?? null,
-      });
+        // Synchronously reserve piece so peer workers do not select it
+        this.markInFlight(infoHash, sel.pieceIndex);
 
-      if ('aborted' in result) {
-        if (result.aborted === 'cancel') return;
-        continue; // genuine seek — re-select immediately
-      }
-
-      if (!result.ok) {
-        let decision;
-        try {
-          decision = await loop.controller.reportPieceFailure({
-            reason: result.reason,
-            httpStatus: result.httpStatus,
-            permanent: result.permanent,
+        if (task.activeDownloadingPieceIndex !== sel.pieceIndex) {
+          this.patchTask(infoHash, {
+            activeDownloadingPieceIndex: sel.pieceIndex,
+            priorityPhase: sel.phase,
+            headerAndTailReady: sel.headerAndTailReady,
+            ...(task.showPieceMap
+              ? {
+                  pieceMapBuckets: computePieceMapBuckets(
+                    bf.map((b) => (b === 1 ? 1 : 0)),
+                    task.totalPieces,
+                    task.playheadPieceIndex || 0,
+                  ),
+                }
+              : {}),
           });
-        } catch {
-          return;
         }
 
-        if (decision.kind === 'retry') continue;
-        if (decision.kind === 'exhausted') {
-          this.loops.delete(infoHash);
-          this.enterFallbackNeeded(infoHash, loop.controller.diagnostics);
-          return;
-        }
-        loop.transport = decision.transport;
-        if (decision.geometryChanged) {
-          this.savedBitfields.set(
-            infoHash,
-            new Array(decision.transport.geometry.totalPieces).fill(0),
+        // Cloudflare Edge Lookahead Prefetching on proxy streams
+        if (
+          loop.transport.stage === 'webseed' ||
+          loop.transport.stage === 'hls-stream'
+        ) {
+          this.triggerCloudflareEdgePrefetch(
+            loop.transport.directRangeUrl,
+            loop.transport.directRangeReferer,
+            sel.pieceIndex,
+            loop.transport.geometry.pieceLength,
+            loop.transport.geometry.totalPieces,
+            loop.transport.geometry.sizeBytes,
           );
-          this.commitTransportToWorker(infoHash, decision.transport, false);
-          return;
         }
-        this.patchTask(infoHash, {
-          transportMode: decision.transport.mode,
-          activePeers: decision.transport.peers,
-          statusMessage: `تم التبديل تلقائياً إلى: ${STAGE_LABELS_AR[decision.transport.stage]} — بدون فقدان التقدم`,
+
+        if (loop.seek.signal.aborted) loop.seek = new AbortController();
+        const result = await fetchPiece({
+          infoHash,
+          magnetUri: task.release.magnetUri,
+          pieceIndex: sel.pieceIndex,
+          pieceLength: loop.transport.geometry.pieceLength,
+          totalSize: loop.transport.geometry.sizeBytes,
+          transport: loop.transport,
+          seekSignal: loop.seek.signal,
+          cancelSignal: loop.cancel.signal,
+          swarm: this.swarmSessions.get(infoHash) ?? null,
         });
-        continue;
-      }
 
-      loop.controller.reportPieceSuccess();
-      loop.isRecentSeek = false;
-      if (result.peers) {
-        loop.controller.updateLiveCounters(
-          loop.transport.stage === 'bridge'
-            ? { bridgePeers: result.peers }
-            : { webrtcPeers: result.peers },
-        );
-      }
+        if ('aborted' in result) {
+          this.releaseInFlight(infoHash, sel.pieceIndex);
+          if (result.aborted === 'cancel') return;
+          continue; // genuine seek — re-select immediately
+        }
 
-      const byteLen = result.buffer.byteLength;
-      this.markInFlight(infoHash, sel.pieceIndex);
-      const bytesKind =
-        loop.transport.stage === 'webrtc' ? 'torrent-piece' : 'file-slice';
-      if (this.worker) {
-        this.worker.postMessage(
-          {
-            action: 'WRITE_PIECE',
-            payload: {
+        if (!result.ok) {
+          this.releaseInFlight(infoHash, sel.pieceIndex);
+          let decision;
+          try {
+            decision = await loop.controller.reportPieceFailure({
+              reason: result.reason,
+              httpStatus: result.httpStatus,
+              permanent: result.permanent,
+            });
+          } catch {
+            return;
+          }
+
+          if (decision.kind === 'retry') continue;
+          if (decision.kind === 'exhausted') {
+            this.loops.delete(infoHash);
+            this.enterFallbackNeeded(infoHash, loop.controller.diagnostics);
+            return;
+          }
+          loop.transport = decision.transport;
+          if (decision.geometryChanged) {
+            this.savedBitfields.set(
               infoHash,
-              pieceIndex: sel.pieceIndex,
-              buffer: result.buffer,
-              expectedHash: result.expectedSha1,
-              bytesKind,
+              new Array(decision.transport.geometry.totalPieces).fill(0),
+            );
+            this.commitTransportToWorker(infoHash, decision.transport, false);
+            return;
+          }
+          this.patchTask(infoHash, {
+            transportMode: decision.transport.mode,
+            activePeers: decision.transport.peers,
+            statusMessage: `تم التبديل تلقائياً إلى: ${STAGE_LABELS_AR[decision.transport.stage]} — بدون فقدان التقدم`,
+          });
+          continue;
+        }
+
+        loop.controller.reportPieceSuccess();
+        loop.isRecentSeek = false;
+        if (result.peers) {
+          loop.controller.updateLiveCounters(
+            loop.transport.stage === 'bridge'
+              ? { bridgePeers: result.peers }
+              : { webrtcPeers: result.peers },
+          );
+        }
+
+        const byteLen = result.buffer.byteLength;
+        const bytesKind =
+          loop.transport.stage === 'webrtc' ? 'torrent-piece' : 'file-slice';
+        if (this.worker) {
+          this.worker.postMessage(
+            {
+              action: 'WRITE_PIECE',
+              payload: {
+                infoHash,
+                pieceIndex: sel.pieceIndex,
+                buffer: result.buffer,
+                expectedHash: result.expectedSha1,
+                bytesKind,
+              },
             },
-          },
-          [result.buffer],
-        );
+            [result.buffer],
+          );
+        }
+        loop.speed.push(byteLen);
       }
-      loop.speed.push(byteLen);
-    }
+    };
+
+    await Promise.all(
+      Array.from({ length: concurrency }, (_, i) => runSingleWorker(i)),
+    );
   }
 
   private onPieceVerified(msg: {

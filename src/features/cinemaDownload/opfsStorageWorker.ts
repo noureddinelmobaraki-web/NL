@@ -668,7 +668,7 @@ self.onmessage = async (event: MessageEvent) => {
           }
           toStore = raw.subarray(slice.trimStart, slice.trimEnd);
         } else {
-          // File-relative slice (e.g. WebSeed of a file inside a multi-file torrent).
+          // File-relative slice (Bridge, WebSeed, or Direct HTTP 206)
           if (raw.byteLength !== slice.length) {
             self.postMessage({
               type: 'PIECE_CORRUPT',
@@ -678,26 +678,34 @@ self.onmessage = async (event: MessageEvent) => {
             });
             return;
           }
-          const fullyInside = slice.trimStart === 0 && slice.trimEnd === slice.torrentPieceSize;
-          if (session.hasTorrentHashes && fullyInside) {
+          if (expectedHash) {
             actualHex = await sha1Hex(raw);
-            if (actualHex !== session.expectedHashes[slice.torrentPieceIndex]) {
+            if (actualHex !== expectedHash.trim().toLowerCase()) {
               self.postMessage({
                 type: 'PIECE_CORRUPT',
                 infoHash,
                 pieceIndex: local,
-                reason: 'فشل تطابق SHA-1 لشريحة WebSeed',
+                reason: 'فشل تطابق SHA-1 لشريحة الجسر',
               });
               return;
             }
-          } else if (session.hasTorrentHashes && !session.allowUnverifiedBoundary) {
-            self.postMessage({
-              type: 'PIECE_CORRUPT',
-              infoHash,
-              pieceIndex: local,
-              reason: 'قطعة حدّية تتطلب القطعة الكاملة من التورنت للتحقق',
-            });
-            return;
+          } else {
+            const fullyInside =
+              session.geometry.fileOffset === 0 &&
+              slice.trimStart === 0 &&
+              slice.trimEnd === slice.torrentPieceSize;
+            if (session.hasTorrentHashes && fullyInside) {
+              actualHex = await sha1Hex(raw);
+              if (actualHex !== session.expectedHashes[slice.torrentPieceIndex]) {
+                self.postMessage({
+                  type: 'PIECE_CORRUPT',
+                  infoHash,
+                  pieceIndex: local,
+                  reason: 'فشل تطابق SHA-1 لشريحة WebSeed',
+                });
+                return;
+              }
+            }
           }
           toStore = raw;
         }

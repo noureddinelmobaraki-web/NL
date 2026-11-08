@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { Check, Copy, Download, FileDown, Loader2, ShieldCheck } from 'lucide-react';
 import type { DiscoveredReleaseOption, DownloadTaskState } from '../types';
 

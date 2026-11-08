@@ -193,15 +193,20 @@ export async function probeWebRtc(env: ProbeEnv, waitMs = 12_000): Promise<Stage
   const swarm = env.getSwarm();
   const started = Date.now();
   while (Date.now() - started < waitMs) {
+    const seeders = swarm.getSeederPeersCount();
     const peers = swarm.getConnectedPeersCount();
-    if (peers > 0) {
+    if (seeders > 0) {
       return {
         ok: true,
-        detail: `${peers} WebRTC peer(s) connected`,
-        transport: { stage: 'webrtc', mode: 'browser-webrtc-swarm', geometry: torrentGeometry(env), useBridgeBackend: false, peers, httpSources: 0 },
+        detail: `${seeders} WebRTC seeder(s) connected (${peers} total)`,
+        transport: { stage: 'webrtc', mode: 'browser-webrtc-swarm', geometry: torrentGeometry(env), useBridgeBackend: false, peers: seeders, httpSources: 0 },
       };
     }
     await abortableSleep(750, env.signal);
+  }
+  const totalPeers = swarm.getConnectedPeersCount();
+  if (totalPeers > 0) {
+    return { ok: false, detail: 'Connected WebRTC peer has 0% pieces (leecher only)', permanent: false };
   }
   return { ok: false, detail: '0 WebRTC peers reachable from the browser sandbox', permanent: false };
 }

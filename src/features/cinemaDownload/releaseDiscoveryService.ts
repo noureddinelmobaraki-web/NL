@@ -373,11 +373,11 @@ export async function discoverReleasesForMedia(
       qualityHint: s.quality,
       sizeHint: s.sizeBytes,
     })),
-    ...extractedStreamList.slice(0, 3).map((s) => ({
+    ...extractedStreamList.slice(0, 3).map((s, idx) => ({
       url: s.directUrl,
       referer: s.sourcePage || '',
-      server: s.server,
-      qualityHint: s.quality,
+      server: `stream-${idx + 1}`,
+      qualityHint: s.type === 'hls' ? '1080p' : '720p',
       sizeHint: undefined,
     })),
   ];

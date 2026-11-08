@@ -46,7 +46,8 @@ export default {
     if (!isAllowedCaller(request, env)) return jsonResponse({ error: "origin_not_allowed" }, 403);
 
     try {
-      if (path === "/proxy" || path === "/webseed-proxy") return await handleProxy(request, reqUrl, workerOrigin);
+      if (path === "/proxy" || path === "/webseed-proxy") return await handleProxy(request, reqUrl, workerOrigin, ctx);
+      if (path === "/batch-pieces") return await handleBatchPieces(request, reqUrl, workerOrigin, ctx);
       if (path === "/probe") return await handleStreamProbe(reqUrl, workerOrigin);
       if (path === "/torrent-cache") return await withCache(request, env, ctx, 86400, () => handleTorrentCache(reqUrl));
       if (path === "/streams/direct") return await withCache(request, env, ctx, 1800, () => handleDirectStreams(reqUrl, workerOrigin));
@@ -184,7 +185,7 @@ async function fetchWithHeaderTimeout(url, init, timeoutMs = 14000) {
   }
 }
 
-async function handleProxy(request, reqUrl, workerOrigin) {
+async function handleProxy(request, reqUrl, workerOrigin, ctx) {
   const videoUrl = reqUrl.searchParams.get("videoUrl");
   const referer = reqUrl.searchParams.get("referer") || "";
   if (!videoUrl) return jsonResponse({ error: "missing_videoUrl" }, 400);
@@ -194,6 +195,25 @@ async function handleProxy(request, reqUrl, workerOrigin) {
 
   const rangeHeader = request.headers.get("Range") || "";
   const method = request.method === "HEAD" ? "HEAD" : "GET";
+
+  const rangeMatch = /^bytes=(\d+)-(\d+)$/i.exec(rangeHeader);
+  const cache = typeof caches !== "undefined" && caches.default ? caches.default : null;
+  const edgeCacheKey = rangeMatch && cache
+    ? new Request(
+        `https://nl-edge-range-cache.internal/${encodeURIComponent(target.href)}?r=${rangeMatch[1]}-${rangeMatch[2]}`,
+        { method: "GET" },
+      )
+    : null;
+
+  if (edgeCacheKey && cache && method === "GET") {
+    const cachedHit = await cache.match(edgeCacheKey);
+    if (cachedHit) {
+      const hitHeaders = new Headers(cachedHit.headers);
+      Object.entries(CORS).forEach(([k, v]) => hitHeaders.set(k, v));
+      hitHeaders.set("X-NL-Cache", "EDGE-RANGE-HIT");
+      return new Response(cachedHit.body, { status: 206, headers: hitHeaders });
+    }
+  }
 
   let upstream;
   try {
@@ -312,6 +332,74 @@ async function handleProxy(request, reqUrl, workerOrigin) {
     return new Response(buf, { status: upstream.status, headers: outHeaders });
   }
 
+  if (upstream.status === 206 && rangeMatch && cache && method === "GET") {
+    const start = Number(rangeMatch[1]);
+    const end = Number(rangeMatch[2]);
+    const chunkLen = end - start + 1;
+
+    const [bodyForClient, bodyForCache] = upstream.body.tee();
+    const cacheResHeaders = cleanHeaders(upstream.headers, false);
+    cacheResHeaders.set("Cache-Control", "public, max-age=14400");
+    const cacheResponse = new Response(bodyForCache, {
+      status: 206,
+      headers: cacheResHeaders,
+    });
+    if (ctx && typeof ctx.waitUntil === "function") {
+      ctx.waitUntil(cache.put(edgeCacheKey, cacheResponse));
+
+      if (reqUrl.searchParams.get("prefetch") !== "0" && chunkLen > 0) {
+        const nextRanges = [
+          [end + 1, end + chunkLen],
+          [end + chunkLen + 1, end + 2 * chunkLen],
+        ];
+        for (const [nStart, nEnd] of nextRanges) {
+          const nextRangeHeader = `bytes=${nStart}-${nEnd}`;
+          const nextCacheKey = new Request(
+            `https://nl-edge-range-cache.internal/${encodeURIComponent(target.href)}?r=${nStart}-${nEnd}`,
+            { method: "GET" },
+          );
+          ctx.waitUntil(
+            (async () => {
+              const alreadyCached = await cache.match(nextCacheKey);
+              if (alreadyCached) return;
+              try {
+                const prefetchUp = await fetchWithHeaderTimeout(
+                  target.href,
+                  {
+                    method: "GET",
+                    headers: buildUpstreamHeaders(target, referer, nextRangeHeader),
+                  },
+                  12000,
+                );
+                if (prefetchUp.status === 206) {
+                  const pBuf = await prefetchUp.arrayBuffer();
+                  const pRes = new Response(pBuf, {
+                    status: 206,
+                    headers: {
+                      ...CORS,
+                      "Content-Type": prefetchUp.headers.get("Content-Type") || "video/mp4",
+                      "Content-Range": prefetchUp.headers.get("Content-Range") || `bytes ${nStart}-${nEnd}/*`,
+                      "Content-Length": String(pBuf.byteLength),
+                      "Cache-Control": "public, max-age=14400",
+                    },
+                  });
+                  await cache.put(nextCacheKey, pRes);
+                } else {
+                  await prefetchUp.body?.cancel();
+                }
+              } catch {}
+            })(),
+          );
+        }
+      }
+    }
+
+    const outHeaders = cleanHeaders(upstream.headers, false);
+    outHeaders.set("X-NL-Stream-Type", "binary");
+    outHeaders.set("X-NL-Upstream-Status", "206");
+    return new Response(bodyForClient, { status: 206, headers: outHeaders });
+  }
+
   const outHeaders = cleanHeaders(upstream.headers, false);
   outHeaders.set("X-NL-Stream-Type", looksPlaylist ? "hls" : "binary");
   outHeaders.set("X-NL-Upstream-Status", String(upstream.status));
@@ -319,6 +407,81 @@ async function handleProxy(request, reqUrl, workerOrigin) {
     status: upstream.status,
     headers: outHeaders,
   });
+}
+
+async function handleBatchPieces(request, reqUrl, workerOrigin, ctx) {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "method_not_allowed" }, 405);
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "invalid_json" }, 400);
+  }
+
+  const referer = String(body.referer || "");
+  const videoUrl = String(body.videoUrl || "");
+  const ranges = Array.isArray(body.ranges) ? body.ranges.slice(0, 8) : [];
+
+  if (videoUrl && ranges.length > 0) {
+    const target = safeTarget(videoUrl);
+    if (!target) return jsonResponse({ error: "invalid_target" }, 400);
+    const cache = typeof caches !== "undefined" && caches.default ? caches.default : null;
+
+    const results = await Promise.all(
+      ranges.map(async (r) => {
+        const start = Number(r.start) || 0;
+        const end = Number(r.end) || 0;
+        if (end < start) return { index: r.index, ok: false, status: 400 };
+        const rangeStr = `bytes=${start}-${end}`;
+        const cacheKey = new Request(
+          `https://nl-edge-range-cache.internal/${encodeURIComponent(target.href)}?r=${start}-${end}`,
+          { method: "GET" },
+        );
+        if (cache) {
+          const hit = await cache.match(cacheKey);
+          if (hit) {
+            return { index: r.index, ok: true, status: 206, cached: true };
+          }
+        }
+        try {
+          const up = await fetchWithHeaderTimeout(
+            target.href,
+            {
+              method: "GET",
+              headers: buildUpstreamHeaders(target, referer, rangeStr),
+            },
+            14000,
+          );
+          if (up.status === 206) {
+            const buf = await up.arrayBuffer();
+            const storeRes = new Response(buf, {
+              status: 206,
+              headers: {
+                ...CORS,
+                "Content-Type": up.headers.get("Content-Type") || "video/mp4",
+                "Content-Range": up.headers.get("Content-Range") || `bytes ${start}-${end}/*`,
+                "Content-Length": String(buf.byteLength),
+                "Cache-Control": "public, max-age=14400",
+              },
+            });
+            if (cache && ctx && typeof ctx.waitUntil === "function") {
+              ctx.waitUntil(cache.put(cacheKey, storeRes));
+            }
+            return { index: r.index, ok: true, status: 206, cached: false, bytes: buf.byteLength };
+          }
+          try { await up.body?.cancel(); } catch {}
+          return { index: r.index, ok: false, status: up.status };
+        } catch {
+          return { index: r.index, ok: false, status: 502 };
+        }
+      }),
+    );
+    return jsonResponse({ ok: true, prefetched: results });
+  }
+
+  return jsonResponse({ error: "missing_parameters" }, 400);
 }
 
 async function handleStreamProbe(reqUrl, workerOrigin) {

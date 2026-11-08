@@ -116,6 +116,7 @@ interface ConnectedWebRtcPeer {
   dc: RTCDataChannel;
   choked: boolean;
   handshakeDone: boolean;
+  hasPieces: boolean;
   recvBuffer: Uint8Array;
   bitfield: Uint8Array | null;
   inFlightPiece: {
@@ -186,7 +187,7 @@ export class BrowserSwarmSession {
       if (this.destroyed) return;
       for (const ws of this.sockets) {
         if (ws.readyState === WebSocket.OPEN && this.peers.size < 8) {
-          void this.sendTrackerAnnounce(ws, 3, '');
+          void this.sendTrackerAnnounce(ws, 10, '');
         }
       }
     }, 35000);
@@ -198,6 +199,10 @@ export class BrowserSwarmSession {
 
   public getConnectedPeersCount(): number {
     return this.peers.size;
+  }
+
+  public getSeederPeersCount(): number {
+    return Array.from(this.peers.values()).filter((p) => p.hasPieces).length;
   }
 
   public waitForConnectedPeer(
@@ -334,7 +339,7 @@ export class BrowserSwarmSession {
 
   private async sendTrackerAnnounce(
     ws: WebSocket,
-    numwant = 4,
+    numwant = 10,
     event: 'started' | '' = 'started',
   ): Promise<void> {
     const offers = await this.createOfferItems(numwant);
@@ -360,7 +365,7 @@ export class BrowserSwarmSession {
 
       ws.onopen = () => {
         if (this.destroyed) return;
-        void this.sendTrackerAnnounce(ws, 4, 'started');
+        void this.sendTrackerAnnounce(ws, 10, 'started');
       };
 
       ws.onmessage = (ev) => {
@@ -451,6 +456,7 @@ export class BrowserSwarmSession {
       dc,
       choked: true,
       handshakeDone: false,
+      hasPieces: false,
       recvBuffer: new Uint8Array(0),
       bitfield: null,
       inFlightPiece: null,
@@ -535,7 +541,16 @@ export class BrowserSwarmSession {
       } else if (msgId === 1) {
         peer.choked = false;
       } else if (msgId === 4 || msgId === 5) {
-        if (msgId === 5) peer.bitfield = new Uint8Array(payload);
+        if (msgId === 4) {
+          peer.hasPieces = true;
+          this.notifyPeerConnected();
+        } else if (msgId === 5) {
+          peer.bitfield = new Uint8Array(payload);
+          if (payload.some((b) => b !== 0)) {
+            peer.hasPieces = true;
+            this.notifyPeerConnected();
+          }
+        }
         try {
           peer.dc.send(
             buildInterestedMessage() as unknown as ArrayBufferView<ArrayBuffer>,

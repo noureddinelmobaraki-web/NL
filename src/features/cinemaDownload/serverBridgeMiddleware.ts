@@ -10,9 +10,15 @@ const DEFAULT_TRACKERS = [
   'udp://tracker.opentrackr.org:1337/announce',
   'udp://open.stealth.si:80/announce',
   'udp://tracker.torrent.eu.org:451/announce',
+  'udp://tracker.dler.org:6969/announce',
   'udp://exodus.desync.com:6969/announce',
   'udp://open.demonii.com:1337/announce',
+  'udp://glotorrents.pw:6969/announce',
+  'udp://tracker.openbittorrent.com:80',
+  'udp://p4p.arenabg.ch:1337',
+  'udp://tracker.internetwarriors.net:1337',
   'http://tracker.opentrackr.org:1337/announce',
+  'http://tracker.gbitt.info:80/announce',
   'https://tracker.tamersunion.org:443/announce',
   'wss://tracker.openwebtorrent.com',
   'wss://tracker.btorrent.xyz',
@@ -52,7 +58,7 @@ function getClient(): Promise<any> {
         lsd: false,
         natUpnp: false,
         natPmp: false,
-        maxConns: Number(process.env.BRIDGE_MAX_CONNS) || 80,
+        maxConns: Number(process.env.BRIDGE_MAX_CONNS) || 200,
       });
       client.on('error', (err: Error) => {
         console.error('[bridge] client error', err?.message);
@@ -159,10 +165,8 @@ async function addTorrent(hash: string, magnet?: string): Promise<TorrentEntry> 
   const id = buf || magnet || `magnet:?xt=urn:btih:${hash}`;
   const torrent = client.add(id, {
     announce,
-    deselect: true,
     path: path.join(os.tmpdir(), 'nl-bridge'),
     destroyStoreOnDestroy: true,
-    strategy: 'sequential',
   });
 
   const entry: TorrentEntry = {
@@ -188,12 +192,15 @@ async function addTorrent(hash: string, magnet?: string): Promise<TorrentEntry> 
         return;
       }
       const main = pickMainFile(torrent);
-      for (const f of torrent.files) if (f !== main) f.deselect();
       main.select();
       entry.mainFile = main;
-      const two = Math.min(main.length, 2 * 1024 * 1024);
-      markCritical(torrent, main, 0, two - 1);
-      if (main.length > two) markCritical(torrent, main, main.length - two, main.length - 1);
+      // Mark the first 16 MB and last 4 MB as critical while allowing full-swarm parallel downloading of the entire file
+      const headBytes = Math.min(main.length, 16 * 1024 * 1024);
+      const tailBytes = Math.min(main.length, 4 * 1024 * 1024);
+      markCritical(torrent, main, 0, headBytes - 1);
+      if (main.length > headBytes) {
+        markCritical(torrent, main, main.length - tailBytes, main.length - 1);
+      }
       resolve();
     };
     const onError = (err: Error) => {
@@ -425,7 +432,9 @@ async function handleTorrentMetaRoute(res: ServerResponse, sp: URLSearchParams):
     return;
   }
   const f = entry.mainFile;
-  const pieceLength = f.length >= 2 * 1024 ** 3 ? 2 * 1024 * 1024 : 1024 * 1024;
+  const pieceLength =
+    Number(entry.torrent.pieceLength) ||
+    (f.length >= 2 * 1024 ** 3 ? 2 * 1024 * 1024 : 1024 * 1024);
   sendJson(res, 200, {
     ok: true,
     infoHash: hash,
@@ -467,7 +476,7 @@ async function handlePieceRoute(res: ServerResponse, sp: URLSearchParams): Promi
     return;
   }
   const end = Math.min(f.length - 1, start + pieceLength - 1);
-  markCritical(entry.torrent, f, start, Math.min(f.length - 1, end + 4 * pieceLength));
+  markCritical(entry.torrent, f, start, Math.min(f.length - 1, end + 16 * pieceLength));
   const buf = await readRange(f, start, end);
   sendPiece(res, idx, buf, {
     'X-Real-File-Size': String(f.length),
