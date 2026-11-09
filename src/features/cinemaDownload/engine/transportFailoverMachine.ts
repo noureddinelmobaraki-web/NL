@@ -139,6 +139,8 @@ export class TransportFailoverController {
   private currentIdx = -1;
   private pieceFailures = 0;
   private piecesOnStage = 0;
+  private stageEpoch = 0;
+  private activeFailover: Promise<FailoverDecision> | null = null;
 
   constructor(private readonly opts: FailoverControllerOptions) {
     this.policy = { ...DEFAULT_FAILOVER_POLICY, ...opts.policy };
@@ -178,15 +180,31 @@ export class TransportFailoverController {
     const nextWebrtc = counters.webrtcPeers ?? this.diag.webrtcPeers;
     const nextBridge = counters.bridgePeers ?? this.diag.bridgePeers;
     const nextEdgeTcp = counters.edgeTcpPeers ?? this.diag.edgeTcpPeers;
+    const promoteEdge =
+      nextEdgeTcp > 0 && this.diag.stageOutcomes['edge-tcp'] !== 'ok';
+    const promoteWebrtc =
+      nextWebrtc > 0 && this.diag.stageOutcomes.webrtc !== 'ok';
+
     if (
       nextWebrtc !== this.diag.webrtcPeers ||
       nextBridge !== this.diag.bridgePeers ||
-      nextEdgeTcp !== this.diag.edgeTcpPeers
+      nextEdgeTcp !== this.diag.edgeTcpPeers ||
+      promoteEdge ||
+      promoteWebrtc
     ) {
+      const stageOutcomes =
+        promoteEdge || promoteWebrtc
+          ? {
+              ...this.diag.stageOutcomes,
+              ...(promoteEdge ? { 'edge-tcp': 'ok' as const } : {}),
+              ...(promoteWebrtc ? { webrtc: 'ok' as const } : {}),
+            }
+          : this.diag.stageOutcomes;
       this.patch({
         webrtcPeers: nextWebrtc,
         bridgePeers: nextBridge,
         edgeTcpPeers: nextEdgeTcp,
+        stageOutcomes,
       });
     }
   }
@@ -211,6 +229,24 @@ export class TransportFailoverController {
   }
 
   async reportPieceFailure(failure: PieceFailure): Promise<FailoverDecision> {
+    if (this.activeFailover) {
+      return this.activeFailover;
+    }
+    const callerEpoch = this.stageEpoch;
+    const task = this.handlePieceFailureLocked(failure, callerEpoch).finally(() => {
+      this.activeFailover = null;
+    });
+    this.activeFailover = task;
+    return task;
+  }
+
+  private async handlePieceFailureLocked(
+    failure: PieceFailure,
+    callerEpoch: number,
+  ): Promise<FailoverDecision> {
+    if (callerEpoch !== this.stageEpoch && this.current) {
+      return { kind: 'retry' };
+    }
     const stage = this.current?.stage;
     if (!stage) return { kind: 'exhausted' };
 
@@ -286,6 +322,7 @@ export class TransportFailoverController {
         this.currentIdx = idx;
         this.pieceFailures = 0;
         this.piecesOnStage = 0;
+        this.stageEpoch += 1;
         this.log({ stage, kind: 'probe', ok: true, detail: result.detail });
         this.setOutcome(stage, 'ok');
         this.patch({

@@ -41,16 +41,40 @@ export default {
       return jsonResponse({
         ok: true,
         btTunnel: true,
+        btHardened: true,
         kvCache: Boolean(env.NL_CACHE),
-        secrets: { wyzie: Boolean(env.WYZIE_KEY), omdb: Boolean(env.OMDB_KEY), tmdb: Boolean(env.TMDB_KEY) },
+        secrets: {
+          wyzie: Boolean(env.WYZIE_KEY),
+          omdb: Boolean(env.OMDB_KEY),
+          tmdb: Boolean(env.TMDB_KEY),
+          tunnelSecret: Boolean(env.TUNNEL_SECRET),
+        },
         time: new Date().toISOString(),
       });
     }
     if (!isAllowedCaller(request, env)) return jsonResponse({ error: "origin_not_allowed" }, 403);
 
     try {
-      if (path === "/bt-peers") return await withCache(request, env, ctx, 45, () => handleBtPeers(reqUrl));
-      if (path === "/bt-tunnel") return handleBtTunnel(request, reqUrl, ctx);
+      if (path === "/bt-peers") {
+        if (!isStrictBtBrowserOrigin(request, env)) {
+          return jsonResponse({ ok: false, error: "origin_not_allowed" }, 403);
+        }
+        if (!allowBtHttpRate(getClientIp(request), 30)) {
+          return jsonResponse({ ok: false, error: "rate_limited" }, 429);
+        }
+        const cachedPeersRes = await withCache(request, env, ctx, 45, () => handleBtPeers(reqUrl));
+        return await attachSignedBtTokens(cachedPeersRes, env);
+      }
+      if (path === "/bt-sign-peers") {
+        if (!isStrictBtBrowserOrigin(request, env)) {
+          return jsonResponse({ ok: false, error: "origin_not_allowed" }, 403);
+        }
+        if (!allowBtHttpRate(getClientIp(request), 45)) {
+          return jsonResponse({ ok: false, error: "rate_limited" }, 429);
+        }
+        return await handleBtSignPeers(request, env);
+      }
+      if (path === "/bt-tunnel") return await handleBtTunnel(request, reqUrl, env, ctx);
       if (path === "/proxy" || path === "/webseed-proxy") return await handleProxy(request, reqUrl, workerOrigin, ctx);
       if (path === "/batch-pieces") return await handleBatchPieces(request, reqUrl, workerOrigin, ctx);
       if (path === "/probe") return await handleStreamProbe(reqUrl, workerOrigin);
@@ -76,16 +100,28 @@ export default {
 
 /* ---------------- أمان ---------------- */
 
+function getAllowedOriginsList(env) {
+  return env && env.ALLOWED_ORIGINS
+    ? env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_ALLOWED_ORIGINS;
+}
+
 function isAllowedOriginUrl(originStr, workerOrigin, list) {
-  if (!originStr) return true;
+  if (!originStr) return false;
   if (originStr === workerOrigin || list.includes(originStr)) return true;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(originStr)) return true;
-  if (/^https:\/\/([a-z0-9-]+\.)*(cloudflare\.com|workers\.dev)$/i.test(originStr)) return true;
   return false;
 }
 
+function isStrictBtBrowserOrigin(request, env) {
+  const origin = (request.headers.get("Origin") || "").trim();
+  if (!origin) return false;
+  const workerOrigin = new URL(request.url).origin;
+  return isAllowedOriginUrl(origin, workerOrigin, getAllowedOriginsList(env));
+}
+
 function isAllowedCaller(request, env) {
-  const list = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()) : DEFAULT_ALLOWED_ORIGINS;
+  const list = getAllowedOriginsList(env);
   const workerOrigin = new URL(request.url).origin;
   const origin = request.headers.get("Origin");
   if (origin) return isAllowedOriginUrl(origin, workerOrigin, list);
@@ -133,7 +169,7 @@ async function withCache(request, env, ctx, ttl, producer) {
   }
 
   const res = await producer();
-  if (res.status === 200) {
+  if (res.status === 200 && !res.headers.get("Cache-Control")?.includes("no-store") && ttl > 0) {
     if (env.NL_CACHE) {
       const buf = await res.clone().arrayBuffer();
       const c = res.headers.get("Content-Type") || "text/plain; charset=utf-8";
@@ -2591,15 +2627,18 @@ const BT_BASE_HTTP_TRACKERS = [
   "http://tracker.openbittorrent.com:80/announce",
   "http://tracker.gbitt.info:80/announce",
   "https://tracker.gbitt.info:443/announce",
+  "https://tracker.yemekyedim.com:443/announce",
+  "http://tracker.renfei.net:8080/announce",
+  "https://tracker.pmman.tech:443/announce",
   "http://tracker.bt4g.com:2095/announce",
   "http://tracker.files.fm:6969/announce",
   "http://tracker.dler.org:6969/announce",
+  "http://tracker2.dler.org:80/announce",
   "http://open.acgnxtracker.com:80/announce",
   "https://tracker.lilithraws.org:443/announce",
   "https://tr.burnabyhighstar.com:443/announce",
   "http://tracker1.bt.moack.co.kr:80/announce",
   "https://tracker.moeblog.cn:443/announce",
-  "http://tracker.mywaifu.best:6969/announce",
   "http://bittorrent-tracker.e-n-c-r-y-p-t.net:1337/announce",
 ];
 
@@ -2762,23 +2801,221 @@ function extractPeersFromTrackerPayload(buf) {
   return result;
 }
 
+const BT_TOKEN_TTL_SEC = 900;
+const BT_MAX_CONCURRENT_TUNNELS_PER_IP = 32;
+const BT_MAX_TUNNEL_DIALS_PER_MIN = 120;
+const BT_MAX_CLIENT_FRAME_BYTES = 65536;
+const BT_FALLBACK_HMAC_KEY_MATERIAL = "nl-bt-tunnel-hmac-v2::broad-block-7bd7::noureddinelmobaraki-web";
+const BT_PROTOCOL_HEADER = [
+  19, 66, 105, 116, 84, 111, 114, 114, 101, 110, 116, 32,
+  112, 114, 111, 116, 111, 99, 111, 108,
+];
+
+const btHttpRateByIp = new Map();
+const btTunnelRateByIp = new Map();
+const btActiveTunnelsByIp = new Map();
+let cachedBtHmacKey = null;
+let cachedBtHmacSecret = "";
+
+function getClientIp(request) {
+  return (
+    request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ||
+    "0.0.0.0"
+  );
+}
+
+function allowSlidingRate(map, ip, maxPerMinute) {
+  const now = Date.now();
+  if (map.size > 2048) {
+    for (const [k, rec] of map) {
+      if (now - rec.windowStart >= 60000) map.delete(k);
+    }
+  }
+  const existing = map.get(ip);
+  if (!existing || now - existing.windowStart >= 60000) {
+    map.set(ip, { windowStart: now, count: 1 });
+    return true;
+  }
+  if (existing.count >= maxPerMinute) return false;
+  existing.count += 1;
+  return true;
+}
+
+function allowBtHttpRate(ip, maxPerMinute) {
+  return allowSlidingRate(btHttpRateByIp, ip, maxPerMinute);
+}
+
+function acquireBtTunnelSlot(ip) {
+  const active = btActiveTunnelsByIp.get(ip) || 0;
+  if (active >= BT_MAX_CONCURRENT_TUNNELS_PER_IP) return false;
+  if (!allowSlidingRate(btTunnelRateByIp, ip, BT_MAX_TUNNEL_DIALS_PER_MIN)) return false;
+  btActiveTunnelsByIp.set(ip, active + 1);
+  return true;
+}
+
+function releaseBtTunnelSlot(ip) {
+  const active = btActiveTunnelsByIp.get(ip) || 0;
+  if (active <= 1) {
+    btActiveTunnelsByIp.delete(ip);
+  } else {
+    btActiveTunnelsByIp.set(ip, active - 1);
+  }
+}
+
+async function getBtHmacKey(env) {
+  const rawSecret =
+    env && typeof env.TUNNEL_SECRET === "string" && env.TUNNEL_SECRET.trim().length >= 8
+      ? env.TUNNEL_SECRET.trim()
+      : BT_FALLBACK_HMAC_KEY_MATERIAL;
+  if (cachedBtHmacKey && cachedBtHmacSecret === rawSecret) {
+    return cachedBtHmacKey;
+  }
+  const keyBytes = new TextEncoder().encode(rawSecret);
+  cachedBtHmacKey = await crypto.subtle.importKey(
+    "raw",
+    keyBytes,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  cachedBtHmacSecret = rawSecret;
+  return cachedBtHmacKey;
+}
+
+async function signBtPeerToken(addr, infoHash, expSec, env) {
+  const key = await getBtHmacKey(env);
+  const msg = new TextEncoder().encode(`${addr}|${infoHash}|${expSec}`);
+  const macBuf = await crypto.subtle.sign("HMAC", key, msg);
+  const macBytes = new Uint8Array(macBuf, 0, 16);
+  let hex = "";
+  for (let i = 0; i < 16; i++) {
+    hex += macBytes[i].toString(16).padStart(2, "0");
+  }
+  return hex;
+}
+
+async function verifyBtPeerToken(host, port, infoHash, expSec, sigHex, env) {
+  if (!/^[0-9a-f]{32}$/i.test(sigHex)) return false;
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!Number.isInteger(expSec) || expSec < nowSec || expSec > nowSec + BT_TOKEN_TTL_SEC + 60) {
+    return false;
+  }
+  const expected = await signBtPeerToken(`${host}:${port}`, infoHash, expSec, env);
+  const candidate = sigHex.toLowerCase();
+  let diff = 0;
+  for (let i = 0; i < 32; i++) {
+    diff |= expected.charCodeAt(i) ^ candidate.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+async function signPeerListMap(peers, infoHash, env) {
+  const exp = Math.floor(Date.now() / 1000) + BT_TOKEN_TTL_SEC;
+  const tokens = Object.create(null);
+  for (const addr of peers) {
+    tokens[addr] = await signBtPeerToken(addr, infoHash, exp, env);
+  }
+  return { tokens, exp };
+}
+
+async function attachSignedBtTokens(cachedPeersRes, env) {
+  if (!cachedPeersRes || cachedPeersRes.status !== 200) return cachedPeersRes;
+  let body;
+  try {
+    body = await cachedPeersRes.clone().json();
+  } catch {
+    return cachedPeersRes;
+  }
+  if (!body || !body.ok || !Array.isArray(body.peers) || typeof body.infoHash !== "string") {
+    return cachedPeersRes;
+  }
+  const { tokens, exp } = await signPeerListMap(body.peers, body.infoHash, env);
+  const headers = new Headers(cachedPeersRes.headers);
+  Object.entries(CORS).forEach(([k, v]) => headers.set(k, v));
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  return new Response(JSON.stringify({ ...body, tokens, exp }), {
+    status: 200,
+    headers,
+  });
+}
+
+async function handleBtSignPeers(request, env) {
+  if (request.method !== "POST") {
+    return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
+  }
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return jsonResponse({ ok: false, error: "invalid_json" }, 400);
+  }
+  const hash = String((payload && payload.infoHash) || "").trim().toLowerCase();
+  if (!/^[0-9a-f]{40}$/.test(hash)) {
+    return jsonResponse({ ok: false, error: "invalid_infoHash" }, 400);
+  }
+  const rawPeers = Array.isArray(payload && payload.peers) ? payload.peers : [];
+  const validPeers = [];
+  const seen = new Set();
+  for (const item of rawPeers) {
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim();
+    const colon = trimmed.lastIndexOf(":");
+    if (colon <= 0) continue;
+    const host = trimmed.slice(0, colon);
+    const port = Number(trimmed.slice(colon + 1));
+    const normalized = `${host}:${port}`;
+    if (!seen.has(normalized) && isSafePublicPeer(host, port)) {
+      seen.add(normalized);
+      validPeers.push(normalized);
+      if (validPeers.length >= 48) break;
+    }
+  }
+  const { tokens, exp } = await signPeerListMap(validPeers, hash, env);
+  return jsonResponse({ ok: true, infoHash: hash, tokens, exp }, 200);
+}
+
+function isValidFirstBtFrame(chunk, expectedInfoHashBytes) {
+  if (!(chunk instanceof Uint8Array) || chunk.byteLength < 68 || chunk.byteLength > 512) {
+    return false;
+  }
+  for (let i = 0; i < 20; i++) {
+    if (chunk[i] !== BT_PROTOCOL_HEADER[i]) return false;
+  }
+  for (let i = 0; i < 20; i++) {
+    if (chunk[28 + i] !== expectedInfoHashBytes[i]) return false;
+  }
+  return true;
+}
+
+function scoreBtPeerPort(addr) {
+  const colon = addr.lastIndexOf(":");
+  if (colon <= 0) return 0;
+  const port = Number(addr.slice(colon + 1));
+  if (!Number.isInteger(port)) return 0;
+  if (port === 6881) return 0;
+  if (port === 51413 || port === 8999 || port >= 10000) return 3;
+  if (port >= 6882 && port <= 9999) return 2;
+  return 1;
+}
+
 async function announceHttpTracker(trackerUrl, infoHashEnc, peerIdEnc) {
   const sep = trackerUrl.includes("?") ? "&" : "?";
   const target =
     `${trackerUrl}${sep}info_hash=${infoHashEnc}&peer_id=${peerIdEnc}` +
-    `&port=6881&uploaded=0&downloaded=0&left=1073741824&compact=1&numwant=80&event=started`;
+    `&port=51413&uploaded=0&downloaded=0&left=1073741824&compact=1&numwant=100&event=started`;
   try {
     const res = await fetch(target, {
       headers: { "User-Agent": "qBittorrent/4.6.5", Accept: "*/*" },
       redirect: "follow",
-      signal: AbortSignal.timeout(3200),
+      signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) {
       try { await res.body?.cancel(); } catch {}
       return [];
     }
     const ab = await res.arrayBuffer();
-    if (!ab || ab.byteLength === 0 || ab.byteLength > 131072) return [];
+    if (!ab || ab.byteLength === 0 || ab.byteLength > 196608) return [];
     return extractPeersFromTrackerPayload(new Uint8Array(ab));
   } catch {
     return [];
@@ -2794,48 +3031,68 @@ async function handleBtPeers(reqUrl) {
     .getAll("tr")
     .map((t) => t.trim())
     .filter((t) => (t.startsWith("http://") || t.startsWith("https://")) && safeTarget(t));
-  const dynamicTrackers = await getDynamicHttpTrackers();
+  const dynamicTrackers = await Promise.race([
+    getDynamicHttpTrackers().catch(() => []),
+    new Promise((resolve) => setTimeout(() => resolve([]), 1200)),
+  ]);
   const trackers = Array.from(
     new Set([...extraTrackers, ...BT_BASE_HTTP_TRACKERS, ...dynamicTrackers]),
-  ).slice(0, 15);
+  ).slice(0, 18);
 
   const infoHashEnc = percentEncodeRawBytes(hexToRaw20(hash));
   const peerIdEnc = makeTrackerPeerIdEnc();
   const peerSet = new Set();
   let trackersResponded = 0;
   let cursor = 0;
+  let earlyExit = false;
 
   // Strictly <= 5 concurrent tracker fetches to respect Cloudflare Free 6-connection limit
   const workers = Array.from({ length: Math.min(5, trackers.length) }, async () => {
-    while (cursor < trackers.length && peerSet.size < 120) {
+    while (!earlyExit && cursor < trackers.length && peerSet.size < 48) {
       const idx = cursor++;
+      if (idx >= trackers.length) break;
       const list = await announceHttpTracker(trackers[idx], infoHashEnc, peerIdEnc);
       if (list.length > 0) {
         trackersResponded++;
         for (const p of list) {
           peerSet.add(p);
-          if (peerSet.size >= 120) break;
+          if (peerSet.size >= 48) {
+            earlyExit = true;
+            break;
+          }
         }
       }
     }
   });
-  await Promise.allSettled(workers);
 
+  // Overall deadline (~6200ms) guarantees worker responds before client timeout (9500ms)
+  const overallDeadline = new Promise((resolve) => setTimeout(resolve, 6200));
+  await Promise.race([Promise.allSettled(workers), overallDeadline]);
+  earlyExit = true;
+
+  const sortedPeers = Array.from(peerSet).sort(
+    (a, b) => scoreBtPeerPort(b) - scoreBtPeerPort(a),
+  );
+
+  const hasPeers = sortedPeers.length > 0;
   return jsonResponse(
     {
       ok: true,
       btPeersEndpoint: true,
       infoHash: hash,
-      peers: Array.from(peerSet),
-      trackersQueried: trackers.length,
+      peers: sortedPeers,
+      trackersQueried: Math.min(cursor, trackers.length),
       trackersResponded,
     },
     200,
-    45,
+    hasPeers ? 45 : 0,
   );
 }
 
-function handleBtTunnel(request, reqUrl, ctx) {
+async function handleBtTunnel(request, reqUrl, env, ctx) {
+  if (!isStrictBtBrowserOrigin(request, env)) {
+    return jsonResponse({ ok: false, error: "origin_not_allowed" }, 403);
+  }
   const upgrade = (request.headers.get("Upgrade") || "").toLowerCase();
   if (upgrade !== "websocket") {
     return jsonResponse({ ok: true, btTunnelEndpoint: true, upgradeRequired: true }, 426);
@@ -2846,74 +3103,190 @@ function handleBtTunnel(request, reqUrl, ctx) {
     return jsonResponse({ ok: false, error: "disallowed_peer_address" }, 403);
   }
 
+  const infoHash = (reqUrl.searchParams.get("infoHash") || "").trim().toLowerCase();
+  const expSec = Number(reqUrl.searchParams.get("exp") || "0");
+  const sigHex = (reqUrl.searchParams.get("sig") || "").trim();
+  if (!/^[0-9a-f]{40}$/.test(infoHash)) {
+    return jsonResponse({ ok: false, error: "invalid_infoHash" }, 403);
+  }
+  const validToken = await verifyBtPeerToken(host, port, infoHash, expSec, sigHex, env);
+  if (!validToken) {
+    return jsonResponse({ ok: false, error: "invalid_or_expired_tunnel_token" }, 403);
+  }
+
+  const clientIp = getClientIp(request);
+  if (!acquireBtTunnelSlot(clientIp)) {
+    return jsonResponse({ ok: false, error: "tunnel_rate_or_concurrency_exceeded" }, 429);
+  }
+
+  const expectedInfoHashBytes = hexToRaw20(infoHash);
   const pair = new WebSocketPair();
   const clientWs = pair[0];
   const serverWs = pair[1];
+  try { serverWs.binaryType = "arraybuffer"; } catch {}
   serverWs.accept();
 
   let closed = false;
   let socket = null;
-  let writer = null;
+  let liveWriter = null;
+  let writeChain = Promise.resolve();
+  let connectTimer = null;
+  let handshakeGateTimer = null;
+  const pendingClientChunks = [];
 
-  const closeAll = () => {
+  let firstFrameSettled = false;
+  let resolveFirstFrame = null;
+  let rejectFirstFrame = null;
+  const firstFrameGate = new Promise((resolve, reject) => {
+    resolveFirstFrame = resolve;
+    rejectFirstFrame = reject;
+  });
+  // Suppress unhandled rejection if closed before waitUntil awaits firstFrameGate
+  firstFrameGate.catch(() => {});
+
+  const closeAll = (wsCode = 1000, wsReason = "closed") => {
     if (closed) return;
     closed = true;
-    try { if (writer) writer.releaseLock(); } catch {}
+    releaseBtTunnelSlot(clientIp);
+    if (handshakeGateTimer !== null) {
+      clearTimeout(handshakeGateTimer);
+      handshakeGateTimer = null;
+    }
+    if (connectTimer !== null) {
+      clearTimeout(connectTimer);
+      connectTimer = null;
+    }
+    if (!firstFrameSettled) {
+      firstFrameSettled = true;
+      if (rejectFirstFrame) rejectFirstFrame(new Error("closed_before_handshake"));
+    }
+    try { if (liveWriter) liveWriter.releaseLock(); } catch {}
     try { if (socket) socket.close(); } catch {}
-    try { serverWs.close(1000, "closed"); } catch {}
+    try { serverWs.close(wsCode, wsReason); } catch {}
   };
 
-  try {
-    socket = connect({ hostname: host, port }, { secureTransport: "off", allowHalfOpen: false });
-    writer = socket.writable.getWriter();
-  } catch {
-    closeAll();
-    return new Response(null, { status: 101, webSocket: clientWs });
-  }
+  handshakeGateTimer = setTimeout(() => {
+    if (!firstFrameSettled) {
+      firstFrameSettled = true;
+      if (rejectFirstFrame) rejectFirstFrame(new Error("bt_handshake_gate_timeout"));
+      closeAll(1008, "bt_handshake_timeout");
+    }
+  }, 4000);
 
-  const openGate = Promise.race([
-    socket.opened,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("tcp_connect_timeout")), 7000)),
-  ]);
-
-  let writeChain = openGate.then(() => undefined);
-  writeChain.catch(() => closeAll());
-
-  serverWs.addEventListener("message", (ev) => {
-    if (closed || !writer) return;
-    const chunk =
-      ev.data instanceof ArrayBuffer
-        ? new Uint8Array(ev.data)
-        : typeof ev.data === "string"
-          ? new TextEncoder().encode(ev.data)
-          : null;
-    if (!chunk || chunk.byteLength === 0) return;
+  const ingestClientBytes = (chunk) => {
+    if (closed || !chunk || chunk.byteLength === 0) return;
+    if (chunk.byteLength > BT_MAX_CLIENT_FRAME_BYTES) {
+      closeAll(1009, "frame_too_large");
+      return;
+    }
+    if (!firstFrameSettled) {
+      firstFrameSettled = true;
+      if (handshakeGateTimer !== null) {
+        clearTimeout(handshakeGateTimer);
+        handshakeGateTimer = null;
+      }
+      if (!isValidFirstBtFrame(chunk, expectedInfoHashBytes)) {
+        if (rejectFirstFrame) rejectFirstFrame(new Error("invalid_bt_handshake"));
+        closeAll(1008, "bt_handshake_required");
+        return;
+      }
+      if (resolveFirstFrame) resolveFirstFrame(chunk);
+      return;
+    }
+    if (!liveWriter) {
+      if (pendingClientChunks.length >= 32) {
+        closeAll(1008, "client_queue_overflow");
+        return;
+      }
+      pendingClientChunks.push(chunk);
+      return;
+    }
     writeChain = writeChain
       .then(() => {
-        if (!closed && writer) return writer.write(chunk);
+        if (!closed && liveWriter) return liveWriter.write(chunk);
       })
-      .catch(() => closeAll());
+      .catch(() => closeAll(1011, "tcp_write_failed"));
+  };
+
+  let blobDecodeChain = Promise.resolve();
+  serverWs.addEventListener("message", (ev) => {
+    if (closed) return;
+    if (ev.data instanceof ArrayBuffer) {
+      ingestClientBytes(new Uint8Array(ev.data));
+      return;
+    }
+    if (ArrayBuffer.isView(ev.data)) {
+      ingestClientBytes(new Uint8Array(ev.data.buffer, ev.data.byteOffset, ev.data.byteLength));
+      return;
+    }
+    if (typeof Blob !== "undefined" && ev.data instanceof Blob) {
+      blobDecodeChain = blobDecodeChain
+        .then(() => ev.data.arrayBuffer())
+        .then((ab) => ingestClientBytes(new Uint8Array(ab)))
+        .catch(() => closeAll(1008, "invalid_binary_frame"));
+      return;
+    }
+    // Text frames are invalid in BitTorrent binary wire protocol
+    closeAll(1003, "binary_frames_only");
   });
 
-  serverWs.addEventListener("close", () => closeAll());
-  serverWs.addEventListener("error", () => closeAll());
+  serverWs.addEventListener("close", () => closeAll(1000, "client_closed"));
+  serverWs.addEventListener("error", () => closeAll(1011, "ws_error"));
 
   ctx.waitUntil(
     (async () => {
+      let localWriter = null;
       try {
-        await openGate;
+        // Gate: NEVER open a TCP socket until a valid 68-byte BitTorrent handshake matching infoHash arrives
+        const handshakeChunk = await firstFrameGate;
+        if (closed) return;
+
+        socket = connect({ hostname: host, port }, { secureTransport: "off", allowHalfOpen: false });
+        localWriter = socket.writable.getWriter();
+
+        await Promise.race([
+          socket.opened.then((info) => {
+            if (connectTimer !== null) {
+              clearTimeout(connectTimer);
+              connectTimer = null;
+            }
+            return info;
+          }),
+          new Promise((_, reject) => {
+            connectTimer = setTimeout(() => reject(new Error("tcp_connect_timeout")), 3200);
+          }),
+        ]);
+        if (closed) return;
+
+        await localWriter.write(handshakeChunk);
+        while (pendingClientChunks.length > 0 && !closed) {
+          const queued = pendingClientChunks.shift();
+          if (queued) await localWriter.write(queued);
+        }
+        if (closed) return;
+
+        liveWriter = localWriter;
+        writeChain = Promise.resolve();
+
         const reader = socket.readable.getReader();
         while (!closed) {
           const { done, value } = await reader.read();
           if (done || !value) break;
           if (value.byteLength > 0 && !closed) {
-            serverWs.send(value);
+            const exactFrame =
+              value.byteOffset === 0 && value.byteLength === value.buffer.byteLength
+                ? value.buffer
+                : value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+            serverWs.send(exactFrame);
           }
         }
       } catch {
-        // Socket reset or closed by remote BitTorrent peer
+        // Handshake gate rejected, TCP connect timed out, or remote peer closed socket
       } finally {
-        closeAll();
+        if (!liveWriter && localWriter) {
+          try { localWriter.releaseLock(); } catch {}
+        }
+        closeAll(1000, "closed");
       }
     })(),
   );

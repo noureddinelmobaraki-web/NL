@@ -136,6 +136,15 @@ export function buildBtCancelBlock(
   return out;
 }
 
+export function buildBtHave(pieceIndex: number): Uint8Array {
+  const out = new Uint8Array(9);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, 5, false);
+  out[4] = 4;
+  view.setUint32(5, pieceIndex >>> 0, false);
+  return out;
+}
+
 export function buildUtMetadataRequest(
   peerUtMetadataId: number,
   metadataPiece: number,
@@ -281,4 +290,23 @@ export function wrapRawInfoDictAsTorrent(infoBytes: Uint8Array): Uint8Array {
   out.set(infoBytes, prefix.byteLength);
   out[out.byteLength - 1] = 0x65; // 'e'
   return out;
+}
+
+/**
+ * Ranks public BitTorrent peer addresses so reachable dedicated seedboxes and UPnP-mapped
+ * ports (e.g. 51413, 8999, 10000..65535) are dialed ahead of NAT-heavy default port 6881.
+ */
+export function scorePeerPortPriority(addr: string): number {
+  const colon = addr.lastIndexOf(':');
+  if (colon <= 0) return 0;
+  const port = Number(addr.slice(colon + 1));
+  if (!Number.isInteger(port) || port < 80 || port > 65535) return 0;
+  if (port === 6881) return 0;
+  if (port === 51413 || port === 8999 || port >= 10_000) return 3;
+  if (port >= 6882 && port <= 9_999) return 2;
+  return 1;
+}
+
+export function prioritizeCandidatePeers(addrs: readonly string[]): string[] {
+  return [...addrs].sort((a, b) => scorePeerPortPriority(b) - scorePeerPortPriority(a));
 }

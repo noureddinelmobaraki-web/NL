@@ -22,6 +22,7 @@ import {
   UT_PEX_LOCAL_ID,
   buildBep10ExtendedHandshake,
   buildBtCancelBlock,
+  buildBtHave,
   buildBtInterested,
   buildBtKeepAlive,
   buildBtRequestBlock,
@@ -33,15 +34,48 @@ import {
   parseUtMetadataMessage,
   parseUtPexPeers,
   peerHasPiece,
+  prioritizeCandidatePeers,
   verifyIncomingBtHandshake,
   wrapRawInfoDictAsTorrent,
 } from './edgeTcpWireProtocol';
 
-const MAX_ACTIVE_TUNNELS = 6;
-const PIPELINE_DEPTH = 10;
+const MAX_CONNECTED_SEEDERS = 10;
+const MAX_DIALING_TUNNELS = 14;
+const PIPELINE_DEPTH = 12;
 const BLOCK_IDLE_TIMEOUT_MS = 12_000;
-const CONNECT_HANDSHAKE_TIMEOUT_MS = 8_500;
+const CONNECT_HANDSHAKE_TIMEOUT_MS = 5_500;
+const PEER_WAIT_QUEUE_TIMEOUT_MS = 18_000;
 const ROTATE_AFTER_BYTES = 48 * 1024 * 1024;
+const TOKEN_RENEW_MARGIN_SEC = 60;
+
+interface DirectTcpSocketOpenedInfo {
+  readable: ReadableStream<Uint8Array>;
+  writable: WritableStream<Uint8Array>;
+}
+
+interface DirectTcpSocketInstance {
+  opened: Promise<DirectTcpSocketOpenedInfo>;
+  closed: Promise<void>;
+  close(): Promise<void>;
+}
+
+type DirectTcpSocketConstructor = new (
+  remoteAddress: string,
+  remotePort: number,
+  options?: { noDelay?: boolean; keepAliveDelay?: number },
+) => DirectTcpSocketInstance;
+
+interface PeerByteChannel {
+  readonly isDirectTcp: boolean;
+  isOpen: () => boolean;
+  send: (data: Uint8Array) => void;
+  close: () => void;
+}
+
+interface SignedPeerToken {
+  sig: string;
+  exp: number;
+}
 
 interface BlockSpec {
   begin: number;
@@ -55,6 +89,7 @@ interface InFlightPieceJob {
   receivedBytes: number;
   pendingBlocks: BlockSpec[];
   inFlightBlocks: Map<number, number>;
+  receivedOffsets: Set<number>;
   idleTimer: ReturnType<typeof setTimeout>;
   armIdle: () => void;
   finish: (result: ArrayBuffer | null) => void;
@@ -62,7 +97,7 @@ interface InFlightPieceJob {
 
 interface EdgePeerConn {
   addr: string;
-  ws: WebSocket;
+  channel: PeerByteChannel;
   handshakeDone: boolean;
   choked: boolean;
   hasAnyPiece: boolean;
@@ -85,10 +120,9 @@ interface MetadataAssembly {
   receivedCount: number;
 }
 
-function sendWsBinary(ws: WebSocket, data: Uint8Array): void {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(data as unknown as BufferSource);
-  }
+function getDirectTcpSocketCtor(): DirectTcpSocketConstructor | null {
+  const maybeCtor = (globalThis as { TCPSocket?: unknown }).TCPSocket;
+  return typeof maybeCtor === 'function' ? (maybeCtor as DirectTcpSocketConstructor) : null;
 }
 
 export class EdgeTcpSwarmSession {
@@ -102,12 +136,18 @@ export class EdgeTcpSwarmSession {
   private candidateQueue: string[] = [];
   private provenSeeders = new Set<string>();
   private seenCandidates = new Set<string>();
+  private peerTokens = new Map<string, SignedPeerToken>();
+  private awaitingTokenSign = new Set<string>();
+  private tokenSignAttempts = new Map<string, number>();
+  private workerRequiresTokens = false;
+  private signingBatchInFlight = false;
   private destroyed = false;
   private discoveryPromise: Promise<{ ok: boolean; workerMissing?: boolean; detail: string }> | null = null;
   private keepAliveTimer: ReturnType<typeof setInterval> | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private metaAssembly: MetadataAssembly | null = null;
   private resolvedMeta: ParsedTorrentWithGeometry | null = null;
+  private availabilityWaiters = new Set<() => void>();
 
   constructor(
     infoHash: string,
@@ -122,17 +162,19 @@ export class EdgeTcpSwarmSession {
 
     this.keepAliveTimer = setInterval(() => {
       for (const peer of this.peers.values()) {
-        if (peer.handshakeDone) sendWsBinary(peer.ws, buildBtKeepAlive());
+        if (peer.handshakeDone && peer.channel.isOpen()) {
+          peer.channel.send(buildBtKeepAlive());
+        }
       }
       this.replenishPool();
     }, 25_000);
 
     this.refreshTimer = setInterval(() => {
-      if (!this.destroyed && this.candidateQueue.length < 8 && this.getSeederPeersCount() < 3) {
+      if (!this.destroyed && this.candidateQueue.length < 12 && this.getSeederPeersCount() < 6) {
         this.discoveryPromise = null;
         void this.startDiscovery();
       }
-    }, 75_000);
+    }, 55_000);
   }
 
   public setGeometry(geometry: SelectedFileGeometry): void {
@@ -151,7 +193,7 @@ export class EdgeTcpSwarmSession {
   public getConnectedPeersCount(): number {
     let n = 0;
     for (const p of this.peers.values()) {
-      if (p.handshakeDone && p.ws.readyState === WebSocket.OPEN) n++;
+      if (p.handshakeDone && p.channel.isOpen()) n++;
     }
     return n;
   }
@@ -159,7 +201,7 @@ export class EdgeTcpSwarmSession {
   public getSeederPeersCount(): number {
     let n = 0;
     for (const p of this.peers.values()) {
-      if (p.handshakeDone && p.hasAnyPiece && p.ws.readyState === WebSocket.OPEN) n++;
+      if (p.handshakeDone && p.hasAnyPiece && p.channel.isOpen()) n++;
     }
     return n;
   }
@@ -168,8 +210,20 @@ export class EdgeTcpSwarmSession {
     signal?: AbortSignal,
   ): Promise<{ ok: boolean; workerMissing?: boolean; detail: string }> {
     if (this.discoveryPromise) return this.discoveryPromise;
-    this.discoveryPromise = this.fetchTrackerPeers(signal);
-    return this.discoveryPromise;
+    const task = this.fetchTrackerPeers(signal)
+      .then((res) => {
+        if (!res.ok) {
+          // Never cache failed discovery promise so subsequent probe attempts trigger a real new request
+          this.discoveryPromise = null;
+        }
+        return res;
+      })
+      .catch((err) => {
+        this.discoveryPromise = null;
+        throw err;
+      });
+    this.discoveryPromise = task;
+    return task;
   }
 
   private async fetchTrackerPeers(
@@ -177,13 +231,14 @@ export class EdgeTcpSwarmSession {
   ): Promise<{ ok: boolean; workerMissing?: boolean; detail: string }> {
     try {
       const u = new URL('/bt-peers', WORKER_BASE_URL);
+      u.searchParams.set('v', '2');
       u.searchParams.set('infoHash', this.infoHash);
       let addedTr = 0;
       for (const tr of this.trackers) {
         u.searchParams.append('tr', tr);
         if (++addedTr >= 8) break;
       }
-      const timeoutSig = AbortSignal.timeout(8_500);
+      const timeoutSig = AbortSignal.timeout(9_500);
       const combined =
         signal && typeof AbortSignal.any === 'function'
           ? AbortSignal.any([signal, timeoutSig])
@@ -193,6 +248,8 @@ export class EdgeTcpSwarmSession {
         ok?: boolean;
         btPeersEndpoint?: boolean;
         peers?: string[];
+        tokens?: Record<string, string>;
+        exp?: number;
       } | null;
 
       if (!data?.btPeersEndpoint) {
@@ -201,6 +258,15 @@ export class EdgeTcpSwarmSession {
           workerMissing: true,
           detail: 'Cloudflare Worker needs /bt-peers & /bt-tunnel update',
         };
+      }
+      if (data.tokens && typeof data.exp === 'number') {
+        this.workerRequiresTokens = true;
+        for (const [peerAddr, sig] of Object.entries(data.tokens)) {
+          if (typeof sig === 'string' && sig.length > 0) {
+            this.peerTokens.set(peerAddr, { sig, exp: data.exp });
+            this.tokenSignAttempts.delete(peerAddr);
+          }
+        }
       }
       const list = Array.isArray(data.peers) ? data.peers : [];
       this.enqueuePeers(list, false);
@@ -215,11 +281,165 @@ export class EdgeTcpSwarmSession {
     }
   }
 
-  private enqueuePeers(addrs: string[], highPriority: boolean): void {
-    for (const raw of addrs) {
+  private async flushTokenSigningBatch(): Promise<void> {
+    if (this.signingBatchInFlight || this.destroyed || this.awaitingTokenSign.size === 0) return;
+    this.signingBatchInFlight = true;
+    try {
+      while (!this.destroyed && this.awaitingTokenSign.size > 0) {
+        const batch = Array.from(this.awaitingTokenSign).slice(0, 48);
+        for (const addr of batch) {
+          this.awaitingTokenSign.delete(addr);
+        }
+        try {
+          const u = new URL('/bt-sign-peers', WORKER_BASE_URL);
+          const res = await fetch(u.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ infoHash: this.infoHash, peers: batch }),
+            signal: AbortSignal.timeout(5_000),
+          });
+          const data = (await res.json().catch(() => null)) as {
+            ok?: boolean;
+            tokens?: Record<string, string>;
+            exp?: number;
+          } | null;
+          if (data?.ok && data.tokens && typeof data.exp === 'number') {
+            const normalSigned: string[] = [];
+            const provenSigned: string[] = [];
+            for (const [peerAddr, sig] of Object.entries(data.tokens)) {
+              if (typeof sig === 'string' && sig.length > 0) {
+                this.peerTokens.set(peerAddr, { sig, exp: data.exp });
+                this.tokenSignAttempts.delete(peerAddr);
+                if (this.provenSeeders.has(peerAddr)) {
+                  provenSigned.push(peerAddr);
+                } else {
+                  normalSigned.push(peerAddr);
+                }
+              }
+            }
+            if (normalSigned.length > 0) this.enqueuePeers(normalSigned, false, true);
+            if (provenSigned.length > 0) this.enqueuePeers(provenSigned, true, true);
+          }
+        } catch {
+          // Transient token signing error; remaining pool continues
+        }
+      }
+    } finally {
+      this.signingBatchInFlight = false;
+      if (!this.destroyed) {
+        this.replenishPool();
+      }
+    }
+  }
+
+  private notifyAvailability(): void {
+    for (const wake of [...this.availabilityWaiters]) {
+      this.availabilityWaiters.delete(wake);
+      wake();
+    }
+  }
+
+  public hasIdlePeerForPiece(
+    localPieceIndex: number,
+    pieceLength: number,
+    totalSize: number,
+  ): boolean {
+    const geom = this.geometry ?? buildIdentityGeometry(totalSize, pieceLength);
+    const slice = getLocalPieceSlice(geom, localPieceIndex);
+    for (const p of this.peers.values()) {
+      if (
+        p.handshakeDone &&
+        !p.choked &&
+        p.job === null &&
+        p.channel.isOpen() &&
+        peerHasPiece(p.bitfield, p.haveSet, slice.torrentPieceIndex)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public hasAnyPeerForPiece(
+    localPieceIndex: number,
+    pieceLength: number,
+    totalSize: number,
+  ): boolean {
+    const geom = this.geometry ?? buildIdentityGeometry(totalSize, pieceLength);
+    const slice = getLocalPieceSlice(geom, localPieceIndex);
+    for (const p of this.peers.values()) {
+      if (
+        p.handshakeDone &&
+        p.channel.isOpen() &&
+        peerHasPiece(p.bitfield, p.haveSet, slice.torrentPieceIndex)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public waitForIdleSlot(
+    localPieceIndex: number,
+    pieceLength: number,
+    totalSize: number,
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ): Promise<boolean> {
+    if (this.hasIdlePeerForPiece(localPieceIndex, pieceLength, totalSize)) {
+      return Promise.resolve(true);
+    }
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.availabilityWaiters.delete(onWake);
+        signal?.removeEventListener('abort', onAbort);
+        resolve(ok);
+      };
+      const onWake = () => {
+        if (this.destroyed) {
+          finish(false);
+          return;
+        }
+        if (this.hasIdlePeerForPiece(localPieceIndex, pieceLength, totalSize)) {
+          finish(true);
+        }
+      };
+      const onAbort = () => finish(false);
+      const timer = setTimeout(() => finish(false), timeoutMs);
+      if (signal?.aborted || this.destroyed) {
+        finish(false);
+        return;
+      }
+      this.availabilityWaiters.add(onWake);
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
+  }
+
+  public announceHavePiece(
+    localPieceIndex: number,
+    pieceLength: number,
+    totalSize: number,
+  ): void {
+    const geom = this.geometry ?? buildIdentityGeometry(totalSize, pieceLength);
+    const slice = getLocalPieceSlice(geom, localPieceIndex);
+    const frame = buildBtHave(slice.torrentPieceIndex);
+    for (const peer of this.peers.values()) {
+      if (peer.handshakeDone && peer.channel.isOpen()) {
+        peer.channel.send(frame);
+      }
+    }
+  }
+
+  private enqueuePeers(addrs: string[], highPriority: boolean, allowSeen = false): void {
+    const ordered = highPriority ? addrs : prioritizeCandidatePeers(addrs);
+    for (const raw of ordered) {
       const addr = raw.trim();
       if (!addr || this.peers.has(addr) || this.dialing.has(addr)) continue;
-      if (!highPriority && this.seenCandidates.has(addr)) continue;
+      if (!highPriority && !allowSeen && this.seenCandidates.has(addr)) continue;
       this.seenCandidates.add(addr);
       if (highPriority) {
         this.candidateQueue.unshift(addr);
@@ -231,39 +451,188 @@ export class EdgeTcpSwarmSession {
 
   private replenishPool(): void {
     if (this.destroyed) return;
+    const directCtor = getDirectTcpSocketCtor();
+    const nowSec = Math.floor(Date.now() / 1000);
+    let needBatchSign = false;
+
     while (
-      this.peers.size + this.dialing.size < MAX_ACTIVE_TUNNELS &&
+      this.peers.size < MAX_CONNECTED_SEEDERS &&
+      this.dialing.size < MAX_DIALING_TUNNELS &&
       this.candidateQueue.length > 0
     ) {
       const nextAddr = this.candidateQueue.shift();
-      if (nextAddr && !this.peers.has(nextAddr) && !this.dialing.has(nextAddr)) {
-        this.openPeerTunnel(nextAddr);
+      if (!nextAddr || this.peers.has(nextAddr) || this.dialing.has(nextAddr)) continue;
+
+      if (!directCtor && this.workerRequiresTokens) {
+        const tok = this.peerTokens.get(nextAddr);
+        if (!tok || tok.exp - nowSec < TOKEN_RENEW_MARGIN_SEC) {
+          const attempts = this.tokenSignAttempts.get(nextAddr) ?? 0;
+          if (attempts < 2 && !this.awaitingTokenSign.has(nextAddr)) {
+            this.tokenSignAttempts.set(nextAddr, attempts + 1);
+            this.awaitingTokenSign.add(nextAddr);
+            needBatchSign = true;
+          }
+          continue;
+        }
       }
+
+      this.openPeerTunnel(nextAddr, directCtor);
+    }
+
+    if (needBatchSign) {
+      void this.flushTokenSigningBatch();
     }
   }
 
-  private openPeerTunnel(addr: string): void {
+  private ingestIncomingChunk(conn: EdgePeerConn, chunk: Uint8Array): void {
+    if (this.destroyed || chunk.byteLength === 0) return;
+    if (conn.recvBuffer.byteLength === 0) {
+      conn.recvBuffer = chunk;
+    } else {
+      const merged = new Uint8Array(conn.recvBuffer.byteLength + chunk.byteLength);
+      merged.set(conn.recvBuffer, 0);
+      merged.set(chunk, conn.recvBuffer.byteLength);
+      conn.recvBuffer = merged;
+    }
+    this.consumePeerBuffer(conn);
+  }
+
+  private openPeerTunnel(addr: string, directCtor: DirectTcpSocketConstructor | null): void {
     const colon = addr.lastIndexOf(':');
     if (colon <= 0) return;
     const host = addr.slice(0, colon);
     const port = Number(addr.slice(colon + 1));
     if (!host || !Number.isInteger(port)) return;
 
-    const wsBase = WORKER_BASE_URL.replace(/^http/i, 'ws');
-    const wsUrl = `${wsBase}/bt-tunnel?host=${encodeURIComponent(host)}&port=${port}`;
+    if (directCtor) {
+      let tcp: DirectTcpSocketInstance;
+      try {
+        tcp = new directCtor(host, port, { noDelay: true, keepAliveDelay: 25_000 });
+      } catch {
+        return;
+      }
+      let openFlag = false;
+      let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+      let writeChain = Promise.resolve();
+
+      const channel: PeerByteChannel = {
+        isDirectTcp: true,
+        isOpen: () => openFlag,
+        send: (data: Uint8Array) => {
+          if (!openFlag || !writer) return;
+          const copy = new Uint8Array(data);
+          writeChain = writeChain
+            .then(() => {
+              if (openFlag && writer) return writer.write(copy);
+              return undefined;
+            })
+            .catch(() => this.dropPeer(conn, false));
+        },
+        close: () => {
+          openFlag = false;
+          try {
+            writer?.releaseLock();
+          } catch {
+            // Ignore lock release on closed stream
+          }
+          writer = null;
+          void tcp.close().catch(() => {});
+        },
+      };
+
+      this.dialing.add(addr);
+      const conn: EdgePeerConn = {
+        addr,
+        channel,
+        handshakeDone: false,
+        choked: true,
+        hasAnyPiece: false,
+        bitfield: null,
+        haveSet: new Set<number>(),
+        recvBuffer: new Uint8Array(0),
+        utMetadataId: null,
+        metadataSize: null,
+        bytesReceived: 0,
+        completedPieces: 0,
+        failures: 0,
+        job: null,
+        handshakeTimer: setTimeout(() => {
+          if (!conn.handshakeDone) this.dropPeer(conn, false);
+        }, CONNECT_HANDSHAKE_TIMEOUT_MS),
+      };
+
+      void tcp.opened
+        .then(async ({ readable, writable }) => {
+          if (this.destroyed) {
+            this.dropPeer(conn, false);
+            return;
+          }
+          writer = writable.getWriter();
+          openFlag = true;
+          conn.channel.send(buildExtendedBtHandshake(this.infoHashBytes, this.peerIdBytes));
+          const reader = readable.getReader();
+          try {
+            while (!this.destroyed && openFlag) {
+              const { done, value } = await reader.read();
+              if (done || !value) break;
+              this.ingestIncomingChunk(conn, value);
+            }
+          } catch {
+            // Peer closed or reset native TCP stream
+          } finally {
+            try {
+              reader.releaseLock();
+            } catch {
+              // Ignore reader release error
+            }
+            this.dropPeer(conn, conn.completedPieces > 0 && conn.failures === 0);
+          }
+        })
+        .catch(() => this.dropPeer(conn, false));
+      return;
+    }
+
+    const wsUrl = new URL('/bt-tunnel', WORKER_BASE_URL.replace(/^http/i, 'ws'));
+    wsUrl.searchParams.set('host', host);
+    wsUrl.searchParams.set('port', String(port));
+    wsUrl.searchParams.set('infoHash', this.infoHash);
+    const tok = this.peerTokens.get(addr);
+    if (tok) {
+      wsUrl.searchParams.set('exp', String(tok.exp));
+      wsUrl.searchParams.set('sig', tok.sig);
+    }
 
     let ws: WebSocket;
     try {
-      ws = new WebSocket(wsUrl);
+      ws = new WebSocket(wsUrl.toString());
     } catch {
       return;
     }
     ws.binaryType = 'arraybuffer';
-    this.dialing.add(addr);
 
+    const channel: PeerByteChannel = {
+      isDirectTcp: false,
+      isOpen: () => ws.readyState === WebSocket.OPEN,
+      send: (data: Uint8Array) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(data as unknown as BufferSource);
+        }
+      },
+      close: () => {
+        try {
+          if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+            ws.close();
+          }
+        } catch {
+          // Ignore WebSocket close error
+        }
+      },
+    };
+
+    this.dialing.add(addr);
     const conn: EdgePeerConn = {
       addr,
-      ws,
+      channel,
       handshakeDone: false,
       choked: true,
       hasAnyPiece: false,
@@ -286,22 +655,12 @@ export class EdgeTcpSwarmSession {
         this.dropPeer(conn, false);
         return;
       }
-      sendWsBinary(ws, buildExtendedBtHandshake(this.infoHashBytes, this.peerIdBytes));
+      conn.channel.send(buildExtendedBtHandshake(this.infoHashBytes, this.peerIdBytes));
     };
 
     ws.onmessage = (ev: MessageEvent) => {
       if (this.destroyed || !(ev.data instanceof ArrayBuffer)) return;
-      const chunk = new Uint8Array(ev.data);
-      if (chunk.byteLength === 0) return;
-      if (conn.recvBuffer.byteLength === 0) {
-        conn.recvBuffer = chunk;
-      } else {
-        const merged = new Uint8Array(conn.recvBuffer.byteLength + chunk.byteLength);
-        merged.set(conn.recvBuffer, 0);
-        merged.set(chunk, conn.recvBuffer.byteLength);
-        conn.recvBuffer = merged;
-      }
-      this.consumePeerBuffer(conn);
+      this.ingestIncomingChunk(conn, new Uint8Array(ev.data));
     };
 
     ws.onerror = () => this.dropPeer(conn, false);
@@ -321,15 +680,12 @@ export class EdgeTcpSwarmSession {
       clearTimeout(activeJob.idleTimer);
       activeJob.finish(null);
     }
-    try {
-      if (conn.ws.readyState === WebSocket.OPEN || conn.ws.readyState === WebSocket.CONNECTING) {
-        conn.ws.close();
-      }
-    } catch {}
+    conn.channel.close();
     if (!this.destroyed && requeueAsProven) {
-      this.enqueuePeers([conn.addr], true);
+      this.enqueuePeers([conn.addr], true, true);
     }
     this.replenishPool();
+    this.notifyAvailability();
   }
 
   private consumePeerBuffer(conn: EdgePeerConn): void {
@@ -348,11 +704,13 @@ export class EdgeTcpSwarmSession {
       }
       this.dialing.delete(conn.addr);
       this.peers.set(conn.addr, conn);
+      this.replenishPool();
 
       if (check.supportsBep10) {
-        sendWsBinary(conn.ws, buildBep10ExtendedHandshake());
+        conn.channel.send(buildBep10ExtendedHandshake());
       }
-      sendWsBinary(conn.ws, buildBtInterested());
+      conn.channel.send(buildBtInterested());
+      this.notifyAvailability();
     }
 
     while (conn.recvBuffer.byteLength >= 4 && !this.destroyed) {
@@ -392,20 +750,26 @@ export class EdgeTcpSwarmSession {
     }
     if (msgId === 1) {
       conn.choked = false;
-      if (conn.job) this.pumpBlockPipeline(conn);
+      if (conn.job) {
+        this.pumpBlockPipeline(conn);
+      } else {
+        this.notifyAvailability();
+      }
       return;
     }
     if (msgId === 4 && payload.byteLength >= 4) {
       const idx = new DataView(payload.buffer, payload.byteOffset, 4).getUint32(0, false);
       conn.haveSet.add(idx);
       conn.hasAnyPiece = true;
+      this.notifyAvailability();
       return;
     }
     if (msgId === 5) {
       conn.bitfield = new Uint8Array(payload);
       if (payload.some((b) => b !== 0)) {
         conn.hasAnyPiece = true;
-        sendWsBinary(conn.ws, buildBtInterested());
+        conn.channel.send(buildBtInterested());
+        this.notifyAvailability();
       }
       return;
     }
@@ -453,18 +817,22 @@ export class EdgeTcpSwarmSession {
     const begin = pView.getUint32(4, false);
     const block = payload.subarray(8);
 
+    const expectedLen = job.inFlightBlocks.get(begin);
     if (
       pieceIdx !== job.pieceIndex ||
-      !job.inFlightBlocks.has(begin) ||
+      expectedLen !== block.byteLength ||
+      job.receivedOffsets.has(begin) ||
       begin + block.byteLength > job.buffer.byteLength
     ) {
       return;
     }
 
     job.inFlightBlocks.delete(begin);
+    job.receivedOffsets.add(begin);
     job.buffer.set(block, begin);
     job.receivedBytes += block.byteLength;
     conn.bytesReceived += block.byteLength;
+    conn.failures = 0;
     job.armIdle();
 
     if (job.receivedBytes >= job.pieceLength) {
@@ -478,9 +846,11 @@ export class EdgeTcpSwarmSession {
       ) as ArrayBuffer;
       job.finish(out);
 
-      // Proactive tunnel rotation to reset Cloudflare Free 10ms per-invocation CPU counter
-      if (conn.bytesReceived >= ROTATE_AFTER_BYTES) {
+      // Proactive tunnel rotation to reset Cloudflare Free 10ms per-invocation CPU counter (skipped on Direct TCPSocket)
+      if (!conn.channel.isDirectTcp && conn.bytesReceived >= ROTATE_AFTER_BYTES) {
         this.dropPeer(conn, true);
+      } else {
+        this.notifyAvailability();
       }
       return;
     }
@@ -490,11 +860,11 @@ export class EdgeTcpSwarmSession {
 
   private pumpBlockPipeline(conn: EdgePeerConn): void {
     const job = conn.job;
-    if (!job || conn.choked || conn.ws.readyState !== WebSocket.OPEN) return;
+    if (!job || conn.choked || !conn.channel.isOpen()) return;
     while (job.inFlightBlocks.size < PIPELINE_DEPTH && job.pendingBlocks.length > 0) {
       const next = job.pendingBlocks.shift()!;
       job.inFlightBlocks.set(next.begin, next.length);
-      sendWsBinary(conn.ws, buildBtRequestBlock(job.pieceIndex, next.begin, next.length));
+      conn.channel.send(buildBtRequestBlock(job.pieceIndex, next.begin, next.length));
     }
   }
 
@@ -511,7 +881,7 @@ export class EdgeTcpSwarmSession {
 
       if (!requested) {
         const metaPeer = Array.from(this.peers.values()).find(
-          (p) => p.utMetadataId !== null && p.metadataSize !== null && p.ws.readyState === WebSocket.OPEN,
+          (p) => p.utMetadataId !== null && p.metadataSize !== null && p.channel.isOpen(),
         );
         if (metaPeer && metaPeer.utMetadataId !== null && metaPeer.metadataSize !== null) {
           const totalBlocks = Math.ceil(metaPeer.metadataSize / METADATA_BLOCK_LEN);
@@ -522,7 +892,7 @@ export class EdgeTcpSwarmSession {
             receivedCount: 0,
           };
           for (let b = 0; b < totalBlocks; b++) {
-            sendWsBinary(metaPeer.ws, buildUtMetadataRequest(metaPeer.utMetadataId, b));
+            metaPeer.channel.send(buildUtMetadataRequest(metaPeer.utMetadataId, b));
           }
           requested = true;
         }
@@ -568,7 +938,7 @@ export class EdgeTcpSwarmSession {
       (p) =>
         !exclude.has(p.addr) &&
         p.handshakeDone &&
-        p.ws.readyState === WebSocket.OPEN &&
+        p.channel.isOpen() &&
         p.job === null &&
         peerHasPiece(p.bitfield, p.haveSet, torrentPieceIndex),
     );
@@ -607,10 +977,17 @@ export class EdgeTcpSwarmSession {
       };
 
       const onTimeout = () => {
-        if (conn.job?.pieceIndex === torrentPieceIndex) {
+        if (conn.job === job) {
+          for (const [begin, length] of job.inFlightBlocks) {
+            conn.channel.send(buildBtCancelBlock(torrentPieceIndex, begin, length));
+          }
           conn.job = null;
           conn.failures += 1;
-          if (conn.failures >= 2) this.dropPeer(conn, false);
+          if (conn.failures >= 2) {
+            this.dropPeer(conn, false);
+          } else {
+            this.notifyAvailability();
+          }
         }
         finish(null);
       };
@@ -622,6 +999,7 @@ export class EdgeTcpSwarmSession {
         receivedBytes: 0,
         pendingBlocks,
         inFlightBlocks: new Map<number, number>(),
+        receivedOffsets: new Set<number>(),
         idleTimer: setTimeout(onTimeout, BLOCK_IDLE_TIMEOUT_MS),
         armIdle: () => {
           clearTimeout(job.idleTimer);
@@ -633,10 +1011,11 @@ export class EdgeTcpSwarmSession {
       const onAbort = () => {
         if (conn.job === job) {
           for (const [begin, length] of job.inFlightBlocks) {
-            sendWsBinary(conn.ws, buildBtCancelBlock(torrentPieceIndex, begin, length));
+            conn.channel.send(buildBtCancelBlock(torrentPieceIndex, begin, length));
           }
           conn.job = null;
           clearTimeout(job.idleTimer);
+          this.notifyAvailability();
         }
         finish(null);
       };
@@ -649,7 +1028,7 @@ export class EdgeTcpSwarmSession {
 
       conn.job = job;
       if (conn.choked) {
-        sendWsBinary(conn.ws, buildBtInterested());
+        conn.channel.send(buildBtInterested());
       } else {
         this.pumpBlockPipeline(conn);
       }
@@ -673,7 +1052,12 @@ export class EdgeTcpSwarmSession {
 
       let peer = this.pickPeerForPiece(slice.torrentPieceIndex, tried);
       if (!peer) {
-        await abortableSleep(600, signal ?? new AbortController().signal).catch(() => {});
+        const waitMs =
+          this.hasAnyPeerForPiece(localPieceIndex, pieceLength, totalSize) ||
+          this.dialing.size > 0
+            ? PEER_WAIT_QUEUE_TIMEOUT_MS
+            : 2_500;
+        await this.waitForIdleSlot(localPieceIndex, pieceLength, totalSize, waitMs, signal);
         peer = this.pickPeerForPiece(slice.torrentPieceIndex, tried);
       }
       if (!peer) continue;
@@ -703,8 +1087,10 @@ export class EdgeTcpSwarmSession {
       this.refreshTimer = null;
     }
     this.candidateQueue = [];
+    this.awaitingTokenSign.clear();
     for (const conn of Array.from(this.peers.values())) {
       this.dropPeer(conn, false);
     }
+    this.notifyAvailability();
   }
 }

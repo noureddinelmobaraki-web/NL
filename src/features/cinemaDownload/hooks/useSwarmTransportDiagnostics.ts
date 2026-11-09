@@ -25,17 +25,31 @@ export function useSwarmTransportDiagnostics(infoHash: string, isAr = true) {
   const view = useMemo(() => {
     if (!diag) return null;
     const lang = isAr ? 'ar' : 'en';
+    const isDownloadingStage =
+      diag.stage !== 'probing' && diag.stage !== 'fallback-needed';
+    const isHybridCoSwarm =
+      isDownloadingStage && diag.edgeTcpPeers > 0 && diag.webrtcPeers > 0;
     const steps = ALL_STAGES.filter((s) => diag.stageOutcomes[s] !== 'skipped').map((s) => ({
-      stage: s, label: STAGE_LABELS[s][lang], outcome: diag.stageOutcomes[s],
-      isActive: diag.committedStage === s && diag.stage === s,
+      stage: s,
+      label: STAGE_LABELS[s][lang],
+      outcome: diag.stageOutcomes[s],
+      isActive:
+        (diag.committedStage === s && diag.stage === s) ||
+        (isDownloadingStage && s === 'edge-tcp' && diag.edgeTcpPeers > 0) ||
+        (isDownloadingStage && s === 'webrtc' && diag.webrtcPeers > 0),
     }));
     const headline =
       diag.stage === 'fallback-needed'
         ? (isAr ? 'لا يوجد مسار متاح داخل المتصفح' : 'No in-browser transport available')
         : diag.stage === 'probing'
-          ? (isAr ? `جاري الفحص: ${diag.probingStage ? STAGE_LABELS[diag.probingStage].ar : '...'}`
-                  : `Probing: ${diag.probingStage ? STAGE_LABELS[diag.probingStage].en : '...'}`)
-          : STAGE_LABELS[diag.stage][lang];
+          ? (isAr
+              ? `جاري الفحص: ${diag.probingStage ? STAGE_LABELS[diag.probingStage].ar : '...'}`
+              : `Probing: ${diag.probingStage ? STAGE_LABELS[diag.probingStage].en : '...'}`)
+          : isHybridCoSwarm
+            ? (isAr
+                ? 'سرب هجين متزامن (Edge TCP + WebRTC معاً)'
+                : 'Hybrid Co-Swarm (Edge TCP + WebRTC)')
+            : STAGE_LABELS[diag.stage][lang];
     const tone = diag.stage === 'fallback-needed' ? 'rose' : diag.stage === 'probing' ? 'amber' : 'emerald';
     return { steps, headline, tone: tone as 'rose' | 'amber' | 'emerald' };
   }, [diag, isAr]);

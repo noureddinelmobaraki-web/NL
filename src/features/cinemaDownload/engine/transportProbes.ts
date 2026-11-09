@@ -192,49 +192,100 @@ export async function probeWebSeed(env: ProbeEnv): Promise<StageProbeResult> {
   return { ok: false, detail: last, permanent: false };
 }
 
-export async function probeEdgeTcp(env: ProbeEnv, waitMs = 14_000): Promise<StageProbeResult> {
-  const swarm = env.getEdgeSwarm();
-  const disc = await swarm.startDiscovery(env.signal);
+async function resolveHybridMetainfo(
+  env: ProbeEnv,
+  edgeSwarm: EdgeTcpSwarmSession,
+  rtcSwarm: BrowserSwarmSession,
+): Promise<ParsedTorrentMetainfo | null> {
+  if (env.metainfo) return env.metainfo;
+  const raceCtrl = new AbortController();
+  const onParentAbort = () => raceCtrl.abort();
+  env.signal.addEventListener('abort', onParentAbort, { once: true });
+
+  try {
+    const results = await Promise.all([
+      edgeSwarm
+        .resolveMetainfoFromPeers(raceCtrl.signal, 10_000)
+        .then((m) => {
+          if (m) raceCtrl.abort();
+          return m;
+        })
+        .catch(() => null),
+      rtcSwarm
+        .resolveMetainfoFromPeers(raceCtrl.signal, 10_000)
+        .then((m) => {
+          if (m) raceCtrl.abort();
+          return m;
+        })
+        .catch(() => null),
+    ]);
+    const fetched = results[0] ?? results[1] ?? null;
+    if (fetched) {
+      edgeSwarm.setGeometry(fetched.geometry);
+      rtcSwarm.setGeometry(fetched.geometry);
+      env.onMetainfoResolved?.(fetched);
+    }
+    return fetched;
+  } finally {
+    env.signal.removeEventListener('abort', onParentAbort);
+  }
+}
+
+export async function probeEdgeTcp(env: ProbeEnv, waitMs = 10_000): Promise<StageProbeResult> {
+  // Warm up BOTH Edge TCP and Browser WebRTC swarms simultaneously so both discover peers in parallel
+  const rtcSwarm = env.getSwarm();
+  const edgeSwarm = env.getEdgeSwarm();
+  const disc = await edgeSwarm.startDiscovery(env.signal);
   if (!disc.ok && disc.workerMissing) {
     return { ok: false, detail: disc.detail, permanent: true };
   }
 
   const started = Date.now();
   while (Date.now() - started < waitMs) {
-    const seeders = swarm.getSeederPeersCount();
-    if (seeders > 0) {
+    const edgeSeeders = edgeSwarm.getSeederPeersCount();
+    const rtcSeeders = rtcSwarm.getSeederPeersCount();
+
+    if (edgeSeeders > 0) {
       let activeMeta = env.metainfo;
       if (!activeMeta && !env.frozen?.pieceHashesHex.length) {
-        const fetched = await swarm.resolveMetainfoFromPeers(env.signal, 10_000);
-        if (!fetched) {
+        activeMeta = await resolveHybridMetainfo(env, edgeSwarm, rtcSwarm);
+        if (!activeMeta) {
           return {
             ok: false,
             detail: 'Connected to TCP peers, but BEP-9 metadata was not delivered in time',
             permanent: false,
           };
         }
-        activeMeta = fetched;
-        env.onMetainfoResolved?.(fetched);
       }
 
       const geometry = torrentGeometry({ ...env, metainfo: activeMeta });
       return {
         ok: true,
-        detail: `${seeders} TCP seeder(s) via Cloudflare Edge (${swarm.getConnectedPeersCount()} connected)`,
+        detail: `${edgeSeeders} TCP seeder(s) via Cloudflare Edge${rtcSeeders > 0 ? ` + ${rtcSeeders} WebRTC` : ''}`,
         transport: {
           stage: 'edge-tcp',
           mode: 'edge-tcp-swarm',
           geometry,
           useBridgeBackend: false,
-          peers: seeders,
+          peers: edgeSeeders + rtcSeeders,
           httpSources: 0,
         },
       };
     }
-    await abortableSleep(500, env.signal);
+
+    // Fast handoff: if WebRTC already found seeders after 4.5s, start downloading immediately while Edge TCP continues dialing in the background
+    if (Date.now() - started >= 4_500 && rtcSeeders > 0) {
+      return {
+        ok: false,
+        detail: 'WebRTC seeders ready first — Edge TCP continues connecting in hybrid background',
+        permanent: true,
+      };
+    }
+
+    await abortableSleep(400, env.signal);
   }
 
-  const connected = swarm.getConnectedPeersCount();
+  const connected = edgeSwarm.getConnectedPeersCount();
   if (connected > 0) {
     return {
       ok: false,
@@ -244,26 +295,63 @@ export async function probeEdgeTcp(env: ProbeEnv, waitMs = 14_000): Promise<Stag
   }
   return {
     ok: false,
-    detail: disc.ok ? '0 TCP BitTorrent seeders accepted tunnel handshake' : disc.detail,
+    detail: disc.ok ? '0 TCP BitTorrent seeders accepted tunnel handshake yet' : disc.detail,
     permanent: false,
   };
 }
 
-export async function probeWebRtc(env: ProbeEnv, waitMs = 12_000): Promise<StageProbeResult> {
+export async function probeWebRtc(env: ProbeEnv, waitMs = 10_000): Promise<StageProbeResult> {
   const swarm = env.getSwarm();
+  const edgeSwarm = env.getEdgeSwarm();
   const started = Date.now();
+
   while (Date.now() - started < waitMs) {
-    const seeders = swarm.getSeederPeersCount();
-    const peers = swarm.getConnectedPeersCount();
-    if (seeders > 0) {
+    const rtcSeeders = swarm.getSeederPeersCount();
+    const edgeSeeders = edgeSwarm.getSeederPeersCount();
+    if (rtcSeeders > 0 || edgeSeeders > 0) {
+      let activeMeta = env.metainfo;
+      if (!activeMeta && !env.frozen?.pieceHashesHex.length) {
+        activeMeta = await resolveHybridMetainfo(env, edgeSwarm, swarm);
+        if (!activeMeta) {
+          return {
+            ok: false,
+            detail: 'Connected to P2P peers, but BEP-9 metadata was not delivered in time',
+            permanent: false,
+          };
+        }
+      }
+
+      const geometry = torrentGeometry({ ...env, metainfo: activeMeta });
+      if (rtcSeeders > 0) {
+        return {
+          ok: true,
+          detail: `${rtcSeeders} WebRTC seeder(s) connected (${swarm.getConnectedPeersCount()} total)${edgeSeeders > 0 ? ` + ${edgeSeeders} TCP` : ''}`,
+          transport: {
+            stage: 'webrtc',
+            mode: 'browser-webrtc-swarm',
+            geometry,
+            useBridgeBackend: false,
+            peers: rtcSeeders + edgeSeeders,
+            httpSources: 0,
+          },
+        };
+      }
       return {
         ok: true,
-        detail: `${seeders} WebRTC seeder(s) connected (${peers} total)`,
-        transport: { stage: 'webrtc', mode: 'browser-webrtc-swarm', geometry: torrentGeometry(env), useBridgeBackend: false, peers: seeders, httpSources: 0 },
+        detail: `${edgeSeeders} TCP seeder(s) connected during hybrid probe`,
+        transport: {
+          stage: 'edge-tcp',
+          mode: 'edge-tcp-swarm',
+          geometry,
+          useBridgeBackend: false,
+          peers: edgeSeeders,
+          httpSources: 0,
+        },
       };
     }
-    await abortableSleep(750, env.signal);
+    await abortableSleep(450, env.signal);
   }
+
   const totalPeers = swarm.getConnectedPeersCount();
   if (totalPeers > 0) {
     return { ok: false, detail: 'Connected WebRTC peer has 0% pieces (leecher only)', permanent: false };
