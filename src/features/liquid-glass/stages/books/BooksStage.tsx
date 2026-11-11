@@ -48,9 +48,13 @@ export interface BooksStageProps {
 
 const CATEGORIES = [
   { id: 'trending', label: 'Trending', icon: Sparkles },
+  { id: 'manuscripts', label: 'Manuscripts', icon: Landmark },
+  { id: 'turath', label: 'Turath & OpenITI', icon: Globe },
+  { id: 'poetry', label: 'Quran & Poetry', icon: Feather },
+  { id: 'manga', label: 'Manga', icon: Layers },
+  { id: 'standard_ebooks', label: 'Standard Ebooks', icon: BookOpen },
   { id: 'arabic', label: 'Arabic Classics', icon: Globe },
   { id: 'literature', label: 'Literature', icon: Feather },
-  { id: 'manga', label: 'Manga', icon: Layers },
   { id: 'history', label: 'History', icon: Landmark },
   { id: 'scifi', label: 'Sci-Fi', icon: Orbit },
   { id: 'philosophy', label: 'Philosophy', icon: Compass },

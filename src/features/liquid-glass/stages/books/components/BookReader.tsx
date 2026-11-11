@@ -16,6 +16,8 @@ import {
 import { useIsPhone } from '../../../../../hooks/useMediaQuery';
 import type { BookItem, BookResolveResult } from '../../../services/types';
 import { ReaderToolbar } from './ReaderToolbar';
+import { MangaReaderViewport } from './MangaReaderViewport';
+import { ManuscriptSpreadModal } from './ManuscriptSpreadModal';
 
 export interface BookReaderProps {
   book: BookItem;
@@ -254,7 +256,16 @@ export const BookReader: React.FC<BookReaderProps> = ({
             </div>
           )}
 
-          {useEpubMode && epubChaptersText.length > 0 ? (
+          {book.ext === 'manga' || book.id.startsWith('mangadex:') ? (
+            <MangaReaderViewport book={book} />
+          ) : book.ext === 'manuscript' ||
+            book.ext === 'quran' ||
+            book.ext === 'poetry' ||
+            book.id.startsWith('ia-ms-') ||
+            book.id.startsWith('sacred:') ||
+            book.id.startsWith('poetry') ? (
+            <ManuscriptSpreadModal book={book} />
+          ) : useEpubMode && epubChaptersText.length > 0 ? (
             <div
               className={`lg-epub-surface ${eyeComfortMode ? 'lg-epub-surface--dark' : ''}`}
               dir={isArabic ? 'rtl' : 'ltr'}

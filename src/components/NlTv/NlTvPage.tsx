@@ -20,6 +20,12 @@ import { ChannelGrid } from "./ChannelGrid";
 import { Country, TvChannel, fetchCountries, fetchCountryChannels } from "./iptvHelper";
 import { useTvSearchIndex } from "./useTvSearchIndex";
 import { useTvMusic } from "./useTvMusic";
+import { NlTvModeSwitcher, type NlTvBroadcastMode } from "./components/NlTvModeSwitcher";
+import { RadioLiveStage } from "./components/RadioLiveStage";
+import { EpgProgramRibbon } from "./components/EpgProgramRibbon";
+import { useLiveTvCatalog } from "./hooks/useLiveTvCatalog";
+import { useRadioCatalog } from "./hooks/useRadioCatalog";
+import { useStremioLiveResolver } from "./hooks/useStremioLiveResolver";
 
 interface NlTvPageProps {
   onClose: () => void;
@@ -30,6 +36,9 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
   
   // Custom document headers for title & description
   useDocumentMeta("nav.nltv", "nltv.description");
+
+  // Broadcast Mode: Live TV | Live Radio | Stremio HD
+  const [broadcastMode, setBroadcastMode] = useState<NlTvBroadcastMode>("tv");
 
   // Country & Channels indices states
   const [countries, setCountries] = useState<Country[]>([]);
@@ -48,6 +57,19 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
   // Active Selections
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<TvChannel | null>(null);
+
+  const { currentEpg } = useLiveTvCatalog(selectedChannel);
+  const {
+    stations: radioStations,
+    activeStation,
+    isLoadingRadio,
+    isRadioPlaying,
+    audioRef: radioAudioRef,
+    playStation,
+    toggleRadioPlay,
+    setIsRadioPlaying,
+  } = useRadioCatalog(selectedCountry?.code || "MA");
+  const { stremioChannels, isLoadingStremio } = useStremioLiveResolver(broadcastMode === "stremio");
 
   const handlePickChannel = useCallback(async (
     channelId: string,
@@ -285,6 +307,17 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
               </div>
             </div>
 
+            {/* Broadcast Mode Switcher: Live TV | Live Radio | Stremio HD */}
+            <NlTvModeSwitcher
+              mode={broadcastMode}
+              onChangeMode={(nextMode) => {
+                setBroadcastMode(nextMode);
+                if (nextMode === "radio") {
+                  setIsPlaying(false);
+                }
+              }}
+            />
+
             {/* Close button with focus guidelines */}
             <button
               onClick={onClose}
@@ -299,9 +332,25 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
         )}
       </AnimatePresence>
 
+      {/* Radio Broadcast Stage */}
+      {broadcastMode === "radio" && (
+        <div className="absolute inset-0 top-20 bottom-10 z-30 flex items-center justify-center overflow-y-auto">
+          <RadioLiveStage
+            stations={radioStations}
+            activeStation={activeStation}
+            isPlaying={isRadioPlaying}
+            isLoading={isLoadingRadio}
+            onSelectStation={playStation}
+            onTogglePlay={toggleRadioPlay}
+            audioRef={radioAudioRef}
+            onPlayingStateChange={setIsRadioPlaying}
+          />
+        </div>
+      )}
+
       {/* 4. Left/Right Navigation Sidebar Column (Countries or Channels) */}
       <AnimatePresence>
-        {!hideOverlays && (
+        {!hideOverlays && broadcastMode !== "radio" && (
           <m.div
             initial={{ opacity: 0, x: isRtl ? 40 : -40 }}
             animate={{ opacity: 1, x: 0 }}
@@ -311,7 +360,24 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
               isRtl ? "right-5" : "left-5"
             } w-full max-w-[340px] z-30 flex flex-col p-2 pointer-events-none hidden sm:flex`}
           >
-            {!selectedCountry ? (
+            {broadcastMode === "stremio" ? (
+              <ChannelGrid
+                countryName="Stremio Live Addons"
+                countryFlag="US"
+                channels={stremioChannels}
+                selectedChannelId={selectedChannel ? selectedChannel.id : null}
+                onSelectChannel={handleSelectChannel}
+                onBack={() => setBroadcastMode("tv")}
+                isLoading={isLoadingStremio}
+                isSearchIndexLoaded={isSearchIndexLoaded}
+                isIndexing={isIndexing}
+                onInitSearchIndex={initIndex}
+                onSearchGlobal={searchGlobal}
+                onPickChannel={handlePickChannel}
+                countries={countries}
+                onPickCountry={handleSelectCountry}
+              />
+            ) : !selectedCountry ? (
               <CountryGrid
                 countries={countries}
                 selectedCountryCode={null}
@@ -350,9 +416,26 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
 
       {/* Mobile-only responsive drawer when not in idle view */}
       <AnimatePresence>
-        {!hideOverlays && (
+        {!hideOverlays && broadcastMode !== "radio" && (
           <div className="absolute top-24 bottom-28 inset-x-4 z-30 flex flex-col sm:hidden overflow-hidden pointer-events-none">
-            {!selectedCountry ? (
+            {broadcastMode === "stremio" ? (
+              <ChannelGrid
+                countryName="Stremio Live Addons"
+                countryFlag="US"
+                channels={stremioChannels}
+                selectedChannelId={selectedChannel ? selectedChannel.id : null}
+                onSelectChannel={handleSelectChannel}
+                onBack={() => setBroadcastMode("tv")}
+                isLoading={isLoadingStremio}
+                isSearchIndexLoaded={isSearchIndexLoaded}
+                isIndexing={isIndexing}
+                onInitSearchIndex={initIndex}
+                onSearchGlobal={searchGlobal}
+                onPickChannel={handlePickChannel}
+                countries={countries}
+                onPickCountry={handleSelectCountry}
+              />
+            ) : !selectedCountry ? (
               <CountryGrid
                 countries={countries}
                 selectedCountryCode={null}
@@ -390,7 +473,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
       </AnimatePresence>
 
       {/* 5. Center display notice if no channel is active */}
-      {!selectedChannel && (
+      {!selectedChannel && broadcastMode !== "radio" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 px-6">
           <div className="nl-tv-empty-card bg-neutral-950/65 backdrop-blur-md border border-white/5 p-8 rounded-3xl max-w-sm text-center shadow-2xl">
             <Tv className="w-16 h-16 text-zinc-650 mx-auto mb-4 animate-pulse" />
@@ -422,9 +505,9 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
         )}
       </AnimatePresence>
 
-      {/* 7. Bottom glass controls bar (auto hides on idle) */}
+      {/* 7. Bottom glass controls bar + EPG Ribbon (auto hides on idle) */}
       <AnimatePresence>
-        {!hideOverlays && selectedChannel && (
+        {!hideOverlays && selectedChannel && broadcastMode !== "radio" && (
           <m.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -432,9 +515,10 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
             transition={{ duration: 0.3 }}
             className="absolute bottom-5 inset-x-0 z-40 pointer-events-none"
           >
+            <EpgProgramRibbon epg={currentEpg} />
             <TvControls
               channelName={selectedChannel.name}
-              countryFlag={selectedCountry ? selectedCountry.flag : ""}
+              countryFlag={selectedCountry ? selectedCountry.flag : "US"}
               isPlaying={isPlaying}
               onTogglePlay={() => setIsPlaying(!isPlaying)}
               isMuted={isMuted}
@@ -458,3 +542,4 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
     </div>
   );
 }
+

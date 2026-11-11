@@ -37,6 +37,10 @@ import {
   registerAudiobooksInCrossCache,
   registerBooksInCrossCache,
 } from './services/crossMatch';
+import { fetchArabicManuscriptsAndTurath } from './services/manuscriptsAndTurath';
+import { fetchStandardEbooksCatalog } from './services/standardEbooksClient';
+import { searchMangaDexCatalog } from './services/mangadexClient';
+import { fetchPoetryAndSacredBooks } from './services/poetryAndSacredTexts';
 
 export {
   type AudiobookChapter,
@@ -63,6 +67,10 @@ export const SUBJECT_CATEGORY_MAP: Record<string, string> = {
   literature: 'literature',
   manga: 'comic_books',
   comics: 'comic_books',
+  manuscripts: 'arabic_manuscripts',
+  turath: 'arabic_literature',
+  poetry: 'poetry',
+  standard_ebooks: 'standard_ebooks',
   history: 'history',
   scifi: 'science_fiction',
   philosophy: 'philosophy',
@@ -215,6 +223,32 @@ export async function fetchTrendingBooks(params: {
       /* fallback */
     }
 
+    if (category === 'manuscripts' || category === 'turath') {
+      const items = await fetchArabicManuscriptsAndTurath(
+        '',
+        category === 'manuscripts' ? 'manuscripts' : 'turath',
+        page,
+        params.signal,
+      );
+      registerBooksInCrossCache(items);
+      void setSuperCache(cacheKey, items);
+      return items;
+    }
+
+    if (category === 'poetry') {
+      const items = await fetchPoetryAndSacredBooks('', params.signal);
+      registerBooksInCrossCache(items);
+      void setSuperCache(cacheKey, items);
+      return items;
+    }
+
+    if (category === 'standard_ebooks') {
+      const items = await fetchStandardEbooksCatalog('', page, params.signal);
+      registerBooksInCrossCache(items);
+      void setSuperCache(cacheKey, items);
+      return items;
+    }
+
     if (category === 'papers') {
       const papers = await directOpenAlexSearch(
         'artificial intelligence physics philosophy',
@@ -240,6 +274,10 @@ export async function fetchTrendingBooks(params: {
       : subject || 'classic literature bestseller';
 
     const settled = await Promise.allSettled([
+      ...(isManga ? [searchMangaDexCatalog('', lang, params.signal)] : []),
+      ...(category === 'arabic'
+        ? [fetchArabicManuscriptsAndTurath('', 'turath', page, params.signal)]
+        : []),
       directOpenLibraryTrending(period, subject, lang, page, params.signal),
       directGutendexBooks('', lang, subject, page, params.signal),
       directInternetArchiveTexts(
@@ -326,6 +364,15 @@ export async function searchAllBooks(params: {
   }
 
   const settled = await Promise.allSettled([
+    ...(category === 'manga' || category === 'all'
+      ? [searchMangaDexCatalog(q, lang, params.signal)]
+      : []),
+    ...(category === 'manuscripts' || category === 'turath' || category === 'arabic'
+      ? [fetchArabicManuscriptsAndTurath(q, 'manuscripts', page, params.signal)]
+      : []),
+    ...(category === 'poetry'
+      ? [fetchPoetryAndSacredBooks(q, params.signal)]
+      : []),
     directGoogleBooksSearch(q, lang, params.signal),
     directOpenLibrarySearch(q, lang, page, params.signal),
     directGutendexBooks(q, lang, '', page, params.signal),

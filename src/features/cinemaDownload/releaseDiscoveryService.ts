@@ -36,6 +36,7 @@ import type {
   DownloadMediaContext,
   DownloadQualityTier,
 } from './types';
+import { queryStremioMultiIndexers } from '../../services/cinema/stremioStreamFallbacks';
 
 export function computeRealPieceGeometry(sizeBytes: number): {
   pieceLength: number;
@@ -243,6 +244,33 @@ async function collectTorrentCandidates(
           }
         } catch {}
       })(),
+    );
+
+    tasks.push(
+      queryStremioMultiIndexers({
+        imdbId,
+        mediaType: media.mediaType,
+        season: media.season,
+        episode: media.episode,
+        signal,
+      }).then((multi) => {
+        for (const tor of multi.torrents) {
+          candidates.push(tor);
+        }
+        for (const ds of multi.directStreams) {
+          directStreams.push({
+            id: `stremio_${ds.server}_${directStreams.length}`,
+            type: /\.m3u8(\?|$)/i.test(ds.directUrl) ? 'hls' : 'mp4',
+            directUrl: ds.directUrl,
+            proxiedUrl: buildWorkerProxyUrl(ds.directUrl, ds.referer || ''),
+            referer: ds.referer || '',
+            server: ds.server,
+            quality: ds.quality,
+            sizeBytes: ds.sizeBytes,
+            supportsByteRange: true,
+          });
+        }
+      }),
     );
   }
 

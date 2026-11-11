@@ -13,9 +13,11 @@ import {
   Globe2,
   Award,
   Users,
+  User,
   Sparkles,
 } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
+import { GlassVectorIcon } from "../../shared/icons";
 import { EyeLoader } from "../EyeLoader";
 import { ServerBranchesInline } from "../MovieSourcesModal";
 import { CinemaDownloadTriggerButton } from "../../../features/cinemaDownload";
@@ -457,7 +459,9 @@ export function CinemaDetailModal({
                                   alt={actor.name}
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-xs text-white/50">👤</div>
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <GlassVectorIcon icon={User} theme="cosmic" size={16} badge={false} />
+                                </div>
                               )}
                             </div>
                             <div className="flex flex-col min-w-0">

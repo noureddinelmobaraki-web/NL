@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { Headphones, Play, Music, Film, Tv, ArrowLeft, LucideIcon } from 'lucide-react';
+import { Headphones, Play, Music, Film, Tv, Sparkles, ArrowLeft, LucideIcon } from 'lucide-react';
 import { Branch, LeafItem } from './launcher.config';
 import { spring } from '../../motion/tokens';
 import { setGenieOriginFromElement } from '../../transitions/genieOrigin';
@@ -11,6 +11,7 @@ const iconMap: Record<string, LucideIcon> = {
   'music': Music,
   'film': Film,
   'tv': Tv,
+  'sparkles': Sparkles,
 };
 
 interface TwoLevelClusterProps {

@@ -24,7 +24,7 @@ export interface Pt {
 
 export interface PlacedNode {
   node: GraphNode;
-  level: 0 | 1 | 2; // 0 root, 1 branch, 2 leaf
+  level: 0 | 1 | 2 | 3; // 0 root, 1 branch, 2 leaf/sub-branch, 3 sub-leaf
   pos: Pt; // final center in stage px
   origin: Pt; // where it animates FROM (its parent center)
   dimmed: boolean; // faded (inactive root / non-active sibling)
@@ -38,7 +38,7 @@ export interface Edge {
   fromId: string;
   toId: string;
   path: string; // svg cubic bezier "M .. C .. .. .."
-  depth: 1 | 2;
+  depth: 1 | 2 | 3;
 }
 
 export interface Graph {
@@ -100,6 +100,7 @@ export function computeGraph(
   roots: GraphNode[],
   activeRootId: string | null,
   activeBranchId: string | null,
+  activeSubBranchId: string | null = null,
 ): Graph {
   const nodes: PlacedNode[] = [];
   const edges: Edge[] = [];
@@ -212,16 +213,21 @@ export function computeGraph(
       listenNode?.children?.find((c) => c.id === 'audiobooks') ??
       readNode?.children?.find((c) => c.id === 'audiobooks');
     const booksLeaf = readNode?.children?.find((c) => c.id === 'books');
+    const artNode = readNode?.children?.find((c) => c.id === 'art');
 
     if (activeBranchId === 'read') {
-      // Read opens Books, co-activates Listen, and shows Audio Books connected to BOTH Listen and Books
-      const leafX = isMobile ? w * 0.5 : Math.min(w - pad - 40, Math.max(readPt.x, listenPt.x) + Math.min(w * 0.21, 240));
+      // Read opens Books, Audio Books (connected to BOTH Listen and Books), and Art (expandable into 3 sub-nodes)
+      const leafX = isMobile ? w * 0.5 : Math.min(w - pad - 40, Math.max(readPt.x, listenPt.x) + Math.min(w * 0.19, 220));
+      const baseMobileY = Math.min(h - 140, Math.max(listenPt.y, readPt.y) + Math.min(h * 0.18, 140));
       const audioPos: Pt = isMobile
-        ? clampPt({ x: w * 0.28, y: Math.min(h - 86, Math.max(listenPt.y, readPt.y) + Math.min(h * 0.22, 165)) }, w, h, 48)
-        : clampPt({ x: leafX, y: (listenPt.y + readPt.y) * 0.5 - 18 }, w, h, pad);
+        ? clampPt({ x: w * 0.25, y: baseMobileY }, w, h, 44)
+        : clampPt({ x: leafX, y: (listenPt.y + readPt.y) * 0.5 - 32 }, w, h, pad);
       const booksPos: Pt = isMobile
-        ? clampPt({ x: w * 0.72, y: Math.min(h - 86, Math.max(listenPt.y, readPt.y) + Math.min(h * 0.22, 165)) }, w, h, 48)
-        : clampPt({ x: leafX, y: readPt.y + 48 }, w, h, pad);
+        ? clampPt({ x: w * 0.75, y: baseMobileY }, w, h, 44)
+        : clampPt({ x: leafX, y: readPt.y + 24 }, w, h, pad);
+      const artPos: Pt = isMobile
+        ? clampPt({ x: w * 0.5, y: Math.min(h - 96, baseMobileY + 72) }, w, h, 44)
+        : clampPt({ x: leafX, y: readPt.y + 96 }, w, h, pad);
 
       if (booksLeaf) {
         nodes.push({
@@ -229,7 +235,7 @@ export function computeGraph(
           level: 2,
           pos: booksPos,
           origin: readPt,
-          dimmed: false,
+          dimmed: !!activeSubBranchId,
           active: false,
           compact: false,
           hasChildren: false,
@@ -249,7 +255,7 @@ export function computeGraph(
           level: 2,
           pos: audioPos,
           origin: readPt,
-          dimmed: false,
+          dimmed: !!activeSubBranchId,
           active: false,
           compact: false,
           hasChildren: false,
@@ -268,6 +274,56 @@ export function computeGraph(
             toId: audioLeaf.id,
             path: curve(booksPos, audioPos),
             depth: 2,
+          });
+        }
+      }
+
+      if (artNode) {
+        const isArtActive = activeSubBranchId === artNode.id;
+        nodes.push({
+          node: artNode,
+          level: 2,
+          pos: artPos,
+          origin: readPt,
+          dimmed: !!activeSubBranchId && !isArtActive,
+          active: isArtActive,
+          compact: false,
+          hasChildren: !!artNode.children?.length,
+        });
+        edges.push({
+          id: `read->${artNode.id}`,
+          fromId: 'read',
+          toId: artNode.id,
+          path: curve(readPt, artPos),
+          depth: 2,
+        });
+
+        if (isArtActive && artNode.children?.length) {
+          const subCount = artNode.children.length;
+          const spread3 = isMobile ? 116 : 68;
+          const R3 = isMobile ? Math.min(h * 0.16, 125) : Math.min(w * 0.17, 200);
+          const l3 = fan(artPos, subCount, base, spread3, R3).map((p) =>
+            clampPt(p, w, h, isMobile ? 42 : 76),
+          );
+          artNode.children.forEach((subLeaf, idx) => {
+            const subPos = l3[idx];
+            nodes.push({
+              node: subLeaf,
+              level: 3,
+              pos: subPos,
+              origin: artPos,
+              dimmed: false,
+              active: false,
+              compact: false,
+              hasChildren: false,
+            });
+            edges.push({
+              id: `${artNode.id}->${subLeaf.id}`,
+              fromId: artNode.id,
+              toId: subLeaf.id,
+              path: curve(artPos, subPos),
+              depth: 3,
+            });
           });
         }
       }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Calendar, MapPin, X } from "lucide-react";
+import { Calendar, MapPin, User, X } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
+import { GlassVectorIcon } from "../shared/icons";
 import { tmdbLang } from "../../utils/lang";
 import {
   fetchWithCache,
@@ -182,8 +183,8 @@ export const ActorProfileModal: React.FC<ActorProfileModalProps> = ({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-3xl">
-                      👤
+                    <div className="w-full h-full flex items-center justify-center">
+                      <GlassVectorIcon icon={User} theme="cosmic" size={28} />
                     </div>
                   )}
                   <span className="nl-poster__sheen" />

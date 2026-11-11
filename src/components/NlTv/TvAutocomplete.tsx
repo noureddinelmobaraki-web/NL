@@ -5,8 +5,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { Tv } from "lucide-react";
 import { TvSuggestion } from "./useTvSearchIndex";
 import { Country } from "./iptvHelper";
+import { CountryFlagGlassIcon, GlassVectorIcon } from "../shared/icons";
 
 interface TvAutocompleteProps {
   searchTerm: string;
@@ -156,7 +158,7 @@ export function TvAutocomplete({
             }`}
           >
             {s.kind === "country" ? (
-              <span className="text-xl select-none">{s.flag}</span>
+              <CountryFlagGlassIcon code={s.code} name={s.name} size={18} />
             ) : s.logo ? (
               <img
                 src={s.logo}
@@ -168,9 +170,7 @@ export function TvAutocomplete({
                 }}
               />
             ) : (
-              <div className="w-5 h-5 rounded bg-neutral-900 flex items-center justify-center text-[10px] font-bold text-zinc-650">
-                📺
-              </div>
+              <GlassVectorIcon icon={Tv} theme="cosmic" size={14} />
             )}
 
             <div className="flex-1 min-w-0 text-left">
@@ -187,3 +187,4 @@ export function TvAutocomplete({
     </div>
   );
 }
+

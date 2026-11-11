@@ -16,7 +16,17 @@ export interface ExtractedSubtitleTrack {
   label: string;
   default?: boolean;
   cues?: SubtitleCue[];
-  provider?: "wyzie" | "opensubtitles" | "worker" | "local" | "stream";
+  provider?:
+    | "wyzie"
+    | "opensubtitles"
+    | "worker"
+    | "local"
+    | "stream"
+    | "stremio-osv3"
+    | "subdl"
+    | "podnapisi"
+    | "yify";
+  isZipArchive?: boolean;
   release?: string;
   hearingImpaired?: boolean;
   remoteUrl?: string;

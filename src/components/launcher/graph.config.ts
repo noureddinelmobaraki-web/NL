@@ -12,6 +12,8 @@ export type OpenHandler =
   | "openMusic"
   | "openMovies"
   | "openTv"
+  | "openAnime"
+  | "openCartoon"
   | "openXp"
   | "openRetro"
   | "openGames"
@@ -19,7 +21,10 @@ export type OpenHandler =
   | "openLiquidBooks"
   | "openLiquidAudiobooks"
   | "openLiquidAlbums"
-  | "openLiquidX";
+  | "openLiquidX"
+  | "openArtPhotos"
+  | "openArtDrawings"
+  | "openArtAvatars";
 
 export type NodeAction =
   | { kind: "open"; handler: OpenHandler } // full-screen page (genie transition)
@@ -65,7 +70,7 @@ export const ROOTS: GraphNode[] = [
   {
     id: "ent",
     label: "Entertainment",
-    tagline: "Watch, Listen & Read",
+    tagline: "Watch, Listen, Read & Play",
     icon: `${CDN}/ico/Entertainment.png`,
     action: { kind: "branch" },
     children: [
@@ -113,6 +118,32 @@ export const ROOTS: GraphNode[] = [
             icon: "lucide:headphones",
             action: { kind: "open", handler: "openLiquidAudiobooks" },
           },
+          {
+            id: "art",
+            label: "Art",
+            icon: "lucide:palette",
+            action: { kind: "branch" },
+            children: [
+              {
+                id: "art-photos",
+                label: "Photos & Museums",
+                icon: "lucide:image",
+                action: { kind: "open", handler: "openArtPhotos" },
+              },
+              {
+                id: "art-drawings",
+                label: "Drawings & Studio",
+                icon: "lucide:brush",
+                action: { kind: "open", handler: "openArtDrawings" },
+              },
+              {
+                id: "art-avatars",
+                label: "Avatars Lab",
+                icon: "lucide:sparkles",
+                action: { kind: "open", handler: "openArtAvatars" },
+              },
+            ],
+          },
         ],
       },
       {
@@ -128,6 +159,18 @@ export const ROOTS: GraphNode[] = [
             action: { kind: "open", handler: "openMovies" },
           },
           {
+            id: "anime",
+            label: "Anime",
+            icon: "lucide:sparkles",
+            action: { kind: "open", handler: "openAnime" },
+          },
+          {
+            id: "cartoon",
+            label: "Cartoon",
+            icon: "lucide:tv",
+            action: { kind: "open", handler: "openCartoon" },
+          },
+          {
             id: "tv",
             label: "NL TV",
             icon: `${CDN}/ico/NL%20TV.ico`,
@@ -138,6 +181,20 @@ export const ROOTS: GraphNode[] = [
             label: "X",
             icon: `${CDN}/X.webp`,
             action: { kind: "open", handler: "openLiquidX" },
+          },
+        ],
+      },
+      {
+        id: "play",
+        label: "Play",
+        icon: "lucide:gamepad-2",
+        action: { kind: "branch" },
+        children: [
+          {
+            id: "games",
+            label: "Games",
+            icon: `${CDN}/ico/Games.png`,
+            action: { kind: "open", handler: "openGames" },
           },
         ],
       },
@@ -161,12 +218,6 @@ export const ROOTS: GraphNode[] = [
         label: "Retro",
         icon: `${CDN}/ico/Retro.png`,
         action: { kind: "open", handler: "openRetro" },
-      },
-      {
-        id: "games",
-        label: "Games",
-        icon: `${CDN}/ico/Games.png`,
-        action: { kind: "open", handler: "openGames" },
       },
     ],
   },

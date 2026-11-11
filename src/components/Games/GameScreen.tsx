@@ -1,13 +1,38 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
-import { Maximize, Gamepad2, RotateCcw, X } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { useRuffle } from './useRuffle';
-import { TouchControls } from './TouchControls';
+/**
+ * @license
+ * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
+ *
+ * Unified Multi-Engine GameScreen (.nl-screen)
+ * Automatically switches between Ruffle (.swf), Nostalgist (NES/GBA/GB/Genesis),
+ * js-dos (.jsdos), HTML5 Embeds, and Instant API Mini-Games inside the exact
+ * same .nl-screen container.
+ */
 
-interface GameScreenProps {
-  swfUrl: string | null;
-  posterUrl: string | null;
-  title: string | null;
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { RotateCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { TouchControls } from './TouchControls';
+import type {
+  ResolvedGameBundle,
+  UnifiedGameItem,
+} from './types/games.types';
+import { useEmulatorLifecycle } from './hooks/useEmulatorLifecycle';
+import { usePhysicalGamepad } from './hooks/usePhysicalGamepad';
+import { useMobileTouchLayout } from './hooks/useMobileTouchLayout';
+import { useGameSaveState } from './hooks/useGameSaveState';
+import { RuffleEngineView } from './engines/RuffleEngineView';
+import { RetroConsoleEngineView } from './engines/RetroConsoleEngineView';
+import { DosEngineView } from './engines/DosEngineView';
+import { Html5EmbedEngineView } from './engines/Html5EmbedEngineView';
+import { MiniGamesNativeView } from './engines/MiniGamesNativeView';
+import { GameScreenTopBar } from './components/GameScreenTopBar';
+import { MobileLandscapePrompt } from './components/MobileLandscapePrompt';
+
+export interface GameScreenProps {
+  selectedGame: UnifiedGameItem | null;
+  bundle: ResolvedGameBundle | null;
+  resolvingBundle?: boolean;
+  resolveError?: string | null;
   isTouch: boolean;
   /** العودة لقائمة الألعاب (إغلاق اللعبة فقط) */
   onBack?: () => void;
@@ -18,22 +43,50 @@ interface GameScreenProps {
 const BAR_HIDE_MS = 7000;
 
 export function GameScreen({
-  swfUrl, posterUrl, title, isTouch, onBack, onClose: _onClose,
+  selectedGame,
+  bundle,
+  resolvingBundle = false,
+  resolveError = null,
+  isTouch,
+  onBack,
 }: GameScreenProps) {
   const { t } = useTranslation();
-  const screenRef    = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const screenRef = useRef<HTMLDivElement>(null);
+  const targetElementRef = useRef<HTMLElement | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-  const { status, playerRef } = useRuffle(containerRef, swfUrl, reloadToken);
-  const [showControls, setShowControls]       = useState(false);
+  const [engineReady, setEngineReady] = useState(false);
   const [noticeDismissed, setNoticeDismissed] = useState(false);
-  const [barVisible, setBarVisible]           = useState(true);
+  const [barVisible, setBarVisible] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasGame = !!swfUrl;
 
-  useEffect(() => {
-    if (status === 'ready' && isTouch) setShowControls(true);
-  }, [status, isTouch]);
+  const hasGame = Boolean(selectedGame);
+  const gameId = selectedGame?.id ?? null;
+
+  const { isMuted, toggleMute, registerController, activeControllerRef } =
+    useEmulatorLifecycle(gameId);
+
+  const {
+    showTouchControls,
+    toggleTouchControls,
+    controlProfile,
+    cycleControlProfile,
+    isPseudoFullscreen,
+    toggleSmartFullscreen,
+  } = useMobileTouchLayout(
+    selectedGame?.controlProfile || 'flash-pc',
+    gameId,
+    screenRef,
+  );
+
+  const { hasSavedState, saveToast, saveSnapshot, loadSnapshot } =
+    useGameSaveState(gameId);
+
+  const getTargetEl = useCallback(() => targetElementRef.current, []);
+  const { gamepadConnected } = usePhysicalGamepad(hasGame && engineReady, getTargetEl);
+
+  const handleTargetElementChange = useCallback((el: HTMLElement | null) => {
+    targetElementRef.current = el;
+  }, []);
 
   // شريط الهاتف العائم: يختفي بعد 7 ثوانٍ، يظهر بلمس منطقته العلوية
   const armHideTimer = useCallback(() => {
@@ -48,68 +101,58 @@ export function GameScreen({
   }, [armHideTimer]);
 
   useEffect(() => {
-    if (!isTouch) { setBarVisible(true); return; }
+    if (!isTouch) {
+      setBarVisible(true);
+      return;
+    }
     setBarVisible(true);
     armHideTimer();
-    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
-  }, [isTouch, swfUrl, armHideTimer]);
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [isTouch, gameId, armHideTimer]);
 
-  const toggleFullscreen = useCallback(() => {
-    const el = screenRef.current;
-    if (!el) return;
-    if (!document.fullscreenElement) {
-      el.requestFullscreen?.().then(() => {
-        try { (screen.orientation as any)?.lock?.('landscape'); } catch {};
-      }).catch(() => {});
-    } else {
-      document.exitFullscreen?.();
-    }
+  const handleReload = useCallback(() => {
+    setReloadToken((x) => x + 1);
   }, []);
 
   return (
-    <div className={`nl-screen-wrap${isTouch ? ' is-touch' : ''}`}>
-      {/* منطقة لمس علوية لإعادة إظهار الشريط في الهاتف */}
+    <div
+      className={`nl-screen-wrap${isTouch ? ' is-touch' : ''}${isPseudoFullscreen ? ' is-pseudo-fs' : ''}`}
+    >
       {isTouch && !barVisible && (
-        <button type="button" className="nl-screen-reveal"
-          aria-label={t('games.controls')} onClick={revealBar} />
+        <button
+          type="button"
+          className="nl-screen-reveal"
+          aria-label={t('games.controls')}
+          onClick={revealBar}
+        />
       )}
 
-      <div className={`nl-screen-bar${isTouch ? ' is-floating' : ''}${barVisible ? '' : ' is-hidden'}`}>
-        <div className="nl-screen-bar-left">
-          <span className="nl-screen-title">{title ?? t('games.idle')}</span>
-        </div>
-
-        <div className="nl-screen-actions">
-          {/* أزرار الهاتف */}
-          {isTouch && hasGame && (
-            <button type="button" className="nl-screen-btn"
-              aria-pressed={showControls}
-              onClick={() => { revealBar(); setShowControls((v) => !v); }}
-              aria-label={t('games.controls')}>
-              <Gamepad2 size={16} aria-hidden="true" />
-            </button>
-          )}
-          {hasGame && (
-            <button type="button" className="nl-screen-btn"
-              onClick={() => { revealBar(); toggleFullscreen(); }}
-              aria-label={t('games.fullscreen')}>
-              <Maximize size={16} aria-hidden="true" />
-            </button>
-          )}
-          {/* ✕ زر إغلاق اللعبة — يرجع للقائمة فقط ولا يغلق الصفحة */}
-          {onBack && hasGame && (
-            <button type="button" className="nl-screen-btn nl-screen-btn--ghost nl-screen-btn--close"
-              onClick={() => { revealBar(); onBack(); }}
-              aria-label="Close game">
-              <X size={16} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      </div>
+      <GameScreenTopBar
+        title={selectedGame?.title ?? null}
+        platformBadge={selectedGame?.platformBadge}
+        engine={bundle?.engine}
+        hasGame={hasGame}
+        isTouch={isTouch}
+        barVisible={barVisible}
+        showTouchControls={showTouchControls}
+        controlProfile={controlProfile}
+        isMuted={isMuted}
+        gamepadConnected={gamepadConnected}
+        hasSavedState={hasSavedState}
+        onRevealBar={revealBar}
+        onToggleTouchControls={toggleTouchControls}
+        onCycleControlProfile={cycleControlProfile}
+        onToggleMute={toggleMute}
+        onSaveState={() => saveSnapshot(activeControllerRef.current?.saveState)}
+        onLoadState={() => loadSnapshot(activeControllerRef.current?.loadState)}
+        onReload={handleReload}
+        onToggleFullscreen={toggleSmartFullscreen}
+        onBack={onBack}
+      />
 
       <div className="nl-screen" ref={screenRef}>
-        <div className="nl-ruffle-host" ref={containerRef} />
-
         {!hasGame && (
           <div className="nl-screen-idle">
             <span className="nl-screen-logo" aria-hidden="true" />
@@ -117,37 +160,110 @@ export function GameScreen({
           </div>
         )}
 
-        {hasGame && status === 'loading' && (
+        {hasGame && resolvingBundle && (
           <div className="nl-screen-overlay">
-            {posterUrl && (
-              <img className="nl-screen-poster" src={posterUrl} alt="" aria-hidden="true" />
+            {selectedGame?.posterUrl && (
+              <img
+                className="nl-screen-poster"
+                src={selectedGame.posterUrl}
+                alt=""
+                aria-hidden="true"
+                referrerPolicy="no-referrer"
+              />
             )}
-            <div className="nl-progress"><span /></div>
+            <div className="nl-progress">
+              <span />
+            </div>
             <p className="nl-screen-hint">{t('games.loading')}</p>
           </div>
         )}
 
-        {hasGame && status === 'error' && (
+        {hasGame && resolveError && (
           <div className="nl-screen-overlay">
-            <p className="nl-screen-hint">{t('games.error')}</p>
-            <button type="button" className="nl-screen-btn"
-              onClick={() => setReloadToken((x) => x + 1)}>
+            <p className="nl-screen-hint">{resolveError}</p>
+            <button
+              type="button"
+              className="nl-screen-btn"
+              onClick={handleReload}
+            >
               <RotateCcw size={16} aria-hidden="true" /> {t('games.errorRetry')}
             </button>
           </div>
         )}
 
-        {isTouch && hasGame && showControls && status === 'ready' && (
-          <TouchControls playerRef={playerRef} />
+        {hasGame && !resolvingBundle && !resolveError && bundle && (
+          <>
+            {bundle.engine === 'ruffle' && (
+              <RuffleEngineView
+                swfUrl={bundle.playableUrl}
+                posterUrl={selectedGame?.posterUrl ?? null}
+                reloadToken={reloadToken}
+                onRetry={handleReload}
+                onReadyStateChange={setEngineReady}
+                onTargetElementChange={handleTargetElementChange}
+                registerController={registerController}
+              />
+            )}
+
+            {bundle.engine === 'nostalgist' && (
+              <RetroConsoleEngineView
+                romUrl={bundle.playableUrl}
+                core={bundle.consoleCore || 'gambatte'}
+                posterUrl={selectedGame?.posterUrl ?? null}
+                reloadToken={reloadToken}
+                onRetry={handleReload}
+                onReadyStateChange={setEngineReady}
+                onTargetElementChange={handleTargetElementChange}
+                registerController={registerController}
+              />
+            )}
+
+            {bundle.engine === 'js-dos' && (
+              <DosEngineView
+                bundleUrl={bundle.playableUrl}
+                posterUrl={selectedGame?.posterUrl ?? null}
+                reloadToken={reloadToken}
+                onRetry={handleReload}
+                onReadyStateChange={setEngineReady}
+                onTargetElementChange={handleTargetElementChange}
+                registerController={registerController}
+              />
+            )}
+
+            {bundle.engine === 'html5' && (
+              <Html5EmbedEngineView
+                embedUrl={bundle.playableUrl}
+                title={selectedGame?.title ?? null}
+                reloadToken={reloadToken}
+                onReadyStateChange={setEngineReady}
+              />
+            )}
+
+            {bundle.engine === 'mini-api' && (
+              <MiniGamesNativeView
+                kind={bundle.miniGameKind || 'lichess-daily'}
+                onReadyStateChange={setEngineReady}
+              />
+            )}
+          </>
+        )}
+
+        {isTouch && hasGame && showTouchControls && engineReady && (
+          <TouchControls
+            playerRef={targetElementRef}
+            profile={controlProfile}
+          />
         )}
       </div>
 
-      {isTouch && hasGame && !noticeDismissed && (
-        <div className="nl-desktop-notice">
-          <span>{t('games.desktopNotice')}</span>
-          <button type="button" onClick={() => setNoticeDismissed(true)} aria-label="Dismiss">×</button>
-        </div>
-      )}
+      <MobileLandscapePrompt
+        isTouch={isTouch}
+        hasGame={hasGame}
+        noticeDismissed={noticeDismissed}
+        onDismissNotice={() => setNoticeDismissed(true)}
+        noticeText={t('games.desktopNotice')}
+        saveToast={saveToast}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@
 
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Maximize2, Minimize2, Circle, Square } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { CountryFlagGlassIcon } from "../shared/icons";
 
 interface TvControlsProps {
   channelName: string;
@@ -49,9 +50,7 @@ export function TvControls({
         
         {/* Flag and Channel Name */}
         <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
-          <span className="text-2xl select-none" role="img" aria-label="Flag">
-            {countryFlag}
-          </span>
+          <CountryFlagGlassIcon code={countryFlag} size={22} />
           <div className="flex-1 overflow-hidden">
             <h4 className="text-sm font-semibold text-zinc-100 truncate tracking-wide max-w-[180px] sm:max-w-[130px] md:max-w-[170px]">
               {channelName}

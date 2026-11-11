@@ -11,6 +11,9 @@ const VIEW_TO_NAV: Record<string, { page: PageId; cinemaTab?: CinemaTab }> = {
   games:    { page: 'games' },
   movies:   { page: 'cinema', cinemaTab: 'movies' },
   series:   { page: 'cinema', cinemaTab: 'series' },
+  anime:    { page: 'anime' },
+  cartoon:  { page: 'cartoon' },
+  art:      { page: 'art' },
   tv:       { page: 'tv' },
   retro:    { page: 'retro' },
   xp:       { page: 'xp' },
@@ -39,7 +42,7 @@ function resolveInitialViewFromUrl(): string {
     const params = new URLSearchParams(window.location.search);
     const explicitView = params.get('view');
     if (explicitView && VIEW_TO_NAV[explicitView]) return explicitView;
-    for (const legacyKey of ['movies', 'series', 'music', 'games'] as const) {
+    for (const legacyKey of ['movies', 'series', 'music', 'games', 'anime', 'cartoon'] as const) {
       const val = params.get(legacyKey);
       if (val === '1' || val === 'true') return legacyKey;
     }
@@ -96,6 +99,22 @@ interface AppContextType {
   setSeriesActive: (v: boolean) => void;
   registerSeriesBack: (fn: () => void) => void;
   callSeriesBack: () => void;
+  // ── الأنمي Anime ─────────────────────────────────────────────────
+  isAnimeOpen: boolean;
+  openAnime: () => void;
+  closeAnime: () => void;
+  isAnimeActive: boolean;
+  setAnimeActive: (v: boolean) => void;
+  registerAnimeBack: (fn: () => void) => void;
+  callAnimeBack: () => void;
+  // ── الكرتون وسبيستون Cartoon ─────────────────────────────────────
+  isCartoonOpen: boolean;
+  openCartoon: () => void;
+  closeCartoon: () => void;
+  isCartoonActive: boolean;
+  setCartoonActive: (v: boolean) => void;
+  registerCartoonBack: (fn: () => void) => void;
+  callCartoonBack: () => void;
   // ── التلفزيون NL TV ──────────────────────────────────────────────
   isTvOpen: boolean;
   openTv: () => void;
@@ -129,6 +148,12 @@ interface AppContextType {
   liquidGlassMode: 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks';
   openLiquidGlass: (mode?: 'orbs' | 'video' | 'sun' | 'books' | 'audiobooks' | unknown) => void;
   closeLiquidGlass: () => void;
+  // ── منظومة الفنون Art Hub ──────────────────────────────
+  isArtOpen: boolean;
+  artTab: 'photos' | 'drawings' | 'avatars';
+  setArtTab: (tab: 'photos' | 'drawings' | 'avatars') => void;
+  openArt: (tab?: 'photos' | 'drawings' | 'avatars') => void;
+  closeArt: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -159,13 +184,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : initialNavState,
   );
 
-  const isGamesOpen  = nav.activePage === 'games';
-  const isMoviesOpen = nav.activePage === 'cinema' && nav.cinemaTab === 'movies';
-  const isSeriesOpen = nav.activePage === 'cinema' && nav.cinemaTab === 'series';
-  const isTvOpen     = nav.activePage === 'tv';
-  const isRetroOpen  = nav.activePage === 'retro';
-  const isXpOpen     = nav.activePage === 'xp';
-  const isMusicOpen  = nav.activePage === 'music';
+  const isGamesOpen   = nav.activePage === 'games';
+  const isMoviesOpen  = nav.activePage === 'cinema' && nav.cinemaTab === 'movies';
+  const isSeriesOpen  = nav.activePage === 'cinema' && nav.cinemaTab === 'series';
+  const isAnimeOpen   = nav.activePage === 'anime';
+  const isCartoonOpen = nav.activePage === 'cartoon';
+  const isArtOpen     = nav.activePage === 'art';
+  const isTvOpen      = nav.activePage === 'tv';
+  const isRetroOpen   = nav.activePage === 'retro';
+  const isXpOpen      = nav.activePage === 'xp';
+  const isMusicOpen   = nav.activePage === 'music';
   const isAccountsOpen = nav.activePage === 'accounts';
   const isPortraitOpen = nav.activePage === 'portrait';
   const isLiquidGlassOpen = nav.activePage === 'liquidGlass';
@@ -178,6 +206,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [isSeriesActive, setSeriesActive] = useState(false);
   const seriesBackRef = useRef<(() => void) | null>(null);
+
+  const [isAnimeActive, setAnimeActive] = useState(false);
+  const animeBackRef = useRef<(() => void) | null>(null);
+
+  const [isCartoonActive, setCartoonActive] = useState(false);
+  const cartoonBackRef = useRef<(() => void) | null>(null);
 
   const [isTvActive, setTvActive] = useState(false);
   const tvBackRef = useRef<(() => void) | null>(null);
@@ -204,6 +238,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const callSeriesBack = useCallback(() => {
     seriesBackRef.current?.();
+  }, []);
+
+  const registerAnimeBack = useCallback((fn: () => void) => {
+    animeBackRef.current = fn;
+  }, []);
+
+  const callAnimeBack = useCallback(() => {
+    animeBackRef.current?.();
+  }, []);
+
+  const registerCartoonBack = useCallback((fn: () => void) => {
+    cartoonBackRef.current = fn;
+  }, []);
+
+  const callCartoonBack = useCallback(() => {
+    cartoonBackRef.current?.();
   }, []);
 
   const registerTvBack = useCallback((fn: () => void) => {
@@ -236,12 +286,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (page === prev) return;
 
     // مغادرة الصفحة السابقة: حرّر الـ suppressor + أوقف قناتها + صفّر مراجع back
-    if (prev === 'games')  { gameBackRef.current = null; setGameActive(false); try { audioManager.releaseBg('games_mode'); } catch {} }
-    if (prev === 'cinema') { movieBackRef.current = null; setMovieActive(false); seriesBackRef.current = null; setSeriesActive(false); try { audioManager.releaseBg('movies_mode'); audioManager.releaseBg('series_mode'); } catch {} }
-    if (prev === 'tv')     { tvBackRef.current = null; setTvActive(false); try { audioManager.releaseBg('tv_mode'); audioManager.stop('tv'); } catch {} }
-    if (prev === 'retro')  { try { audioManager.releaseBg('retro_mode'); audioManager.stop('retro'); } catch {} }
-    if (prev === 'xp')     { try { audioManager.releaseBg('xp_mode'); audioManager.stop('xp'); } catch {} }
-    if (prev === 'music')  { try { audioManager.releaseBg('music_mode'); } catch {} }
+    if (prev === 'games')   { gameBackRef.current = null; setGameActive(false); try { audioManager.releaseBg('games_mode'); } catch {} }
+    if (prev === 'cinema')  { movieBackRef.current = null; setMovieActive(false); seriesBackRef.current = null; setSeriesActive(false); try { audioManager.releaseBg('movies_mode'); audioManager.releaseBg('series_mode'); } catch {} }
+    if (prev === 'anime')   { animeBackRef.current = null; setAnimeActive(false); try { audioManager.releaseBg('anime_mode'); } catch {} }
+    if (prev === 'cartoon') { cartoonBackRef.current = null; setCartoonActive(false); try { audioManager.releaseBg('cartoon_mode'); } catch {} }
+    if (prev === 'tv')      { tvBackRef.current = null; setTvActive(false); try { audioManager.releaseBg('tv_mode'); audioManager.stop('tv'); } catch {} }
+    if (prev === 'retro')   { try { audioManager.releaseBg('retro_mode'); audioManager.stop('retro'); } catch {} }
+    if (prev === 'xp')      { try { audioManager.releaseBg('xp_mode'); audioManager.stop('xp'); } catch {} }
+    if (prev === 'music')   { try { audioManager.releaseBg('music_mode'); } catch {} }
     if (prev === 'accounts') { /* no audio channel */ }
     if (prev === 'portrait') { try { audioManager.releaseBg('portrait_mode'); audioManager.stop('portrait'); } catch {} }
     if (prev === 'liquidGlass') { try { audioManager.releaseBg('liquidGlass_mode'); audioManager.stop('liquidGlass'); } catch {} }
@@ -310,6 +362,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeMovies = useCallback(() => navigateTo('home'), [navigateTo]);
   const openSeries  = useCallback(() => navigateTo('cinema', 'series'), [navigateTo]);
   const closeSeries = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openAnime   = useCallback(() => navigateTo('anime'), [navigateTo]);
+  const closeAnime  = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openCartoon  = useCallback(() => navigateTo('cartoon'), [navigateTo]);
+  const closeCartoon = useCallback(() => navigateTo('home'), [navigateTo]);
   const openTv      = useCallback(() => navigateTo('tv'), [navigateTo]);
   const closeTv     = useCallback(() => navigateTo('home'), [navigateTo]);
   const openRetro   = useCallback(() => navigateTo('retro'), [navigateTo]);
@@ -367,11 +423,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navigateTo('home');
   }, [navigateTo]);
 
+  const [artTab, setArtTab] = useState<'photos' | 'drawings' | 'avatars'>(() => {
+    if (typeof window === 'undefined') return 'photos';
+    try {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab === 'photos' || tab === 'drawings' || tab === 'avatars') {
+        return tab;
+      }
+    } catch {
+      /* ignore */
+    }
+    return 'photos';
+  });
+
+  const openArt = useCallback(
+    (tab: 'photos' | 'drawings' | 'avatars' = 'photos') => {
+      setArtTab(tab);
+      navigateTo('art');
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('view', 'art');
+        url.searchParams.set('tab', tab);
+        window.history.replaceState({ nlView: 'art' }, '', url.pathname + url.search + url.hash);
+      } catch {
+        /* ignore */
+      }
+    },
+    [navigateTo],
+  );
+
+  const closeArt = useCallback(() => {
+    navigateTo('home');
+  }, [navigateTo]);
+
   const returnToWelcome = useCallback(() => {
-    gameBackRef.current = null;  setGameActive(false);
-    movieBackRef.current = null; setMovieActive(false);
-    seriesBackRef.current = null; setSeriesActive(false);
-    tvBackRef.current = null;    setTvActive(false);
+    gameBackRef.current = null;    setGameActive(false);
+    movieBackRef.current = null;   setMovieActive(false);
+    seriesBackRef.current = null;  setSeriesActive(false);
+    animeBackRef.current = null;   setAnimeActive(false);
+    cartoonBackRef.current = null; setCartoonActive(false);
+    tvBackRef.current = null;      setTvActive(false);
     try {
       if (typeof window !== 'undefined') {
         window.sessionStorage.removeItem('nl_lg_initial_mode');
@@ -417,6 +508,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isSeriesOpen, openSeries, closeSeries,
         isSeriesActive, setSeriesActive,
         registerSeriesBack, callSeriesBack,
+        isAnimeOpen, openAnime, closeAnime,
+        isAnimeActive, setAnimeActive,
+        registerAnimeBack, callAnimeBack,
+        isCartoonOpen, openCartoon, closeCartoon,
+        isCartoonActive, setCartoonActive,
+        registerCartoonBack, callCartoonBack,
         isTvOpen, openTv, closeTv,
         isTvActive, setTvActive,
         registerTvBack, callTvBack,
@@ -426,6 +523,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isAccountsOpen, openAccounts, closeAccounts,
         isPortraitOpen, openPortrait, closePortrait,
         isLiquidGlassOpen, liquidGlassMode, openLiquidGlass, closeLiquidGlass,
+        isArtOpen, artTab, setArtTab, openArt, closeArt,
       }}
     >
       {children}

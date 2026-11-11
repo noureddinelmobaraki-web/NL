@@ -100,3 +100,66 @@
   .nl-progress>span{animation:none;left:0;width:100%}
   .nl-screen-bar.is-floating{transition:none}
 }
+
+/* ===== إضافات البحث والتصنيفات والمحاكيات المتعددة (ضمن نفس التصميم الزجاجي) ===== */
+.nl-sidebar-search-wrap{padding:7px 8px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
+.nl-sidebar-search-box{display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:9px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.10)}
+.nl-sidebar-search-icon{color:#8fa6c9;flex:0 0 auto}
+.nl-sidebar-search-input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:#eaf2ff;font-size:.78rem}
+.nl-sidebar-search-input::placeholder{color:#7a90b3}
+.nl-sidebar-search-clear{display:grid;place-items:center;padding:2px;background:transparent;border:none;color:#a9bdda;cursor:pointer}
+.nl-sidebar-count{font-size:.7rem;font-variant-numeric:tabular-nums;color:#8fa6c9;font-weight:600}
+
+.nl-sidebar-filters{display:flex;flex-direction:column;gap:4px;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.07)}
+.nl-cat-strip,.nl-subgenre-strip{display:flex;align-items:center;gap:4px;overflow-x:auto;scrollbar-width:none}
+.nl-cat-strip::-webkit-scrollbar,.nl-subgenre-strip::-webkit-scrollbar{display:none}
+.nl-cat-tab{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:7px;font-size:.72rem;font-weight:600;white-space:nowrap;color:#b8cae4;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.nl-cat-tab:hover{color:#fff;background:rgba(255,255,255,.09)}
+.nl-cat-tab.is-active{color:#eaf2ff;background:linear-gradient(180deg,rgba(110,231,255,.24),rgba(167,139,250,.15));border-color:rgba(150,220,255,.5)}
+.nl-cat-count{font-size:.66rem;font-variant-numeric:tabular-nums;opacity:.85}
+.nl-subgenre-btn{flex:0 0 auto;padding:2px 7px;border-radius:6px;font-size:.67rem;font-weight:600;white-space:nowrap;color:#9ab0d0;background:transparent;border:1px solid rgba(255,255,255,.06);cursor:pointer}
+.nl-subgenre-btn.is-active{color:#6ee7ff;border-color:rgba(110,231,255,.45);background:rgba(110,231,255,.10)}
+
+.nl-game-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.nl-game-meta{font-size:.66rem;color:#8fa6c9;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nl-game-fav{flex:0 0 auto;display:grid;place-items:center;width:24px;height:24px;border-radius:6px;background:transparent;border:none;color:rgba(255,255,255,.32);cursor:pointer;transition:color .15s,transform .12s}
+.nl-game-fav:hover{color:#ffd36e;transform:scale(1.1)}
+.nl-game-fav.is-fav{color:#ffd36e}
+.nl-game-empty{padding:24px 12px;text-align:center;font-size:.78rem;color:#8fa6c9}
+
+.nl-screen-engine-tag{font-size:.65rem;font-weight:700;letter-spacing:.08em;color:#8ee8ff;opacity:.85;flex:0 0 auto}
+.nl-emulator-canvas,.nl-dos-mount,.nl-html5-iframe{width:100%!important;height:100%!important;border:none;display:block;object-fit:contain}
+.nl-screen-wrap.is-pseudo-fs{position:fixed!important;inset:0!important;z-index:99999!important;width:100vw!important;height:100dvh!important;background:#080612}
+
+.nl-touch-meta-row{pointer-events:auto;display:flex;gap:8px;align-self:flex-end;margin-bottom:4px}
+.nl-touch-meta-btn{padding:6px 10px;border-radius:8px;font-size:.65rem;font-weight:800;letter-spacing:.08em;color:#eaf2ff;background:rgba(16,22,34,.75);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(4px);touch-action:none;user-select:none}
+
+/* ===== الألعاب الفورية المدمجة (Lichess / Blackjack 21 / Trivia / PokéAPI) ===== */
+.nl-mini-game-stage{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;padding:14px 18px;gap:12px;overflow-y:auto;color:#eaf2ff;background:radial-gradient(120% 120% at 50% 0%,#1f2942 0%,#0f1628 65%,#090d18 100%)}
+.nl-mini-game-stage.nl-blackjack-felt{background:radial-gradient(110% 110% at 50% 15%,#134e3a 0%,#0b3124 65%,#061d15 100%)}
+.nl-mini-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.10)}
+.nl-mini-kicker{font-size:.65rem;letter-spacing:.14em;color:#8ee8ff;font-weight:700;display:block}
+.nl-mini-title{margin:2px 0 0;font-size:.98rem;font-weight:800;color:#fff}
+.nl-mini-stats{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums;color:#ffd36e}
+.nl-mini-chess-frame-wrap{flex:1;min-height:0;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.12)}
+.nl-blackjack-zone{display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px 0}
+.nl-hand-label{font-size:.76rem;font-weight:700;color:#d2e8df;font-variant-numeric:tabular-nums}
+.nl-cards-row{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;min-height:96px}
+.nl-playing-card{width:68px;height:96px;border-radius:6px;object-fit:contain;box-shadow:0 4px 12px rgba(0,0,0,.45)}
+.nl-mini-actions{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:auto;padding-top:6px}
+.nl-mini-center{margin:auto;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.nl-trivia-card{display:flex;flex-direction:column;gap:12px;margin:auto 0}
+.nl-trivia-progress{font-size:.74rem;color:#9ab0d0;font-variant-numeric:tabular-nums}
+.nl-trivia-q{margin:0;font-size:.96rem;font-weight:700;line-height:1.45;color:#fff}
+.nl-trivia-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.nl-trivia-opt{padding:10px 12px;border-radius:10px;text-align:left;font-size:.82rem;font-weight:600;color:#eaf2ff;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);cursor:pointer;transition:background .15s,border-color .15s}
+.nl-trivia-opt:hover{background:rgba(110,231,255,.16);border-color:rgba(110,231,255,.45)}
+.nl-trivia-opt.is-correct{background:rgba(40,180,120,.35);border-color:#4ade80}
+.nl-trivia-opt.is-wrong{background:rgba(220,60,60,.35);border-color:#f87171}
+.nl-poke-arena{display:flex;align-items:center;justify-content:space-around;gap:12px;margin:auto 0;padding:10px;border-radius:12px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.08)}
+.nl-poke-fighter{display:flex;flex-direction:column;align-items:center;gap:4px}
+.nl-poke-sprite{width:88px;height:88px;object-fit:contain;image-rendering:pixelated}
+.nl-poke-name{font-size:.82rem;font-weight:800;letter-spacing:.06em}
+.nl-poke-hp{font-size:.74rem;font-variant-numeric:tabular-nums;color:#6ee7ff;font-weight:700}
+.nl-poke-vs{font-size:1rem;font-weight:900;color:#ffd36e}
+

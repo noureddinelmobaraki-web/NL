@@ -1,6 +1,5 @@
-import React, { memo } from 'react';
-import { Activity, CheckCircle2, Eye, EyeOff, FolderDown, Pause, Play, Trash2, Tv } from 'lucide-react';
-import { useOptionalStreamPlayer } from '../hooks/useOptionalStreamPlayer';
+import { memo } from 'react';
+import { CheckCircle2, FolderDown, Pause, Play } from 'lucide-react';
 import type { TaskMetrics } from '../hooks/useCinemaDownloadTasks';
 import type { DownloadTaskState } from '../types';
 import { TransportDiagnosticsStrip } from './TransportDiagnosticsStrip';
@@ -17,138 +16,198 @@ interface Props {
   onRemove: (h: string) => void;
 }
 
-const OptionalStreamSection: React.FC<{ infoHash: string; isAr: boolean; isRunning: boolean }> = ({ infoHash, isAr, isRunning }) => {
-  const p = useOptionalStreamPlayer(infoHash);
-  const buckets = p.pieceMapBuckets ?? [];
+function stripEmojis(text: string): string {
+  return text
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+export const DownloadTaskCard = memo<Props>(function DownloadTaskCard({
+  task,
+  metrics,
+  isAr,
+  onPause,
+  onResume,
+  onSaveToDevice,
+  onCleanCache,
+  onRemove,
+}) {
+  const showDiag =
+    task.status === 'initializing' ||
+    task.status === 'downloading' ||
+    metrics.needsFallback;
+
+  const cleanStatusMessage = stripEmojis(task.statusMessage || '');
+
   return (
-    <>
-      {p.showPieceMap && buckets.length > 0 && (
-        <div className="p-3 rounded-xl bg-black/35 border border-white/10 flex flex-col gap-1.5">
-          <div className="flex justify-between text-[10px] text-white/70 tabular-nums">
-            <span>{isAr ? 'خريطة القطع (اضغط لتوجيه الأولوية)' : 'Piece map (click to prioritize)'}</span>
-            {isRunning && typeof p.activeDownloadingPieceIndex === 'number' && (
-              <span className="text-sky-300 font-bold">#{p.activeDownloadingPieceIndex + 1}</span>
-            )}
-          </div>
-          <div className="grid gap-0.5 h-3 rounded-lg bg-black/50 p-0.5" style={{ gridTemplateColumns: `repeat(${buckets.length}, minmax(0,1fr))` }}>
-            {buckets.map((k, i) => (
-              <button key={i} type="button" aria-label={`${Math.round((i / buckets.length) * 100)}%`}
-                onClick={() => p.seekToRatio(i / buckets.length)}
-                className={`rounded-[2px] cursor-pointer ${k === 'verified' ? 'bg-emerald-400' : k === 'header-tail' ? 'bg-amber-400' : k === 'playhead-window' ? 'bg-sky-400' : 'bg-white/12 hover:bg-white/30'}`} />
-            ))}
-          </div>
-        </div>
-      )}
+    <article className="p-4 sm:p-5 rounded-2xl bg-white/[0.04] border border-white/12 flex flex-col gap-4 shadow-xl">
+      <div className="flex items-start gap-3.5 sm:gap-4">
+        <img
+          src={task.media.posterUrl}
+          alt=""
+          className="w-14 h-20 rounded-xl object-cover border border-white/15 shrink-0"
+        />
 
-      {p.isStreamingActive && (
-        <div className="rounded-2xl overflow-hidden bg-black border border-white/20">
-          <div className="px-3.5 py-2 bg-white/[0.06] flex items-center justify-between gap-2">
-            <span className="text-[11px] font-extrabold text-sky-200 flex items-center gap-1.5">
-              <Eye size={13} />{isAr ? 'المشاهدة أثناء التحميل (اختياري)' : 'Optional watch-while-downloading'}
-            </span>
-            <button type="button" onClick={p.openInMainCinema}
-              className="px-3 py-1 rounded-lg bg-sky-500/30 border border-sky-300/50 text-[11px] font-black flex items-center gap-1.5 cursor-pointer">
-              <Tv size={12} />{isAr ? 'المشغل الرئيسي' : 'Main player'}
-            </button>
-          </div>
-          {p.canPlay ? (
-            <video key={p.streamUrl} src={p.streamUrl} controls playsInline preload="metadata"
-              className="w-full aspect-video bg-black object-contain" onSeeking={p.onSeeking} onTimeUpdate={p.onTimeUpdate} />
-          ) : (
-            <div className="aspect-video flex items-center justify-center text-xs text-white/60 px-4 text-center">
-              {isAr ? 'بانتظار تحميل رأس وذيل الملف (moov/Cues) قبل التشغيل...' : 'Waiting for file header & tail before playback...'}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <button type="button" onClick={p.toggleStreamPlayer}
-          className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer ${p.isStreamingActive ? 'bg-sky-500/30 border-sky-300/50 text-sky-100' : 'bg-white/8 hover:bg-white/15 border-white/15 text-white/80'}`}>
-          {p.isStreamingActive ? <EyeOff size={13} /> : <Eye size={13} />}
-          {p.isStreamingActive ? (isAr ? 'إغلاق المشغل' : 'Close player') : (isAr ? 'مشاهدة أثناء التحميل (اختياري)' : 'Watch while downloading (optional)')}
-        </button>
-        <button type="button" onClick={p.togglePieceMap}
-          className="px-2.5 py-1.5 rounded-xl bg-white/6 hover:bg-white/12 border border-white/12 text-[11px] font-bold text-white/75 flex items-center gap-1 cursor-pointer">
-          <Activity size={12} />{p.showPieceMap ? (isAr ? 'إخفاء الخريطة' : 'Hide map') : (isAr ? 'خريطة القطع' : 'Piece map')}
-        </button>
-      </div>
-    </>
-  );
-};
-
-export const DownloadTaskCard = memo<Props>(function DownloadTaskCard({ task, metrics, isAr, onPause, onResume, onSaveToDevice, onCleanCache, onRemove }) {
-  const showDiag = task.status === 'initializing' || task.status === 'downloading' || metrics.needsFallback;
-  return (
-    <article className="p-4 sm:p-5 rounded-2xl bg-white/[0.05] border border-white/15 flex flex-col gap-3.5 shadow-lg">
-      <div className="flex items-start gap-3.5">
-        <img src={task.media.posterUrl} alt="" className="w-13 h-18 rounded-xl object-cover border border-white/20 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h5 className="text-xs sm:text-sm font-black truncate">
-              {task.media.title}
+        <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <h5 className="text-sm sm:text-base font-black text-white truncate">
+                {task.media.title}
+              </h5>
               {task.media.mediaType === 'tv' && (
-                <span className="ms-1.5 text-sky-300 tabular-nums">
-                  S{String(task.media.season || 1).padStart(2, '0')}E{String(task.media.episode || 1).padStart(2, '0')}
+                <span className="text-xs font-bold text-sky-300 tabular-nums" dir="ltr">
+                  S{String(task.media.season || 1).padStart(2, '0')}E
+                  {String(task.media.episode || 1).padStart(2, '0')}
                 </span>
               )}
-              <span className="ms-2 px-2 py-0.5 rounded-md text-[10px] bg-sky-500/20 text-sky-200 border border-sky-300/35">{task.release.quality}</span>
-            </h5>
-            <span className="text-sm sm:text-base font-black text-emerald-300 tabular-nums">{task.progressPct.toFixed(1)}%</span>
+              <span className="px-2 py-0.5 rounded-md text-[10.5px] font-extrabold bg-sky-500/20 text-sky-200 border border-sky-300/30 tabular-nums">
+                {task.release.quality}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              {metrics.isRunning && (
+                <div className="cd-pulse-wrapper" aria-hidden="true">
+                  <div className="loading">
+                    <svg width="64px" height="48px" viewBox="0 0 64 48">
+                      <polyline
+                        points="0.157 23.954, 14 23.954, 21.843 48, 43 0, 50 24, 64 24"
+                        id="back"
+                        className="cd-pulse-back"
+                      />
+                      <polyline
+                        points="0.157 23.954, 14 23.954, 21.843 48, 43 0, 50 24, 64 24"
+                        id="front"
+                        className="cd-pulse-front"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              )}
+              <span
+                dir="ltr"
+                className="text-base sm:text-lg font-black text-emerald-300 tabular-nums tracking-tight"
+              >
+                {task.progressPct.toFixed(1)}%
+              </span>
+            </div>
           </div>
-          <div className="w-full h-2.5 rounded-full bg-black/50 overflow-hidden mt-2"
-            role="progressbar" aria-valuenow={task.progressPct} aria-valuemin={0} aria-valuemax={100}>
-            <div className={`h-full rounded-full transition-[width] duration-500 ${metrics.isCompleted ? 'bg-emerald-400' : metrics.isPaused ? 'bg-amber-400' : 'bg-gradient-to-r from-sky-400 to-emerald-400'}`}
-              style={{ width: `${Math.max(1.5, task.progressPct)}%` }} />
+
+          <div
+            className="w-full h-2.5 rounded-full bg-black/60 border border-white/10 overflow-hidden p-[1px]"
+            role="progressbar"
+            aria-valuenow={task.progressPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className={`h-full rounded-full transition-[width] duration-500 ${
+                metrics.isCompleted
+                  ? 'bg-emerald-400'
+                  : metrics.isPaused
+                    ? 'bg-amber-400'
+                    : 'bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-400'
+              }`}
+              style={{ width: `${Math.max(1.5, task.progressPct)}%` }}
+            />
           </div>
-          <div className="flex items-center justify-between gap-2 text-[11px] text-white/75 mt-2 flex-wrap tabular-nums">
-            <span><strong className="text-white">{metrics.downloadedFormatted}</strong> / {metrics.totalFormatted} · {task.completedPieces}/{task.totalPieces}</span>
-            <span className="flex gap-2">
-              {metrics.speedFormatted && <span className="text-emerald-300 font-black">⬇ {metrics.speedFormatted}</span>}
-              {metrics.etaFormatted && <span className="text-sky-200">{isAr ? `المتبقي: ${metrics.etaFormatted}` : `ETA ${metrics.etaFormatted}`}</span>}
-            </span>
+
+          <div className="flex items-center justify-between gap-2 text-xs text-white/80 flex-wrap tabular-nums">
+            <div dir="ltr" className="flex items-center gap-1.5 font-semibold">
+              <span className="text-white font-extrabold">{metrics.downloadedFormatted}</span>
+              <span className="text-white/40">/</span>
+              <span className="text-white/75">{metrics.totalFormatted}</span>
+              <span className="text-white/30">·</span>
+              <span className="text-white/60 text-[11px]">
+                {task.completedPieces}/{task.totalPieces}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                dir="ltr"
+                className="px-2.5 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 font-black text-xs tabular-nums"
+              >
+                {metrics.speedFormatted ?? (metrics.isRunning ? '0.00 MB/s' : '—')}
+              </span>
+              {metrics.etaFormatted && (
+                <span className="px-2.5 py-0.5 rounded-lg bg-sky-500/15 border border-sky-400/25 text-sky-200 font-bold text-[11px] tabular-nums">
+                  {isAr ? `المتبقي ${metrics.etaFormatted}` : `ETA ${metrics.etaFormatted}`}
+                </span>
+              )}
+            </div>
           </div>
-          <p className="text-[11px] text-white/85 mt-1 font-semibold">{task.statusMessage}</p>
+
+          {cleanStatusMessage && (
+            <p dir="auto" className="text-[11px] text-white/65 font-medium truncate">
+              {cleanStatusMessage}
+            </p>
+          )}
         </div>
       </div>
 
       {showDiag && <TransportDiagnosticsStrip infoHash={task.infoHash} isAr={isAr} />}
-      {metrics.needsFallback && <ExternalHandoffPanel infoHash={task.infoHash} release={task.release} isAr={isAr} />}
-      {!metrics.needsFallback && !task.cacheCleared && (
-        <OptionalStreamSection infoHash={task.infoHash} isAr={isAr} isRunning={metrics.isRunning} />
+      {metrics.needsFallback && (
+        <ExternalHandoffPanel infoHash={task.infoHash} release={task.release} isAr={isAr} />
       )}
 
-      <div className="flex items-center justify-between gap-2 flex-wrap pt-2.5 border-t border-white/10">
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex items-center justify-between gap-3 flex-wrap pt-3 border-t border-white/10">
+        <div className="flex items-center gap-2 flex-wrap">
           {metrics.isRunning && (
-            <button type="button" onClick={() => onPause(task.infoHash)}
-              className="px-3.5 py-1.5 rounded-xl bg-amber-500/25 border border-amber-300/45 text-xs font-extrabold text-amber-100 flex items-center gap-1.5 cursor-pointer">
-              <Pause size={13} />{isAr ? 'إيقاف مؤقت' : 'Pause'}
+            <button
+              type="button"
+              onClick={() => onPause(task.infoHash)}
+              className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-300/40 text-xs font-extrabold text-amber-100 flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Pause size={13} />
+              <span>{isAr ? 'إيقاف مؤقت' : 'Pause'}</span>
             </button>
           )}
           {metrics.isPaused && (
-            <button type="button" onClick={() => onResume(task.infoHash)}
-              className="px-4 py-1.5 rounded-xl bg-sky-500/35 border border-sky-300/55 text-xs font-black flex items-center gap-1.5 cursor-pointer">
-              <Play size={13} />{isAr ? 'استئناف (إعادة فحص المسارات)' : 'Resume (re-probe)'}
+            <button
+              type="button"
+              onClick={() => onResume(task.infoHash)}
+              className="px-4 py-2 rounded-xl bg-sky-500/30 hover:bg-sky-500/40 border border-sky-300/50 text-xs font-black text-white flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Play size={13} />
+              <span>{isAr ? 'استئناف التحميل' : 'Resume'}</span>
             </button>
           )}
           {metrics.isCompleted && !task.cacheCleared && (
             <>
-              <button type="button" onClick={() => onSaveToDevice(task.infoHash)}
-                className="px-4 py-1.5 rounded-xl bg-emerald-500 text-xs font-black text-slate-950 flex items-center gap-1.5 cursor-pointer">
-                <FolderDown size={14} />{isAr ? 'حفظ الملف على الجهاز' : 'Save to device'}
+              <button
+                type="button"
+                onClick={() => onSaveToDevice(task.infoHash)}
+                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-xs font-black text-slate-950 flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <FolderDown size={14} />
+                <span>{isAr ? 'حفظ الملف على الجهاز' : 'Save to device'}</span>
               </button>
-              <button type="button" onClick={() => onCleanCache(task.infoHash)}
-                className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-xs font-bold flex items-center gap-1.5 cursor-pointer">
-                <CheckCircle2 size={13} />{isAr ? 'تفريغ الكاش' : 'Clean cache'}
+              <button
+                type="button"
+                onClick={() => onCleanCache(task.infoHash)}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <CheckCircle2 size={13} />
+                <span>{isAr ? 'تفريغ الكاش' : 'Clean cache'}</span>
               </button>
             </>
           )}
         </div>
-        <button type="button" onClick={() => onRemove(task.infoHash)}
-          className="px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-300/40 text-xs font-bold text-rose-200 flex items-center gap-1 cursor-pointer">
-          <Trash2 size={13} />{isAr ? 'حذف وتنظيف' : 'Remove'}
-        </button>
+
+        <div className="cd-delete-wrapper">
+          <button
+            type="button"
+            className="button"
+            onClick={() => onRemove(task.infoHash)}
+            aria-label={isAr ? 'حذف' : 'Delete'}
+          >
+            <svg viewBox="0 0 448 512" className="svgIcon">
+              <path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z" />
+            </svg>
+          </button>
+        </div>
       </div>
     </article>
   );

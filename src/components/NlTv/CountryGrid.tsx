@@ -7,6 +7,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Globe, ChevronRight } from "lucide-react";
 import { Country } from "./iptvHelper";
+import { CountryFlagGlassIcon } from "../shared/icons";
 
 import { TvAutocomplete } from "./TvAutocomplete";
 import { TvSuggestion } from "./useTvSearchIndex";
@@ -124,9 +125,7 @@ export function CountryGrid({
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl select-none" role="img" aria-label={c.name}>
-                    {c.flag}
-                  </span>
+                  <CountryFlagGlassIcon code={c.code} name={c.name} size={20} />
                   <span className="text-xs font-semibold tracking-wide font-sans">
                     {c.name}
                   </span>
@@ -146,3 +145,4 @@ export function CountryGrid({
     </div>
   );
 }
+

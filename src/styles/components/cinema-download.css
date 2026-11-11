@@ -1,0 +1,341 @@
+/* ==========================================================================
+ * src/styles/components/cinema-download.css
+ * Scoped styles and animations for the redesigned Cinema Download Studio
+ * ========================================================================== */
+
+/* 1. Hybrid Transport System Chip Loader */
+.cd-chip-wrapper {
+  width: 100%;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 50%, rgba(22, 27, 38, 0.9) 0%, rgba(10, 12, 18, 0.96) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 12px 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cd-chip-wrapper .main-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+}
+
+.cd-chip-wrapper .loader {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.cd-chip-wrapper .loader svg {
+  width: 100%;
+  height: auto;
+  max-height: 175px;
+  display: block;
+}
+
+.cd-chip-wrapper .trace-bg {
+  stroke: #333;
+  stroke-width: 1.8;
+  fill: none;
+}
+
+.cd-chip-wrapper .trace-flow {
+  stroke-width: 1.8;
+  fill: none;
+  stroke-dasharray: 40 400;
+  stroke-dashoffset: 438;
+  filter: drop-shadow(0 0 6px currentColor);
+  animation: cd-chip-flow 3s cubic-bezier(0.5, 0, 0.9, 1) infinite;
+}
+
+.cd-chip-wrapper .yellow {
+  stroke: #ffea00;
+  color: #ffea00;
+}
+
+.cd-chip-wrapper .blue {
+  stroke: #00ccff;
+  color: #00ccff;
+}
+
+.cd-chip-wrapper .green {
+  stroke: #00ff15;
+  color: #00ff15;
+}
+
+.cd-chip-wrapper .purple {
+  stroke: #9900ff;
+  color: #9900ff;
+}
+
+.cd-chip-wrapper .red {
+  stroke: #ff3300;
+  color: #ff3300;
+}
+
+@keyframes cd-chip-flow {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.cd-chip-wrapper .chip-body {
+  rx: 20;
+  ry: 20;
+}
+
+.cd-chip-wrapper .chip-text {
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.cd-chip-wrapper .chip-pin {
+  stroke: #444;
+  stroke-width: 0.5;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
+}
+
+/* 2. Expanding Circular-to-Pill Red Delete Button */
+.cd-delete-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cd-delete-wrapper .button {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: rgb(20, 20, 20);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
+  cursor: pointer;
+  transition-duration: 0.3s;
+  overflow: hidden;
+  position: relative;
+}
+
+.cd-delete-wrapper .svgIcon {
+  width: 12px;
+  transition-duration: 0.3s;
+}
+
+.cd-delete-wrapper .svgIcon path {
+  fill: white;
+}
+
+.cd-delete-wrapper .button:hover {
+  width: 140px;
+  border-radius: 50px;
+  transition-duration: 0.3s;
+  background-color: rgb(255, 69, 69);
+  border-color: rgba(255, 69, 69, 0.6);
+  align-items: center;
+}
+
+.cd-delete-wrapper .button:hover .svgIcon {
+  width: 50px;
+  transition-duration: 0.3s;
+  transform: translateY(60%);
+}
+
+.cd-delete-wrapper .button::before {
+  position: absolute;
+  top: -20px;
+  content: "Delete";
+  color: white;
+  transition-duration: 0.3s;
+  font-size: 2px;
+}
+
+.cd-delete-wrapper .button:hover::before {
+  font-size: 13px;
+  opacity: 1;
+  transform: translateY(30px);
+  transition-duration: 0.3s;
+}
+
+/* 3. Active Downloading ECG Pulse Polyline Loader */
+.cd-pulse-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cd-pulse-wrapper .loading svg {
+  display: block;
+}
+
+.cd-pulse-wrapper .loading svg polyline {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cd-pulse-wrapper .loading svg polyline#back,
+.cd-pulse-wrapper .loading svg polyline.cd-pulse-back {
+  fill: none;
+  stroke: #ff4d5033;
+}
+
+.cd-pulse-wrapper .loading svg polyline#front,
+.cd-pulse-wrapper .loading svg polyline.cd-pulse-front {
+  fill: none;
+  stroke: #ff4d4f;
+  stroke-dasharray: 48, 144;
+  stroke-dashoffset: 192;
+  animation: dash_682 1.4s linear infinite;
+}
+
+@keyframes dash_682 {
+  72.5% {
+    opacity: 0;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* 4. Waiting / Fetching Torrents "Z" Sway Loader */
+.cd-z-loader-wrapper {
+  position: relative;
+  width: 140px;
+  height: 130px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding-left: 24px;
+  padding-bottom: 12px;
+}
+
+.cd-z-loader-wrapper .z {
+  position: absolute;
+  font-size: 32px;
+  font-weight: 800;
+  color: #38bdf8;
+  text-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+  opacity: 0;
+  user-select: none;
+  pointer-events: none;
+}
+
+.cd-z-loader-wrapper .z-1 {
+  animation: swayUpToRight 2s ease-out infinite;
+}
+
+.cd-z-loader-wrapper .z-2 {
+  animation: swayUpToRight 2s ease-out 0.5s infinite;
+}
+
+.cd-z-loader-wrapper .z-3 {
+  animation: swayUpToRight 2s ease-out 1s infinite;
+}
+
+.cd-z-loader-wrapper .z-4 {
+  animation: swayUpToRight 2s ease-out 1.5s infinite;
+}
+
+@keyframes swayUpToRight {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(80px, -100px) rotate(30deg);
+    opacity: 0;
+  }
+}
+
+/* 5. Animated Gradient Download Button (.botao) */
+.cd-download-btn-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 125px;
+  min-height: 50px;
+}
+
+.cd-download-btn-wrapper .botao {
+  position: relative;
+  width: 125px;
+  height: 45px;
+  border-radius: 20px;
+  border: none;
+  box-shadow: 1px 1px rgba(107, 221, 215, 0.37);
+  padding: 5px 10px;
+  background: rgb(47, 93, 197);
+  background: linear-gradient(
+    160deg,
+    rgba(47, 93, 197, 1) 0%,
+    rgba(46, 86, 194, 1) 5%,
+    rgba(47, 93, 197, 1) 11%,
+    rgba(59, 190, 230, 1) 57%,
+    rgba(0, 212, 255, 1) 71%
+  );
+  color: #fff;
+  font-family: Roboto, system-ui, -apple-system, sans-serif;
+  font-weight: 505;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  filter: drop-shadow(0 0 10px rgba(59, 190, 230, 0.568));
+  transition: 0.5s linear;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.cd-download-btn-wrapper .botao .mysvg {
+  display: none;
+}
+
+.cd-download-btn-wrapper .botao:hover {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  transition: 0.5s linear;
+}
+
+.cd-download-btn-wrapper .botao:hover .texto {
+  display: none;
+}
+
+.cd-download-btn-wrapper .botao:hover .mysvg {
+  display: inline;
+}
+
+.cd-download-btn-wrapper .botao:hover::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  border: 3.5px solid transparent;
+  border-top: 3.5px solid #fff;
+  border-right: 3.5px solid #fff;
+  border-radius: 50%;
+  animation: animateC 2s linear infinite;
+  box-sizing: border-box;
+}
+
+@keyframes animateC {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}

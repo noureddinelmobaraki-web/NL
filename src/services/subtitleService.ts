@@ -5,6 +5,10 @@ import { LEGACY_ENCODING, getLanguageLabel, normalizeLangCode } from "../feature
 import { getSubtitlePrefs } from "../features/cinema/subtitles/subtitlePrefs";
 import { dedupeCues, isHlsPlaylistText, mergeHlsVttPlaylist } from "../features/cinema/subtitles/streamSubtitles";
 import { fetchYtsListMovies } from "./ytsApiClient";
+import { searchStremioOpenSubsV3 } from "./subtitles/stremioOpenSubsV3Provider";
+import { downloadAndUnpackSubtitleText, searchSubDlSubtitles } from "./subtitles/subdlAndSubsourceProvider";
+import { searchPodnapisiSubtitles } from "./subtitles/podnapisiAndYifyProvider";
+import { isAssOrSsaSubtitle, parseAssSubtitleCues } from "./subtitles/assToVttStyler";
 
 /** "1" once the Worker routes /subs/* are deployed with the WYZIE_KEY secret (Phase 3). */
 const USE_WORKER_SUBS_PROXY = import.meta.env.VITE_USE_WORKER_SUBS_PROXY === "1";
@@ -52,6 +56,10 @@ export function stripAdCues(cues: SubtitleCue[]): SubtitleCue[] {
 export function parseSubtitleCues(rawText: string): SubtitleCue[] {
   const normalized = rawText.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").trim();
   if (!normalized) return [];
+  if (isAssOrSsaSubtitle(normalized)) {
+    const assCues = parseAssSubtitleCues(normalized);
+    if (assCues.length > 0) return stripAdCues(assCues);
+  }
   const timeRegex = /((?:\d{1,2}:)?\d{2}:\d{2}[.,]\d{1,3})\s*-->\s*((?:\d{1,2}:)?\d{2}:\d{2}[.,]\d{1,3})/;
   const cues: SubtitleCue[] = [];
   for (const block of normalized.split(/\n{2,}/)) {
@@ -116,9 +124,7 @@ export function decodeSubtitleBytes(buf: ArrayBuffer, lang?: string): string {
 }
 
 async function fetchSubtitleText(url: string, lang: string, signal?: AbortSignal): Promise<string> {
-  const res = await fetch(url, { signal: signal ?? AbortSignal.timeout(9000) });
-  if (!res.ok) throw new Error(`Subtitle HTTP ${res.status}`);
-  return decodeSubtitleBytes(await res.arrayBuffer(), lang);
+  return downloadAndUnpackSubtitleText(url, lang, decodeSubtitleBytes, signal);
 }
 
 /* ---------- providers (search only; download is lazy) ---------- */
@@ -314,7 +320,13 @@ export async function fetchExternalSubtitles(params: SubtitleFetchParams): Promi
 
   let all = SEARCH_CACHE.get(cacheKey);
   if (!all) {
-    const settled = await Promise.allSettled([searchWyzie(params, langs), searchOpenSubtitles(params, langs)]);
+    const settled = await Promise.allSettled([
+      searchWyzie(params, langs),
+      searchOpenSubtitles(params, langs),
+      searchStremioOpenSubsV3(params, langs),
+      searchSubDlSubtitles(params, langs),
+      searchPodnapisiSubtitles(params, langs),
+    ]);
     all = settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
     SEARCH_CACHE.set(cacheKey, all);
   }
@@ -346,3 +358,47 @@ export async function fetchExternalSubtitles(params: SubtitleFetchParams): Promi
   }
   return result;
 }
+
+/**
+ * Converts Advanced SubStation Alpha (.ass / .ssa) subtitle text into UTF-8 WebVTT
+ * while preserving Arabic RTL punctuation and stripping inline override tags.
+ */
+export function convertAssToWebVtt(assText: string): string {
+  const lines = assText.replace(/\r\n/g, "\n").split("\n");
+  const cues: string[] = ["WEBVTT", ""];
+
+  const formatAssTimestamp = (raw: string): string => {
+    const parts = raw.trim().split(":");
+    if (parts.length !== 3) return "00:00:00.000";
+    const hh = parts[0].padStart(2, "0");
+    const mm = parts[1].padStart(2, "0");
+    const [ssRaw, csRaw = "00"] = parts[2].split(".");
+    const ss = (ssRaw || "00").padStart(2, "0");
+    const ms = (csRaw + "00").slice(0, 3);
+    return `${hh}:${mm}:${ss}.${ms}`;
+  };
+
+  for (const line of lines) {
+    if (!line.startsWith("Dialogue:")) continue;
+    const afterPrefix = line.slice("Dialogue:".length).trim();
+    const fields = afterPrefix.split(",");
+    if (fields.length < 10) continue;
+    const start = formatAssTimestamp(fields[1]);
+    const end = formatAssTimestamp(fields[2]);
+    const rawDialogue = fields
+      .slice(9)
+      .join(",")
+      .replace(/\{[^}]*\}/g, "")
+      .replace(/\\N|\\n/g, "\n")
+      .trim();
+
+    if (rawDialogue) {
+      cues.push(`${start} --> ${end}`);
+      cues.push(rawDialogue);
+      cues.push("");
+    }
+  }
+
+  return cues.join("\n");
+}
+

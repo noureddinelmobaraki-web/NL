@@ -1322,6 +1322,14 @@ async function extractFromPage(targetUrl, workerOrigin, depth = 0) {
       });
     }
 
+    if (extractedLinks.size === 0) {
+      const adaptiveCandidates = relocateAdaptiveStreamElements(decodedHtml, finalPageUrl);
+      for (const candidateUrl of adaptiveCandidates) {
+        extractedLinks.add(candidateUrl);
+        if (!linkReferer.has(candidateUrl)) linkReferer.set(candidateUrl, finalPageUrl);
+      }
+    }
+
     const videos = Array.from(extractedLinks).map((videoUrl) => {
       const ref = linkReferer.get(videoUrl) || finalPageUrl;
       return {
@@ -1347,6 +1355,25 @@ async function extractFromPage(targetUrl, workerOrigin, depth = 0) {
   } catch (error) {
     return { source: targetUrl, error: error.message, videos: [], subtitles: [] };
   }
+}
+
+function relocateAdaptiveStreamElements(html, baseUrl) {
+  const found = [];
+  const attrCandidateRe = /(?:data-(?:src|video|stream|url|hls|mp4|file)|href|src)=["']([^"']{8,})["']/gi;
+  let m;
+  while ((m = attrCandidateRe.exec(html)) !== null) {
+    const raw = m[1].replace(/\\\//g, "/").trim();
+    if (!/\.(?:m3u8|mp4|mkv|mpd)(?:\?|$)/i.test(raw) && !/\/hls\/|\/manifest|\/master\./i.test(raw)) {
+      continue;
+    }
+    try {
+      const abs = new URL(raw, baseUrl).href;
+      if (safeTarget(abs) && !found.includes(abs)) {
+        found.push(abs);
+      }
+    } catch {}
+  }
+  return found;
 }
 
 /* ---------------- الترجمة (Wyzie) ---------------- */
@@ -1380,13 +1407,39 @@ async function wyzieSearch(url, env, workerOrigin) {
 async function wyzieFile(url, env) {
   let u;
   try { u = new URL(url.searchParams.get("url") || ""); } catch { return jsonResponse({ error: "bad_url" }, 400); }
-  if (u.protocol !== "https:" || !(u.hostname === "sub.wyzie.io" || u.hostname.endsWith(".wyzie.io"))) {
+  if (u.protocol !== "https:" || !safeTarget(u.href)) {
     return jsonResponse({ error: "host_not_allowed" }, 403);
   }
-  if (env.WYZIE_KEY) u.searchParams.set("key", env.WYZIE_KEY);
-  const r = await fetch(u.toString());
+  if ((u.hostname === "sub.wyzie.io" || u.hostname.endsWith(".wyzie.io")) && env.WYZIE_KEY) {
+    u.searchParams.set("key", env.WYZIE_KEY);
+  }
+  const r = await fetch(u.toString(), { headers: { "User-Agent": UA } });
   if (!r.ok) return jsonResponse({ error: `wyzie_${r.status}` }, 502);
-  return new Response(await r.arrayBuffer(), {
+  const buffer = await r.arrayBuffer();
+
+  let text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+  if (text.includes("\uFFFD")) {
+    try {
+      text = new TextDecoder("windows-1256").decode(buffer);
+    } catch {}
+  }
+
+  const wantVtt = url.searchParams.get("vtt") === "1" || /\.vtt$/i.test(u.pathname);
+  if (wantVtt && !text.trimStart().startsWith("WEBVTT")) {
+    text = "WEBVTT\n\n" + text
+      .replace(/\r\n/g, "\n")
+      .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+    return new Response(text, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/vtt; charset=utf-8",
+        "Cache-Control": "public, max-age=86400",
+        ...CORS,
+      },
+    });
+  }
+
+  return new Response(text, {
     status: 200,
     headers: { "Content-Type": r.headers.get("Content-Type") || "text/plain; charset=utf-8",
                "Cache-Control": "public, max-age=86400", ...CORS },

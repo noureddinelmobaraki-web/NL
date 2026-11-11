@@ -17,6 +17,7 @@ import {
   Headphones,
   Disc,
   Sparkles,
+  Palette,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { SwitcherMode, SwitcherDest } from "./notch.types";
@@ -33,6 +34,9 @@ export type PageKey =
   | "home"
   | "games"
   | "cinema"
+  | "anime"
+  | "cartoon"
+  | "art"
   | "tv"
   | "retro"
   | "xp"
@@ -49,6 +53,9 @@ export const PAGE_META: Record<PageKey, { icon: LucideIcon; accent: string }> = 
   home: { icon: Home, accent: "#7fd0ff" },
   games: { icon: Gamepad2, accent: "#8affc1" },
   cinema: { icon: Film, accent: "#ff9fc0" },
+  anime: { icon: Sparkles, accent: "#f87171" },
+  cartoon: { icon: Tv, accent: "#fbbf24" },
+  art: { icon: Palette, accent: "#38bdf8" },
   tv: { icon: Tv, accent: "#9ec9ff" },
   retro: { icon: Joystick, accent: "#ffd27f" },
   xp: { icon: Monitor, accent: "#7fd0ff" },
@@ -71,6 +78,15 @@ export interface BuildNotchDestinationsArgs {
   isMoviesOpen: boolean;
   openMovies: () => void;
   closeMovies: () => void;
+  isAnimeOpen?: boolean;
+  openAnime?: () => void;
+  closeAnime?: () => void;
+  isCartoonOpen?: boolean;
+  openCartoon?: () => void;
+  closeCartoon?: () => void;
+  isArtOpen?: boolean;
+  openArt?: (tab?: "photos" | "drawings" | "avatars") => void;
+  closeArt?: () => void;
   isTvOpen: boolean;
   openTv: () => void;
   closeTv: () => void;
@@ -102,6 +118,15 @@ export function buildNotchDestinations({
   isMoviesOpen,
   openMovies,
   closeMovies,
+  isAnimeOpen = false,
+  openAnime = () => {},
+  closeAnime = () => {},
+  isCartoonOpen = false,
+  openCartoon = () => {},
+  closeCartoon = () => {},
+  isArtOpen = false,
+  openArt = () => {},
+  closeArt = () => {},
   isTvOpen,
   openTv,
   closeTv,
@@ -159,6 +184,22 @@ export function buildNotchDestinations({
       onClick: goto(isMoviesOpen, openMovies, closeMovies),
     },
     {
+      id: "anime",
+      label: "Anime",
+      title: "Anime Sub & Dub",
+      icon: React.createElement(Sparkles, { size: 16 }),
+      isActive: isAnimeOpen,
+      onClick: goto(isAnimeOpen, openAnime, closeAnime),
+    },
+    {
+      id: "cartoon",
+      label: "Cartoon",
+      title: "Spacetoon & Cartoon",
+      icon: React.createElement(Tv, { size: 16 }),
+      isActive: isCartoonOpen,
+      onClick: goto(isCartoonOpen, openCartoon, closeCartoon),
+    },
+    {
       id: "tv",
       label: "TV",
       title: "TV & Live",
@@ -205,6 +246,14 @@ export function buildNotchDestinations({
       icon: React.createElement(BookOpen, { size: 16 }),
       isActive: isLiquidGlassOpen && liquidGlassMode === "books",
       onClick: () => openOrToggleLiquid("books"),
+    },
+    {
+      id: "art",
+      label: "Art",
+      title: "Art & Museums Hub",
+      icon: React.createElement(Palette, { size: 16 }),
+      isActive: isArtOpen,
+      onClick: goto(isArtOpen, () => openArt("photos"), closeArt),
     },
     {
       id: "audiobooks",

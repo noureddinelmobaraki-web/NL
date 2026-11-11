@@ -56,6 +56,18 @@ export const LiquidGlassPortalPage = lazyWithRetry(
   () => import('../features/liquid-glass/LiquidGlassPortalPage'),
   'LiquidGlassPortalPage',
 );
+export const AnimePage = lazyWithRetry(
+  () => import('../features/anime/AnimePage').then((m) => ({ default: m.AnimePage })),
+  'AnimePage',
+);
+export const CartoonPage = lazyWithRetry(
+  () => import('../features/cartoon/CartoonPage').then((m) => ({ default: m.CartoonPage })),
+  'CartoonPage',
+);
+export const ArtHubPage = lazyWithRetry(
+  () => import('../features/art/ArtHubPage').then((m) => ({ default: m.ArtHubPage })),
+  'ArtHubPage',
+);
 
 export const PAGES: Record<Exclude<PageId, 'home'>, PageDescriptor> = {
   games: {
@@ -81,6 +93,30 @@ export const PAGES: Record<Exclude<PageId, 'home'>, PageDescriptor> = {
     loaderType: 'cinema',
     wrapperClassName: 'fixed inset-0 w-full h-full z-[8500] pointer-events-none',
     component: MoviesPage,
+  },
+  anime: {
+    id: 'anime',
+    key: 'anime-screen',
+    sectionName: 'anime',
+    loaderType: 'cinema',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500] pointer-events-none',
+    component: AnimePage,
+  },
+  cartoon: {
+    id: 'cartoon',
+    key: 'cartoon-screen',
+    sectionName: 'cartoon',
+    loaderType: 'cinema',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500] pointer-events-none',
+    component: CartoonPage,
+  },
+  art: {
+    id: 'art',
+    key: 'art-screen',
+    sectionName: 'art',
+    loaderType: 'cinema',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500] pointer-events-none',
+    component: ArtHubPage,
   },
   retro: {
     id: 'retro',

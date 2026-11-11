@@ -39,11 +39,11 @@ export async function fetchCountries(): Promise<Country[]> {
     const json = await res.json();
     // Sort countries by name and filter valid structures
     const countries = json
-      .filter((c: any) => c.name && c.code && c.flag)
+      .filter((c: any) => c.name && c.code)
       .map((c: any) => ({
         name: c.name,
         code: c.code.toUpperCase(),
-        flag: c.flag
+        flag: c.code.toUpperCase()
       }))
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
@@ -130,20 +130,21 @@ export function parseM3u(text: string): TvChannel[] {
 }
 
 export const FALLBACK_COUNTRIES: Country[] = [
-  { "name": "Morocco", "code": "MA", "flag": "🇲🇦" },
-  { "name": "Algeria", "code": "DZ", "flag": "🇩🇿" },
-  { "name": "Tunisia", "code": "TN", "flag": "🇹🇳" },
-  { "name": "Egypt", "code": "EG", "flag": "🇪🇬" },
-  { "name": "Saudi Arabia", "code": "SA", "flag": "🇸🇦" },
-  { "name": "France", "code": "FR", "flag": "🇫🇷" },
-  { "name": "Spain", "code": "ES", "flag": "🇪🇸" },
-  { "name": "United Kingdom", "code": "UK", "flag": "🇬🇧" },
-  { "name": "United States", "code": "US", "flag": "🇺🇸" },
-  { "name": "Canada", "code": "CA", "flag": "🇨🇦" },
-  { "name": "Germany", "code": "DE", "flag": "🇩🇪" },
-  { "name": "Italy", "code": "IT", "flag": "🇮🇹" },
-  { "name": "Japan", "code": "JP", "flag": "🇯🇵" },
-  { "name": "South Korea", "code": "KR", "flag": "🇰🇷" },
-  { "name": "Brazil", "code": "BR", "flag": "🇧🇷" },
-  { "name": "Argentina", "code": "AR", "flag": "🇦🇷" }
+  { "name": "Morocco", "code": "MA", "flag": "MA" },
+  { "name": "Algeria", "code": "DZ", "flag": "DZ" },
+  { "name": "Tunisia", "code": "TN", "flag": "TN" },
+  { "name": "Egypt", "code": "EG", "flag": "EG" },
+  { "name": "Saudi Arabia", "code": "SA", "flag": "SA" },
+  { "name": "France", "code": "FR", "flag": "FR" },
+  { "name": "Spain", "code": "ES", "flag": "ES" },
+  { "name": "United Kingdom", "code": "GB", "flag": "GB" },
+  { "name": "United States", "code": "US", "flag": "US" },
+  { "name": "Canada", "code": "CA", "flag": "CA" },
+  { "name": "Germany", "code": "DE", "flag": "DE" },
+  { "name": "Italy", "code": "IT", "flag": "IT" },
+  { "name": "Japan", "code": "JP", "flag": "JP" },
+  { "name": "South Korea", "code": "KR", "flag": "KR" },
+  { "name": "Brazil", "code": "BR", "flag": "BR" },
+  { "name": "Argentina", "code": "AR", "flag": "AR" }
 ];
+

@@ -231,3 +231,53 @@ export function initLiquidGlassPhysics(): () => void {
     window.removeEventListener('blur', handlePointerUp);
   };
 }
+
+/**
+ * Generates an R/G normal-map displacement data URL on an offscreen canvas
+ * for SVG feDisplacementMap Liquid Glass refraction.
+ */
+export function generateDisplacementMapDataUrl(
+  width = 256,
+  height = 64,
+  bezelWidth = 18
+): string {
+  if (typeof document === 'undefined') return '';
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  const imgData = ctx.createImageData(width, height);
+  const data = imgData.data;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dx = Math.min(x, width - 1 - x);
+      const dy = Math.min(y, height - 1 - y);
+      const dist = Math.min(dx, dy);
+
+      let r = 128;
+      let g = 128;
+
+      if (dist < bezelWidth) {
+        const u = 1 - dist / bezelWidth;
+        const slope = Math.pow(1 - Math.pow(1 - u, 4), 0.25);
+        const dirX = x < width / 2 ? -1 : 1;
+        const dirY = y < height / 2 ? -1 : 1;
+        r = Math.round(128 + dirX * slope * 127);
+        g = Math.round(128 + dirY * slope * 127);
+      }
+
+      const idx = (y * width + x) * 4;
+      data[idx] = r;
+      data[idx + 1] = g;
+      data[idx + 2] = 128;
+      data[idx + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+

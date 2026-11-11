@@ -9,6 +9,7 @@ import { Search, Tv, ArrowLeft, Loader2, ArrowRight } from "lucide-react";
 import { TvAutocomplete } from "./TvAutocomplete";
 import { TvSuggestion } from "./useTvSearchIndex";
 import { Country, TvChannel } from "./iptvHelper";
+import { CountryFlagGlassIcon } from "../shared/icons";
 
 interface ChannelGridProps {
   countryName: string;
@@ -80,9 +81,7 @@ export function ChannelGrid({
           </button>
           
           <div className="flex items-center gap-1.5 overflow-hidden">
-            <span className="text-xl select-none" role="img" aria-label={countryName}>
-              {countryFlag}
-            </span>
+            <CountryFlagGlassIcon code={countryFlag} name={countryName} size={18} />
             <span className="text-xs font-bold text-zinc-100 truncate">
               {countryName}
             </span>

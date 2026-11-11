@@ -5,8 +5,8 @@
     <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   object-src 'none';
-  script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-kwOTmlDcJErA+Ke+b7qQhRE5zYpCBEZcekVyFNpQhW0=' https://plausible.io https://www.google.com https://www.gstatic.com https://www.youtube.com;
-  frame-src 'self' https://noureddinelmobaraki-web.github.io https://www.google.com https://recaptcha.google.com https://www.youtube.com https://www.youtube-nocookie.com https://www.imdb.com https://vidlink.pro https://player.vidlink.pro https://cloud.vidlink.pro https://streamimdb.ru https://player.imdb.su https://www.2embed.cc https://2embed.cc https://www.2embed.skin https://2embed.skin https://2vcdn.skin https://multiembed.mov https://streamingnow.mov https://broad-block-7bd7.nordinegb2018.workers.dev https://archive.org https://www.gutenberg.org https://books.google.com;
+  script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-kwOTmlDcJErA+Ke+b7qQhRE5zYpCBEZcekVyFNpQhW0=' https://plausible.io https://www.google.com https://www.gstatic.com https://www.youtube.com https://esm.sh https://v8.js-dos.com;
+  frame-src 'self' https://noureddinelmobaraki-web.github.io https://www.google.com https://recaptcha.google.com https://www.youtube.com https://www.youtube-nocookie.com https://www.imdb.com https://vidlink.pro https://player.vidlink.pro https://cloud.vidlink.pro https://player.vidplus.to https://vidsrcme.ru https://player.videasy.net https://vidrock.net https://moviesapi.club https://streamimdb.ru https://player.imdb.su https://www.2embed.cc https://2embed.cc https://www.2embed.skin https://2embed.skin https://2vcdn.skin https://multiembed.mov https://streamingnow.mov https://broad-block-7bd7.nordinegb2018.workers.dev https://archive.org https://www.gutenberg.org https://books.google.com https://lichess.org;
   style-src 'self' 'unsafe-inline';
   style-src-elem 'self' 'unsafe-inline';
   style-src-attr 'unsafe-inline';
@@ -22,10 +22,25 @@
     https://www.gutenberg.org
     https://standardebooks.org
     https://books.google.com
-    https://*.mzstatic.com;
-  media-src 'self' blob: https: https://noureddinelmobaraki-web.github.io https://broad-block-7bd7.nordinegb2018.workers.dev https://imdb.iamidiotareyoutoo.com https://*.media-imdb.com https://*.ssl-images-amazon.com https://*.amazonaws.com https://archive.org https://*.archive.org https://librivox.org https://*.librivox.org https://*.mzstatic.com;
+    https://*.mzstatic.com
+    https://static.tvmaze.com
+    https://uploads.mangadex.org
+    https://*.mangadex.network
+    https://www.artic.edu
+    https://images.metmuseum.org
+    https://openaccess-cdn.clevelandart.org
+    https://picsum.photos
+    https://fastly.picsum.photos
+    https://api.dicebear.com
+    https://robohash.org
+    https://i.waifu.pics
+    https://hh3.gbdev.io
+    https://media.rawg.io
+    https://www.freetogame.com
+    https://deckofcardsapi.com;
+  media-src 'self' blob: https: https://noureddinelmobaraki-web.github.io https://broad-block-7bd7.nordinegb2018.workers.dev https://imdb.iamidiotareyoutoo.com https://*.media-imdb.com https://*.ssl-images-amazon.com https://*.amazonaws.com https://archive.org https://*.archive.org https://librivox.org https://*.librivox.org https://*.mzstatic.com https://cdn.islamic.network;
   font-src 'self' data:;
-  connect-src 'self' https: ws: wss: https://broad-block-7bd7.nordinegb2018.workers.dev https://imdb.iamidiotareyoutoo.com https://api.imdbapi.dev https://sub.wyzie.io https://api.opensubtitles.com https://iptv-org.github.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com https://*.supabase.co wss://*.supabase.co https://openlibrary.org https://covers.openlibrary.org https://archive.org https://*.archive.org https://gutendex.com https://www.gutenberg.org https://librivox.org https://*.librivox.org https://www.googleapis.com https://books.google.com https://itunes.apple.com https://api.openalex.org https://www.loc.gov;
+  connect-src 'self' https: ws: wss: https://broad-block-7bd7.nordinegb2018.workers.dev https://imdb.iamidiotareyoutoo.com https://api.imdbapi.dev https://sub.wyzie.io https://api.opensubtitles.com https://opensubtitles-v3.strem.io https://api.subdl.com https://www.podnapisi.net https://api.tvmaze.com https://api.jikan.moe https://graphql.anilist.co https://kitsu.io https://api.ani.zip https://arm.haglund.dev https://feed.animetosho.org https://releases.moe https://api.aniskip.com https://api.trace.moe https://torrentio.strem.fun https://comet.elfhosted.com https://mediafusion.elfhosted.com https://knightcrawler.elfhosted.com https://webstreamr.hayd.uk https://api.mangadex.org https://poetrydb.org https://api.alquran.cloud https://api.artic.edu https://collectionapi.metmuseum.org https://openaccess-api.clevelandart.org https://picsum.photos https://www.thecolorapi.com https://api.dicebear.com https://api.waifu.pics https://hh3.gbdev.io https://cdn.dos.zone https://api.rawg.io https://www.freetogame.com https://lichess.org https://deckofcardsapi.com https://opentdb.com https://pokeapi.co https://esm.sh https://v8.js-dos.com https://iptv-org.github.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://api.emailjs.com https://noureddinelmobaraki-web.github.io https://plausible.io https://api.themoviedb.org https://www.omdbapi.com https://*.supabase.co wss://*.supabase.co https://openlibrary.org https://covers.openlibrary.org https://archive.org https://*.archive.org https://gutendex.com https://www.gutenberg.org https://librivox.org https://*.librivox.org https://www.googleapis.com https://books.google.com https://itunes.apple.com https://api.openalex.org https://www.loc.gov;
   worker-src 'self' blob:;
   manifest-src 'self';
   base-uri 'self';

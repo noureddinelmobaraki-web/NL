@@ -10,6 +10,10 @@ import {
   probeAllServersSpeed,
   sortSourcesBySpeed,
 } from '../../services/serverSpeedMonitor';
+import {
+  fetchTvMazeEnrichment,
+  type TvMazeShowEnrichment,
+} from '../../services/cinema/tvmazeEnricher';
 
 export interface PlaySource {
   id: string;
@@ -197,6 +201,24 @@ export function useResolvedImdbSources(
   }, [enabled, itemId, mediaType, rawImdbId]);
 
   const effectiveImdbId = resolvedImdbId || extractImdbId(rawImdbId);
+  const [tvmazeEnrichment, setTvmazeEnrichment] = useState<TvMazeShowEnrichment | null>(null);
+
+  useEffect(() => {
+    if (!enabled || mediaType !== 'tv' || (!effectiveImdbId && !item?.title)) {
+      setTvmazeEnrichment(null);
+      return undefined;
+    }
+    let cancelled = false;
+    void fetchTvMazeEnrichment({
+      imdbId: effectiveImdbId || undefined,
+      title: item?.title,
+    }).then((enriched) => {
+      if (!cancelled) setTvmazeEnrichment(enriched);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, mediaType, effectiveImdbId, item?.title]);
 
   useEffect(() => {
     if (!enabled || !itemId || !mediaType) return undefined;
@@ -235,7 +257,7 @@ export function useResolvedImdbSources(
     });
   }, [itemId, mediaType, effectiveImdbId, season, episode, fullSeason, startAt, speedRevision]);
 
-  return { sources, resolving, resolvedImdbId: effectiveImdbId };
+  return { sources, resolving, resolvedImdbId: effectiveImdbId, tvmazeEnrichment };
 }
 
 export const FloatingGlassTipCard: React.FC<{

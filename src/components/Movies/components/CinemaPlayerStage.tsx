@@ -18,7 +18,9 @@ import {
   RefreshCw,
   AlertTriangle,
   Subtitles,
+  Award,
 } from "lucide-react";
+import { GlassVectorIcon } from "../../shared/icons";
 import { EyeLoader } from "../EyeLoader";
 import {
   recordServerFailure,
@@ -748,10 +750,11 @@ export function CinemaPlayerStage({
                     )}
                     {detailedItem.rottenTomatoes && (
                       <span
-                        className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 border border-rose-300/40 text-rose-200 backdrop-blur-md"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 border border-rose-300/40 text-rose-200 backdrop-blur-md"
                         title={t("movies.meta.rottenTomatoes", "Rotten Tomatoes")}
                       >
-                        🍅 {detailedItem.rottenTomatoes}
+                        <GlassVectorIcon icon={Award} theme="action" size={12} badge={false} />
+                        <span>{detailedItem.rottenTomatoes}</span>
                       </span>
                     )}
                     {detailedItem.metascore && (

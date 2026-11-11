@@ -33,6 +33,10 @@ function AppStageRouter() {
     closeMovies,
     isSeriesOpen,
     closeSeries,
+    isAnimeOpen,
+    closeAnime,
+    isCartoonOpen,
+    closeCartoon,
     isTvOpen,
     closeTv,
     isRetroOpen,
@@ -46,6 +50,9 @@ function AppStageRouter() {
     isLiquidGlassOpen,
     liquidGlassMode,
     closeLiquidGlass,
+    isArtOpen,
+    artTab,
+    closeArt,
     endTransition,
     openMusic,
   } = useAppContext();
@@ -67,19 +74,25 @@ function AppStageRouter() {
       ? 'tv'
       : isMoviesOpen || isSeriesOpen
         ? 'cinema'
-        : isRetroOpen
-          ? 'retro'
-          : isXpOpen
-            ? 'xp'
-            : isMusicOpen
-              ? 'music'
-              : isAccountsOpen
-                ? 'accounts'
-                : isPortraitOpen
-                  ? 'portrait'
-                  : isLiquidGlassOpen
-                    ? 'liquidGlass'
-                    : null;
+        : isAnimeOpen
+          ? 'anime'
+          : isCartoonOpen
+            ? 'cartoon'
+            : isArtOpen
+              ? 'art'
+              : isRetroOpen
+                ? 'retro'
+                : isXpOpen
+                  ? 'xp'
+                  : isMusicOpen
+                    ? 'music'
+                    : isAccountsOpen
+                      ? 'accounts'
+                      : isPortraitOpen
+                        ? 'portrait'
+                        : isLiquidGlassOpen
+                          ? 'liquidGlass'
+                          : null;
 
   const isAnyPageActive = activeOverlayId !== null;
 
@@ -110,15 +123,21 @@ function AppStageRouter() {
               onClose: isSeriesOpen ? closeSeries : closeMovies,
               initialTab: isSeriesOpen ? 'series' : 'movies',
             }
-          : activeOverlayId === 'retro'
-            ? { onClose: closeRetro }
-            : activeOverlayId === 'xp'
-              ? { onClose: closeXp }
-              : activeOverlayId === 'accounts'
-                ? { onClose: closeAccounts }
-                : activeOverlayId === 'liquidGlass'
-                  ? { onClose: closeLiquidGlass, initialMode: liquidGlassMode }
-                  : {};
+          : activeOverlayId === 'anime'
+            ? { onClose: closeAnime }
+            : activeOverlayId === 'cartoon'
+              ? { onClose: closeCartoon }
+              : activeOverlayId === 'art'
+                ? { onClose: closeArt, initialTab: artTab }
+                : activeOverlayId === 'retro'
+                  ? { onClose: closeRetro }
+                  : activeOverlayId === 'xp'
+                    ? { onClose: closeXp }
+                    : activeOverlayId === 'accounts'
+                      ? { onClose: closeAccounts }
+                      : activeOverlayId === 'liquidGlass'
+                        ? { onClose: closeLiquidGlass, initialMode: liquidGlassMode }
+                        : {};
 
   return (
     <>

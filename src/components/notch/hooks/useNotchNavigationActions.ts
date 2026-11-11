@@ -31,6 +31,15 @@ export function useNotchNavigationActions({
     closeMovies,
     isMoviesOpen,
     isSeriesOpen,
+    isAnimeOpen,
+    openAnime,
+    closeAnime,
+    isCartoonOpen,
+    openCartoon,
+    closeCartoon,
+    isArtOpen,
+    openArt,
+    closeArt,
     openTv,
     closeTv,
     isTvOpen,
@@ -66,27 +75,33 @@ export function useNotchNavigationActions({
     ? 'games'
     : isMoviesOpen || isSeriesOpen
       ? 'cinema'
-      : isTvOpen
-        ? 'tv'
-        : isRetroOpen
-          ? 'retro'
-          : isXpOpen
-            ? 'xp'
-            : isMusicOpen
-              ? 'music'
-              : isAccountsOpen
-                ? 'accounts'
-                : isLiquidGlassOpen
-                  ? liquidGlassMode === 'books'
-                    ? 'books'
-                    : liquidGlassMode === 'audiobooks'
-                      ? 'audiobooks'
-                      : liquidGlassMode === 'sun'
-                        ? 'albums'
-                        : liquidGlassMode === 'video'
-                          ? 'x'
-                          : 'liquidGlass'
-                  : 'home';
+      : isAnimeOpen
+        ? 'anime'
+        : isCartoonOpen
+          ? 'cartoon'
+          : isArtOpen
+            ? 'art'
+            : isTvOpen
+              ? 'tv'
+              : isRetroOpen
+                ? 'retro'
+                : isXpOpen
+                  ? 'xp'
+                  : isMusicOpen
+                    ? 'music'
+                    : isAccountsOpen
+                      ? 'accounts'
+                      : isLiquidGlassOpen
+                        ? liquidGlassMode === 'books'
+                          ? 'books'
+                          : liquidGlassMode === 'audiobooks'
+                            ? 'audiobooks'
+                            : liquidGlassMode === 'sun'
+                              ? 'albums'
+                              : liquidGlassMode === 'video'
+                                ? 'x'
+                                : 'liquidGlass'
+                        : 'home';
 
   const pageMeta = PAGE_META[pageKey];
 
@@ -115,6 +130,15 @@ export function useNotchNavigationActions({
     isMoviesOpen,
     openMovies,
     closeMovies,
+    isAnimeOpen,
+    openAnime,
+    closeAnime,
+    isCartoonOpen,
+    openCartoon,
+    closeCartoon,
+    isArtOpen,
+    openArt,
+    closeArt,
     isTvOpen,
     openTv,
     closeTv,

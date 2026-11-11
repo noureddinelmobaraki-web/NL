@@ -13,6 +13,11 @@ import {
   Headphones,
   Disc,
   Globe,
+  Sparkles,
+  Tv,
+  Palette,
+  Image as ImageIcon,
+  Brush,
   ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
@@ -35,6 +40,11 @@ const LUCIDE: Record<string, LucideIcon> = {
   headphones: Headphones,
   disc: Disc,
   globe: Globe,
+  sparkles: Sparkles,
+  tv: Tv,
+  palette: Palette,
+  image: ImageIcon,
+  brush: Brush,
 };
 
 /* ---- Module-level press & hover physics constants (React Compiler friendly) ---- */

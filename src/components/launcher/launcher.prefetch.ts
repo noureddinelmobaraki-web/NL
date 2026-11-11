@@ -15,6 +15,12 @@ export function warmLauncherAction(action: NodeAction): void {
     case 'openMovies':
       void import('../Movies/MoviesPage').catch(() => undefined);
       break;
+    case 'openAnime':
+      void import('../../features/anime/AnimePage').catch(() => undefined);
+      break;
+    case 'openCartoon':
+      void import('../../features/cartoon/CartoonPage').catch(() => undefined);
+      break;
     case 'openTv':
       void import('../NlTv/NlTvPage').catch(() => undefined);
       break;
@@ -35,6 +41,11 @@ export function warmLauncherAction(action: NodeAction): void {
     case 'openLiquidAlbums':
     case 'openLiquidX':
       void import('../../features/liquid-glass/LiquidGlassPortalPage').catch(() => undefined);
+      break;
+    case 'openArtPhotos':
+    case 'openArtDrawings':
+    case 'openArtAvatars':
+      void import('../../features/art/ArtHubPage').catch(() => undefined);
       break;
   }
 }
