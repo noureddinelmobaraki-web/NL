@@ -1,5 +1,5 @@
 import { memo, useCallback, useRef } from 'react';
-import { m, type Transition } from 'framer-motion';
+import { m, type MotionStyle, type Transition } from 'framer-motion';
 import {
   Sun,
   Moon,
@@ -212,6 +212,8 @@ export const NodePill = memo(function NodePill({
         ref={buttonRef}
         type="button"
         className={className}
+        data-node-id={node.id}
+        style={{ '--nl-sib': siblingIndex } as unknown as MotionStyle}
         initial={{
           opacity: initialOpacity,
           scale: initialScale,

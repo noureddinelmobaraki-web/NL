@@ -15,6 +15,7 @@ import { useMotionProfile } from '../../quality/motion/useMotionProfile';
 import { LiquidGlassFilter } from './glass/LiquidGlassFilter';
 import { supportsRefraction, useGlassTier, type GlassTier } from './glass/useGlassTier';
 import { useGlassPointer } from './glass/useGlassPointer';
+import { useLauncherIntro } from './intro/launcherIntro.context';
 
 interface LauncherGraphProps {
   glassTier?: GlassTier;
@@ -58,9 +59,20 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
   const [activeSubBranch, setActiveSubBranch] = useState<string | null>(null);
   const layout: Layout = size.w > 0 && size.w < 768 ? 'mobile' : 'desktop';
 
+  // Genesis Sequence: while the intro owns the stage, its script DRIVES the graph
+  // (pure derivation — no effects, no state writes). At `done` the script is null
+  // and the user's own state (still null) takes over seamlessly.
+  const intro = useLauncherIntro();
+  const introScript = intro?.graphScript ?? null;
+  const introActive = intro?.active ?? false;
+  const reportIntroAnchors = intro?.reportAnchors;
+  const effectiveRoot = introScript ? introScript.root : activeRoot;
+  const effectiveBranch = introScript ? introScript.branch : activeBranch;
+  const effectiveSubBranch = introScript ? introScript.sub : activeSubBranch;
+
   const graph = useMemo(
-    () => computeGraph(size, layout, ROOTS, activeRoot, activeBranch, activeSubBranch),
-    [size, layout, activeRoot, activeBranch, activeSubBranch],
+    () => computeGraph(size, layout, ROOTS, effectiveRoot, effectiveBranch, effectiveSubBranch),
+    [size, layout, effectiveRoot, effectiveBranch, effectiveSubBranch],
   );
 
   const { siblingIndexByNodeId, edgeStaggerMap, nodePositions } = useMemo(() => {
@@ -94,6 +106,15 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
       nodePositions: posMap,
     };
   }, [graph.edges, graph.nodes]);
+
+  useEffect(() => {
+    if (!introActive || !reportIntroAnchors) return;
+    reportIntroAnchors({
+      me: nodePositions.get('me') ?? null,
+      home: nodePositions.get('home') ?? null,
+      size,
+    });
+  }, [introActive, reportIntroAnchors, nodePositions, size]);
 
   const runAction = useCallback(
     (action: NodeAction) => {
