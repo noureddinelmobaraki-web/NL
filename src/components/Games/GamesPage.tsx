@@ -8,17 +8,18 @@
  * .nl-games-main) while integrating the unified multi-engine catalog.
  */
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDeviceType } from '../../hooks/useDeviceType';
-import { useAppContext } from '../../context/AppContext';
 import { GameScreen } from './GameScreen';
-import { useGamesMusic } from './useGamesMusic';
 import { GAMES_BG_VIDEO } from '../../constants/assets';
-import { useUnifiedGamesCatalog } from './hooks/useUnifiedGamesCatalog';
-import { useGameBundleResolver } from './hooks/useGameBundleResolver';
+import {
+  useUnifiedGamesCatalog,
+  useGameBundleResolver,
+  useGameSelection,
+  useGamesPageLifecycle,
+} from './hooks';
 import { SidebarSearchAndSort } from './components/SidebarSearchAndSort';
 import { SidebarCategoryPills } from './components/SidebarCategoryPills';
 import { EnhancedGameListItem } from './components/EnhancedGameListItem';
@@ -31,7 +32,6 @@ interface GamesPageProps {
 export function GamesPage({ onClose }: GamesPageProps) {
   const { t } = useTranslation();
   const { isMobile, isTablet } = useDeviceType();
-  const { setGameActive, registerGameBack } = useAppContext();
   const isTouch = isMobile || isTablet;
 
   const {
@@ -48,65 +48,18 @@ export function GamesPage({ onClose }: GamesPageProps) {
     markGamePlayed,
   } = useUnifiedGamesCatalog();
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { selectedId, setSelectedId, selectedGame, handleSelectGame } =
+    useGameSelection(allCatalog, markGamePlayed);
 
-  // موسيقى الوضع: تتوقف عند تشغيل لعبة وتستأنف عند الرجوع للقائمة
-  useGamesMusic(Boolean(selectedId));
-
-  // أبلغ Context + اسجّل callback العودة للقائمة
-  useEffect(() => {
-    setGameActive(Boolean(selectedId));
-    registerGameBack(() => setSelectedId(null));
-  }, [selectedId, setGameActive, registerGameBack]);
-
-  // تنظيف عند إلغاء التركيب
-  useEffect(() => {
-    return () => {
-      setGameActive(false);
-    };
-  }, [setGameActive]);
-
-  // قفل تمرير الصفحة
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.body.classList.add('nl-games-active');
-    return () => {
-      document.body.style.overflow = prev;
-      document.body.classList.remove('nl-games-active');
-    };
-  }, []);
-
-  // Esc: رجوع من لعبة → قائمة، أو إغلاق الصفحة
-  const handleEsc = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || document.fullscreenElement) return;
-      if (isTouch && selectedId) setSelectedId(null);
-      else onClose();
-    },
-    [onClose, isTouch, selectedId],
-  );
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [handleEsc]);
-
-  const selectedGame = useMemo(
-    () => allCatalog.find((g) => g.id === selectedId) ?? null,
-    [allCatalog, selectedId],
-  );
+  useGamesPageLifecycle({
+    selectedId,
+    setSelectedId,
+    isTouch,
+    onClose,
+  });
 
   const { bundle, resolving, resolveError } =
     useGameBundleResolver(selectedGame);
-
-  const handleSelectGame = useCallback(
-    (id: string) => {
-      setSelectedId(id);
-      markGamePlayed(id);
-    },
-    [markGamePlayed],
-  );
 
   const bgVideo = (
     <video

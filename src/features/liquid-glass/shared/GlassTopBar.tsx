@@ -50,6 +50,7 @@ export interface GlassTopBarProps {
   externalMuted?: boolean;
   onToggleMute?: () => void;
   resultCount?: number;
+  onClose?: () => void;
 }
 
 export const GlassTopBar: React.FC<GlassTopBarProps> = ({
@@ -74,6 +75,7 @@ export const GlassTopBar: React.FC<GlassTopBarProps> = ({
   externalMuted,
   onToggleMute,
   resultCount,
+  onClose,
 }) => {
   const tier = useCatalogShellTier();
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
@@ -274,6 +276,17 @@ export const GlassTopBar: React.FC<GlassTopBarProps> = ({
               </span>
             )}
           </div>
+        )}
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="إغلاق"
+            className="lg-glass-pill lg-filter-pill shrink-0 cursor-pointer"
+          >
+            <X size={15} />
+          </button>
         )}
       </div>
 

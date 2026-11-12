@@ -99,7 +99,7 @@ export const PAGES: Record<Exclude<PageId, 'home'>, PageDescriptor> = {
     key: 'anime-screen',
     sectionName: 'anime',
     loaderType: 'cinema',
-    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500] pointer-events-none',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
     component: AnimePage,
   },
   cartoon: {
@@ -107,7 +107,7 @@ export const PAGES: Record<Exclude<PageId, 'home'>, PageDescriptor> = {
     key: 'cartoon-screen',
     sectionName: 'cartoon',
     loaderType: 'cinema',
-    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500] pointer-events-none',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
     component: CartoonPage,
   },
   art: {
@@ -115,7 +115,7 @@ export const PAGES: Record<Exclude<PageId, 'home'>, PageDescriptor> = {
     key: 'art-screen',
     sectionName: 'art',
     loaderType: 'cinema',
-    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500] pointer-events-none',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
     component: ArtHubPage,
   },
   retro: {

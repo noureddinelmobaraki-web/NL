@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
-import type HlsType from "hls.js";
 import { useAppContext } from "../../context/AppContext";
 import { useMovieItems } from "../../features/account/useMovieItems";
 import { useAuth } from "../../context/AuthContext";
@@ -26,9 +25,7 @@ import { useMoviesMusic } from "./useMoviesMusic";
 import { useDocumentMeta } from "../../hooks/useDocumentMeta";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { usePreconnect } from "../../hooks/usePreconnect";
-import { FALLBACK_MOVIES } from "./CuratedFallback";
-import { FALLBACK_SERIES } from "../Series/CuratedFallback";
-import { normLang, tmdbLang } from "../../utils/lang";
+import { normLang } from "../../utils/lang";
 import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
 import "../../styles/components/cinema.css";
 import {
@@ -37,26 +34,16 @@ import {
 } from "./MovieSourcesModal";
 import type { ExtractedVideoStream } from "../../services/videoExtractor";
 import { probeAllServersSpeed } from "../../services/serverSpeedMonitor";
-import { logPlay } from "../../features/music/data/playTracking";
 import {
-  bindVideoElementToClock,
-  clockReset,
-  useClockState,
-} from "../../features/cinema/player/playbackClock";
-import {
-  getProgress,
   removeProgress,
   useContinueWatching,
 } from "../../features/cinema/progress/progressStore";
 import {
-  TMDB_BASE_URL,
   fetchWithCache,
-  fetchOmdbMeta,
   normalizeItem,
   getBackdropSrc_static,
   getPosterSrc_static,
   MOVIE_ROW_SCROLL_STYLE,
-  type Media,
   type CastMember,
   type ActorDetails,
   type CinemaItem,
@@ -67,17 +54,25 @@ import {
   MovieRow,
 } from "./MovieGridComponents";
 import { ActorProfileModal } from "./ActorProfileModal";
-import { useCinemaSubtitles } from "./hooks/useCinemaSubtitles";
-import { useCinemaDeepLink } from "./hooks/useCinemaDeepLink";
-import { useCinemaCatalog } from "./hooks/useCinemaCatalog";
-import { useHeroTrailer } from "./hooks/useHeroTrailer";
-import { useServerFailover } from "./hooks/useServerFailover";
-import { useStreamExtractor } from "./hooks/useStreamExtractor";
-import { usePlayerBridgeSync } from "./hooks/usePlayerBridgeSync";
+import {
+  useCinemaSubtitles,
+  useCinemaCatalog,
+  useHeroTrailer,
+  useServerFailover,
+  useStreamExtractor,
+  usePlayerBridgeSync,
+  useCinemaDetailSelection,
+  useGalleryPlayerState,
+  useSeasonEpisodesState,
+  useCinemaResumeTarget,
+  useSeekUnsupportedToast,
+  useGalleryPlayerControls,
+  useCinemaWatchlistPanel,
+  useCinemaScrollHeader,
+} from "./hooks";
 import { CinemaHeroBanner } from "./components/CinemaHeroBanner";
 import { CinemaDetailModal } from "./components/CinemaDetailModal";
 import { CinemaHeaderDownloadButton } from "../../features/cinemaDownload";
-import { enrichCinemaItemWithYts } from "../../services/ytsApiClient";
 
 export { fetchWithCache, normalizeItem };
 export type { CastMember, ActorDetails, CinemaItem };
@@ -149,77 +144,76 @@ export function MoviesPage({
 
   useDocumentMeta("movies.title", "movies.description");
 
-  const [detailServersOpen, setDetailServersOpen] = useState(false);
-  const [selectedItemId, setSelectedItemIdState] = useState<number | null>(null);
-  const [selectedMediaType, setSelectedMediaType] = useState<Media | null>(null);
-  const [detailedItem, setDetailedItem] = useState<CinemaItem | null>(null);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const {
+    detailServersOpen,
+    setDetailServersOpen,
+    selectedItemId,
+    selectedMediaType,
+    detailedItem,
+    setDetailedItem,
+    isLoadingDetails,
+    setIsLoadingDetails,
+    setSelectedItemId,
+  } = useCinemaDetailSelection({ activeTab, findPreloadedCinemaItem });
 
-  const setSelectedItemId = useCallback(
-    (id: number | null, mediaType?: Media) => {
-      if (id === null) {
-        setSelectedMediaType(null);
-        setSelectedItemIdState(null);
-        return;
-      }
-      const effType: Media = mediaType ?? (activeTab === "series" ? "tv" : "movie");
-      void probeAllServersSpeed(undefined, `${effType}_${id}`);
-      setSelectedMediaType(effType);
-      setSelectedItemIdState(id);
-      const preloaded = findPreloadedCinemaItem(id, effType);
-      if (preloaded) {
-        setDetailedItem((prev) =>
-          prev && prev.id === id && prev.mediaType === effType ? prev : preloaded,
-        );
-        setIsLoadingDetails(false);
-      } else {
-        setDetailedItem((prev) =>
-          prev && prev.id === id && prev.mediaType === effType ? prev : null,
-        );
-        setIsLoadingDetails(true);
-      }
-    },
-    [activeTab, findPreloadedCinemaItem],
-  );
+  const {
+    isWatchingInGallery,
+    setIsWatchingInGallery,
+    activeGalleryServerIdx,
+    setActiveGalleryServerIdx,
+    isPlayerLoading,
+    setIsPlayerLoading,
+    allServersFailed,
+    setAllServersFailed,
+    isCssFullscreen,
+    setIsCssFullscreen,
+    isNativeFullscreen,
+    setIsNativeFullscreen,
+    extractedStreams,
+    setExtractedStreams,
+    activeExtractedIdx,
+    setActiveExtractedIdx,
+    useDirectUrlFallback,
+    setUseDirectUrlFallback,
+    playerRenderMode,
+    setPlayerRenderMode,
+    clockState,
+    isVideoPaused,
+    videoVolume,
+    setVideoVolume,
+    isVideoMuted,
+    setIsVideoMuted,
+    isControlsVisible,
+    setIsControlsVisible,
+    controlsHideTimerRef,
+    galleryStageRef,
+    playerIframeRef,
+    videoElementRef,
+    hlsInstanceRef,
+    attemptTokenRef,
+    playAttemptStartedAtRef,
+    failoverQueueRef,
+    failoverStepRef,
+    loadedCurrentAttemptRef,
+    autoStartWatchRef,
+    appliedInitialSeekRef,
+    deepLinkSeRef,
+    preselectedProgressItemIdRef,
+  } = useGalleryPlayerState();
 
-  const [isWatchingInGallery, setIsWatchingInGallery] = useState(false);
-  const [activeGalleryServerIdx, setActiveGalleryServerIdx] = useState(0);
-  const [isPlayerLoading, setIsPlayerLoading] = useState(false);
-  const [allServersFailed, setAllServersFailed] = useState(false);
-  const [isCssFullscreen, setIsCssFullscreen] = useState(false);
-  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
-  const [extractedStreams, setExtractedStreams] = useState<ExtractedVideoStream[]>([]);
-  const [activeExtractedIdx, setActiveExtractedIdx] = useState(0);
-  const [useDirectUrlFallback, setUseDirectUrlFallback] = useState(false);
-  const [playerRenderMode, setPlayerRenderMode] = useState<
-    "extracting" | "direct" | "clean-embed" | "iframe"
-  >("extracting");
-  const clockState = useClockState();
-  const isVideoPaused = clockState.paused;
-  const [videoVolume, setVideoVolume] = useState(1);
-  const [isVideoMuted, setIsVideoMuted] = useState(false);
-  const [isControlsVisible, setIsControlsVisible] = useState(true);
-  const controlsHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [selectedSeason, setSelectedSeason] = useState(1);
-  const [selectedEpisode, setSelectedEpisode] = useState(1);
-  const [isFullSeasonEmbed, setIsFullSeasonEmbed] = useState(false);
-  const [seasonEpisodes, setSeasonEpisodes] = useState<
-    Array<{ episode_number: number; name: string }>
-  >([]);
-  const [loadingSeasonEpisodes, setLoadingSeasonEpisodes] = useState(false);
-  const galleryStageRef = useRef<HTMLDivElement | null>(null);
-  const playerIframeRef = useRef<HTMLIFrameElement | null>(null);
-  const videoElementRef = useRef<HTMLVideoElement | null>(null);
-  const hlsInstanceRef = useRef<HlsType | null>(null);
-  const attemptTokenRef = useRef(0);
-  const playAttemptStartedAtRef = useRef<number>(0);
-  const failoverQueueRef = useRef<number[]>([]);
-  const failoverStepRef = useRef(0);
-  const loadedCurrentAttemptRef = useRef(false);
-  const autoStartWatchRef = useRef(false);
-  const appliedInitialSeekRef = useRef(false);
-  const deepLinkSeRef = useRef<{ itemId: number; s?: number; e?: number } | null>(null);
-  const preselectedProgressItemIdRef = useRef<number | null>(null);
+  const {
+    selectedSeason,
+    setSelectedSeason,
+    selectedEpisode,
+    setSelectedEpisode,
+    isFullSeasonEmbed,
+    setIsFullSeasonEmbed,
+    seasonEpisodes,
+    setSeasonEpisodes,
+    loadingSeasonEpisodes,
+    setLoadingSeasonEpisodes,
+  } = useSeasonEpisodesState();
+
   const continueWatchingItems = useContinueWatching();
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -227,35 +221,12 @@ export function MoviesPage({
 
   const detailDialogRef = useFocusTrap(selectedItemId !== null && !!detailedItem);
 
-  const resumeStartAtSec = useMemo(() => {
-    if (!detailedItem) return undefined;
-    const saved = getProgress(detailedItem.mediaType, detailedItem.id);
-    if (!saved) return undefined;
-    if (
-      detailedItem.mediaType === "tv" &&
-      ((saved.season && saved.season !== selectedSeason) ||
-        (saved.episode && saved.episode !== selectedEpisode))
-    ) {
-      return undefined;
-    }
-    return saved.time > 5 ? saved.time : undefined;
-  }, [detailedItem?.id, detailedItem?.mediaType, selectedSeason, selectedEpisode]);
-
-  const detailWatchTarget = useMemo(() => {
-    if (!detailedItem) return null;
-    return {
-      id: detailedItem.id,
-      mediaType: detailedItem.mediaType,
-      title: detailedItem.title,
-      imdbId: detailedItem.imdbId,
-      backdropPath: detailedItem.backdropPath,
-      posterPath: detailedItem.posterPath,
-      season: selectedSeason,
-      episode: selectedEpisode,
-      fullSeason: isFullSeasonEmbed,
-      startAt: resumeStartAtSec,
-    };
-  }, [detailedItem, selectedSeason, selectedEpisode, isFullSeasonEmbed, resumeStartAtSec]);
+  const { resumeStartAtSec, detailWatchTarget } = useCinemaResumeTarget({
+    detailedItem,
+    selectedSeason,
+    selectedEpisode,
+    isFullSeasonEmbed,
+  });
 
   const { sources: detailPlaySources, resolvedImdbId } = useResolvedImdbSources(
     detailWatchTarget,
@@ -322,28 +293,15 @@ export function MoviesPage({
 
   const activeGallerySource =
     detailPlaySources[activeGalleryServerIdx] || detailPlaySources[0] || null;
-  const [embedSeekStartAtSec, setEmbedSeekStartAtSec] = useState<number | null>(null);
-  const [workerBridgeRevision, setWorkerBridgeRevision] = useState(0);
-  const [seekUnsupportedToast, setSeekUnsupportedToast] = useState(false);
-  const seekUnsupportedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showSeekUnsupportedToast = useCallback(() => {
-    setSeekUnsupportedToast(true);
-    if (seekUnsupportedToastTimerRef.current) {
-      clearTimeout(seekUnsupportedToastTimerRef.current);
-    }
-    seekUnsupportedToastTimerRef.current = setTimeout(() => {
-      setSeekUnsupportedToast(false);
-    }, 3000);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (seekUnsupportedToastTimerRef.current) {
-        clearTimeout(seekUnsupportedToastTimerRef.current);
-      }
-    };
-  }, []);
+  const {
+    embedSeekStartAtSec,
+    setEmbedSeekStartAtSec,
+    workerBridgeRevision,
+    setWorkerBridgeRevision,
+    seekUnsupportedToast,
+    showSeekUnsupportedToast,
+  } = useSeekUnsupportedToast();
 
   const detailItemStorageKey = detailedItem
     ? `${detailedItem.mediaType}_${detailedItem.id}`
@@ -473,327 +431,72 @@ export function MoviesPage({
     showSeekUnsupportedToast,
   });
 
-  useEffect(() => {
-    if (!isWatchingInGallery && !showHeroTrailer) {
-      cleanupDirectVideoPlayer();
-      if (playerIframeRef.current) {
-        try {
-          playerIframeRef.current.src = "about:blank";
-        } catch {}
-      }
-    }
-    if (!isWatchingInGallery) {
-      clearExternalSubtitleBlobs();
-    }
-  }, [isWatchingInGallery, showHeroTrailer, cleanupDirectVideoPlayer, clearExternalSubtitleBlobs]);
-
-  useEffect(() => {
-    const v = videoElementRef.current;
-    if (!isWatchingInGallery || playerRenderMode !== "direct" || !v) return undefined;
-    return bindVideoElementToClock(v);
-  }, [isWatchingInGallery, playerRenderMode, extractedStreams, activeExtractedIdx]);
-
-  useEffect(() => {
-    const onFsChange = () => {
-      const doc = document as any;
-      const fsEl = doc.fullscreenElement || doc.webkitFullscreenElement || null;
-      setIsNativeFullscreen(Boolean(fsEl));
-    };
-    document.addEventListener("fullscreenchange", onFsChange);
-    document.addEventListener("webkitfullscreenchange", onFsChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", onFsChange);
-      document.removeEventListener("webkitfullscreenchange", onFsChange);
-    };
-  }, []);
-
-  const isAnyFullscreen = isCssFullscreen || isNativeFullscreen;
-
-  const bumpControlsVisibility = useCallback(() => {
-    setIsControlsVisible(true);
-    if (controlsHideTimerRef.current) {
-      clearTimeout(controlsHideTimerRef.current);
-      controlsHideTimerRef.current = null;
-    }
-    const shouldAutoHide =
-      isWatchingInGallery &&
-      !isSubtitleMenuOpen &&
-      (playerRenderMode !== "direct" || !isVideoPaused);
-    if (shouldAutoHide) {
-      controlsHideTimerRef.current = setTimeout(() => {
-        setIsControlsVisible(false);
-      }, 2500);
-    }
-  }, [isWatchingInGallery, isSubtitleMenuOpen, playerRenderMode, isVideoPaused]);
-
-  useEffect(() => {
-    if (!isWatchingInGallery || isSubtitleMenuOpen) {
-      setIsControlsVisible(true);
-      if (controlsHideTimerRef.current) {
-        clearTimeout(controlsHideTimerRef.current);
-        controlsHideTimerRef.current = null;
-      }
-      return undefined;
-    }
-    bumpControlsVisibility();
-    const onGlobalActivity = () => bumpControlsVisibility();
-    window.addEventListener("mousemove", onGlobalActivity, { passive: true });
-    window.addEventListener("touchstart", onGlobalActivity, { passive: true });
-    window.addEventListener("keydown", onGlobalActivity);
-    return () => {
-      window.removeEventListener("mousemove", onGlobalActivity);
-      window.removeEventListener("touchstart", onGlobalActivity);
-      window.removeEventListener("keydown", onGlobalActivity);
-      if (controlsHideTimerRef.current) {
-        clearTimeout(controlsHideTimerRef.current);
-        controlsHideTimerRef.current = null;
-      }
-    };
-  }, [isWatchingInGallery, isSubtitleMenuOpen, playerRenderMode, isVideoPaused, bumpControlsVisibility]);
-
-  const handleToggleVideoPlay = useCallback(() => {
-    const video = videoElementRef.current;
-    if (video && playerRenderMode === "direct") {
-      if (video.paused) {
-        void video.play().catch(() => {});
-      } else {
-        video.pause();
-      }
-    }
-    bumpControlsVisibility();
-  }, [playerRenderMode, bumpControlsVisibility]);
-
-  useEffect(() => {
-    const onProgressiveTorrentStream = (e: Event) => {
-      const custom = e as CustomEvent<{
-        infoHash: string;
-        media: { id: number; mediaType: Media; season?: number; episode?: number };
-        streamUrl: string;
-      }>;
-      const detail = custom.detail;
-      if (!detail || !detail.streamUrl || !detail.media) return;
-
-      const s = detail.media.season || 1;
-      const ep = detail.media.episode || 1;
-      const storageKey = `${detail.media.mediaType}_${detail.media.id}`;
-
-      if (selectedItemId !== detail.media.id) {
-        deepLinkSeRef.current = { itemId: detail.media.id, s, e: ep };
-        setSelectedItemId(detail.media.id, detail.media.mediaType);
-      } else {
-        setSelectedSeason(s);
-        setSelectedEpisode(ep);
-      }
-
-      setTimeout(() => {
-        checkedExtractionKeyRef.current = `${storageKey}_s${s}_e${ep}`;
-        setAllServersFailed(false);
-        setShowHeroTrailer(false);
-        setUseDirectUrlFallback(false);
-        setExtractedStreams([
-          {
-            type: "mp4",
-            directUrl: detail.streamUrl,
-            proxiedUrl: detail.streamUrl,
-            sourcePage: detail.streamUrl,
-          },
-        ]);
-        setActiveExtractedIdx(0);
-        setIsWatchingInGallery(true);
-        setIsPlayerLoading(false);
-        setPlayerRenderMode("direct");
-      }, 60);
-    };
-
-    window.addEventListener(
-      "nl:cinema-progressive-torrent-stream",
-      onProgressiveTorrentStream,
-    );
-    return () =>
-      window.removeEventListener(
-        "nl:cinema-progressive-torrent-stream",
-        onProgressiveTorrentStream,
-      );
-  }, [selectedItemId, setSelectedItemId]);
-
-  const handleToggleVideoMute = useCallback(() => {
-    const video = videoElementRef.current;
-    if (!video) return;
-    video.muted = !video.muted;
-    setIsVideoMuted(video.muted);
-    bumpControlsVisibility();
-  }, [bumpControlsVisibility]);
-
-  const handleChangeVideoVolume = useCallback(
-    (nextVolume: number) => {
-      const video = videoElementRef.current;
-      const clamped = Math.max(0, Math.min(1, nextVolume));
-      setVideoVolume(clamped);
-      if (!video) return;
-      video.volume = clamped;
-      video.muted = clamped === 0;
-      setIsVideoMuted(video.muted);
-      bumpControlsVisibility();
-    },
-    [bumpControlsVisibility],
-  );
-
-  const handleToggleGalleryFullscreen = useCallback(() => {
-    const el = galleryStageRef.current as any;
-    if (!el) return;
-
-    if (isCssFullscreen) {
-      setIsCssFullscreen(false);
-      return;
-    }
-
-    const doc = document as any;
-    const fullscreenEl =
-      doc.fullscreenElement || doc.webkitFullscreenElement || null;
-
-    if (fullscreenEl) {
-      try {
-        const exitFn = doc.exitFullscreen || doc.webkitExitFullscreen;
-        if (exitFn) {
-          void Promise.resolve(exitFn.call(doc)).catch(() => {
-            setIsCssFullscreen(false);
-          });
-          return;
-        }
-      } catch {}
-      setIsCssFullscreen(false);
-      return;
-    }
-
-    try {
-      const reqFn =
-        el.requestFullscreen ||
-        el.webkitRequestFullscreen ||
-        el.webkitEnterFullscreen;
-      if (reqFn) {
-        void Promise.resolve(reqFn.call(el)).catch(() => {
-          setIsCssFullscreen((v) => !v);
-        });
-        return;
-      }
-    } catch {}
-
-    setIsCssFullscreen((v) => !v);
-  }, [isCssFullscreen]);
-
-  useEffect(() => {
-    if (playerIframeRef.current) {
-      try {
-        playerIframeRef.current.src = "about:blank";
-      } catch {}
-    }
-    clearExternalSubtitleBlobs();
-    clockReset("manual");
-    setEmbedSeekStartAtSec(null);
-    appliedInitialSeekRef.current = false;
-    attemptTokenRef.current += 1;
-    setShowHeroTrailer(false);
-    setTrailerFallbackToYoutube(false);
-    setResolvedTrailer(null);
-    setImdbTrailerLoaded(false);
-    const shouldAutoStart = autoStartWatchRef.current && selectedItemId !== null;
-    setIsWatchingInGallery(shouldAutoStart);
-    setIsPlayerLoading(shouldAutoStart);
-    setAllServersFailed(false);
-    setIsCssFullscreen(false);
-    setIsSubtitleMenuOpen(false);
-    setSubtitleOffsetSec(0);
-    setActiveTrackCues([]);
-    setLoadingSubtitleIdx(null);
-    setActiveGalleryServerIdx(0);
-    const dl = deepLinkSeRef.current;
-    if (dl && selectedItemId !== null && dl.itemId === selectedItemId) {
-      setSelectedSeason(dl.s && dl.s > 0 ? dl.s : 1);
-      setSelectedEpisode(dl.e && dl.e > 0 ? dl.e : 1);
-      deepLinkSeRef.current = null;
-    } else {
-      setSelectedSeason(1);
-      setSelectedEpisode(1);
-    }
-    setIsFullSeasonEmbed(false);
-    setSeasonEpisodes([]);
-    setDetailServersOpen(shouldAutoStart);
-    setSelectedActor(null);
-    if (selectedItemId === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (isCssFullscreen) {
-          setIsCssFullscreen(false);
-        } else if (selectedActor) {
-          setSelectedActor(null);
-        } else {
-          persistCurrentProgress();
-          setSelectedItemId(null);
-        }
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [selectedItemId]);
-
-  useEffect(() => {
-    if (!detailedItem || detailedItem.mediaType !== "tv") {
-      setSeasonEpisodes([]);
-      return;
-    }
-    let cancelled = false;
-    const loadSeasonEps = async () => {
-      setLoadingSeasonEpisodes(true);
-      const fallbackCount = Math.max(
-        1,
-        Math.min(
-          30,
-          detailedItem.episodes && detailedItem.seasons
-            ? Math.ceil(detailedItem.episodes / Math.max(1, detailedItem.seasons))
-            : 12,
-        ),
-      );
-      try {
-        if (tmdbKey) {
-          const langParam = `&language=${tmdbLang(currentLang)}`;
-          const seasonData = await fetchWithCache(
-            `${TMDB_BASE_URL}/tv/${detailedItem.id}/season/${selectedSeason}?api_key=${tmdbKey}${langParam}`,
-          );
-          if (
-            !cancelled &&
-            Array.isArray(seasonData?.episodes) &&
-            seasonData.episodes.length > 0
-          ) {
-            setSeasonEpisodes(
-              seasonData.episodes.map((ep: any, idx: number) => ({
-                episode_number: Number(ep.episode_number) || idx + 1,
-                name:
-                  ep.name ||
-                  (currentLang === "ar" ? `الحلقة ${idx + 1}` : `Episode ${idx + 1}`),
-              })),
-            );
-            setLoadingSeasonEpisodes(false);
-            return;
-          }
-        }
-      } catch {
-        // Fallback below
-      }
-      if (!cancelled) {
-        setSeasonEpisodes(
-          Array.from({ length: fallbackCount }, (_, idx) => ({
-            episode_number: idx + 1,
-            name: currentLang === "ar" ? `الحلقة ${idx + 1}` : `Episode ${idx + 1}`,
-          })),
-        );
-        setLoadingSeasonEpisodes(false);
-      }
-    };
-    void loadSeasonEps();
-    return () => {
-      cancelled = true;
-    };
-  }, [detailedItem, selectedSeason, tmdbKey, currentLang]);
+  const {
+    isAnyFullscreen,
+    bumpControlsVisibility,
+    handleToggleVideoPlay,
+    handleToggleVideoMute,
+    handleChangeVideoVolume,
+    handleToggleGalleryFullscreen,
+  } = useGalleryPlayerControls({
+    isWatchingInGallery,
+    setIsWatchingInGallery,
+    showHeroTrailer,
+    setShowHeroTrailer,
+    setTrailerFallbackToYoutube,
+    setResolvedTrailer,
+    setImdbTrailerLoaded,
+    cleanupDirectVideoPlayer,
+    clearExternalSubtitleBlobs,
+    playerIframeRef,
+    videoElementRef,
+    galleryStageRef,
+    playerRenderMode,
+    setPlayerRenderMode,
+    extractedStreams,
+    setExtractedStreams,
+    activeExtractedIdx,
+    setActiveExtractedIdx,
+    isCssFullscreen,
+    setIsCssFullscreen,
+    isNativeFullscreen,
+    setIsNativeFullscreen,
+    isSubtitleMenuOpen,
+    setIsSubtitleMenuOpen,
+    isVideoPaused,
+    setIsControlsVisible,
+    controlsHideTimerRef,
+    selectedItemId,
+    setSelectedItemId,
+    deepLinkSeRef,
+    selectedSeason,
+    setSelectedSeason,
+    setSelectedEpisode,
+    checkedExtractionKeyRef,
+    setAllServersFailed,
+    setUseDirectUrlFallback,
+    setIsPlayerLoading,
+    setVideoVolume,
+    setIsVideoMuted,
+    setEmbedSeekStartAtSec,
+    appliedInitialSeekRef,
+    attemptTokenRef,
+    autoStartWatchRef,
+    setSubtitleOffsetSec,
+    setActiveTrackCues,
+    setLoadingSubtitleIdx,
+    setActiveGalleryServerIdx,
+    setIsFullSeasonEmbed,
+    setSeasonEpisodes,
+    setLoadingSeasonEpisodes,
+    setDetailServersOpen,
+    selectedActor,
+    setSelectedActor,
+    persistCurrentProgress,
+    detailedItem,
+    tmdbKey,
+    currentLang,
+  });
 
   const handleSelectActor = useCallback((actor: CastMember) => {
     setSelectedActor(actor);
@@ -813,7 +516,17 @@ export function MoviesPage({
         startGalleryWatchSession();
       }
     },
-    [setSelectedItemId, selectedItemId, detailedItem?.id, startGalleryWatchSession, setShowHeroTrailer],
+    [
+      autoStartWatchRef,
+      setDetailServersOpen,
+      setShowHeroTrailer,
+      setIsWatchingInGallery,
+      setIsPlayerLoading,
+      setSelectedItemId,
+      selectedItemId,
+      detailedItem?.id,
+      startGalleryWatchSession,
+    ],
   );
 
   const rowProps = useMemo(
@@ -828,272 +541,58 @@ export function MoviesPage({
       isFavoriteFn: (id: number, mediaType: "movie" | "tv") =>
         has(id, mediaType, "favorite"),
     }),
-    [isTouch, activeHoverId, setActiveHoverId, hoverTimer, setSelectedItemId, handleQuickWatch, t, has],
+    [
+      isTouch,
+      activeHoverId,
+      setActiveHoverId,
+      hoverTimer,
+      setSelectedItemId,
+      handleQuickWatch,
+      t,
+      has,
+    ],
   );
 
-  const watchlistItems = useMemo(
-    () => movieItems.filter((i) => i.status === "watchlist"),
-    [movieItems],
-  );
-
-  const openWatchlistItem = useCallback(
-    (rec: { tmdb_id: number; media_type: "movie" | "tv" }) => {
-      setActiveTab(rec.media_type === "tv" ? "series" : "movies");
-      setShowWatchlist(false);
-      setSelectedItemId(rec.tmdb_id, rec.media_type);
-    },
-    [setActiveTab, setShowWatchlist, setSelectedItemId],
-  );
+  const { watchlistItems, openWatchlistItem } = useCinemaWatchlistPanel({
+    movieItems,
+    setActiveTab,
+    setShowWatchlist,
+    setSelectedItemId,
+  });
 
   const isOpenForAudio = Boolean(detailedItem || selectedItemId);
   const { isMuted, toggleMute } = useMoviesMusic(isOpenForAudio);
 
-  const [scrolled, setScrolled] = useState(false);
-  const mainScrollRef = useRef<HTMLDivElement | null>(null);
-
-  const handleScrollEvent = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    setScrolled(e.currentTarget.scrollTop > 40);
-  }, []);
-
-  useEffect(() => {
-    setMovieActive(Boolean(detailedItem));
-    registerMovieBack(() => {
-      persistCurrentProgress();
-      setDetailedItem(null);
-      setSelectedItemId(null);
-    });
-  }, [detailedItem, setMovieActive, registerMovieBack, persistCurrentProgress, setSelectedItemId]);
-
-  useEffect(() => {
-    return () => {
-      setMovieActive(false);
-    };
-  }, [setMovieActive]);
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.body.classList.add("nl-cinema-active");
-    return () => {
-      document.body.style.overflow = prev;
-      document.body.classList.remove("nl-cinema-active");
-    };
-  }, []);
-
-  useCinemaDeepLink({
+  const { scrolled, mainScrollRef, handleScrollEvent } = useCinemaScrollHeader({
+    detailedItem,
+    setDetailedItem,
     selectedItemId,
     selectedMediaType,
-    detailedItem,
+    setSelectedItemId,
+    setIsLoadingDetails,
+    setMovieActive,
+    registerMovieBack,
+    persistCurrentProgress,
     activeTab,
     setActiveTab,
     selectedSeason,
+    setSelectedSeason,
     selectedEpisode,
-    setSelectedItemId,
+    setSelectedEpisode,
     deepLinkSeRef,
+    preselectedProgressItemIdRef,
+    autoStartWatchRef,
+    setSelectedGenreId,
+    setSearchQuery,
+    setHeroIndex,
+    tmdbKey,
+    omdbKey,
+    currentLang,
+    findPreloadedCinemaItem,
+    detailPlaySources,
+    setDetailServersOpen,
+    startGalleryWatchSession,
   });
-
-  const prevActiveTabRef = useRef(activeTab);
-  useEffect(() => {
-    if (prevActiveTabRef.current === activeTab) return;
-    prevActiveTabRef.current = activeTab;
-    setSelectedGenreId(null);
-    setSearchQuery("");
-    setDetailedItem(null);
-    setSelectedItemId(null);
-    setHeroIndex(0);
-  }, [activeTab, setSelectedGenreId, setSearchQuery, setSelectedItemId, setHeroIndex]);
-
-  const lastHeaderHeightRef = useRef<number>(0);
-  useEffect(() => {
-    const header = document.querySelector(".nl-cinema-header") as HTMLElement | null;
-    if (!header) return;
-    const ro = new ResizeObserver(() => {
-      const h = header.offsetHeight;
-      if (h !== lastHeaderHeightRef.current) {
-        lastHeaderHeightRef.current = h;
-        requestAnimationFrame(() => {
-          document.documentElement.style.setProperty("--cinema-header-h", `${h}px`);
-        });
-      }
-    });
-    ro.observe(header);
-    return () => ro.disconnect();
-  }, []);
-
-  // Details Modal Loader
-  useEffect(() => {
-    if (selectedItemId === null) return;
-    let cancelled = false;
-
-    const mediaType: Media = selectedMediaType ?? (activeTab === "series" ? "tv" : "movie");
-    const isTv = mediaType === "tv";
-
-    if (!detailedItem || detailedItem.id !== selectedItemId) {
-      const seeded = findPreloadedCinemaItem(selectedItemId, mediaType);
-      if (seeded) {
-        setDetailedItem(seeded);
-        setIsLoadingDetails(false);
-      } else {
-        setIsLoadingDetails(true);
-      }
-    }
-
-    if (!tmdbKey) {
-      const list = isTv ? FALLBACK_SERIES : FALLBACK_MOVIES;
-      const match = list.find((m) => m.id === selectedItemId);
-      if (!cancelled && match) {
-        const normalized = normalizeItem(match, mediaType, currentLang);
-        setDetailedItem(normalized);
-        if (!isTv) {
-          enrichCinemaItemWithYts(normalized)
-            .then((enriched) => {
-              if (!cancelled && enriched) {
-                setDetailedItem((prev) => (prev && prev.id === normalized.id ? enriched : prev));
-              }
-            })
-            .catch(() => {});
-        }
-        if (isTv && preselectedProgressItemIdRef.current !== normalized.id) {
-          preselectedProgressItemIdRef.current = normalized.id;
-          const saved = getProgress("tv", normalized.id);
-          if (saved?.season && saved.season > 0) setSelectedSeason(saved.season);
-          if (saved?.episode && saved.episode > 0) setSelectedEpisode(saved.episode);
-        }
-        logPlay({
-          item_type: normalized.mediaType === "tv" ? "series" : "movie",
-          item_id: String(normalized.id),
-          media_type: normalized.mediaType,
-          title: normalized.title || null,
-        });
-        setIsLoadingDetails(false);
-      }
-      return;
-    }
-
-    const loadDetails = async () => {
-      try {
-        const langParam = `&language=${tmdbLang(currentLang)}`;
-        const detailType = isTv ? "tv" : "movie";
-        const detailsAppend = isTv
-          ? "videos,credits,similar,external_ids"
-          : "videos,credits,similar,release_dates";
-
-        const detail = await fetchWithCache(
-          `${TMDB_BASE_URL}/${detailType}/${selectedItemId}?api_key=${tmdbKey}${langParam}&include_video_language=${currentLang},en,null&append_to_response=${detailsAppend}`,
-        );
-
-        if (cancelled) return;
-
-        const normalized = normalizeItem(detail, mediaType, currentLang);
-        setDetailedItem((prev) => {
-          if (prev && prev.id === normalized.id) {
-            return {
-              ...normalized,
-              rating: prev.rating || normalized.rating,
-              certification: normalized.certification || prev.certification,
-              rottenTomatoes: prev.rottenTomatoes || normalized.rottenTomatoes,
-              metascore: prev.metascore || normalized.metascore,
-              awards: prev.awards || normalized.awards,
-              boxOffice: prev.boxOffice || normalized.boxOffice,
-            };
-          }
-          return normalized;
-        });
-
-        if (isTv && preselectedProgressItemIdRef.current !== normalized.id) {
-          preselectedProgressItemIdRef.current = normalized.id;
-          const saved = getProgress("tv", normalized.id);
-          if (saved?.season && saved.season > 0) setSelectedSeason(saved.season);
-          if (saved?.episode && saved.episode > 0) setSelectedEpisode(saved.episode);
-        }
-        logPlay({
-          item_type: normalized.mediaType === "tv" ? "series" : "movie",
-          item_id: String(normalized.id),
-          media_type: normalized.mediaType,
-          title: normalized.title || null,
-        });
-        setIsLoadingDetails(false);
-
-        if (!isTv) {
-          enrichCinemaItemWithYts(normalized)
-            .then((enriched) => {
-              if (cancelled || !enriched) return;
-              setDetailedItem((prev) => {
-                if (!prev || prev.id !== normalized.id) return prev;
-                return {
-                  ...prev,
-                  imdbId: prev.imdbId || enriched.imdbId,
-                  posterPath: prev.posterPath || enriched.posterPath,
-                  backdropPath: prev.backdropPath || enriched.backdropPath,
-                  trailerKey: prev.trailerKey || enriched.trailerKey,
-                  rating: prev.rating && prev.rating > 0 ? prev.rating : enriched.rating,
-                  runtime: prev.runtime || enriched.runtime,
-                  certification: prev.certification || enriched.certification,
-                  overview:
-                    !prev.overview ||
-                    prev.overview.includes("unavailable") ||
-                    prev.overview.includes("not available")
-                      ? enriched.overview
-                      : prev.overview,
-                  cast: prev.cast?.length ? prev.cast : enriched.cast,
-                };
-              });
-            })
-            .catch(() => {});
-        }
-
-        const imdbId = isTv ? detail.external_ids?.imdb_id : detail.imdb_id;
-        if (imdbId && omdbKey) {
-          fetchOmdbMeta(imdbId, omdbKey)
-            .then((omdb) => {
-              if (cancelled || !omdb) return;
-              const parsedImdbRating = omdb.imdbRating ? parseFloat(omdb.imdbRating) : NaN;
-              setDetailedItem((prev) => {
-                if (!prev || prev.id !== normalized.id) return prev;
-                return {
-                  ...prev,
-                  rating:
-                    Number.isFinite(parsedImdbRating) && parsedImdbRating > 0
-                      ? parsedImdbRating
-                      : prev.rating,
-                  certification: prev.certification || omdb.rated,
-                  rottenTomatoes: omdb.rottenTomatoes || prev.rottenTomatoes,
-                  metascore: omdb.metascore || prev.metascore,
-                  awards: omdb.awards || prev.awards,
-                  boxOffice: omdb.boxOffice || prev.boxOffice,
-                };
-              });
-            })
-            .catch((err) => {
-              console.debug("Non-blocking OMDb enrichment failed:", err);
-            });
-        }
-      } catch (err) {
-        console.error("Failed loading exact item details:", err);
-      } finally {
-        if (!cancelled) setIsLoadingDetails(false);
-      }
-    };
-
-    void loadDetails();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedItemId, selectedMediaType, activeTab, tmdbKey, currentLang, omdbKey, findPreloadedCinemaItem]);
-
-  useEffect(() => {
-    if (
-      detailedItem &&
-      selectedItemId !== null &&
-      detailedItem.id === selectedItemId &&
-      autoStartWatchRef.current &&
-      detailPlaySources.length > 0
-    ) {
-      autoStartWatchRef.current = false;
-      setDetailServersOpen(true);
-      startGalleryWatchSession();
-    }
-  }, [detailedItem, selectedItemId, detailPlaySources, startGalleryWatchSession]);
 
   const activeHeroItem = slideshowSlides[heroIndex];
   const localizedHeroTitle = activeHeroItem ? activeHeroItem.title : "";

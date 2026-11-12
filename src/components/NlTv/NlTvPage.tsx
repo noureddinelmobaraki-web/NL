@@ -3,13 +3,11 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Tv, HelpCircle } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 
 import { useIdle } from "../../hooks/useIdle";
-import { useTvRecorder } from "../../hooks/useTvRecorder";
 import { useDocumentMeta } from "../../hooks/useDocumentMeta";
 
 import { TvStatic } from "./TvStatic";
@@ -17,15 +15,21 @@ import { TvPlayer } from "./TvPlayer";
 import { TvControls } from "./TvControls";
 import { CountryGrid } from "./CountryGrid";
 import { ChannelGrid } from "./ChannelGrid";
-import { Country, TvChannel, fetchCountries, fetchCountryChannels } from "./iptvHelper";
-import { useTvSearchIndex } from "./useTvSearchIndex";
-import { useTvMusic } from "./useTvMusic";
-import { NlTvModeSwitcher, type NlTvBroadcastMode } from "./components/NlTvModeSwitcher";
+import { NlTvModeSwitcher } from "./components/NlTvModeSwitcher";
 import { RadioLiveStage } from "./components/RadioLiveStage";
 import { EpgProgramRibbon } from "./components/EpgProgramRibbon";
-import { useLiveTvCatalog } from "./hooks/useLiveTvCatalog";
-import { useRadioCatalog } from "./hooks/useRadioCatalog";
-import { useStremioLiveResolver } from "./hooks/useStremioLiveResolver";
+import {
+  useLiveTvCatalog,
+  useRadioCatalog,
+  useStremioLiveResolver,
+  useTvSearchIndex,
+  useTvMusic,
+  useTvNavigation,
+  useTvPlaybackState,
+  useTvFullscreen,
+  useTvChannelZapping,
+  useTvKeyboardShortcuts,
+} from "./hooks";
 
 interface NlTvPageProps {
   onClose: () => void;
@@ -33,30 +37,52 @@ interface NlTvPageProps {
 
 export default function NlTvPage({ onClose }: NlTvPageProps) {
   const { t, i18n } = useTranslation();
-  
+
   // Custom document headers for title & description
   useDocumentMeta("nav.nltv", "nltv.description");
 
-  // Broadcast Mode: Live TV | Live Radio | Stremio HD
-  const [broadcastMode, setBroadcastMode] = useState<NlTvBroadcastMode>("tv");
+  const {
+    isPlaying,
+    setIsPlaying,
+    isMuted,
+    setIsMuted,
+    volume,
+    setVolume,
+    isVideoError,
+    setIsVideoError,
+    isRecording,
+    recordErr,
+    handleToggleRecording,
+    handleVideoRefReady,
+    handleVideoErrorState,
+  } = useTvPlaybackState();
 
-  // Country & Channels indices states
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [loadingCountries, setLoadingCountries] = useState(true);
-  const [channels, setChannels] = useState<TvChannel[]>([]);
-  const [loadingChannels, setLoadingChannels] = useState(false);
+  const {
+    broadcastMode,
+    setBroadcastMode,
+    countries,
+    loadingCountries,
+    channels,
+    setChannels,
+    loadingChannels,
+    selectedCountry,
+    setSelectedCountry,
+    selectedChannel,
+    setSelectedChannel,
+    handlePickChannel,
+    handleSelectCountry,
+    handleSelectChannel,
+  } = useTvNavigation({
+    setIsPlaying,
+    setIsVideoError,
+  });
 
-  // Global Tv Search index
   const {
     isIndexing,
     isLoaded: isSearchIndexLoaded,
     initIndex,
-    searchGlobal
+    searchGlobal,
   } = useTvSearchIndex(countries);
-
-  // Active Selections
-  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
-  const [selectedChannel, setSelectedChannel] = useState<TvChannel | null>(null);
 
   const { currentEpg } = useLiveTvCatalog(selectedChannel);
   const {
@@ -69,191 +95,35 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
     toggleRadioPlay,
     setIsRadioPlaying,
   } = useRadioCatalog(selectedCountry?.code || "MA");
-  const { stremioChannels, isLoadingStremio } = useStremioLiveResolver(broadcastMode === "stremio");
+  const { stremioChannels, isLoadingStremio } = useStremioLiveResolver(
+    broadcastMode === "stremio"
+  );
 
-  const handlePickChannel = useCallback(async (
-    channelId: string,
-    countryCode: string,
-    url: string,
-    name: string,
-    logo?: string
-  ) => {
-    const matched = countries.find((c) => c.code === countryCode);
-    if (matched) {
-      setSelectedCountry(matched);
-      setLoadingChannels(true);
-      setChannels([]);
-      try {
-        const loaded = await fetchCountryChannels(countryCode);
-        setChannels(loaded);
-        const resolved = loaded.find((c) => c.id === channelId) || {
-          id: channelId,
-          name,
-          url,
-          logo: logo || ""
-        };
-        setSelectedChannel(resolved);
-        setIsPlaying(true);
-        setIsVideoError(false);
-      } catch {
-        const fallback: TvChannel = { id: channelId, name, url, logo: logo || "" };
-        setChannels([fallback]);
-        setSelectedChannel(fallback);
-        setIsPlaying(true);
-        setIsVideoError(false);
-      } finally {
-        setLoadingChannels(false);
-      }
-    } else {
-      const fallback: TvChannel = { id: channelId, name, url, logo: logo || "" };
-      setSelectedChannel(fallback);
-      setIsPlaying(true);
-      setIsVideoError(false);
-    }
-  }, [countries]);
+  const { isFullscreen, containerRef, handleToggleFullscreen } = useTvFullscreen();
 
-  // Video controller parameters
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(0.85);
-  const [isVideoError, setIsVideoError] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const { handlePrevChannel, handleNextChannel } = useTvChannelZapping({
+    selectedChannel,
+    channels,
+    setSelectedChannel,
+    setIsPlaying,
+    setIsVideoError,
+  });
 
-  // Refs for recorder & fullscreen containers
-  const videoRefElement = useRef<HTMLVideoElement | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  useTvKeyboardShortcuts({
+    selectedChannel,
+    selectedCountry,
+    setSelectedChannel,
+    setIsPlaying,
+    setSelectedCountry,
+    setChannels,
+    onClose,
+  });
 
   // Idle timeout detector (Auto-hide overlay in 3 seconds of inactivty)
   const isIdle = useIdle(3000);
   const hideOverlays = isIdle && selectedChannel && isPlaying && !isVideoError;
 
-  // Media live recording hook
-  const { isRecording, errorMsg: recordErr, startRecording, stopRecording } = useTvRecorder();
-
   useTvMusic(Boolean(selectedChannel && isPlaying && !isVideoError));
-
-  // Load countries on page load
-  useEffect(() => {
-    let active = true;
-    fetchCountries().then((data) => {
-      if (active) {
-        setCountries(data);
-        setLoadingCountries(false);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Escape key handler to unselect channel, country, or exit TV
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (selectedChannel) {
-          setSelectedChannel(null);
-          setIsPlaying(false);
-        } else if (selectedCountry) {
-          setSelectedCountry(null);
-          setChannels([]);
-        } else {
-          onClose();
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [selectedChannel, selectedCountry, onClose]);
-
-  // Fullscreen toggle callback
-  const handleToggleFullscreen = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    if (!document.fullscreenElement) {
-      el.requestFullscreen().then(() => setIsFullscreen(true)).catch((err) => {
-        console.warn("Fullscreen request failed:", err);
-      });
-    } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
-    }
-  }, []);
-
-  // Read actual Fullscreen changes in the DOM
-  useEffect(() => {
-    const onFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", onFsChange);
-    };
-  }, []);
-
-  // Country selection event
-  const handleSelectCountry = useCallback(async (country: Country) => {
-    setSelectedCountry(country);
-    setLoadingChannels(true);
-    setChannels([]);
-    try {
-      const data = await fetchCountryChannels(country.code);
-      setChannels(data);
-    } catch {
-      setChannels([]);
-    } finally {
-      setLoadingChannels(false);
-    }
-  }, []);
-
-  // Channel selection event
-  const handleSelectChannel = useCallback((channel: TvChannel) => {
-    setSelectedChannel(channel);
-    setIsPlaying(true);
-    setIsVideoError(false);
-  }, []);
-
-  // Prev / Next channel within the current country index
-  const handlePrevChannel = useCallback(() => {
-    if (!selectedChannel || channels.length <= 1) return;
-    const currentIdx = channels.findIndex((c) => c.id === selectedChannel.id);
-    if (currentIdx === -1) return;
-    const prevIdx = (currentIdx - 1 + channels.length) % channels.length;
-    setSelectedChannel(channels[prevIdx]);
-    setIsPlaying(true);
-    setIsVideoError(false);
-  }, [selectedChannel, channels]);
-
-  const handleNextChannel = useCallback(() => {
-    if (!selectedChannel || channels.length <= 0) return;
-    const currentIdx = channels.findIndex((c) => c.id === selectedChannel.id);
-    if (currentIdx === -1) return;
-    const nextIdx = (currentIdx + 1) % channels.length;
-    setSelectedChannel(channels[nextIdx]);
-    setIsPlaying(true);
-    setIsVideoError(false);
-  }, [selectedChannel, channels]);
-
-  // Recorder toggle callback
-  const handleToggleRecording = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    } else if (videoRefElement.current) {
-      startRecording(videoRefElement.current);
-    }
-  }, [isRecording, startRecording, stopRecording]);
-
-  const handleVideoRefReady = useCallback((video: HTMLVideoElement | null) => {
-    videoRefElement.current = video;
-  }, []);
-
-  const handleVideoErrorState = useCallback((hasError: boolean) => {
-    setIsVideoError(hasError);
-    if (hasError) {
-      setIsPlaying(false);
-    }
-  }, []);
 
   const isRtl = i18n.dir() === "rtl";
 
@@ -481,11 +351,15 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
               {t("nltv.title") || "NL TV"}
             </h2>
             <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-              {t("nltv.description") || "Choose a country and channel to begin live international television playback."}
+              {t("nltv.description") ||
+                "Choose a country and channel to begin live international television playback."}
             </p>
             <div className="flex items-center gap-2 justify-center text-[10px] text-zinc-500 font-mono">
               <HelpCircle size={12} />
-              <span>{t("nltv.publicNotice") || "Streams are from public sources via iptv-org."}</span>
+              <span>
+                {t("nltv.publicNotice") ||
+                  "Streams are from public sources via iptv-org."}
+              </span>
             </div>
           </div>
         </div>
@@ -542,4 +416,3 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
     </div>
   );
 }
-

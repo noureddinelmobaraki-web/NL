@@ -77,6 +77,9 @@ html[data-active-page="music"] .auth-launcher .auth-launcher__dot {
 
 /* ─ الأفلام والمسلسلات وتجارب ملء الشاشة: إخفاء تام لمنع التراكب مع أزرار الصوت والإغلاق ─ */
 html[data-active-page="cinema"] .auth-launcher,
+html[data-active-page="anime"] .auth-launcher,
+html[data-active-page="cartoon"] .auth-launcher,
+html[data-active-page="art"] .auth-launcher,
 html[data-active-page="tv"] .auth-launcher,
 body.nl-cinema-active .auth-launcher,
 html[data-active-page="games"] .auth-launcher,
