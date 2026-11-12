@@ -101,7 +101,7 @@ export const CelestialPlanetOrb: React.FC<CelestialPlanetOrbProps> = ({
       </div>
 
       {/* Floating Glass Section Banner below the 3D Orb */}
-      <div className="st-planet-banner lg-section-banner">
+      <div className="st-planet-banner">
         <span className="st-planet-banner__title">{planet.nameAr}</span>
         <span className="st-planet-banner__sub">{planet.subtitleAr}</span>
       </div>

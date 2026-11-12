@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Music } from 'lucide-react';
 import {
   SpacetoonThemeSongCard,
@@ -7,86 +7,183 @@ import {
 import { SpacetoonOstAudioPlayerDock } from './SpacetoonOstAudioPlayerDock';
 import { GlassVectorIcon } from '../../../../components/shared/icons';
 
+export type { SpacetoonOstTrack };
+
 export const SPACETOON_OST_TRACKS: SpacetoonOstTrack[] = [
   {
-    id: 'ost-conan',
-    titleAr: 'شارة المحقق كونان — لا للشر لا',
-    seriesTitleAr: 'المحقق كونان',
-    vocalistAr: 'رشا رزق وطارق العربي طرقان',
-    planetLabelAr: 'كوكب أكشن',
-    year: 1998,
-    posterUrl: 'https://image.tmdb.org/t/p/w780/fecfa202c32e6be3d0a0c412828.jpg',
-    backdropUrl: 'https://image.tmdb.org/t/p/w1280/9faGSFi5jam6pDWGNd0p8JcJgXQ.jpg',
-    audioStreamUrl: 'https://archive.org/download/spacetoon-songs-collection-mp3/Conan.mp3',
-    videoEmbedUrl: 'https://archive.org/embed/spacetoon-old-openings-collection',
-  },
-  {
-    id: 'ost-hxh',
-    titleAr: 'شارة القناص — قد لمعت عيناه',
-    seriesTitleAr: 'القناص (Hunter x Hunter)',
-    vocalistAr: 'رشا رزق',
-    planetLabelAr: 'كوكب مغامرات',
-    year: 2003,
-    posterUrl: 'https://image.tmdb.org/t/p/w780/ucpgmUR1h5Te1BYegKItoPjOeF7.jpg',
-    backdropUrl: 'https://image.tmdb.org/t/p/w1280/kU98MbVVgi72wzceyrEbClZmMfe.jpg',
-    audioStreamUrl: 'https://archive.org/download/spacetoon-songs-collection-mp3/AlQannas.mp3',
-    videoEmbedUrl: 'https://archive.org/embed/spacetoon-old-openings-collection',
-  },
-  {
-    id: 'ost-remy',
+    id: 'ost-remi',
     titleAr: 'شارة دروب ريمي — مرّينا بيكم حمدوا',
+    showAr: 'دروب ريمي',
+    performerAr: 'رشا رزق',
+    planetBadgeAr: 'كوكب زمردة',
     seriesTitleAr: 'دروب ريمي',
     vocalistAr: 'رشا رزق',
     planetLabelAr: 'كوكب زمردة',
     year: 2001,
-    posterUrl: 'https://image.tmdb.org/t/p/w780/8mR0uK7C9aT9w8Q1mZ4nO0Y1j2X.jpg',
-    backdropUrl: 'https://image.tmdb.org/t/p/w1280/8mR0uK7C9aT9w8Q1mZ4nO0Y1j2X.jpg',
-    audioStreamUrl: 'https://archive.org/download/spacetoon-songs-collection-mp3/Remi.mp3',
-    videoEmbedUrl: 'https://archive.org/embed/rasha-rizk-spacetoon-songs',
+    posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
+    backdropUrl: 'https://archive.org/services/img/20210811_20210811_2250',
+    archiveId: '20210811_20210811_2250',
+    matchKeywords: ['ريمي', 'remi'],
+    fallbackAudioUrl: 'https://archive.org/download/20210811_20210811_2250/01.mp3',
+    fallbackVideoEmbedUrl: 'https://archive.org/embed/20210811_20210811_2250',
+    audioStreamUrl: 'https://archive.org/download/20210811_20210811_2250/01.mp3',
+    videoEmbedUrl: 'https://archive.org/embed/20210811_20210811_2250',
+  },
+  {
+    id: 'ost-hxh',
+    titleAr: 'شارة القناص — قد لمعت عيناه',
+    showAr: 'القناص (Hunter x Hunter)',
+    performerAr: 'رشا رزق',
+    planetBadgeAr: 'كوكب مغامرات',
+    seriesTitleAr: 'القناص (Hunter x Hunter)',
+    vocalistAr: 'رشا رزق',
+    planetLabelAr: 'كوكب مغامرات',
+    year: 2003,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/ucpgmUR1h5Te1BYegKItoPjOeF7.jpg',
+    backdropUrl: 'https://image.tmdb.org/t/p/w500/ucpgmUR1h5Te1BYegKItoPjOeF7.jpg',
+    archiveId: '20210811_20210811_2250',
+    matchKeywords: ['القناص', 'قناص', 'hunter'],
+    fallbackAudioUrl: 'https://archive.org/download/20210811_20210811_2250/02.mp3',
+    fallbackVideoEmbedUrl: 'https://archive.org/embed/20210811_20210811_2250',
+    audioStreamUrl: 'https://archive.org/download/20210811_20210811_2250/02.mp3',
+    videoEmbedUrl: 'https://archive.org/embed/20210811_20210811_2250',
+  },
+  {
+    id: 'ost-conan',
+    titleAr: 'شارة المحقق كونان — لا للشر لا',
+    showAr: 'المحقق كونان',
+    performerAr: 'رشا رزق وطارق العربي طرقان',
+    planetBadgeAr: 'كوكب أكشن',
+    seriesTitleAr: 'المحقق كونان',
+    vocalistAr: 'رشا رزق وطارق العربي طرقان',
+    planetLabelAr: 'كوكب أكشن',
+    year: 1998,
+    posterUrl: 'https://archive.org/services/img/hsrya-o-laol-mr-brnamg-konan-aal-alhoaaa-2000-2',
+    backdropUrl: 'https://archive.org/services/img/hsrya-o-laol-mr-brnamg-konan-aal-alhoaaa-2000-2',
+    archiveId: 'hsrya-o-laol-mr-brnamg-konan-aal-alhoaaa-2000-2',
+    matchKeywords: ['كونان', 'conan'],
+    fallbackAudioUrl: 'https://archive.org/download/20210811_20210811_2250/03.mp3',
+    fallbackVideoEmbedUrl: 'https://archive.org/embed/hsrya-o-laol-mr-brnamg-konan-aal-alhoaaa-2000-2',
+    audioStreamUrl: 'https://archive.org/download/20210811_20210811_2250/03.mp3',
+    videoEmbedUrl: 'https://archive.org/embed/hsrya-o-laol-mr-brnamg-konan-aal-alhoaaa-2000-2',
+  },
+  {
+    id: 'ost-captain-majid',
+    titleAr: 'شارة الكابتن ماجد — عاد إليكم من جديد',
+    showAr: 'الكابتن ماجد',
+    performerAr: 'طارق العربي طرقان',
+    planetBadgeAr: 'كوكب رياضة',
+    seriesTitleAr: 'الكابتن ماجد',
+    vocalistAr: 'طارق العربي طرقان',
+    planetLabelAr: 'كوكب رياضة',
+    year: 2000,
+    posterUrl: 'https://archive.org/services/img/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002',
+    backdropUrl: 'https://archive.org/services/img/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002',
+    archiveId: '20210811_20210811_2250',
+    matchKeywords: ['ماجد', 'الشبح', 'majid'],
+    fallbackAudioUrl: 'https://archive.org/download/20210811_20210811_2250/04.mp3',
+    fallbackVideoEmbedUrl: 'https://archive.org/embed/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002',
+    audioStreamUrl: 'https://archive.org/download/20210811_20210811_2250/04.mp3',
+    videoEmbedUrl: 'https://archive.org/embed/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002',
   },
   {
     id: 'ost-romeo',
-    titleAr: 'شارة عهد الأصدقاء — حلمنا نهار',
+    titleAr: 'شارة عهد الأصدقاء — حكاية روميو',
+    showAr: 'عهد الأصدقاء',
+    performerAr: 'رشا رزق',
+    planetBadgeAr: 'كوكب مغامرات',
     seriesTitleAr: 'عهد الأصدقاء',
     vocalistAr: 'رشا رزق',
     planetLabelAr: 'كوكب مغامرات',
     year: 2000,
-    posterUrl: 'https://image.tmdb.org/t/p/w780/vP9ydN7B1n8bO2r3z5T1K6W9q8Z.jpg',
-    backdropUrl: 'https://image.tmdb.org/t/p/w1280/vP9ydN7B1n8bO2r3z5T1K6W9q8Z.jpg',
-    audioStreamUrl: 'https://archive.org/download/spacetoon-songs-collection-mp3/AhdAlAsdiqaa.mp3',
-    videoEmbedUrl: 'https://archive.org/embed/rasha-rizk-spacetoon-songs',
+    posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
+    backdropUrl: 'https://archive.org/services/img/20210811_20210811_2250',
+    archiveId: '20210811_20210811_2250',
+    matchKeywords: ['عهد', 'الأصدقاء', 'روميو'],
+    fallbackAudioUrl: 'https://archive.org/download/20210811_20210811_2250/05.mp3',
+    fallbackVideoEmbedUrl: 'https://archive.org/embed/20210811_20210811_2250',
+    audioStreamUrl: 'https://archive.org/download/20210811_20210811_2250/05.mp3',
+    videoEmbedUrl: 'https://archive.org/embed/20210811_20210811_2250',
   },
   {
-    id: 'ost-dragonball',
-    titleAr: 'شارة دراغون بول زد — رأيت الحقيقة',
-    seriesTitleAr: 'دراغون بول زد',
-    vocalistAr: 'عاصم سكر وطارق العربي طرقان',
+    id: 'ost-digimon',
+    titleAr: 'شارة أبطال الديجيتال — في فخ غريب وقعنا',
+    showAr: 'أبطال الديجيتال',
+    performerAr: 'طارق العربي طرقان ورشا رزق',
+    planetBadgeAr: 'كوكب أكشن',
+    seriesTitleAr: 'أبطال الديجيتال',
+    vocalistAr: 'طارق العربي طرقان ورشا رزق',
     planetLabelAr: 'كوكب أكشن',
-    year: 2002,
-    posterUrl: 'https://image.tmdb.org/t/p/w780/6VKOfL6ihwTiB5Vibq6QTfzhxA6.jpg',
-    backdropUrl: 'https://image.tmdb.org/t/p/w1280/ydf1CeiBLfdxiyNTpskM0802TKl.jpg',
-    audioStreamUrl: 'https://archive.org/download/spacetoon-songs-collection-mp3/DragonBallZ.mp3',
-    videoEmbedUrl: 'https://archive.org/embed/spacetoon-old-openings-collection',
-  },
-  {
-    id: 'ost-majed',
-    titleAr: 'شارة الكابتن ماجد — عاد إليكم من جديد',
-    seriesTitleAr: 'الكابتن ماجد',
-    vocalistAr: 'بسام الحسوني / طارق العربي طرقان',
-    planetLabelAr: 'كوكب رياضة',
-    year: 1995,
-    posterUrl: 'https://image.tmdb.org/t/p/w780/2f8B9zT4J1p7X3m5K8w9R0q1L2N.jpg',
-    backdropUrl: 'https://image.tmdb.org/t/p/w1280/2f8B9zT4J1p7X3m5K8w9R0q1L2N.jpg',
-    audioStreamUrl: 'https://archive.org/download/spacetoon-songs-collection-mp3/CaptainMajed.mp3',
-    videoEmbedUrl: 'https://archive.org/embed/spacetoon-old-openings-collection',
+    year: 2001,
+    posterUrl: 'https://archive.org/services/img/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002',
+    backdropUrl: 'https://archive.org/services/img/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002',
+    archiveId: '20210811_20210811_2250',
+    matchKeywords: ['الديجيتال', 'ديجيتال', 'digimon'],
+    fallbackAudioUrl: 'https://archive.org/download/20210811_20210811_2250/06.mp3',
+    fallbackVideoEmbedUrl: 'https://archive.org/embed/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002',
+    audioStreamUrl: 'https://archive.org/download/20210811_20210811_2250/06.mp3',
+    videoEmbedUrl: 'https://archive.org/embed/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002',
   },
 ];
 
 export const SpacetoonOstGlassStage: React.FC = () => {
+  const [tracks, setTracks] = useState<SpacetoonOstTrack[]>(SPACETOON_OST_TRACKS);
   const [activeTrack, setActiveTrack] = useState<SpacetoonOstTrack | null>(
     SPACETOON_OST_TRACKS[0]
   );
   const [playMode, setPlayMode] = useState<'audio' | 'video'>('audio');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          'https://archive.org/metadata/20210811_20210811_2250',
+          { signal: AbortSignal.timeout(8500) }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const files: Array<{ name?: string }> = Array.isArray(data?.files)
+          ? data.files
+          : [];
+        const mp3Files = files.filter(
+          (f) => typeof f?.name === 'string' && f.name.toLowerCase().endsWith('.mp3')
+        );
+        if (mp3Files.length === 0 || cancelled) return;
+
+        const resolvedTracks = SPACETOON_OST_TRACKS.map((track, idx) => {
+          const matchedFile =
+            mp3Files.find((f) => {
+              const lowerName = String(f.name || '').toLowerCase();
+              return track.matchKeywords.some((kw) =>
+                lowerName.includes(kw.toLowerCase())
+              );
+            }) || mp3Files[idx % mp3Files.length];
+
+          if (!matchedFile?.name) return track;
+          const resolvedUrl = `https://archive.org/download/20210811_20210811_2250/${encodeURIComponent(
+            matchedFile.name
+          )}`;
+          return {
+            ...track,
+            audioStreamUrl: resolvedUrl,
+            fallbackAudioUrl: resolvedUrl,
+          };
+        });
+
+        setTracks(resolvedTracks);
+        setActiveTrack((prev) => {
+          if (!prev) return null;
+          return resolvedTracks.find((t) => t.id === prev.id) || prev;
+        });
+      } catch {
+        // Keep static fallback URLs
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSelectTrack = (track: SpacetoonOstTrack, mode: 'audio' | 'video') => {
     setActiveTrack(track);
@@ -95,9 +192,9 @@ export const SpacetoonOstGlassStage: React.FC = () => {
 
   const handleStep = (delta: number) => {
     if (!activeTrack) return;
-    const idx = SPACETOON_OST_TRACKS.findIndex((t) => t.id === activeTrack.id);
-    const nextIdx = (idx + delta + SPACETOON_OST_TRACKS.length) % SPACETOON_OST_TRACKS.length;
-    setActiveTrack(SPACETOON_OST_TRACKS[nextIdx]);
+    const idx = tracks.findIndex((t) => t.id === activeTrack.id);
+    const nextIdx = (idx + delta + tracks.length) % tracks.length;
+    setActiveTrack(tracks[nextIdx]);
   };
 
   return (
@@ -126,7 +223,7 @@ export const SpacetoonOstGlassStage: React.FC = () => {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {SPACETOON_OST_TRACKS.map((track) => (
+        {tracks.map((track) => (
           <SpacetoonThemeSongCard
             key={track.id}
             track={track}

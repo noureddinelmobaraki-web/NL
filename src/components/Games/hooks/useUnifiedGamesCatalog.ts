@@ -17,7 +17,10 @@ import type {
 } from '../types/games.types';
 import { fetchLocalFlashCatalog } from '../services/localFlashCatalog';
 import { fetchHomebrewHubGames } from '../services/homebrewHubClient';
-import { fetchArchiveOrgRetroCollection } from '../services/archiveOrgGamesClient';
+import {
+  fetchArchiveOrgPopularFlashGames,
+  fetchArchiveOrgRetroCollection,
+} from '../services/archiveOrgGamesClient';
 import { fetchDosClassicsCatalog } from '../services/dosZoneCatalogClient';
 import { getInstantAndWebCatalog } from '../services/freeBrowserGamesClient';
 
@@ -67,8 +70,19 @@ export function useUnifiedGamesCatalog() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchLocalFlashCatalog(controller.signal).then((items) => {
-      if (!controller.signal.aborted) setFlashGames(items);
+    Promise.all([
+      fetchLocalFlashCatalog(controller.signal),
+      fetchArchiveOrgPopularFlashGames(controller.signal),
+    ]).then(([localFlash, archiveFlash]) => {
+      if (controller.signal.aborted) return;
+      const seen = new Set<string>();
+      const merged: UnifiedGameItem[] = [];
+      for (const g of [...localFlash, ...archiveFlash]) {
+        if (seen.has(g.id)) continue;
+        seen.add(g.id);
+        merged.push(g);
+      }
+      setFlashGames(merged);
     });
 
     fetchDosClassicsCatalog().then((items) => {

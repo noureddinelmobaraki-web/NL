@@ -186,3 +186,73 @@ export async function fetchRandomPokeFighter(
     return null;
   }
 }
+
+export interface CountryQuizQuestion {
+  countryName: string;
+  capital: string;
+  region: string;
+  flagUrl: string;
+  options: string[];
+  correctAnswer: string;
+  questionType: 'flag' | 'capital';
+}
+
+export async function fetchCountryQuizQuestions(
+  count = 10,
+  signal?: AbortSignal,
+): Promise<CountryQuizQuestion[]> {
+  try {
+    const res = await fetch(
+      'https://restcountries.com/v3.1/all?fields=name,capital,region,flags',
+      { signal },
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const valid = (Array.isArray(data) ? data : []).filter(
+      (c: any) =>
+        c?.name?.common &&
+        Array.isArray(c?.capital) &&
+        c.capital.length > 0 &&
+        (c?.flags?.png || c?.flags?.svg),
+    );
+    if (valid.length < 8) return [];
+
+    const shuffled = [...valid].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, count);
+
+    return selected.map((item: any, idx: number) => {
+      const isCapitalQuestion = idx % 2 === 1;
+      const countryName = String(item.name.common);
+      const capital = String(item.capital[0]);
+      const region = String(item.region || 'World');
+      const flagUrl = String(item.flags.png || item.flags.svg);
+
+      const distractors = shuffled
+        .filter((other: any) => other.name.common !== countryName)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map((other: any) =>
+          isCapitalQuestion
+            ? String(other.capital[0])
+            : String(other.name.common),
+        );
+
+      const correctAnswer = isCapitalQuestion ? capital : countryName;
+      const options = [...distractors, correctAnswer].sort(
+        () => Math.random() - 0.5,
+      );
+
+      return {
+        countryName,
+        capital,
+        region,
+        flagUrl,
+        options,
+        correctAnswer,
+        questionType: isCapitalQuestion ? 'capital' : 'flag',
+      };
+    });
+  } catch {
+    return [];
+  }
+}

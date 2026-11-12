@@ -68,6 +68,10 @@ export const ArtHubPage = lazyWithRetry(
   () => import('../features/art/ArtHubPage').then((m) => ({ default: m.ArtHubPage })),
   'ArtHubPage',
 );
+export const MagazinesPage = lazyWithRetry(
+  () => import('../features/magazines/MagazinesPage').then((m) => ({ default: m.MagazinesPage })),
+  'MagazinesPage',
+);
 
 export const PAGES: Record<Exclude<PageId, 'home'>, PageDescriptor> = {
   games: {
@@ -117,6 +121,14 @@ export const PAGES: Record<Exclude<PageId, 'home'>, PageDescriptor> = {
     loaderType: 'cinema',
     wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
     component: ArtHubPage,
+  },
+  magazines: {
+    id: 'magazines',
+    key: 'magazines-screen',
+    sectionName: 'magazines',
+    loaderType: 'cinema',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
+    component: MagazinesPage,
   },
   retro: {
     id: 'retro',

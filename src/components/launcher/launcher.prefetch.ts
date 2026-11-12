@@ -47,5 +47,8 @@ export function warmLauncherAction(action: NodeAction): void {
     case 'openArtAvatars':
       void import('../../features/art/ArtHubPage').catch(() => undefined);
       break;
+    case 'openMagazines':
+      void import('../../features/magazines/MagazinesPage').catch(() => undefined);
+      break;
   }
 }

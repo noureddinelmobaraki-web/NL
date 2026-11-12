@@ -13,13 +13,14 @@ const VIEW_TO_NAV: Record<string, { page: PageId; cinemaTab?: CinemaTab }> = {
   series:   { page: 'cinema', cinemaTab: 'series' },
   anime:    { page: 'anime' },
   cartoon:  { page: 'cartoon' },
-  art:      { page: 'art' },
-  tv:       { page: 'tv' },
-  retro:    { page: 'retro' },
-  xp:       { page: 'xp' },
-  music:    { page: 'music' },
-  accounts: { page: 'accounts' },
-  portrait: { page: 'portrait' },
+  art:       { page: 'art' },
+  magazines: { page: 'magazines' },
+  tv:        { page: 'tv' },
+  retro:     { page: 'retro' },
+  xp:        { page: 'xp' },
+  music:     { page: 'music' },
+  accounts:  { page: 'accounts' },
+  portrait:  { page: 'portrait' },
   liquidGlass: { page: 'liquidGlass' },
 };
 
@@ -154,6 +155,10 @@ interface AppContextType {
   setArtTab: (tab: 'photos' | 'drawings' | 'avatars') => void;
   openArt: (tab?: 'photos' | 'drawings' | 'avatars') => void;
   closeArt: () => void;
+  // ── المجلات Magazines ──────────────────────────────────
+  isMagazinesOpen: boolean;
+  openMagazines: () => void;
+  closeMagazines: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -190,6 +195,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isAnimeOpen   = nav.activePage === 'anime';
   const isCartoonOpen = nav.activePage === 'cartoon';
   const isArtOpen     = nav.activePage === 'art';
+  const isMagazinesOpen = nav.activePage === 'magazines';
   const isTvOpen      = nav.activePage === 'tv';
   const isRetroOpen   = nav.activePage === 'retro';
   const isXpOpen      = nav.activePage === 'xp';
@@ -297,6 +303,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (prev === 'accounts') { /* no audio channel */ }
     if (prev === 'portrait') { try { audioManager.releaseBg('portrait_mode'); audioManager.stop('portrait'); } catch {} }
     if (prev === 'liquidGlass') { try { audioManager.releaseBg('liquidGlass_mode'); audioManager.stop('liquidGlass'); } catch {} }
+    if (prev === 'magazines') { try { audioManager.releaseBg('magazines_mode'); } catch {} }
 
     // دخول صفحة جديدة: أوقف موسيقى الثيم (bg) + علّقها
     if (page !== 'home' && page !== 'accounts') {
@@ -456,6 +463,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navigateTo('home');
   }, [navigateTo]);
 
+  const openMagazines = useCallback(() => navigateTo('magazines'), [navigateTo]);
+  const closeMagazines = useCallback(() => navigateTo('home'), [navigateTo]);
+
   const returnToWelcome = useCallback(() => {
     gameBackRef.current = null;    setGameActive(false);
     movieBackRef.current = null;   setMovieActive(false);
@@ -524,6 +534,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isPortraitOpen, openPortrait, closePortrait,
         isLiquidGlassOpen, liquidGlassMode, openLiquidGlass, closeLiquidGlass,
         isArtOpen, artTab, setArtTab, openArt, closeArt,
+        isMagazinesOpen, openMagazines, closeMagazines,
       }}
     >
       {children}

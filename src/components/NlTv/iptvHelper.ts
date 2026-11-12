@@ -15,6 +15,8 @@ export interface TvChannel {
   name: string;
   logo?: string;
   group?: string;
+  category?: string;
+  country?: string;
   url: string;
 }
 

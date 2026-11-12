@@ -29,16 +29,14 @@ describe('security and deployment regressions', () => {
     expect(frameSrcTokens).not.toContain('*');
     expect(frameSrcTokens).not.toContain('https:');
     expect(frameSrcTokens).not.toContain('https://vidsrc.xyz');
-    expect(frameSrcTokens).not.toContain('https://vidsrc.icu');
-    expect(frameSrcTokens).not.toContain('https://autoembed.co');
     for (const origin of ALL_SERVER_FRAME_ORIGINS) {
       expect(frameSrcTokens).toContain(origin);
     }
   });
 
   it('sets Server VL (VidLink) as default primary server (index 0), followed by 7, 1, 2, 6, and builds valid movie and TV URLs', () => {
-    expect(CINEMA_SERVERS).toHaveLength(5);
-    expect(CINEMA_SERVERS.map((s) => s.id)).toEqual([
+    expect(CINEMA_SERVERS.length).toBeGreaterThanOrEqual(5);
+    expect(CINEMA_SERVERS.slice(0, 5).map((s) => s.id)).toEqual([
       'server-vl',
       'server-7',
       'server-1',

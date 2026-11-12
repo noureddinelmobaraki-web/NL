@@ -18,6 +18,7 @@ import {
   Disc,
   Sparkles,
   Palette,
+  Newspaper,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { SwitcherMode, SwitcherDest } from "./notch.types";
@@ -44,6 +45,7 @@ export type PageKey =
   | "accounts"
   | "liquidGlass"
   | "books"
+  | "magazines"
   | "audiobooks"
   | "albums"
   | "x";
@@ -63,6 +65,7 @@ export const PAGE_META: Record<PageKey, { icon: LucideIcon; accent: string }> = 
   accounts: { icon: Users, accent: "#8fe3ff" },
   liquidGlass: { icon: Globe, accent: "#7fd0ff" },
   books: { icon: BookOpen, accent: "#34d399" },
+  magazines: { icon: Newspaper, accent: "#38bdf8" },
   audiobooks: { icon: Headphones, accent: "#c084fc" },
   albums: { icon: Disc, accent: "#fbbf24" },
   x: { icon: Sparkles, accent: "#60a5fa" },
@@ -87,6 +90,9 @@ export interface BuildNotchDestinationsArgs {
   isArtOpen?: boolean;
   openArt?: (tab?: "photos" | "drawings" | "avatars") => void;
   closeArt?: () => void;
+  isMagazinesOpen?: boolean;
+  openMagazines?: () => void;
+  closeMagazines?: () => void;
   isTvOpen: boolean;
   openTv: () => void;
   closeTv: () => void;
@@ -127,6 +133,9 @@ export function buildNotchDestinations({
   isArtOpen = false,
   openArt = () => {},
   closeArt = () => {},
+  isMagazinesOpen = false,
+  openMagazines = () => {},
+  closeMagazines = () => {},
   isTvOpen,
   openTv,
   closeTv,
@@ -246,6 +255,14 @@ export function buildNotchDestinations({
       icon: React.createElement(BookOpen, { size: 16 }),
       isActive: isLiquidGlassOpen && liquidGlassMode === "books",
       onClick: () => openOrToggleLiquid("books"),
+    },
+    {
+      id: "magazines",
+      label: "Magazines",
+      title: "The Magazine Rack",
+      icon: React.createElement(Newspaper, { size: 16 }),
+      isActive: isMagazinesOpen,
+      onClick: goto(isMagazinesOpen, openMagazines, closeMagazines),
     },
     {
       id: "art",

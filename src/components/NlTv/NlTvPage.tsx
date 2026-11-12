@@ -84,7 +84,14 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
     searchGlobal,
   } = useTvSearchIndex(countries);
 
-  const { currentEpg } = useLiveTvCatalog(selectedChannel);
+  const {
+    categories,
+    activeCategory,
+    setActiveCategory,
+    categoryChannels,
+    isLoadingCategory,
+    currentEpg,
+  } = useLiveTvCatalog(selectedChannel);
   const {
     stations: radioStations,
     activeStation,
@@ -103,7 +110,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
 
   const { handlePrevChannel, handleNextChannel } = useTvChannelZapping({
     selectedChannel,
-    channels,
+    channels: activeCategory !== "all" ? categoryChannels : channels,
     setSelectedChannel,
     setIsPlaying,
     setIsVideoError,
@@ -126,6 +133,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
   useTvMusic(Boolean(selectedChannel && isPlaying && !isVideoError));
 
   const isRtl = i18n.dir() === "rtl";
+  const activeCategoryMeta = categories.find((c) => c.id === activeCategory);
 
   return (
     <div
@@ -230,6 +238,27 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
               isRtl ? "right-5" : "left-5"
             } w-full max-w-[340px] z-30 flex flex-col p-2 pointer-events-none hidden sm:flex`}
           >
+            {broadcastMode === "tv" && (
+              <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-1 px-1 pointer-events-auto no-scrollbar">
+                {categories.map((cat) => {
+                  const isActive = activeCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setActiveCategory(cat.id)}
+                      className={`shrink-0 px-2.5 py-1 rounded-xl text-[11px] font-semibold transition cursor-pointer border ${
+                        isActive
+                          ? "bg-red-600/85 border-red-400/60 text-white shadow-md"
+                          : "bg-neutral-950/65 border-white/10 text-zinc-300 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      {isRtl ? cat.labelAr : cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {broadcastMode === "stremio" ? (
               <ChannelGrid
                 countryName="Stremio Live Addons"
@@ -239,6 +268,29 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
                 onSelectChannel={handleSelectChannel}
                 onBack={() => setBroadcastMode("tv")}
                 isLoading={isLoadingStremio}
+                isSearchIndexLoaded={isSearchIndexLoaded}
+                isIndexing={isIndexing}
+                onInitSearchIndex={initIndex}
+                onSearchGlobal={searchGlobal}
+                onPickChannel={handlePickChannel}
+                countries={countries}
+                onPickCountry={handleSelectCountry}
+              />
+            ) : activeCategory !== "all" ? (
+              <ChannelGrid
+                countryName={
+                  activeCategoryMeta
+                    ? isRtl
+                      ? activeCategoryMeta.labelAr
+                      : activeCategoryMeta.label
+                    : activeCategory
+                }
+                countryFlag="UN"
+                channels={categoryChannels}
+                selectedChannelId={selectedChannel ? selectedChannel.id : null}
+                onSelectChannel={handleSelectChannel}
+                onBack={() => setActiveCategory("all")}
+                isLoading={isLoadingCategory}
                 isSearchIndexLoaded={isSearchIndexLoaded}
                 isIndexing={isIndexing}
                 onInitSearchIndex={initIndex}
@@ -288,6 +340,27 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
       <AnimatePresence>
         {!hideOverlays && broadcastMode !== "radio" && (
           <div className="absolute top-24 bottom-28 inset-x-4 z-30 flex flex-col sm:hidden overflow-hidden pointer-events-none">
+            {broadcastMode === "tv" && (
+              <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-1 px-1 pointer-events-auto no-scrollbar">
+                {categories.map((cat) => {
+                  const isActive = activeCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setActiveCategory(cat.id)}
+                      className={`shrink-0 px-2.5 py-1 rounded-xl text-[11px] font-semibold transition cursor-pointer border ${
+                        isActive
+                          ? "bg-red-600/85 border-red-400/60 text-white shadow-md"
+                          : "bg-neutral-950/65 border-white/10 text-zinc-300 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      {isRtl ? cat.labelAr : cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {broadcastMode === "stremio" ? (
               <ChannelGrid
                 countryName="Stremio Live Addons"
@@ -297,6 +370,29 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
                 onSelectChannel={handleSelectChannel}
                 onBack={() => setBroadcastMode("tv")}
                 isLoading={isLoadingStremio}
+                isSearchIndexLoaded={isSearchIndexLoaded}
+                isIndexing={isIndexing}
+                onInitSearchIndex={initIndex}
+                onSearchGlobal={searchGlobal}
+                onPickChannel={handlePickChannel}
+                countries={countries}
+                onPickCountry={handleSelectCountry}
+              />
+            ) : activeCategory !== "all" ? (
+              <ChannelGrid
+                countryName={
+                  activeCategoryMeta
+                    ? isRtl
+                      ? activeCategoryMeta.labelAr
+                      : activeCategoryMeta.label
+                    : activeCategory
+                }
+                countryFlag="UN"
+                channels={categoryChannels}
+                selectedChannelId={selectedChannel ? selectedChannel.id : null}
+                onSelectChannel={handleSelectChannel}
+                onBack={() => setActiveCategory("all")}
+                isLoading={isLoadingCategory}
                 isSearchIndexLoaded={isSearchIndexLoaded}
                 isIndexing={isIndexing}
                 onInitSearchIndex={initIndex}
@@ -389,7 +485,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
             transition={{ duration: 0.3 }}
             className="absolute bottom-5 inset-x-0 z-40 pointer-events-none"
           >
-            <EpgProgramRibbon epg={currentEpg} />
+            <EpgProgramRibbon epg={currentEpg} program={currentEpg} />
             <TvControls
               channelName={selectedChannel.name}
               countryFlag={selectedCountry ? selectedCountry.flag : "US"}

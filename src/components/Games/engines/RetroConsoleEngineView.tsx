@@ -35,10 +35,11 @@ interface NostalgistStatic {
   launch: (opts: Record<string, unknown>) => Promise<NostalgistInstance>;
 }
 
-const dynamicEsmImport = new Function(
-  'url',
-  'return import(url)',
-) as (url: string) => Promise<{ Nostalgist?: NostalgistStatic; default?: NostalgistStatic }>;
+async function loadNostalgistModule(
+  url: string,
+): Promise<{ Nostalgist?: NostalgistStatic; default?: NostalgistStatic }> {
+  return import(/* @vite-ignore */ url);
+}
 
 export function RetroConsoleEngineView({
   romUrl,
@@ -69,7 +70,7 @@ export function RetroConsoleEngineView({
 
     (async () => {
       try {
-        const mod = await dynamicEsmImport('https://esm.sh/nostalgist@0.17.0');
+        const mod = await loadNostalgistModule('https://esm.sh/nostalgist@0.17.0');
         if (cancelled) return;
         const Nostalgist = mod.Nostalgist || mod.default;
         if (!Nostalgist) throw new Error('Nostalgist unavailable');

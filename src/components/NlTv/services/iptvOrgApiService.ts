@@ -2,8 +2,11 @@ import { parseM3u, type TvChannel } from '../iptvHelper';
 
 export interface IptvCategoryMeta {
   id: string;
-  name: string;
-  nameAr: string;
+  label: string;
+  labelAr: string;
+  name?: string;
+  nameAr?: string;
+  customUrl?: string;
 }
 
 export interface EpgNowNextProgram {
@@ -15,44 +18,41 @@ export interface EpgNowNextProgram {
 }
 
 export const IPTV_CATEGORIES: IptvCategoryMeta[] = [
-  { id: 'all', name: 'All Channels', nameAr: 'جميع القنوات' },
-  { id: 'sports', name: 'Sports', nameAr: 'رياضة' },
-  { id: 'news', name: 'News', nameAr: 'إخبارية' },
-  { id: 'movies', name: 'Movies', nameAr: 'أفلام' },
-  { id: 'kids', name: 'Kids & Animation', nameAr: 'أطفال وكرتون' },
-  { id: 'documentary', name: 'Documentary', nameAr: 'وثائقيات' },
-  { id: 'music', name: 'Music', nameAr: 'موسيقى' },
-  { id: 'entertainment', name: 'Entertainment', nameAr: 'ترفيه عام' },
+  { id: 'all', label: 'All Countries', labelAr: 'حسب الدول' },
+  { id: 'morocco', label: 'Morocco 🇲🇦', labelAr: 'المغرب 🇲🇦', customUrl: 'https://iptv-org.github.io/iptv/countries/ma.m3u' },
+  { id: 'arabic', label: 'Arabic Channels', labelAr: 'القنوات العربية', customUrl: 'https://iptv-org.github.io/iptv/languages/ara.m3u' },
+  { id: 'free-tv', label: 'Free-TV Curated HD', labelAr: 'قنوات عالمية مختارة', customUrl: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8' },
+  { id: 'news', label: 'World News', labelAr: 'الأخبار العالمية' },
+  { id: 'sports', label: 'Sports Live', labelAr: 'الرياضة المباشرة' },
+  { id: 'movies', label: 'Cinema & Movies', labelAr: 'أفلام وسينما' },
+  { id: 'series', label: 'Series & Drama', labelAr: 'مسلسلات ودراما' },
+  { id: 'animation', label: 'Anime & Cartoon', labelAr: 'أنمي وكرتون' },
+  { id: 'kids', label: 'Kids & Family', labelAr: 'أطفال وعائلة' },
+  { id: 'documentary', label: 'Documentaries', labelAr: 'وثائقيات' },
+  { id: 'science', label: 'Science & Space', labelAr: 'علوم وفضاء' },
+  { id: 'music', label: 'Music Channels', labelAr: 'موسيقى' },
+  { id: 'entertainment', label: 'Entertainment', labelAr: 'ترفيه' },
+  { id: 'comedy', label: 'Comedy', labelAr: 'كوميديا' },
+  { id: 'religious', label: 'Islamic & Religious', labelAr: 'قنوات دينية وقرآن' },
+  { id: 'culture', label: 'Culture & Arts', labelAr: 'ثقافة وفنون' },
+  { id: 'cooking', label: 'Cooking & Food', labelAr: 'طبخ ومأكولات' },
+  { id: 'travel', label: 'Travel & Nature', labelAr: 'سفر وطبيعة' },
+  { id: 'auto', label: 'Motors & Auto', labelAr: 'سيارات ومحركات' },
+  { id: 'business', label: 'Business & Finance', labelAr: 'اقتصاد وأعمال' },
+  { id: 'weather', label: 'Weather Live', labelAr: 'الطقس المباشر' },
 ];
 
-const CATEGORY_CACHE_TTL = 1000 * 60 * 60 * 3;
-
 export async function fetchChannelsByCategory(categoryId: string): Promise<TvChannel[]> {
-  const cat = categoryId.toLowerCase();
-  const cacheKey = `nltv_cat_${cat}_v1`;
+  if (!categoryId || categoryId === 'all') return [];
+  const meta = IPTV_CATEGORIES.find((c) => c.id === categoryId);
+  const url =
+    meta?.customUrl ||
+    `https://iptv-org.github.io/iptv/categories/${encodeURIComponent(categoryId.toLowerCase())}.m3u`;
   try {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Date.now() - parsed.time < CATEGORY_CACHE_TTL && Array.isArray(parsed.data)) {
-        return parsed.data;
-      }
-    }
-  } catch {
-    // ignore storage errors
-  }
-
-  try {
-    const res = await fetch(`https://iptv-org.github.io/iptv/categories/${cat}.m3u`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const m3uText = await res.text();
-    const channels = parseM3u(m3uText).slice(0, 160);
-    try {
-      localStorage.setItem(cacheKey, JSON.stringify({ time: Date.now(), data: channels }));
-    } catch {
-      // ignore quota errors
-    }
-    return channels;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const text = await res.text();
+    return parseM3u(text).slice(0, 140);
   } catch {
     return [];
   }

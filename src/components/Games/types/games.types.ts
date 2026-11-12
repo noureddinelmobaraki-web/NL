@@ -40,7 +40,12 @@ export type ConsoleCore =
 
 export type ControlProfile = 'flash-pc' | 'console-pad' | 'direct-touch';
 
-export type MiniGameKind = 'lichess-daily' | 'blackjack-21' | 'gamer-trivia' | 'poke-battle';
+export type MiniGameKind =
+  | 'lichess-daily'
+  | 'blackjack-21'
+  | 'gamer-trivia'
+  | 'poke-battle'
+  | 'country-quiz';
 
 export interface UnifiedGameItem {
   id: string;

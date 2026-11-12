@@ -165,16 +165,22 @@ export function useStandaloneCinemaController({
 
   const { sources: basePlaySources, resolvedImdbId } = useResolvedImdbSources(
     detailWatchTarget,
-    Boolean(detailedItem)
+    Boolean(detailedItem) && !customSourcesBuilder,
   );
 
   const detailPlaySources = useMemo(() => {
-    if (!detailedItem) return basePlaySources;
-    const custom = customSourcesBuilder
-      ? customSourcesBuilder(detailedItem, selectedSeason, selectedEpisode)
-      : [];
-    return custom.length > 0 ? [...custom, ...basePlaySources] : basePlaySources;
-  }, [detailedItem, selectedSeason, selectedEpisode, customSourcesBuilder, basePlaySources]);
+    if (!detailedItem) return [];
+    if (customSourcesBuilder) {
+      return customSourcesBuilder(detailedItem, selectedSeason, selectedEpisode);
+    }
+    return basePlaySources;
+  }, [
+    detailedItem,
+    selectedSeason,
+    selectedEpisode,
+    customSourcesBuilder,
+    basePlaySources,
+  ]);
 
   const activeImdbId = resolvedImdbId || detailedItem?.imdbId || "";
   const slideshowSlides = useMemo(() => items.slice(0, 8), [items]);

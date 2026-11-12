@@ -24,7 +24,8 @@ export type OpenHandler =
   | "openLiquidX"
   | "openArtPhotos"
   | "openArtDrawings"
-  | "openArtAvatars";
+  | "openArtAvatars"
+  | "openMagazines";
 
 export type NodeAction =
   | { kind: "open"; handler: OpenHandler } // full-screen page (genie transition)
@@ -111,6 +112,12 @@ export const ROOTS: GraphNode[] = [
             label: "Books",
             icon: "lucide:book",
             action: { kind: "open", handler: "openLiquidBooks" },
+          },
+          {
+            id: "magazines",
+            label: "Magazines",
+            icon: "lucide:newspaper",
+            action: { kind: "open", handler: "openMagazines" },
           },
           {
             id: "audiobooks",

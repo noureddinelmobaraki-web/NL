@@ -108,6 +108,36 @@ export function useStreamExtractor({
       return undefined;
     }
 
+    if (
+      activeGallerySource.host === "archive.org" &&
+      /\.mp4(\?|$)/i.test(activeGallerySource.url)
+    ) {
+      setExtractedStreams([
+        {
+          sourcePage: activeGallerySource.url,
+          type: "mp4",
+          directUrl: activeGallerySource.url,
+          proxiedUrl: activeGallerySource.url,
+          subtitles: [],
+        },
+      ]);
+      setActiveExtractedIdx(0);
+      setUseDirectUrlFallback(true);
+      setIsPlayerLoading(false);
+      setPlayerRenderMode("direct");
+      return undefined;
+    }
+
+    if (
+      activeGallerySource.host === "archive.org" &&
+      activeGallerySource.url.includes("archive.org/embed/")
+    ) {
+      setExtractedStreams([]);
+      setIsPlayerLoading(false);
+      setPlayerRenderMode("iframe");
+      return undefined;
+    }
+
     const extractionSessionKey = `${detailItemStorageKey}_s${selectedSeason}_e${selectedEpisode}`;
     playAttemptStartedAtRef.current = performance.now();
     loadedCurrentAttemptRef.current = false;

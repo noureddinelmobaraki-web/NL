@@ -53,6 +53,7 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
     openAccounts,
     openLiquidGlass,
     openArt,
+    openMagazines,
   } = useAppContext();
   const [activeRoot, setActiveRoot] = useState<string | null>(null);
   const [activeBranch, setActiveBranch] = useState<string | null>(null);
@@ -135,6 +136,7 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
         openArtPhotos: () => openArt('photos'),
         openArtDrawings: () => openArt('drawings'),
         openArtAvatars: () => openArt('avatars'),
+        openMagazines,
       };
       introAudioController.fadeOut(600);
       if (action.kind === 'open') {
@@ -156,6 +158,7 @@ export function LauncherGraph({ glassTier: propTier, refract: propRefract }: Lau
       openCartoon,
       openGames,
       openLiquidGlass,
+      openMagazines,
       openMovies,
       openMusic,
       openRetro,

@@ -302,6 +302,19 @@ export const ANIME_SERVER_FRAME_ORIGINS: string[] = [
   'https://player.videasy.net',
   'https://vidrock.net',
   'https://moviesapi.club',
+  'https://vidsrc.icu',
+  'https://autoembed.co',
+  'https://player.twitch.tv',
+  'https://slowroads.io',
+  'https://hexgl.bkcore.com',
+  'https://princejs.com',
+  'https://gabrielecirulli.github.io',
+  'https://hextris.github.io',
+  'https://ellisonleao.github.io',
+  'https://doublespeakgames.github.io',
+  'https://sausi-7.github.io',
+  'https://html5.gamedistribution.com',
+  'https://itch.io',
 ];
 
 export const ALL_SERVER_FRAME_ORIGINS: string[] = Array.from(

@@ -12,6 +12,10 @@ export type MuseumSourceId =
   | 'chicago'
   | 'met'
   | 'cleveland'
+  | 'vam'
+  | 'wikimedia'
+  | 'openverse'
+  | 'concept-art'
   | 'picsum'
   | 'nl-lens';
 

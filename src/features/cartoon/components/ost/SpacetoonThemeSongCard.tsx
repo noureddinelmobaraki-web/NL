@@ -5,12 +5,19 @@ import { GlassVectorIcon } from '../../../../components/shared/icons';
 export interface SpacetoonOstTrack {
   id: string;
   titleAr: string;
+  showAr: string;
+  performerAr: string;
+  planetBadgeAr: string;
   seriesTitleAr: string;
   vocalistAr: string;
   planetLabelAr: string;
   year: number;
   posterUrl: string;
   backdropUrl: string;
+  archiveId: string;
+  matchKeywords: string[];
+  fallbackAudioUrl: string;
+  fallbackVideoEmbedUrl: string;
   audioStreamUrl: string;
   videoEmbedUrl: string;
 }
@@ -46,7 +53,15 @@ export const SpacetoonThemeSongCard: React.FC<SpacetoonThemeSongCardProps> = ({
           src={track.posterUrl}
           alt={track.titleAr}
           loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            const target = e.currentTarget;
+            const fallback = 'https://archive.org/services/img/20210811_20210811_2250';
+            if (target.src !== fallback) {
+              target.src = fallback;
+            }
+          }}
+          className="st-ost-card__poster w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
 

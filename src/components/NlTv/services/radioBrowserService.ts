@@ -18,7 +18,37 @@ const RADIO_MIRRORS = [
   'https://at1.api.radio-browser.info/json',
 ];
 
+const FEATURED_SYNTHWAVE_STATIONS: RadioStation[] = [
+  {
+    stationuuid: 'featured-nightride-fm',
+    name: 'Nightride FM — 24/7 Synthwave & Cyberpunk Radio',
+    url_resolved: 'https://stream.nightride.fm/nightride.m4a',
+    favicon: 'https://nightride.fm/favicon.ico',
+    tags: 'synthwave,retrowave,cyberpunk,electronic',
+    country: 'Global',
+    countrycode: 'US',
+    language: 'english',
+    codec: 'AAC',
+    bitrate: 192,
+    votes: 9850,
+  },
+  {
+    stationuuid: 'featured-nightwave-plaza',
+    name: 'Nightwave Plaza — 24/7 Vaporwave & Future Funk',
+    url_resolved: 'https://radio.plaza.one/mp3',
+    favicon: 'https://plaza.one/favicon.ico',
+    tags: 'vaporwave,future funk,aesthetic,chill',
+    country: 'Global',
+    countrycode: 'JP',
+    language: 'english',
+    codec: 'MP3',
+    bitrate: 128,
+    votes: 8920,
+  },
+];
+
 const FALLBACK_STATIONS: RadioStation[] = [
+  ...FEATURED_SYNTHWAVE_STATIONS,
   {
     stationuuid: 'ma-medi1-radio',
     name: 'Medi 1 Radio Maghreb',
@@ -96,7 +126,7 @@ export async function fetchRadioStationsByCountry(countryCode: string): Promise<
       );
       if (!res.ok) continue;
       const raw: any[] = await res.json();
-      const stations: RadioStation[] = raw
+      const fetchedStations: RadioStation[] = raw
         .filter((s) => s.url_resolved && s.name && String(s.url_resolved).startsWith('https://'))
         .map((s) => ({
           stationuuid: s.stationuuid || `${code}-${s.name}`,
@@ -112,7 +142,8 @@ export async function fetchRadioStationsByCountry(countryCode: string): Promise<
           votes: Number(s.votes) || 0,
         }));
 
-      if (stations.length > 0) {
+      if (fetchedStations.length > 0) {
+        const stations = [...FEATURED_SYNTHWAVE_STATIONS, ...fetchedStations];
         try {
           localStorage.setItem(cacheKey, JSON.stringify({ time: Date.now(), data: stations }));
         } catch {

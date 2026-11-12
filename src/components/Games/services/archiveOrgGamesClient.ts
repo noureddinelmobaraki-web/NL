@@ -159,3 +159,33 @@ export async function fetchArchiveOrgRetroCollection(
     return [];
   }
 }
+
+export async function fetchArchiveOrgPopularFlashGames(
+  signal?: AbortSignal,
+): Promise<UnifiedGameItem[]> {
+  try {
+    const url =
+      'https://archive.org/advancedsearch.php?q=collection:(softwarelibrary_flash)+AND+mediatype:(software)+AND+format:(Shockwave+Flash)&fl[]=identifier,title,creator&sort[]=downloads+desc&rows=25&page=1&output=json';
+    const res = await fetch(url, { signal });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const docs = Array.isArray(data?.response?.docs) ? data.response.docs : [];
+    return docs
+      .filter((d: any) => d.identifier && d.title)
+      .map((d: any, index: number) => ({
+        id: `ia-swf-${d.identifier}`,
+        title: String(d.title),
+        posterUrl: `https://archive.org/services/img/${encodeURIComponent(d.identifier)}`,
+        archiveIdentifier: String(d.identifier),
+        engine: 'ruffle' as const,
+        category: 'flash' as const,
+        platformBadge: 'SWF' as const,
+        subGenre: 'Arcade' as const,
+        controlProfile: 'flash-pc' as const,
+        subtitle: d.creator ? `${d.creator} · Archive Flash` : 'Archive.org Flash Classic',
+        priorityRank: 400 - index,
+      }));
+  } catch {
+    return [];
+  }
+}

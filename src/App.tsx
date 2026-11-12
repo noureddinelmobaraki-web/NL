@@ -53,6 +53,8 @@ function AppStageRouter() {
     isArtOpen,
     artTab,
     closeArt,
+    isMagazinesOpen,
+    closeMagazines,
     endTransition,
     openMusic,
   } = useAppContext();
@@ -80,19 +82,21 @@ function AppStageRouter() {
             ? 'cartoon'
             : isArtOpen
               ? 'art'
-              : isRetroOpen
-                ? 'retro'
-                : isXpOpen
-                  ? 'xp'
-                  : isMusicOpen
-                    ? 'music'
-                    : isAccountsOpen
-                      ? 'accounts'
-                      : isPortraitOpen
-                        ? 'portrait'
-                        : isLiquidGlassOpen
-                          ? 'liquidGlass'
-                          : null;
+              : isMagazinesOpen
+                ? 'magazines'
+                : isRetroOpen
+                  ? 'retro'
+                  : isXpOpen
+                    ? 'xp'
+                    : isMusicOpen
+                      ? 'music'
+                      : isAccountsOpen
+                        ? 'accounts'
+                        : isPortraitOpen
+                          ? 'portrait'
+                          : isLiquidGlassOpen
+                            ? 'liquidGlass'
+                            : null;
 
   const isAnyPageActive = activeOverlayId !== null;
 
@@ -129,15 +133,17 @@ function AppStageRouter() {
               ? { onClose: closeCartoon }
               : activeOverlayId === 'art'
                 ? { onClose: closeArt, initialTab: artTab }
-                : activeOverlayId === 'retro'
-                  ? { onClose: closeRetro }
-                  : activeOverlayId === 'xp'
-                    ? { onClose: closeXp }
-                    : activeOverlayId === 'accounts'
-                      ? { onClose: closeAccounts }
-                      : activeOverlayId === 'liquidGlass'
-                        ? { onClose: closeLiquidGlass, initialMode: liquidGlassMode }
-                        : {};
+                : activeOverlayId === 'magazines'
+                  ? { onClose: closeMagazines }
+                  : activeOverlayId === 'retro'
+                    ? { onClose: closeRetro }
+                    : activeOverlayId === 'xp'
+                      ? { onClose: closeXp }
+                      : activeOverlayId === 'accounts'
+                        ? { onClose: closeAccounts }
+                        : activeOverlayId === 'liquidGlass'
+                          ? { onClose: closeLiquidGlass, initialMode: liquidGlassMode }
+                          : {};
 
   return (
     <>

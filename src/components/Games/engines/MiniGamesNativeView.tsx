@@ -17,9 +17,11 @@ import type { MiniGameKind } from '../types/games.types';
 import {
   calculateHandScore,
   drawFreshBlackjackDeck,
+  fetchCountryQuizQuestions,
   fetchGamerTriviaQuestions,
   fetchLichessDailyPuzzle,
   fetchRandomPokeFighter,
+  type CountryQuizQuestion,
   type DeckCard,
   type LichessDailyPuzzle,
   type PokeFighter,
@@ -47,6 +49,9 @@ export function MiniGamesNativeView({
   }
   if (kind === 'poke-battle') {
     return <PokeBattleView />;
+  }
+  if (kind === 'country-quiz') {
+    return <CountryQuizView />;
   }
   return <GamerTriviaView />;
 }
@@ -434,6 +439,104 @@ function PokeBattleView() {
               <span>{mv.toUpperCase()}</span>
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CountryQuizView() {
+  const [questions, setQuestions] = useState<CountryQuizQuestion[]>([]);
+  const [index, setIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [selectedOpt, setSelectedOpt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadQuiz = useCallback(() => {
+    setLoading(true);
+    setIndex(0);
+    setScore(0);
+    setSelectedOpt(null);
+    fetchCountryQuizQuestions(10).then((q) => {
+      setQuestions(q);
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    loadQuiz();
+  }, [loadQuiz]);
+
+  const current = questions[index];
+
+  const handlePick = (opt: string) => {
+    if (selectedOpt) return;
+    setSelectedOpt(opt);
+    if (opt === current?.correctAnswer) {
+      setScore((s) => s + 100);
+    }
+    setTimeout(() => {
+      setSelectedOpt(null);
+      setIndex((i) => i + 1);
+    }, 1100);
+  };
+
+  return (
+    <div className="nl-mini-game-stage">
+      <div className="nl-mini-header">
+        <div>
+          <span className="nl-mini-kicker">REST COUNTRIES V3.1 · GEOGRAPHY QUIZ</span>
+          <h3 className="nl-mini-title">World Flags & Capitals Challenge</h3>
+        </div>
+        <div className="nl-mini-stats">
+          <Sparkles size={14} /> <span>Score: {score}</span>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="nl-mini-center">Loading World Countries & Flags...</div>
+      ) : !current ? (
+        <div className="nl-mini-center">
+          <h4>Final Geography Score: {score} / 1000</h4>
+          <button type="button" className="nl-screen-btn" onClick={loadQuiz}>
+            <RotateCcw size={15} /> Play New Round
+          </button>
+        </div>
+      ) : (
+        <div className="nl-trivia-card">
+          <div className="nl-trivia-progress">
+            Question {index + 1} of {questions.length} · Region: {current.region}
+          </div>
+          <div className="flex flex-col items-center gap-3 my-2">
+            <img
+              src={current.flagUrl}
+              alt="Country Flag"
+              className="h-20 w-auto rounded-lg shadow-lg border border-white/15 object-contain"
+              referrerPolicy="no-referrer"
+            />
+            <p className="nl-trivia-q text-center">
+              {current.questionType === 'capital'
+                ? `What is the capital city of ${current.countryName}?`
+                : 'Which country does this national flag belong to?'}
+            </p>
+          </div>
+          <div className="nl-trivia-grid">
+            {current.options.map((opt) => {
+              const isCorrect = selectedOpt && opt === current.correctAnswer;
+              const isWrong =
+                selectedOpt === opt && opt !== current.correctAnswer;
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => handlePick(opt)}
+                  className={`nl-trivia-opt${isCorrect ? ' is-correct' : ''}${isWrong ? ' is-wrong' : ''}`}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

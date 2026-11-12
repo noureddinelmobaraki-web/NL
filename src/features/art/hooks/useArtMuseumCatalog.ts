@@ -10,7 +10,11 @@ import type { ArtMuseumPiece, MuseumSourceId } from '../types/art.types';
 import {
   fetchChicagoArtworks,
   fetchClevelandArtworks,
+  fetchConceptIllustrationArtworks,
   fetchMetMuseumArtworks,
+  fetchOpenverseArtworks,
+  fetchVamMuseumArtworks,
+  fetchWikimediaCommonsArtworks,
 } from '../services/museumApisClient';
 import {
   fetchPicsumPhotography,
@@ -46,25 +50,49 @@ export function useArtMuseumCatalog() {
         }
         if (activeSource === 'chicago') {
           const res = await fetchChicagoArtworks(q, controller.signal);
-          if (!controller.signal.aborted) setPieces(res);
+          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
           setLoading(false);
           return;
         }
         if (activeSource === 'cleveland') {
           const res = await fetchClevelandArtworks(q, controller.signal);
-          if (!controller.signal.aborted) setPieces(res);
+          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
           setLoading(false);
           return;
         }
         if (activeSource === 'met') {
           const res = await fetchMetMuseumArtworks(q, controller.signal);
-          if (!controller.signal.aborted) setPieces(res);
+          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
+          setLoading(false);
+          return;
+        }
+        if (activeSource === 'vam') {
+          const res = await fetchVamMuseumArtworks(q, controller.signal);
+          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
+          setLoading(false);
+          return;
+        }
+        if (activeSource === 'wikimedia') {
+          const res = await fetchWikimediaCommonsArtworks(q, controller.signal);
+          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
+          setLoading(false);
+          return;
+        }
+        if (activeSource === 'openverse') {
+          const res = await fetchOpenverseArtworks(q, controller.signal);
+          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
+          setLoading(false);
+          return;
+        }
+        if (activeSource === 'concept-art') {
+          const res = await fetchConceptIllustrationArtworks(controller.signal);
+          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
           setLoading(false);
           return;
         }
         if (activeSource === 'picsum') {
           const res = await fetchPicsumPhotography(1, controller.signal);
-          if (!controller.signal.aborted) setPieces(res);
+          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
           setLoading(false);
           return;
         }
@@ -73,6 +101,9 @@ export function useArtMuseumCatalog() {
           fetchChicagoArtworks(q, controller.signal),
           fetchClevelandArtworks(q, controller.signal),
           fetchMetMuseumArtworks(q, controller.signal),
+          fetchVamMuseumArtworks(q, controller.signal),
+          fetchWikimediaCommonsArtworks(q, controller.signal),
+          fetchOpenverseArtworks(q, controller.signal),
           fetchPicsumPhotography(1, controller.signal),
         ]);
 

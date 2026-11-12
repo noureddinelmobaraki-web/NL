@@ -17,6 +17,9 @@ interface TvPlayerProps {
   onErrorState: (hasError: boolean) => void;
 }
 
+export const isIframeEmbedStream = (url: string): boolean =>
+  /youtube(-nocookie)?\.com\/embed\/|player\.twitch\.tv|\?embed=1/i.test(url);
+
 export function TvPlayer({
   url,
   isPlaying,
@@ -29,15 +32,21 @@ export function TvPlayer({
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const isIframe = isIframeEmbedStream(url);
 
   // Handle Video element setup & loading
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    
     setError(false);
     onErrorState(false);
     setLoading(true);
+
+    if (isIframe) {
+      onVideoRefReady(null);
+      return;
+    }
+
+    const video = videoRef.current;
+    if (!video) return;
 
     let hls: Hls | null = null;
     let cancelled = false;
@@ -106,10 +115,11 @@ export function TvPlayer({
       }
       onVideoRefReady(null);
     };
-  }, [url, onVideoRefReady, onErrorState]);
+  }, [url, isIframe, onVideoRefReady, onErrorState]);
 
   // Handle IsPlaying transitions
   useEffect(() => {
+    if (isIframe) return;
     const video = videoRef.current;
     if (!video) return;
 
@@ -120,28 +130,44 @@ export function TvPlayer({
     } else {
       video.pause();
     }
-  }, [isPlaying, error, url]);
+  }, [isPlaying, error, url, isIframe]);
 
   // Handle muted & volume changes
   useEffect(() => {
+    if (isIframe) return;
     const video = videoRef.current;
     if (!video) return;
     video.muted = muted;
     // Set actual volume on the video tag
     video.volume = volume;
-  }, [muted, volume]);
+  }, [muted, volume, isIframe]);
 
   return (
     <div className="fixed inset-0 w-full h-full bg-black z-[1] select-none flex items-center justify-center pointer-events-none">
-      
-      {/* HTML5 Video element */}
-      <video
-        ref={videoRef}
-        playsInline
-        autoPlay
-        className="w-full h-full object-contain pointer-events-auto bg-black"
-        style={{ zIndex: 1 }}
-      />
+      {isIframe ? (
+        <iframe
+          key={url}
+          src={url}
+          title="Live Broadcast"
+          className="w-full h-full border-0 pointer-events-auto"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          allowFullScreen
+          onLoad={() => {
+            setLoading(false);
+            setError(false);
+            onErrorState(false);
+          }}
+        />
+      ) : (
+        /* HTML5 Video element */
+        <video
+          ref={videoRef}
+          playsInline
+          autoPlay
+          className="w-full h-full object-contain pointer-events-auto bg-black"
+          style={{ zIndex: 1 }}
+        />
+      )}
 
       {/* Loading stream spinner overlay */}
       {loading && !error && (
