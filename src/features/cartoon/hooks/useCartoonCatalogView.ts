@@ -3,51 +3,85 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import { useMemo } from 'react';
-import type { CartoonSeriesItem, SpacetoonPlanetId } from '../types/cartoon.types';
-import { SPACETOON_ARCHIVE_REGISTRY } from '../services/spacetoonArchiveRegistry';
+import { useEffect, useMemo, useState } from 'react';
+import type { CinemaItem } from '../../../components/Movies/moviesDataClient';
 import {
   adaptCartoonToCinemaItem,
   getCartoonNumericId,
 } from '../adapters/cartoonToCinemaAdapter';
+import { SPACETOON_ARCHIVE_REGISTRY } from '../services/spacetoonArchiveRegistry';
+import {
+  enrichCartoonCatalogPosters,
+  fetchGlobalAnimationCatalog,
+} from '../services/cartoonMetadataClient';
+import type {
+  CartoonSeriesItem,
+  SpacetoonPlanetId,
+} from '../types/cartoon.types';
 
 export function useCartoonCatalogView(
   activePlanet: SpacetoonPlanetId,
-  searchQuery: string
+  searchQuery: string,
 ) {
+  const [catalogItems, setCatalogItems] = useState<CartoonSeriesItem[]>(
+    SPACETOON_ARCHIVE_REGISTRY,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    async function hydrateCatalogPostersAndGlobal() {
+      const [enrichedSpacetoon, globalAnimation] = await Promise.all([
+        enrichCartoonCatalogPosters(SPACETOON_ARCHIVE_REGISTRY),
+        fetchGlobalAnimationCatalog(1),
+      ]);
+      if (cancelled) return;
+      const seen = new Set(enrichedSpacetoon.map((i) => i.id));
+      const merged = [
+        ...enrichedSpacetoon,
+        ...globalAnimation.filter((g) => !seen.has(g.id)),
+      ];
+      setCatalogItems(merged);
+    }
+    void hydrateCatalogPostersAndGlobal();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filteredCatalog = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return SPACETOON_ARCHIVE_REGISTRY.filter((item: CartoonSeriesItem) => {
-      const matchesPlanet =
+    return catalogItems.filter((item) => {
+      const planetOk =
         activePlanet === 'all' ||
         activePlanet === 'songs' ||
+        (activePlanet === 'global' && item.studio === 'أنيميشن عالمي') ||
         item.planet === activePlanet;
-      if (!matchesPlanet) return false;
+
+      if (!planetOk) return false;
       if (!q) return true;
+
       return (
         item.titleAr.toLowerCase().includes(q) ||
         item.titleEn.toLowerCase().includes(q) ||
-        item.synopsisAr.toLowerCase().includes(q)
+        item.synopsisAr.toLowerCase().includes(q) ||
+        item.planetLabelAr.toLowerCase().includes(q) ||
+        item.studio.toLowerCase().includes(q)
       );
     });
-  }, [activePlanet, searchQuery]);
+  }, [activePlanet, catalogItems, searchQuery]);
 
-  const seriesByNumericId = useMemo(() => {
+  const { seriesByNumericId, cinemaItems } = useMemo(() => {
     const map = new Map<number, CartoonSeriesItem>();
-    SPACETOON_ARCHIVE_REGISTRY.forEach((series: CartoonSeriesItem, idx: number) => {
-      map.set(getCartoonNumericId(series, idx), series);
+    const items: CinemaItem[] = filteredCatalog.map((series, idx) => {
+      const numId = getCartoonNumericId(series, idx);
+      map.set(numId, series);
+      return adaptCartoonToCinemaItem(series, idx);
     });
-    return map;
-  }, []);
-
-  const cinemaItems = useMemo(
-    () =>
-      filteredCatalog.map((series: CartoonSeriesItem) => {
-        const masterIdx = SPACETOON_ARCHIVE_REGISTRY.indexOf(series);
-        return adaptCartoonToCinemaItem(series, masterIdx >= 0 ? masterIdx : 0);
-      }),
-    [filteredCatalog]
-  );
+    return {
+      seriesByNumericId: map,
+      cinemaItems: items,
+    };
+  }, [filteredCatalog]);
 
   return {
     filteredCatalog,
@@ -56,4 +90,6 @@ export function useCartoonCatalogView(
   };
 }
 
-export type UseCartoonCatalogViewResult = ReturnType<typeof useCartoonCatalogView>;
+export type UseCartoonCatalogViewResult = ReturnType<
+  typeof useCartoonCatalogView
+>;

@@ -1,5 +1,6 @@
 // src/components/dev/MobileQAOverlay.tsx
 import { useState, useEffect } from 'react';
+import { Smartphone } from 'lucide-react';
 
 export const MobileQAOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -92,7 +93,7 @@ export const MobileQAOverlay = () => {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
-        <strong>📱 MOBILE QA SCREEN</strong>
+        <strong className="inline-flex items-center gap-1"><Smartphone size={13} /> MOBILE QA SCREEN</strong>
         <button 
           onClick={() => setIsOpen(!isOpen)} 
           style={{ background: 'none', border: 'none', color: '#00ff88', cursor: 'pointer', padding: '0 4px' }}

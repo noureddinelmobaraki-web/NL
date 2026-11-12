@@ -27,6 +27,13 @@ export function useLiquidGlassAudio(src: string = LIQUID_GLASS_BG_AUDIO_URL) {
   }, []);
 
   useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      (window as unknown as { __NL_AUTOMATED__?: boolean }).__NL_AUTOMATED__
+    ) {
+      return undefined;
+    }
+
     const purge = (a: HTMLAudioElement | null) => {
       if (!a) return;
       try {
@@ -116,12 +123,23 @@ export function useLiquidGlassAudio(src: string = LIQUID_GLASS_BG_AUDIO_URL) {
             tryPlay();
           }
         });
+        let networkRetries = 0;
         hls.on(HlsLib.Events.ERROR, (_evt, data) => {
           if (!data.fatal) return;
-          if (data.type === HlsLib.ErrorTypes.NETWORK_ERROR) {
+          if (data.type === HlsLib.ErrorTypes.NETWORK_ERROR && networkRetries < 2) {
+            networkRetries += 1;
             hls.startLoad();
-          } else if (data.type === HlsLib.ErrorTypes.MEDIA_ERROR) {
+          } else if (data.type === HlsLib.ErrorTypes.MEDIA_ERROR && networkRetries < 2) {
+            networkRetries += 1;
             hls.recoverMediaError();
+          } else {
+            try {
+              hls.stopLoad();
+              hls.detachMedia();
+              hls.destroy();
+            } catch {
+              /* ignore */
+            }
           }
         });
         hls.loadSource(src);

@@ -73,3 +73,27 @@ export const GlassVectorIcon: React.FC<GlassVectorIconProps> = ({
     </span>
   );
 };
+
+export const MoroccoFlagSvg: React.FC<{ size?: number; className?: string }> = ({
+  size = 16,
+  className = '',
+}) => (
+  <svg
+    width={size}
+    height={Math.round(size * 0.72)}
+    viewBox="0 0 28 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`inline-block shrink-0 rounded-[3px] shadow-sm ${className}`}
+    aria-hidden="true"
+  >
+    <rect width="28" height="20" rx="3" fill="#C1272D" />
+    <path
+      d="M14 5.2L15.12 8.65H18.75L15.81 10.78L16.93 14.23L14 12.1L11.07 14.23L12.19 10.78L9.25 8.65H12.88L14 5.2Z"
+      stroke="#006233"
+      strokeWidth="1.35"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+

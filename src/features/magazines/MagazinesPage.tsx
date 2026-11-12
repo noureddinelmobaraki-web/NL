@@ -4,6 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   Atom,
@@ -26,9 +27,11 @@ import { GenreNav } from '../liquid-glass/shared/GenreNav';
 import { CatalogShell } from '../liquid-glass/shared/CatalogShell';
 import { BooksGrid } from '../liquid-glass/stages/books/components/BooksGrid';
 import { BookReader } from '../liquid-glass/stages/books/components/BookReader';
+import { LiquidGlassBooksBackdrop } from '../liquid-glass/shared/LiquidGlassBooksBackdrop';
 import { useMagazinesCatalog } from './hooks/useMagazinesCatalog';
 import { useMagazineBookmarks } from './hooks/useMagazineBookmarks';
 import { resolveMagazineIssueDetails } from './services/magazineService';
+import '../liquid-glass/stages/orbs/portal.css';
 import '../liquid-glass/shared/glass.css';
 import '../liquid-glass/stages/books/books.css';
 
@@ -159,134 +162,142 @@ export const MagazinesPage: React.FC<MagazinesPageProps> = ({ onClose }) => {
     [isTouch, selectedMagazine, closeMagazineReader, onClose],
   );
 
-  return (
-    <div
-      className="lg-stage-root lg-books-stage-root"
-      dir="ltr"
-      onClick={handleStageEmptySpaceClick}
-    >
-      <button
-        type="button"
-        className="lg-glass-pill lg-back-orbs-btn"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (selectedMagazine) closeMagazineReader();
-          else onClose();
-        }}
-        aria-label={selectedMagazine ? 'Back to Magazines' : 'Close Magazines'}
-      >
-        <ArrowLeft size={18} strokeWidth={2.3} />
-      </button>
+  return createPortal(
+    <div className="lg-portal-root" dir="ltr">
+      <LiquidGlassBooksBackdrop dimmerOpacity={0.52} />
 
-      {!selectedMagazine ? (
+      <div className="lg-portal-stage-layer">
         <div
-          className="lg-stage-scroll lg-books-catalog-scroll"
+          className="lg-stage-root lg-books-stage-root"
+          dir="ltr"
           onClick={handleStageEmptySpaceClick}
         >
-          <CatalogShell
-            leftRail={
-              <GenreNav
-                genres={MAGAZINE_CATEGORIES}
-                activeGenre={catalog.category}
-                onGenreChange={(id) => {
-                  bookmarks.setShowSavedOnly(false);
-                  catalog.setCategory(id);
-                  catalog.setPage(1);
-                }}
-                showSavedOnly={bookmarks.showSavedOnly}
-                orientation="vertical"
-              />
-            }
-            rightRail={
-              <FilterControls
-                variant="panel"
-                language={catalog.language}
-                languages={LANGUAGES}
-                onLanguageChange={(id) => {
-                  catalog.setLanguage(id);
-                  catalog.setPage(1);
-                }}
-                sortOrder={catalog.sortOrder}
-                sortOptions={SORT_OPTIONS}
-                onSortChange={catalog.setSortOrder}
-                extFilter={catalog.extFilter}
-                formatOptions={FORMAT_FILTERS}
-                onFormatChange={(id) => {
-                  catalog.setExtFilter(id);
-                  catalog.setPage(1);
-                }}
-                savedCount={bookmarks.savedIds.size}
-                showSavedOnly={bookmarks.showSavedOnly}
-                onToggleSavedOnly={() => bookmarks.setShowSavedOnly((v) => !v)}
-              />
-            }
-            topBar={
-              <GlassTopBar
-                query={catalog.query}
-                onQueryChange={catalog.setQuery}
-                placeholder="Search magazines, Majid, Al-Arabi, Nintendo Power, BYTE, Wired..."
-                language={catalog.language}
-                languages={LANGUAGES}
-                onLanguageChange={(id) => {
-                  catalog.setLanguage(id);
-                  catalog.setPage(1);
-                }}
-                genres={MAGAZINE_CATEGORIES}
-                activeGenre={catalog.category}
-                onGenreChange={(id) => {
-                  bookmarks.setShowSavedOnly(false);
-                  catalog.setCategory(id);
-                  catalog.setPage(1);
-                }}
-                sortOrder={catalog.sortOrder}
-                sortOptions={SORT_OPTIONS}
-                onSortChange={catalog.setSortOrder}
-                extFilter={catalog.extFilter}
-                formatOptions={FORMAT_FILTERS}
-                onFormatChange={(id) => {
-                  catalog.setExtFilter(id);
-                  catalog.setPage(1);
-                }}
-                savedCount={bookmarks.savedIds.size}
-                showSavedOnly={bookmarks.showSavedOnly}
-                onToggleSavedOnly={() => bookmarks.setShowSavedOnly((v) => !v)}
-                resultCount={displayedMagazines.length}
-              />
-            }
+          <button
+            type="button"
+            className="lg-glass-pill lg-back-orbs-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (selectedMagazine) closeMagazineReader();
+              else onClose();
+            }}
+            aria-label={selectedMagazine ? 'Back to Magazines' : 'Close Magazines'}
           >
-            <BooksGrid
-              books={displayedMagazines}
-              loading={catalog.loading}
-              loadingMore={catalog.loadingMore}
-              showSavedOnly={bookmarks.showSavedOnly}
-              savedIds={bookmarks.savedIds}
-              probedAudioMap={{}}
-              canSwitchToAudiobook={false}
-              onOpenReader={(m) => void openMagazineReader(m)}
-              onToggleBookmark={bookmarks.toggleBookmark}
-              onSwitchToAudiobook={() => {}}
-              onLoadMore={catalog.handleLoadMore}
-              onResetFilters={() => {
-                bookmarks.setShowSavedOnly(false);
-                catalog.setQuery('');
-                catalog.setCategory('featured');
-                catalog.setLanguage('all');
-                catalog.setExtFilter('all');
-              }}
+            <ArrowLeft size={18} strokeWidth={2.3} />
+          </button>
+
+          {!selectedMagazine ? (
+            <div
+              className="lg-stage-scroll lg-books-catalog-scroll"
+              onClick={handleStageEmptySpaceClick}
+            >
+              <CatalogShell
+                leftRail={
+                  <GenreNav
+                    genres={MAGAZINE_CATEGORIES}
+                    activeGenre={catalog.category}
+                    onGenreChange={(id) => {
+                      bookmarks.setShowSavedOnly(false);
+                      catalog.setCategory(id);
+                      catalog.setPage(1);
+                    }}
+                    showSavedOnly={bookmarks.showSavedOnly}
+                    orientation="vertical"
+                  />
+                }
+                rightRail={
+                  <FilterControls
+                    variant="panel"
+                    language={catalog.language}
+                    languages={LANGUAGES}
+                    onLanguageChange={(id) => {
+                      catalog.setLanguage(id);
+                      catalog.setPage(1);
+                    }}
+                    sortOrder={catalog.sortOrder}
+                    sortOptions={SORT_OPTIONS}
+                    onSortChange={catalog.setSortOrder}
+                    extFilter={catalog.extFilter}
+                    formatOptions={FORMAT_FILTERS}
+                    onFormatChange={(id) => {
+                      catalog.setExtFilter(id);
+                      catalog.setPage(1);
+                    }}
+                    savedCount={bookmarks.savedIds.size}
+                    showSavedOnly={bookmarks.showSavedOnly}
+                    onToggleSavedOnly={() => bookmarks.setShowSavedOnly((v) => !v)}
+                  />
+                }
+                topBar={
+                  <GlassTopBar
+                    query={catalog.query}
+                    onQueryChange={catalog.setQuery}
+                    placeholder="Search magazines, Majid, Al-Arabi, Nintendo Power, BYTE, Wired..."
+                    language={catalog.language}
+                    languages={LANGUAGES}
+                    onLanguageChange={(id) => {
+                      catalog.setLanguage(id);
+                      catalog.setPage(1);
+                    }}
+                    genres={MAGAZINE_CATEGORIES}
+                    activeGenre={catalog.category}
+                    onGenreChange={(id) => {
+                      bookmarks.setShowSavedOnly(false);
+                      catalog.setCategory(id);
+                      catalog.setPage(1);
+                    }}
+                    sortOrder={catalog.sortOrder}
+                    sortOptions={SORT_OPTIONS}
+                    onSortChange={catalog.setSortOrder}
+                    extFilter={catalog.extFilter}
+                    formatOptions={FORMAT_FILTERS}
+                    onFormatChange={(id) => {
+                      catalog.setExtFilter(id);
+                      catalog.setPage(1);
+                    }}
+                    savedCount={bookmarks.savedIds.size}
+                    showSavedOnly={bookmarks.showSavedOnly}
+                    onToggleSavedOnly={() => bookmarks.setShowSavedOnly((v) => !v)}
+                    resultCount={displayedMagazines.length}
+                    onClose={onClose}
+                  />
+                }
+              >
+                <BooksGrid
+                  books={displayedMagazines}
+                  loading={catalog.loading}
+                  loadingMore={catalog.loadingMore}
+                  showSavedOnly={bookmarks.showSavedOnly}
+                  savedIds={bookmarks.savedIds}
+                  probedAudioMap={{}}
+                  canSwitchToAudiobook={false}
+                  onOpenReader={(m) => void openMagazineReader(m)}
+                  onToggleBookmark={bookmarks.toggleBookmark}
+                  onSwitchToAudiobook={() => {}}
+                  onLoadMore={catalog.handleLoadMore}
+                  onResetFilters={() => {
+                    bookmarks.setShowSavedOnly(false);
+                    catalog.setQuery('');
+                    catalog.setCategory('featured');
+                    catalog.setLanguage('all');
+                    catalog.setExtFilter('all');
+                  }}
+                />
+              </CatalogShell>
+            </div>
+          ) : (
+            <BookReader
+              book={selectedMagazine}
+              resolveResult={resolveResult}
+              resolving={resolving}
+              hasAudio={false}
+              onClose={closeMagazineReader}
+              onEmptySpaceClick={handleStageEmptySpaceClick}
             />
-          </CatalogShell>
+          )}
         </div>
-      ) : (
-        <BookReader
-          book={selectedMagazine}
-          resolveResult={resolveResult}
-          resolving={resolving}
-          hasAudio={false}
-          onClose={closeMagazineReader}
-          onEmptySpaceClick={handleStageEmptySpaceClick}
-        />
-      )}
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 };
 

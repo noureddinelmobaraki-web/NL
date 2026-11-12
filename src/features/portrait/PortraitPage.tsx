@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import {
   PORTRAIT_ASSETS,
@@ -348,7 +349,7 @@ export default function PortraitPage() {
         aria-label="Close"
         data-nl-stop
       >
-        ✕
+        <X size={16} />
       </button>
     </div>
   );

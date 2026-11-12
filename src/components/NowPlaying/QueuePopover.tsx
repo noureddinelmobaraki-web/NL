@@ -1,4 +1,5 @@
 import { m } from 'framer-motion';
+import { X } from 'lucide-react';
 
 export interface QueuePopoverProps {
   nextSongs: { id: number; title: string; cover?: string }[];
@@ -42,9 +43,12 @@ export const QueuePopover = ({ nextSongs, isMobile, onClose }: QueuePopoverProps
               cursor: 'pointer',
               fontSize: '10px',
               padding: '2px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            ✕
+            <X size={14} />
           </button>
         )}
       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Volume2, VolumeX, X } from 'lucide-react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { ASSETS } from '../../constants/assets';
 import { audioManager } from '../../audio/audioManager';
@@ -175,7 +176,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
           style={{ touchAction: 'manipulation' }}
           aria-label="Mute Lens Music"
         >
-          {isMuted ? '🔇' : '🎵'}
+          {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
       )
     });
@@ -192,7 +193,7 @@ export const LensGallery = ({ isOpen, onClose }: LensGalleryProps) => {
           style={{ color: 'var(--accent-red, #ef4444)', touchAction: 'manipulation' }}
           aria-label="Close Lens Gallery"
         >
-          ✕
+          <X size={16} />
         </button>
       )
     });

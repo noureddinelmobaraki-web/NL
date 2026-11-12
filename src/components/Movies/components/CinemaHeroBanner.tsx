@@ -68,6 +68,51 @@ export function CinemaHeroBanner({
           }
           fetchPriority={heroIndex === 0 ? "high" : undefined}
           alt=""
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            const el = e.currentTarget;
+            el.removeAttribute("srcset");
+            if (activeHeroItem.posterPath && !el.dataset.fb0) {
+              el.dataset.fb0 = "1";
+              el.src = activeHeroItem.posterPath.startsWith("http")
+                ? activeHeroItem.posterPath
+                : `${TMDB_IMAGE_BASE}/w780${activeHeroItem.posterPath}`;
+            } else if (!el.dataset.fbTmdb && activeHeroItem.title) {
+              el.dataset.fbTmdb = "1";
+              const q = encodeURIComponent(
+                activeHeroItem.originalTitle || activeHeroItem.title,
+              );
+              void fetch(
+                `https://api.themoviedb.org/3/search/multi?api_key=3fd2be6f0c70a2a598f084ddfb75487c&query=${q}&include_adult=false`,
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .then((data) => {
+                  const hit = (data?.results || []).find(
+                    (r: any) => r?.backdrop_path || r?.poster_path,
+                  );
+                  if (hit?.backdrop_path) {
+                    el.src = `${TMDB_IMAGE_BASE}/w1280${hit.backdrop_path}`;
+                  } else if (hit?.poster_path) {
+                    el.src = `${TMDB_IMAGE_BASE}/w780${hit.poster_path}`;
+                  } else if (!el.dataset.fbFinal) {
+                    el.dataset.fbFinal = "1";
+                    el.src =
+                      "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp";
+                  }
+                })
+                .catch(() => {
+                  if (!el.dataset.fbFinal) {
+                    el.dataset.fbFinal = "1";
+                    el.src =
+                      "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp";
+                  }
+                });
+            } else if (!el.dataset.fbFinal) {
+              el.dataset.fbFinal = "1";
+              el.src =
+                "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp";
+            }
+          }}
           className="w-full h-full object-cover object-top select-none pointer-events-none scale-105 transition-transform duration-1000"
         />
         <div

@@ -1,12 +1,13 @@
 // src/features/search/SearchOverlay.tsx
 import React, { useEffect, useState, useCallback } from 'react'
+import { X } from 'lucide-react'
 import { runSearch, ensureIndex, type SearchRecord } from './searchEngine'
 
 const wrap: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 9999, background: '#080a14', color: '#e8eaf0', overflowY: 'auto', padding: 20, direction: 'rtl' }
 const box: React.CSSProperties = { maxWidth: 720, margin: '0 auto' }
 const header: React.CSSProperties = { display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, position: 'sticky', top: 0, background: '#080a14', paddingBlock: 8 }
 const inputStyle: React.CSSProperties = { flex: 1, padding: '14px 18px', borderRadius: 14, border: '1px solid #2a2f45', background: '#11162a', color: '#fff', fontSize: '1.05rem' }
-const closeBtn: React.CSSProperties = { background: '#1b2036', color: '#fff', border: 'none', borderRadius: 10, width: 44, height: 44, cursor: 'pointer', fontSize: '1rem' }
+const closeBtn: React.CSSProperties = { background: '#1b2036', color: '#fff', border: 'none', borderRadius: 10, width: 44, height: 44, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const rowStyle: React.CSSProperties = { display: 'flex', gap: 12, alignItems: 'center', padding: '10px 8px', borderBottom: '1px solid #1b2036', textDecoration: 'none', color: '#e8eaf0' }
 const imgStyle: React.CSSProperties = { width: 52, height: 52, borderRadius: 10, objectFit: 'cover', background: '#1b2036', flex: '0 0 auto' }
 const artistStyle: React.CSSProperties = { opacity: 0.65 }
@@ -46,7 +47,7 @@ export default function SearchOverlay({ onClose }: { onClose?: () => void }) {
       <div style={box}>
         <div style={header}>
           <input autoFocus style={inputStyle} value={q} placeholder="ابحث عن أغنية أو فنان أو فيديو…" onChange={(e) => setQ(e.target.value)} />
-          <button style={closeBtn} onClick={onClose} aria-label="إغلاق">✕</button>
+          <button style={closeBtn} onClick={onClose} aria-label="إغلاق"><X size={16} /></button>
         </div>
         {loading ? <p>جارٍ البحث…</p> : null}
         {!loading && q && hits.length === 0 ? <p>لا نتائج لـ«{q}».</p> : null}

@@ -1,144 +1,144 @@
-/**
- * @license
- * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
- *
- * Smart Hook for World Museums & Fine Photography Catalog
- */
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import type { ArtMuseumPiece } from '../types/art.types';
+import { fetchUnifiedArtGallery } from '../services/artMuseumService';
+import { fetchPicsumGalleryPieces } from '../services/museumApisClient';
 
-import { useState, useEffect, useMemo } from 'react';
-import type { ArtMuseumPiece, MuseumSourceId } from '../types/art.types';
-import {
-  fetchChicagoArtworks,
-  fetchClevelandArtworks,
-  fetchConceptIllustrationArtworks,
-  fetchMetMuseumArtworks,
-  fetchOpenverseArtworks,
-  fetchVamMuseumArtworks,
-  fetchWikimediaCommonsArtworks,
-} from '../services/museumApisClient';
-import {
-  fetchPicsumPhotography,
-  getNlLensPhotography,
-} from '../services/photographyClient';
-
-export function useArtMuseumCatalog() {
-  const [activeSource, setActiveSource] = useState<MuseumSourceId>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [pieces, setPieces] = useState<ArtMuseumPiece[]>(() =>
-    getNlLensPhotography(),
-  );
-  const [loading, setLoading] = useState(false);
-  const [selectedPiece, setSelectedPiece] = useState<ArtMuseumPiece | null>(
+export function useArtMuseumCatalog(initialGenre = 'all') {
+  const [genre, setGenre] = useState<string>(initialGenre);
+  const [query, setQuery] = useState<string>('');
+  const [museumFilter, setMuseumFilter] = useState<string>('all');
+  const [eraFilter, setEraFilter] = useState<string>('all');
+  const [sortOrder, setSortOrder] = useState<string>('featured');
+  const [rawItems, setRawItems] = useState<ArtMuseumPiece[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [page, setPage] = useState<number>(1);
+  const [selectedArtwork, setSelectedArtwork] = useState<ArtMuseumPiece | null>(
     null,
   );
-  const [picsumBlur, setPicsumBlur] = useState(0);
-  const [picsumGrayscale, setPicsumGrayscale] = useState(false);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [showSavedOnly, setShowSavedOnly] = useState<boolean>(false);
+
+  const loadCatalog = useCallback(async (g: string, q: string) => {
+    setLoading(true);
+    setPage(1);
+    try {
+      const results = await fetchUnifiedArtGallery(g, q, 1);
+      setRawItems(results);
+    } catch {
+      const fallback = await fetchPicsumGalleryPieces(1, 30);
+      setRawItems(fallback);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      const more = await fetchUnifiedArtGallery(genre, query, nextPage);
+      if (more.length > 0) {
+        setRawItems((prev) => {
+          const seen = new Set(prev.map((p) => p.id));
+          const uniqueMore = more.filter((p) => !seen.has(p.id));
+          return [...prev, ...uniqueMore];
+        });
+        setPage(nextPage);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [genre, loadingMore, page, query]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
+    const timer = window.setTimeout(
+      () => {
+        void loadCatalog(genre, query);
+      },
+      query ? 260 : 0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [genre, query, loadCatalog]);
 
-    const runFetch = async () => {
-      try {
-        const q = searchQuery.trim();
-        const nlLens = getNlLensPhotography();
+  const toggleBookmark = useCallback((item: ArtMuseumPiece) => {
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(item.id)) next.delete(item.id);
+      else next.add(item.id);
+      return next;
+    });
+  }, []);
 
-        if (activeSource === 'nl-lens') {
-          setPieces(nlLens);
-          setLoading(false);
-          return;
-        }
-        if (activeSource === 'chicago') {
-          const res = await fetchChicagoArtworks(q, controller.signal);
-          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
-          setLoading(false);
-          return;
-        }
-        if (activeSource === 'cleveland') {
-          const res = await fetchClevelandArtworks(q, controller.signal);
-          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
-          setLoading(false);
-          return;
-        }
-        if (activeSource === 'met') {
-          const res = await fetchMetMuseumArtworks(q, controller.signal);
-          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
-          setLoading(false);
-          return;
-        }
-        if (activeSource === 'vam') {
-          const res = await fetchVamMuseumArtworks(q, controller.signal);
-          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
-          setLoading(false);
-          return;
-        }
-        if (activeSource === 'wikimedia') {
-          const res = await fetchWikimediaCommonsArtworks(q, controller.signal);
-          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
-          setLoading(false);
-          return;
-        }
-        if (activeSource === 'openverse') {
-          const res = await fetchOpenverseArtworks(q, controller.signal);
-          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
-          setLoading(false);
-          return;
-        }
-        if (activeSource === 'concept-art') {
-          const res = await fetchConceptIllustrationArtworks(controller.signal);
-          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
-          setLoading(false);
-          return;
-        }
-        if (activeSource === 'picsum') {
-          const res = await fetchPicsumPhotography(1, controller.signal);
-          if (!controller.signal.aborted) setPieces(res.length > 0 ? res : nlLens);
-          setLoading(false);
-          return;
-        }
+  const displayedArtworks = useMemo(() => {
+    let list = [...rawItems];
 
-        const settled = await Promise.allSettled([
-          fetchChicagoArtworks(q, controller.signal),
-          fetchClevelandArtworks(q, controller.signal),
-          fetchMetMuseumArtworks(q, controller.signal),
-          fetchVamMuseumArtworks(q, controller.signal),
-          fetchWikimediaCommonsArtworks(q, controller.signal),
-          fetchOpenverseArtworks(q, controller.signal),
-          fetchPicsumPhotography(1, controller.signal),
-        ]);
+    if (showSavedOnly) {
+      list = list.filter((item) => savedIds.has(item.id));
+    }
 
-        if (controller.signal.aborted) return;
-        const merged = [
-          ...(q ? [] : nlLens.slice(0, 4)),
-          ...settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : [])),
-        ];
-        setPieces(merged.length > 0 ? merged : nlLens);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    };
+    if (museumFilter !== 'all') {
+      list = list.filter((item) => item.source === museumFilter);
+    }
 
-    const timer = window.setTimeout(runFetch, searchQuery ? 260 : 0);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [activeSource, searchQuery]);
+    if (eraFilter !== 'all') {
+      list = list.filter((item) => {
+        const d = (item.dateDisplay || '').toLowerCase();
+        if (eraFilter === 'contemporary') {
+          return (
+            d.includes('202') ||
+            d.includes('201') ||
+            d.includes('معاصر') ||
+            item.source === 'picsum' ||
+            item.source === 'concept-art'
+          );
+        }
+        if (eraFilter === 'modern') {
+          return d.includes('18') || d.includes('19') || d.includes('20');
+        }
+        if (eraFilter === 'classic') {
+          return (
+            d.includes('14') ||
+            d.includes('15') ||
+            d.includes('16') ||
+            d.includes('17')
+          );
+        }
+        return true;
+      });
+    }
 
-  const displayedPieces = useMemo(() => pieces, [pieces]);
+    if (sortOrder === 'title') {
+      list.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortOrder === 'artist') {
+      list.sort((a, b) => a.artist.localeCompare(b.artist));
+    }
+
+    return list;
+  }, [rawItems, showSavedOnly, savedIds, museumFilter, eraFilter, sortOrder]);
 
   return {
-    activeSource,
-    setActiveSource,
-    searchQuery,
-    setSearchQuery,
-    pieces: displayedPieces,
+    genre,
+    setGenre,
+    query,
+    setQuery,
+    museumFilter,
+    setMuseumFilter,
+    eraFilter,
+    setEraFilter,
+    sortOrder,
+    setSortOrder,
+    artworks: displayedArtworks,
     loading,
-    selectedPiece,
-    setSelectedPiece,
-    picsumBlur,
-    setPicsumBlur,
-    picsumGrayscale,
-    setPicsumGrayscale,
+    loadingMore,
+    loadMore,
+    selectedArtwork,
+    setSelectedArtwork,
+    savedIds,
+    showSavedOnly,
+    setShowSavedOnly,
+    toggleBookmark,
+    refresh: () => void loadCatalog(genre, query),
   };
 }

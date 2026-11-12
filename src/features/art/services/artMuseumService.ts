@@ -2,138 +2,215 @@ import type { ArtMuseumPiece, MuseumSourceId } from '../types/art.types';
 import {
   fetchChicagoArtworks,
   fetchClevelandArtworks,
-  fetchConceptIllustrationArtworks,
   fetchMetMuseumArtworks,
-  fetchOpenverseArtworks,
   fetchVamMuseumArtworks,
   fetchWikimediaCommonsArtworks,
+  fetchOpenverseArtworks,
+  fetchConceptIllustrationArtworks,
+  fetchPicsumGalleryPieces,
 } from './museumApisClient';
-import {
-  fetchPicsumPhotography,
-  getNlLensPhotography,
-} from './photographyClient';
 
-export type ArtGalleryCategory =
-  | 'all'
-  | 'chicago'
-  | 'met'
-  | 'cleveland'
-  | 'vam'
-  | 'wikimedia'
-  | 'openverse'
-  | 'concept-art'
-  | 'islamic'
-  | 'impressionism'
-  | 'renaissance'
-  | 'japanese';
+const galleryCache = new Map<string, ArtMuseumPiece[]>();
 
-const CATEGORY_DEFAULT_QUERIES: Record<ArtGalleryCategory, string> = {
-  all: 'masterpiece painting landscape portrait',
-  chicago: 'impressionism monet van gogh',
-  met: 'european paintings Vermeer Rembrandt',
-  cleveland: 'renaissance portrait landscape',
-  vam: 'royal design textile sculpture painting',
-  wikimedia: 'oil painting museum masterpiece',
-  openverse: 'fine art photography architecture',
-  'concept-art': 'anime digital illustration concept',
-  islamic: 'Islamic calligraphy arabesque manuscript',
-  impressionism: 'Impressionism Claude Monet Renoir Degas',
-  renaissance: 'Renaissance Leonardo Raphael Botticelli',
-  japanese: 'Ukiyo-e Hokusai Hiroshige woodblock',
-};
-
-async function withPhotographyFallback(
-  items: ArtMuseumPiece[],
-): Promise<ArtMuseumPiece[]> {
-  if (items.length > 0) return items;
-  const picsum = await fetchPicsumPhotography(1);
-  return [...getNlLensPhotography(), ...picsum.slice(0, 16)];
+function deduplicateArtworks(items: ArtMuseumPiece[]): ArtMuseumPiece[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (!item.imageUrl || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
 }
 
 export async function fetchUnifiedArtGallery(
-  category: ArtGalleryCategory,
-  searchQuery: string
+  category: string,
+  searchQuery = '',
+  page = 1,
 ): Promise<ArtMuseumPiece[]> {
-  const effectiveQuery =
-    searchQuery.trim() || CATEGORY_DEFAULT_QUERIES[category] || 'masterpiece';
+  const cacheKey = `${category}::${searchQuery.trim().toLowerCase()}::p${page}`;
+  const cached = galleryCache.get(cacheKey);
+  if (cached && cached.length > 0) {
+    return cached;
+  }
 
-  let rawResults: ArtMuseumPiece[] = [];
+  const q = searchQuery.trim();
 
-  if (category === 'chicago') {
-    rawResults = await fetchChicagoArtworks(effectiveQuery);
-  } else if (category === 'met') {
-    rawResults = await fetchMetMuseumArtworks(effectiveQuery);
-  } else if (category === 'cleveland') {
-    rawResults = await fetchClevelandArtworks(effectiveQuery);
-  } else if (category === 'vam') {
-    rawResults = await fetchVamMuseumArtworks(effectiveQuery);
-  } else if (category === 'wikimedia') {
-    rawResults = await fetchWikimediaCommonsArtworks(effectiveQuery);
-  } else if (category === 'openverse') {
-    rawResults = await fetchOpenverseArtworks(effectiveQuery);
-  } else if (category === 'concept-art') {
-    rawResults = await fetchConceptIllustrationArtworks();
-  } else {
-    const settled = await Promise.allSettled([
-      fetchChicagoArtworks(effectiveQuery),
-      fetchClevelandArtworks(effectiveQuery),
-      fetchMetMuseumArtworks(effectiveQuery),
-      fetchVamMuseumArtworks(effectiveQuery),
-      fetchWikimediaCommonsArtworks(effectiveQuery),
-      fetchOpenverseArtworks(effectiveQuery),
+  if (q.length > 0) {
+    const [chicago, cleveland, met, vam, wiki, openverse] = await Promise.all([
+      fetchChicagoArtworks(q, 32, page),
+      fetchClevelandArtworks(q, 32, page),
+      fetchMetMuseumArtworks(q, page),
+      fetchVamMuseumArtworks(q, page),
+      fetchWikimediaCommonsArtworks(q, page),
+      fetchOpenverseArtworks(q, page),
     ]);
+    const combined = deduplicateArtworks([
+      ...chicago,
+      ...cleveland,
+      ...met,
+      ...vam,
+      ...wiki,
+      ...openverse,
+    ]);
+    if (combined.length > 0) {
+      galleryCache.set(cacheKey, combined);
+    }
+    return combined;
+  }
 
-    for (const res of settled) {
-      if (res.status === 'fulfilled') {
-        rawResults.push(...res.value);
-      }
+  let results: ArtMuseumPiece[] = [];
+
+  switch (category) {
+    case 'paintings': {
+      const [chicago, cleveland, met, vam, wiki, openverse] = await Promise.all([
+        fetchChicagoArtworks('oil painting masterpiece impressionism', 36, page),
+        fetchClevelandArtworks('oil on canvas painting', 36, page),
+        fetchMetMuseumArtworks('Van Gogh Monet Rembrandt Vermeer Cezanne', page),
+        fetchVamMuseumArtworks('oil painting Turner Constable', page),
+        fetchWikimediaCommonsArtworks('Featured pictures of paintings', page),
+        fetchOpenverseArtworks('masterpiece oil painting museum', page),
+      ]);
+      results = [...chicago, ...cleveland, ...met, ...vam, ...wiki, ...openverse];
+      break;
+    }
+
+    case 'photography': {
+      const [chicagoPhotos, clevelandPhotos, wikiPhotos, openversePhotos, picsumPhotos] =
+        await Promise.all([
+          fetchChicagoArtworks('photograph landscape portrait', 32, page),
+          fetchClevelandArtworks('photograph', 32, page),
+          fetchWikimediaCommonsArtworks(
+            'Featured pictures of landscapes photography',
+            page,
+          ),
+          fetchOpenverseArtworks('fine art photography landscape', page),
+          fetchPicsumGalleryPieces(page, 30),
+        ]);
+      results = [
+        ...chicagoPhotos,
+        ...clevelandPhotos,
+        ...wikiPhotos,
+        ...openversePhotos,
+        ...picsumPhotos,
+      ];
+      break;
+    }
+
+    case 'picsum': {
+      const [p1, p2, wikiPhotos] = await Promise.all([
+        fetchPicsumGalleryPieces(page * 2 - 1, 30),
+        fetchPicsumGalleryPieces(page * 2, 30),
+        fetchWikimediaCommonsArtworks('Featured pictures of nature architecture', page),
+      ]);
+      results = [...p1, ...p2, ...wikiPhotos];
+      break;
+    }
+
+    case 'japanese': {
+      const [chicagoJp, clevelandJp, metJp, vamJp, wikiJp] = await Promise.all([
+        fetchChicagoArtworks('Hokusai Hiroshige ukiyo-e woodblock print', 32, page),
+        fetchClevelandArtworks('Japanese woodblock print Edo', 32, page),
+        fetchMetMuseumArtworks('Hokusai Hiroshige Utamaro Japanese print', page),
+        fetchVamMuseumArtworks('Japanese woodblock print ukiyo-e', page),
+        fetchWikimediaCommonsArtworks('Ukiyo-e Hokusai Hiroshige', page),
+      ]);
+      results = [...chicagoJp, ...clevelandJp, ...metJp, ...vamJp, ...wikiJp];
+      break;
+    }
+
+    case 'illustrations': {
+      const [concepts, chicagoPrints, vamIll] = await Promise.all([
+        fetchConceptIllustrationArtworks(page),
+        fetchChicagoArtworks('watercolor illustration drawing poster', 32, page),
+        fetchVamMuseumArtworks('illustration poster design', page),
+      ]);
+      results = [...concepts, ...chicagoPrints, ...vamIll];
+      break;
+    }
+
+    case 'sculpture': {
+      const [chicagoSculpt, clevelandSculpt, metSculpt, vamSculpt, wikiSculpt] =
+        await Promise.all([
+          fetchChicagoArtworks('marble bronze sculpture statue', 32, page),
+          fetchClevelandArtworks('sculpture marble bronze', 32, page),
+          fetchMetMuseumArtworks('Greek Roman Renaissance marble sculpture', page),
+          fetchVamMuseumArtworks('marble sculpture statue', page),
+          fetchWikimediaCommonsArtworks('Featured pictures of sculptures', page),
+        ]);
+      results = [
+        ...chicagoSculpt,
+        ...clevelandSculpt,
+        ...metSculpt,
+        ...vamSculpt,
+        ...wikiSculpt,
+      ];
+      break;
+    }
+
+    case 'manuscripts': {
+      const [clevelandMs, chicagoMs, metMs, vamMs, wikiMs] = await Promise.all([
+        fetchClevelandArtworks('illuminated manuscript calligraphy', 32, page),
+        fetchChicagoArtworks('manuscript calligraphy miniature', 32, page),
+        fetchMetMuseumArtworks('Islamic calligraphy illuminated manuscript', page),
+        fetchVamMuseumArtworks('illuminated manuscript calligraphy', page),
+        fetchWikimediaCommonsArtworks('Illuminated manuscripts calligraphy', page),
+      ]);
+      results = [...clevelandMs, ...chicagoMs, ...metMs, ...vamMs, ...wikiMs];
+      break;
+    }
+
+    case 'all':
+    default: {
+      const [chicago, cleveland, met, vam, wiki, openverse, picsum, concepts] =
+        await Promise.all([
+          fetchChicagoArtworks('impressionism masterpiece painting', 36, page),
+          fetchClevelandArtworks('painting masterpiece', 36, page),
+          fetchMetMuseumArtworks('Monet Van Gogh Vermeer', page),
+          fetchVamMuseumArtworks('painting renaissance baroque', page),
+          fetchWikimediaCommonsArtworks('Featured pictures of paintings', page),
+          fetchOpenverseArtworks('fine art painting museum', page),
+          fetchPicsumGalleryPieces(page, 24),
+          fetchConceptIllustrationArtworks(page),
+        ]);
+      results = [
+        ...chicago,
+        ...cleveland,
+        ...met,
+        ...vam,
+        ...wiki,
+        ...openverse,
+        ...picsum,
+        ...concepts,
+      ];
+      break;
     }
   }
 
-  const seen = new Set<string>();
-  const merged = rawResults.filter((item) => {
-    if (!item.imageUrl) return false;
-    const key = `${item.source}:${item.title.toLowerCase().trim()}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  if (merged.length === 0) {
-    return withPhotographyFallback([]);
+  const finalItems = deduplicateArtworks(results);
+  if (finalItems.length === 0) {
+    return fetchPicsumGalleryPieces(page, 30);
   }
-  return merged;
-}
-
-export async function fetchCuratedArtworksFeed(
-  category: ArtGalleryCategory = 'all',
-): Promise<ArtMuseumPiece[]> {
-  return fetchUnifiedArtGallery(category, '');
-}
-
-export async function searchGlobalArtworks(
-  query: string,
-): Promise<ArtMuseumPiece[]> {
-  return fetchUnifiedArtGallery('all', query);
+  galleryCache.set(cacheKey, finalItems);
+  return finalItems;
 }
 
 export function getMuseumBadgeLabel(source: MuseumSourceId): string {
   switch (source) {
     case 'chicago':
-      return 'Art Institute of Chicago';
+      return 'معهد شيكاغو للفنون (AIC)';
     case 'met':
-      return 'The Met Museum (NY)';
+      return 'متحف المتروبوليتان (The Met)';
     case 'cleveland':
-      return 'Cleveland Museum of Art';
+      return 'متحف كليفلاند للفنون (CMA)';
     case 'vam':
-      return 'Victoria & Albert Museum';
+      return 'متحف فيكتوريا وألبرت لندن (V&A)';
     case 'wikimedia':
-      return 'Wikimedia Commons';
+      return 'ويكيميديا كومنز التراثية';
     case 'openverse':
-      return 'Openverse CC';
+      return 'مؤسسة سميثسونيان و Openverse';
     case 'concept-art':
-      return 'Digital Concept Art';
+      return 'معرض رسوم الكونسبت والأنمي';
+    case 'picsum':
     default:
-      return 'Global Open Access Museum';
+      return 'أرشيف التصوير الفوتوغرافي العالمي';
   }
 }

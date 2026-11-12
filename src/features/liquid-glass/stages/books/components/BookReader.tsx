@@ -107,10 +107,11 @@ export const BookReader: React.FC<BookReaderProps> = ({
   }, [useEpubMode, epubUrl]);
 
   const activeEmbedUrl = useMemo(() => {
+    if (resolveResult?.directReadFormats?.embed) return resolveResult.directReadFormats.embed;
     if (fmts.embed) return fmts.embed;
     if (book.iaId || resolveResult?.iaId) {
       const id = resolveResult?.iaId || book.iaId;
-      return `https://archive.org/embed/${encodeURIComponent(id!)}?ui=embed`;
+      return `https://archive.org/embed/${encodeURIComponent(id!)}?ui=embed#page/n0/mode/2up`;
     }
     if (fmts.html) return fmts.html;
     if (fmts.pdf && !isPhone) {

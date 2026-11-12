@@ -1,4 +1,5 @@
 import { useMusicStore } from '../../music/store/musicStore'
+import { supabase, isSupabaseConfigured } from '../../../config/supabase'
 
 export type LocalMusicPlaylist = {
   localId: string
@@ -338,8 +339,7 @@ function scheduleLocalPush(supabase: SupabaseLike, userId: string) {
 export async function startMusicPlaylistsSync(userId: string) {
   if (currentStop) currentStop()
 
-  const { supabase } = await import('../../../config/supabase')
-  if (!supabase) {
+  if (!supabase || !isSupabaseConfigured) {
     console.debug('[sync] playlists: supabase not configured')
     return () => undefined
   }

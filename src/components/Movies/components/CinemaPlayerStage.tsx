@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import type { MutableRefObject } from "react";
+import { useEffect, useState, type MutableRefObject } from "react";
 import {
   X,
   Volume2,
@@ -136,6 +136,8 @@ interface CinemaPlayerStageProps {
   loadingSubtitleIdx: number | null;
   handleUploadLocalSubtitle: (file: File) => void;
   handleRefreshSubtitlesForLanguages: () => void;
+  animeAudioMode?: "sub" | "dub";
+  onChangeAnimeAudioMode?: (mode: "sub" | "dub") => void;
 }
 
 export function CinemaPlayerStage({
@@ -222,7 +224,17 @@ export function CinemaPlayerStage({
   loadingSubtitleIdx,
   handleUploadLocalSubtitle,
   handleRefreshSubtitlesForLanguages,
+  animeAudioMode,
+  onChangeAnimeAudioMode,
 }: CinemaPlayerStageProps) {
+  const [episodeJumpInput, setEpisodeJumpInput] = useState("");
+  const [episodeRangeStart, setEpisodeRangeStart] = useState(1);
+
+  useEffect(() => {
+    const bucketStart = Math.floor((Math.max(1, selectedEpisode) - 1) / 50) * 50 + 1;
+    setEpisodeRangeStart(bucketStart);
+  }, [selectedEpisode, selectedSeason]);
+
   return (
     <div
       className={`flex-shrink-0 flex flex-col gap-2 ${
@@ -319,8 +331,37 @@ export function CinemaPlayerStage({
                 </span>
               )}
 
-            {isWatchingInGallery && detailPlaySources.length > 1 && (
+            {isWatchingInGallery && detailPlaySources.length > 0 && (
               <div className="flex items-center gap-1 flex-wrap">
+                {animeAudioMode && onChangeAnimeAudioMode && (
+                  <div
+                    className="inline-flex items-center rounded-full bg-black/55 border border-white/25 p-0.5 me-1"
+                    dir="ltr"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onChangeAnimeAudioMode("sub")}
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition cursor-pointer ${
+                        animeAudioMode === "sub"
+                          ? "bg-sky-500 text-white shadow"
+                          : "text-white/75 hover:text-white"
+                      }`}
+                    >
+                      SUB مترجم
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onChangeAnimeAudioMode("dub")}
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition cursor-pointer ${
+                        animeAudioMode === "dub"
+                          ? "bg-amber-500 text-slate-950 shadow"
+                          : "text-white/75 hover:text-white"
+                      }`}
+                    >
+                      DUB مدبلج
+                    </button>
+                  </div>
+                )}
                 {detailPlaySources.map((srv, idx) => {
                   const isCurrent = idx === activeGalleryServerIdx;
                   return (
@@ -1213,45 +1254,124 @@ export function CinemaPlayerStage({
           </div>
 
           {!isFullSeasonEmbed && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
-              <span className="text-[11px] font-black uppercase tracking-wider text-white/65 pe-1 shrink-0">
-                {t("movies.meta.episodes")}
-              </span>
-              {loadingSeasonEpisodes && seasonEpisodes.length === 0 ? (
-                <span className="text-xs text-white/60 font-bold px-2">
-                  {t("movies.meta.loading")}
-                </span>
-              ) : (
-                seasonEpisodes.map((ep) => {
-                  const isEpActive =
-                    selectedEpisode === ep.episode_number;
-                  return (
-                    <button
-                      key={`ep-${selectedSeason}-${ep.episode_number}`}
-                      type="button"
-                      onClick={() => {
+            <div className="flex flex-col gap-2 pt-0.5">
+              {/* Episode Range Chunk Selector + Direct Episode Number Jump for Long Anime (50+ episodes) */}
+              {seasonEpisodes.length > 50 && (
+                <div className="flex items-center justify-between gap-2 flex-wrap border-b border-white/10 pb-2">
+                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-300/90 pe-1 shrink-0">
+                      Range:
+                    </span>
+                    {Array.from(
+                      { length: Math.ceil(seasonEpisodes.length / 50) },
+                      (_, chunkIdx) => {
+                        const start = chunkIdx * 50 + 1;
+                        const end = Math.min(
+                          seasonEpisodes.length,
+                          (chunkIdx + 1) * 50,
+                        );
+                        const isRangeActive = episodeRangeStart === start;
+                        return (
+                          <button
+                            key={`range-${start}-${end}`}
+                            type="button"
+                            onClick={() => setEpisodeRangeStart(start)}
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold shrink-0 cursor-pointer transition-all ${
+                              isRangeActive
+                                ? "bg-rose-600 text-white shadow"
+                                : "bg-white/8 text-white/75 hover:bg-white/15 hover:text-white"
+                            }`}
+                          >
+                            {start}–{end}
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const num = parseInt(episodeJumpInput.trim(), 10);
+                      if (!Number.isNaN(num) && num >= 1) {
+                        const clamped = Math.min(
+                          Math.max(1, num),
+                          Math.max(seasonEpisodes.length, num),
+                        );
                         setIsFullSeasonEmbed(false);
-                        setSelectedEpisode(ep.episode_number);
+                        setSelectedEpisode(clamped);
                         setDetailServersOpen(true);
                         startGalleryWatchSession();
-                      }}
-                      className={`lg-cinema-tv-ep-pill px-2.5 py-1 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all inline-flex items-center gap-1 ${
-                        isEpActive
-                          ? "lg-cinema-tv-ep-pill--active"
-                          : "text-white/80 hover:text-white"
-                      }`}
-                      title={ep.name}
+                        setEpisodeJumpInput("");
+                      }
+                    }}
+                    className="flex items-center gap-1 shrink-0"
+                  >
+                    <input
+                      type="number"
+                      min={1}
+                      max={Math.max(1500, seasonEpisodes.length)}
+                      value={episodeJumpInput}
+                      onChange={(e) => setEpisodeJumpInput(e.target.value)}
+                      placeholder="Ep #"
+                      className="w-16 px-2 py-0.5 rounded-full bg-black/50 border border-white/25 text-xs text-white placeholder:text-white/50 focus:outline-none focus:border-rose-400 text-center"
+                    />
+                    <button
+                      type="submit"
+                      className="px-2.5 py-0.5 rounded-full bg-rose-600/80 hover:bg-rose-600 text-[11px] font-extrabold text-white cursor-pointer transition"
                     >
-                      <span>E{ep.episode_number}</span>
-                      {isEpActive && ep.name && (
-                        <span className="max-w-[140px] truncate text-[11px] opacity-95 font-semibold ms-0.5">
-                          • {ep.name}
-                        </span>
-                      )}
+                      Go
                     </button>
-                  );
-                })
+                  </form>
+                </div>
               )}
+
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                <span className="text-[11px] font-black uppercase tracking-wider text-white/65 pe-1 shrink-0">
+                  {t("movies.meta.episodes")}
+                </span>
+                {loadingSeasonEpisodes && seasonEpisodes.length === 0 ? (
+                  <span className="text-xs text-white/60 font-bold px-2">
+                    {t("movies.meta.loading")}
+                  </span>
+                ) : (
+                  (seasonEpisodes.length > 50
+                    ? seasonEpisodes.slice(
+                        episodeRangeStart - 1,
+                        episodeRangeStart - 1 + 50,
+                      )
+                    : seasonEpisodes
+                  ).map((ep) => {
+                    const isEpActive =
+                      selectedEpisode === ep.episode_number;
+                    return (
+                      <button
+                        key={`ep-${selectedSeason}-${ep.episode_number}`}
+                        type="button"
+                        onClick={() => {
+                          setIsFullSeasonEmbed(false);
+                          setSelectedEpisode(ep.episode_number);
+                          setDetailServersOpen(true);
+                          startGalleryWatchSession();
+                        }}
+                        className={`lg-cinema-tv-ep-pill px-2.5 py-1 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all inline-flex items-center gap-1 ${
+                          isEpActive
+                            ? "lg-cinema-tv-ep-pill--active"
+                            : "text-white/80 hover:text-white"
+                        }`}
+                        title={ep.name}
+                      >
+                        <span>E{ep.episode_number}</span>
+                        {isEpActive && ep.name && (
+                          <span className="max-w-[140px] truncate text-[11px] opacity-95 font-semibold ms-0.5">
+                            • {ep.name}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
         </div>

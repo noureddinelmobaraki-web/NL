@@ -304,6 +304,7 @@ export const ANIME_SERVER_FRAME_ORIGINS: string[] = [
   'https://moviesapi.club',
   'https://vidsrc.icu',
   'https://autoembed.co',
+  'https://player.autoembed.cc',
   'https://player.twitch.tv',
   'https://slowroads.io',
   'https://hexgl.bkcore.com',

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Music2 } from 'lucide-react';
 import { LyricLine, Song } from '../../types';
 import { parseLRC } from '../lyrics/parseLRC';
 import { LyricsWindowContent } from '../lyrics/LyricsWindowContent';
@@ -172,7 +173,7 @@ export const LyricsDisplay = ({
             )
           ) : (
             <span style={{ color: 'var(--lyric-inactive-color)' }}>
-              {lyricsState.status === 'loading' ? '...' : '♪'}
+              {lyricsState.status === 'loading' ? '...' : <Music2 size={14} className="inline" />}
             </span>
           )}
         </p>

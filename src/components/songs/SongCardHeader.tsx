@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Pause, Share2 as ShareIcon, Check, Video } from 'lucide-react';
+import { Play, Pause, Share2 as ShareIcon, Check, Video, X } from 'lucide-react';
 import type { Song } from '../../types';
 import { songShareUrl } from '../../features/music/data/shareSong';
 import { useSongVideoStore } from '../../features/songVideo/songVideoStore';
@@ -72,7 +72,7 @@ export const SongCardHeader = ({
   // FIXED: Lyrics button — visible on ALL themes via solid purple bg + border.
   //   - 44x44px on mobile/tablet (iOS HIG minimum)
   //   - 32x32px on desktop (denser layout)
-  //   - Clear ♪ / ✕ icon instead of opaque ◉
+  //   - Clear vector icon instead of text glyph
   //   - aria-pressed for screen readers
   const lyricsBtnSize = isTouch ? 44 : 32;
   const lyricsBtnFontSize = isTouch ? 18 : 12;
@@ -249,7 +249,7 @@ export const SongCardHeader = ({
               }}
             >
               {isLyricsOpen ? (
-                '✕'
+                <X size={14} />
               ) : (
                 <img
                   src="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/lyrics.svg"

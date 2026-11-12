@@ -414,7 +414,7 @@ export const getBackdropSrc_static = (
   if (trailerKey) {
     return `https://i.ytimg.com/vi/${trailerKey}/hqdefault.jpg`;
   }
-  return "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bioBG_poster.webp";
+  return "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp";
 };
 
 export const getPosterSrc_static = (
@@ -433,7 +433,7 @@ export const getPosterSrc_static = (
   if (trailerKey) {
     return `https://i.ytimg.com/vi/${trailerKey}/hqdefault.jpg`;
   }
-  return "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bioBG_poster.webp";
+  return "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp";
 };
 
 export const MOVIE_ROW_SCROLL_STYLE: React.CSSProperties = {

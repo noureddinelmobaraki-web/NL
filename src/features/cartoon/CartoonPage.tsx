@@ -3,9 +3,10 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
  * CartoonPage — Spacetoon & Classic Arabic Cartoon Universe
+ * - Unified LiquidGlassBooksBackdrop matching the Books stage background
  * - 3D Rotating Celestial Planet Orbs inside Liquid Glass Bubbles (OrbsStage architecture)
  * - Unified Liquid Glass Cinema Experience (CinemaHeroBanner, MovieRow, MoviePosterCard, CinemaDetailModal, CinemaPlayerStage)
- * - Dedicated Spacetoon OST Stage with Poster Artwork & Audio-Only / Video Opening Mode Toggle
+ * - Dedicated Spacetoon OST Stage with Square Hover-to-Play Video Previews & Fullscreen Modal
  */
 
 import React, { useRef } from 'react';
@@ -20,6 +21,7 @@ import { ActorProfileModal } from '../../components/Movies/ActorProfileModal';
 import { CinemaHeaderDownloadButton } from '../cinemaDownload';
 import { GlassVectorIcon } from '../../components/shared/icons';
 import { useOverlayPageFrame } from '../../hooks/useOverlayPageFrame';
+import { LiquidGlassBooksBackdrop } from '../liquid-glass/shared/LiquidGlassBooksBackdrop';
 
 import { SpacetoonPlanetOrbsBar } from './components/planets/SpacetoonPlanetOrbsBar';
 import { SpacetoonOstGlassStage } from './components/ost/SpacetoonOstGlassStage';
@@ -42,15 +44,15 @@ export const CartoonPage: React.FC<CartoonPageProps> = ({ onClose }) => {
   const { planetCounts } = useSpacetoonPlanetCounts();
   const { filteredCatalog, seriesByNumericId, cinemaItems } = useCartoonCatalogView(
     activePlanet,
-    searchQuery
+    searchQuery,
   );
   const { controller, activeHeroItem } = useCartoonCinemaBridge(
     seriesByNumericId,
-    cinemaItems
+    cinemaItems,
   );
   const { actionAndAdventureRow, zomorodaAndComedyRow } = useCartoonPlanetRows(
     cinemaItems,
-    filteredCatalog
+    filteredCatalog,
   );
 
   useOverlayPageFrame({
@@ -61,22 +63,24 @@ export const CartoonPage: React.FC<CartoonPageProps> = ({ onClose }) => {
 
   const content = (
     <div
-      className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-white select-none overflow-hidden pointer-events-auto bg-[#05070e]"
+      className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-white select-none overflow-hidden pointer-events-auto bg-transparent"
       dir="rtl"
     >
+      <LiquidGlassBooksBackdrop dimmerOpacity={0.52} />
+
       <div
         className="nl-cinema-scroll absolute inset-0 z-20 h-full w-full overflow-y-auto overflow-x-hidden overscroll-contain pb-24 pointer-events-auto"
         style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
       >
         {/* Top Floating Liquid Glass Header */}
-        <header className="sticky top-0 z-40 px-4 sm:px-8 py-3 bg-slate-950/75 backdrop-blur-2xl border-b border-white/15 flex flex-wrap items-center justify-between gap-3">
+        <header className="sticky top-0 z-40 px-4 sm:px-8 py-3 bg-slate-950/45 backdrop-blur-2xl border-b border-white/15 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <GlassVectorIcon icon={Sparkles} theme="cosmic" size={18} active />
             <div>
-              <h1 className="text-sm sm:text-base font-black text-white">
+              <h1 className="text-sm sm:text-base font-black text-white drop-shadow">
                 مجرة سبيستون وكرتون الزمن الجميل
               </h1>
-              <p className="text-[11px] text-slate-300 hidden sm:block">
+              <p className="text-[11px] text-slate-200 hidden sm:block">
                 كواكب سبيستون ثلاثية الأبعاد · دبلجة مركز الزهرة الأصلي · شارات رشا رزق وطارق العربي طرقان
               </p>
             </div>
@@ -86,10 +90,10 @@ export const CartoonPage: React.FC<CartoonPageProps> = ({ onClose }) => {
             <button
               type="button"
               onClick={() => setActivePlanet(activePlanet === 'songs' ? 'all' : 'songs')}
-              className={`px-3 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
+              className={`px-3 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer backdrop-blur-md ${
                 activePlanet === 'songs'
                   ? 'bg-teal-400 text-slate-950 border-teal-200 shadow-lg'
-                  : 'bg-white/10 text-teal-200 border-white/20 hover:bg-white/15'
+                  : 'bg-white/12 text-teal-200 border-white/25 hover:bg-white/20'
               }`}
             >
               <Music size={14} />
@@ -99,20 +103,20 @@ export const CartoonPage: React.FC<CartoonPageProps> = ({ onClose }) => {
             <div className="relative w-44 sm:w-64">
               <Search
                 size={14}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
               />
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ابحث (كونان، القناص، ريمي، ماجد)..."
-                className="w-full pr-9 pl-7 py-2 rounded-2xl bg-white/10 border border-white/20 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:border-sky-400"
+                className="w-full pr-9 pl-7 py-2 rounded-2xl bg-white/12 border border-white/25 text-xs text-white placeholder:text-slate-300 focus:outline-none focus:border-sky-400 backdrop-blur-md"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white cursor-pointer"
                 >
                   <X size={13} />
                 </button>
@@ -126,7 +130,7 @@ export const CartoonPage: React.FC<CartoonPageProps> = ({ onClose }) => {
                 type="button"
                 onClick={onClose}
                 aria-label="إغلاق"
-                className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-slate-300 hover:text-white transition cursor-pointer shrink-0"
+                className="p-2 rounded-2xl bg-white/12 hover:bg-white/22 border border-white/25 text-slate-200 hover:text-white transition cursor-pointer shrink-0 backdrop-blur-md"
               >
                 <X size={16} />
               </button>
@@ -144,7 +148,9 @@ export const CartoonPage: React.FC<CartoonPageProps> = ({ onClose }) => {
         </div>
 
         {activePlanet === 'songs' ? (
-          <SpacetoonOstGlassStage />
+          <div className="px-4 sm:px-10 pt-4">
+            <SpacetoonOstGlassStage />
+          </div>
         ) : (
           <>
             {activeHeroItem && !searchQuery && (
@@ -204,7 +210,7 @@ export const CartoonPage: React.FC<CartoonPageProps> = ({ onClose }) => {
               )}
 
               <section className="pt-2">
-                <h2 className="text-lg sm:text-xl font-black text-white mb-4 px-2">
+                <h2 className="text-lg sm:text-xl font-black text-white mb-4 px-2 drop-shadow">
                   {searchQuery
                     ? `نتائج البحث عن "${searchQuery}"`
                     : 'جميع مسلسلات وأفلام الكرتون المدبلجة'}
@@ -228,7 +234,11 @@ export const CartoonPage: React.FC<CartoonPageProps> = ({ onClose }) => {
               </section>
             </div>
 
-            {activePlanet === 'all' && !searchQuery && <SpacetoonOstGlassStage />}
+            {activePlanet === 'all' && !searchQuery && (
+              <div className="px-4 sm:px-10 pt-8">
+                <SpacetoonOstGlassStage />
+              </div>
+            )}
           </>
         )}
       </div>

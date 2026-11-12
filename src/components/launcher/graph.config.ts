@@ -127,29 +127,9 @@ export const ROOTS: GraphNode[] = [
           },
           {
             id: "art",
-            label: "Art",
+            label: "Photos & Museums",
             icon: "lucide:palette",
-            action: { kind: "branch" },
-            children: [
-              {
-                id: "art-photos",
-                label: "Photos & Museums",
-                icon: "lucide:image",
-                action: { kind: "open", handler: "openArtPhotos" },
-              },
-              {
-                id: "art-drawings",
-                label: "Drawings & Studio",
-                icon: "lucide:brush",
-                action: { kind: "open", handler: "openArtDrawings" },
-              },
-              {
-                id: "art-avatars",
-                label: "Avatars Lab",
-                icon: "lucide:sparkles",
-                action: { kind: "open", handler: "openArtAvatars" },
-              },
-            ],
+            action: { kind: "open", handler: "openArtPhotos" },
           },
         ],
       },

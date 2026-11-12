@@ -213,21 +213,35 @@ export function computeGraph(
       listenNode?.children?.find((c) => c.id === 'audiobooks') ??
       readNode?.children?.find((c) => c.id === 'audiobooks');
     const booksLeaf = readNode?.children?.find((c) => c.id === 'books');
+    const magazinesLeaf = readNode?.children?.find((c) => c.id === 'magazines');
     const artNode = readNode?.children?.find((c) => c.id === 'art');
 
     if (activeBranchId === 'read') {
-      // Read opens Books, Audio Books (connected to BOTH Listen and Books), and Art (expandable into 3 sub-nodes)
-      const leafX = isMobile ? w * 0.5 : Math.min(w - pad - 40, Math.max(readPt.x, listenPt.x) + Math.min(w * 0.19, 220));
-      const baseMobileY = Math.min(h - 140, Math.max(listenPt.y, readPt.y) + Math.min(h * 0.18, 140));
+      // Read opens Books, Magazines, Audio Books (connected to BOTH Listen and Books), and Photos & Museums
+      const leafX = isMobile
+        ? w * 0.5
+        : Math.min(w - pad - 40, Math.max(readPt.x, listenPt.x) + Math.min(w * 0.19, 220));
+      const baseMobileY = Math.min(
+        h - 160,
+        Math.max(listenPt.y, readPt.y) + Math.min(h * 0.16, 128),
+      );
+      const rowGapMobile = Math.min(h * 0.11, 76);
+
+      const desktopCenterY = readPt.y + 12;
+      const desktopStep = Math.min(h * 0.115, 74);
+
       const audioPos: Pt = isMobile
-        ? clampPt({ x: w * 0.25, y: baseMobileY }, w, h, 44)
-        : clampPt({ x: leafX, y: (listenPt.y + readPt.y) * 0.5 - 32 }, w, h, pad);
+        ? clampPt({ x: w * 0.26, y: baseMobileY }, w, h, 44)
+        : clampPt({ x: leafX, y: desktopCenterY - desktopStep * 1.5 }, w, h, pad);
       const booksPos: Pt = isMobile
-        ? clampPt({ x: w * 0.75, y: baseMobileY }, w, h, 44)
-        : clampPt({ x: leafX, y: readPt.y + 24 }, w, h, pad);
+        ? clampPt({ x: w * 0.74, y: baseMobileY }, w, h, 44)
+        : clampPt({ x: leafX, y: desktopCenterY - desktopStep * 0.5 }, w, h, pad);
+      const magazinesPos: Pt = isMobile
+        ? clampPt({ x: w * 0.26, y: baseMobileY + rowGapMobile }, w, h, 44)
+        : clampPt({ x: leafX, y: desktopCenterY + desktopStep * 0.5 }, w, h, pad);
       const artPos: Pt = isMobile
-        ? clampPt({ x: w * 0.5, y: Math.min(h - 96, baseMobileY + 72) }, w, h, 44)
-        : clampPt({ x: leafX, y: readPt.y + 96 }, w, h, pad);
+        ? clampPt({ x: w * 0.74, y: baseMobileY + rowGapMobile }, w, h, 44)
+        : clampPt({ x: leafX, y: desktopCenterY + desktopStep * 1.5 }, w, h, pad);
 
       if (booksLeaf) {
         nodes.push({
@@ -245,6 +259,26 @@ export function computeGraph(
           fromId: 'read',
           toId: booksLeaf.id,
           path: curve(readPt, booksPos),
+          depth: 2,
+        });
+      }
+
+      if (magazinesLeaf) {
+        nodes.push({
+          node: magazinesLeaf,
+          level: 2,
+          pos: magazinesPos,
+          origin: readPt,
+          dimmed: !!activeSubBranchId,
+          active: false,
+          compact: false,
+          hasChildren: false,
+        });
+        edges.push({
+          id: `read->${magazinesLeaf.id}`,
+          fromId: 'read',
+          toId: magazinesLeaf.id,
+          path: curve(readPt, magazinesPos),
           depth: 2,
         });
       }
@@ -297,35 +331,6 @@ export function computeGraph(
           path: curve(readPt, artPos),
           depth: 2,
         });
-
-        if (isArtActive && artNode.children?.length) {
-          const subCount = artNode.children.length;
-          const spread3 = isMobile ? 116 : 68;
-          const R3 = isMobile ? Math.min(h * 0.16, 125) : Math.min(w * 0.17, 200);
-          const l3 = fan(artPos, subCount, base, spread3, R3).map((p) =>
-            clampPt(p, w, h, isMobile ? 42 : 76),
-          );
-          artNode.children.forEach((subLeaf, idx) => {
-            const subPos = l3[idx];
-            nodes.push({
-              node: subLeaf,
-              level: 3,
-              pos: subPos,
-              origin: artPos,
-              dimmed: false,
-              active: false,
-              compact: false,
-              hasChildren: false,
-            });
-            edges.push({
-              id: `${artNode.id}->${subLeaf.id}`,
-              fromId: artNode.id,
-              toId: subLeaf.id,
-              path: curve(artPos, subPos),
-              depth: 3,
-            });
-          });
-        }
       }
 
       return { nodes, edges };

@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStandaloneCinemaController } from '../../../components/Movies/hooks/useStandaloneCinemaController';
 import type {
   AnimeAudioMode,
@@ -19,7 +19,8 @@ import { resolveAnimeIdsAndEpisodes } from '../services/animeIdBridgeService';
 
 export function useAnimeCinemaBridge(
   animeList: AnimeItem[],
-  audioMode: AnimeAudioMode
+  audioMode: AnimeAudioMode,
+  onChangeAudioMode?: (mode: AnimeAudioMode) => void,
 ) {
   const [resolvedIdsByNumericId, setResolvedIdsByNumericId] = useState<
     Record<number, AnimeIdentifiers>
@@ -33,7 +34,7 @@ export function useAnimeCinemaBridge(
 
   const cinemaItems = useMemo(
     () => animeList.map((a, idx) => adaptAnimeItemToCinemaItem(a, idx)),
-    [animeList]
+    [animeList],
   );
 
   const customSourcesBuilder = useCallback(
@@ -56,10 +57,10 @@ export function useAnimeCinemaBridge(
         enrichedAnime,
         episode,
         audioMode,
-        effectiveSeason
+        effectiveSeason,
       );
     },
-    [animeMap, audioMode, resolvedIdsByNumericId]
+    [animeMap, audioMode, resolvedIdsByNumericId],
   );
 
   const customEpisodesBuilder = useCallback(
@@ -68,14 +69,14 @@ export function useAnimeCinemaBridge(
       if (!rawAnime) return [{ episode_number: 1, name: 'Episode 1' }];
       const payload = await resolveAnimeIdsAndEpisodes(rawAnime);
       setResolvedIdsByNumericId((prev) =>
-        prev[item.id] ? prev : { ...prev, [item.id]: payload.ids }
+        prev[item.id] ? prev : { ...prev, [item.id]: payload.ids },
       );
       return payload.episodes.map((ep) => ({
         episode_number: ep.number,
         name: ep.titleAr || ep.title || `Episode ${ep.number}`,
       }));
     },
-    [animeMap]
+    [animeMap],
   );
 
   const controller = useStandaloneCinemaController({
@@ -83,6 +84,17 @@ export function useAnimeCinemaBridge(
     customSourcesBuilder,
     customEpisodesBuilder,
   });
+
+  // Immediately reload active server when user switches SUB <-> DUB
+  const prevAudioModeRef = useRef<AnimeAudioMode>(audioMode);
+  useEffect(() => {
+    if (prevAudioModeRef.current !== audioMode) {
+      prevAudioModeRef.current = audioMode;
+      if (controller.isWatchingInGallery) {
+        controller.startGalleryWatchSession(0);
+      }
+    }
+  }, [audioMode, controller]);
 
   useEffect(() => {
     const selectedId = controller.selectedItemId;
@@ -109,8 +121,20 @@ export function useAnimeCinemaBridge(
     cinemaItems[0] ||
     null;
 
+  const enhancedController = useMemo(
+    () => ({
+      ...controller,
+      playerStageProps: {
+        ...controller.playerStageProps,
+        animeAudioMode: audioMode,
+        onChangeAnimeAudioMode: onChangeAudioMode,
+      },
+    }),
+    [controller, audioMode, onChangeAudioMode],
+  );
+
   return {
-    controller,
+    controller: enhancedController,
     cinemaItems,
     activeHeroItem,
   };

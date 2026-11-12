@@ -1,47 +1,50 @@
-/**
- * @license
- * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
- */
-
 import {
-  Palette,
-  Landmark,
   Sparkles,
+  Landmark,
+  Camera,
+  Palette,
   Compass,
-  Crown,
-  Sun,
+  BookOpen,
   Feather,
-  Wand2,
+  Sun,
 } from 'lucide-react';
-import type { GenreChipItem, OptionItem } from '../../liquid-glass/shared/GlassTopBar';
+import type {
+  GenreChipItem,
+  OptionItem,
+} from '../../liquid-glass/shared/GlassTopBar';
 
-export const ART_GENRES: readonly GenreChipItem[] = [
-  { id: 'all', label: 'روائع المتاحف العالمية', icon: Palette },
-  { id: 'chicago', label: 'معهد شيكاغو للفنون', icon: Landmark },
-  { id: 'met', label: 'متحف المتروبوليتان NY', icon: Crown },
-  { id: 'cleveland', label: 'متحف كليفلاند CMA', icon: Compass },
-  { id: 'vam', label: 'متحف فيكتوريا وألبرت V&A', icon: Landmark },
-  { id: 'wikimedia', label: 'ويكيميديا كومنز للفنون', icon: Sparkles },
-  { id: 'openverse', label: 'التصوير الفوتوغرافي Openverse', icon: Sun },
-  { id: 'concept-art', label: 'الفن الرقمي والأنمي Concept Art', icon: Wand2 },
-  { id: 'islamic', label: 'الفن والزخرفة الإسلامية', icon: Sparkles },
-  { id: 'impressionism', label: 'المدرسة الانطباعية', icon: Sun },
-  { id: 'renaissance', label: 'عصر النهضة الأوروبية', icon: Feather },
-  { id: 'avatars', label: 'مختبر الأفاتار SVG', icon: Wand2 },
+export const ART_GENRES: GenreChipItem[] = [
+  { id: 'all', label: 'الرئيسية للمعارض', icon: Sparkles },
+  { id: 'paintings', label: 'روائع اللوحات العالمية', icon: Palette },
+  { id: 'photography', label: 'التصوير الفوتوغرافي العالمي', icon: Camera },
+  { id: 'picsum', label: 'عدسات فوتوغرافية فائقة الدقة', icon: Sun },
+  { id: 'japanese', label: 'الفن الياباني (أوكييو-إي)', icon: Feather },
+  { id: 'illustrations', label: 'رسوم الكونسبت والأنمي', icon: Compass },
+  { id: 'sculpture', label: 'النحت والعمارة الكلاسيكية', icon: Landmark },
+  { id: 'manuscripts', label: 'المخطوطات والزخارف التاريخية', icon: BookOpen },
 ];
 
-export const MUSEUM_FILTER_OPTIONS: readonly OptionItem[] = [
-  { id: 'all', label: 'كل المتاحف (CC0)' },
-  { id: 'chicago', label: 'Art Institute of Chicago' },
-  { id: 'met', label: 'The Met Museum' },
-  { id: 'cleveland', label: 'Cleveland Museum' },
-  { id: 'vam', label: 'V&A Museum London' },
-  { id: 'wikimedia', label: 'Wikimedia Commons' },
-  { id: 'openverse', label: 'Openverse Photography' },
-  { id: 'concept-art', label: 'Digital Concept Art' },
+export const MUSEUM_FILTER_OPTIONS: OptionItem[] = [
+  { id: 'all', label: 'جميع المتاحف والعدسات العالمية' },
+  { id: 'chicago', label: 'معهد شيكاغو للفنون (AIC)' },
+  { id: 'met', label: 'متحف المتروبوليتان نيويورك (The Met)' },
+  { id: 'cleveland', label: 'متحف كليفلاند للفنون (CMA)' },
+  { id: 'vam', label: 'متحف فيكتوريا وألبرت لندن (V&A)' },
+  { id: 'wikimedia', label: 'ويكيميديا كومنز التراثية' },
+  { id: 'openverse', label: 'مؤسسة سميثسونيان و Openverse' },
+  { id: 'picsum', label: 'أرشيف التصوير الفوتوغرافي العالمي' },
+  { id: 'concept-art', label: 'معرض رسوم الكونسبت والأنمي' },
 ];
 
-export const SORT_OPTIONS: readonly OptionItem[] = [
-  { id: 'featured', label: 'الأعلى دقة وتميزاً' },
-  { id: 'title', label: 'الترتيب الأبجدي' },
+export const ERA_FILTER_OPTIONS: OptionItem[] = [
+  { id: 'all', label: 'جميع العصور الفنية' },
+  { id: 'classic', label: 'عصر النهضة والباروك' },
+  { id: 'modern', label: 'الانطباعية والفن الحديث' },
+  { id: 'contemporary', label: 'الفن المعاصر والرقمي' },
+];
+
+export const ART_SORT_OPTIONS: OptionItem[] = [
+  { id: 'featured', label: 'الأكثر شهرة وتميزاً' },
+  { id: 'title', label: 'الاسم (أ - ي)' },
+  { id: 'artist', label: 'حسب الفنان أو المصور' },
 ];

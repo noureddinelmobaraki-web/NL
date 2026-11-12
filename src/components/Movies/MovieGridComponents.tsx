@@ -1,12 +1,37 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Heart, Info, Play, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Info, Play, Star, X } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 import {
   getPosterSrc_static,
   MOVIE_ROW_SCROLL_STYLE,
+  TMDB_IMAGE_BASE,
   type CinemaItem,
   type Media,
 } from "./moviesDataClient";
+
+function buildDynamicSvgPosterFallback(title: string, year?: string | number): string {
+  const safeTitle = (title || "NL Cinema")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .slice(0, 32);
+  const safeYear = String(year || "");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#0f172a"/>
+        <stop offset="50%" stop-color="#1e1b4b"/>
+        <stop offset="100%" stop-color="#090d16"/>
+      </linearGradient>
+    </defs>
+    <rect width="400" height="600" fill="url(#g)"/>
+    <circle cx="200" cy="230" r="70" fill="rgba(56,189,248,0.12)" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+    <polygon points="185,200 185,260 235,230" fill="rgba(255,255,255,0.85)"/>
+    <text x="200" y="380" text-anchor="middle" fill="#ffffff" font-family="system-ui,sans-serif" font-weight="800" font-size="22">${safeTitle}</text>
+    <text x="200" y="420" text-anchor="middle" fill="#38bdf8" font-family="system-ui,sans-serif" font-weight="700" font-size="16">${safeYear}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
 
 export function NLLogo() {
   return (
@@ -123,7 +148,7 @@ export const MoviePosterCard = React.memo(
             title={t("movies.close")}
             className="absolute top-2 right-2 z-30 w-6 h-6 rounded-full bg-black/75 hover:bg-rose-600 border border-white/30 text-white flex items-center justify-center text-xs font-black cursor-pointer shadow"
           >
-            ×
+            <X size={12} strokeWidth={2.5} />
           </button>
         )}
 
@@ -141,14 +166,46 @@ export const MoviePosterCard = React.memo(
           alt={item.title}
           loading="lazy"
           decoding="async"
+          referrerPolicy="no-referrer"
           onError={(e) => {
             const el = e.currentTarget;
-            if (item.trailerKey && !el.dataset.fb) {
+            if (item.backdropPath && item.backdropPath !== posterUrl && !el.dataset.fb0) {
+              el.dataset.fb0 = "1";
+              el.src = item.backdropPath.startsWith("http")
+                ? item.backdropPath
+                : `${TMDB_IMAGE_BASE}/w780${item.backdropPath}`;
+            } else if (item.trailerKey && !el.dataset.fb) {
               el.dataset.fb = "1";
               el.src = `https://i.ytimg.com/vi/${item.trailerKey}/hqdefault.jpg`;
+            } else if (!el.dataset.fbTmdb && item.title) {
+              el.dataset.fbTmdb = "1";
+              const q = encodeURIComponent(item.originalTitle || item.title);
+              void fetch(
+                `https://api.themoviedb.org/3/search/multi?api_key=3fd2be6f0c70a2a598f084ddfb75487c&query=${q}&include_adult=false`,
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .then((data) => {
+                  const hit = (data?.results || []).find(
+                    (r: any) => r?.poster_path || r?.backdrop_path,
+                  );
+                  if (hit?.poster_path) {
+                    el.src = `${TMDB_IMAGE_BASE}/w500${hit.poster_path}`;
+                  } else if (hit?.backdrop_path) {
+                    el.src = `${TMDB_IMAGE_BASE}/w780${hit.backdrop_path}`;
+                  } else if (!el.dataset.fb2) {
+                    el.dataset.fb2 = "1";
+                    el.src = buildDynamicSvgPosterFallback(item.title, item.year);
+                  }
+                })
+                .catch(() => {
+                  if (!el.dataset.fb2) {
+                    el.dataset.fb2 = "1";
+                    el.src = buildDynamicSvgPosterFallback(item.title, item.year);
+                  }
+                });
             } else if (!el.dataset.fb2) {
               el.dataset.fb2 = "1";
-              el.src = "https://noureddinelmobaraki-web.github.io/nl-audio-cdn/bioBG_poster.webp";
+              el.src = buildDynamicSvgPosterFallback(item.title, item.year);
             }
           }}
           className={`w-full h-full object-cover select-none pointer-events-none transition-transform duration-500 ${

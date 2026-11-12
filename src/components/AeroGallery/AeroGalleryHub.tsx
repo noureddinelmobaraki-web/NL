@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m, type Variants } from 'framer-motion';
+import { X } from 'lucide-react';
 import type Hls from 'hls.js';
 import { ACCOUNTS_BG_HLS } from '../../config/media';
 import { audioManager } from '../../audio/audioManager';
@@ -194,7 +195,7 @@ export function AeroGalleryHub({
       <div className="nlag-scrim" aria-hidden />
 
       <button type="button" className="nlag-close" aria-label="Close gallery" onClick={onClose}>
-        ✕
+        <X size={16} />
       </button>
 
       <div className="nlag-stage">

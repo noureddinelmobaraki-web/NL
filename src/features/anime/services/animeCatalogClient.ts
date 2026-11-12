@@ -10,6 +10,10 @@
  */
 
 import type { AnimeItem, TraceMoeMatch } from '../types/anime.types';
+import {
+  fetchAniListBatchPostersByMalIds,
+  resolvePosterByTmdbOrMal,
+} from '../../cartoon/services/cartoonMetadataClient';
 
 const JIKAN_BASE = 'https://api.jikan.moe/v4';
 const ANILIST_GQL = 'https://graphql.anilist.co';
@@ -18,6 +22,65 @@ const TRACE_MOE_URL = 'https://api.trace.moe/search';
 
 const CATALOG_CACHE = new Map<string, { ts: number; data: AnimeItem[] }>();
 const CACHE_TTL_MS = 1000 * 60 * 15;
+
+export async function hydrateMissingAnimePosters(
+  items: AnimeItem[],
+): Promise<AnimeItem[]> {
+  if (items.length === 0) return items;
+
+  const malIdsToHydrate = items
+    .filter(
+      (item) =>
+        typeof item.malId === 'number' &&
+        item.malId > 0 &&
+        (!item.posterUrl ||
+          item.posterUrl.includes('myanimelist.net') ||
+          !item.bannerUrl ||
+          item.bannerUrl === item.posterUrl),
+    )
+    .map((item) => item.malId as number);
+
+  const batchMap =
+    malIdsToHydrate.length > 0
+      ? await fetchAniListBatchPostersByMalIds(malIdsToHydrate)
+      : new Map();
+
+  return Promise.all(
+    items.map(async (item) => {
+      const batchHit = item.malId ? batchMap.get(item.malId) : undefined;
+      if (batchHit?.posterUrl) {
+        return {
+          ...item,
+          posterUrl: batchHit.posterUrl,
+          bannerUrl:
+            batchHit.backdropUrl && batchHit.backdropUrl !== batchHit.posterUrl
+              ? batchHit.backdropUrl
+              : item.bannerUrl || batchHit.posterUrl,
+        };
+      }
+
+      if (!item.posterUrl) {
+        const resolved = await resolvePosterByTmdbOrMal({
+          cacheId: `anime-${item.id}`,
+          tmdbId: item.tmdbId,
+          malId: item.malId,
+          titleEn: item.title || item.titleRomaji,
+          isMovie: item.format === 'MOVIE',
+          fallbackPosterUrl:
+            'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx21-YCDoj1EkAxFn.jpg',
+          fallbackBackdropUrl: item.bannerUrl,
+        });
+        return {
+          ...item,
+          posterUrl: resolved.posterUrl,
+          bannerUrl: resolved.backdropUrl || item.bannerUrl || resolved.posterUrl,
+        };
+      }
+
+      return item;
+    }),
+  );
+}
 
 export const CURATED_ARABIC_DUB_ANIME: AnimeItem[] = [
   {

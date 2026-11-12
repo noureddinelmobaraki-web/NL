@@ -21,6 +21,7 @@ export interface BookItem {
   year?: string | number;
   language?: string;
   coverUrl?: string;
+  highResCoverUrl?: string;
   isbn?: string;
   md5?: string;
   iaId?: string;
@@ -56,6 +57,7 @@ export interface BookResolveResult {
   downloads?: number;
   directReadFormats: DirectReadFormats;
   mirrors: BookMirrorBranch[];
+  iiifPageUrls?: string[];
 }
 
 export interface AudiobookItem {

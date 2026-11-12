@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { useResolvedTheme } from '../hooks/useResolvedTheme';
 
 interface OsWindowProps {
@@ -85,7 +86,7 @@ export function OsWindow({
             title="Close"
             aria-label="Close window"
           >
-            ✕
+            <X size={14} />
           </button>
         )}
       </div>

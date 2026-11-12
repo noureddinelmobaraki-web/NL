@@ -19,7 +19,7 @@ export interface EpgNowNextProgram {
 
 export const IPTV_CATEGORIES: IptvCategoryMeta[] = [
   { id: 'all', label: 'All Countries', labelAr: 'حسب الدول' },
-  { id: 'morocco', label: 'Morocco 🇲🇦', labelAr: 'المغرب 🇲🇦', customUrl: 'https://iptv-org.github.io/iptv/countries/ma.m3u' },
+  { id: 'morocco', label: 'Morocco (MA)', labelAr: 'المغرب', customUrl: 'https://iptv-org.github.io/iptv/countries/ma.m3u' },
   { id: 'arabic', label: 'Arabic Channels', labelAr: 'القنوات العربية', customUrl: 'https://iptv-org.github.io/iptv/languages/ara.m3u' },
   { id: 'free-tv', label: 'Free-TV Curated HD', labelAr: 'قنوات عالمية مختارة', customUrl: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8' },
   { id: 'news', label: 'World News', labelAr: 'الأخبار العالمية' },

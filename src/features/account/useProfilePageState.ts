@@ -203,7 +203,7 @@ export function useProfilePageState() {
           setError('Failed to save name.');
         }
       } else {
-        setNotice('Saved ✓');
+        setNotice('Saved');
         if (!admin) {
           const next = new Date(Date.now() + 7 * 864e5);
           setNameLockUntil(next);
@@ -245,7 +245,7 @@ export function useProfilePageState() {
         .eq('id', user.id);
       if (updErr) throw new Error(updErr.message);
       setAvatarUrl(publicUrl);
-      setNotice('Image updated ✓');
+      setNotice('Image updated');
       void deleteOldAvatarIfOwned(prev);
     } catch (err) {
       setError(String((err as Error).message));
@@ -267,7 +267,7 @@ export function useProfilePageState() {
         .eq('id', user.id);
       if (updErr) throw new Error(updErr.message);
       setAvatarUrl(webpUrl);
-      setNotice('Image updated ✓');
+      setNotice('Image updated');
       setAvatarPickerOpen(false);
       void deleteOldAvatarIfOwned(prev);
     } catch (err) {

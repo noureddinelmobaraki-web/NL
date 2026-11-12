@@ -13,11 +13,11 @@ test.describe('Liquid Glass Books & Audiobooks Viewport Baselines', () => {
   for (const vp of VIEWPORTS) {
     test(`captures baseline at ${vp.name}px width`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto('./?view=liquidGlass');
-      await page.waitForLoadState('networkidle');
-      // Wait for liquid glass portal or stage to be present
-      const container = page.locator('body');
-      await expect(container).toBeVisible();
+      await page.goto('./?view=liquidGlass', { waitUntil: 'domcontentloaded' });
+      const portalRoot = page.locator('.lg-portal-root');
+      await expect(portalRoot).toBeVisible({ timeout: 20000 });
+      const stage = page.locator('.lg-stage');
+      await expect(stage).toBeVisible({ timeout: 20000 });
     });
   }
 });

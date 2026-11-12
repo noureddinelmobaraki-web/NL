@@ -13,6 +13,7 @@ import {
 import type { Session, User, SupabaseClient } from '@supabase/supabase-js'
 import AuthLauncher from '../features/account/AuthLauncher'
 import { startKeepAlive, stopKeepAlive } from '../config/supabaseKeepAlive'
+import { supabase } from '../config/supabase'
 
 // النافذتان تُحمّلان كسولًا — خارج الحزمة الأولية
 const AuthModal = lazy(() => import('../features/account/AuthModal'))
@@ -79,13 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthModalOpen, setAuthModalOpen] = useState(false)
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  // عميل supabase محمّل كسولًا ومخزّن في ref
+  // عميل supabase مخزّن في ref
   const clientRef = useRef<SupabaseClient | null>(null)
   const playlistsSyncStopRef = useRef<null | (() => void)>(null)
   const getClient = useCallback(async (): Promise<SupabaseClient | null> => {
     if (!isConfigured) return null
     if (clientRef.current) return clientRef.current
-    const { supabase } = await import('../config/supabase')
     clientRef.current = supabase
     return supabase
   }, [])

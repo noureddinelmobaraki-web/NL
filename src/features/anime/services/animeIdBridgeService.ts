@@ -148,7 +148,7 @@ export async function resolveAnimeIdsAndEpisodes(
 
   // Fallback episode generation if AniZip didn't return episodes
   if (resolvedEpisodes.length === 0) {
-    const total = Math.max(1, Math.min(200, anime.episodesCount || 12));
+    const total = Math.max(1, Math.min(1500, anime.episodesCount || 12));
     resolvedEpisodes = Array.from({ length: total }, (_, idx) => {
       const num = idx + 1;
       return {

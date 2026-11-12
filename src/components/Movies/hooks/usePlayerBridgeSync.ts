@@ -135,25 +135,24 @@ export function usePlayerBridgeSync({
   const activeIframeUrl = useMemo(() => {
     if (!activeGallerySource || !activeIframeUrlBase) return "";
     let rawUrl = activeIframeUrlBase;
-    try {
-      const u = new URL(rawUrl);
-      if (!u.searchParams.has("autoplay")) {
-        u.searchParams.set("autoplay", "1");
+    if (!(rawUrl.includes("&") && !rawUrl.includes("?"))) {
+      try {
+        const u = new URL(rawUrl);
+        if (!u.searchParams.has("autoplay")) {
+          u.searchParams.set("autoplay", "1");
+        }
+        if (
+          embedSeekStartAtSec !== null &&
+          embedSeekStartAtSec > 0 &&
+          playerRenderMode === "iframe" &&
+          activeGallerySource.capabilities?.startAt
+        ) {
+          u.searchParams.set("startAt", String(Math.floor(embedSeekStartAtSec)));
+        }
+        rawUrl = u.toString();
+      } catch {
+        // keep rawUrl
       }
-      if (!u.searchParams.has("autoPlay")) {
-        u.searchParams.set("autoPlay", "true");
-      }
-      if (
-        embedSeekStartAtSec !== null &&
-        embedSeekStartAtSec > 0 &&
-        playerRenderMode === "iframe" &&
-        activeGallerySource.capabilities?.startAt
-      ) {
-        u.searchParams.set("startAt", String(Math.floor(embedSeekStartAtSec)));
-      }
-      rawUrl = u.toString();
-    } catch {
-      // keep rawUrl
     }
     const srvCaps = activeGallerySource.capabilities as CinemaServerConfig["capabilities"];
     if (

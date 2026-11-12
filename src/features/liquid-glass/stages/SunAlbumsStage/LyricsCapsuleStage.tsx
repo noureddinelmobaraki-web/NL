@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Music } from 'lucide-react';
 import type { LiquidGlassAlbum, LiquidGlassTrack } from '../../albumsData';
 
 export const LyricsExpressiveIcon = React.memo(function LyricsExpressiveIcon() {
@@ -138,7 +138,7 @@ export const LyricsCapsuleStage: React.FC<LyricsCapsuleStageProps> = ({
               />
 
               <p key={`p_${activeLyricIndex}`} className="lg-ios26-line lg-ios26-line--primary">
-                {currentPrimaryLyric || '♪ ♪ ♪'}
+                {currentPrimaryLyric || <Music size={16} className="inline opacity-75" />}
               </p>
 
               {currentSecondaryLyric && (

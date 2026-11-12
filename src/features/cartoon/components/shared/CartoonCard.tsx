@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Play, Star, Tv } from 'lucide-react';
 import type { CartoonSeriesItem } from '../../types/cartoon.types';
 
@@ -18,7 +18,28 @@ export const CartoonCard: React.FC<CartoonCardProps> = ({
   onSelect,
   compact = false,
 }) => {
+  const [imgSrc, setImgSrc] = useState<string>(item.posterUrl);
   const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(item.posterUrl);
+    setImgError(false);
+  }, [item.posterUrl]);
+
+  const handleImageError = () => {
+    const archiveFallback = item.archiveIds?.[0]
+      ? `https://archive.org/services/img/${item.archiveIds[0]}`
+      : '';
+    if (archiveFallback && imgSrc !== archiveFallback) {
+      setImgSrc(archiveFallback);
+      return;
+    }
+    if (item.backdropUrl && imgSrc !== item.backdropUrl) {
+      setImgSrc(item.backdropUrl);
+      return;
+    }
+    setImgError(true);
+  };
 
   return (
     <div
@@ -34,14 +55,14 @@ export const CartoonCard: React.FC<CartoonCardProps> = ({
       className="group relative flex flex-col rounded-2xl overflow-hidden bg-slate-900/65 border border-white/10 hover:border-amber-400/50 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
     >
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-950">
-        {!imgError && item.posterUrl ? (
+        {!imgError && imgSrc ? (
           <img
-            src={item.posterUrl}
+            src={imgSrc}
             alt={item.titleAr}
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
-            onError={() => setImgError(true)}
+            onError={handleImageError}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (

@@ -1,33 +1,30 @@
 import React from 'react';
-import { Palette } from 'lucide-react';
+import { Sparkles, RefreshCw, PlusCircle } from 'lucide-react';
 import type { ArtMuseumPiece } from '../types/art.types';
 import { ArtGlassLargeCard } from './ArtGlassLargeCard';
-import { GlassVectorIcon } from '../../../components/shared/icons';
 
 export interface ArtGlassDualGridProps {
   items: ArtMuseumPiece[];
   loading: boolean;
-  onSelectArtwork: (item: ArtMuseumPiece) => void;
+  loadingMore?: boolean;
+  onSelect: (item: ArtMuseumPiece) => void;
+  onResetFilters: () => void;
+  onLoadMore?: () => void;
 }
 
 export const ArtGlassDualGrid: React.FC<ArtGlassDualGridProps> = ({
   items,
   loading,
-  onSelectArtwork,
+  loadingMore = false,
+  onSelect,
+  onResetFilters,
+  onLoadMore,
 }) => {
   if (loading) {
     return (
-      <div className="art-glass-dual-grid" aria-busy="true">
-        {Array.from({ length: 6 }).map((_, idx) => (
-          <div
-            key={idx}
-            className="art-glass-large-card animate-pulse pointer-events-none"
-          >
-            <div className="art-glass-large-card__frame bg-white/5" />
-            <div className="art-glass-large-card__caption">
-              <div className="h-4 w-2/3 rounded bg-white/10" />
-            </div>
-          </div>
+      <div className="art-dual-grid" dir="rtl">
+        {Array.from({ length: 12 }).map((_, idx) => (
+          <div key={idx} className="art-skeleton-card" />
         ))}
       </div>
     );
@@ -35,19 +32,54 @@ export const ArtGlassDualGrid: React.FC<ArtGlassDualGridProps> = ({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 px-4 text-center gap-3">
-        <GlassVectorIcon icon={Palette} theme="cosmic" size={28} />
-        <p className="text-base font-bold text-white">لم يتم العثور على لوحات مطابقة</p>
-        <p className="text-xs text-slate-400">جرب البحث بكلمات فنية أخرى أو تغيير القسم الفني.</p>
+      <div className="art-empty-state" dir="rtl">
+        <Sparkles className="w-10 h-10 text-sky-300" />
+        <h3 className="text-lg font-bold">لم يتم العثور على أعمال فنية مطابقة</h3>
+        <p className="text-sm text-white/80 max-w-md">
+          جرب البحث باسم فنان آخر (مثل Van Gogh أو Monet أو Hokusai) أو إعادة ضبط الفلاتر.
+        </p>
+        <button
+          type="button"
+          onClick={onResetFilters}
+          className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/35 text-sm font-semibold text-white transition cursor-pointer"
+        >
+          <RefreshCw className="w-4 h-4" />
+          <span>إعادة ضبط المعرض</span>
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="art-glass-dual-grid">
-      {items.map((item) => (
-        <ArtGlassLargeCard key={item.id} item={item} onSelect={onSelectArtwork} />
-      ))}
+    <div className="flex flex-col gap-6 pb-8" dir="rtl">
+      <div className="art-dual-grid">
+        {items.map((item) => (
+          <ArtGlassLargeCard key={item.id} item={item} onSelect={onSelect} />
+        ))}
+      </div>
+
+      {onLoadMore && (
+        <div className="flex justify-center pt-2 pb-6">
+          <button
+            type="button"
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2.5 px-7 py-3 rounded-full bg-white/20 hover:bg-white/30 border border-white/40 text-sm font-bold text-white shadow-lg backdrop-blur-xl transition disabled:opacity-50 cursor-pointer"
+          >
+            {loadingMore ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-sky-200" />
+                <span>جاري جلب المزيد من اللوحات والصور العالمية...</span>
+              </>
+            ) : (
+              <>
+                <PlusCircle className="w-4 h-4 text-sky-200" />
+                <span>عرض المزيد من اللوحات والصور العالمية</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

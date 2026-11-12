@@ -3,6 +3,7 @@
 // حتّى لا يتأثّر الإقلاع ولا ميزة الموسيقى.
 import { useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { supabase } from '../../config/supabase'
 import {
   diffFavorites,
   performInitialMerge,
@@ -72,10 +73,7 @@ export default function SongFavoritesSync() {
     }
 
     void (async () => {
-      const [{ supabase }, { useMusicStore }] = await Promise.all([
-        import('../../config/supabase'),
-        import('../../features/music/store/musicStore'),
-      ])
+      const { useMusicStore } = await import('../../features/music/store/musicStore')
       if (!active) return
       client = supabase as unknown as SupabaseClientWithChannel
 

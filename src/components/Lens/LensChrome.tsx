@@ -1,5 +1,6 @@
 import { useViewportSize } from '../../hooks/useViewportSize';
 import { useTranslation } from 'react-i18next';
+import { Volume2, VolumeX, X } from 'lucide-react';
 import { getLocalAssetUrl } from '../../constants/assets';
 
 export interface LensChromeProps {
@@ -119,7 +120,7 @@ export const LensChrome = ({
                 fontSize: '16px'
               }}
             >
-              {isMuted ? '🔇' : '🎵'}
+              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
           )}
 
@@ -142,7 +143,7 @@ export const LensChrome = ({
             }}
             aria-label="Close"
           >
-            ✕
+            <X size={16} />
           </button>
         </div>
       </div>

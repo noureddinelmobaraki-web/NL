@@ -174,10 +174,10 @@
    serif on every current platform. Do not add a Google Fonts <link>. */
 @font-face {
   font-family: 'Amiri';
-  src: url('/NL/fonts/Amiri-Regular.woff2') format('woff2');
-  font-weight: 400;
   font-style: normal;
+  font-weight: 400;
   font-display: swap;
+  src: local('Amiri'), local('Amiri Regular');
 }
 
 .nl-poem {

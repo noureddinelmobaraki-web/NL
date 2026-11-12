@@ -22,27 +22,40 @@ export type MagazineCategory =
   | 'fashion_culture'
   | 'music_press';
 
+const READABLE_ISSUE_GUARD =
+  ' AND mediatype:texts AND NOT collection:inlibrary AND NOT collection:printdisabled AND imagecount:[6 TO 650]';
+
 const MAGAZINE_COLLECTION_QUERIES: Record<MagazineCategory, string> = {
   featured:
-    'collection:(magazine_rack OR computermagazines OR gamemagazines) AND mediatype:texts',
+    'collection:(magazine_rack OR computermagazines OR gamemagazines)' +
+    READABLE_ISSUE_GUARD,
   arabic_retro:
-    '(title:(Majid OR ماجد OR العربي OR الهلال OR سبيستون OR باسم OR سمير OR المقتطف) OR (language:(ara OR Arabic) AND (magazine OR مجلة))) AND mediatype:texts',
+    '(identifier:(al-arabi-magazine* OR al-hilal-magazine* OR majid_magazine*) OR title:(Majid OR ماجد OR العربي OR الهلال OR سبيستون OR باسم OR سمير OR المقتطف) OR (language:(ara OR Arabic) AND (magazine OR مجلة)))' +
+    READABLE_ISSUE_GUARD,
   gaming_retro:
-    'collection:(gamemagazines OR nintendopower OR electronicgamingmonthly OR pcgamer OR retro-gamer) AND mediatype:texts',
+    'collection:(gamemagazines OR nintendopower OR electronicgamingmonthly OR pcgamer OR retro-gamer)' +
+    READABLE_ISSUE_GUARD,
   computing:
-    'collection:(computermagazines OR byte-magazine OR wired-magazine OR 2600magazine OR macworld OR amigaworld) AND mediatype:texts',
+    '(collection:(computermagazines OR byte-magazine OR wired-magazine OR 2600magazine OR macworld OR amigaworld) OR identifier:byte-magazine-*)' +
+    READABLE_ISSUE_GUARD,
   science_nature:
-    '(collection:(popularmechanics OR popularscience OR nationalgeographicmagazine OR scientificamerican) OR subject:("science magazine")) AND mediatype:texts',
+    '(collection:(popularmechanics OR popularscience OR nationalgeographicmagazine OR scientificamerican) OR subject:("science magazine"))' +
+    READABLE_ISSUE_GUARD,
   pulp_scifi:
-    'collection:(pulpmagazines OR ifmagazine OR galaxymagazine OR weirdtales OR astoundingstories) AND mediatype:texts',
+    'collection:(pulpmagazines OR ifmagazine OR galaxymagazine OR weirdtales OR astoundingstories)' +
+    READABLE_ISSUE_GUARD,
   photography_art:
-    '(collection:(lifemagazine OR aperturemagazine) OR (collection:magazine_rack AND subject:(photography OR art OR design))) AND mediatype:texts',
+    '(collection:(lifemagazine OR aperturemagazine) OR (collection:magazine_rack AND subject:(photography OR art OR design)))' +
+    READABLE_ISSUE_GUARD,
   comics_manga:
-    '(collection:(comics OR heavy-metal-magazine OR madmagazine) OR (collection:magazine_rack AND subject:(comics OR manga))) AND mediatype:texts',
+    '(collection:(comics OR heavy-metal-magazine OR madmagazine) OR identifier:heavy-metal-* OR (collection:magazine_rack AND subject:(comics OR manga)))' +
+    READABLE_ISSUE_GUARD,
   fashion_culture:
-    '(collection:magazine_rack AND (subject:(fashion OR culture OR lifestyle) OR title:(Vogue OR GQ OR Time OR New Yorker))) AND mediatype:texts',
+    '(collection:magazine_rack AND (subject:(fashion OR culture OR lifestyle) OR title:(Vogue OR GQ OR Time OR New Yorker)))' +
+    READABLE_ISSUE_GUARD,
   music_press:
-    '(collection:magazine_rack AND (subject:(music OR rock OR hiphop OR jazz) OR title:(Billboard OR Rolling Stone OR Spin OR Vibe))) AND mediatype:texts',
+    '(identifier:(the-source-* OR rolling-stone-*) OR (collection:magazine_rack AND (subject:(music OR rock OR hiphop OR jazz) OR title:(Billboard OR Rolling Stone OR Spin OR Vibe OR "The Source"))))' +
+    READABLE_ISSUE_GUARD,
 };
 
 const LANG_FILTER_MAP: Record<string, string> = {
@@ -148,6 +161,7 @@ export async function fetchMagazinesCatalog(params: {
           year: d.year || (d.date ? String(d.date).slice(0, 4) : undefined),
           language: rawLang ? String(rawLang).slice(0, 3).toUpperCase() : 'EN',
           coverUrl: `https://archive.org/services/img/${encodeURIComponent(id)}`,
+          highResCoverUrl: `https://archive.org/services/img/${encodeURIComponent(id)}/full/pct:200/0/default.jpg`,
           description: d.description
             ? stripHtml(
                 Array.isArray(d.description) ? d.description[0] : String(d.description),
@@ -159,7 +173,7 @@ export async function fetchMagazinesCatalog(params: {
           sources: ['Magazine Rack', 'Archive.org'],
           downloads: Number(d.downloads) || 0,
           directReadFormats: {
-            embed: `https://archive.org/embed/${encodeURIComponent(id)}?ui=embed&view=theater`,
+            embed: `https://archive.org/embed/${encodeURIComponent(id)}?ui=embed#page/n0/mode/2up`,
             preview: `https://archive.org/details/${encodeURIComponent(id)}`,
           },
         };
@@ -181,12 +195,17 @@ export async function resolveMagazineIssueDetails(
   magazine: BookItem,
 ): Promise<BookResolveResult> {
   const iaId = magazine.iaId || magazine.id.replace(/^mag-/, '');
-  const embedUrl = `https://archive.org/embed/${encodeURIComponent(iaId)}?ui=embed&view=theater`;
+  let embedUrl = `https://archive.org/embed/${encodeURIComponent(iaId)}?ui=embed#page/n0/mode/2up`;
   const detailsUrl = `https://archive.org/details/${encodeURIComponent(iaId)}`;
 
   let pdfUrl: string | undefined;
   let epubUrl: string | undefined;
   let txtUrl: string | undefined;
+  let hasJp2Zip = true;
+  const pageCount = Math.min(Number(magazine.pages) || 24, 120);
+  const iiifPageUrls: string[] = Array.from({ length: pageCount }, (_, i) =>
+    `https://iiif.archive.org/iiif/${encodeURIComponent(iaId)}$${i}/full/pct:100/0/default.jpg`,
+  );
 
   try {
     const res = await fetch(
@@ -198,6 +217,7 @@ export async function resolveMagazineIssueDetails(
       const pdfFile = files.find((f) => /\.pdf$/i.test(f?.name || ''));
       const epubFile = files.find((f) => /\.epub$/i.test(f?.name || ''));
       const txtFile = files.find((f) => /_djvu\.txt$|\.txt$/i.test(f?.name || ''));
+      hasJp2Zip = files.some((f) => /_(jp2|images)\.zip$|scandata\.xml$/i.test(f?.name || ''));
 
       if (pdfFile?.name) {
         pdfUrl = `https://archive.org/download/${encodeURIComponent(iaId)}/${encodeURIComponent(pdfFile.name)}`;
@@ -207,6 +227,9 @@ export async function resolveMagazineIssueDetails(
       }
       if (txtFile?.name) {
         txtUrl = `https://archive.org/download/${encodeURIComponent(iaId)}/${encodeURIComponent(txtFile.name)}`;
+      }
+      if (!hasJp2Zip && pdfUrl) {
+        embedUrl = pdfUrl;
       }
     }
   } catch {
@@ -266,5 +289,6 @@ export async function resolveMagazineIssueDetails(
       preview: detailsUrl,
     },
     mirrors,
+    iiifPageUrls,
   };
 }
