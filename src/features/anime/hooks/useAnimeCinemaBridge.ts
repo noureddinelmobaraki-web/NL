@@ -52,9 +52,36 @@ export function useAnimeCinemaBridge(
   }, [cinemaItems, extraCinemaItems]);
 
   const getRawAnime = useCallback(
-    (id: number): AnimeItem | undefined =>
-      animeMap.get(id) || extraAnimeMapRef?.current.get(id),
-    [animeMap, extraAnimeMapRef],
+    (id: number): AnimeItem | undefined => {
+      const fromMap = animeMap.get(id) || extraAnimeMapRef?.current.get(id);
+      if (fromMap) return fromMap;
+      const cItem = allCinemaItems.find((it) => it.id === id);
+      if (!cItem) return undefined;
+      const archiveId = cItem.archiveIds?.[0];
+      return {
+        id: archiveId ? `ia-jp-${archiveId}` : `cinema-anime-${cItem.id}`,
+        malId: cItem.malId,
+        anilistId: cItem.anilistId,
+        kitsuId: cItem.kitsuId,
+        tmdbId: cItem.tmdbId,
+        imdbId: cItem.imdbId,
+        title: cItem.title,
+        titleRomaji: cItem.title,
+        synopsis: cItem.overview,
+        posterUrl: cItem.posterPath,
+        bannerUrl: cItem.backdropPath || cItem.posterPath,
+        score: cItem.rating || 8.2,
+        year: Number(cItem.year) || 2024,
+        format: cItem.mediaType === 'movie' ? 'MOVIE' : 'TV',
+        status: 'FINISHED',
+        episodesCount: cItem.episodes || (cItem.mediaType === 'movie' ? 1 : 12),
+        genres: cItem.genreNames || ['Anime'],
+        studios: cItem.productionCompanies?.map((c) => c.name) || ['Japan Animation'],
+        hasSub: true,
+        hasDub: true,
+      };
+    },
+    [animeMap, extraAnimeMapRef, allCinemaItems],
   );
 
   const customSourcesBuilder = useCallback(
@@ -64,12 +91,12 @@ export function useAnimeCinemaBridge(
         const archiveId = rawAnime.id.replace(/^ia-jp-/, '');
         return [
           {
-            id: `ia-jp-embed-${archiveId}`,
+            id: `archive-ia-jp-${archiveId}`,
             label: 'Internet Archive Player',
             url: `https://archive.org/embed/${encodeURIComponent(archiveId)}?autoplay=1`,
             host: 'archive.org',
             origins: ['https://archive.org'],
-            timeoutMs: 12000,
+            timeoutMs: 10000,
           },
         ];
       }
@@ -85,8 +112,7 @@ export function useAnimeCinemaBridge(
             imdbId: resolvedIds.imdbId || rawAnime.imdbId,
           }
         : rawAnime;
-      const effectiveSeason =
-        resolvedIds?.resolvedSeason || season || 1;
+      const effectiveSeason = resolvedIds?.resolvedSeason || season || 1;
       return buildAnimeCinemaPlaySources(
         enrichedAnime,
         episode,
@@ -105,15 +131,13 @@ export function useAnimeCinemaBridge(
       }
       const payload = await resolveAnimeIdsAndEpisodes(rawAnime);
       resolvedIdsRef.current[item.id] = payload.ids;
-      setResolvedIdsByNumericId((prev) =>
-        prev[item.id] ? prev : { ...prev, [item.id]: payload.ids },
-      );
+      setResolvedIdsByNumericId((prev) => ({ ...prev, [item.id]: payload.ids }));
       return payload.episodes.map((ep) => ({
         episode_number: ep.number,
         name: ep.title || ep.titleAr || `Episode ${ep.number}`,
       }));
     },
-    [animeMap],
+    [getRawAnime],
   );
 
   const onBeforeStartWatchSession = useCallback(
@@ -122,16 +146,24 @@ export function useAnimeCinemaBridge(
       if (!rawAnime || rawAnime.id.startsWith('ia-jp-')) return;
       const existing =
         resolvedIdsRef.current[item.id] || resolvedIdsByNumericId[item.id];
-      const hasMal = Boolean(existing?.malId || rawAnime.malId);
-      const hasAnilist = Boolean(existing?.anilistId || rawAnime.anilistId);
-      if (hasMal && hasAnilist) return;
+      const hasAllIds = Boolean(
+        (existing?.tmdbId || rawAnime.tmdbId) &&
+          (existing?.imdbId || rawAnime.imdbId) &&
+          (existing?.malId || rawAnime.malId),
+      );
+      if (hasAllIds) return;
       try {
-        const payload = await resolveAnimeIdsAndEpisodes(rawAnime);
-        resolvedIdsRef.current[item.id] = payload.ids;
-        setResolvedIdsByNumericId((prev) => ({
-          ...prev,
-          [item.id]: payload.ids,
-        }));
+        const payload = await Promise.race([
+          resolveAnimeIdsAndEpisodes(rawAnime),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 4500)),
+        ]);
+        if (payload?.ids) {
+          resolvedIdsRef.current[item.id] = payload.ids;
+          setResolvedIdsByNumericId((prev) => ({
+            ...prev,
+            [item.id]: payload.ids,
+          }));
+        }
       } catch {
         // proceed with available IDs
       }
@@ -147,7 +179,6 @@ export function useAnimeCinemaBridge(
     customEpisodesBuilder,
   });
 
-  // Immediately reload active server when user switches SUB <-> DUB
   const prevAudioModeRef = useRef<AnimeAudioMode>(audioMode);
   useEffect(() => {
     if (prevAudioModeRef.current !== audioMode) {
@@ -160,13 +191,9 @@ export function useAnimeCinemaBridge(
 
   useEffect(() => {
     const selectedId = controller.selectedItemId;
-    if (
-      selectedId === null ||
-      resolvedIdsRef.current[selectedId] ||
-      resolvedIdsByNumericId[selectedId]
-    ) {
-      return;
-    }
+    if (selectedId === null) return;
+    const existing = resolvedIdsRef.current[selectedId];
+    if (existing?.tmdbId && existing?.imdbId) return;
     const rawAnime = getRawAnime(selectedId);
     if (!rawAnime || rawAnime.id.startsWith('ia-jp-')) return;
 
@@ -183,7 +210,7 @@ export function useAnimeCinemaBridge(
     return () => {
       cancelled = true;
     };
-  }, [controller.selectedItemId, getRawAnime, resolvedIdsByNumericId]);
+  }, [controller.selectedItemId, getRawAnime]);
 
   const activeHeroItem =
     controller.slideshowSlides[controller.heroTrailer.heroIndex] ||

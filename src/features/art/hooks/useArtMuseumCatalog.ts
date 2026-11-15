@@ -22,35 +22,65 @@ export function useArtMuseumCatalog(initialGenre = 'all') {
   const loadCatalog = useCallback(async (g: string, q: string) => {
     setLoading(true);
     setPage(1);
+    let initialItems: ArtMuseumPiece[] = [];
     try {
-      const results = await fetchUnifiedArtGallery(g, q, 1);
-      setRawItems(results);
+      initialItems = await fetchUnifiedArtGallery(g, q, 1);
+      setRawItems(initialItems);
     } catch {
-      const fallback = await fetchPicsumGalleryPieces(1, 12);
-      setRawItems(fallback);
+      initialItems = await fetchPicsumGalleryPieces(1, 14);
+      setRawItems(initialItems);
     } finally {
       setLoading(false);
+    }
+
+    // Immediately prefetch page 2 in the background so 24+ museum artworks are ready without manual loadMore
+    try {
+      const page2Items = await fetchUnifiedArtGallery(g, q, 2);
+      if (page2Items.length > 0) {
+        setRawItems((prev) => {
+          const seen = new Set(prev.map((p) => p.id));
+          const uniqueMore = page2Items.filter((p) => !seen.has(p.id));
+          return [...prev, ...uniqueMore];
+        });
+        setPage(2);
+      }
+    } catch {
+      // ignore background prefetch errors
     }
   }, []);
 
   const loadMore = useCallback(async () => {
     if (loadingMore) return;
-    const nextPage = page + 1;
+    let targetPage = page + 1;
     setLoadingMore(true);
     try {
-      const more = await fetchUnifiedArtGallery(genre, query, nextPage);
-      if (more.length > 0) {
+      const more = await fetchUnifiedArtGallery(genre, query, targetPage);
+      const seenSnapshot = new Set(rawItems.map((p) => p.id));
+      const uniqueBatch = more.filter((p) => !seenSnapshot.has(p.id));
+
+      // Chain next page automatically if deduplication yielded fewer than 8 new items
+      if (uniqueBatch.length < 8) {
+        targetPage += 1;
+        const extra = await fetchUnifiedArtGallery(genre, query, targetPage);
+        for (const item of extra) {
+          if (!seenSnapshot.has(item.id) && !uniqueBatch.some((u) => u.id === item.id)) {
+            uniqueBatch.push(item);
+          }
+        }
+      }
+
+      if (uniqueBatch.length > 0) {
         setRawItems((prev) => {
           const seen = new Set(prev.map((p) => p.id));
-          const uniqueMore = more.filter((p) => !seen.has(p.id));
-          return [...prev, ...uniqueMore];
+          const fresh = uniqueBatch.filter((p) => !seen.has(p.id));
+          return [...prev, ...fresh];
         });
-        setPage(nextPage);
       }
+      setPage(targetPage);
     } finally {
       setLoadingMore(false);
     }
-  }, [genre, loadingMore, page, query]);
+  }, [genre, loadingMore, page, query, rawItems]);
 
   useEffect(() => {
     const timer = window.setTimeout(

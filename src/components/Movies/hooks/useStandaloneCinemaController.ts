@@ -507,9 +507,60 @@ export function useStandaloneCinemaController({
     }
   }, [isCssFullscreen, playerRenderMode]);
 
+  const controlsHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const bumpControlsVisibility = useCallback(() => {
     setIsControlsVisible(true);
-  }, []);
+    if (controlsHideTimerRef.current) {
+      clearTimeout(controlsHideTimerRef.current);
+      controlsHideTimerRef.current = null;
+    }
+    if (
+      (isWatchingInGallery || heroTrailer.showHeroTrailer) &&
+      !subtitles.isSubtitleMenuOpen
+    ) {
+      controlsHideTimerRef.current = setTimeout(() => {
+        setIsControlsVisible(false);
+      }, 2500);
+    }
+  }, [
+    isWatchingInGallery,
+    heroTrailer.showHeroTrailer,
+    subtitles.isSubtitleMenuOpen,
+  ]);
+
+  useEffect(() => {
+    if (
+      (!isWatchingInGallery && !heroTrailer.showHeroTrailer) ||
+      subtitles.isSubtitleMenuOpen
+    ) {
+      setIsControlsVisible(true);
+      if (controlsHideTimerRef.current) {
+        clearTimeout(controlsHideTimerRef.current);
+        controlsHideTimerRef.current = null;
+      }
+      return undefined;
+    }
+    bumpControlsVisibility();
+    const onGlobalActivity = () => bumpControlsVisibility();
+    window.addEventListener("mousemove", onGlobalActivity, { passive: true });
+    window.addEventListener("touchstart", onGlobalActivity, { passive: true });
+    window.addEventListener("keydown", onGlobalActivity);
+    return () => {
+      window.removeEventListener("mousemove", onGlobalActivity);
+      window.removeEventListener("touchstart", onGlobalActivity);
+      window.removeEventListener("keydown", onGlobalActivity);
+      if (controlsHideTimerRef.current) {
+        clearTimeout(controlsHideTimerRef.current);
+        controlsHideTimerRef.current = null;
+      }
+    };
+  }, [
+    isWatchingInGallery,
+    heroTrailer.showHeroTrailer,
+    subtitles.isSubtitleMenuOpen,
+    bumpControlsVisibility,
+  ]);
 
   const handleToggleVideoPlay = useCallback(() => {
     const v = videoElementRef.current;

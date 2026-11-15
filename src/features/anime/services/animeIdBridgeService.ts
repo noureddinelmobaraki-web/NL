@@ -5,9 +5,10 @@
  * 3-Layer Anime Identifier Bridge & Episode Offset Resolver
  * Layer 1: AniZip API (https://api.ani.zip/mappings)
  * Layer 2: ARM Server API (https://arm.haglund.dev/api/v2/ids)
- * Layer 3: Fribb/anime-lists & anitorrent GitHub Raw JSON fallback
+ * Layer 3: Direct TMDB Search & External IDs API Fallback
  */
 
+import { PUBLIC_TMDB_KEY } from '../../../config/publicKeys';
 import type {
   AnimeEpisodeInfo,
   AnimeIdentifiers,
@@ -18,6 +19,7 @@ import type {
 const ANIZIP_BASE = 'https://api.ani.zip/mappings';
 const ARM_BASE = 'https://arm.haglund.dev/api/v2';
 const ANISKIP_BASE = 'https://api.aniskip.com/v2/skip-times';
+const TMDB_BASE = 'https://api.themoviedb.org/3';
 
 interface ResolvedBridgePayload {
   ids: AnimeIdentifiers;
@@ -29,9 +31,9 @@ const BRIDGE_CACHE = new Map<string, ResolvedBridgePayload>();
 export async function resolveAnimeIdsAndEpisodes(
   anime: AnimeItem,
 ): Promise<ResolvedBridgePayload> {
-  const cacheKey = `${anime.malId || 0}_${anime.anilistId || 0}_${anime.kitsuId || 0}`;
+  const cacheKey = `${anime.malId || 0}_${anime.anilistId || 0}_${anime.kitsuId || 0}_${anime.id}`;
   const cached = BRIDGE_CACHE.get(cacheKey);
-  if (cached) return cached;
+  if (cached && cached.ids.tmdbId && cached.ids.imdbId) return cached;
 
   const baseIds: AnimeIdentifiers = {
     malId: anime.malId,
@@ -45,7 +47,7 @@ export async function resolveAnimeIdsAndEpisodes(
 
   let resolvedEpisodes: AnimeEpisodeInfo[] = [];
 
-  // Layer 1: AniZip Mappings API (Fastest & includes episode thumbnails/titles/offsets)
+  // Layer 1: AniZip Mappings API
   try {
     const queryParam = anime.anilistId
       ? `anilist_id=${anime.anilistId}`
@@ -57,7 +59,7 @@ export async function resolveAnimeIdsAndEpisodes(
 
     if (queryParam) {
       const res = await fetch(`${ANIZIP_BASE}?${queryParam}`, {
-        signal: AbortSignal.timeout(6500),
+        signal: AbortSignal.timeout(4500),
       });
       if (res.ok) {
         const data = await res.json();
@@ -79,10 +81,7 @@ export async function resolveAnimeIdsAndEpisodes(
             const epNum = Number(ep?.episode || ep?.episodeNumber);
             if (!Number.isFinite(epNum) || epNum <= 0) continue;
             const titleEn =
-              ep?.title?.en ||
-              ep?.title?.['x-jat'] ||
-              ep?.title?.ja ||
-              `Episode ${epNum}`;
+              ep?.title?.en || ep?.title?.['x-jat'] || ep?.title?.ja || `Episode ${epNum}`;
             const sNum = Number(ep?.seasonNumber) || 1;
             const absNum = Number(ep?.absoluteEpisodeNumber) || epNum;
             parsedEps.push({
@@ -104,10 +103,7 @@ export async function resolveAnimeIdsAndEpisodes(
             if (firstEp.seasonNumber && firstEp.seasonNumber > 0) {
               baseIds.resolvedSeason = firstEp.seasonNumber;
             }
-            if (
-              firstEp.imdbEpisodeNumber &&
-              firstEp.imdbEpisodeNumber > firstEp.number
-            ) {
+            if (firstEp.imdbEpisodeNumber && firstEp.imdbEpisodeNumber > firstEp.number) {
               baseIds.episodeOffset = firstEp.imdbEpisodeNumber - firstEp.number;
             }
           }
@@ -118,7 +114,7 @@ export async function resolveAnimeIdsAndEpisodes(
     // Proceed to Layer 2
   }
 
-  // Layer 2: ARM Haglund API fallback if IMDb/TMDB/AniList still missing
+  // Layer 2: ARM Haglund API fallback
   if (!baseIds.imdbId || !baseIds.tmdbId || !baseIds.anilistId) {
     try {
       const source = baseIds.malId
@@ -128,7 +124,7 @@ export async function resolveAnimeIdsAndEpisodes(
           : '';
       if (source) {
         const res = await fetch(`${ARM_BASE}/ids?${source}`, {
-          signal: AbortSignal.timeout(4500),
+          signal: AbortSignal.timeout(3500),
         });
         if (res.ok) {
           const arm = await res.json();
@@ -142,11 +138,56 @@ export async function resolveAnimeIdsAndEpisodes(
         }
       }
     } catch {
-      // Proceed to fallback episode generation
+      // Proceed to Layer 3
     }
   }
 
-  // Fallback episode generation if AniZip didn't return episodes
+  // Layer 3: Direct TMDB Search & External IDs Fallback
+  const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || PUBLIC_TMDB_KEY;
+  const mediaKind = anime.format === 'MOVIE' ? 'movie' : 'tv';
+  if (tmdbKey && !baseIds.tmdbId) {
+    const searchTitle = (anime.title || anime.titleRomaji || '').replace(/\([^)]*\)/g, '').trim();
+    if (searchTitle) {
+      try {
+        const searchUrl = `${TMDB_BASE}/search/${mediaKind}?api_key=${tmdbKey}&query=${encodeURIComponent(searchTitle)}`;
+        const res = await fetch(searchUrl, { signal: AbortSignal.timeout(3500) });
+        if (res.ok) {
+          const data = await res.json();
+          const results: any[] = Array.isArray(data?.results) ? data.results : [];
+          const picked =
+            results.find(
+              (r) =>
+                Array.isArray(r.genre_ids) &&
+                r.genre_ids.includes(16) &&
+                (!anime.year || String(r.first_air_date || r.release_date || '').startsWith(String(anime.year))),
+            ) ||
+            results.find((r) => Array.isArray(r.genre_ids) && r.genre_ids.includes(16)) ||
+            results[0];
+          if (picked?.id) {
+            baseIds.tmdbId = Number(picked.id);
+          }
+        }
+      } catch {
+        // ignore search timeout
+      }
+    }
+  }
+
+  if (tmdbKey && baseIds.tmdbId && !baseIds.imdbId) {
+    try {
+      const extUrl = `${TMDB_BASE}/${mediaKind}/${baseIds.tmdbId}/external_ids?api_key=${tmdbKey}`;
+      const res = await fetch(extUrl, { signal: AbortSignal.timeout(3000) });
+      if (res.ok) {
+        const ext = await res.json();
+        if (ext?.imdb_id && String(ext.imdb_id).startsWith('tt')) {
+          baseIds.imdbId = String(ext.imdb_id);
+        }
+      }
+    } catch {
+      // ignore external_ids timeout
+    }
+  }
+
   if (resolvedEpisodes.length === 0) {
     const total = Math.max(1, Math.min(1500, anime.episodesCount || 12));
     resolvedEpisodes = Array.from({ length: total }, (_, idx) => {
@@ -166,18 +207,12 @@ export async function resolveAnimeIdsAndEpisodes(
     });
   }
 
-  const payload: ResolvedBridgePayload = {
-    ids: baseIds,
-    episodes: resolvedEpisodes,
-  };
+  const payload: ResolvedBridgePayload = { ids: baseIds, episodes: resolvedEpisodes };
   BRIDGE_CACHE.set(cacheKey, payload);
   return payload;
 }
 
-export function computeResolvedImdbEpisode(
-  courEpisode: number,
-  episodeOffset = 0,
-): number {
+export function computeResolvedImdbEpisode(courEpisode: number, episodeOffset = 0): number {
   return Math.max(1, courEpisode + (Number(episodeOffset) || 0));
 }
 
@@ -197,9 +232,7 @@ export async function fetchAniSkipTimes(
         const skipType = item?.skipType === 'ed' ? 'ed' : 'op';
         const start = Number(item?.interval?.startTime);
         const end = Number(item?.interval?.endTime);
-        if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-          return null;
-        }
+        if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
         return {
           type: skipType,
           startTime: start,

@@ -72,7 +72,13 @@ export function useCartoonCinemaBridge(
     const selectedId = controller.selectedItemId;
     if (selectedId === null) return;
     const series = seriesByNumericId.get(selectedId);
-    if (!series || resolvedStreamsRef.current[series.id]) return;
+    if (!series) return;
+    if (resolvedStreamsRef.current[series.id]) {
+      setResolvedStreamsByShowId((prev) =>
+        prev[series.id] ? prev : { ...prev, [series.id]: resolvedStreamsRef.current[series.id] }
+      );
+      return;
+    }
 
     let cancelled = false;
     void resolveCartoonEpisodes(series).then((eps) => {
@@ -84,7 +90,7 @@ export function useCartoonCinemaBridge(
     return () => {
       cancelled = true;
     };
-  }, [controller.selectedItemId, seriesByNumericId, resolvedStreamsByShowId]);
+  }, [controller.selectedItemId, seriesByNumericId]);
 
   const activeHeroItem =
     controller.slideshowSlides[controller.heroTrailer.heroIndex] ||

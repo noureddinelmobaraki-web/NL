@@ -140,20 +140,18 @@ export function useStreamExtractor({
         void v.play().catch(() => {});
       }
       const directTimer = window.setTimeout(() => {
-        loadedCurrentAttemptRef.current = true;
         setIsPlayerLoading(false);
       }, 1500);
       return () => window.clearTimeout(directTimer);
     }
 
-    // Keep interactive embed servers (VidLink, VidPlus, VidSrc, Videasy, 2Embed, Archive.org, YouTube)
+    // Keep interactive embed servers (Server 7, VidLink, VidPlus, VidSrc, Videasy, 2Embed, Archive.org, YouTube)
     // mounted directly in iframe mode so the iframe never unmounts mid-load.
     if (playerRenderMode !== "iframe") {
       setPlayerRenderMode("iframe");
     }
 
     const safetyTimer = window.setTimeout(() => {
-      loadedCurrentAttemptRef.current = true;
       setIsPlayerLoading(false);
     }, 2400);
 

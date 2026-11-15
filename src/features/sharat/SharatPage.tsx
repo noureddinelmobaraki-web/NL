@@ -44,7 +44,11 @@ export const SharatPage: React.FC = () => {
   const filteredTracks = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return catalogTracks.filter((track) => {
-      if (artistFilter !== 'all' && track.artistGroupId !== artistFilter) {
+      if (artistFilter === 'top_classics') {
+        if ((track.priorityRank ?? 500) > 25 && track.artistGroupId !== 'top_classics') {
+          return false;
+        }
+      } else if (artistFilter !== 'all' && track.artistGroupId !== artistFilter) {
         return false;
       }
       if (!q) return true;

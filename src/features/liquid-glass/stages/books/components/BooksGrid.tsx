@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { BookOpen, RefreshCw } from 'lucide-react';
 import type { AudiobookItem, BookItem } from '../../../services/types';
 import { getInstantAudiobookMatchForBook } from '../../../booksAudioService';
@@ -38,6 +38,35 @@ export const BooksGrid: React.FC<BooksGridProps> = ({
   onLoadMore,
   onResetFilters,
 }) => {
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (
+      !sentinel ||
+      showSavedOnly ||
+      loading ||
+      loadingMore ||
+      books.length < 12 ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
+      return;
+    }
+
+    const scrollRoot = sentinel.closest('.lg-books-catalog-scroll');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !loadingMore && !loading) {
+          onLoadMore();
+        }
+      },
+      { root: scrollRoot || null, rootMargin: '700px 0px' },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [books.length, loading, loadingMore, onLoadMore, showSavedOnly]);
+
   if (loading) {
     return (
       <div className="lg-books-grid">
@@ -103,6 +132,8 @@ export const BooksGrid: React.FC<BooksGridProps> = ({
         })}
       </div>
 
+      <div ref={sentinelRef} className="h-4 w-full" />
+
       {!showSavedOnly && books.length >= 12 && (
         <div className="lg-load-more-row">
           <button
@@ -119,3 +150,4 @@ export const BooksGrid: React.FC<BooksGridProps> = ({
     </>
   );
 };
+

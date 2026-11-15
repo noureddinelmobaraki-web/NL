@@ -205,7 +205,7 @@ export function useGalleryPlayerControls({
       controlsHideTimerRef.current = null;
     }
     const shouldAutoHide =
-      isWatchingInGallery &&
+      (isWatchingInGallery || showHeroTrailer) &&
       !isSubtitleMenuOpen &&
       (playerRenderMode !== "direct" || !isVideoPaused);
     if (shouldAutoHide) {
@@ -215,6 +215,7 @@ export function useGalleryPlayerControls({
     }
   }, [
     isWatchingInGallery,
+    showHeroTrailer,
     isSubtitleMenuOpen,
     playerRenderMode,
     isVideoPaused,
@@ -223,7 +224,7 @@ export function useGalleryPlayerControls({
   ]);
 
   useEffect(() => {
-    if (!isWatchingInGallery || isSubtitleMenuOpen) {
+    if ((!isWatchingInGallery && !showHeroTrailer) || isSubtitleMenuOpen) {
       setIsControlsVisible(true);
       if (controlsHideTimerRef.current) {
         clearTimeout(controlsHideTimerRef.current);
@@ -247,6 +248,7 @@ export function useGalleryPlayerControls({
     };
   }, [
     isWatchingInGallery,
+    showHeroTrailer,
     isSubtitleMenuOpen,
     playerRenderMode,
     isVideoPaused,

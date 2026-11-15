@@ -1,5 +1,6 @@
 export type SharatArtistGroupId =
   | 'all'
+  | 'top_classics'
   | 'rasha'
   | 'tarek'
   | 'hala'
@@ -9,7 +10,9 @@ export type SharatArtistGroupId =
   | 'assem'
   | 'bessam'
   | 'samir'
-  | 'tala_mohammed';
+  | 'tala_mohammed'
+  | 'zaman_jamil'
+  | 'mbc3_cn_nick';
 
 export interface SharatTrack {
   id: string;
@@ -29,4 +32,11 @@ export interface SharatTrack {
   backupYoutubeId?: string;
   /** Direct permanent download URL */
   downloadUrl: string;
+  /** Lower rank = pinned higher at the top of the Sharat page (1..25 = Top Iconic Classics) */
+  priorityRank?: number;
+  /** True ONLY if archiveUrl points to an exact verified stream for this specific track */
+  hasExactArchiveStream?: boolean;
+  malId?: number;
+  tmdbId?: number;
 }
+

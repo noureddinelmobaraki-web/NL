@@ -90,6 +90,9 @@ export function buildSources(item: {
   }).filter((src) => Boolean(src.url));
 
   const titleKey = item.id ? `${item.mediaType}_${item.id}` : undefined;
+  if (built.length > 1 && built[0]?.id === 'server-7') {
+    return [built[0], ...sortSourcesBySpeed(built.slice(1), titleKey)];
+  }
   return sortSourcesBySpeed(built, titleKey);
 }
 

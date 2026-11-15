@@ -109,14 +109,25 @@ export function buildCartoonPlaySourcesSync(
     const isDirectMp4 =
       opt.kind === 'archive-primary' || opt.kind === 'archive-mirror';
     const isArchiveHost = opt.url.includes('archive.org');
+    const isServer7 = opt.id === 'server-7';
     sources.push({
-      id: `${opt.id}-${series.id}-ep${epNum}`,
+      id: isServer7 ? 'server-7' : `${opt.id}-${series.id}-ep${epNum}`,
       label: opt.label,
-      host: isArchiveHost ? 'archive.org' : 'spacetoon-source',
+      host: isArchiveHost
+        ? 'archive.org'
+        : isServer7
+          ? 'streamimdb.ru'
+          : 'spacetoon-source',
       url: opt.url,
       isDirect: isDirectMp4,
-      origins: ['https://archive.org', 'https://vidlink.pro', 'https://player.videasy.net'],
-      timeoutMs: 12000,
+      origins: [
+        'https://archive.org',
+        'https://streamimdb.ru',
+        'https://player.imdb.su',
+        'https://vidlink.pro',
+        'https://player.videasy.net',
+      ],
+      timeoutMs: 10000,
     });
   });
 

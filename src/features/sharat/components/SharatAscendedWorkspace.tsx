@@ -39,14 +39,16 @@ export const SharatAscendedWorkspace: React.FC<SharatAscendedWorkspaceProps> = (
   onNext,
   onPrev,
 }) => {
-  const [winningSource, setWinningSource] = useState<WinningSource>('archive');
+  const [winningSource, setWinningSource] = useState<WinningSource>(
+    track.hasExactArchiveStream ? 'archive' : 'youtube',
+  );
   const [activeArchiveSrc, setActiveArchiveSrc] = useState<string>(track.archiveUrl);
   const [triedFallbackArchive, setTriedFallbackArchive] = useState(false);
   const [activeYoutubeId, setActiveYoutubeId] = useState<string>(track.youtubeId);
   const mediaRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    setWinningSource('archive');
+    setWinningSource(track.hasExactArchiveStream ? 'archive' : 'youtube');
     setActiveArchiveSrc(track.archiveUrl);
     setTriedFallbackArchive(false);
     setActiveYoutubeId(track.youtubeId);

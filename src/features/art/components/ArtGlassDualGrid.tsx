@@ -3,7 +3,9 @@ import { Sparkles, RefreshCw, PlusCircle } from 'lucide-react';
 import type { ArtMuseumPiece } from '../types/art.types';
 import { ArtGlassLargeCard } from './ArtGlassLargeCard';
 
-const PAGE_SIZE = 12;
+const INITIAL_VISIBLE = 14;
+const STEP_SIZE = 10;
+const PREFETCH_THRESHOLD = 12;
 
 export interface ArtGlassDualGridProps {
   items: ArtMuseumPiece[];
@@ -22,16 +24,33 @@ export const ArtGlassDualGrid: React.FC<ArtGlassDualGridProps> = ({
   onResetFilters,
   onLoadMore,
 }) => {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
+    if (items.length === 0) {
+      setVisibleCount(INITIAL_VISIBLE);
+    }
   }, [items.length === 0]);
 
+  // Proactive background prefetch whenever remaining unseen items drop to <= PREFETCH_THRESHOLD
+  useEffect(() => {
+    if (
+      onLoadMore &&
+      !loading &&
+      !loadingMore &&
+      items.length > 0 &&
+      items.length - visibleCount <= PREFETCH_THRESHOLD
+    ) {
+      onLoadMore();
+    }
+  }, [visibleCount, items.length, loading, loadingMore, onLoadMore]);
+
+  // Bind IntersectionObserver to the actual scroll container (.lg-books-catalog-scroll)
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
+    const scrollRoot = el.closest('.lg-books-catalog-scroll');
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -39,7 +58,7 @@ export const ArtGlassDualGrid: React.FC<ArtGlassDualGridProps> = ({
         if (!entry?.isIntersecting) return;
         setVisibleCount((prev) => {
           if (prev < items.length) {
-            return prev + PAGE_SIZE;
+            return prev + STEP_SIZE;
           }
           if (onLoadMore && !loadingMore) {
             onLoadMore();
@@ -47,17 +66,36 @@ export const ArtGlassDualGrid: React.FC<ArtGlassDualGridProps> = ({
           return prev;
         });
       },
-      { rootMargin: '600px 0px' },
+      { root: scrollRoot || null, rootMargin: '900px 0px' },
     );
 
     observer.observe(el);
     return () => observer.disconnect();
   }, [items.length, loadingMore, onLoadMore]);
 
+  // Passive scroll listener on .lg-books-catalog-scroll for fast wheel/touch scrolling
+  useEffect(() => {
+    const el = sentinelRef.current;
+    const scrollContainer = el?.closest('.lg-books-catalog-scroll') as HTMLElement | null;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      if (
+        scrollContainer.scrollTop + scrollContainer.clientHeight >=
+        scrollContainer.scrollHeight - 900
+      ) {
+        setVisibleCount((prev) => (prev < items.length ? prev + STEP_SIZE : prev));
+      }
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [items.length]);
+
   if (loading) {
     return (
       <div className="art-dual-grid" dir="ltr">
-        {Array.from({ length: 12 }).map((_, idx) => (
+        {Array.from({ length: INITIAL_VISIBLE }).map((_, idx) => (
           <div key={idx} className="art-skeleton-card" />
         ))}
       </div>
@@ -102,7 +140,7 @@ export const ArtGlassDualGrid: React.FC<ArtGlassDualGridProps> = ({
             type="button"
             onClick={() => {
               if (visibleCount < items.length) {
-                setVisibleCount((v) => v + PAGE_SIZE);
+                setVisibleCount((v) => v + STEP_SIZE);
               } else {
                 onLoadMore();
               }

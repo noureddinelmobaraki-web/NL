@@ -100,36 +100,16 @@ function vidlinkQuery(opts?: { startAt?: number }): string {
 
 export const SANDBOX_STRICT = undefined;
 
-// Ordered with VidLink (server-vl) as the default primary server (index 0), and Servers 3, 4, 5 permanently removed.
-// All servers load their native embed URLs without iframe sandbox or /embed proxy rewriting so they never trigger
-// "Please Disable Sandbox" or JWPlayer Error 232011.
+// Ordered with Server 7 (streamimdb.ru) as the default #1 primary server (index 0, 10s watchdog),
+// followed by VidLink (server-vl) and remaining verified servers.
 export const CINEMA_SERVERS: CinemaServerConfig[] = [
-  {
-    id: 'server-vl',
-    label: 'VidLink',
-    host: 'vidlink.pro',
-    origins: ['https://vidlink.pro', 'https://player.vidlink.pro', 'https://cloud.vidlink.pro'],
-    supports: { imdb: false, tmdb: true },
-    capabilities: { timeEvents: true, startAt: true },
-    timeoutMs: 12000,
-    movie: (ids, opts) => {
-      const { tmdb } = sanitizeServerIds(ids);
-      return tmdb ? `https://vidlink.pro/movie/${tmdb}?${vidlinkQuery(opts)}` : '';
-    },
-    tv: (ids, season = 1, episode = 1, _fullSeason = false, opts) => {
-      const { tmdb } = sanitizeServerIds(ids);
-      if (!tmdb) return '';
-      const { s, e } = normalizeSeasonEpisode(season, episode);
-      return `https://vidlink.pro/tv/${tmdb}/${s}/${e}?${vidlinkQuery(opts)}`;
-    },
-  },
   {
     id: 'server-7',
     label: 'Server 7',
     host: 'streamimdb.ru',
     origins: ['https://streamimdb.ru', 'https://player.imdb.su'],
     supports: { imdb: true, tmdb: true },
-    timeoutMs: 12000,
+    timeoutMs: 10000,
     movie: (ids) => {
       const { preferred } = sanitizeServerIds(ids);
       return preferred ? `https://streamimdb.ru/embed/movie/${preferred}` : '';
@@ -139,6 +119,25 @@ export const CINEMA_SERVERS: CinemaServerConfig[] = [
       if (!preferred) return '';
       const { s, e } = normalizeSeasonEpisode(season, episode);
       return `https://streamimdb.ru/embed/tv/${preferred}/${s}/${e}`;
+    },
+  },
+  {
+    id: 'server-vl',
+    label: 'VidLink',
+    host: 'vidlink.pro',
+    origins: ['https://vidlink.pro', 'https://player.vidlink.pro', 'https://cloud.vidlink.pro'],
+    supports: { imdb: false, tmdb: true },
+    capabilities: { timeEvents: true, startAt: true },
+    timeoutMs: 10000,
+    movie: (ids, opts) => {
+      const { tmdb } = sanitizeServerIds(ids);
+      return tmdb ? `https://vidlink.pro/movie/${tmdb}?${vidlinkQuery(opts)}` : '';
+    },
+    tv: (ids, season = 1, episode = 1, _fullSeason = false, opts) => {
+      const { tmdb } = sanitizeServerIds(ids);
+      if (!tmdb) return '';
+      const { s, e } = normalizeSeasonEpisode(season, episode);
+      return `https://vidlink.pro/tv/${tmdb}/${s}/${e}?${vidlinkQuery(opts)}`;
     },
   },
   {

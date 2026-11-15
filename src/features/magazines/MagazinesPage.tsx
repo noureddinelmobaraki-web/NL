@@ -166,7 +166,7 @@ export const MagazinesPage: React.FC<MagazinesPageProps> = ({ onClose }) => {
   );
 
   return createPortal(
-    <div className="lg-portal-root" dir="ltr">
+    <div className="lg-portal-root z-[10050] pointer-events-auto" dir="ltr">
       <LiquidGlassBooksBackdrop dimmerOpacity={0.52} />
 
       <div className="lg-portal-stage-layer">

@@ -248,6 +248,12 @@ export function CinemaPlayerStage({
     setEpisodeRangeStart(bucketStart);
   }, [selectedEpisode, selectedSeason]);
 
+  useEffect(() => {
+    if (!isControlsVisible && !isEpisodesDrawerOpen) {
+      setIsServerPopoverOpen(false);
+    }
+  }, [isControlsVisible, isEpisodesDrawerOpen]);
+
   const hasNextEpisode =
     detailedItem.mediaType === "tv" &&
     !isFullSeasonEmbed &&
@@ -382,7 +388,11 @@ export function CinemaPlayerStage({
           <div
             onMouseMove={bumpControlsVisibility}
             onTouchStart={bumpControlsVisibility}
-            className="lg-cinema-gallery-top-bar flex items-center justify-between gap-2 overflow-x-auto no-scrollbar whitespace-nowrap px-3 py-1.5 rounded-none sm:rounded-2xl"
+            className={`lg-cinema-gallery-top-bar flex items-center justify-between gap-2 overflow-x-auto no-scrollbar whitespace-nowrap px-3 py-1.5 rounded-none sm:rounded-2xl transition-all duration-300 ${
+              isControlsVisible
+                ? "opacity-100 translate-y-0 pointer-events-auto"
+                : "opacity-0 -translate-y-3 pointer-events-none"
+            }`}
             dir="ltr"
           >
             <div className="flex items-center gap-2">
@@ -482,10 +492,10 @@ export function CinemaPlayerStage({
             <div
               onClick={(e) => e.stopPropagation()}
               onMouseMove={bumpControlsVisibility}
-              className={`absolute top-0 inset-x-0 z-30 px-3 sm:px-5 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 bg-gradient-to-b from-black/85 via-black/45 to-transparent transition-opacity duration-300 ${
-                isControlsVisible || isServerPopoverOpen || isEpisodesDrawerOpen
-                  ? "opacity-100 pointer-events-auto"
-                  : "opacity-0 pointer-events-none"
+              className={`absolute top-0 inset-x-0 z-30 px-3 sm:px-5 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 bg-gradient-to-b from-black/85 via-black/45 to-transparent transition-all duration-300 ${
+                isControlsVisible || isEpisodesDrawerOpen
+                  ? "opacity-100 translate-y-0 pointer-events-auto"
+                  : "opacity-0 -translate-y-3 pointer-events-none"
               }`}
               dir="ltr"
             >
@@ -586,23 +596,82 @@ export function CinemaPlayerStage({
                   </div>
                 )}
 
-                {/* TV Episodes Slide-Over Trigger */}
+                {/* TV Episodes Slide-Over Trigger + Compact Episode Quick-Jump Input & Selector */}
                 {detailedItem.mediaType === "tv" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEpisodesDrawerOpen((prev) => !prev);
-                      setIsServerPopoverOpen(false);
-                    }}
-                    className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                      isEpisodesDrawerOpen
-                        ? "!bg-rose-600/65 !border-rose-300/70 text-white"
-                        : "text-white"
-                    }`}
-                  >
-                    <Tv size={13} className="text-sky-300" />
-                    <span>{t("movies.meta.episodes", "Episodes")}</span>
-                  </button>
+                  <>
+                    {!isFullSeasonEmbed && seasonEpisodes.length > 1 && (
+                      <div className="lg-cinema-action-pill px-2 py-1 text-xs font-extrabold text-white flex items-center gap-1.5 whitespace-nowrap">
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const num = parseInt(episodeJumpInput.trim(), 10);
+                            if (!Number.isNaN(num) && num >= 1) {
+                              const clamped = Math.min(
+                                Math.max(1, num),
+                                Math.max(seasonEpisodes.length, num),
+                              );
+                              setIsFullSeasonEmbed(false);
+                              setSelectedEpisode(clamped);
+                              setDetailServersOpen(true);
+                              startGalleryWatchSession();
+                              setEpisodeJumpInput("");
+                            }
+                          }}
+                          className="flex items-center gap-1"
+                        >
+                          <input
+                            type="number"
+                            min={1}
+                            max={Math.max(1500, seasonEpisodes.length)}
+                            value={episodeJumpInput}
+                            onChange={(e) => setEpisodeJumpInput(e.target.value)}
+                            placeholder={`E${selectedEpisode}`}
+                            aria-label="Jump to Episode Number"
+                            className="w-12 px-1.5 py-0.5 rounded-full bg-black/55 border border-white/25 text-[11px] font-bold text-white placeholder:text-white/60 text-center tabular-nums focus:outline-none focus:border-rose-400"
+                          />
+                        </form>
+                        <select
+                          value={selectedEpisode}
+                          aria-label="Select Episode"
+                          onChange={(e) => {
+                            const nextEp = Number(e.target.value) || 1;
+                            setIsFullSeasonEmbed(false);
+                            setSelectedEpisode(nextEp);
+                            setDetailServersOpen(true);
+                            startGalleryWatchSession();
+                          }}
+                          className="bg-transparent text-[11px] font-extrabold text-rose-200 focus:outline-none cursor-pointer max-w-[96px] truncate tabular-nums"
+                        >
+                          {seasonEpisodes.map((ep) => (
+                            <option
+                              key={`top-ep-opt-${selectedSeason}-${ep.episode_number}`}
+                              value={ep.episode_number}
+                              className="bg-slate-950 text-white"
+                            >
+                              E{ep.episode_number}
+                              {ep.name ? ` · ${ep.name}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEpisodesDrawerOpen((prev) => !prev);
+                        setIsServerPopoverOpen(false);
+                      }}
+                      className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                        isEpisodesDrawerOpen
+                          ? "!bg-rose-600/65 !border-rose-300/70 text-white"
+                          : "text-white"
+                      }`}
+                    >
+                      <Tv size={13} className="text-sky-300" />
+                      <span>{t("movies.meta.episodes", "Episodes")}</span>
+                    </button>
+                  </>
                 )}
 
                 {renderDownloadButtons()}
@@ -629,6 +698,24 @@ export function CinemaPlayerStage({
                   title={t("movies.player.showBackdrop")}
                 >
                   <span>{t("movies.player.showBackdrop")}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleToggleGalleryFullscreen}
+                  className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
+                  aria-label={
+                    isAnyFullscreen
+                      ? t("movies.player.exitFullscreen")
+                      : t("movies.player.fullscreen")
+                  }
+                  title={
+                    isAnyFullscreen
+                      ? t("movies.player.exitFullscreen")
+                      : t("movies.player.fullscreen")
+                  }
+                >
+                  {isAnyFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
                 </button>
 
                 <button
@@ -728,36 +815,38 @@ export function CinemaPlayerStage({
                   )}
                 </div>
 
-                {/* 50-Episode Range + Jump Input */}
-                {!isFullSeasonEmbed && seasonEpisodes.length > 50 && (
+                {/* Episode Jump Input (for all multi-episode series) + 50-Episode Range Pills */}
+                {!isFullSeasonEmbed && seasonEpisodes.length > 1 && (
                   <div className="flex flex-col gap-2 border-y border-white/10 py-2">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {Array.from(
-                        { length: Math.ceil(seasonEpisodes.length / 50) },
-                        (_, chunkIdx) => {
-                          const start = chunkIdx * 50 + 1;
-                          const end = Math.min(
-                            seasonEpisodes.length,
-                            (chunkIdx + 1) * 50,
-                          );
-                          const isRangeActive = episodeRangeStart === start;
-                          return (
-                            <button
-                              key={`drawer-range-${start}-${end}`}
-                              type="button"
-                              onClick={() => setEpisodeRangeStart(start)}
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold cursor-pointer ${
-                                isRangeActive
-                                  ? "bg-rose-600 text-white"
-                                  : "bg-white/8 text-white/75 hover:bg-white/15"
-                              }`}
-                            >
-                              {start}–{end}
-                            </button>
-                          );
-                        },
-                      )}
-                    </div>
+                    {seasonEpisodes.length > 50 && (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {Array.from(
+                          { length: Math.ceil(seasonEpisodes.length / 50) },
+                          (_, chunkIdx) => {
+                            const start = chunkIdx * 50 + 1;
+                            const end = Math.min(
+                              seasonEpisodes.length,
+                              (chunkIdx + 1) * 50,
+                            );
+                            const isRangeActive = episodeRangeStart === start;
+                            return (
+                              <button
+                                key={`drawer-range-${start}-${end}`}
+                                type="button"
+                                onClick={() => setEpisodeRangeStart(start)}
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold cursor-pointer ${
+                                  isRangeActive
+                                    ? "bg-rose-600 text-white"
+                                    : "bg-white/8 text-white/75 hover:bg-white/15"
+                                }`}
+                              >
+                                {start}–{end}
+                              </button>
+                            );
+                          },
+                        )}
+                      </div>
+                    )}
 
                     <form
                       onSubmit={(e) => {
@@ -784,8 +873,8 @@ export function CinemaPlayerStage({
                         max={Math.max(1500, seasonEpisodes.length)}
                         value={episodeJumpInput}
                         onChange={(e) => setEpisodeJumpInput(e.target.value)}
-                        placeholder="Jump to Ep #"
-                        className="flex-1 px-2.5 py-1 rounded-full bg-black/50 border border-white/25 text-xs text-white placeholder:text-white/50 focus:outline-none focus:border-rose-400"
+                        placeholder={currentLang === "ar" ? "رقم الحلقة #" : "Jump to Ep #"}
+                        className="flex-1 px-2.5 py-1 rounded-full bg-black/50 border border-white/25 text-xs text-white placeholder:text-white/50 focus:outline-none focus:border-rose-400 tabular-nums"
                       />
                       <button
                         type="submit"
@@ -1372,14 +1461,33 @@ export function CinemaPlayerStage({
                   </button>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedItemId(null)}
-                className="lg-cinema-icon-pill pointer-events-auto hover:!bg-rose-600/45 hover:!border-rose-300/60"
-                aria-label={t("movies.close")}
-              >
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2 pointer-events-auto">
+                <button
+                  type="button"
+                  onClick={handleToggleGalleryFullscreen}
+                  className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
+                  aria-label={
+                    isAnyFullscreen
+                      ? t("movies.player.exitFullscreen")
+                      : t("movies.player.fullscreen")
+                  }
+                  title={
+                    isAnyFullscreen
+                      ? t("movies.player.exitFullscreen")
+                      : t("movies.player.fullscreen")
+                  }
+                >
+                  {isAnyFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedItemId(null)}
+                  className="lg-cinema-icon-pill hover:!bg-rose-600/45 hover:!border-rose-300/60"
+                  aria-label={t("movies.close")}
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
           </>
         )}
@@ -1449,38 +1557,44 @@ export function CinemaPlayerStage({
 
           {!isFullSeasonEmbed && (
             <div className="flex flex-col gap-2 pt-0.5">
-              {seasonEpisodes.length > 50 && (
+              {seasonEpisodes.length > 1 && (
                 <div className="flex items-center justify-between gap-2 flex-wrap border-b border-white/10 pb-2">
-                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full">
+                  {seasonEpisodes.length > 50 ? (
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-300/90 pe-1 shrink-0">
+                        Range:
+                      </span>
+                      {Array.from(
+                        { length: Math.ceil(seasonEpisodes.length / 50) },
+                        (_, chunkIdx) => {
+                          const start = chunkIdx * 50 + 1;
+                          const end = Math.min(
+                            seasonEpisodes.length,
+                            (chunkIdx + 1) * 50,
+                          );
+                          const isRangeActive = episodeRangeStart === start;
+                          return (
+                            <button
+                              key={`range-${start}-${end}`}
+                              type="button"
+                              onClick={() => setEpisodeRangeStart(start)}
+                              className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold shrink-0 cursor-pointer transition-all ${
+                                isRangeActive
+                                  ? "bg-rose-600 text-white shadow"
+                                  : "bg-white/8 text-white/75 hover:bg-white/15 hover:text-white"
+                              }`}
+                            >
+                              {start}–{end}
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+                  ) : (
                     <span className="text-[10px] font-black uppercase tracking-wider text-amber-300/90 pe-1 shrink-0">
-                      Range:
+                      {currentLang === "ar" ? "انتقال سريع للحلقة:" : "Quick Episode Jump:"}
                     </span>
-                    {Array.from(
-                      { length: Math.ceil(seasonEpisodes.length / 50) },
-                      (_, chunkIdx) => {
-                        const start = chunkIdx * 50 + 1;
-                        const end = Math.min(
-                          seasonEpisodes.length,
-                          (chunkIdx + 1) * 50,
-                        );
-                        const isRangeActive = episodeRangeStart === start;
-                        return (
-                          <button
-                            key={`range-${start}-${end}`}
-                            type="button"
-                            onClick={() => setEpisodeRangeStart(start)}
-                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold shrink-0 cursor-pointer transition-all ${
-                              isRangeActive
-                                ? "bg-rose-600 text-white shadow"
-                                : "bg-white/8 text-white/75 hover:bg-white/15 hover:text-white"
-                            }`}
-                          >
-                            {start}–{end}
-                          </button>
-                        );
-                      },
-                    )}
-                  </div>
+                  )}
 
                   <form
                     onSubmit={(e) => {
@@ -1506,8 +1620,8 @@ export function CinemaPlayerStage({
                       max={Math.max(1500, seasonEpisodes.length)}
                       value={episodeJumpInput}
                       onChange={(e) => setEpisodeJumpInput(e.target.value)}
-                      placeholder="Ep #"
-                      className="w-16 px-2 py-0.5 rounded-full bg-black/50 border border-white/25 text-xs text-white placeholder:text-white/50 focus:outline-none focus:border-rose-400 text-center"
+                      placeholder={currentLang === "ar" ? "رقم الحلقة" : "Jump to Ep #"}
+                      className="w-24 px-2.5 py-0.5 rounded-full bg-black/50 border border-white/25 text-xs text-white placeholder:text-white/50 focus:outline-none focus:border-rose-400 text-center tabular-nums"
                     />
                     <button
                       type="submit"

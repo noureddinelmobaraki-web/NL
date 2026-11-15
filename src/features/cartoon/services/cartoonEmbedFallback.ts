@@ -23,7 +23,7 @@ export function buildCartoonPlayOptions(
   const options: CartoonPlayOption[] = [];
   const ep = Math.max(1, episodeNumber || 1);
 
-  // Tier 1: Direct Storage Node .ia.mp4 (streamUrl is now direct node https://${d2}${dir}/${file})
+  // Tier 1: Direct Storage Node .ia.mp4 (streamUrl is direct node https://${d2}${dir}/${file})
   if (matchedArchiveStream?.streamUrl) {
     options.push({
       id: 'archive-primary',
@@ -47,7 +47,18 @@ export function buildCartoonPlayOptions(
     });
   }
 
-  // Tier 3: Official YouTube Playlist Embed
+  // Tier 3: Archive.org Theater Embed (Always placed before external fallbacks so Internet Archive is #1)
+  if (series.archiveIds && series.archiveIds.length > 0) {
+    const primaryArchiveId = series.archiveIds[0];
+    options.push({
+      id: `archive-theater-${primaryArchiveId}`,
+      label: `مشغل أرشيف الإنترنت (الحلقة ${ep})`,
+      kind: 'embed-server',
+      url: `https://archive.org/embed/${encodeURIComponent(primaryArchiveId)}?autoplay=1&playlist=1`,
+    });
+  }
+
+  // Tier 4: Official YouTube Playlist Embed
   if (series.youtubePlaylistIds && series.youtubePlaylistIds.length > 0) {
     series.youtubePlaylistIds.forEach((plId, idx) => {
       options.push({
@@ -59,19 +70,23 @@ export function buildCartoonPlayOptions(
     });
   }
 
-  // Tier 4: Archive.org Theater Embed
-  if (series.archiveIds && series.archiveIds.length > 0) {
-    const primaryArchiveId = series.archiveIds[0];
+  // Tier 5: Server 7 (streamimdb.ru) + VidLink HD + Videasy Player (when series.tmdbId or series.imdbId is present)
+  const tmdb = series.tmdbId ? String(series.tmdbId) : '';
+  const imdb = series.imdbId ? String(series.imdbId).trim() : '';
+  const preferredId = imdb || tmdb;
+
+  if (preferredId) {
     options.push({
-      id: `archive-theater-${primaryArchiveId}`,
-      label: `مشغل أرشيف الإنترنت (الحلقة ${ep})`,
+      id: 'server-7',
+      label: 'Server 7 (StreamIMDb)',
       kind: 'embed-server',
-      url: `https://archive.org/embed/${encodeURIComponent(primaryArchiveId)}?autoplay=1`,
+      url:
+        series.mediaType === 'movie'
+          ? `https://streamimdb.ru/embed/movie/${encodeURIComponent(preferredId)}`
+          : `https://streamimdb.ru/embed/tv/${encodeURIComponent(preferredId)}/1/${ep}`,
     });
   }
 
-  // Tier 5: VidLink / Videasy TMDB Fallback (only when series.tmdbId is present)
-  const tmdb = series.tmdbId ? String(series.tmdbId) : '';
   if (tmdb) {
     options.push({
       id: 'cartoon-vidlink',

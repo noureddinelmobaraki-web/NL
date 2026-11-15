@@ -102,20 +102,34 @@ export function useServerFailover({
         : buildSpeedSortedQueue(currentSources, detailItemStorageKey);
       let ordered = speedOrdered.length > 0 ? speedOrdered : defaultOrder;
 
+      const pinFirstPrimary =
+        currentSources[0]?.id === "server-7" ||
+        currentSources[0]?.id?.startsWith("archive-");
+
       if (typeof explicitServerIdx === "number" && explicitServerIdx >= 0) {
         const total = currentSources.length || 5;
         const startIdx = explicitServerIdx % Math.max(1, total);
         ordered = [startIdx, ...ordered.filter((i) => i !== startIdx)];
-      } else if (!disableSpeedSort && currentSources.length > 0) {
-        void probeAllServersSpeed(currentSources, detailItemStorageKey).then(() => {
-          const updatedQueue = buildSpeedSortedQueue(
-            detailPlaySourcesRef.current,
-            detailItemStorageKey,
-          );
-          if (updatedQueue.length > 0 && failoverStepRef.current === 0) {
-            failoverQueueRef.current = updatedQueue;
-          }
-        });
+      } else {
+        if (pinFirstPrimary) {
+          ordered = [0, ...ordered.filter((i) => i !== 0)];
+        }
+        if (!disableSpeedSort && currentSources.length > 0) {
+          void probeAllServersSpeed(currentSources, detailItemStorageKey).then(() => {
+            const updatedQueue = buildSpeedSortedQueue(
+              detailPlaySourcesRef.current,
+              detailItemStorageKey,
+            );
+            if (updatedQueue.length > 0 && failoverStepRef.current === 0) {
+              const keepZeroFirst =
+                detailPlaySourcesRef.current[0]?.id === "server-7" ||
+                detailPlaySourcesRef.current[0]?.id?.startsWith("archive-");
+              failoverQueueRef.current = keepZeroFirst
+                ? [0, ...updatedQueue.filter((i) => i !== 0)]
+                : updatedQueue;
+            }
+          });
+        }
       }
 
       const firstIdx = ordered[0] ?? 0;
@@ -234,11 +248,11 @@ export function useServerFailover({
     ],
   );
 
-  // Monitor active iframe / clean-embed for CSP violations or stalled server timeouts
+  // Monitor active iframe / clean-embed / direct stream for CSP violations or 10-second stalled server timeouts
   useEffect(() => {
     if (
       !isWatchingInGallery ||
-      (playerRenderMode !== "iframe" && playerRenderMode !== "clean-embed") ||
+      playerRenderMode === "extracting" ||
       !activeGallerySource ||
       allServersFailed
     ) {
@@ -290,10 +304,14 @@ export function useServerFailover({
     };
     document.addEventListener("securitypolicyviolation", onCspViolation);
 
-    const timeoutMs = Math.max(8500, activeGallerySource.timeoutMs || 11000);
+    const timeoutMs =
+      activeGallerySource.id === "server-7" ||
+      activeGallerySource.id.startsWith("archive-")
+        ? 10000
+        : Math.max(8500, activeGallerySource.timeoutMs || 10000);
     const watchdog = setTimeout(() => {
       if (!loadedCurrentAttemptRef.current) {
-        advanceFromCleanEmbedOrIframe("timeout");
+        advanceFromCleanEmbedOrIframe("timeout-10s");
       }
     }, timeoutMs);
 
