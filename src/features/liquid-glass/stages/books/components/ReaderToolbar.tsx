@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import {
   ArrowLeft,
   BookOpen,
+  ChevronDown,
   Download,
   ExternalLink,
   Eye,
@@ -43,6 +44,7 @@ export interface ReaderToolbarProps {
 export function ReaderToolbar(p: ReaderToolbarProps) {
   const isPhone = useIsPhone();
   const [more, setMore] = useState(false);
+  const [mirrorsOpen, setMirrorsOpen] = useState(false);
 
   if (isPhone) {
     return (
@@ -177,23 +179,27 @@ export function ReaderToolbar(p: ReaderToolbarProps) {
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={() => p.setReaderZoom((z) => Math.max(80, z - 10))}
-          className="lg-glass-pill lg-icon-round-btn"
-          aria-label="Zoom out"
-        >
-          <ZoomOut size={14} />
-        </button>
-        <span className="lg-reader-zoom-label">{p.readerZoom}%</span>
-        <button
-          type="button"
-          onClick={() => p.setReaderZoom((z) => Math.min(150, z + 10))}
-          className="lg-glass-pill lg-icon-round-btn"
-          aria-label="Zoom in"
-        >
-          <ZoomIn size={14} />
-        </button>
+        {p.useEpubMode && (
+          <>
+            <button
+              type="button"
+              onClick={() => p.setReaderZoom((z) => Math.max(80, z - 10))}
+              className="lg-glass-pill lg-icon-round-btn"
+              aria-label="Decrease font size"
+            >
+              <ZoomOut size={14} />
+            </button>
+            <span className="lg-reader-zoom-label">{p.readerZoom}%</span>
+            <button
+              type="button"
+              onClick={() => p.setReaderZoom((z) => Math.min(165, z + 10))}
+              className="lg-glass-pill lg-icon-round-btn"
+              aria-label="Increase font size"
+            >
+              <ZoomIn size={14} />
+            </button>
+          </>
+        )}
 
         <button
           type="button"
@@ -204,16 +210,49 @@ export function ReaderToolbar(p: ReaderToolbarProps) {
           <Maximize2 size={14} />
         </button>
 
-        {p.downloadUrl && (
-          <a
-            href={p.downloadUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="lg-glass-pill lg-filter-pill"
-          >
-            <Download size={13} />
-            <span>Download</span>
-          </a>
+        {/* Unified Frosted Glass Download + Mirrors Dropdown */}
+        {(p.downloadUrl || p.mirrors.length > 0) && (
+          <div className="relative flex items-center gap-1">
+            {p.downloadUrl && (
+              <a
+                href={p.downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="nl-glass-download-capsule nl-glass-download-capsule--compact"
+              >
+                <Download size={13} className="nl-glass-download-icon" />
+                <span>Download</span>
+              </a>
+            )}
+            {p.mirrors.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setMirrorsOpen((v) => !v)}
+                className="nl-glass-download-capsule nl-glass-download-capsule--compact !px-2"
+                aria-label="Mirror sources"
+                title="Mirror sources"
+              >
+                <ChevronDown size={13} />
+              </button>
+            )}
+            {mirrorsOpen && p.mirrors.length > 0 && (
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-slate-950/95 backdrop-blur-2xl border border-white/20 p-2 shadow-2xl z-50 flex flex-col gap-1">
+                {p.mirrors.map((m) => (
+                  <a
+                    key={m.id}
+                    href={m.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMirrorsOpen(false)}
+                    className="px-3 py-2 rounded-xl text-xs font-bold text-white/85 hover:text-white hover:bg-white/10 flex items-center justify-between gap-2 no-underline"
+                  >
+                    <span className="truncate">{m.label}</span>
+                    <ExternalLink size={12} className="shrink-0 opacity-75" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         <button

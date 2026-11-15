@@ -27,6 +27,7 @@ import { Html5EmbedEngineView } from './engines/Html5EmbedEngineView';
 import { MiniGamesNativeView } from './engines/MiniGamesNativeView';
 import { GameScreenTopBar } from './components/GameScreenTopBar';
 import { MobileLandscapePrompt } from './components/MobileLandscapePrompt';
+import { GamesGeometricLoader } from './components/GamesGeometricLoader';
 
 export interface GameScreenProps {
   selectedGame: UnifiedGameItem | null;
@@ -171,9 +172,7 @@ export function GameScreen({
                 referrerPolicy="no-referrer"
               />
             )}
-            <div className="nl-progress">
-              <span />
-            </div>
+            <GamesGeometricLoader />
             <p className="nl-screen-hint">{t('games.loading')}</p>
           </div>
         )}

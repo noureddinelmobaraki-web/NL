@@ -20,13 +20,7 @@ export function renderBidiIsolatedText(text: string): React.ReactNode {
 export const EyeLoader: React.FC = () => {
   return (
     <div className="nl-eye-loader-wrap" aria-hidden="true">
-      <div className="eye-lid">
-        <div className="eye">
-          <div className="cornea">
-            <div className="white-pupil" />
-          </div>
-        </div>
-      </div>
+      <div className="nl-cinema-orbit-loader" />
 
       <div className="nl-eye-loader-msg" dir="rtl">
         <p className="nl-eye-loader-msg__text" dir="rtl">

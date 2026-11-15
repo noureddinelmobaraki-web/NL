@@ -13,7 +13,8 @@ export const formatClock = (s: number): string => {
   return h ? `${h}:${m}:${sec}` : `${m}:${sec}`;
 };
 
-const pill = "lg-cinema-action-pill h-8 px-3 rounded-full text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer";
+const pill =
+  "lg-cinema-action-pill h-8 px-2.5 rounded-full text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer shrink-0";
 
 export const CinemaTimeline = React.memo(function CinemaTimeline({
   mode,
@@ -22,6 +23,7 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
   hasSubtitles: _hasSubtitles,
   onUserSeek,
   onUserTogglePlay,
+  rightSlot,
 }: {
   mode: PlayerControlMode;
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -29,6 +31,7 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
   hasSubtitles: boolean;
   onUserSeek?: (targetSec: number) => void;
   onUserTogglePlay?: () => void;
+  rightSlot?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const liveTime = useClockTime(200);
@@ -91,66 +94,76 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
   };
 
   return (
-    <div className="flex flex-col gap-1.5 w-full" dir="ltr">
-      <div className="flex items-center gap-2 text-[10px] font-bold text-white/85 tabular-nums">
-        <span className="min-w-[36px]">{formatClock(time)}</span>
-        <input
-          type="range"
-          min={0}
-          max={duration}
-          step={0.5}
-          value={Math.min(time, duration)}
-          onChange={(e) => {
-            const next = Number(e.target.value);
-            setScrubTime(next);
-          }}
-          onMouseUp={commitScrub}
-          onTouchEnd={commitScrub}
-          onPointerUp={commitScrub}
-          onKeyUp={commitScrub}
-          className="flex-1 cursor-pointer accent-red-600"
-          aria-label={t("movies.player.seek", "Seek")}
-        />
-        <span className="min-w-[36px] text-end">
-          {displayDuration > 0
-            ? `${isEstimated ? "~" : ""}${formatClock(displayDuration)}`
-            : "--:--"}
-        </span>
-        {mode === "bridged" && (
-          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] whitespace-nowrap">
-            {t("movies.player.synced", "Synced with player")}
-          </span>
-        )}
-      </div>
+    <div
+      className="flex items-center gap-2 sm:gap-2.5 w-full text-[11px] font-bold text-white/90 tabular-nums"
+      dir="ltr"
+    >
+      <button
+        type="button"
+        className={pill}
+        onClick={handleTogglePlay}
+        aria-label={
+          clock.paused
+            ? t("movies.player.play", "Play")
+            : t("movies.player.pause", "Pause")
+        }
+      >
+        {clock.paused ? <Play size={13} className="fill-current" /> : <Pause size={13} />}
+      </button>
 
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className={pill}
-          onClick={handleTogglePlay}
-          aria-label={
-            clock.paused
-              ? t("movies.player.play", "Play")
-              : t("movies.player.pause", "Pause")
-          }
-        >
-          {clock.paused ? <Play size={13} /> : <Pause size={13} />}
-        </button>
-        <button
-          type="button"
-          className={pill}
-          onClick={() => commitSeek(time - 10)}
-        >
-          <RotateCcw size={12} /> 10s
-        </button>
-        <button
-          type="button"
-          className={pill}
-          onClick={() => commitSeek(time + 10)}
-        >
-          <RotateCw size={12} /> 10s
-        </button>
-      </div>
+      <button
+        type="button"
+        className={pill}
+        onClick={() => commitSeek(time - 10)}
+        title="-10s"
+      >
+        <RotateCcw size={12} />
+        <span className="hidden xs:inline">10s</span>
+      </button>
+
+      <button
+        type="button"
+        className={pill}
+        onClick={() => commitSeek(time + 10)}
+        title="+10s"
+      >
+        <RotateCw size={12} />
+        <span className="hidden xs:inline">10s</span>
+      </button>
+
+      <span className="min-w-[38px] text-center">{formatClock(time)}</span>
+
+      <input
+        type="range"
+        min={0}
+        max={duration}
+        step={0.5}
+        value={Math.min(time, duration)}
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          setScrubTime(next);
+        }}
+        onMouseUp={commitScrub}
+        onTouchEnd={commitScrub}
+        onPointerUp={commitScrub}
+        onKeyUp={commitScrub}
+        className="lg-cinema-seek-slider flex-1 min-w-[70px] cursor-pointer accent-red-600"
+        aria-label={t("movies.player.seek", "Seek")}
+      />
+
+      <span className="min-w-[38px] text-end text-white/75">
+        {displayDuration > 0
+          ? `${isEstimated ? "~" : ""}${formatClock(displayDuration)}`
+          : "--:--"}
+      </span>
+
+      {mode === "bridged" && (
+        <span className="hidden md:inline-flex px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] whitespace-nowrap shrink-0">
+          {t("movies.player.synced", "Synced")}
+        </span>
+      )}
+
+      {rightSlot}
     </div>
   );
 });

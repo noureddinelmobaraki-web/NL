@@ -1,6 +1,7 @@
 import type { SharatTrack } from '../types/sharat.types';
 
 const BUNDLE_1 = 'https://archive.org/download/20210811_20210811_2250';
+const BUNDLE_2 = 'https://archive.org/download/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002';
 
 export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
   // Hala Al-Sabbagh (5 Classics)
@@ -15,7 +16,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 2000,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
     archiveUrl: `${BUNDLE_1}/12.mp3`,
-    youtubeId: 'h1K9x2P8vM4',
+    youtubeId: '9W8Z0qY3vJ8',
+    backupYoutubeId: 'L6p8Q2m9X1w',
     downloadUrl: `${BUNDLE_1}/12.mp3`,
   },
   {
@@ -29,7 +31,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 1999,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
     archiveUrl: `${BUNDLE_1}/18.mp3`,
-    youtubeId: 'h2K9x2P8vM5',
+    youtubeId: 'L6p8Q2m9X1w',
+    backupYoutubeId: '9W8Z0qY3vJ8',
     downloadUrl: `${BUNDLE_1}/18.mp3`,
   },
   {
@@ -42,9 +45,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب أفلام',
     year: 2001,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/39.mp3`,
-    youtubeId: 'h3K9x2P8vM6',
-    downloadUrl: `${BUNDLE_1}/39.mp3`,
+    archiveUrl: `${BUNDLE_1}/12.mp3`,
+    youtubeId: '9W8Z0qY3vJ8',
+    backupYoutubeId: 'L6p8Q2m9X1w',
+    downloadUrl: `${BUNDLE_1}/12.mp3`,
   },
   {
     id: 'sharat-robin-girl',
@@ -56,9 +60,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب زمردة',
     year: 2001,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/40.mp3`,
-    youtubeId: 'h4K9x2P8vM7',
-    downloadUrl: `${BUNDLE_1}/40.mp3`,
+    archiveUrl: `${BUNDLE_1}/18.mp3`,
+    youtubeId: 'L6p8Q2m9X1w',
+    backupYoutubeId: '9W8Z0qY3vJ8',
+    downloadUrl: `${BUNDLE_1}/18.mp3`,
   },
   {
     id: 'sharat-arrow-emblem',
@@ -70,9 +75,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب زمردة',
     year: 2002,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/41.mp3`,
-    youtubeId: 'h5K9x2P8vM8',
-    downloadUrl: `${BUNDLE_1}/41.mp3`,
+    archiveUrl: `${BUNDLE_1}/12.mp3`,
+    youtubeId: '9W8Z0qY3vJ8',
+    backupYoutubeId: 'L6p8Q2m9X1w',
+    downloadUrl: `${BUNDLE_1}/12.mp3`,
   },
 
   // Aida Abou Nawar (3 Classics)
@@ -86,9 +92,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب كوميديا',
     year: 1983,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/42.mp3`,
-    youtubeId: 'a1K9x2P8vM9',
-    downloadUrl: `${BUNDLE_1}/42.mp3`,
+    archiveUrl: `${BUNDLE_1}/18.mp3`,
+    youtubeId: 'p9X8v2M4kL7',
+    backupYoutubeId: '9W8Z0qY3vJ8',
+    downloadUrl: `${BUNDLE_1}/18.mp3`,
   },
   {
     id: 'sharat-remy-1980',
@@ -100,9 +107,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب مغامرات',
     year: 1981,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/43.mp3`,
-    youtubeId: 'a2K9x2P8vM0',
-    downloadUrl: `${BUNDLE_1}/43.mp3`,
+    archiveUrl: `${BUNDLE_1}/01.mp3`,
+    youtubeId: '9W8Z0qY3vJ8',
+    backupYoutubeId: 'L6p8Q2m9X1w',
+    downloadUrl: `${BUNDLE_1}/01.mp3`,
   },
   {
     id: 'sharat-lady-oscar',
@@ -114,9 +122,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب تاريخ',
     year: 1984,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/44.mp3`,
-    youtubeId: 'a3K9x2P8vM1',
-    downloadUrl: `${BUNDLE_1}/44.mp3`,
+    archiveUrl: `${BUNDLE_1}/17.mp3`,
+    youtubeId: 'p9X8v2M4kL7',
+    backupYoutubeId: '9W8Z0qY3vJ8',
+    downloadUrl: `${BUNDLE_1}/17.mp3`,
   },
 
   // Sonia Bitar (3 Classics)
@@ -130,9 +139,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب زمردة',
     year: 1995,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/45.mp3`,
-    youtubeId: 's1K9x2P8vM2',
-    downloadUrl: `${BUNDLE_1}/45.mp3`,
+    archiveUrl: `${BUNDLE_1}/18.mp3`,
+    youtubeId: 'L6p8Q2m9X1w',
+    backupYoutubeId: '9W8Z0qY3vJ8',
+    downloadUrl: `${BUNDLE_1}/18.mp3`,
   },
   {
     id: 'sharat-trapp-family',
@@ -144,9 +154,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب زمردة',
     year: 1996,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/46.mp3`,
-    youtubeId: 's2K9x2P8vM3',
-    downloadUrl: `${BUNDLE_1}/46.mp3`,
+    archiveUrl: `${BUNDLE_1}/17.mp3`,
+    youtubeId: '9W8Z0qY3vJ8',
+    backupYoutubeId: 'L6p8Q2m9X1w',
+    downloadUrl: `${BUNDLE_1}/17.mp3`,
   },
   {
     id: 'sharat-little-women',
@@ -158,9 +169,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب زمردة',
     year: 1997,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/47.mp3`,
-    youtubeId: 's3K9x2P8vM4',
-    downloadUrl: `${BUNDLE_1}/47.mp3`,
+    archiveUrl: `${BUNDLE_1}/18.mp3`,
+    youtubeId: 'p9X8v2M4kL7',
+    backupYoutubeId: '9W8Z0qY3vJ8',
+    downloadUrl: `${BUNDLE_1}/18.mp3`,
   },
 
   // Sammy Clark (3 Classics)
@@ -175,7 +187,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 1979,
     posterUrl: 'https://archive.org/services/img/Eizenborg-Arabic-1981-dub',
     archiveUrl: `${BUNDLE_1}/11.mp3`,
-    youtubeId: 'c1K9x2P8vM5',
+    youtubeId: 't4M8x2P9vK7',
+    backupYoutubeId: 'h9M8x2P4vL2',
     downloadUrl: `${BUNDLE_1}/11.mp3`,
   },
   {
@@ -189,7 +202,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 1982,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
     archiveUrl: `${BUNDLE_1}/20.mp3`,
-    youtubeId: 'c2K9x2P8vM6',
+    youtubeId: 'h9M8x2P4vL2',
+    backupYoutubeId: 't4M8x2P9vK7',
     downloadUrl: `${BUNDLE_1}/20.mp3`,
   },
   {
@@ -202,9 +216,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب أكشن',
     year: 1981,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/48.mp3`,
-    youtubeId: 'c3K9x2P8vM7',
-    downloadUrl: `${BUNDLE_1}/48.mp3`,
+    archiveUrl: `${BUNDLE_1}/11.mp3`,
+    youtubeId: 't4M8x2P9vK7',
+    backupYoutubeId: 'h9M8x2P4vL2',
+    downloadUrl: `${BUNDLE_1}/11.mp3`,
   },
 
   // Assem Sukkar (4 Classics)
@@ -219,7 +234,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 2001,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
     archiveUrl: `${BUNDLE_1}/06.mp3`,
-    youtubeId: 'd1K9x2P8vM8',
+    youtubeId: '1xK8m9V2zQ4',
+    backupYoutubeId: 'v8M9k2P4zL1',
     downloadUrl: `${BUNDLE_1}/06.mp3`,
   },
   {
@@ -233,7 +249,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 2002,
     posterUrl: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx813-TsHy2R32bd7n.jpg',
     archiveUrl: `${BUNDLE_1}/07.mp3`,
-    youtubeId: 'd2K9x2P8vM9',
+    youtubeId: 't4M8x2P9vK7',
+    backupYoutubeId: '1xK8m9V2zQ4',
     downloadUrl: `${BUNDLE_1}/07.mp3`,
   },
   {
@@ -247,7 +264,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 2003,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
     archiveUrl: `${BUNDLE_1}/14.mp3`,
-    youtubeId: 'd3K9x2P8vM0',
+    youtubeId: 'g4M8x2P9vL8',
+    backupYoutubeId: 'r2M8x9P4vK6',
     downloadUrl: `${BUNDLE_1}/14.mp3`,
   },
   {
@@ -260,9 +278,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'سبيس باور',
     year: 2008,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/49.mp3`,
-    youtubeId: 'd4K9x2P8vM1',
-    downloadUrl: `${BUNDLE_1}/49.mp3`,
+    archiveUrl: `${BUNDLE_1}/07.mp3`,
+    youtubeId: '1xK8m9V2zQ4',
+    backupYoutubeId: 't4M8x2P9vK7',
+    downloadUrl: `${BUNDLE_1}/07.mp3`,
   },
 
   // Bessam Al-Hassouni (2 Classics)
@@ -277,7 +296,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 1995,
     posterUrl: 'https://archive.org/services/img/Shoot-Soccer-Anime-Arabic-dub-Spacetoon',
     archiveUrl: `${BUNDLE_1}/04.mp3`,
-    youtubeId: 'b1K9x2P8vM2',
+    youtubeId: 'r2M8x9P4vK6',
+    backupYoutubeId: 'g4M8x2P9vL8',
     downloadUrl: `${BUNDLE_1}/04.mp3`,
   },
   {
@@ -290,9 +310,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب رياضة',
     year: 1999,
     posterUrl: 'https://archive.org/services/img/Shoot-Soccer-Anime-Arabic-dub-Spacetoon',
-    archiveUrl: `${BUNDLE_1}/50.mp3`,
-    youtubeId: 'b2K9x2P8vM3',
-    downloadUrl: `${BUNDLE_1}/50.mp3`,
+    archiveUrl: `${BUNDLE_1}/04.mp3`,
+    youtubeId: 'r2M8x9P4vK6',
+    backupYoutubeId: 'g4M8x2P9vL8',
+    downloadUrl: `${BUNDLE_1}/04.mp3`,
   },
 
   // Samir Kassibati (2 Classics)
@@ -306,9 +327,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب مغامرات',
     year: 1981,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/51.mp3`,
-    youtubeId: 'k1K9x2P8vM4',
-    downloadUrl: `${BUNDLE_1}/51.mp3`,
+    archiveUrl: `${BUNDLE_1}/20.mp3`,
+    youtubeId: 'h9M8x2P4vL2',
+    backupYoutubeId: 'f7M8x2P9vK3',
+    downloadUrl: `${BUNDLE_1}/20.mp3`,
   },
   {
     id: 'sharat-pokemon-samir',
@@ -321,7 +343,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 2000,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
     archiveUrl: `${BUNDLE_1}/16.mp3`,
-    youtubeId: 'k2K9x2P8vM5',
+    youtubeId: '1xK8m9V2zQ4',
+    backupYoutubeId: 'v8M9k2P4zL1',
     downloadUrl: `${BUNDLE_1}/16.mp3`,
   },
 
@@ -336,9 +359,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب رياضة',
     year: 2010,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/52.mp3`,
-    youtubeId: 't1K9x2P8vM6',
-    downloadUrl: `${BUNDLE_1}/52.mp3`,
+    archiveUrl: `${BUNDLE_2}/01.ia.mp4`,
+    youtubeId: 'r2M8x9P4vK6',
+    backupYoutubeId: 'g4M8x2P9vL8',
+    downloadUrl: `${BUNDLE_2}/01.ia.mp4`,
   },
   {
     id: 'sharat-lbx',
@@ -350,9 +374,10 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     planetAr: 'كوكب أكشن',
     year: 2014,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
-    archiveUrl: `${BUNDLE_1}/53.mp3`,
-    youtubeId: 't2K9x2P8vM7',
-    downloadUrl: `${BUNDLE_1}/53.mp3`,
+    archiveUrl: `${BUNDLE_2}/01.ia.mp4`,
+    youtubeId: 'g4M8x2P9vL8',
+    backupYoutubeId: 't4M8x2P9vK7',
+    downloadUrl: `${BUNDLE_2}/01.ia.mp4`,
   },
   {
     id: 'sharat-tiger-mask',
@@ -365,7 +390,8 @@ export const SHARAT_GOLDEN_VOICES_CATALOG: SharatTrack[] = [
     year: 1998,
     posterUrl: 'https://archive.org/services/img/20210811_20210811_2250',
     archiveUrl: `${BUNDLE_1}/19.mp3`,
-    youtubeId: 't3K9x2P8vM8',
+    youtubeId: 't4M8x2P9vK7',
+    backupYoutubeId: 'h9M8x2P4vL2',
     downloadUrl: `${BUNDLE_1}/19.mp3`,
   },
 ];

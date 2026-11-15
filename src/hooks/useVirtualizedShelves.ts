@@ -34,6 +34,7 @@ export interface UseVirtualizedShelvesOptions<T extends { id: string | number; t
   batchShelfCount?: number;
   shelfBatchSize?: number;
   enabled?: boolean;
+  scrollRootRef?: React.RefObject<HTMLElement | null>;
 }
 
 export function useVirtualizedShelves<T extends { id: string | number; title: string }>(
@@ -190,11 +191,14 @@ export function useVirtualizedShelves<T extends { id: string | number; title: st
           loadNextShelves();
         }
       },
-      { rootMargin: '600px 0px' },
+      {
+        root: options.scrollRootRef?.current ?? null,
+        rootMargin: '600px 0px',
+      },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [enabled, loadNextShelves]);
+  }, [enabled, loadNextShelves, options.scrollRootRef]);
 
   const hasMoreShelves =
     mountedCursor < resolvedDefinitions.length || extraPageRound <= 5;

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import type { ConsoleCore } from '../types/games.types';
 import type { ActiveEmulatorController } from '../hooks/useEmulatorLifecycle';
+import { GamesGeometricLoader } from '../components/GamesGeometricLoader';
 
 export interface RetroConsoleEngineViewProps {
   romUrl: string;
@@ -183,9 +184,7 @@ export function RetroConsoleEngineView({
               referrerPolicy="no-referrer"
             />
           )}
-          <div className="nl-progress">
-            <span />
-          </div>
+          <GamesGeometricLoader />
           <p className="nl-screen-hint">
             Loading {core.toUpperCase()} RetroArch Core...
           </p>

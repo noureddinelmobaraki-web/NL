@@ -255,87 +255,144 @@
   }
 }
 
-/* 5. Animated Gradient Download Button (.botao) */
-.cd-download-btn-wrapper {
+/* 5. Unified Ultra-Thin Frosted Glass Download Capsule (.nl-glass-download-capsule) */
+.nl-glass-download-capsule {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 125px;
-  min-height: 50px;
-}
-
-.cd-download-btn-wrapper .botao {
-  position: relative;
-  width: 125px;
-  height: 45px;
-  border-radius: 20px;
-  border: none;
-  box-shadow: 1px 1px rgba(107, 221, 215, 0.37);
-  padding: 5px 10px;
-  background: rgb(47, 93, 197);
+  gap: 0.45rem;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.95);
   background: linear-gradient(
-    160deg,
-    rgba(47, 93, 197, 1) 0%,
-    rgba(46, 86, 194, 1) 5%,
-    rgba(47, 93, 197, 1) 11%,
-    rgba(59, 190, 230, 1) 57%,
-    rgba(0, 212, 255, 1) 71%
+    135deg,
+    rgba(255, 255, 255, 0.13) 0%,
+    rgba(255, 255, 255, 0.03) 100%
   );
-  color: #fff;
-  font-family: Roboto, system-ui, -apple-system, sans-serif;
-  font-weight: 505;
-  font-size: 15px;
-  line-height: 1;
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    0 4px 14px rgba(0, 0, 0, 0.28);
   cursor: pointer;
-  filter: drop-shadow(0 0 10px rgba(59, 190, 230, 0.568));
-  transition: 0.5s linear;
+  white-space: nowrap;
+  text-decoration: none;
+  user-select: none;
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.nl-glass-download-capsule:hover {
+  transform: translateY(-1px);
+  color: #ffffff;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(125, 211, 252, 0.09) 100%
+  );
+  border-color: rgba(125, 211, 252, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 6px 20px rgba(0, 0, 0, 0.38),
+    0 0 16px rgba(56, 189, 248, 0.22);
+}
+
+.nl-glass-download-capsule:active {
+  transform: scale(0.96);
+}
+
+.nl-glass-download-capsule--compact {
+  height: 32px;
+  padding: 0 11px;
+  font-size: 11px;
+  gap: 0.35rem;
+}
+
+.nl-glass-download-capsule--active {
+  background: linear-gradient(
+    135deg,
+    rgba(56, 189, 248, 0.24) 0%,
+    rgba(14, 165, 233, 0.08) 100%
+  );
+  border-color: rgba(125, 211, 252, 0.6);
+  color: #e0f2fe;
+}
+
+.nl-glass-download-capsule--done {
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.24) 0%,
+    rgba(5, 150, 105, 0.08) 100%
+  );
+  border-color: rgba(110, 231, 183, 0.58);
+  color: #d1fae5;
+}
+
+.nl-glass-download-icon {
+  flex-shrink: 0;
+  color: #7dd3fc;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease;
+}
+
+.nl-glass-download-capsule:hover .nl-glass-download-icon {
+  transform: translateY(1.5px);
+  color: #bae6fd;
+}
+
+.nl-glass-download-icon-capsule {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 9999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.94);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 4px 14px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.cd-download-btn-wrapper .botao .mysvg {
-  display: none;
+.nl-glass-download-icon-capsule:hover {
+  transform: translateY(-1px) scale(1.04);
+  border-color: rgba(125, 211, 252, 0.58);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(56, 189, 248, 0.1) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.68),
+    0 6px 18px rgba(0, 0, 0, 0.38),
+    0 0 14px rgba(56, 189, 248, 0.25);
 }
 
-.cd-download-btn-wrapper .botao:hover {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  transition: 0.5s linear;
-}
-
-.cd-download-btn-wrapper .botao:hover .texto {
-  display: none;
-}
-
-.cd-download-btn-wrapper .botao:hover .mysvg {
-  display: inline;
-}
-
-.cd-download-btn-wrapper .botao:hover::before {
-  content: '';
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  width: calc(100% + 6px);
-  height: calc(100% + 6px);
-  border: 3.5px solid transparent;
-  border-top: 3.5px solid #fff;
-  border-right: 3.5px solid #fff;
-  border-radius: 50%;
-  animation: animateC 2s linear infinite;
-  box-sizing: border-box;
-}
-
-@keyframes animateC {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
+.nl-glass-download-icon-capsule:active {
+  transform: scale(0.95);
 }

@@ -26,7 +26,7 @@ export function useArtMuseumCatalog(initialGenre = 'all') {
       const results = await fetchUnifiedArtGallery(g, q, 1);
       setRawItems(results);
     } catch {
-      const fallback = await fetchPicsumGalleryPieces(1, 30);
+      const fallback = await fetchPicsumGalleryPieces(1, 12);
       setRawItems(fallback);
     } finally {
       setLoading(false);

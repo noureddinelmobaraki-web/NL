@@ -15,16 +15,20 @@ export interface ArtLightboxViewerModalProps {
 }
 
 /**
- * 100% Fullscreen Edge-to-Edge Lightbox (`fixed inset-0 z-[10500] w-screen h-[100dvh] bg-black/95`)
- * with windowless floating golden typography (`#f5d061`) that fades out when idle.
+ * 100% Fullscreen Edge-to-Edge Museum Lightbox (`fixed inset-0 z-[10500] w-screen h-[100dvh] bg-black/95`)
+ * with interactive wheel-zoom (1x to 4x), double-click toggle zoom (1x / 2.25x), pointer drag-to-pan,
+ * and windowless floating golden typography (`#f5d061`) that auto-fades after 2.2s of pointer inactivity.
  */
 export const ArtLightboxViewerModal: React.FC<ArtLightboxViewerModalProps> = ({
   artwork,
   onClose,
 }) => {
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
   const [hudVisible, setHudVisible] = useState(true);
   const idleTimerRef = useRef<number | null>(null);
+  const dragOriginRef = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
 
   const wakeHud = () => {
     setHudVisible(true);
@@ -33,12 +37,14 @@ export const ArtLightboxViewerModal: React.FC<ArtLightboxViewerModalProps> = ({
     }
     idleTimerRef.current = window.setTimeout(() => {
       setHudVisible(false);
-    }, 2600);
+    }, 2200);
   };
 
   useEffect(() => {
     if (!artwork) return;
     setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setIsDragging(false);
     wakeHud();
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -50,25 +56,102 @@ export const ArtLightboxViewerModal: React.FC<ArtLightboxViewerModalProps> = ({
     };
   }, [artwork, onClose]);
 
+  useEffect(() => {
+    if (zoom <= 1) {
+      setPan({ x: 0, y: 0 });
+    }
+  }, [zoom]);
+
   if (!artwork) return null;
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+    wakeHud();
+    const delta = e.deltaY < 0 ? 0.25 : -0.25;
+    setZoom((prev) => {
+      const next = Math.min(4, Math.max(1, +(prev + delta).toFixed(2)));
+      if (next <= 1) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    wakeHud();
+    setZoom((prev) => {
+      const next = prev > 1 ? 1 : 2.25;
+      if (next === 1) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLImageElement>) => {
+    e.stopPropagation();
+    wakeHud();
+    if (zoom <= 1) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+    dragOriginRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      panX: pan.x,
+      panY: pan.y,
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLImageElement>) => {
+    wakeHud();
+    if (!isDragging || !dragOriginRef.current || zoom <= 1) return;
+    const dx = e.clientX - dragOriginRef.current.startX;
+    const dy = e.clientY - dragOriginRef.current.startY;
+    setPan({
+      x: dragOriginRef.current.panX + dx,
+      y: dragOriginRef.current.panY + dy,
+    });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLImageElement>) => {
+    if (isDragging) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore capture release errors
+      }
+      setIsDragging(false);
+      dragOriginRef.current = null;
+    }
+  };
 
   return (
     <div
       className="fixed inset-0 z-[10500] w-screen h-[100dvh] bg-black/95 flex items-center justify-center overflow-hidden select-none"
       dir="ltr"
       onPointerMove={wakeHud}
-      onClick={onClose}
+      onWheel={handleWheel}
+      onClick={() => {
+        if (!isDragging) onClose();
+      }}
     >
-      {/* Edge-to-Edge Fullscreen High-Res Canvas */}
+      {/* Edge-to-Edge Fullscreen High-Res Canvas with Wheel-Zoom & Drag-to-Pan */}
       <img
         src={artwork.highResUrl || artwork.imageUrl}
         alt={artwork.title}
+        draggable={false}
         onClick={(e) => {
           e.stopPropagation();
           wakeHud();
         }}
-        className="max-w-[96vw] max-h-[94dvh] w-auto h-auto object-contain transition-transform duration-300"
-        style={{ transform: `scale(${zoom})` }}
+        onDoubleClick={handleDoubleClick}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        className={`max-w-[96vw] max-h-[94dvh] w-auto h-auto object-contain ${
+          isDragging ? 'cursor-grabbing' : zoom > 1 ? 'cursor-grab transition-transform duration-150' : 'cursor-zoom-in transition-transform duration-300'
+        }`}
+        style={{
+          transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+        }}
       />
 
       {/* Top-Right Floating Controls */}
@@ -80,7 +163,7 @@ export const ArtLightboxViewerModal: React.FC<ArtLightboxViewerModalProps> = ({
       >
         <button
           type="button"
-          onClick={() => setZoom((z) => Math.min(3, +(z + 0.3).toFixed(2)))}
+          onClick={() => setZoom((z) => Math.min(4, +(z + 0.35).toFixed(2)))}
           aria-label="Zoom in"
           className="h-10 w-10 rounded-full bg-black/50 hover:bg-black/80 text-[#f5d061] border border-[#f5d061]/35 flex items-center justify-center transition cursor-pointer"
         >
@@ -88,7 +171,7 @@ export const ArtLightboxViewerModal: React.FC<ArtLightboxViewerModalProps> = ({
         </button>
         <button
           type="button"
-          onClick={() => setZoom((z) => Math.max(1, +(z - 0.3).toFixed(2)))}
+          onClick={() => setZoom((z) => Math.max(1, +(z - 0.35).toFixed(2)))}
           aria-label="Zoom out"
           className="h-10 w-10 rounded-full bg-black/50 hover:bg-black/80 text-[#f5d061] border border-[#f5d061]/35 flex items-center justify-center transition cursor-pointer"
         >
@@ -100,9 +183,9 @@ export const ArtLightboxViewerModal: React.FC<ArtLightboxViewerModalProps> = ({
           rel="noopener noreferrer"
           download
           aria-label="Download High-Res Masterpiece"
-          className="h-10 px-4 rounded-full bg-black/55 hover:bg-black/80 text-[#f5d061] border border-[#f5d061]/45 text-xs font-bold inline-flex items-center gap-1.5 transition"
+          className="nl-glass-download-capsule"
         >
-          <Download size={15} />
+          <Download size={14} className="nl-glass-download-icon" />
           <span>Download CC0</span>
         </a>
         {artwork.externalUrl && (

@@ -1,11 +1,23 @@
 import type { ArtMuseumPiece } from '../types/art.types';
 
 /**
+ * Wraps uncompressed external museum image URLs in a fast 400px WebP CDN proxy (wsrv.nl)
+ * so grid cards load ~35KB thumbnails instead of 3MB–8MB raw plates, while keeping
+ * highResUrl untouched for the fullscreen Lightbox & CC0 download.
+ */
+export function toFastWebpThumb(rawUrl: string, width = 400): string {
+  if (!rawUrl || rawUrl.includes('wsrv.nl') || rawUrl.includes('picsum.photos')) {
+    return rawUrl;
+  }
+  return `https://wsrv.nl/?url=${encodeURIComponent(rawUrl)}&w=${width}&q=75&output=webp`;
+}
+
+/**
  * 1. Art Institute of Chicago API (IIIF Public Domain)
  */
 export async function fetchChicagoArtworks(
   query = 'impressionism painting',
-  limit = 32,
+  limit = 6,
   page = 1,
 ): Promise<ArtMuseumPiece[]> {
   try {
@@ -46,7 +58,7 @@ export async function fetchChicagoArtworks(
  */
 export async function fetchClevelandArtworks(
   query = 'painting',
-  limit = 32,
+  limit = 6,
   page = 1,
 ): Promise<ArtMuseumPiece[]> {
   try {
@@ -70,7 +82,7 @@ export async function fetchClevelandArtworks(
             'Classical Artist',
           dateDisplay: item.creation_date || '',
           mediumDisplay: item.technique || item.type || 'Fine Art',
-          thumbnailUrl: item.images.web.url,
+          thumbnailUrl: toFastWebpThumb(item.images.web.url, 400),
           imageUrl: item.images.web.url,
           highResUrl: item.images?.print?.url || item.images.web.url,
           dimensions: item.measurements || undefined,
@@ -95,7 +107,7 @@ export async function fetchMetMuseumArtworks(
     const searchRes = await fetch(searchUrl);
     if (!searchRes.ok) return [];
     const searchJson = await searchRes.json();
-    const pageSize = 20;
+    const pageSize = 6;
     const startIdx = Math.max(0, (page - 1) * pageSize);
     const ids: number[] = (searchJson?.objectIDs || []).slice(
       startIdx,
@@ -130,7 +142,7 @@ export async function fetchMetMuseumArtworks(
           artist: d.artistDisplayName || d.culture || 'Classical Master',
           dateDisplay: d.objectDate || '',
           mediumDisplay: d.medium || d.classification || 'Museum Piece',
-          thumbnailUrl: d.primaryImageSmall || d.primaryImage,
+          thumbnailUrl: toFastWebpThumb(d.primaryImageSmall || d.primaryImage, 400),
           imageUrl: d.primaryImageSmall || d.primaryImage,
           highResUrl: d.primaryImage || d.primaryImageSmall,
           dimensions: d.dimensions || undefined,
@@ -151,7 +163,7 @@ export async function fetchVamMuseumArtworks(
 ): Promise<ArtMuseumPiece[]> {
   try {
     const res = await fetch(
-      `https://api.vam.ac.uk/v2/objects/search?q=${encodeURIComponent(query)}&images_exist=1&page_size=28&page=${page}`,
+      `https://api.vam.ac.uk/v2/objects/search?q=${encodeURIComponent(query)}&images_exist=1&page_size=6&page=${page}`,
     );
     if (!res.ok) return [];
     const json = await res.json();
@@ -192,7 +204,7 @@ export async function fetchArchiveMetGalleryArtworks(
   try {
     const base = 'collection:(metropolitanmuseumofart-gallery) AND mediatype:(image)';
     const qExpr = query.trim() ? `(${base}) AND (${query.trim()})` : base;
-    const url = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(qExpr)}&fl[]=identifier,title,creator,date,year,description&sort[]=downloads+desc&rows=24&page=${page}&output=json`;
+    const url = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(qExpr)}&fl[]=identifier,title,creator,date,year,description&sort[]=downloads+desc&rows=6&page=${page}&output=json`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const json = await res.json();
@@ -202,6 +214,7 @@ export async function fetchArchiveMetGalleryArtworks(
       .map((d): ArtMuseumPiece => {
         const id = String(d.identifier);
         const artist = Array.isArray(d.creator) ? d.creator[0] : d.creator;
+        const rawThumb = `https://archive.org/services/img/${encodeURIComponent(id)}`;
         return {
           id: `ia-met-${id}`,
           source: 'ia-met',
@@ -210,8 +223,8 @@ export async function fetchArchiveMetGalleryArtworks(
           artist: String(artist || 'The Met Archival Collection'),
           dateDisplay: String(d.year || d.date || 'Classical Era'),
           mediumDisplay: 'Archival Museum Plate (CC0)',
-          thumbnailUrl: `https://archive.org/services/img/${encodeURIComponent(id)}`,
-          imageUrl: `https://archive.org/services/img/${encodeURIComponent(id)}`,
+          thumbnailUrl: toFastWebpThumb(rawThumb, 400),
+          imageUrl: rawThumb,
           highResUrl: `https://iiif.archive.org/iiif/${encodeURIComponent(id)}/full/1686,/0/default.jpg`,
           externalUrl: `https://archive.org/details/${encodeURIComponent(id)}`,
         };
@@ -229,7 +242,7 @@ export async function fetchLocPrintsAndPhotographs(
   page = 1,
 ): Promise<ArtMuseumPiece[]> {
   try {
-    const url = `https://www.loc.gov/pictures/search/?q=${encodeURIComponent(query)}&fo=json&c=24&sp=${page}`;
+    const url = `https://www.loc.gov/pictures/search/?q=${encodeURIComponent(query)}&fo=json&c=6&sp=${page}`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const json = await res.json();
@@ -247,7 +260,7 @@ export async function fetchLocPrintsAndPhotographs(
           artist: String(r.creator || 'Library of Congress Division'),
           dateDisplay: String(r.created_published_date || 'Archival Print'),
           mediumDisplay: 'Library of Congress Public Domain Print',
-          thumbnailUrl: thumb,
+          thumbnailUrl: toFastWebpThumb(thumb, 400),
           imageUrl: full,
           highResUrl: full,
           externalUrl: String(r.links?.item || 'https://www.loc.gov/pictures/'),
@@ -266,7 +279,7 @@ export async function fetchSmithsonianNgaOpenverse(
   page = 1,
 ): Promise<ArtMuseumPiece[]> {
   try {
-    const url = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&license=cc0&page_size=24&page=${page}`;
+    const url = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&license=cc0&page_size=6&page=${page}`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const json = await res.json();
@@ -284,7 +297,7 @@ export async function fetchSmithsonianNgaOpenverse(
           mediumDisplay: `CC0 Museum Collection (${r.source || 'Smithsonian'})`,
           dimensions:
             r.width && r.height ? `${r.width} × ${r.height} px` : undefined,
-          thumbnailUrl: r.thumbnail || r.url,
+          thumbnailUrl: toFastWebpThumb(r.thumbnail || r.url, 400),
           imageUrl: r.thumbnail || r.url,
           highResUrl: r.url,
           externalUrl: r.foreign_landing_url || r.url,
@@ -303,9 +316,9 @@ export async function fetchWikimediaCommonsArtworks(
   page = 1,
 ): Promise<ArtMuseumPiece[]> {
   try {
-    const limit = 28;
+    const limit = 6;
     const offset = Math.max(0, (page - 1) * limit);
-    const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap+${encodeURIComponent(query)}&gsrlimit=${limit}&gsroffset=${offset}&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=480&format=json&origin=*`;
+    const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap+${encodeURIComponent(query)}&gsrlimit=${limit}&gsroffset=${offset}&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=400&format=json&origin=*`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const json = await res.json();
@@ -358,7 +371,7 @@ export async function fetchOpenverseArtworks(
 ): Promise<ArtMuseumPiece[]> {
   try {
     const res = await fetch(
-      `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&license_type=commercial,modification&page_size=28&page=${page}`,
+      `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&license_type=commercial,modification&page_size=6&page=${page}`,
     );
     if (!res.ok) return [];
     const json = await res.json();
@@ -376,7 +389,7 @@ export async function fetchOpenverseArtworks(
           mediumDisplay: `Openverse (${r.source || 'Museum'})`,
           dimensions:
             r.width && r.height ? `${r.width} × ${r.height} px` : undefined,
-          thumbnailUrl: r.thumbnail || r.url,
+          thumbnailUrl: toFastWebpThumb(r.thumbnail || r.url, 400),
           imageUrl: r.thumbnail || r.url,
           highResUrl: r.url,
           externalUrl: r.foreign_landing_url || r.url,
@@ -396,8 +409,8 @@ export async function fetchConceptIllustrationArtworks(
   const results: ArtMuseumPiece[] = [];
   try {
     const [nekosRes, kitsuneRes] = await Promise.allSettled([
-      fetch('https://nekos.best/api/v2/husbando?amount=16'),
-      fetch('https://nekos.best/api/v2/kitsune?amount=16'),
+      fetch('https://nekos.best/api/v2/husbando?amount=6'),
+      fetch('https://nekos.best/api/v2/kitsune?amount=6'),
     ]);
 
     if (nekosRes.status === 'fulfilled' && nekosRes.value.ok) {
@@ -408,11 +421,11 @@ export async function fetchConceptIllustrationArtworks(
             id: `nekos-husbando-${page}-${idx}-${item.url.slice(-10)}`,
             source: 'concept-art',
             sourceLabel: 'Digital Concept & Anime Studio',
-            title: `Character Concept Illustration #${(page - 1) * 16 + idx + 1}`,
+            title: `Character Concept Illustration #${(page - 1) * 6 + idx + 1}`,
             artist: item.artist_name || 'Digital Concept Artist',
             dateDisplay: 'Contemporary',
             mediumDisplay: 'Digital Concept Illustration',
-            thumbnailUrl: item.url,
+            thumbnailUrl: toFastWebpThumb(item.url, 400),
             imageUrl: item.url,
             highResUrl: item.url,
             externalUrl: item.source_url || item.url,
@@ -429,11 +442,11 @@ export async function fetchConceptIllustrationArtworks(
             id: `nekos-kitsune-${page}-${idx}-${item.url.slice(-10)}`,
             source: 'concept-art',
             sourceLabel: 'Digital Concept & Anime Studio',
-            title: `Fantasy Concept Artwork #${(page - 1) * 16 + idx + 1}`,
+            title: `Fantasy Concept Artwork #${(page - 1) * 6 + idx + 1}`,
             artist: item.artist_name || 'Digital Art Studio',
             dateDisplay: 'Contemporary',
             mediumDisplay: 'Digital Art / Concept Plate',
-            thumbnailUrl: item.url,
+            thumbnailUrl: toFastWebpThumb(item.url, 400),
             imageUrl: item.url,
             highResUrl: item.url,
             externalUrl: item.source_url || item.url,
@@ -452,7 +465,7 @@ export async function fetchConceptIllustrationArtworks(
  */
 export async function fetchPicsumGalleryPieces(
   page = 1,
-  limit = 28,
+  limit = 6,
 ): Promise<ArtMuseumPiece[]> {
   try {
     const res = await fetch(

@@ -323,6 +323,141 @@ html[data-island-open="true"] body *:not(.notch-portal-root, .notch-portal-root 
   50%      { opacity: 0.55; transform: scale3d(1.12, 1.12, 1); }
 }
 
+/* ── Molten Polygon Mask Orb (Collapsed Notch Island) ── */
+.nl-molten-orb-wrap {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  position: relative;
+}
+
+.nl-molten-orb {
+  --color-one: #ffbf48;
+  --color-two: #be4a1d;
+  --color-three: #ffbf4780;
+  --color-four: #bf4a1d80;
+  --color-five: #ffbf4740;
+  --time-animation: 2s;
+  --size: 0.44;
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  transform: scale(var(--size));
+  box-shadow:
+    0 0 25px 0 var(--color-three),
+    0 20px 50px 0 var(--color-four);
+  animation: nl-notch-colorize calc(var(--time-animation) * 3) ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.nl-molten-orb::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border-top: solid 1px var(--color-one);
+  border-bottom: solid 1px var(--color-two);
+  background: linear-gradient(180deg, var(--color-five), var(--color-four));
+  box-shadow:
+    inset 0 10px 10px 0 var(--color-three),
+    inset 0 -10px 10px 0 var(--color-four);
+}
+
+.nl-molten-orb .nl-molten-orb__box {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(
+    180deg,
+    var(--color-one) 30%,
+    var(--color-two) 70%
+  );
+  mask: url(#nl-notch-clipping);
+  -webkit-mask: url(#nl-notch-clipping);
+}
+
+.nl-molten-orb svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.nl-molten-orb svg #nl-notch-clipping {
+  filter: contrast(15);
+  animation: nl-notch-roundness calc(var(--time-animation) / 2) linear infinite;
+}
+
+.nl-molten-orb svg #nl-notch-clipping polygon {
+  filter: blur(7px);
+}
+
+.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(1) {
+  transform-origin: 75% 25%;
+  transform: rotate(90deg);
+}
+
+.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(2) {
+  transform-origin: 50% 50%;
+  animation: nl-notch-rotation var(--time-animation) linear infinite reverse;
+}
+
+.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(3) {
+  transform-origin: 50% 60%;
+  animation: nl-notch-rotation var(--time-animation) linear infinite;
+  animation-delay: calc(var(--time-animation) / -3);
+}
+
+.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(4) {
+  transform-origin: 40% 40%;
+  animation: nl-notch-rotation var(--time-animation) linear infinite reverse;
+}
+
+.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(5) {
+  transform-origin: 40% 40%;
+  animation: nl-notch-rotation var(--time-animation) linear infinite reverse;
+  animation-delay: calc(var(--time-animation) / -2);
+}
+
+.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(6) {
+  transform-origin: 60% 40%;
+  animation: nl-notch-rotation var(--time-animation) linear infinite;
+}
+
+.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(7) {
+  transform-origin: 60% 40%;
+  animation: nl-notch-rotation var(--time-animation) linear infinite;
+  animation-delay: calc(var(--time-animation) / -1.5);
+}
+
+@keyframes nl-notch-rotation {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes nl-notch-roundness {
+  0% { filter: contrast(15); }
+  20% { filter: contrast(3); }
+  40% { filter: contrast(3); }
+  60% { filter: contrast(15); }
+  100% { filter: contrast(15); }
+}
+
+@keyframes nl-notch-colorize {
+  0% { filter: hue-rotate(0deg); }
+  20% { filter: hue-rotate(-30deg); }
+  40% { filter: hue-rotate(-60deg); }
+  60% { filter: hue-rotate(-90deg); }
+  80% { filter: hue-rotate(-45deg); }
+  100% { filter: hue-rotate(0deg); }
+}
+
 /* =====================================================================
    Live Pill (Universal Audio Sensor Transport)
    ===================================================================== */

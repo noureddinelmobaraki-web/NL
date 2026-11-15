@@ -11,6 +11,7 @@ import { RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useRuffle } from '../useRuffle';
 import type { ActiveEmulatorController } from '../hooks/useEmulatorLifecycle';
+import { GamesGeometricLoader } from '../components/GamesGeometricLoader';
 
 export interface RuffleEngineViewProps {
   swfUrl: string;
@@ -91,9 +92,7 @@ export function RuffleEngineView({
               referrerPolicy="no-referrer"
             />
           )}
-          <div className="nl-progress">
-            <span />
-          </div>
+          <GamesGeometricLoader />
           <p className="nl-screen-hint">{t('games.loading')}</p>
         </div>
       )}

@@ -98,23 +98,23 @@ export const CinemaDownloadTriggerButton: React.FC<
     <button
       type="button"
       onClick={handleOpenDownload}
-      className={`lg-cinema-action-pill ${
-        compact ? 'py-2 px-4 text-xs' : 'py-2.5 px-5 text-xs sm:text-sm'
-      } font-extrabold text-white flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 transition-transform active:scale-95 border ${
+      className={`nl-glass-download-capsule ${
+        compact ? 'nl-glass-download-capsule--compact' : ''
+      } ${
         isCompleted
-          ? '!bg-emerald-500/25 !border-emerald-300/50 text-emerald-100'
+          ? 'nl-glass-download-capsule--done'
           : isDownloading
-            ? '!bg-sky-500/25 !border-sky-300/55 text-sky-100'
-            : 'hover:!bg-white/20 hover:!border-white/45'
+            ? 'nl-glass-download-capsule--active'
+            : ''
       }`}
       aria-label={isAr ? `تحميل ${item.title}` : `Download ${item.title}`}
     >
       {isDownloading ? (
-        <Loader2 size={15} className="animate-spin text-sky-300" />
+        <Loader2 size={14} className="animate-spin text-sky-300" />
       ) : isCompleted ? (
-        <CheckCircle2 size={15} className="text-emerald-300" />
+        <CheckCircle2 size={14} className="text-emerald-300" />
       ) : (
-        <Download size={15} className="text-sky-300" />
+        <Download size={14} className="nl-glass-download-icon" />
       )}
       <span>
         {isDownloading
@@ -159,13 +159,13 @@ export const CinemaHeaderDownloadButton: React.FC<{
       onClick={() => cinemaDownloadManager.openTasksModal()}
       aria-label={isAr ? 'مدير التحميلات (OPFS)' : 'Download Manager (OPFS)'}
       title={isAr ? 'مدير التحميلات والكاش القرصي' : 'Download Manager & OPFS Cache'}
-      className={`lg-cinema-icon-pill relative ${
+      className={`nl-glass-download-icon-capsule ${
         isModalOpen || activeCount > 0
-          ? '!bg-sky-500/30 !border-sky-300/60 text-sky-200'
+          ? '!bg-sky-500/25 !border-sky-300/60 text-sky-200'
           : ''
       }`}
     >
-      <Download size={15} />
+      <Download size={15} className="nl-glass-download-icon" />
       {totalCount > 0 && (
         <span
           className={`absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full border border-white/40 text-white text-[9px] font-black flex items-center justify-center shadow tabular-nums ${

@@ -12,6 +12,7 @@ import { useAppContext } from '../../context/AppContext';
 import type { CinemaItem } from '../../components/Movies/moviesDataClient';
 import { MovieRow } from '../../components/Movies/MovieGridComponents';
 import { useVirtualizedShelves } from '../../hooks/useVirtualizedShelves';
+import { LiquidGlassBooksBackdrop } from '../liquid-glass/shared/LiquidGlassBooksBackdrop';
 import { COMMERCIALS_SHELVES_CONFIG } from './catalog/commercialsShelvesConfig';
 import {
   buildCommercialsShelfDefinitions,
@@ -33,6 +34,7 @@ export const NostalgiaCommercialsPage: React.FC<NostalgiaCommercialsPageProps> =
   const [activeCategoryId, setActiveCategoryId] = useState<string>('all');
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Continuous TV Playlist state
   const [playlistQueue, setPlaylistQueue] = useState<CinemaItem[]>([]);
@@ -50,6 +52,7 @@ export const NostalgiaCommercialsPage: React.FC<NostalgiaCommercialsPageProps> =
     shelfDefinitions: shelfDefs,
     initialVisibleShelves: 3,
     shelfBatchSize: 2,
+    scrollRootRef: scrollContainerRef,
     getKey: (item) => item.archiveIds?.[0] || `comm:${item.id}`,
   });
 
@@ -117,111 +120,119 @@ export const NostalgiaCommercialsPage: React.FC<NostalgiaCommercialsPageProps> =
 
   return (
     <div
-      className="min-h-screen w-full bg-slate-950 text-white px-4 sm:px-8 pt-6 pb-24"
+      className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-white select-none overflow-hidden pointer-events-auto bg-slate-950"
       dir="ltr"
     >
-      {/* Minimal Clean Top Bar: Search + Filter Pills + Close X */}
-      <header className="max-w-7xl mx-auto mb-8 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-xl">
-            <Search
-              size={16}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none"
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search vintage TV commercials, 1950s–90s ads, bumpers, or drive-in reels..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white/[0.07] border border-white/15 focus:border-amber-400/70 text-xs sm:text-sm text-white placeholder:text-white/45 outline-none transition"
-            />
+      <LiquidGlassBooksBackdrop dimmerOpacity={0.58} />
+
+      <div
+        ref={scrollContainerRef}
+        className="nl-cinema-scroll absolute inset-0 z-20 h-full w-full overflow-y-auto overflow-x-hidden overscroll-contain px-4 sm:px-8 pt-6 pb-28 pointer-events-auto"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+      >
+        {/* Minimal Clean Top Bar: Search + Filter Pills + Close X */}
+        <header className="max-w-7xl mx-auto mb-8 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-xl">
+              <Search
+                size={16}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search vintage TV commercials, 1950s–90s ads, bumpers, or drive-in reels..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white/[0.07] border border-white/15 focus:border-amber-400/70 text-xs sm:text-sm text-white placeholder:text-white/45 outline-none transition"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Close"
+              className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white transition cursor-pointer shrink-0"
+            >
+              <X size={18} />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleClose}
-            aria-label="Close"
-            className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white transition cursor-pointer shrink-0"
-          >
-            <X size={18} />
-          </button>
-        </div>
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {[
+              { id: 'all', label: 'All Channels' },
+              ...COMMERCIALS_SHELVES_CONFIG.map((s) => ({
+                id: s.id,
+                label: s.badgeText,
+              })),
+            ].map((pill) => {
+              const active = activeCategoryId === pill.id;
+              return (
+                <button
+                  key={pill.id}
+                  type="button"
+                  onClick={() => setActiveCategoryId(pill.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                    active
+                      ? 'bg-amber-400 text-slate-950 shadow-md'
+                      : 'bg-white/[0.07] hover:bg-white/15 text-white/85 border border-white/15'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
+        </header>
 
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {[
-            { id: 'all', label: 'All Channels' },
-            ...COMMERCIALS_SHELVES_CONFIG.map((s) => ({
-              id: s.id,
-              label: s.badgeText,
-            })),
-          ].map((pill) => {
-            const active = activeCategoryId === pill.id;
-            return (
-              <button
-                key={pill.id}
-                type="button"
-                onClick={() => setActiveCategoryId(pill.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-                  active
-                    ? 'bg-amber-400 text-slate-950 shadow-md'
-                    : 'bg-white/[0.07] hover:bg-white/15 text-white/85 border border-white/15'
-                }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
-      </header>
-
-      {/* Orthogonal Commercials Shelves */}
-      <main className="max-w-7xl mx-auto space-y-8">
-        {searchResults ? (
-          <MovieRow
-            title={`Archive Commercial Results for "${searchQuery}"`}
-            items={searchResults}
-            isTouch={false}
-            activeHoverId={activeHoverId}
-            setActiveHoverId={setActiveHoverId}
-            hoverTimer={hoverTimerRef}
-            setSelectedItemId={(id: number) => {
-              const found = searchResults.find((it) => it.id === id);
-              if (found) void startPlaylistFromShelf(found, searchResults);
-            }}
-            onQuickWatch={(item: CinemaItem) =>
-              void startPlaylistFromShelf(item, searchResults)
-            }
-            t={t}
-            isFavoriteFn={() => false}
-          />
-        ) : (
-          <>
-            {shelves.map((shelf) => (
-              <MovieRow
-                key={shelf.id}
-                title={shelf.title}
-                items={shelf.items}
-                isTouch={false}
-                activeHoverId={activeHoverId}
-                setActiveHoverId={setActiveHoverId}
-                hoverTimer={hoverTimerRef}
-                setSelectedItemId={(id: number) => {
-                  const found = shelf.items.find((it) => it.id === id);
-                  if (found) void startPlaylistFromShelf(found, shelf.items);
-                }}
-                onQuickWatch={(item: CinemaItem) =>
-                  void startPlaylistFromShelf(item, shelf.items)
-                }
-                onReachEnd={() => void loadMoreShelfItems(shelf.id)}
-                t={t}
-                isFavoriteFn={() => false}
-              />
-            ))}
-            <div ref={sentinelRef} className="h-12 w-full" />
-          </>
-        )}
-      </main>
+        {/* Orthogonal Commercials Shelves */}
+        <main className="max-w-7xl mx-auto space-y-8">
+          {searchResults ? (
+            <MovieRow
+              title={`Archive Commercial Results for "${searchQuery}"`}
+              items={searchResults}
+              isTouch={false}
+              activeHoverId={activeHoverId}
+              setActiveHoverId={setActiveHoverId}
+              hoverTimer={hoverTimerRef}
+              setSelectedItemId={(id: number) => {
+                const found = searchResults.find((it) => it.id === id);
+                if (found) void startPlaylistFromShelf(found, searchResults);
+              }}
+              onQuickWatch={(item: CinemaItem) =>
+                void startPlaylistFromShelf(item, searchResults)
+              }
+              t={t}
+              isFavoriteFn={() => false}
+            />
+          ) : (
+            <>
+              {shelves.map((shelf) => (
+                <MovieRow
+                  key={shelf.id}
+                  title={shelf.title}
+                  items={shelf.items}
+                  isTouch={false}
+                  activeHoverId={activeHoverId}
+                  setActiveHoverId={setActiveHoverId}
+                  hoverTimer={hoverTimerRef}
+                  setSelectedItemId={(id: number) => {
+                    const found = shelf.items.find((it) => it.id === id);
+                    if (found) void startPlaylistFromShelf(found, shelf.items);
+                  }}
+                  onQuickWatch={(item: CinemaItem) =>
+                    void startPlaylistFromShelf(item, shelf.items)
+                  }
+                  onReachEnd={() => void loadMoreShelfItems(shelf.id)}
+                  t={t}
+                  isFavoriteFn={() => false}
+                />
+              ))}
+              <div ref={sentinelRef} className="h-12 w-full" />
+            </>
+          )}
+        </main>
+      </div>
 
       {/* Continuous TV Playlist Modal with Auto-Advance & MP4 Download */}
       {activeClip && (
@@ -312,9 +323,9 @@ export const NostalgiaCommercialsPage: React.FC<NostalgiaCommercialsPageProps> =
                     download
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3.5 py-2 rounded-xl bg-emerald-400/20 hover:bg-emerald-400/30 border border-emerald-300/45 text-emerald-200 text-xs font-extrabold inline-flex items-center gap-1.5"
+                    className="nl-glass-download-capsule"
                   >
-                    <Download size={13} />
+                    <Download size={13} className="nl-glass-download-icon" />
                     <span>Download MP4</span>
                   </a>
                 )}
@@ -323,9 +334,9 @@ export const NostalgiaCommercialsPage: React.FC<NostalgiaCommercialsPageProps> =
                     href={resolvedClip.torrentUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white/85 text-xs font-bold inline-flex items-center gap-1.5"
+                    className="nl-glass-download-capsule"
                   >
-                    <Download size={13} />
+                    <Download size={13} className="nl-glass-download-icon" />
                     <span>.Torrent</span>
                   </a>
                 )}
@@ -334,7 +345,7 @@ export const NostalgiaCommercialsPage: React.FC<NostalgiaCommercialsPageProps> =
                     href={resolvedClip.detailsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white/80 text-xs font-semibold inline-flex items-center gap-1.5"
+                    className="px-3 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-white/80 text-xs font-semibold inline-flex items-center gap-1.5 transition"
                   >
                     <ExternalLink size={13} />
                     <span>Archive Source</span>

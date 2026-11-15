@@ -317,28 +317,24 @@ function NotchIslandInner() {
             ))}
 
           {islandState === "orb" && (
-            <span className="orb" aria-hidden="true">
-              <span className="orb__shadow" />
-              <span className="orb__aura-wrap"><span className="orb__aura" /></span>
-              <span className="orb__lens" />
-              <span className="orb__back" />
-              <span className="orb__core">
-                <span className="merc__float">
-                  <span className="merc__react">
-                    <span className="merc__beat">
-                      <span className="merc__squash">
-                        <span className="merc__lobe-orbit"><span className="merc__lobe" /></span>
-                        <span className="merc__spin"><span className="merc__body" /></span>
-                      </span>
-                    </span>
-                  </span>
-                  <span className="merc__shade" />
-                  <span className="merc__accent" />
-                </span>
-              </span>
-              <span className="orb__tint" />
-              <span className="orb__shell" />
-            </span>
+            <div className="nl-molten-orb-wrap" aria-hidden="true">
+              <div className="nl-molten-orb">
+                <div className="nl-molten-orb__box" />
+                <svg width="100" height="100" viewBox="0 0 100 100" aria-hidden="true">
+                  <defs>
+                    <mask id="nl-notch-clipping">
+                      <polygon points="0,0 100,0 100,100 0,100" fill="black" />
+                      <polygon points="25,25 75,25 50,75" fill="white" />
+                      <polygon points="50,25 75,75 25,75" fill="white" />
+                      <polygon points="35,35 65,35 50,65" fill="white" />
+                      <polygon points="35,35 65,35 50,65" fill="white" />
+                      <polygon points="35,35 65,35 50,65" fill="white" />
+                      <polygon points="35,35 65,35 50,65" fill="white" />
+                    </mask>
+                  </defs>
+                </svg>
+              </div>
+            </div>
           )}
 
           <DesktopNotchPanel

@@ -130,34 +130,20 @@ export const DownloadReleaseCard = memo<Props>(function DownloadReleaseCard({
           </div>
         )}
 
-        <div className="cd-download-btn-wrapper">
-          <button type="button" onClick={() => onDownload(r)} className="botao">
-            <svg
-              width="24px"
-              height="24px"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="mysvg"
-            >
-              <g id="SVGRepo_bgCarrier" strokeWidth={0} />
-              <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round" />
-              <g id="SVGRepo_iconCarrier">
-                <g id="Interface / Download">
-                  <path
-                    id="Vector"
-                    d="M6 21H18M12 3V17M12 17L17 12M12 17L7 12"
-                    stroke="#f1f1f1"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </g>
-              </g>
-            </svg>
-            <span className="texto">{label}</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onDownload(r)}
+          className={`nl-glass-download-capsule ${
+            t?.status === 'completed'
+              ? 'nl-glass-download-capsule--done'
+              : active
+                ? 'nl-glass-download-capsule--active'
+                : ''
+          }`}
+        >
+          <FileDown size={14} className="nl-glass-download-icon" />
+          <span>{label}</span>
+        </button>
       </div>
     </div>
   );

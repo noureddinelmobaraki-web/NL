@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import type { ActiveEmulatorController } from '../hooks/useEmulatorLifecycle';
+import { GamesGeometricLoader } from '../components/GamesGeometricLoader';
 
 export interface DosEngineViewProps {
   bundleUrl: string;
@@ -204,9 +205,7 @@ export function DosEngineView({
               referrerPolicy="no-referrer"
             />
           )}
-          <div className="nl-progress">
-            <span />
-          </div>
+          <GamesGeometricLoader />
           <p className="nl-screen-hint">Starting MS-DOS WASM Engine...</p>
         </div>
       )}

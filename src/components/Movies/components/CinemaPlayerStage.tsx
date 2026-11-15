@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import { useEffect, useState, type MutableRefObject } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import {
   X,
   Volume2,
@@ -20,6 +20,9 @@ import {
   Subtitles,
   Award,
   Download,
+  Server,
+  SkipForward,
+  ChevronDown,
 } from "lucide-react";
 import { GlassVectorIcon } from "../../shared/icons";
 import { EyeLoader } from "../EyeLoader";
@@ -27,7 +30,7 @@ import {
   recordServerFailure,
   recordServerSuccess,
 } from "../../../services/serverSpeedMonitor";
-import { clockReset } from "../../../features/cinema/player/playbackClock";
+import { clockReset, useClockTime } from "../../../features/cinema/player/playbackClock";
 import { sendIframePlayerCommand } from "../../../features/cinema/player/iframeBridge";
 import {
   CinemaTimeline,
@@ -233,303 +236,219 @@ export function CinemaPlayerStage({
 }: CinemaPlayerStageProps) {
   const [episodeJumpInput, setEpisodeJumpInput] = useState("");
   const [episodeRangeStart, setEpisodeRangeStart] = useState(1);
+  const [isServerPopoverOpen, setIsServerPopoverOpen] = useState(false);
+  const [isEpisodesDrawerOpen, setIsEpisodesDrawerOpen] = useState(false);
+  const [doubleTapFeedback, setDoubleTapFeedback] = useState<"-10s" | "+10s" | null>(null);
+  const lastTapLeftRef = useRef(0);
+  const lastTapRightRef = useRef(0);
+  const liveClockTime = useClockTime(250);
 
   useEffect(() => {
     const bucketStart = Math.floor((Math.max(1, selectedEpisode) - 1) / 50) * 50 + 1;
     setEpisodeRangeStart(bucketStart);
   }, [selectedEpisode, selectedSeason]);
 
+  const hasNextEpisode =
+    detailedItem.mediaType === "tv" &&
+    !isFullSeasonEmbed &&
+    seasonEpisodes.length > 0 &&
+    selectedEpisode < seasonEpisodes.length;
+
+  const handleNextEpisode = () => {
+    if (!hasNextEpisode) return;
+    setIsFullSeasonEmbed(false);
+    setSelectedEpisode(selectedEpisode + 1);
+    setDetailServersOpen(true);
+    startGalleryWatchSession();
+  };
+
+  const handleZoneDoubleTap = (side: "left" | "right") => {
+    if (playerRenderMode !== "direct" && controlMode !== "bridged") return;
+    const now = Date.now();
+    const ref = side === "left" ? lastTapLeftRef : lastTapRightRef;
+    if (now - ref.current < 320) {
+      const delta = side === "left" ? -10 : 10;
+      const baseTime =
+        playerRenderMode === "direct" && videoElementRef.current
+          ? videoElementRef.current.currentTime
+          : liveClockTime;
+      handleUserSeek(Math.max(0, baseTime + delta));
+      setDoubleTapFeedback(side === "left" ? "-10s" : "+10s");
+      window.setTimeout(() => setDoubleTapFeedback(null), 650);
+      ref.current = 0;
+    } else {
+      ref.current = now;
+      bumpControlsVisibility();
+    }
+  };
+
+  const renderDownloadButtons = () => (
+    <>
+      {(!hub || hub === "movies") && (
+        <CinemaDownloadTriggerButton
+          item={detailedItem}
+          imdbId={activeImdbId}
+          season={selectedSeason}
+          episode={selectedEpisode}
+          episodeTitle={
+            seasonEpisodes.find((ep) => ep.episode_number === selectedEpisode)?.name
+          }
+          currentLang={currentLang}
+          compact
+        />
+      )}
+
+      {(hub === "cartoon" || hub === "noir" || hub === "commercials") &&
+        (() => {
+          const activeStream =
+            extractedStreams[activeExtractedIdx] || extractedStreams[0];
+          const archiveId = detailedItem.archiveIds?.[0];
+          const directMp4Url =
+            activeStream?.directUrl ||
+            detailedItem.directDownloadUrl ||
+            (archiveId
+              ? `https://archive.org/details/${encodeURIComponent(archiveId)}`
+              : "");
+          const torrentUrl =
+            detailedItem.torrentDownloadUrl ||
+            (archiveId ? buildArchiveTorrentUrl(archiveId) : "");
+          return (
+            <>
+              {directMp4Url && (
+                <a
+                  href={directMp4Url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="nl-glass-download-capsule nl-glass-download-capsule--compact"
+                >
+                  <Download size={13} className="nl-glass-download-icon" />
+                  <span>{currentLang === "ar" ? "تحميل MP4" : "MP4"}</span>
+                </a>
+              )}
+              {torrentUrl && (
+                <a
+                  href={torrentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="nl-glass-download-capsule nl-glass-download-capsule--compact"
+                >
+                  <Download size={12} className="nl-glass-download-icon" />
+                  <span>.Torrent</span>
+                </a>
+              )}
+            </>
+          );
+        })()}
+
+      {hub === "anime" &&
+        (() => {
+          const activeStream =
+            extractedStreams[activeExtractedIdx] || extractedStreams[0];
+          const epUrl =
+            activeStream?.directUrl ||
+            detailedItem.directDownloadUrl ||
+            activeGallerySource?.url ||
+            "";
+          if (!epUrl) return null;
+          return (
+            <a
+              href={epUrl}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              className="nl-glass-download-capsule nl-glass-download-capsule--compact"
+            >
+              <Download size={13} className="nl-glass-download-icon" />
+              <span>
+                S{selectedSeason}:E{selectedEpisode}
+              </span>
+            </a>
+          );
+        })()}
+    </>
+  );
+
   return (
     <div
       className={`flex-shrink-0 flex flex-col gap-2 ${
-        isWatchingInGallery ? "p-0 sm:p-3" : "p-0 sm:p-3.5 pb-0"
+        isWatchingInGallery ? "p-0 sm:p-2" : "p-0 sm:p-3.5 pb-0"
       }`}
     >
-      {((isWatchingInGallery && Boolean(activeGallerySource)) ||
-        (showHeroTrailer && Boolean(activeImdbId || detailedItem.trailerKey))) && (
-        <div
-          onMouseMove={bumpControlsVisibility}
-          onTouchStart={bumpControlsVisibility}
-          className={`lg-cinema-gallery-top-bar flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap px-2.5 py-1.5 sm:flex-wrap sm:px-3 rounded-none sm:rounded-2xl transition-all duration-300 ${
-            isWatchingInGallery ? "lg-cinema-gallery-top-bar--playing" : ""
-          } ${
-            isWatchingInGallery && !isControlsVisible
-              ? "opacity-0 pointer-events-none"
-              : "opacity-100"
-          }`}
-          dir="ltr"
-        >
-          <div className="flex items-center gap-1.5 sm:flex-wrap sm:gap-2 min-w-0 shrink-0 sm:shrink">
-            {(activeImdbId || detailedItem.trailerKey) && (
+      {/* Trailer Top Bar (Only when watching trailer, NOT during active movie/series playback) */}
+      {!isWatchingInGallery &&
+        showHeroTrailer &&
+        Boolean(activeImdbId || detailedItem.trailerKey) && (
+          <div
+            onMouseMove={bumpControlsVisibility}
+            onTouchStart={bumpControlsVisibility}
+            className="lg-cinema-gallery-top-bar flex items-center justify-between gap-2 overflow-x-auto no-scrollbar whitespace-nowrap px-3 py-1.5 rounded-none sm:rounded-2xl"
+            dir="ltr"
+          >
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
-                  if (showHeroTrailer) {
-                    setShowHeroTrailer(false);
-                    setTrailerFallbackToYoutube(false);
-                  } else {
-                    persistCurrentProgress();
-                    setIsWatchingInGallery(false);
-                    clockReset("manual");
-                    setTrailerFallbackToYoutube(!activeImdbId);
-                    setShowHeroTrailer(true);
-                  }
+                  setShowHeroTrailer(false);
+                  setTrailerFallbackToYoutube(false);
                 }}
-                className={`lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
-                  showHeroTrailer
-                    ? "!bg-rose-600/45 !border-rose-300/70 text-white"
-                    : "text-white"
-                }`}
+                className="lg-cinema-action-pill px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer !bg-rose-600/45 !border-rose-300/70 text-white"
               >
                 <Film size={13} />
                 <span>
-                  {showHeroTrailer
-                    ? currentLang === "ar"
-                      ? "إغلاق التريلر"
-                      : "Hide Trailer"
-                    : currentLang === "ar"
-                      ? "تشغيل التريلر"
-                      : "Watch Trailer"}
+                  {currentLang === "ar" ? "إغلاق التريلر" : "Hide Trailer"}
                 </span>
               </button>
-            )}
 
-            {showHeroTrailer && activeGallerySource && (
+              {activeGallerySource && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetailServersOpen(true);
+                    startGalleryWatchSession();
+                  }}
+                  className="lg-cinema-primary-pill px-3.5 py-1.5 text-xs font-black text-white flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Play size={12} className="fill-current" />
+                  <span>
+                    {t("movies.meta.watchNow") ||
+                      (currentLang === "ar" ? "مشاهدة الآن" : "Watch Now")}
+                  </span>
+                </button>
+              )}
+
+              {renderDownloadButtons()}
+            </div>
+
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setDetailServersOpen(true);
-                  startGalleryWatchSession();
-                }}
-                className="lg-cinema-primary-pill px-3.5 py-1.5 text-xs font-black text-white flex items-center gap-1.5 cursor-pointer"
+                onClick={handleToggleGalleryFullscreen}
+                className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px]"
+                aria-label={
+                  isAnyFullscreen
+                    ? t("movies.player.exitFullscreen")
+                    : t("movies.player.fullscreen")
+                }
               >
-                <Play size={12} className="fill-current" />
-                <span>
-                  {t("movies.meta.watchNow") ||
-                    (currentLang === "ar" ? "مشاهدة الآن" : "Watch Now")}
-                </span>
-              </button>
-            )}
-
-            {(!hub || hub === "movies") && (
-              <CinemaDownloadTriggerButton
-                item={detailedItem}
-                imdbId={activeImdbId}
-                season={selectedSeason}
-                episode={selectedEpisode}
-                episodeTitle={
-                  seasonEpisodes.find(
-                    (ep) => ep.episode_number === selectedEpisode,
-                  )?.name
-                }
-                currentLang={currentLang}
-                compact
-              />
-            )}
-
-            {(hub === "cartoon" || hub === "noir" || hub === "commercials") &&
-              (() => {
-                const activeStream =
-                  extractedStreams[activeExtractedIdx] || extractedStreams[0];
-                const archiveId = detailedItem.archiveIds?.[0];
-                const directMp4Url =
-                  activeStream?.directUrl ||
-                  detailedItem.directDownloadUrl ||
-                  (archiveId
-                    ? `https://archive.org/details/${encodeURIComponent(archiveId)}`
-                    : "");
-                const torrentUrl =
-                  detailedItem.torrentDownloadUrl ||
-                  (archiveId ? buildArchiveTorrentUrl(archiveId) : "");
-                return (
-                  <>
-                    {directMp4Url && (
-                      <a
-                        href={directMp4Url}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-emerald-200 hover:text-white flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-                      >
-                        <Download size={13} />
-                        <span>
-                          {currentLang === "ar" ? "تحميل MP4" : "MP4"}
-                        </span>
-                      </a>
-                    )}
-                    {torrentUrl && (
-                      <a
-                        href={torrentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="lg-cinema-action-pill px-2.5 py-1.5 text-xs font-bold text-amber-200 hover:text-white flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                      >
-                        <Download size={12} />
-                        <span>.Torrent</span>
-                      </a>
-                    )}
-                  </>
-                );
-              })()}
-
-            {hub === "anime" &&
-              (() => {
-                const activeStream =
-                  extractedStreams[activeExtractedIdx] || extractedStreams[0];
-                const epUrl =
-                  activeStream?.directUrl ||
-                  detailedItem.directDownloadUrl ||
-                  activeGallerySource?.url ||
-                  "";
-                if (!epUrl) return null;
-                return (
-                  <a
-                    href={epUrl}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-sky-200 hover:text-white flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-                  >
-                    <Download size={13} />
-                    <span>
-                      S{selectedSeason}:E{selectedEpisode}
-                    </span>
-                  </a>
-                );
-              })()}
-
-            {isWatchingInGallery &&
-              activeGallerySource &&
-              detailedItem.mediaType === "tv" && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-white/10 border border-white/20 text-white/90 whitespace-nowrap">
-                  {isFullSeasonEmbed
-                    ? "Full Season"
-                    : `S${selectedSeason}:E${selectedEpisode}`}
-                </span>
-              )}
-
-            {isWatchingInGallery && detailPlaySources.length > 0 && (
-              <div className="flex items-center gap-1 sm:flex-wrap shrink-0">
-                {animeAudioMode && onChangeAnimeAudioMode && (
-                  <div
-                    className="inline-flex items-center rounded-full bg-black/55 border border-white/25 p-0.5 me-1"
-                    dir="ltr"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => onChangeAnimeAudioMode("sub")}
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition cursor-pointer ${
-                        animeAudioMode === "sub"
-                          ? "bg-sky-500 text-white shadow"
-                          : "text-white/75 hover:text-white"
-                      }`}
-                    >
-                      SUB مترجم
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onChangeAnimeAudioMode("dub")}
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition cursor-pointer ${
-                        animeAudioMode === "dub"
-                          ? "bg-amber-500 text-slate-950 shadow"
-                          : "text-white/75 hover:text-white"
-                      }`}
-                    >
-                      DUB مدبلج
-                    </button>
-                  </div>
+                {isAnyFullscreen ? (
+                  <Minimize2 size={15} />
+                ) : (
+                  <Maximize2 size={15} />
                 )}
-                {detailPlaySources.map((srv, idx) => {
-                  const isCurrent = idx === activeGalleryServerIdx;
-                  return (
-                    <button
-                      key={srv.id}
-                      type="button"
-                      onClick={() => {
-                        if (idx !== activeGalleryServerIdx) {
-                          setWorkerBridgeSubtitles([]);
-                          startGalleryWatchSession(idx);
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border transition-all cursor-pointer whitespace-nowrap ${
-                        isCurrent
-                          ? "bg-red-600/85 border-red-400 text-white shadow"
-                          : "bg-white/8 border-white/15 text-white/70 hover:text-white hover:bg-white/15"
-                      }`}
-                    >
-                      {srv.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                persistCurrentProgress();
-                if (playerIframeRef.current) {
-                  try {
-                    playerIframeRef.current.src = "about:blank";
-                  } catch {}
-                }
-                clockReset("manual");
-                setIsWatchingInGallery(false);
-                setShowHeroTrailer(false);
-                setTrailerFallbackToYoutube(false);
-                setIsCssFullscreen(false);
-                setIsSubtitleMenuOpen(false);
-              }}
-              className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-white/90 hover:text-white flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-              title={t("movies.player.showBackdrop")}
-            >
-              <span>{t("movies.player.showBackdrop")}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setSelectedItemId(null)}
+                className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] hover:!bg-rose-600/45 hover:!border-rose-300/60"
+                aria-label={t("movies.close")}
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleToggleGalleryFullscreen}
-              className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px]"
-              aria-label={
-                isAnyFullscreen
-                  ? t("movies.player.exitFullscreen")
-                  : t("movies.player.fullscreen")
-              }
-              title={
-                isAnyFullscreen
-                  ? t("movies.player.exitFullscreen")
-                  : t("movies.player.fullscreen")
-              }
-            >
-              {isAnyFullscreen ? (
-                <Minimize2 size={15} />
-              ) : (
-                <Maximize2 size={15} />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                persistCurrentProgress();
-                if (playerIframeRef.current) {
-                  try {
-                    playerIframeRef.current.src = "about:blank";
-                  } catch {}
-                }
-                setSelectedItemId(null);
-              }}
-              className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] hover:!bg-rose-600/45 hover:!border-rose-300/60"
-              aria-label={t("movies.close")}
-              title={t("movies.close")}
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-      )}
+        )}
 
       <div
         ref={galleryStageRef}
@@ -540,44 +459,417 @@ export function CinemaPlayerStage({
           isCssFullscreen ? "lg-cinema-gallery-stage--css-fullscreen" : ""
         }`}
       >
-        {isCssFullscreen && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsCssFullscreen(false);
-            }}
-            className={`lg-cinema-icon-pill fixed top-4 right-4 z-[10600] !w-10 !h-10 transition-opacity duration-300 ${
-              isControlsVisible
-                ? "opacity-100"
-                : "opacity-0 pointer-events-none"
-            }`}
-            aria-label={t("movies.player.exitFullscreen")}
-            title={t("movies.player.exitFullscreen")}
-          >
-            <Minimize2 size={16} />
-          </button>
-        )}
-
         {isWatchingInGallery && !isControlsVisible && (
           <>
             <div
               onMouseEnter={bumpControlsVisibility}
               onMouseMove={bumpControlsVisibility}
               onTouchStart={bumpControlsVisibility}
-              className="absolute top-0 inset-x-0 h-5 z-30"
+              className="absolute top-0 inset-x-0 h-6 z-30"
             />
             <div
               onMouseEnter={bumpControlsVisibility}
               onMouseMove={bumpControlsVisibility}
               onTouchStart={bumpControlsVisibility}
-              className="absolute bottom-0 inset-x-0 h-4 z-30"
+              className="absolute bottom-0 inset-x-0 h-5 z-30"
             />
           </>
         )}
 
         {isWatchingInGallery && activeGallerySource ? (
-          <div className="relative w-full h-full bg-black">
+          <div className="relative w-full h-full bg-black overflow-hidden">
+            {/* Single-Layer Netflix/Crunchyroll Internal Top Floating Strip */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              onMouseMove={bumpControlsVisibility}
+              className={`absolute top-0 inset-x-0 z-30 px-3 sm:px-5 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 bg-gradient-to-b from-black/85 via-black/45 to-transparent transition-opacity duration-300 ${
+                isControlsVisible || isServerPopoverOpen || isEpisodesDrawerOpen
+                  ? "opacity-100 pointer-events-auto"
+                  : "opacity-0 pointer-events-none"
+              }`}
+              dir="ltr"
+            >
+              {/* Left: Title + Season/Episode Badge */}
+              <div className="flex items-center gap-2 min-w-0">
+                <h4 className="text-xs sm:text-sm font-black text-white truncate max-w-[160px] sm:max-w-[320px] drop-shadow">
+                  {detailedItem.title}
+                </h4>
+                {detailedItem.mediaType === "tv" && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-600/80 border border-rose-400/60 text-white whitespace-nowrap shrink-0">
+                    {isFullSeasonEmbed
+                      ? "Full Season"
+                      : `S${selectedSeason}:E${selectedEpisode}`}
+                  </span>
+                )}
+              </div>
+
+              {/* Right: Servers Popover + Episodes Drawer Button + Download + Exit Player + Close */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {/* Compact Server Switcher Popover */}
+                {detailPlaySources.length > 0 && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsServerPopoverOpen((prev) => !prev);
+                        setIsEpisodesDrawerOpen(false);
+                      }}
+                      className="lg-cinema-action-pill px-3 py-1.5 text-xs font-extrabold text-white flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <Server size={13} className="text-rose-400" />
+                      <span className="hidden sm:inline">Servers ·</span>
+                      <span className="text-rose-200">{activeGallerySource.label}</span>
+                      <ChevronDown size={12} className="opacity-75" />
+                    </button>
+
+                    {isServerPopoverOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-64 max-h-80 overflow-y-auto rounded-2xl bg-slate-950/95 backdrop-blur-2xl border border-white/20 p-2.5 shadow-2xl z-50 flex flex-col gap-2">
+                        {animeAudioMode && onChangeAnimeAudioMode && (
+                          <div className="flex items-center justify-between gap-1 rounded-xl bg-white/5 border border-white/15 p-1">
+                            <button
+                              type="button"
+                              onClick={() => onChangeAnimeAudioMode("sub")}
+                              className={`flex-1 py-1 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                                animeAudioMode === "sub"
+                                  ? "bg-sky-500 text-white shadow"
+                                  : "text-white/75 hover:text-white"
+                              }`}
+                            >
+                              SUB مترجم
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onChangeAnimeAudioMode("dub")}
+                              className={`flex-1 py-1 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                                animeAudioMode === "dub"
+                                  ? "bg-amber-500 text-slate-950 shadow"
+                                  : "text-white/75 hover:text-white"
+                              }`}
+                            >
+                              DUB مدبلج
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col gap-1">
+                          {detailPlaySources.map((srv, idx) => {
+                            const isCurrent = idx === activeGalleryServerIdx;
+                            return (
+                              <button
+                                key={srv.id}
+                                type="button"
+                                onClick={() => {
+                                  setIsServerPopoverOpen(false);
+                                  if (idx !== activeGalleryServerIdx) {
+                                    setWorkerBridgeSubtitles([]);
+                                    startGalleryWatchSession(idx);
+                                  }
+                                }}
+                                className={`w-full px-3 py-2 rounded-xl text-xs font-extrabold text-start flex items-center justify-between transition cursor-pointer ${
+                                  isCurrent
+                                    ? "bg-rose-600/85 text-white border border-rose-400/60"
+                                    : "bg-white/5 hover:bg-white/12 text-white/80 hover:text-white border border-transparent"
+                                }`}
+                              >
+                                <span>{srv.label}</span>
+                                {isCurrent && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/30 text-rose-100">
+                                    Active
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TV Episodes Slide-Over Trigger */}
+                {detailedItem.mediaType === "tv" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEpisodesDrawerOpen((prev) => !prev);
+                      setIsServerPopoverOpen(false);
+                    }}
+                    className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                      isEpisodesDrawerOpen
+                        ? "!bg-rose-600/65 !border-rose-300/70 text-white"
+                        : "text-white"
+                    }`}
+                  >
+                    <Tv size={13} className="text-sky-300" />
+                    <span>{t("movies.meta.episodes", "Episodes")}</span>
+                  </button>
+                )}
+
+                {renderDownloadButtons()}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    persistCurrentProgress();
+                    if (playerIframeRef.current) {
+                      try {
+                        playerIframeRef.current.src = "about:blank";
+                      } catch {}
+                    }
+                    clockReset("manual");
+                    setIsWatchingInGallery(false);
+                    setShowHeroTrailer(false);
+                    setTrailerFallbackToYoutube(false);
+                    setIsCssFullscreen(false);
+                    setIsSubtitleMenuOpen(false);
+                    setIsServerPopoverOpen(false);
+                    setIsEpisodesDrawerOpen(false);
+                  }}
+                  className="lg-cinema-action-pill hidden md:inline-flex px-3 py-1.5 text-xs font-bold text-white/90 hover:text-white items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  title={t("movies.player.showBackdrop")}
+                >
+                  <span>{t("movies.player.showBackdrop")}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    persistCurrentProgress();
+                    if (playerIframeRef.current) {
+                      try {
+                        playerIframeRef.current.src = "about:blank";
+                      } catch {}
+                    }
+                    if (isAnyFullscreen) {
+                      handleToggleGalleryFullscreen();
+                    } else {
+                      setSelectedItemId(null);
+                    }
+                  }}
+                  className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] hover:!bg-rose-600/45 hover:!border-rose-300/60"
+                  aria-label={t("movies.close")}
+                  title={t("movies.close")}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Internal Right-Hand Slide-Over Episodes Drawer */}
+            {detailedItem.mediaType === "tv" && isEpisodesDrawerOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute inset-y-0 right-0 z-40 w-72 sm:w-80 bg-slate-950/92 backdrop-blur-2xl border-l border-white/15 p-3.5 flex flex-col gap-3 shadow-2xl overflow-y-auto"
+                dir="ltr"
+              >
+                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <Tv size={14} className="text-rose-400" />
+                    <span className="text-xs font-black uppercase tracking-wider text-white">
+                      {t("movies.meta.seasons")} & {t("movies.meta.episodes")}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEpisodesDrawerOpen(false)}
+                    className="lg-cinema-icon-pill !w-7 !h-7 !min-w-[28px] !min-h-[28px]"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+
+                {/* Season Pills */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {Array.from(
+                    { length: Math.max(1, Math.min(30, detailedItem.seasons || 1)) },
+                    (_, idx) => idx + 1,
+                  ).map((seasonNum) => {
+                    const isSeasonActive =
+                      !isFullSeasonEmbed && selectedSeason === seasonNum;
+                    return (
+                      <button
+                        key={`drawer-season-${seasonNum}`}
+                        type="button"
+                        onClick={() => {
+                          setIsFullSeasonEmbed(false);
+                          setSelectedSeason(seasonNum);
+                          setSelectedEpisode(1);
+                          setDetailServersOpen(true);
+                          startGalleryWatchSession();
+                        }}
+                        className={`lg-cinema-tv-pill px-2.5 py-1 rounded-full text-[11px] font-extrabold cursor-pointer transition-all ${
+                          isSeasonActive
+                            ? "lg-cinema-tv-pill--active"
+                            : "text-white/80 hover:text-white"
+                        }`}
+                      >
+                        S{seasonNum}
+                      </button>
+                    );
+                  })}
+
+                  {(detailedItem.hub || hub) === "movies" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsFullSeasonEmbed((prev) => !prev);
+                        setDetailServersOpen(true);
+                        startGalleryWatchSession();
+                      }}
+                      className={`lg-cinema-tv-pill px-2.5 py-1 rounded-full text-[11px] font-extrabold inline-flex items-center gap-1 cursor-pointer ${
+                        isFullSeasonEmbed
+                          ? "lg-cinema-tv-pill--active"
+                          : "text-amber-200/90 hover:text-amber-100"
+                      }`}
+                    >
+                      <Layers size={11} />
+                      <span>Full</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* 50-Episode Range + Jump Input */}
+                {!isFullSeasonEmbed && seasonEpisodes.length > 50 && (
+                  <div className="flex flex-col gap-2 border-y border-white/10 py-2">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {Array.from(
+                        { length: Math.ceil(seasonEpisodes.length / 50) },
+                        (_, chunkIdx) => {
+                          const start = chunkIdx * 50 + 1;
+                          const end = Math.min(
+                            seasonEpisodes.length,
+                            (chunkIdx + 1) * 50,
+                          );
+                          const isRangeActive = episodeRangeStart === start;
+                          return (
+                            <button
+                              key={`drawer-range-${start}-${end}`}
+                              type="button"
+                              onClick={() => setEpisodeRangeStart(start)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold cursor-pointer ${
+                                isRangeActive
+                                  ? "bg-rose-600 text-white"
+                                  : "bg-white/8 text-white/75 hover:bg-white/15"
+                              }`}
+                            >
+                              {start}–{end}
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const num = parseInt(episodeJumpInput.trim(), 10);
+                        if (!Number.isNaN(num) && num >= 1) {
+                          const clamped = Math.min(
+                            Math.max(1, num),
+                            Math.max(seasonEpisodes.length, num),
+                          );
+                          setIsFullSeasonEmbed(false);
+                          setSelectedEpisode(clamped);
+                          setDetailServersOpen(true);
+                          startGalleryWatchSession();
+                          setEpisodeJumpInput("");
+                          setIsEpisodesDrawerOpen(false);
+                        }
+                      }}
+                      className="flex items-center gap-1.5"
+                    >
+                      <input
+                        type="number"
+                        min={1}
+                        max={Math.max(1500, seasonEpisodes.length)}
+                        value={episodeJumpInput}
+                        onChange={(e) => setEpisodeJumpInput(e.target.value)}
+                        placeholder="Jump to Ep #"
+                        className="flex-1 px-2.5 py-1 rounded-full bg-black/50 border border-white/25 text-xs text-white placeholder:text-white/50 focus:outline-none focus:border-rose-400"
+                      />
+                      <button
+                        type="submit"
+                        className="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 text-xs font-extrabold text-white cursor-pointer"
+                      >
+                        Go
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* Episode List */}
+                {!isFullSeasonEmbed && (
+                  <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-1">
+                    {loadingSeasonEpisodes && seasonEpisodes.length === 0 ? (
+                      <span className="text-xs text-white/60 font-bold py-4 text-center">
+                        {t("movies.meta.loading")}
+                      </span>
+                    ) : (
+                      (seasonEpisodes.length > 50
+                        ? seasonEpisodes.slice(
+                            episodeRangeStart - 1,
+                            episodeRangeStart - 1 + 50,
+                          )
+                        : seasonEpisodes
+                      ).map((ep) => {
+                        const isEpActive = selectedEpisode === ep.episode_number;
+                        return (
+                          <button
+                            key={`drawer-ep-${selectedSeason}-${ep.episode_number}`}
+                            type="button"
+                            onClick={() => {
+                              setIsFullSeasonEmbed(false);
+                              setSelectedEpisode(ep.episode_number);
+                              setDetailServersOpen(true);
+                              startGalleryWatchSession();
+                              setIsEpisodesDrawerOpen(false);
+                            }}
+                            className={`px-3 py-2 rounded-xl text-xs font-bold text-start transition cursor-pointer flex items-center justify-between gap-2 ${
+                              isEpActive
+                                ? "bg-rose-600/85 text-white border border-rose-400/60 shadow"
+                                : "bg-white/5 hover:bg-white/12 text-white/80 hover:text-white border border-white/10"
+                            }`}
+                          >
+                            <span className="truncate">
+                              <strong className="me-1.5">E{ep.episode_number}</strong>
+                              {ep.name}
+                            </span>
+                            {isEpActive && (
+                              <Play size={11} className="fill-current shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mobile Left/Right 30% Double-Tap ±10s Seek Zones (Direct / Bridged) */}
+            {(playerRenderMode === "direct" || controlMode === "bridged") &&
+              !allServersFailed && (
+                <>
+                  <div
+                    onTouchEnd={() => handleZoneDoubleTap("left")}
+                    className="sm:hidden absolute inset-y-16 left-0 w-[30%] z-20"
+                  />
+                  <div
+                    onTouchEnd={() => handleZoneDoubleTap("right")}
+                    className="sm:hidden absolute inset-y-16 right-0 w-[30%] z-20"
+                  />
+                  {doubleTapFeedback && (
+                    <div className="
+                      absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30
+                      px-4 py-2 rounded-full bg-black/80 border border-white/25
+                      text-white text-sm font-black shadow-2xl pointer-events-none
+                    ">
+                      {doubleTapFeedback}
+                    </div>
+                  )}
+                </>
+              )}
+
             {!allServersFailed && playerRenderMode === "direct" && (
               <video
                 ref={videoElementRef}
@@ -721,7 +1013,7 @@ export function CinemaPlayerStage({
               )}
 
             {seekUnsupportedToast && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-black/85 border border-amber-400/50 text-amber-200 text-xs font-bold shadow-lg pointer-events-none">
+              <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-black/85 border border-amber-400/50 text-amber-200 text-xs font-bold shadow-lg pointer-events-none">
                 {t(
                   "movies.player.seekUnsupported",
                   "This server doesn't support external seeking — use the player's own bar",
@@ -735,7 +1027,7 @@ export function CinemaPlayerStage({
                 <SubtitleOverlay
                   cues={activeTrackCues}
                   offsetSec={subtitleOffsetSec}
-                  liftPx={isControlsVisible ? 56 : 0}
+                  liftPx={isControlsVisible ? 64 : 0}
                 />
               )}
 
@@ -761,6 +1053,144 @@ export function CinemaPlayerStage({
                 </button>
               </div>
             )}
+
+            {/* Single-Layer Bottom Auto-Hiding Floating Control Bar */}
+            {(playerRenderMode === "direct" || controlMode === "bridged") &&
+              !allServersFailed && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseMove={bumpControlsVisibility}
+                  className={`lg-cinema-player-controls absolute bottom-3 inset-x-3 sm:inset-x-5 z-30 rounded-2xl px-3.5 py-2 transition-all duration-300 ${
+                    isControlsVisible || isSubtitleMenuOpen
+                      ? "opacity-100 translate-y-0 pointer-events-auto"
+                      : "opacity-0 translate-y-3 pointer-events-none"
+                  }`}
+                  dir="ltr"
+                >
+                  <CinemaTimeline
+                    mode={controlMode}
+                    videoRef={videoElementRef}
+                    fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
+                    hasSubtitles={activeTrackCues.length > 0}
+                    onUserSeek={handleUserSeek}
+                    onUserTogglePlay={handleUserTogglePlay}
+                    rightSlot={
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {playerRenderMode === "direct" && (
+                          <div className="flex items-center gap-1.5 group">
+                            <button
+                              type="button"
+                              onClick={handleToggleVideoMute}
+                              className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] cursor-pointer"
+                              aria-label={isVideoMuted ? "Unmute" : "Mute"}
+                            >
+                              {isVideoMuted || videoVolume === 0 ? (
+                                <VolumeX size={14} />
+                              ) : (
+                                <Volume2 size={14} />
+                              )}
+                            </button>
+                            <input
+                              type="range"
+                              min={0}
+                              max={1}
+                              step={0.05}
+                              value={isVideoMuted ? 0 : videoVolume}
+                              onChange={(e) =>
+                                handleChangeVideoVolume(Number(e.target.value))
+                              }
+                              className="lg-cinema-seek-slider hidden md:block w-16"
+                              aria-label="Volume"
+                            />
+                          </div>
+                        )}
+
+                        {hasNextEpisode && (
+                          <button
+                            type="button"
+                            onClick={handleNextEpisode}
+                            className="lg-cinema-action-pill h-8 px-2.5 text-[11px] font-extrabold text-white flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                            title="Next Episode"
+                          >
+                            <SkipForward size={13} className="text-sky-300" />
+                            <span className="hidden sm:inline">
+                              Next Ep
+                            </span>
+                          </button>
+                        )}
+
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setIsSubtitleMenuOpen((prev) => !prev)}
+                            className={`lg-cinema-action-pill h-8 px-2.5 text-[11px] font-bold flex items-center gap-1 cursor-pointer ${
+                              activeSubtitleIdx !== null &&
+                              activeSubtitlesList[activeSubtitleIdx]
+                                ? "!bg-rose-600/45 !border-rose-300/70 text-white"
+                                : "text-white/85"
+                            }`}
+                            aria-label="Subtitles (CC)"
+                            title="Subtitles (CC)"
+                          >
+                            <Subtitles size={13} />
+                            <span>
+                              {activeSubtitleIdx !== null &&
+                              activeSubtitlesList[activeSubtitleIdx]
+                                ? activeSubtitlesList[
+                                    activeSubtitleIdx
+                                  ].lang.toUpperCase()
+                                : isLoadingSubtitles
+                                  ? "CC..."
+                                  : "CC"}
+                            </span>
+                          </button>
+
+                          {isSubtitleMenuOpen && (
+                            <div className="absolute bottom-full right-0 mb-2 z-50">
+                              <SubtitleSettingsPanel
+                                tracks={activeSubtitlesList}
+                                activeIdx={activeSubtitleIdx}
+                                loadingIdx={loadingSubtitleIdx}
+                                isSearching={isLoadingSubtitles}
+                                offsetSec={subtitleOffsetSec}
+                                onSelect={(idx) => {
+                                  setActiveSubtitleIdx(idx);
+                                  syncVideoTextTracks(idx);
+                                }}
+                                onOffsetChange={setSubtitleOffsetSec}
+                                onUploadFile={handleUploadLocalSubtitle}
+                                onLanguagesChanged={handleRefreshSubtitlesForLanguages}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleToggleGalleryFullscreen}
+                          className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] cursor-pointer"
+                          aria-label={
+                            isAnyFullscreen
+                              ? t("movies.player.exitFullscreen")
+                              : t("movies.player.fullscreen")
+                          }
+                          title={
+                            isAnyFullscreen
+                              ? t("movies.player.exitFullscreen")
+                              : t("movies.player.fullscreen")
+                          }
+                        >
+                          {isAnyFullscreen ? (
+                            <Minimize2 size={14} />
+                          ) : (
+                            <Maximize2 size={14} />
+                          )}
+                        </button>
+                      </div>
+                    }
+                  />
+                </div>
+              )}
           </div>
         ) : showHeroTrailer && (activeImdbId || detailedItem.trailerKey) ? (
           <div className="relative w-full h-full bg-black">
@@ -953,325 +1383,10 @@ export function CinemaPlayerStage({
             </div>
           </>
         )}
-
-        {isAnyFullscreen &&
-          isWatchingInGallery &&
-          (playerRenderMode === "direct" || controlMode === "bridged") &&
-          !allServersFailed && (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            onMouseMove={bumpControlsVisibility}
-            className={`lg-cinema-player-controls lg-cinema-player-controls--fullscreen rounded-2xl px-4 py-2.5 flex flex-col gap-2 ${
-              isControlsVisible
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-3 pointer-events-none"
-            }`}
-            dir="ltr"
-          >
-            <CinemaTimeline
-              mode={controlMode}
-              videoRef={videoElementRef}
-              fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
-              hasSubtitles={activeTrackCues.length > 0}
-              onUserSeek={handleUserSeek}
-              onUserTogglePlay={handleUserTogglePlay}
-            />
-
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                {playerRenderMode === "direct" && (
-                  <div className="flex items-center gap-1.5 ps-1">
-                    <button
-                      type="button"
-                      onClick={handleToggleVideoMute}
-                      className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] cursor-pointer"
-                      aria-label={isVideoMuted ? "Unmute" : "Mute"}
-                    >
-                      {isVideoMuted || videoVolume === 0 ? (
-                        <VolumeX size={14} />
-                      ) : (
-                        <Volume2 size={14} />
-                      )}
-                    </button>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={isVideoMuted ? 0 : videoVolume}
-                      onChange={(e) =>
-                        handleChangeVideoVolume(Number(e.target.value))
-                      }
-                      className="lg-cinema-seek-slider hidden sm:block w-20"
-                      aria-label="Volume"
-                    />
-                  </div>
-                )}
-
-                {activeSubtitleIdx !== null && (
-                  <div className="flex items-center gap-1 ps-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSubtitleOffsetSec((s) =>
-                          Number((s - 0.5).toFixed(1)),
-                        )
-                      }
-                      className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
-                      title="Sync Subtitles -0.5s"
-                    >
-                      -0.5s
-                    </button>
-                    {subtitleOffsetSec !== 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setSubtitleOffsetSec(0)}
-                        className="px-1.5 py-0.5 rounded bg-rose-500/30 border border-rose-300/40 text-[10px] font-mono text-white cursor-pointer"
-                        title="Reset subtitle offset"
-                      >
-                        {subtitleOffsetSec > 0
-                          ? `+${subtitleOffsetSec}s`
-                          : `${subtitleOffsetSec}s`}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSubtitleOffsetSec((s) =>
-                          Number((s + 0.5).toFixed(1)),
-                        )
-                      }
-                      className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
-                      title="Sync Subtitles +0.5s"
-                    >
-                      +0.5s
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 relative ms-auto">
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsSubtitleMenuOpen((prev) => !prev)}
-                    className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
-                      activeSubtitleIdx !== null &&
-                      activeSubtitlesList[activeSubtitleIdx]
-                        ? "!bg-rose-600/45 !border-rose-300/70 text-white"
-                        : "text-white/85"
-                    }`}
-                    aria-label="Subtitles (CC)"
-                    title="Subtitles (CC)"
-                  >
-                    <Subtitles size={14} />
-                    <span>
-                      {activeSubtitleIdx !== null &&
-                      activeSubtitlesList[activeSubtitleIdx]
-                        ? activeSubtitlesList[
-                            activeSubtitleIdx
-                          ].lang.toUpperCase()
-                        : isLoadingSubtitles
-                          ? "CC..."
-                          : "OFF"}
-                    </span>
-                  </button>
-
-                  {isSubtitleMenuOpen && (
-                    <div className="absolute bottom-full right-0 mb-2 z-50">
-                      <SubtitleSettingsPanel
-                        tracks={activeSubtitlesList}
-                        activeIdx={activeSubtitleIdx}
-                        loadingIdx={loadingSubtitleIdx}
-                        isSearching={isLoadingSubtitles}
-                        offsetSec={subtitleOffsetSec}
-                        onSelect={(idx) => {
-                          setActiveSubtitleIdx(idx);
-                          syncVideoTextTracks(idx);
-                        }}
-                        onOffsetChange={setSubtitleOffsetSec}
-                        onUploadFile={handleUploadLocalSubtitle}
-                        onLanguagesChanged={handleRefreshSubtitlesForLanguages}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleToggleGalleryFullscreen}
-                  className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
-                  aria-label={t("movies.player.exitFullscreen")}
-                >
-                  <Minimize2 size={15} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {!isAnyFullscreen &&
-        isWatchingInGallery &&
-        (playerRenderMode === "direct" || controlMode === "bridged") &&
-        !allServersFailed && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="lg-cinema-player-controls rounded-2xl px-3.5 py-2.5 flex flex-col gap-2"
-          dir="ltr"
-        >
-          <CinemaTimeline
-            mode={controlMode}
-            videoRef={videoElementRef}
-            fallbackDurationSec={(detailedItem?.runtime ?? 0) * 60}
-            hasSubtitles={activeTrackCues.length > 0}
-            onUserSeek={handleUserSeek}
-            onUserTogglePlay={handleUserTogglePlay}
-          />
-
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              {playerRenderMode === "direct" && (
-                <div className="flex items-center gap-1.5 ps-1">
-                  <button
-                    type="button"
-                    onClick={handleToggleVideoMute}
-                    className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] cursor-pointer"
-                    aria-label={isVideoMuted ? "Unmute" : "Mute"}
-                  >
-                    {isVideoMuted || videoVolume === 0 ? (
-                      <VolumeX size={14} />
-                    ) : (
-                      <Volume2 size={14} />
-                    )}
-                  </button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={isVideoMuted ? 0 : videoVolume}
-                    onChange={(e) =>
-                      handleChangeVideoVolume(Number(e.target.value))
-                    }
-                    className="lg-cinema-seek-slider hidden sm:block w-20"
-                    aria-label="Volume"
-                  />
-                </div>
-              )}
-
-              {activeSubtitleIdx !== null && (
-                <div className="flex items-center gap-1 ps-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSubtitleOffsetSec((s) =>
-                        Number((s - 0.5).toFixed(1)),
-                      )
-                    }
-                    className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
-                    title={
-                      currentLang === "ar"
-                        ? "تقديم الترجمة -0.5 ثانية"
-                        : "Sync Subtitles -0.5s"
-                    }
-                  >
-                    -0.5s
-                  </button>
-                  {subtitleOffsetSec !== 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSubtitleOffsetSec(0)}
-                      className="px-1.5 py-0.5 rounded bg-rose-500/30 border border-rose-300/40 text-[10px] font-mono text-white cursor-pointer"
-                      title="Reset subtitle offset"
-                    >
-                      {subtitleOffsetSec > 0
-                        ? `+${subtitleOffsetSec}s`
-                        : `${subtitleOffsetSec}s`}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSubtitleOffsetSec((s) =>
-                        Number((s + 0.5).toFixed(1)),
-                      )
-                    }
-                    className="lg-cinema-action-pill px-2 py-1 text-[10px] font-bold text-white/90 cursor-pointer"
-                    title={
-                      currentLang === "ar"
-                        ? "تأخير الترجمة +0.5 ثانية"
-                        : "Sync Subtitles +0.5s"
-                    }
-                  >
-                    +0.5s
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 relative ms-auto">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsSubtitleMenuOpen((prev) => !prev)}
-                  className={`lg-cinema-action-pill px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
-                    activeSubtitleIdx !== null &&
-                    activeSubtitlesList[activeSubtitleIdx]
-                      ? "!bg-rose-600/45 !border-rose-300/70 text-white"
-                      : "text-white/85"
-                  }`}
-                  aria-label="Subtitles (CC)"
-                  title="Subtitles (CC)"
-                >
-                  <Subtitles size={14} />
-                  <span>
-                    {activeSubtitleIdx !== null &&
-                    activeSubtitlesList[activeSubtitleIdx]
-                      ? activeSubtitlesList[
-                          activeSubtitleIdx
-                        ].lang.toUpperCase()
-                      : isLoadingSubtitles
-                        ? "CC..."
-                        : "OFF"}
-                  </span>
-                </button>
-
-                {isSubtitleMenuOpen && (
-                  <div className="absolute bottom-full right-0 mb-2 z-50">
-                    <SubtitleSettingsPanel
-                      tracks={activeSubtitlesList}
-                      activeIdx={activeSubtitleIdx}
-                      loadingIdx={loadingSubtitleIdx}
-                      isSearching={isLoadingSubtitles}
-                      offsetSec={subtitleOffsetSec}
-                      onSelect={(idx) => {
-                        setActiveSubtitleIdx(idx);
-                        syncVideoTextTracks(idx);
-                      }}
-                      onOffsetChange={setSubtitleOffsetSec}
-                      onUploadFile={handleUploadLocalSubtitle}
-                      onLanguagesChanged={handleRefreshSubtitlesForLanguages}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleToggleGalleryFullscreen}
-                className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
-                aria-label={t("movies.player.fullscreen")}
-                title={t("movies.player.fullscreen")}
-              >
-                <Maximize2 size={15} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {detailedItem.mediaType === "tv" && (
+      {/* Pre-Playback Season & Episode Selector (Hidden during active theater playback since it lives in the internal Episodes Drawer) */}
+      {!isWatchingInGallery && detailedItem.mediaType === "tv" && (
         <div
           className="lg-cinema-tv-selector-bar rounded-2xl p-3 flex flex-col gap-2.5"
           dir="ltr"
@@ -1334,7 +1449,6 @@ export function CinemaPlayerStage({
 
           {!isFullSeasonEmbed && (
             <div className="flex flex-col gap-2 pt-0.5">
-              {/* Episode Range Chunk Selector + Direct Episode Number Jump for Long Anime (50+ episodes) */}
               {seasonEpisodes.length > 50 && (
                 <div className="flex items-center justify-between gap-2 flex-wrap border-b border-white/10 pb-2">
                   <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full">

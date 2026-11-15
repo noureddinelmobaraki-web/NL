@@ -6,17 +6,12 @@
 import { useState } from "react";
 import { m } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { GamesGeometricLoader } from "../Games/components/GamesGeometricLoader";
 
 interface PageLoaderProps {
   pageType: "cinema" | "tv" | "games" | "retro";
 }
 
-/**
- * Unified app loader shown for every page transition / Suspense wait.
- * Three Uiverse.io spinner variants; one is picked at random on each mount.
- * Each variant's CSS is scoped under nl-pl-v1/v2/v3 so it never leaks into the
- * rest of the site, and keyframes are namespaced with nl-pl-*.
- */
 const VARIANT_COUNT = 3;
 
 const overlayMotion = {
@@ -72,6 +67,32 @@ const LOADER_CSS = `
 .nl-pl-v3 div:nth-child(3){animation-delay:.45s;background-color:rgba(255,255,255,.7)}
 .nl-pl-v3 div:nth-child(4){animation-delay:.60s;background-color:rgba(255,255,255,.6)}
 .nl-pl-v3 div:nth-child(5){animation-delay:.75s;background-color:rgba(255,255,255,.5)}
+
+/* ===== Cinema Orbit Loader ===== */
+.nl-cinema-orbit-loader {
+  height: 30px;
+  aspect-ratio: 2.5;
+  --_g: no-repeat radial-gradient(farthest-side, #fff 90%, #0000);
+  background: var(--_g), var(--_g), var(--_g), var(--_g);
+  background-size: 20% 50%;
+  animation:
+    nl-cinema-orbit 1s infinite linear,
+    nl-cinema-pulse 0.8s infinite ease-in-out alternate;
+  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.85));
+}
+@keyframes nl-cinema-orbit {
+  0% { background-position: calc(0*100%/3) 50%, calc(1*100%/3) 50%, calc(2*100%/3) 50%, calc(3*100%/3) 50%; }
+  16.67% { background-position: calc(0*100%/3) 0, calc(1*100%/3) 50%, calc(2*100%/3) 50%, calc(3*100%/3) 50%; }
+  33.33% { background-position: calc(0*100%/3) 100%, calc(1*100%/3) 0, calc(2*100%/3) 50%, calc(3*100%/3) 50%; }
+  50% { background-position: calc(0*100%/3) 50%, calc(1*100%/3) 100%, calc(2*100%/3) 0, calc(3*100%/3) 50%; }
+  66.67% { background-position: calc(0*100%/3) 50%, calc(1*100%/3) 50%, calc(2*100%/3) 100%, calc(3*100%/3) 0; }
+  83.33% { background-position: calc(0*100%/3) 50%, calc(1*100%/3) 50%, calc(2*100%/3) 50%, calc(3*100%/3) 100%; }
+  100% { background-position: calc(0*100%/3) 50%, calc(1*100%/3) 50%, calc(2*100%/3) 50%, calc(3*100%/3) 50%; }
+}
+@keyframes nl-cinema-pulse {
+  from { transform: scale(0.95); opacity: 0.85; }
+  to { transform: scale(1.06); opacity: 1; }
+}
 `;
 
 function LoaderVariant({ variant }: { variant: number }) {
@@ -103,7 +124,6 @@ export function PageLoader({ pageType }: PageLoaderProps) {
   const { i18n } = useTranslation();
   const isRtl = i18n.dir() === "rtl";
 
-  // Pick one variant at random, stable for the lifetime of this loader instance.
   const [variant] = useState(() => Math.floor(Math.random() * VARIANT_COUNT));
 
   const getPageTitle = () => {
@@ -128,7 +148,13 @@ export function PageLoader({ pageType }: PageLoaderProps) {
     >
       <style>{LOADER_CSS}</style>
 
-      <LoaderVariant variant={variant} />
+      {pageType === "cinema" ? (
+        <div className="nl-cinema-orbit-loader" aria-hidden="true" />
+      ) : pageType === "games" ? (
+        <GamesGeometricLoader />
+      ) : (
+        <LoaderVariant variant={variant} />
+      )}
 
       <m.p
         {...labelMotion}

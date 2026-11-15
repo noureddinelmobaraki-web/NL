@@ -3,7 +3,7 @@ import { Sparkles, RefreshCw, PlusCircle } from 'lucide-react';
 import type { ArtMuseumPiece } from '../types/art.types';
 import { ArtGlassLargeCard } from './ArtGlassLargeCard';
 
-const PAGE_SIZE = 18;
+const PAGE_SIZE = 12;
 
 export interface ArtGlassDualGridProps {
   items: ArtMuseumPiece[];

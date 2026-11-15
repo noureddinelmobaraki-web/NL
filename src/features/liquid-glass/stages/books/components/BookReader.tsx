@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ExternalLink,
   Eye,
@@ -46,6 +46,23 @@ export const BookReader: React.FC<BookReaderProps> = ({
   const [useEpubMode, setUseEpubMode] = useState<boolean>(false);
   const [epubChaptersText, setEpubChaptersText] = useState<string[]>([]);
   const [epubLoading, setEpubLoading] = useState<boolean>(false);
+  const [toolbarVisible, setToolbarVisible] = useState<boolean>(true);
+  const hideTimerRef = useRef<number | null>(null);
+
+  const wakeToolbar = useCallback(() => {
+    setToolbarVisible(true);
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = window.setTimeout(() => {
+      setToolbarVisible(false);
+    }, 2500);
+  }, []);
+
+  useEffect(() => {
+    wakeToolbar();
+    return () => {
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+    };
+  }, [wakeToolbar]);
 
   const fmts = useMemo(
     () => ({
@@ -137,14 +154,8 @@ export const BookReader: React.FC<BookReaderProps> = ({
     return `https://openlibrary.org/search?q=${encodeURIComponent(book.title)}`;
   }, [book, resolveResult, fmts]);
 
-  const desktopScaleStyle: React.CSSProperties | undefined = !isPhone
-    ? {
-        width: `${10000 / readerZoom}%`,
-        height: `${10000 / readerZoom}%`,
-        transform: `scale(${readerZoom / 100})`,
-        transformOrigin: '0 0',
-      }
-    : undefined;
+  // Clamp EPUB font size cleanly between 14px and 26px based on readerZoom
+  const epubFontSizePx = Math.min(26, Math.max(14, Math.round((16 * readerZoom) / 100)));
 
   return (
     <div
@@ -152,7 +163,21 @@ export const BookReader: React.FC<BookReaderProps> = ({
         readerFullscreen ? ' lg-reader-workspace--fullscreen' : ''
       }${eyeComfortMode ? ' lg-reader-workspace--eye-comfort' : ''}`}
       onClick={onEmptySpaceClick}
+      onMouseMove={(e) => {
+        if (e.clientY < 88) {
+          wakeToolbar();
+        }
+      }}
     >
+      {/* Top 20px wake sensor when floating toolbar is auto-collapsed */}
+      {!toolbarVisible && !readerFullscreen && !isPhone && (
+        <div
+          className="fixed top-0 inset-x-0 h-5 z-40"
+          onMouseEnter={wakeToolbar}
+          onTouchStart={wakeToolbar}
+        />
+      )}
+
       {readerFullscreen && !isPhone ? (
         <div
           className="lg-fs-top-sensor"
@@ -183,23 +208,27 @@ export const BookReader: React.FC<BookReaderProps> = ({
                 <Eye size={14} />
                 <span>{eyeComfortMode ? 'Eye Comfort On' : 'Eye Comfort'}</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setReaderZoom((z) => Math.max(80, z - 10))}
-                className="lg-glass-pill lg-icon-round-btn"
-                aria-label="Zoom out"
-              >
-                <ZoomOut size={14} />
-              </button>
-              <span className="lg-reader-zoom-label">{readerZoom}%</span>
-              <button
-                type="button"
-                onClick={() => setReaderZoom((z) => Math.min(150, z + 10))}
-                className="lg-glass-pill lg-icon-round-btn"
-                aria-label="Zoom in"
-              >
-                <ZoomIn size={14} />
-              </button>
+              {useEpubMode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setReaderZoom((z) => Math.max(80, z - 10))}
+                    className="lg-glass-pill lg-icon-round-btn"
+                    aria-label="Decrease font size"
+                  >
+                    <ZoomOut size={14} />
+                  </button>
+                  <span className="lg-reader-zoom-label">{epubFontSizePx}px</span>
+                  <button
+                    type="button"
+                    onClick={() => setReaderZoom((z) => Math.min(165, z + 10))}
+                    className="lg-glass-pill lg-icon-round-btn"
+                    aria-label="Increase font size"
+                  >
+                    <ZoomIn size={14} />
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => setReaderFullscreen(false)}
@@ -220,31 +249,47 @@ export const BookReader: React.FC<BookReaderProps> = ({
           </div>
         </div>
       ) : (
-        <ReaderToolbar
-          title={book.title}
-          author={book.author}
-          year={book.year}
-          eyeComfort={eyeComfortMode}
-          setEyeComfort={setEyeComfortMode}
-          readerZoom={readerZoom}
-          setReaderZoom={setReaderZoom}
-          hasAudio={hasAudio}
-          onAudio={onSwitchToAudiobook}
-          downloadUrl={bestDownloadUrl}
-          mirrors={resolveResult?.mirrors || []}
-          epubModeAvailable={Boolean(epubUrl || fmts.html)}
-          useEpubMode={useEpubMode}
-          onToggleEpubMode={() => setUseEpubMode((v) => !v)}
-          onFullscreen={() => setReaderFullscreen(true)}
-          onClose={onClose}
-        />
+        <div
+          onMouseEnter={() => {
+            if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+            setToolbarVisible(true);
+          }}
+          onMouseLeave={wakeToolbar}
+          className={`w-full flex justify-center transition-all duration-300 z-30 ${
+            !isPhone && !toolbarVisible
+              ? 'opacity-0 -translate-y-3 pointer-events-none h-0 overflow-hidden'
+              : 'opacity-100 translate-y-0'
+          }`}
+        >
+          <ReaderToolbar
+            title={book.title}
+            author={book.author}
+            year={book.year}
+            eyeComfort={eyeComfortMode}
+            setEyeComfort={setEyeComfortMode}
+            readerZoom={readerZoom}
+            setReaderZoom={setReaderZoom}
+            hasAudio={hasAudio}
+            onAudio={onSwitchToAudiobook}
+            downloadUrl={bestDownloadUrl}
+            mirrors={resolveResult?.mirrors || []}
+            epubModeAvailable={Boolean(epubUrl || fmts.html)}
+            useEpubMode={useEpubMode}
+            onToggleEpubMode={() => setUseEpubMode((v) => !v)}
+            onFullscreen={() => setReaderFullscreen(true)}
+            onClose={onClose}
+          />
+        </div>
       )}
 
       <div
         className={`lg-reader-stage-card${
           eyeComfortMode ? ' lg-reader-stage-card--eye-comfort' : ''
         }`}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (isPhone) wakeToolbar();
+        }}
       >
         <span className="lg-main-glass__caustic" aria-hidden="true" />
         <span className="lg-main-glass__rim" aria-hidden="true" />
@@ -270,7 +315,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
             <div
               className={`lg-epub-surface ${eyeComfortMode ? 'lg-epub-surface--dark' : ''}`}
               dir={isArabic ? 'rtl' : 'ltr'}
-              style={{ fontSize: `${Math.round((16 * readerZoom) / 100)}px` }}
+              style={{ fontSize: `${epubFontSizePx}px` }}
             >
               <div className="lg-epub-content">
                 <h2>{book.title}</h2>
@@ -300,10 +345,10 @@ export const BookReader: React.FC<BookReaderProps> = ({
                 href={fmts.pdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="lg-single-read-pill"
+                className="nl-glass-download-capsule"
                 style={{ maxWidth: '240px', textDecoration: 'none' }}
               >
-                <ExternalLink size={16} />
+                <ExternalLink size={15} className="nl-glass-download-icon" />
                 <span>Open PDF in Phone Viewer</span>
               </a>
             </div>
@@ -318,26 +363,10 @@ export const BookReader: React.FC<BookReaderProps> = ({
                 src={useEpubMode && fmts.html ? fmts.html : activeEmbedUrl}
                 title={book.title}
                 className="lg-embed-reader-iframe"
-                style={desktopScaleStyle}
                 allow="fullscreen"
               />
             </div>
           )}
-
-          <div className="lg-embed-bottom-bar">
-            {resolveResult?.mirrors.slice(0, 3).map((m) => (
-              <a
-                key={m.id}
-                href={m.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="lg-glass-pill lg-filter-pill"
-              >
-                <ExternalLink size={12} />
-                <span>{m.label}</span>
-              </a>
-            ))}
-          </div>
         </div>
       </div>
     </div>

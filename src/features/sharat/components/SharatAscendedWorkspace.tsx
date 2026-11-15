@@ -18,12 +18,20 @@ interface SharatAscendedWorkspaceProps {
   onPrev: () => void;
 }
 
-type WinningSource = 'racing' | 'archive' | 'youtube';
+type WinningSource = 'archive' | 'youtube' | 'archive-embed';
+
+const FALLBACK_BUNDLE_MP4 =
+  'https://archive.org/download/mnoaaat-msgl-mn-asbys-ton-aal-alnayl-sat-2002/01.ia.mp4';
+const FALLBACK_ARCHIVE_PLAYLIST_EMBED =
+  'https://archive.org/embed/20210811_20210811_2250?autoplay=1&playlist=1';
 
 /**
- * Fastest-Source Auto-Race Workspace ("اسرع واحد يوفر منهم يشتغل")
- * Races the direct Archive.org MP4/MP3 stream against the YouTube embed readiness
- * and plays whichever source becomes ready first, while allowing instant manual switch.
+ * Direct-Archive-First Ascended Workspace:
+ * Starts directly with the verified Archive.org MP4/MP3 stream (never mounting the YouTube iframe
+ * during 'archive' mode so YouTube's immediate onLoad cannot hijack playback).
+ * If Archive fails after trying both the resolved track URL and bundle fallback, or when the user
+ * clicks "مشغل يوتيوب", mounts the YouTube iframe with enablejsapi=1 and auto-recovers from
+ * YouTube error codes (150/101/100) by switching to backupYoutubeId or Archive embed playlist.
  */
 export const SharatAscendedWorkspace: React.FC<SharatAscendedWorkspaceProps> = ({
   track,
@@ -31,14 +39,16 @@ export const SharatAscendedWorkspace: React.FC<SharatAscendedWorkspaceProps> = (
   onNext,
   onPrev,
 }) => {
-  const [winningSource, setWinningSource] = useState<WinningSource>('racing');
+  const [winningSource, setWinningSource] = useState<WinningSource>('archive');
+  const [activeArchiveSrc, setActiveArchiveSrc] = useState<string>(track.archiveUrl);
+  const [triedFallbackArchive, setTriedFallbackArchive] = useState(false);
   const [activeYoutubeId, setActiveYoutubeId] = useState<string>(track.youtubeId);
   const mediaRef = useRef<HTMLVideoElement | null>(null);
-  const winnerLockedRef = useRef(false);
 
   useEffect(() => {
-    winnerLockedRef.current = false;
-    setWinningSource('racing');
+    setWinningSource('archive');
+    setActiveArchiveSrc(track.archiveUrl);
+    setTriedFallbackArchive(false);
     setActiveYoutubeId(track.youtubeId);
 
     nowPlayingBus.publish({
@@ -48,45 +58,53 @@ export const SharatAscendedWorkspace: React.FC<SharatAscendedWorkspaceProps> = (
       artworkUrl: track.posterUrl,
       isPlaying: true,
     });
-
-    // If Archive hasn't won within 1600ms and YouTube ID is present, let the fastest responder take the stage
-    const raceTimer = window.setTimeout(() => {
-      if (!winnerLockedRef.current) {
-        winnerLockedRef.current = true;
-        setWinningSource('archive');
-      }
-    }, 1600);
-
-    return () => {
-      window.clearTimeout(raceTimer);
-    };
   }, [track]);
 
+  // Listen for YouTube iframe API error codes (150, 101, 100) to auto-switch to backupYoutubeId or Archive playlist embed
+  useEffect(() => {
+    if (winningSource !== 'youtube') return undefined;
+
+    const onMessage = (event: MessageEvent) => {
+      if (typeof event.data !== 'string') return;
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed?.event === 'onError') {
+          const code = Number(parsed?.info);
+          if (code === 150 || code === 101 || code === 100 || !Number.isNaN(code)) {
+            if (track.backupYoutubeId && activeYoutubeId !== track.backupYoutubeId) {
+              setActiveYoutubeId(track.backupYoutubeId);
+            } else {
+              setWinningSource('archive-embed');
+            }
+          }
+        }
+      } catch {
+        // ignore non-JSON messages
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [winningSource, activeYoutubeId, track.backupYoutubeId]);
+
   const handleArchiveReady = () => {
-    if (!winnerLockedRef.current) {
-      winnerLockedRef.current = true;
-      setWinningSource('archive');
+    if (winningSource === 'archive') {
       void mediaRef.current?.play().catch(() => {});
     }
   };
 
   const handleArchiveError = () => {
-    winnerLockedRef.current = true;
+    if (!triedFallbackArchive && activeArchiveSrc !== FALLBACK_BUNDLE_MP4) {
+      setTriedFallbackArchive(true);
+      setActiveArchiveSrc(FALLBACK_BUNDLE_MP4);
+      return;
+    }
     setWinningSource('youtube');
   };
 
-  const handleYoutubeLoad = () => {
-    if (!winnerLockedRef.current) {
-      winnerLockedRef.current = true;
-      setWinningSource('youtube');
-      mediaRef.current?.pause();
-    }
-  };
-
-  const switchSourceManually = (target: 'archive' | 'youtube') => {
-    winnerLockedRef.current = true;
+  const switchSourceManually = (target: WinningSource) => {
     setWinningSource(target);
-    if (target === 'youtube') {
+    if (target !== 'archive') {
       mediaRef.current?.pause();
     } else {
       void mediaRef.current?.play().catch(() => {});
@@ -110,6 +128,10 @@ export const SharatAscendedWorkspace: React.FC<SharatAscendedWorkspaceProps> = (
               src={track.posterUrl}
               alt={track.seriesAr}
               className="h-14 w-14 rounded-2xl object-cover border border-white/20 shrink-0"
+              onError={(e) => {
+                e.currentTarget.src =
+                  'https://archive.org/services/img/20210811_20210811_2250';
+              }}
             />
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-xs text-amber-300 font-bold">
@@ -135,39 +157,42 @@ export const SharatAscendedWorkspace: React.FC<SharatAscendedWorkspaceProps> = (
           </button>
         </div>
 
-        {/* Fastest-Source Race Stage */}
+        {/* Player Stage */}
         <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black border border-white/15">
-          {/* Direct Archive Stream (raced in parallel) */}
-          <video
-            ref={mediaRef}
-            src={track.archiveUrl}
-            poster={track.posterUrl}
-            controls={winningSource !== 'youtube'}
-            autoPlay
-            playsInline
-            onCanPlay={handleArchiveReady}
-            onError={handleArchiveError}
-            onEnded={onNext}
-            className={`h-full w-full object-contain transition-opacity duration-300 ${
-              winningSource === 'youtube'
-                ? 'opacity-0 pointer-events-none absolute inset-0'
-                : 'opacity-100'
-            }`}
-          />
+          {winningSource === 'archive' && (
+            <video
+              key={activeArchiveSrc}
+              ref={mediaRef}
+              src={activeArchiveSrc}
+              poster={track.posterUrl}
+              controls
+              autoPlay
+              playsInline
+              onCanPlay={handleArchiveReady}
+              onError={handleArchiveError}
+              onEnded={onNext}
+              className="h-full w-full object-contain"
+            />
+          )}
 
-          {/* YouTube Embed (raced in parallel) */}
-          {(winningSource === 'racing' || winningSource === 'youtube') && (
+          {winningSource === 'youtube' && (
             <iframe
+              key={activeYoutubeId}
               title={track.titleAr}
-              src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(activeYoutubeId)}?autoplay=1&rel=0`}
+              src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(activeYoutubeId)}?autoplay=1&rel=0&enablejsapi=1`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
-              onLoad={handleYoutubeLoad}
-              className={`h-full w-full border-0 transition-opacity duration-300 ${
-                winningSource === 'youtube'
-                  ? 'opacity-100 relative z-10'
-                  : 'opacity-0 pointer-events-none absolute inset-0'
-              }`}
+              className="h-full w-full border-0 relative z-10"
+            />
+          )}
+
+          {winningSource === 'archive-embed' && (
+            <iframe
+              title={`${track.titleAr} — Archive Playlist`}
+              src={FALLBACK_ARCHIVE_PLAYLIST_EMBED}
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              className="h-full w-full border-0 relative z-10"
             />
           )}
         </div>
@@ -196,7 +221,7 @@ export const SharatAscendedWorkspace: React.FC<SharatAscendedWorkspaceProps> = (
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 text-[11px] text-white/65">
               <Radio size={12} className="text-emerald-400" />
-              <span>المصدر الأسرع:</span>
+              <span>المصدر النشط:</span>
             </span>
 
             <button
@@ -242,13 +267,13 @@ export const SharatAscendedWorkspace: React.FC<SharatAscendedWorkspaceProps> = (
             )}
 
             <a
-              href={track.downloadUrl}
+              href={activeArchiveSrc || track.downloadUrl}
               download
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 rounded-xl bg-teal-400/20 hover:bg-teal-400/30 border border-teal-300/45 text-teal-200 text-xs font-extrabold inline-flex items-center gap-1.5"
+              className="nl-glass-download-capsule"
             >
-              <Download size={13} />
+              <Download size={13} className="nl-glass-download-icon" />
               <span>تحميل الشارة</span>
             </a>
           </div>

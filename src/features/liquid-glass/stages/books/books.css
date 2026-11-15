@@ -234,7 +234,7 @@
 
 .lg-reader-toolbar {
   width: 100%;
-  max-width: 1380px;
+  max-width: min(96vw, 1520px);
   padding: 8px 16px 8px 54px !important;
   border-radius: 999px !important;
   display: flex;
@@ -293,7 +293,7 @@
   position: relative;
   flex: 1 1 auto;
   width: 100%;
-  max-width: 1380px;
+  max-width: min(96vw, 1520px);
   min-height: 0;
   border-radius: 26px;
   overflow: hidden;
