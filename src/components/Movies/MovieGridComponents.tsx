@@ -312,17 +312,29 @@ export const MovieRow = React.memo(
     onQuickWatch,
     t,
     isFavoriteFn,
+    onReachEnd,
   }: any) => {
     const sliderRef = useRef<HTMLDivElement | null>(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(true);
+    const endTriggeredForCountRef = useRef<number>(0);
 
     const updateScrollState = useCallback(() => {
       if (!sliderRef.current) return;
       const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
-      setCanScrollLeft(Math.abs(scrollLeft) > 6);
-      setCanScrollRight(Math.abs(scrollLeft) + clientWidth < scrollWidth - 6);
-    }, []);
+      const absLeft = Math.abs(scrollLeft);
+      setCanScrollLeft(absLeft > 6);
+      setCanScrollRight(absLeft + clientWidth < scrollWidth - 6);
+      if (
+        onReachEnd &&
+        scrollWidth > clientWidth &&
+        absLeft + clientWidth >= scrollWidth - 340 &&
+        endTriggeredForCountRef.current !== items.length
+      ) {
+        endTriggeredForCountRef.current = items.length;
+        onReachEnd();
+      }
+    }, [onReachEnd, items.length]);
 
     const handleScrollClick = useCallback((direction: "left" | "right") => {
       if (!sliderRef.current) return;
@@ -332,29 +344,34 @@ export const MovieRow = React.memo(
       sliderRef.current.scrollBy({ left: scrollAmt, behavior: "smooth" });
     }, []);
 
-    const [isVisible, setIsVisible] = useState(false);
+    const [isRowNearViewport, setIsRowNearViewport] = useState(true);
     const rowRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
+      const el = rowRef.current;
+      if (!el || typeof IntersectionObserver === "undefined") return;
       const observer = new IntersectionObserver(
         ([entry]) => {
-          if (entry.isIntersecting) {
-            setIsVisible(true);
-            observer.disconnect();
+          if (entry) {
+            setIsRowNearViewport(entry.isIntersecting);
           }
         },
-        { rootMargin: "240px" },
+        { rootMargin: "900px 0px" },
       );
-      if (rowRef.current) observer.observe(rowRef.current);
+      observer.observe(el);
       return () => observer.disconnect();
     }, []);
 
-    if (items.length === 0) return null;
+    if (!items || items.length === 0) return null;
 
     return (
       <div
         ref={rowRef}
         className="relative z-10 flex flex-col gap-1.5 py-2.5 px-4 sm:px-10"
+        style={{
+          contentVisibility: "auto",
+          containIntrinsicSize: "100% 310px",
+        }}
       >
         <div className="flex items-center justify-between px-2">
           <h2 className="text-sm sm:text-lg font-extrabold text-white tracking-tight drop-shadow">
@@ -372,14 +389,14 @@ export const MovieRow = React.memo(
               <ChevronLeft size={22} />
             </button>
           )}
-          <div
-            ref={sliderRef}
-            onScroll={updateScrollState}
-            className="nl-cinema-row flex gap-4 overflow-x-auto select-none px-3 scroll-smooth scrollbar-none snap-x snap-mandatory"
-            style={MOVIE_ROW_SCROLL_STYLE}
-          >
-            {isVisible &&
-              items.map((item: any) => (
+          {isRowNearViewport ? (
+            <div
+              ref={sliderRef}
+              onScroll={updateScrollState}
+              className="nl-cinema-row flex gap-4 overflow-x-auto select-none px-3 scroll-smooth scrollbar-none snap-x snap-mandatory"
+              style={MOVIE_ROW_SCROLL_STYLE}
+            >
+              {items.map((item: any) => (
                 <div key={item.id} className="flex-shrink-0 snap-start">
                   <MoviePosterCard
                     item={item}
@@ -394,7 +411,10 @@ export const MovieRow = React.memo(
                   />
                 </div>
               ))}
-          </div>
+            </div>
+          ) : (
+            <div className="w-full h-[255px]" aria-hidden="true" />
+          )}
           {canScrollRight && !isTouch && (
             <button
               type="button"

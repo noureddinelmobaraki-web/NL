@@ -72,7 +72,9 @@ export function useCartoonCatalogView(
 
   const { seriesByNumericId, cinemaItems } = useMemo(() => {
     const map = new Map<number, CartoonSeriesItem>();
-    const items: CinemaItem[] = filteredCatalog.map((series, idx) => {
+    const items: CinemaItem[] = filteredCatalog.map((series, fallbackIdx) => {
+      const stableIdx = catalogItems.indexOf(series);
+      const idx = stableIdx >= 0 ? stableIdx : fallbackIdx;
       const numId = getCartoonNumericId(series, idx);
       map.set(numId, series);
       return adaptCartoonToCinemaItem(series, idx);
@@ -81,7 +83,7 @@ export function useCartoonCatalogView(
       seriesByNumericId: map,
       cinemaItems: items,
     };
-  }, [filteredCatalog]);
+  }, [catalogItems, filteredCatalog]);
 
   return {
     filteredCatalog,

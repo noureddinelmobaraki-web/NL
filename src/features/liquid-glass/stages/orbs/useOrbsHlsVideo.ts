@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type Hls from 'hls.js';
 import { LIQUID_GLASS_ALL_HLS_VIDEOS } from '../../albumsData';
+import type { XFeedVideoItem } from '../../services/xInfiniteFeedService';
 import { GLASS_CONFIG } from './portalShaders';
 import type { LiquidGlassMode } from './useQuadLensWebGL';
 
@@ -10,6 +11,7 @@ interface UseOrbsHlsVideoParams {
   mode: LiquidGlassMode;
   effectiveMuted: boolean;
   currentVideoIndex: number | null;
+  activeFeedItem?: XFeedVideoItem | null;
   onTriggerRandomVideo: () => void;
   onVideoAspectChange: (aspect: number) => void;
   onVideoAudioActiveChange?: (isVideoAudible: boolean) => void;
@@ -20,6 +22,7 @@ export function useOrbsHlsVideo({
   mode,
   effectiveMuted,
   currentVideoIndex,
+  activeFeedItem,
   onTriggerRandomVideo,
   onVideoAspectChange,
   onVideoAudioActiveChange,
@@ -52,15 +55,24 @@ export function useOrbsHlsVideo({
     if (videoRef.current) {
       videoRef.current.muted = effectiveMuted;
     }
-  }, [effectiveMuted, currentVideoIndex]);
+  }, [effectiveMuted, currentVideoIndex, activeFeedItem]);
 
   useEffect(() => {
-    if (mode !== 'video' || currentVideoIndex === null) return undefined;
+    if (mode !== 'video') return undefined;
+    const resolvedStreamUrl =
+      activeFeedItem?.streamUrl ||
+      (currentVideoIndex !== null ? LIQUID_GLASS_HLS_VIDEOS[currentVideoIndex] : null);
+    if (!resolvedStreamUrl) return undefined;
+
+    const streamType: 'hls' | 'mp4' =
+      activeFeedItem?.type ||
+      (/\.m3u8(\?|$)/i.test(resolvedStreamUrl) ? 'hls' : 'mp4');
+
     const video = videoRef.current;
     if (!video) return undefined;
 
-    const streamUrl = LIQUID_GLASS_HLS_VIDEOS[currentVideoIndex];
     let cancelled = false;
+    let mirrorTried = false;
 
     const destroyCurrentHls = () => {
       if (hlsRef.current) {
@@ -121,6 +133,19 @@ export function useOrbsHlsVideo({
       }
     };
 
+    const onError = () => {
+      if (cancelled) return;
+      if (!mirrorTried && activeFeedItem?.mirrorUrl) {
+        mirrorTried = true;
+        video.src = activeFeedItem.mirrorUrl;
+        video.play().catch(() => onTriggerRandomVideo());
+        return;
+      }
+      if (streamType === 'mp4') {
+        onTriggerRandomVideo();
+      }
+    };
+
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('play', onPlay);
@@ -129,44 +154,51 @@ export function useOrbsHlsVideo({
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('canplay', onCanPlay);
     video.addEventListener('ended', onEnded);
+    video.addEventListener('error', onError);
 
     const startPlayback = () => {
       if (cancelled) return;
       video.play().catch(() => setIsPlaying(false));
     };
 
-    void (async () => {
-      const { default: HlsLib } = await import('hls.js');
-      if (cancelled) return;
+    if (streamType === 'mp4') {
+      video.src = resolvedStreamUrl;
+      video.addEventListener('loadedmetadata', startPlayback, { once: true });
+      video.load();
+    } else {
+      void (async () => {
+        const { default: HlsLib } = await import('hls.js');
+        if (cancelled) return;
 
-      if (HlsLib.isSupported()) {
-        const hls = new HlsLib({
-          enableWorker: true,
-          startPosition: 0,
-          maxBufferLength: 15,
-          maxMaxBufferLength: 30,
-          backBufferLength: 15,
-        });
-        hlsRef.current = hls;
-        hls.on(HlsLib.Events.MANIFEST_PARSED, startPlayback);
-        hls.on(HlsLib.Events.ERROR, (_evt, data) => {
-          if (!data.fatal) return;
-          if (data.type === HlsLib.ErrorTypes.NETWORK_ERROR) {
-            hls.startLoad();
-          } else if (data.type === HlsLib.ErrorTypes.MEDIA_ERROR) {
-            hls.recoverMediaError();
-          } else {
-            destroyCurrentHls();
-            setIsBuffering(false);
-          }
-        });
-        hls.loadSource(streamUrl);
-        hls.attachMedia(video);
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = streamUrl;
-        video.addEventListener('loadedmetadata', startPlayback, { once: true });
-      }
-    })();
+        if (HlsLib.isSupported()) {
+          const hls = new HlsLib({
+            enableWorker: true,
+            startPosition: 0,
+            maxBufferLength: 15,
+            maxMaxBufferLength: 30,
+            backBufferLength: 15,
+          });
+          hlsRef.current = hls;
+          hls.on(HlsLib.Events.MANIFEST_PARSED, startPlayback);
+          hls.on(HlsLib.Events.ERROR, (_evt, data) => {
+            if (!data.fatal) return;
+            if (data.type === HlsLib.ErrorTypes.NETWORK_ERROR) {
+              hls.startLoad();
+            } else if (data.type === HlsLib.ErrorTypes.MEDIA_ERROR) {
+              hls.recoverMediaError();
+            } else {
+              destroyCurrentHls();
+              setIsBuffering(false);
+            }
+          });
+          hls.loadSource(resolvedStreamUrl);
+          hls.attachMedia(video);
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = resolvedStreamUrl;
+          video.addEventListener('loadedmetadata', startPlayback, { once: true });
+        }
+      })();
+    }
 
     return () => {
       cancelled = true;
@@ -178,6 +210,7 @@ export function useOrbsHlsVideo({
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('canplay', onCanPlay);
       video.removeEventListener('ended', onEnded);
+      video.removeEventListener('error', onError);
       destroyCurrentHls();
       try {
         video.pause();
@@ -190,6 +223,7 @@ export function useOrbsHlsVideo({
   }, [
     mode,
     currentVideoIndex,
+    activeFeedItem,
     effectiveMuted,
     onVideoAspectChange,
     onVideoAudioActiveChange,

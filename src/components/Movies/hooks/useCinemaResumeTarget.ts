@@ -4,7 +4,10 @@
  */
 
 import { useMemo } from "react";
-import { getProgress } from "../../../features/cinema/progress/progressStore";
+import {
+  getProgress,
+  type CinemaHubId,
+} from "../../../features/cinema/progress/progressStore";
 import type { CinemaItem } from "../moviesDataClient";
 
 export interface UseCinemaResumeTargetOptions {
@@ -12,6 +15,7 @@ export interface UseCinemaResumeTargetOptions {
   selectedSeason: number;
   selectedEpisode: number;
   isFullSeasonEmbed: boolean;
+  hub?: CinemaHubId;
 }
 
 export function useCinemaResumeTarget({
@@ -19,10 +23,15 @@ export function useCinemaResumeTarget({
   selectedSeason,
   selectedEpisode,
   isFullSeasonEmbed,
+  hub = "movies",
 }: UseCinemaResumeTargetOptions) {
   const resumeStartAtSec = useMemo(() => {
     if (!detailedItem) return undefined;
-    const saved = getProgress(detailedItem.mediaType, detailedItem.id);
+    const saved = getProgress(
+      detailedItem.mediaType,
+      detailedItem.id,
+      detailedItem.hub || hub,
+    );
     if (!saved) return undefined;
     if (
       detailedItem.mediaType === "tv" &&
@@ -32,7 +41,7 @@ export function useCinemaResumeTarget({
       return undefined;
     }
     return saved.time > 5 ? saved.time : undefined;
-  }, [detailedItem?.id, detailedItem?.mediaType, selectedSeason, selectedEpisode]);
+  }, [detailedItem?.id, detailedItem?.mediaType, detailedItem?.hub, hub, selectedSeason, selectedEpisode]);
 
   const detailWatchTarget = useMemo(() => {
     if (!detailedItem) return null;

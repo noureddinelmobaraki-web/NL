@@ -12,6 +12,9 @@ import {
 
 export type MagazineCategory =
   | 'featured'
+  | 'pulp_archive'
+  | 'golden_age_comics'
+  | 'magazine_contributions'
   | 'arabic_retro'
   | 'gaming_retro'
   | 'computing'
@@ -27,7 +30,16 @@ const READABLE_ISSUE_GUARD =
 
 const MAGAZINE_COLLECTION_QUERIES: Record<MagazineCategory, string> = {
   featured:
-    'collection:(magazine_rack OR computermagazines OR gamemagazines)' +
+    'collection:(magazine_rack OR computermagazines OR gamemagazines OR pulpmagazinearchive)' +
+    READABLE_ISSUE_GUARD,
+  pulp_archive:
+    'collection:(pulpmagazinearchive OR pulpmagazines OR weirdtales OR astoundingstories OR galaxymagazine)' +
+    READABLE_ISSUE_GUARD,
+  golden_age_comics:
+    '(collection:(goldenagecomics OR comic_books OR comics) AND year:[1930 TO 1959])' +
+    READABLE_ISSUE_GUARD,
+  magazine_contributions:
+    'collection:(magazine_contributions OR magazine_rack)' +
     READABLE_ISSUE_GUARD,
   arabic_retro:
     '(identifier:(al-arabi-magazine* OR al-hilal-magazine* OR majid_magazine*) OR title:(Majid OR ماجد OR العربي OR الهلال OR سبيستون OR باسم OR سمير OR المقتطف) OR (language:(ara OR Arabic) AND (magazine OR مجلة)))' +
@@ -201,6 +213,7 @@ export async function resolveMagazineIssueDetails(
   let pdfUrl: string | undefined;
   let epubUrl: string | undefined;
   let txtUrl: string | undefined;
+  let cbrUrl: string | undefined;
   let hasJp2Zip = true;
   const pageCount = Math.min(Number(magazine.pages) || 24, 120);
   const iiifPageUrls: string[] = Array.from({ length: pageCount }, (_, i) =>
@@ -217,6 +230,7 @@ export async function resolveMagazineIssueDetails(
       const pdfFile = files.find((f) => /\.pdf$/i.test(f?.name || ''));
       const epubFile = files.find((f) => /\.epub$/i.test(f?.name || ''));
       const txtFile = files.find((f) => /_djvu\.txt$|\.txt$/i.test(f?.name || ''));
+      const cbrFile = files.find((f) => /\.(cbr|cbz)$/i.test(f?.name || ''));
       hasJp2Zip = files.some((f) => /_(jp2|images)\.zip$|scandata\.xml$/i.test(f?.name || ''));
 
       if (pdfFile?.name) {
@@ -227,6 +241,9 @@ export async function resolveMagazineIssueDetails(
       }
       if (txtFile?.name) {
         txtUrl = `https://archive.org/download/${encodeURIComponent(iaId)}/${encodeURIComponent(txtFile.name)}`;
+      }
+      if (cbrFile?.name) {
+        cbrUrl = `https://archive.org/download/${encodeURIComponent(iaId)}/${encodeURIComponent(cbrFile.name)}`;
       }
       if (!hasJp2Zip && pdfUrl) {
         embedUrl = pdfUrl;
@@ -265,6 +282,17 @@ export async function resolveMagazineIssueDetails(
       host: 'archive.org/download',
       url: epubUrl,
       badge: 'DIRECT EPUB',
+      status: 'ready',
+    });
+  }
+
+  if (cbrUrl) {
+    mirrors.push({
+      id: 'ia-cbr-direct',
+      label: 'Comic Archive (.CBR / .CBZ)',
+      host: 'archive.org/download',
+      url: cbrUrl,
+      badge: 'DIRECT CBR/CBZ',
       status: 'ready',
     });
   }

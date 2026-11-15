@@ -136,30 +136,30 @@ export const FALLBACK_SERIES: CuratedSeries[] = [
     ]
   },
   {
-    id: 1429,
-    imdb_id: "tt2560140",
+    id: 87108,
+    imdb_id: "tt7366338",
     name: {
-      en: "Attack on Titan",
-      ar: "Attack on Titan",
-      fr: "L'Attaque des Titans"
+      en: "Chernobyl",
+      ar: "Chernobyl",
+      fr: "Chernobyl"
     },
     overview: {
-      en: "Several hundred years ago, humans were nearly exterminated by Giants. A small percentage of humanity survived by shutting themselves in a city protected by extremely high walls.",
-      ar: "Centuries ago, mankind was slaughtered to near extinction by monstrous humanoid creatures called titans. The remnants of humanity live behind massive walls, but peace is shattered when a colossal titan breaches their defenses.",
-      fr: "Il y a plus de 100 ans, des géants appelés Titans ont presque exterminé l'humanité. Le faible pourcentage de survivants s'est réfugié derrière d'immenses murs protecteurs."
+      en: "The true story of one of the worst man-made catastrophes in history: the catastrophic nuclear accident at Chernobyl. A tale of the brave men and women who sacrificed to save Europe from unimaginable disaster.",
+      ar: "The true story of one of the worst man-made catastrophes in history: the catastrophic nuclear accident at Chernobyl. A tale of the brave men and women who sacrificed to save Europe from unimaginable disaster.",
+      fr: "L'histoire vraie de l'une des pires catastrophes provoquées par l'homme dans l'histoire : l'accident nucléaire catastrophique de Tchernobyl."
     },
     poster_path: "",
     backdrop_path: "",
-    first_air_date: "2013-04-07",
+    first_air_date: "2019-05-06",
     vote_average: 8.7,
-    genres: ["Animation", "Sci-Fi", "Action", "Adventure"],
-    number_of_seasons: 4,
-    number_of_episodes: 87,
-    trailer_key: "MGRm4IzK1SQ",
+    genres: ["Drama", "History"],
+    number_of_seasons: 1,
+    number_of_episodes: 5,
+    trailer_key: "s9APLXM9Ei8",
     cast: [
-      { name: "Yuki Kaji", character: "Eren Yeager", profile_path: "" },
-      { name: "Yui Ishikawa", character: "Mikasa Ackerman", profile_path: "" },
-      { name: "Marina Inoue", character: "Armin Arlert", profile_path: "" }
+      { name: "Jared Harris", character: "Valery Legasov", profile_path: "" },
+      { name: "Stellan Skarsgård", character: "Boris Shcherbina", profile_path: "" },
+      { name: "Emily Watson", character: "Ulana Khomyuk", profile_path: "" }
     ]
   }
 ];
@@ -169,6 +169,5 @@ export const FALLBACK_SERIES_GENRES = [
   { id: 18, name: { en: "Drama", ar: "Drama", fr: "Drame" } },
   { id: 35, name: { en: "Comedy", ar: "Comedy", fr: "Comédie" } },
   { id: 10765, name: { en: "Sci-Fi & Fantasy", ar: "Sci-Fi & Fantasy", fr: "Sci-Fi & Fantaisie" } },
-  { id: 9648, name: { en: "Mystery", ar: "Mystery", fr: "Mystère" } },
-  { id: 16, name: { en: "Animation", ar: "Animation", fr: "Animation" } }
+  { id: 9648, name: { en: "Mystery", ar: "Mystery", fr: "Mystère" } }
 ];

@@ -41,6 +41,9 @@ export interface MagazinesPageProps {
 
 const MAGAZINE_CATEGORIES = [
   { id: 'featured', label: 'Featured Rack', icon: Sparkles },
+  { id: 'pulp_archive', label: 'Pulp Magazine Archive', icon: Orbit },
+  { id: 'golden_age_comics', label: 'Golden Age Comics (Pre-1959)', icon: Layers },
+  { id: 'magazine_contributions', label: 'Community Magazine Vault', icon: Feather },
   { id: 'arabic_retro', label: 'Arabic Press & Majid', icon: Globe },
   { id: 'gaming_retro', label: 'Retro Gaming Press', icon: Gamepad2 },
   { id: 'computing', label: 'Computing & Cyber', icon: Cpu },

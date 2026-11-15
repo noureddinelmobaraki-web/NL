@@ -16,7 +16,10 @@ import {
   bindVideoElementToClock,
   useClockState,
 } from "../../../features/cinema/player/playbackClock";
-import { getProgress } from "../../../features/cinema/progress/progressStore";
+import {
+  getProgress,
+  type CinemaHubId,
+} from "../../../features/cinema/progress/progressStore";
 import type { Media, CastMember, CinemaItem } from "../moviesDataClient";
 import { useCinemaSubtitles } from "./useCinemaSubtitles";
 import { useHeroTrailer } from "./useHeroTrailer";
@@ -26,6 +29,8 @@ import { usePlayerBridgeSync } from "./usePlayerBridgeSync";
 
 export interface UseStandaloneCinemaControllerOptions {
   items: CinemaItem[];
+  hub?: CinemaHubId;
+  onBeforeStartWatchSession?: (item: CinemaItem) => Promise<void>;
   customSourcesBuilder?: (
     item: CinemaItem,
     season: number,
@@ -39,6 +44,8 @@ export interface UseStandaloneCinemaControllerOptions {
 
 export function useStandaloneCinemaController({
   items,
+  hub = "movies",
+  onBeforeStartWatchSession,
   customSourcesBuilder,
   customEpisodesBuilder,
 }: UseStandaloneCinemaControllerOptions) {
@@ -48,7 +55,7 @@ export function useStandaloneCinemaController({
   const currentLang = normLang(i18n.resolvedLanguage || i18n.language);
   const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || PUBLIC_TMDB_KEY;
   const { user } = useAuth();
-  const { has, toggle } = useMovieItems();
+  const { has, toggle, items: movieItems, watchlistCount } = useMovieItems(hub);
 
   const [detailServersOpen, setDetailServersOpen] = useState(false);
   const [selectedItemId, setSelectedItemIdState] = useState<number | null>(null);
@@ -59,7 +66,7 @@ export function useStandaloneCinemaController({
   const [isPlayerLoading, setIsPlayerLoading] = useState(false);
   const [allServersFailed, setAllServersFailed] = useState(false);
   const [isCssFullscreen, setIsCssFullscreen] = useState(false);
-  const [isNativeFullscreen] = useState(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
   const [extractedStreams, setExtractedStreams] = useState<ExtractedVideoStream[]>([]);
   const [activeExtractedIdx, setActiveExtractedIdx] = useState(0);
   const [useDirectUrlFallback, setUseDirectUrlFallback] = useState(false);
@@ -143,9 +150,13 @@ export function useStandaloneCinemaController({
 
   const resumeStartAtSec = useMemo(() => {
     if (!detailedItem) return undefined;
-    const saved = getProgress(detailedItem.mediaType, detailedItem.id);
+    const saved = getProgress(
+      detailedItem.mediaType,
+      detailedItem.id,
+      detailedItem.hub || hub,
+    );
     return saved && saved.time > 5 ? saved.time : undefined;
-  }, [detailedItem]);
+  }, [detailedItem, hub]);
 
   const detailWatchTarget = useMemo(() => {
     if (!detailedItem) return null;
@@ -217,7 +228,7 @@ export function useStandaloneCinemaController({
   const [seekUnsupportedToast, setSeekUnsupportedToast] = useState(false);
 
   const detailItemStorageKey = detailedItem
-    ? `${detailedItem.mediaType}_${detailedItem.id}`
+    ? `${hub}_${detailedItem.mediaType}_${detailedItem.id}`
     : "";
 
   const resolveServerIdForStream = useCallback(
@@ -264,7 +275,7 @@ export function useStandaloneCinemaController({
     resolveServerIdForStream,
   });
 
-  const { startGalleryWatchSession } = useServerFailover({
+  const { startGalleryWatchSession: rawStartGalleryWatchSession } = useServerFailover({
     detailPlaySources,
     detailPlaySourcesRef,
     detailItemStorageKey,
@@ -299,7 +310,39 @@ export function useStandaloneCinemaController({
     setActiveExtractedIdx,
     extractedStreams,
     resolveServerIdForStream,
+    disableSpeedSort: hub !== "movies",
   });
+
+  const startGalleryWatchSession = useCallback(
+    (explicitServerIdx?: number) => {
+      if (onBeforeStartWatchSession && detailedItem) {
+        setIsPlayerLoading(true);
+        setIsWatchingInGallery(true);
+        void onBeforeStartWatchSession(detailedItem)
+          .catch(() => {})
+          .finally(() => {
+            if (customSourcesBuilder) {
+              detailPlaySourcesRef.current = customSourcesBuilder(
+                detailedItem,
+                selectedSeason,
+                selectedEpisode,
+              );
+            }
+            rawStartGalleryWatchSession(explicitServerIdx);
+          });
+        return;
+      }
+      rawStartGalleryWatchSession(explicitServerIdx);
+    },
+    [
+      onBeforeStartWatchSession,
+      detailedItem,
+      customSourcesBuilder,
+      selectedSeason,
+      selectedEpisode,
+      rawStartGalleryWatchSession,
+    ],
+  );
 
   const bridge = usePlayerBridgeSync({
     isWatchingInGallery,
@@ -327,6 +370,7 @@ export function useStandaloneCinemaController({
     iframeLoadStamp,
     setWorkerBridgeSubtitles: subtitles.setWorkerBridgeSubtitles,
     showSeekUnsupportedToast: () => setSeekUnsupportedToast(true),
+    hub,
   });
 
   useEffect(() => {
@@ -336,16 +380,132 @@ export function useStandaloneCinemaController({
   }, [isWatchingInGallery, playerRenderMode, extractedStreams, activeExtractedIdx]);
 
   const handleQuickWatch = useCallback(
-    (item: CinemaItem) => {
+    async (item: CinemaItem) => {
       setSelectedItemId(item.id, item.mediaType);
-      setTimeout(() => startGalleryWatchSession(0), 60);
+      setIsPlayerLoading(true);
+      setIsWatchingInGallery(true);
+      if (onBeforeStartWatchSession) {
+        try {
+          await onBeforeStartWatchSession(item);
+        } catch {
+          // continue to start session
+        }
+      }
+      if (customSourcesBuilder) {
+        detailPlaySourcesRef.current = customSourcesBuilder(
+          item,
+          1,
+          1,
+        );
+      }
+      setTimeout(() => rawStartGalleryWatchSession(0), 60);
     },
-    [setSelectedItemId, startGalleryWatchSession]
+    [
+      setSelectedItemId,
+      onBeforeStartWatchSession,
+      customSourcesBuilder,
+      rawStartGalleryWatchSession,
+    ]
   );
 
-  const handleToggleGalleryFullscreen = useCallback(() => {
-    setIsCssFullscreen((prev) => !prev);
+  useEffect(() => {
+    const onFsChange = () => {
+      const doc = document as Document & { webkitFullscreenElement?: Element };
+      const fsElem = doc.fullscreenElement || doc.webkitFullscreenElement;
+      const active = Boolean(fsElem);
+      setIsNativeFullscreen(active);
+      if (!active) {
+        setIsCssFullscreen(false);
+        try {
+          const orientation = (screen as Screen & {
+            orientation?: { unlock?: () => void };
+          })?.orientation;
+          orientation?.unlock?.();
+        } catch {
+          // ignore
+        }
+      }
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+    };
   }, []);
+
+  const handleToggleGalleryFullscreen = useCallback(async () => {
+    const stage = galleryStageRef.current as
+      | (HTMLDivElement & { webkitRequestFullscreen?: () => Promise<void> })
+      | null;
+    const video = videoElementRef.current as
+      | (HTMLVideoElement & { webkitEnterFullscreen?: () => void })
+      | null;
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element;
+      webkitExitFullscreen?: () => Promise<void>;
+    };
+
+    const isCurrentlyNativeFs = Boolean(
+      doc.fullscreenElement || doc.webkitFullscreenElement,
+    );
+
+    if (isCurrentlyNativeFs || isCssFullscreen) {
+      try {
+        if (doc.exitFullscreen && doc.fullscreenElement) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen && doc.webkitFullscreenElement) {
+          await doc.webkitExitFullscreen();
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        const orientation = (screen as Screen & {
+          orientation?: { unlock?: () => void };
+        })?.orientation;
+        orientation?.unlock?.();
+      } catch {
+        // ignore
+      }
+      setIsCssFullscreen(false);
+      return;
+    }
+
+    let enteredNative = false;
+    try {
+      if (stage?.requestFullscreen) {
+        await stage.requestFullscreen();
+        enteredNative = true;
+      } else if (stage?.webkitRequestFullscreen) {
+        await stage.webkitRequestFullscreen();
+        enteredNative = true;
+      } else if (
+        playerRenderMode === "direct" &&
+        typeof video?.webkitEnterFullscreen === "function"
+      ) {
+        video.webkitEnterFullscreen();
+        enteredNative = true;
+      }
+    } catch {
+      enteredNative = false;
+    }
+
+    if (!enteredNative) {
+      setIsCssFullscreen(true);
+    }
+
+    try {
+      const orientation = (screen as Screen & {
+        orientation?: { lock?: (mode: string) => Promise<void> };
+      })?.orientation;
+      if (orientation?.lock) {
+        await orientation.lock("landscape");
+      }
+    } catch {
+      // Orientation lock optional on desktop / iOS Safari
+    }
+  }, [isCssFullscreen, playerRenderMode]);
 
   const bumpControlsVisibility = useCallback(() => {
     setIsControlsVisible(true);
@@ -386,6 +546,8 @@ export function useStandaloneCinemaController({
     user,
     has,
     toggle,
+    movieItems,
+    watchlistCount,
     slideshowSlides,
     heroTrailer,
     selectedItemId,
@@ -407,6 +569,7 @@ export function useStandaloneCinemaController({
     handleQuickWatch,
     persistCurrentProgress: bridge.persistCurrentProgress,
     playerStageProps: {
+      hub,
       isWatchingInGallery,
       setIsWatchingInGallery,
       activeGallerySource,

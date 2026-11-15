@@ -15,12 +15,15 @@ import {
   Users,
   User,
   Sparkles,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import { GlassVectorIcon } from "../../shared/icons";
 import { EyeLoader } from "../EyeLoader";
 import { ServerBranchesInline } from "../MovieSourcesModal";
 import { CinemaDownloadTriggerButton } from "../../../features/cinemaDownload";
+import { buildArchiveTorrentUrl } from "../../../services/archive/archiveUrlBuilder";
 import { clockReset } from "../../../features/cinema/player/playbackClock";
 import {
   TMDB_IMAGE_BASE,
@@ -88,6 +91,8 @@ export function CinemaDetailModal({
       {selectedItemId !== null && (
         <div
           className={`nl-detail-wrap fixed inset-0 z-[10100] flex items-center justify-center p-2 sm:p-5 overflow-y-auto ${
+            isWatchingInGallery || showHeroTrailer ? "nl-detail-wrap--watching " : ""
+          }${
             isWatchingInGallery
               ? "bg-black"
               : "bg-black/75 backdrop-blur-xl"
@@ -137,18 +142,100 @@ export function CinemaDetailModal({
                           />
                         )}
 
-                        <CinemaDownloadTriggerButton
-                          item={detailedItem}
-                          imdbId={activeImdbId}
-                          season={playerStageProps.selectedSeason}
-                          episode={playerStageProps.selectedEpisode}
-                          episodeTitle={
-                            playerStageProps.seasonEpisodes.find(
-                              (ep) => ep.episode_number === playerStageProps.selectedEpisode,
-                            )?.name
-                          }
-                          currentLang={currentLang}
-                        />
+                        {(!detailedItem.hub || detailedItem.hub === "movies") && (
+                          <CinemaDownloadTriggerButton
+                            item={detailedItem}
+                            imdbId={activeImdbId}
+                            season={playerStageProps.selectedSeason}
+                            episode={playerStageProps.selectedEpisode}
+                            episodeTitle={
+                              playerStageProps.seasonEpisodes.find(
+                                (ep) => ep.episode_number === playerStageProps.selectedEpisode,
+                              )?.name
+                            }
+                            currentLang={currentLang}
+                          />
+                        )}
+
+                        {(detailedItem.hub === "cartoon" ||
+                          detailedItem.hub === "noir" ||
+                          detailedItem.hub === "commercials") &&
+                          (() => {
+                            const activeStream =
+                              playerStageProps.extractedStreams[
+                                playerStageProps.activeExtractedIdx
+                              ] || playerStageProps.extractedStreams[0];
+                            const archiveId = detailedItem.archiveIds?.[0];
+                            const directMp4Url =
+                              activeStream?.directUrl ||
+                              detailedItem.directDownloadUrl ||
+                              (archiveId
+                                ? `https://archive.org/details/${encodeURIComponent(archiveId)}`
+                                : "");
+                            const torrentUrl =
+                              detailedItem.torrentDownloadUrl ||
+                              (archiveId ? buildArchiveTorrentUrl(archiveId) : "");
+                            return (
+                              <>
+                                {directMp4Url && (
+                                  <a
+                                    href={directMp4Url}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="lg-cinema-action-pill py-2.5 px-4 text-xs sm:text-sm font-bold text-emerald-200 hover:text-white flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Download size={14} />
+                                    <span>
+                                      {currentLang === "ar"
+                                        ? "تحميل مباشر MP4"
+                                        : "Download MP4"}
+                                    </span>
+                                  </a>
+                                )}
+                                {torrentUrl && (
+                                  <a
+                                    href={torrentUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="lg-cinema-action-pill py-2.5 px-3.5 text-xs font-bold text-amber-200 hover:text-white flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Download size={13} />
+                                    <span>.Torrent</span>
+                                  </a>
+                                )}
+                              </>
+                            );
+                          })()}
+
+                        {detailedItem.hub === "anime" &&
+                          (() => {
+                            const activeStream =
+                              playerStageProps.extractedStreams[
+                                playerStageProps.activeExtractedIdx
+                              ] || playerStageProps.extractedStreams[0];
+                            const epUrl =
+                              activeStream?.directUrl ||
+                              detailedItem.directDownloadUrl ||
+                              playerStageProps.activeGallerySource?.url ||
+                              "";
+                            if (!epUrl) return null;
+                            return (
+                              <a
+                                href={epUrl}
+                                download
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="lg-cinema-action-pill py-2.5 px-4 text-xs sm:text-sm font-bold text-sky-200 hover:text-white flex items-center gap-2 cursor-pointer"
+                              >
+                                <Download size={14} />
+                                <span>
+                                  Download S{playerStageProps.selectedSeason}:E
+                                  {playerStageProps.selectedEpisode}
+                                </span>
+                              </a>
+                            );
+                          })()}
 
                         {(activeImdbId || detailedItem.trailerKey) && !detailServersOpen && (
                           <button
@@ -412,24 +499,50 @@ export function CinemaDetailModal({
                           </div>
                         )}
 
-                        {detailedItem.productionCompanies && detailedItem.productionCompanies.length > 0 && (
-                          <div className="flex flex-col gap-1 col-span-2 sm:col-span-3 pt-1 border-t border-white/10">
-                            <span className="text-[10px] text-white/55 font-bold">
-                              {currentLang === "ar" ? "شركات وشبكات الإنتاج" : "Production & Networks"}
-                            </span>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {detailedItem.productionCompanies.map((p) => (
-                                <span
-                                  key={p.id || p.name}
-                                  className="px-2.5 py-0.5 rounded-full bg-white/8 border border-white/15 text-[10.5px] font-bold text-white/85"
-                                >
-                                  {p.name}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                         {detailedItem.productionCompanies && detailedItem.productionCompanies.length > 0 && (
+                           <div className="flex flex-col gap-1 col-span-2 sm:col-span-3 pt-1 border-t border-white/10">
+                             <span className="text-[10px] text-white/55 font-bold">
+                               {currentLang === "ar" ? "شركات وشبكات الإنتاج" : "Production & Networks"}
+                             </span>
+                             <div className="flex flex-wrap items-center gap-1.5">
+                               {detailedItem.productionCompanies.map((p) => (
+                                 <span
+                                   key={p.id || p.name}
+                                   className="px-2.5 py-0.5 rounded-full bg-white/8 border border-white/15 text-[10.5px] font-bold text-white/85"
+                                 >
+                                   {p.name}
+                                 </span>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+
+                         {(detailedItem.usageRights || detailedItem.licenseUrl) && (
+                           <div className="flex flex-col gap-1 col-span-2 sm:col-span-3 pt-1 border-t border-white/10">
+                             <span className="text-[10px] text-white/55 font-bold">
+                               {currentLang === "ar" ? "الترخيص والحقوق" : "Archival License"}
+                             </span>
+                             <div className="flex flex-wrap items-center gap-2">
+                               {detailedItem.usageRights && (
+                                 <span className="text-[11px] font-bold text-emerald-300">
+                                   {detailedItem.usageRights}
+                                 </span>
+                               )}
+                               {detailedItem.licenseUrl && (
+                                 <a
+                                   href={detailedItem.licenseUrl}
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-300 hover:underline"
+                                 >
+                                   <span>License Details</span>
+                                   <ExternalLink size={11} />
+                                 </a>
+                               )}
+                             </div>
+                           </div>
+                         )}
+                       </div>
                     </div>
 
                     <div className="lg:col-span-6 p-4 rounded-2xl bg-white/[0.04] border border-white/12 flex flex-col gap-3">

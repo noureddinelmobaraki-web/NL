@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
+import type { CinemaHubId } from '../cinema/progress/progressStore';
 
 export type MovieStatus = 'favorite' | 'watched' | 'watchlist';
 
@@ -18,9 +19,34 @@ function makeKey(tmdbId: number, mediaType: 'movie' | 'tv', status: MovieStatus)
   return `${tmdbId}::${mediaType}::${status}`;
 }
 
-export function useMovieItems() {
+function getHubStorageKey(hub: CinemaHubId): string {
+  return `nl_hub_items_v1_${hub}`;
+}
+
+function readLocalHubItems(hub: CinemaHubId): MovieItemRecord[] {
+  try {
+    const raw = localStorage.getItem(getHubStorageKey(hub));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as MovieItemRecord[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalHubItems(hub: CinemaHubId, records: MovieItemRecord[]): void {
+  try {
+    localStorage.setItem(getHubStorageKey(hub), JSON.stringify(records));
+  } catch {
+    // ignore storage quota errors
+  }
+}
+
+export function useMovieItems(hub: CinemaHubId = 'movies') {
   const { user } = useAuth();
-  const [items, setItems]     = useState<MovieItemRecord[]>([]);
+  const [items, setItems]     = useState<MovieItemRecord[]>(() =>
+    hub === 'movies' ? [] : readLocalHubItems(hub)
+  );
   const [loading, setLoading] = useState(false);
 
   // O(1) lookup map, recalculated only when items changes
@@ -44,6 +70,18 @@ export function useMovieItems() {
       title?:     string,
       posterPath?: string
     ) => {
+      if (hub !== 'movies') {
+        const exists = keySet.has(makeKey(tmdbId, mediaType, status));
+        setItems(prev => {
+          const next = exists
+            ? prev.filter(i => !(i.tmdb_id === tmdbId && i.media_type === mediaType && i.status === status))
+            : [...prev, { tmdb_id: tmdbId, media_type: mediaType, status, title: title ?? '', poster_path: posterPath ?? '' }];
+          writeLocalHubItems(hub, next);
+          return next;
+        });
+        return;
+      }
+
       if (!user) return;
       const exists = keySet.has(makeKey(tmdbId, mediaType, status));
 
@@ -73,26 +111,43 @@ export function useMovieItems() {
         });
       }
     },
-    [user, keySet]
+    [hub, user, keySet]
   );
 
   // Initial load
   useEffect(() => {
-    if (!user) { setItems([]); return; }
+    if (hub !== 'movies') {
+      setItems(readLocalHubItems(hub));
+      setLoading(false);
+      const onStorage = (e: StorageEvent) => {
+        if (e.key === getHubStorageKey(hub)) {
+          setItems(readLocalHubItems(hub));
+        }
+      };
+      window.addEventListener('storage', onStorage);
+      return () => window.removeEventListener('storage', onStorage);
+    }
+
+    if (!user) { setItems([]); return undefined; }
     setLoading(true);
     supabase
       .from('movie_items')
       .select('tmdb_id, media_type, status, title, poster_path')
       .eq('user_id', user.id)
       .then(({ data }) => {
-        if (data) setItems(data as MovieItemRecord[]);
+        if (data) {
+          setItems(
+            (data as MovieItemRecord[]).filter(r => r.tmdb_id < 10_000_000)
+          );
+        }
         setLoading(false);
       });
-  }, [user]);
+    return undefined;
+  }, [hub, user]);
 
   // Realtime subscription — sync across tabs/devices
   useEffect(() => {
-    if (!user) return;
+    if (hub !== 'movies' || !user) return;
     const channel = supabase
       .channel(`movie_items:${user.id}`)
       .on(
@@ -103,7 +158,13 @@ export function useMovieItems() {
             .from('movie_items')
             .select('tmdb_id, media_type, status, title, poster_path')
             .eq('user_id', user.id)
-            .then(({ data }) => { if (data) setItems(data as MovieItemRecord[]); });
+            .then(({ data }) => {
+              if (data) {
+                setItems(
+                  (data as MovieItemRecord[]).filter(r => r.tmdb_id < 10_000_000)
+                );
+              }
+            });
         }
       )
       .subscribe();
@@ -111,7 +172,7 @@ export function useMovieItems() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [hub, user]);
 
   return {
     items,
@@ -123,3 +184,4 @@ export function useMovieItems() {
     watchlistCount: items.filter(i => i.status === 'watchlist').length,
   };
 }
+

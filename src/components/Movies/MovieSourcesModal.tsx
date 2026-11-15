@@ -20,6 +20,7 @@ export interface PlaySource {
   label: string;
   host: string;
   url: string;
+  isDirect?: boolean;
   origins: string[];
   timeoutMs: number;
   capabilities?: {

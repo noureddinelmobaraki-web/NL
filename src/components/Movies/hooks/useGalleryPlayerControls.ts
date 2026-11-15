@@ -175,7 +175,18 @@ export function useGalleryPlayerControls({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const doc = document as any;
       const fsEl = doc.fullscreenElement || doc.webkitFullscreenElement || null;
-      setIsNativeFullscreen(Boolean(fsEl));
+      const active = Boolean(fsEl);
+      setIsNativeFullscreen(active);
+      if (!active) {
+        try {
+          const orientation = (screen as Screen & {
+            orientation?: { unlock?: () => void };
+          })?.orientation;
+          orientation?.unlock?.();
+        } catch {
+          // ignore
+        }
+      }
     };
     document.addEventListener("fullscreenchange", onFsChange);
     document.addEventListener("webkitfullscreenchange", onFsChange);
@@ -346,50 +357,84 @@ export function useGalleryPlayerControls({
     [bumpControlsVisibility, videoElementRef, setVideoVolume, setIsVideoMuted],
   );
 
-  const handleToggleGalleryFullscreen = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const el = galleryStageRef.current as any;
-    if (!el) return;
+  const handleToggleGalleryFullscreen = useCallback(async () => {
+    const stage = galleryStageRef.current as
+      | (HTMLDivElement & { webkitRequestFullscreen?: () => Promise<void> })
+      | null;
+    const video = videoElementRef.current as
+      | (HTMLVideoElement & { webkitEnterFullscreen?: () => void })
+      | null;
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element;
+      webkitExitFullscreen?: () => Promise<void>;
+    };
 
-    if (isCssFullscreen) {
+    const isCurrentlyNativeFs = Boolean(
+      doc.fullscreenElement || doc.webkitFullscreenElement,
+    );
+
+    if (isCurrentlyNativeFs || isCssFullscreen) {
+      try {
+        if (doc.exitFullscreen && doc.fullscreenElement) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen && doc.webkitFullscreenElement) {
+          await doc.webkitExitFullscreen();
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        const orientation = (screen as Screen & {
+          orientation?: { unlock?: () => void };
+        })?.orientation;
+        orientation?.unlock?.();
+      } catch {
+        // ignore
+      }
       setIsCssFullscreen(false);
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const doc = document as any;
-    const fullscreenEl =
-      doc.fullscreenElement || doc.webkitFullscreenElement || null;
+    let enteredNative = false;
+    try {
+      if (stage?.requestFullscreen) {
+        await stage.requestFullscreen();
+        enteredNative = true;
+      } else if (stage?.webkitRequestFullscreen) {
+        await stage.webkitRequestFullscreen();
+        enteredNative = true;
+      } else if (
+        playerRenderMode === "direct" &&
+        typeof video?.webkitEnterFullscreen === "function"
+      ) {
+        video.webkitEnterFullscreen();
+        enteredNative = true;
+      }
+    } catch {
+      enteredNative = false;
+    }
 
-    if (fullscreenEl) {
-      try {
-        const exitFn = doc.exitFullscreen || doc.webkitExitFullscreen;
-        if (exitFn) {
-          void Promise.resolve(exitFn.call(doc)).catch(() => {
-            setIsCssFullscreen(false);
-          });
-          return;
-        }
-      } catch {}
-      setIsCssFullscreen(false);
-      return;
+    if (!enteredNative) {
+      setIsCssFullscreen(true);
     }
 
     try {
-      const reqFn =
-        el.requestFullscreen ||
-        el.webkitRequestFullscreen ||
-        el.webkitEnterFullscreen;
-      if (reqFn) {
-        void Promise.resolve(reqFn.call(el)).catch(() => {
-          setIsCssFullscreen((v) => !v);
-        });
-        return;
+      const orientation = (screen as Screen & {
+        orientation?: { lock?: (mode: string) => Promise<void> };
+      })?.orientation;
+      if (orientation?.lock) {
+        await orientation.lock("landscape");
       }
-    } catch {}
-
-    setIsCssFullscreen((v) => !v);
-  }, [isCssFullscreen, setIsCssFullscreen, galleryStageRef]);
+    } catch {
+      // Orientation lock optional on desktop / iOS Safari
+    }
+  }, [
+    isCssFullscreen,
+    setIsCssFullscreen,
+    galleryStageRef,
+    videoElementRef,
+    playerRenderMode,
+  ]);
 
   useEffect(() => {
     if (playerIframeRef.current) {

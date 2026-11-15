@@ -62,13 +62,71 @@ export async function resolveBookDetails(
   const mirrors: BookMirrorBranch[] = [];
 
   if (iaId) {
-    directReadFormats.embed = `https://archive.org/embed/${encodeURIComponent(iaId)}?ui=embed`;
+    directReadFormats.embed = `https://archive.org/embed/${encodeURIComponent(iaId)}?ui=embed#mode/2up/page/1`;
     mirrors.push({
       id: 'ia-embed',
-      label: 'Direct Digital Reader',
-      host: 'archive.org',
+      label: 'Interactive 2-Page Spread Reader',
+      host: 'archive.org/embed',
+      url: directReadFormats.embed,
+      badge: '2-Page Spread',
+    });
+
+    try {
+      const { resolveArchiveItemMetadata } = await import(
+        '../../../services/archive/archiveMasterEngine'
+      );
+      const meta = await resolveArchiveItemMetadata(iaId, book.title);
+      if (meta?.texts) {
+        if (meta.texts.pdfUrl) {
+          directReadFormats.pdf = meta.texts.pdfUrl;
+          mirrors.push({
+            id: 'ia-pdf-direct',
+            label: 'Direct PDF Download',
+            host: 'archive.org/download',
+            url: meta.texts.pdfUrl,
+            badge: 'PDF',
+          });
+        }
+        if (meta.texts.epubUrl) {
+          directReadFormats.epub = meta.texts.epubUrl;
+          mirrors.push({
+            id: 'ia-epub-direct',
+            label: 'Direct EPUB Download',
+            host: 'archive.org/download',
+            url: meta.texts.epubUrl,
+            badge: 'EPUB',
+          });
+        }
+        if (meta.texts.txtUrl) {
+          directReadFormats.txt = meta.texts.txtUrl;
+          mirrors.push({
+            id: 'ia-txt-direct',
+            label: 'Full Plain Text (_djvu.txt)',
+            host: 'archive.org/download',
+            url: meta.texts.txtUrl,
+            badge: 'TXT',
+          });
+        }
+        if (meta.texts.comicArchiveUrl) {
+          mirrors.push({
+            id: 'ia-cbr-direct',
+            label: 'Comic Book Archive (.CBR / .CBZ)',
+            host: 'archive.org/download',
+            url: meta.texts.comicArchiveUrl,
+            badge: 'CBR/CBZ',
+          });
+        }
+      }
+    } catch {
+      /* fallback to standard details mirror */
+    }
+
+    mirrors.push({
+      id: 'ia-details',
+      label: 'Internet Archive Source Page',
+      host: 'archive.org/details',
       url: `https://archive.org/details/${encodeURIComponent(iaId)}`,
-      badge: 'Direct Read',
+      badge: 'Archive Page',
     });
   }
 
@@ -79,20 +137,39 @@ export async function resolveBookDetails(
     if (!directReadFormats.epub) {
       directReadFormats.epub = `https://www.gutenberg.org/ebooks/${encodeURIComponent(gutenbergId)}.epub3.images`;
     }
-    mirrors.push({
-      id: 'gutenberg-main',
-      label: 'EPUB & Web Edition',
-      host: 'gutenberg.org',
-      url: `https://www.gutenberg.org/ebooks/${encodeURIComponent(gutenbergId)}`,
-      badge: 'Full Edition',
-    });
+    if (!directReadFormats.txt) {
+      directReadFormats.txt = `https://www.gutenberg.org/ebooks/${encodeURIComponent(gutenbergId)}.txt.utf-8`;
+    }
+    mirrors.push(
+      {
+        id: 'gutenberg-epub',
+        label: 'Project Gutenberg EPUB3',
+        host: 'gutenberg.org',
+        url: directReadFormats.epub,
+        badge: 'EPUB3',
+      },
+      {
+        id: 'gutenberg-html',
+        label: 'Project Gutenberg Web Reader',
+        host: 'gutenberg.org',
+        url: directReadFormats.html,
+        badge: 'HTML',
+      },
+      {
+        id: 'gutenberg-txt',
+        label: 'Project Gutenberg Plain Text',
+        host: 'gutenberg.org',
+        url: directReadFormats.txt,
+        badge: 'UTF-8 TXT',
+      },
+    );
   }
 
   const queryStr =
     isbn || `${book.title} ${book.author !== 'Unknown Author' ? book.author : ''}`.trim();
   mirrors.push({
     id: 'openlibrary-link',
-    label: 'Digital Edition Gateway',
+    label: 'Open Library Edition Gateway',
     host: 'openlibrary.org',
     url: `https://openlibrary.org/search?q=${encodeURIComponent(queryStr)}`,
     badge: 'Full Text',

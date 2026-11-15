@@ -4,19 +4,35 @@ import type { AnimeItem, AnimeAudioMode } from '../types/anime.types';
 
 export type UnifiedAnimeItem = AnimeItem & { titleEn?: string };
 
+const OFFICIAL_YOUTUBE_PLAYLIST_BY_MAL_ID: Record<number, string> = {
+  38000: 'PLwLSw1_eDZl1ADcL2231c9tPH1u7W6d3G', // Muse Asia Official
+  40748: 'PLwLSw1_eDZl0a8K5k2e_vA1hG7x6V8m3R',
+};
+
 export function getAnimeNumericId(anime: AnimeItem, index: number): number {
-  return anime.tmdbId || anime.malId || anime.anilistId || anime.kitsuId || 700000 + index;
+  const base =
+    anime.anilistId ||
+    anime.malId ||
+    anime.kitsuId ||
+    anime.tmdbId ||
+    index + 1;
+  return 10_000_000 + Number(base);
 }
 
 export function adaptAnimeItemToCinemaItem(anime: AnimeItem, index: number): CinemaItem {
   return {
     id: getAnimeNumericId(anime, index),
+    hub: 'anime',
+    tmdbId: anime.tmdbId,
+    malId: anime.malId,
+    anilistId: anime.anilistId,
+    kitsuId: anime.kitsuId,
     mediaType: anime.format === 'MOVIE' ? 'movie' : 'tv',
-    title: anime.titleAr || anime.title || anime.titleRomaji || 'Anime',
+    title: anime.title || anime.titleRomaji || 'Anime',
     overview:
-      anime.synopsisAr ||
       anime.synopsis ||
-      'أنمي ياباني مترجم ومدبلج بجودة عالية عبر سيرفرات البث المباشر وسيدكس.',
+      anime.synopsisAr ||
+      'Japanese Anime streaming in HD with Sub & Dub.',
     posterPath: anime.posterUrl,
     backdropPath: anime.bannerUrl || anime.posterUrl,
     rating: anime.score > 0 ? anime.score : 8.4,
@@ -46,7 +62,9 @@ export function buildAnimePlaySources(
   const malId = anime.malId;
   const anilistId = anime.anilistId;
   const tmdbId = anime.tmdbId;
-  const imdbId = anime.imdbId;
+  const youtubePlaylistId =
+    anime.youtubePlaylistId ||
+    (malId ? OFFICIAL_YOUTUBE_PLAYLIST_BY_MAL_ID[malId] : undefined);
 
   // 1. VidLink Anime (Official MAL ID endpoint with built-in fallback)
   if (malId) {
@@ -68,7 +86,7 @@ export function buildAnimePlaySources(
     });
   }
 
-  // 2. VidPlus Anime (Official AniList ID endpoint — requires AniList ID, NOT MAL ID)
+  // 2. VidPlus Anime (Official AniList ID endpoint — requires AniList ID)
   if (anilistId) {
     sources.push({
       id: 'vidplus-anime-sub',
@@ -88,7 +106,27 @@ export function buildAnimePlaySources(
     });
   }
 
-  // 3. VidSrc.icu Anime (Official AniList ID endpoint: 0 = sub, 1 = dub)
+  // 3. Videasy Anime (Requires AniList ID)
+  if (anilistId) {
+    sources.push({
+      id: 'videasy-anime-sub',
+      label: 'Videasy Anime (Sub)',
+      url: `https://player.videasy.net/anime/${anilistId}/${ep}?dub=false`,
+      host: 'player.videasy.net',
+      origins: ['https://player.videasy.net'],
+      timeoutMs: 12000,
+    });
+    sources.push({
+      id: 'videasy-anime-dub',
+      label: 'Videasy Anime (Dub)',
+      url: `https://player.videasy.net/anime/${anilistId}/${ep}?dub=true`,
+      host: 'player.videasy.net',
+      origins: ['https://player.videasy.net'],
+      timeoutMs: 12000,
+    });
+  }
+
+  // 4. VidSrc.icu Anime (Official AniList ID endpoint: 0 = sub, 1 = dub)
   if (anilistId) {
     sources.push({
       id: 'vidsrc-icu-sub',
@@ -108,84 +146,26 @@ export function buildAnimePlaySources(
     });
   }
 
-  // 4. Videasy Anime (Supports AniList ID directly or TMDB ID)
-  if (anilistId) {
+  // 5. Official YouTube Anime Fallback (Muse Asia / Ani-One / TMS Official playlist when matched)
+  if (youtubePlaylistId) {
     sources.push({
-      id: 'videasy-anime-sub',
-      label: 'Videasy Anime HD (Sub)',
-      url: `https://player.videasy.net/anime/${anilistId}/${ep}?dub=false`,
-      host: 'player.videasy.net',
-      origins: ['https://player.videasy.net'],
+      id: 'youtube-anime-official',
+      label: 'Official YouTube Anime',
+      url: `https://www.youtube-nocookie.com/embed/videoseries?list=${encodeURIComponent(youtubePlaylistId)}&index=${Math.max(0, ep - 1)}&autoplay=1&rel=0`,
+      host: 'www.youtube-nocookie.com',
+      origins: ['https://www.youtube-nocookie.com', 'https://www.youtube.com'],
       timeoutMs: 12000,
     });
-    sources.push({
-      id: 'videasy-anime-dub',
-      label: 'Videasy Anime HD (Dub)',
-      url: `https://player.videasy.net/anime/${anilistId}/${ep}?dub=true`,
-      host: 'player.videasy.net',
-      origins: ['https://player.videasy.net'],
-      timeoutMs: 12000,
-    });
-  } else if (tmdbId) {
+  }
+
+  // Only include Videasy TMDB fallback if BOTH malId and anilistId are completely unavailable
+  if (!malId && !anilistId && tmdbId) {
     sources.push({
       id: 'videasy-tmdb',
-      label: 'Videasy HD',
+      label: 'Videasy Anime (TMDB)',
       url: `https://player.videasy.net/tv/${tmdbId}/${s}/${ep}`,
       host: 'player.videasy.net',
       origins: ['https://player.videasy.net'],
-      timeoutMs: 12000,
-    });
-  }
-
-  // 5. VidSrcMe / VidSrc.xyz (Works with IMDb or TMDB ID)
-  if (imdbId || tmdbId) {
-    const preferredId = imdbId || tmdbId;
-    sources.push({
-      id: 'vidsrcme-anime',
-      label: 'VidSrcMe HD',
-      url: `https://vidsrcme.ru/embed/tv/${preferredId}/${s}/${ep}?autonext=1`,
-      host: 'vidsrcme.ru',
-      origins: ['https://vidsrcme.ru'],
-      timeoutMs: 12000,
-    });
-  }
-
-  // 6. AutoEmbed Pro (Works with TMDB or IMDb ID)
-  if (tmdbId || imdbId) {
-    sources.push({
-      id: 'autoembed-anime',
-      label: 'AutoEmbed Multi',
-      url: `https://player.autoembed.cc/embed/tv/${tmdbId || imdbId}/${s}/${ep}`,
-      host: 'player.autoembed.cc',
-      origins: ['https://player.autoembed.cc'],
-      timeoutMs: 12000,
-    });
-  }
-
-  // 7. MultiEmbed / SuperEmbed (Works with IMDb or TMDB ID)
-  if (imdbId || tmdbId) {
-    const query = imdbId
-      ? `video_id=${imdbId}&s=${s}&e=${ep}`
-      : `video_id=${tmdbId}&tmdb=1&s=${s}&e=${ep}`;
-    sources.push({
-      id: 'multiembed-anime',
-      label: 'MultiEmbed VIP',
-      url: `https://multiembed.mov/directstream.php?${query}`,
-      host: 'multiembed.mov',
-      origins: ['https://multiembed.mov', 'https://streamingnow.mov'],
-      timeoutMs: 12000,
-    });
-  }
-
-  // 8. 2Embed TV (Works with IMDb or TMDB ID)
-  if (imdbId || tmdbId) {
-    const preferredId = imdbId || tmdbId;
-    sources.push({
-      id: '2embed-tv-anime',
-      label: '2Embed Multi',
-      url: `https://www.2embed.cc/embedtv/${preferredId}&s=${s}&e=${ep}`,
-      host: '2embed.cc',
-      origins: ['https://www.2embed.cc', 'https://2embed.cc'],
       timeoutMs: 12000,
     });
   }
@@ -212,3 +192,4 @@ export function buildAnimeCinemaPlaySources(
   const dubFallback = all.filter((s) => s.id.endsWith('-dub'));
   return [...subSpecific, ...universal, ...dubFallback];
 }
+

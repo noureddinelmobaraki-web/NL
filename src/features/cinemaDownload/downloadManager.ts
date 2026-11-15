@@ -6,7 +6,6 @@
  */
 
 import { useSyncExternalStore } from 'react';
-import { nowPlayingBus } from '../../audio/nowPlayingBus';
 import { ensureServiceWorker } from '../../utils/registerSW';
 import { buildSources } from '../../components/Movies/MovieSourcesModal';
 import {
@@ -353,7 +352,6 @@ class CinemaDownloadManager {
       );
       (window as any).__NL_CINEMA_BUSY__ = hasBusyTask;
     }
-    this.syncDynamicIsland();
     this.listeners.forEach((cb) => {
       try {
         cb();
@@ -1557,67 +1555,6 @@ class CinemaDownloadManager {
         } catch {}
       }, 20000);
     } catch {}
-  }
-
-  private syncDynamicIsland(): void {
-    const allTasks = Object.values(this.state.tasks);
-    const activeTask =
-      allTasks.find(
-        (t) => t.status === 'downloading' || t.status === 'exporting',
-      ) || allTasks.find((t) => t.status === 'paused');
-
-    const currentBus = nowPlayingBus.get();
-    if (
-      currentBus &&
-      currentBus.source !== 'download' &&
-      currentBus.isPlaying
-    ) {
-      return;
-    }
-
-    if (!activeTask) {
-      nowPlayingBus.clear('download');
-      return;
-    }
-
-    const isDownloading =
-      activeTask.status === 'downloading' || activeTask.status === 'exporting';
-    const seTag =
-      activeTask.media.mediaType === 'tv'
-        ? ` S${String(activeTask.media.season || 1).padStart(2, '0')}E${String(
-            activeTask.media.episode || 1,
-          ).padStart(2, '0')}`
-        : '';
-
-    nowPlayingBus.publish({
-      source: 'download',
-      title: `⬇ ${activeTask.progressPct.toFixed(0)}% • ${activeTask.media.title}${seTag}`,
-      subtitle: `${activeTask.release.quality} • ${
-        isDownloading && activeTask.speedBytesPerSec > 0
-          ? `${formatBytes(activeTask.speedBytesPerSec)}/s`
-          : activeTask.status === 'paused'
-            ? 'متوقف مؤقتاً'
-            : 'جاري التحميل'
-      }`,
-      artworkUrl: activeTask.media.posterUrl,
-      accent: '#38BDF8',
-      isPlaying: isDownloading,
-      canPrev: false,
-      canNext: false,
-      controls: {
-        toggle: () => {
-          if (activeTask.status === 'downloading') {
-            this.pauseTask(activeTask.infoHash);
-          } else if (activeTask.status === 'paused') {
-            this.resumeTask(activeTask.infoHash);
-          }
-        },
-        stop: () => {
-          this.pauseTask(activeTask.infoHash);
-          nowPlayingBus.clear('download');
-        },
-      },
-    });
   }
 
   public openModalForMedia = (media: DownloadMediaContext): void => {

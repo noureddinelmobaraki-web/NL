@@ -406,11 +406,66 @@ export async function searchAnimeMultiSource(query: string): Promise<AnimeItem[]
   if (!trimmed) return [];
   const encoded = encodeURIComponent(trimmed);
 
-  // 1. Primary Jikan v4 search
+  // 1. Primary AniList GraphQL search (returns both id [anilistId] and idMal [malId] + high-res coverImage & bannerImage)
+  const cacheKey = `anilist_search_${trimmed.toLowerCase()}`;
+  const cached = CATALOG_CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
+
+  const gqlQuery = `
+    query ($search: String) {
+      Page(page: 1, perPage: 24) {
+        media(search: $search, type: ANIME, isAdult: false, sort: [SEARCH_MATCH, POPULARITY_DESC]) {
+          id
+          idMal
+          title { romaji english native }
+          description(asHtml: false)
+          coverImage { extraLarge large }
+          bannerImage
+          averageScore
+          episodes
+          status
+          format
+          season
+          seasonYear
+          startDate { year }
+          genres
+          studios(isMain: true) { nodes { name } }
+          trailer { id site }
+          nextAiringEpisode { episode airingAt timeUntilAiring }
+        }
+      }
+    }
+  `;
+
+  try {
+    const res = await fetch(ANILIST_GQL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        query: gqlQuery,
+        variables: { search: trimmed },
+      }),
+      signal: AbortSignal.timeout(6500),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const anilistItems: AnimeItem[] = Array.isArray(json?.data?.Page?.media)
+        ? json.data.Page.media.map(mapAniListToAnimeItem)
+        : [];
+      if (anilistItems.length > 0) {
+        CATALOG_CACHE.set(cacheKey, { ts: Date.now(), data: anilistItems });
+        return anilistItems;
+      }
+    }
+  } catch {
+    // Fall through to Jikan v4
+  }
+
+  // 2. Fallback Jikan v4 search
   const jikanResults = await fetchJikanEndpoint(`/anime?q=${encoded}&sfw=true&limit=24`);
   if (jikanResults.length > 0) return jikanResults;
 
-  // 2. Fallback Kitsu API
+  // 3. Fallback Kitsu API
   try {
     const res = await fetch(`${KITSU_BASE}/anime?filter[text]=${encoded}&page[limit]=20`, {
       signal: AbortSignal.timeout(6500),

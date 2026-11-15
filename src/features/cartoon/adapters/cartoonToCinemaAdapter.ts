@@ -4,19 +4,29 @@ import type { CartoonEpisodeStream, CartoonSeriesItem } from '../types/cartoon.t
 import { resolveArchiveIdentifierStreams } from '../services/archiveOrgStreamResolver';
 import { buildCartoonPlayOptions } from '../services/cartoonEmbedFallback';
 
-export function getCartoonNumericId(series: CartoonSeriesItem, index: number): number {
-  return series.tmdbId || 800000 + index;
+export function getCartoonNumericId(
+  series: CartoonSeriesItem,
+  index: number,
+): number {
+  const base = series.tmdbId || series.malId || index + 1;
+  return 20_000_000 + index * 1000 + (Number(base) % 1000);
 }
 
 export function adaptCartoonToCinemaItem(
   series: CartoonSeriesItem,
-  index: number
+  index: number,
 ): CinemaItem {
   return {
     id: getCartoonNumericId(series, index),
+    hub: 'cartoon',
+    tmdbId: series.tmdbId,
+    malId: series.malId,
+    archiveIds: series.archiveIds,
     mediaType: series.mediaType,
-    title: series.titleAr,
-    overview: series.synopsisAr,
+    title: series.titleAr || series.titleEn,
+    overview:
+      series.synopsisAr ||
+      'عمل كرتوني كلاسيكي مدبلج باللغة العربية من أرشيف سبيستون ومركز الزهرة.',
     posterPath: series.posterUrl,
     backdropPath: series.backdropUrl || series.posterUrl,
     rating: series.rating,
@@ -36,14 +46,16 @@ export function adaptCartoonToCinemaItem(
   };
 }
 
+export const adaptCartoonSeriesToCinemaItem = adaptCartoonToCinemaItem;
+
 export async function resolveCartoonEpisodes(
-  series: CartoonSeriesItem | undefined
+  series: CartoonSeriesItem | undefined,
 ): Promise<CartoonEpisodeStream[]> {
   if (!series || series.archiveIds.length === 0) return [];
   try {
     return await resolveArchiveIdentifierStreams(
       series.archiveIds[0],
-      series.titleAr
+      series.titleAr,
     );
   } catch {
     return [];
@@ -51,7 +63,7 @@ export async function resolveCartoonEpisodes(
 }
 
 export async function buildCartoonEpisodesList(
-  series: CartoonSeriesItem | undefined
+  series: CartoonSeriesItem | undefined,
 ): Promise<Array<{ episode_number: number; name: string }>> {
   if (!series) return [{ episode_number: 1, name: 'الحلقة 1' }];
   try {
@@ -75,7 +87,7 @@ export async function buildCartoonEpisodesList(
 export function buildCartoonPlaySourcesSync(
   series: CartoonSeriesItem | undefined,
   episodeNumber: number,
-  resolvedEpisodes?: CartoonEpisodeStream[]
+  resolvedEpisodes?: CartoonEpisodeStream[],
 ): PlaySource[] {
   if (!series) return [];
   const epNum = Math.max(1, episodeNumber || 1);
@@ -90,46 +102,20 @@ export function buildCartoonPlaySourcesSync(
   const sources: PlaySource[] = [];
   const seenUrls = new Set<string>();
 
-  if (matchedStream?.streamUrl) {
-    seenUrls.add(matchedStream.streamUrl);
-    sources.push({
-      id: `archive-mp4-${series.id}-${epNum}`,
-      label: `بث مباشر سبيستون MP4 (الحلقة ${epNum})`,
-      host: 'archive.org',
-      url: matchedStream.streamUrl,
-      origins: ['https://archive.org'],
-      timeoutMs: 12000,
-    });
-  }
-
-  const archiveEmbedUrl =
-    series.archiveIds.length > 0
-      ? `https://archive.org/embed/${encodeURIComponent(series.archiveIds[0])}?autoplay=1`
-      : '';
-
-  if (archiveEmbedUrl && !seenUrls.has(archiveEmbedUrl)) {
-    seenUrls.add(archiveEmbedUrl);
-    sources.push({
-      id: `archive-embed-${series.id}-${epNum}`,
-      label: `أرشيف سبيستون المباشر (الحلقة ${epNum})`,
-      host: 'archive.org',
-      url: archiveEmbedUrl,
-      origins: ['https://archive.org'],
-      timeoutMs: 12000,
-    });
-  }
-
   const options = buildCartoonPlayOptions(series, epNum, matchedStream);
   options.forEach((opt) => {
-    if (seenUrls.has(opt.url)) return;
+    if (!opt.url || seenUrls.has(opt.url)) return;
     seenUrls.add(opt.url);
+    const isDirectMp4 =
+      opt.kind === 'archive-primary' || opt.kind === 'archive-mirror';
     const isArchiveHost = opt.url.includes('archive.org');
     sources.push({
-      id: `${opt.id}-ep${epNum}`,
+      id: `${opt.id}-${series.id}-ep${epNum}`,
       label: opt.label,
       host: isArchiveHost ? 'archive.org' : 'spacetoon-source',
       url: opt.url,
-      origins: ['https://archive.org', 'https://vidlink.pro'],
+      isDirect: isDirectMp4,
+      origins: ['https://archive.org', 'https://vidlink.pro', 'https://player.videasy.net'],
       timeoutMs: 12000,
     });
   });

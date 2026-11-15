@@ -37,6 +37,12 @@ function AppStageRouter() {
     closeAnime,
     isCartoonOpen,
     closeCartoon,
+    isSharatOpen,
+    closeSharat,
+    isNoirOpen,
+    closeNoir,
+    isCommercialsOpen,
+    closeCommercials,
     isTvOpen,
     closeTv,
     isRetroOpen,
@@ -80,23 +86,29 @@ function AppStageRouter() {
           ? 'anime'
           : isCartoonOpen
             ? 'cartoon'
-            : isArtOpen
-              ? 'art'
-              : isMagazinesOpen
-                ? 'magazines'
-                : isRetroOpen
-                  ? 'retro'
-                  : isXpOpen
-                    ? 'xp'
-                    : isMusicOpen
-                      ? 'music'
-                      : isAccountsOpen
-                        ? 'accounts'
-                        : isPortraitOpen
-                          ? 'portrait'
-                          : isLiquidGlassOpen
-                            ? 'liquidGlass'
-                            : null;
+            : isSharatOpen
+              ? 'sharat'
+              : isNoirOpen
+                ? 'noir'
+                : isCommercialsOpen
+                  ? 'commercials'
+                  : isArtOpen
+                ? 'art'
+                : isMagazinesOpen
+                  ? 'magazines'
+                  : isRetroOpen
+                    ? 'retro'
+                    : isXpOpen
+                      ? 'xp'
+                      : isMusicOpen
+                        ? 'music'
+                        : isAccountsOpen
+                          ? 'accounts'
+                          : isPortraitOpen
+                            ? 'portrait'
+                            : isLiquidGlassOpen
+                              ? 'liquidGlass'
+                              : null;
 
   const isAnyPageActive = activeOverlayId !== null;
 
@@ -131,19 +143,25 @@ function AppStageRouter() {
             ? { onClose: closeAnime }
             : activeOverlayId === 'cartoon'
               ? { onClose: closeCartoon }
-              : activeOverlayId === 'art'
-                ? { onClose: closeArt, initialTab: artTab }
-                : activeOverlayId === 'magazines'
-                  ? { onClose: closeMagazines }
-                  : activeOverlayId === 'retro'
-                    ? { onClose: closeRetro }
-                    : activeOverlayId === 'xp'
-                      ? { onClose: closeXp }
-                      : activeOverlayId === 'accounts'
-                        ? { onClose: closeAccounts }
-                        : activeOverlayId === 'liquidGlass'
-                          ? { onClose: closeLiquidGlass, initialMode: liquidGlassMode }
-                          : {};
+              : activeOverlayId === 'sharat'
+                ? { onClose: closeSharat }
+                : activeOverlayId === 'noir'
+                  ? { onClose: closeNoir }
+                  : activeOverlayId === 'commercials'
+                    ? { onClose: closeCommercials }
+                    : activeOverlayId === 'art'
+                  ? { onClose: closeArt, initialTab: artTab }
+                  : activeOverlayId === 'magazines'
+                    ? { onClose: closeMagazines }
+                    : activeOverlayId === 'retro'
+                      ? { onClose: closeRetro }
+                      : activeOverlayId === 'xp'
+                        ? { onClose: closeXp }
+                        : activeOverlayId === 'accounts'
+                          ? { onClose: closeAccounts }
+                          : activeOverlayId === 'liquidGlass'
+                            ? { onClose: closeLiquidGlass, initialMode: liquidGlassMode }
+                            : {};
 
   return (
     <>

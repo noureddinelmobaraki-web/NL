@@ -37,6 +37,15 @@ export function useNotchNavigationActions({
     isCartoonOpen,
     openCartoon,
     closeCartoon,
+    isSharatOpen,
+    openSharat,
+    closeSharat,
+    isNoirOpen,
+    openNoir,
+    closeNoir,
+    isCommercialsOpen,
+    openCommercials,
+    closeCommercials,
     isArtOpen,
     openArt,
     closeArt,
@@ -82,31 +91,37 @@ export function useNotchNavigationActions({
         ? 'anime'
         : isCartoonOpen
           ? 'cartoon'
-          : isArtOpen
-            ? 'art'
-            : isMagazinesOpen
-              ? 'magazines'
-              : isTvOpen
-                ? 'tv'
-                : isRetroOpen
-                  ? 'retro'
-                  : isXpOpen
-                    ? 'xp'
-                    : isMusicOpen
-                      ? 'music'
-                      : isAccountsOpen
-                        ? 'accounts'
-                        : isLiquidGlassOpen
-                          ? liquidGlassMode === 'books'
-                            ? 'books'
-                            : liquidGlassMode === 'audiobooks'
-                              ? 'audiobooks'
-                              : liquidGlassMode === 'sun'
-                                ? 'albums'
-                                : liquidGlassMode === 'video'
-                                  ? 'x'
-                                  : 'liquidGlass'
-                          : 'home';
+          : isSharatOpen
+            ? 'sharat'
+            : isNoirOpen
+              ? 'noir'
+              : isCommercialsOpen
+                ? 'commercials'
+                : isArtOpen
+              ? 'art'
+              : isMagazinesOpen
+                ? 'magazines'
+                : isTvOpen
+                  ? 'tv'
+                  : isRetroOpen
+                    ? 'retro'
+                    : isXpOpen
+                      ? 'xp'
+                      : isMusicOpen
+                        ? 'music'
+                        : isAccountsOpen
+                          ? 'accounts'
+                          : isLiquidGlassOpen
+                            ? liquidGlassMode === 'books'
+                              ? 'books'
+                              : liquidGlassMode === 'audiobooks'
+                                ? 'audiobooks'
+                                : liquidGlassMode === 'sun'
+                                  ? 'albums'
+                                  : liquidGlassMode === 'video'
+                                    ? 'x'
+                                    : 'liquidGlass'
+                            : 'home';
 
   const pageMeta = PAGE_META[pageKey];
 
@@ -141,6 +156,15 @@ export function useNotchNavigationActions({
     isCartoonOpen,
     openCartoon,
     closeCartoon,
+    isSharatOpen,
+    openSharat,
+    closeSharat,
+    isNoirOpen,
+    openNoir,
+    closeNoir,
+    isCommercialsOpen,
+    openCommercials,
+    closeCommercials,
     isArtOpen,
     openArt,
     closeArt,

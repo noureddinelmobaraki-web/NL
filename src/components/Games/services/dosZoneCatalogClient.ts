@@ -203,5 +203,44 @@ export const CURATED_DOS_CLASSICS: UnifiedGameItem[] = [
 ];
 
 export async function fetchDosClassicsCatalog(): Promise<UnifiedGameItem[]> {
-  return CURATED_DOS_CLASSICS;
+  try {
+    const url =
+      'https://archive.org/advancedsearch.php?q=(collection:(softwarelibrary_msdos_games)+OR+collection:(softwarelibrary_msdos_showcase))+AND+mediatype:(software)&fl[]=identifier,title,creator,year&sort[]=downloads+desc&rows=24&page=1&output=json';
+    const res = await fetch(url, { signal: AbortSignal.timeout(7000) });
+    if (!res.ok) return CURATED_DOS_CLASSICS;
+    const data = await res.json();
+    const docs: any[] = Array.isArray(data?.response?.docs)
+      ? data.response.docs
+      : [];
+
+    const existingArchiveIds = new Set(
+      CURATED_DOS_CLASSICS.map((g) => g.archiveIdentifier).filter(Boolean),
+    );
+
+    const dynamicDos: UnifiedGameItem[] = docs
+      .filter(
+        (d) =>
+          d?.identifier &&
+          d?.title &&
+          !existingArchiveIds.has(String(d.identifier)),
+      )
+      .map((d, idx) => ({
+        id: `dos-ia-${d.identifier}`,
+        title: String(d.title),
+        posterUrl: `https://archive.org/services/img/${encodeURIComponent(d.identifier)}`,
+        archiveIdentifier: String(d.identifier),
+        engine: 'js-dos' as const,
+        category: 'dos' as const,
+        platformBadge: 'DOS' as const,
+        controlProfile: 'flash-pc' as const,
+        subtitle: d.creator
+          ? `${d.creator} · ${d.year || 'MS-DOS'}`
+          : 'Archive.org MS-DOS Showcase',
+        priorityRank: 295 - idx,
+      }));
+
+    return [...CURATED_DOS_CLASSICS, ...dynamicDos];
+  } catch {
+    return CURATED_DOS_CLASSICS;
+  }
 }

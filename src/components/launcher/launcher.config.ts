@@ -4,7 +4,7 @@
 export const LAUNCHER_ENABLED = true;
 
 export type LauncherAction =
-  | { kind: 'open'; handler: 'openMusic' | 'openMovies' | 'openTv' | 'openAnime' | 'openCartoon' | 'openXp' | 'openRetro' | 'openGames' | 'openAccounts' }
+  | { kind: 'open'; handler: 'openMusic' | 'openMovies' | 'openTv' | 'openAnime' | 'openCartoon' | 'openSharat' | 'openNoir' | 'openCommercials' | 'openXp' | 'openRetro' | 'openGames' | 'openAccounts' }
   | { kind: 'auth' }                       // openAuthModal
   | { kind: 'me'; theme?: 'light' | 'dark' | 'midnight' | 'bit' | 'lite' };
 
@@ -45,6 +45,7 @@ export const LAUNCHER: Category[] = [
           { id: 'movies', label: 'Movies & Series', icon: 'film', action: { kind: 'open', handler: 'openMovies' } },
           { id: 'anime', label: 'Anime', icon: 'sparkles', action: { kind: 'open', handler: 'openAnime' } },
           { id: 'cartoon', label: 'Cartoon', icon: 'tv', action: { kind: 'open', handler: 'openCartoon' } },
+          { id: 'sharat', label: 'Sharat', icon: 'disc-3', action: { kind: 'open', handler: 'openSharat' } },
           { id: 'tv', label: 'NL TV', icon: 'tv', action: { kind: 'open', handler: 'openTv' } },
         ] 
       },
@@ -66,6 +67,8 @@ export const LAUNCHER: Category[] = [
     items: [
       { id: 'xp', label: 'Windows XP', icon: 'monitor', action: { kind: 'open', handler: 'openXp' } },
       { id: 'retro', label: 'Retro', icon: 'joystick', action: { kind: 'open', handler: 'openRetro' } },
+      { id: 'noir', label: 'Classic Noir & B&W', icon: 'film', action: { kind: 'open', handler: 'openNoir' } },
+      { id: 'commercials', label: 'Vintage Ads & TV', icon: 'tv', action: { kind: 'open', handler: 'openCommercials' } },
     ] 
   },
 ];

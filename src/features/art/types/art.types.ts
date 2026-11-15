@@ -11,8 +11,11 @@ export type MuseumSourceId =
   | 'all'
   | 'chicago'
   | 'met'
+  | 'ia-met'
   | 'cleveland'
   | 'vam'
+  | 'loc'
+  | 'smithsonian'
   | 'wikimedia'
   | 'openverse'
   | 'concept-art'
@@ -27,7 +30,10 @@ export interface ArtMuseumPiece {
   artist: string;
   dateDisplay: string;
   mediumDisplay: string;
+  /** Lightweight ~400px grid thumbnail for 60fps scrolling */
+  thumbnailUrl?: string;
   imageUrl: string;
+  /** High-resolution 1686px+ master image loaded on demand in Lightbox */
   highResUrl: string;
   dominantHex?: string;
   dimensions?: string;

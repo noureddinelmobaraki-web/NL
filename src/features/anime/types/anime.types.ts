@@ -23,6 +23,7 @@ export interface AnimeIdentifiers {
   tvdbId?: number;
   resolvedSeason?: number;
   episodeOffset?: number;
+  youtubePlaylistId?: string;
 }
 
 export interface AnimeNextAiring {
@@ -47,6 +48,7 @@ export interface AnimeItem {
   posterUrl: string;
   bannerUrl: string;
   trailerYoutubeId?: string;
+  youtubePlaylistId?: string;
   score: number;
   episodesCount: number;
   status: 'AIRING' | 'FINISHED' | 'UPCOMING';

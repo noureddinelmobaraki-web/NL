@@ -27,6 +27,10 @@ import {
   useQuadLensWebGL,
 } from './stages/orbs/useQuadLensWebGL';
 import type { AudiobookItem, BookItem } from './booksAudioService';
+import {
+  xInfiniteFeedEngine,
+  type XFeedVideoItem,
+} from './services/xInfiniteFeedService';
 import './stages/orbs/portal.css';
 
 export {
@@ -111,6 +115,7 @@ export default function LiquidGlassPortalPage({
     return initialMode || 'orbs';
   });
   const [currentVideoIndex, setCurrentVideoIndex] = useState<number | null>(null);
+  const [activeFeedItem, setActiveFeedItem] = useState<XFeedVideoItem | null>(null);
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
   const [localMuted, setLocalMuted] = useState(false);
 
@@ -120,8 +125,6 @@ export default function LiquidGlassPortalPage({
   const sunGlassBoxRef = useRef<HTMLDivElement | null>(null);
   const booksGlassBoxRef = useRef<HTMLDivElement | null>(null);
   const audiobooksGlassBoxRef = useRef<HTMLDivElement | null>(null);
-  const shuffleBagRef = useRef<number[]>([]);
-  const lastPickedRef = useRef<number>(-1);
 
   const { canvasRef, webglReady, handlePointerMove, handlePointerLeave } = useQuadLensWebGL({
     glassBoxRef,
@@ -132,34 +135,15 @@ export default function LiquidGlassPortalPage({
     isMobileView,
   });
 
-  const pickNextRandomVideoIndex = useCallback((): number => {
-    const total = LIQUID_GLASS_HLS_VIDEOS.length;
-    if (total <= 1) return 0;
-
-    if (shuffleBagRef.current.length === 0) {
-      const fresh = Array.from({ length: total }, (_, i) => i);
-      for (let i = fresh.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [fresh[i], fresh[j]] = [fresh[j], fresh[i]];
-      }
-      if (fresh[fresh.length - 1] === lastPickedRef.current && fresh.length > 1) {
-        [fresh[0], fresh[fresh.length - 1]] = [fresh[fresh.length - 1], fresh[0]];
-      }
-      shuffleBagRef.current = fresh;
-    }
-
-    const nextIdx = shuffleBagRef.current.pop() ?? 0;
-    lastPickedRef.current = nextIdx;
-    return nextIdx;
-  }, []);
-
   const triggerRandomVideo = useCallback(() => {
-    const nextIdx = pickNextRandomVideoIndex();
+    const nextItem = xInfiniteFeedEngine.getNextVideoSync();
     persistStageMode('video');
     setMode('video');
-    setCurrentVideoIndex(nextIdx);
+    setActiveFeedItem(nextItem);
+    const matchedR2Idx = LIQUID_GLASS_HLS_VIDEOS.indexOf(nextItem.streamUrl);
+    setCurrentVideoIndex(matchedR2Idx >= 0 ? matchedR2Idx : 0);
     onVideoAudioActiveChange?.(true);
-  }, [pickNextRandomVideoIndex, onVideoAudioActiveChange, persistStageMode]);
+  }, [onVideoAudioActiveChange, persistStageMode]);
 
   const [crossBookQuery, setCrossBookQuery] = useState<string>('');
   const [crossSelectedBook, setCrossSelectedBook] = useState<BookItem | null>(null);
@@ -410,6 +394,7 @@ export default function LiquidGlassPortalPage({
           webglReady={webglReady}
           effectiveMuted={effectiveMuted}
           currentVideoIndex={currentVideoIndex}
+          activeFeedItem={activeFeedItem}
           glassBoxRef={glassBoxRef}
           sunGlassBoxRef={sunGlassBoxRef}
           booksGlassBoxRef={booksGlassBoxRef}

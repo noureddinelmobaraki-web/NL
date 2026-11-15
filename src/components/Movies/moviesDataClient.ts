@@ -95,6 +95,7 @@ export interface CinemaItem {
   id: number;
   mediaType: Media;
   title: string;
+  originalTitle?: string;
   overview: string;
   posterPath: string;
   backdropPath: string;
@@ -123,6 +124,17 @@ export interface CinemaItem {
   productionCompanies?: { id: number; name: string; logoPath: string }[];
   cast: CastMember[];
   similar: CinemaItem[];
+  hub?: "movies" | "anime" | "cartoon" | "noir" | "commercials";
+  tmdbId?: number;
+  malId?: number;
+  anilistId?: number;
+  kitsuId?: number;
+  archiveIds?: string[];
+  directDownloadUrl?: string;
+  torrentDownloadUrl?: string;
+  archivePageUrl?: string;
+  licenseUrl?: string;
+  usageRights?: string;
 }
 
 const USE_WORKER_META = import.meta.env.VITE_USE_WORKER_META === "1";

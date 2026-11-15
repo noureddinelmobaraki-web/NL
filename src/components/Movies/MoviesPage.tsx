@@ -25,7 +25,6 @@ import { useMoviesMusic } from "./useMoviesMusic";
 import { useDocumentMeta } from "../../hooks/useDocumentMeta";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { usePreconnect } from "../../hooks/usePreconnect";
-import { normLang } from "../../utils/lang";
 import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
 import "../../styles/components/cinema.css";
 import {
@@ -49,7 +48,6 @@ import {
   type CinemaItem,
 } from "./moviesDataClient";
 import {
-  NLLogo,
   MoviePosterCard,
   MovieRow,
 } from "./MovieGridComponents";
@@ -73,6 +71,11 @@ import {
 import { CinemaHeroBanner } from "./components/CinemaHeroBanner";
 import { CinemaDetailModal } from "./components/CinemaDetailModal";
 import { CinemaHeaderDownloadButton } from "../../features/cinemaDownload";
+import { useVirtualizedShelves } from "../../hooks/useVirtualizedShelves";
+import {
+  createTmdbMovieShelves,
+  createTmdbSeriesShelves,
+} from "./catalog/tmdbShelvesConfig";
 
 export { fetchWithCache, normalizeItem };
 export type { CastMember, ActorDetails, CinemaItem };
@@ -93,16 +96,49 @@ export function MoviesPage({
 }) {
   usePreconnect(CINEMA_PRECONNECT_ORIGINS);
 
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { isMobile, isTablet } = useDeviceType();
   const { setMovieActive, registerMovieBack } = useAppContext();
   const isTouch = isMobile || isTablet;
-  const currentLang = normLang(i18n.resolvedLanguage || i18n.language);
+  const currentLang: string = "en";
   const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || PUBLIC_TMDB_KEY;
   const omdbKey = import.meta.env.VITE_OMDB_API_KEY || PUBLIC_OMDB_KEY;
 
   const { user } = useAuth();
   const { has, toggle, items: movieItems, watchlistCount } = useMovieItems();
+
+  const movieShelfDefs = useMemo(
+    () => createTmdbMovieShelves(tmdbKey),
+    [tmdbKey],
+  );
+  const seriesShelfDefs = useMemo(
+    () => createTmdbSeriesShelves(tmdbKey),
+    [tmdbKey],
+  );
+
+  const {
+    visibleShelves: movieShelves,
+    hasMoreShelves: hasMoreMovieShelves,
+    sentinelRef: movieSentinelRef,
+    fetchNextShelfPage: fetchNextMovieShelfPage,
+  } = useVirtualizedShelves<CinemaItem>({
+    shelves: movieShelfDefs,
+    getItemKey: (it) => `movie:${it.id}`,
+    initialShelfCount: 4,
+    batchShelfCount: 3,
+  });
+
+  const {
+    visibleShelves: seriesShelves,
+    hasMoreShelves: hasMoreSeriesShelves,
+    sentinelRef: seriesSentinelRef,
+    fetchNextShelfPage: fetchNextSeriesShelfPage,
+  } = useVirtualizedShelves<CinemaItem>({
+    shelves: seriesShelfDefs,
+    getItemKey: (it) => `tv:${it.id}`,
+    initialShelfCount: 4,
+    batchShelfCount: 3,
+  });
 
   const {
     topMovies,
@@ -113,19 +149,7 @@ export function MoviesPage({
     seriesLoading,
     globalError,
     trendingMovies,
-    topRatedMovies,
-    popularMovies,
-    actionMovies,
-    horrorMovies,
-    dramaMovies,
-    sciFiMovies,
     trendingSeries,
-    topRatedSeries,
-    popularSeries,
-    actionSeries,
-    mysterySeries,
-    dramaSeries,
-    animationSeries,
     selectedGenreId,
     setSelectedGenreId,
     searchQuery,
@@ -136,11 +160,28 @@ export function MoviesPage({
     setSearchOpen,
     showWatchlist,
     setShowWatchlist,
-    findPreloadedCinemaItem,
+    findPreloadedCinemaItem: baseFindPreloaded,
     activeGenres,
     slideshowSlides,
     filteredList,
   } = useCinemaCatalog({ initialTab, tmdbKey, currentLang });
+
+  const findPreloadedCinemaItem = useCallback(
+    (id: number, mediaType?: "movie" | "tv" | null): CinemaItem | null => {
+      const base = baseFindPreloaded(id, mediaType);
+      if (base) return base;
+      const targetType = mediaType ?? (activeTab === "series" ? "tv" : "movie");
+      const shelvesToScan = targetType === "tv" ? seriesShelves : movieShelves;
+      for (const s of shelvesToScan) {
+        const match = s.items.find(
+          (it) => it.id === id && it.mediaType === targetType,
+        );
+        if (match) return match;
+      }
+      return null;
+    },
+    [baseFindPreloaded, activeTab, seriesShelves, movieShelves],
+  );
 
   useDocumentMeta("movies.title", "movies.description");
 
@@ -214,7 +255,7 @@ export function MoviesPage({
     setLoadingSeasonEpisodes,
   } = useSeasonEpisodesState();
 
-  const continueWatchingItems = useContinueWatching();
+  const continueWatchingItems = useContinueWatching("movies");
   const [activeHoverId, setActiveHoverId] = useState<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedActor, setSelectedActor] = useState<CastMember | null>(null);
@@ -226,6 +267,7 @@ export function MoviesPage({
     selectedSeason,
     selectedEpisode,
     isFullSeasonEmbed,
+    hub: "movies",
   });
 
   const { sources: detailPlaySources, resolvedImdbId } = useResolvedImdbSources(
@@ -304,7 +346,7 @@ export function MoviesPage({
   } = useSeekUnsupportedToast();
 
   const detailItemStorageKey = detailedItem
-    ? `${detailedItem.mediaType}_${detailedItem.id}`
+    ? `movies_${detailedItem.mediaType}_${detailedItem.id}`
     : "";
 
   const resolveServerIdForStream = useCallback(
@@ -429,6 +471,7 @@ export function MoviesPage({
     iframeLoadStamp,
     setWorkerBridgeSubtitles,
     showSeekUnsupportedToast,
+    hub: "movies",
   });
 
   const {
@@ -666,10 +709,6 @@ export function MoviesPage({
                   <ChevronLeft size={17} className={currentLang === "ar" ? "rotate-180" : ""} />
                 </button>
               )}
-
-              <h1 className="text-base sm:text-2xl font-black tracking-tighter text-white drop-shadow-[0_2px_12px_rgba(229,9,20,0.55)] select-none flex-shrink-0">
-                <NLLogo />
-              </h1>
 
               <div className="lg-cinema-pill-group scale-95 sm:scale-100 flex-shrink-0">
                 <button
@@ -1129,7 +1168,7 @@ export function MoviesPage({
                             progressRatio={ratio}
                             episodeBadge={epBadge}
                             onRemoveProgress={() =>
-                              removeProgress(entry.mediaType, entry.id)
+                              removeProgress(entry.mediaType, entry.id, "movies")
                             }
                           />
                         </div>
@@ -1174,18 +1213,28 @@ export function MoviesPage({
                   <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
                     {topMovies.length > 0 && (
                       <MovieRow
-                        title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Movies"}
+                        title="Top Movies"
                         items={topMovies}
                         {...rowProps}
                       />
                     )}
-                    <MovieRow title={t("movies.rows.trending")} items={trendingMovies} {...rowProps} />
-                    <MovieRow title={t("movies.rows.topRated")} items={topRatedMovies} {...rowProps} />
-                    <MovieRow title={t("movies.rows.action")} items={actionMovies} {...rowProps} />
-                    <MovieRow title={t("movies.rows.horror")} items={horrorMovies} {...rowProps} />
-                    <MovieRow title={t("movies.rows.popular")} items={popularMovies} {...rowProps} />
-                    <MovieRow title={t("movies.rows.drama")} items={dramaMovies} {...rowProps} />
-                    <MovieRow title={t("movies.rows.scifi")} items={sciFiMovies} {...rowProps} />
+                    {movieShelves.map((shelf) => (
+                      <MovieRow
+                        key={shelf.id}
+                        title={shelf.title}
+                        items={shelf.items}
+                        onReachEnd={() => void fetchNextMovieShelfPage(shelf.id)}
+                        {...rowProps}
+                      />
+                    ))}
+                    {hasMoreMovieShelves && (
+                      <div
+                        ref={movieSentinelRef}
+                        className="w-full h-16 flex items-center justify-center text-xs text-white/40 font-semibold"
+                      >
+                        Loading more shelves...
+                      </div>
+                    )}
                   </div>
                 )
               ) : globalError && trendingSeries.length === 0 ? (
@@ -1222,18 +1271,28 @@ export function MoviesPage({
                 <div className="relative z-20 pb-24 -mt-4 sm:-mt-6">
                   {topSeries.length > 0 && (
                     <MovieRow
-                      title={currentLang === "ar" ? "الأكثر مشاهدة" : "Top Series"}
+                      title="Top Series"
                       items={topSeries}
                       {...rowProps}
                     />
                   )}
-                  <MovieRow title={t("movies.rows.trending")} items={trendingSeries} {...rowProps} />
-                  <MovieRow title={t("movies.rows.topRated")} items={topRatedSeries} {...rowProps} />
-                  <MovieRow title={t("movies.rows.popular")} items={popularSeries} {...rowProps} />
-                  <MovieRow title={t("movies.rows.adventure")} items={actionSeries} {...rowProps} />
-                  <MovieRow title={t("movies.rows.mystery")} items={mysterySeries} {...rowProps} />
-                  <MovieRow title={t("movies.rows.drama")} items={dramaSeries} {...rowProps} />
-                  <MovieRow title={t("movies.rows.animation")} items={animationSeries} {...rowProps} />
+                  {seriesShelves.map((shelf) => (
+                    <MovieRow
+                      key={shelf.id}
+                      title={shelf.title}
+                      items={shelf.items}
+                      onReachEnd={() => void fetchNextSeriesShelfPage(shelf.id)}
+                      {...rowProps}
+                    />
+                  ))}
+                  {hasMoreSeriesShelves && (
+                    <div
+                      ref={seriesSentinelRef}
+                      className="w-full h-16 flex items-center justify-center text-xs text-white/40 font-semibold"
+                    >
+                      Loading more shelves...
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -1265,6 +1324,7 @@ export function MoviesPage({
         toggle={toggle}
         handleSelectActor={handleSelectActor}
         playerStageProps={{
+          hub: "movies",
           isWatchingInGallery,
           setIsWatchingInGallery,
           activeGallerySource,

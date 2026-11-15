@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Subtitles,
   Award,
+  Download,
 } from "lucide-react";
 import { GlassVectorIcon } from "../../shared/icons";
 import { EyeLoader } from "../EyeLoader";
@@ -47,8 +48,10 @@ import {
   type CinemaItem,
 } from "../moviesDataClient";
 import { CinemaDownloadTriggerButton } from "../../../features/cinemaDownload";
+import { buildArchiveTorrentUrl } from "../../../services/archive/archiveUrlBuilder";
 
 interface CinemaPlayerStageProps {
+  hub?: "movies" | "anime" | "cartoon" | "noir" | "commercials";
   detailedItem: CinemaItem;
   isWatchingInGallery: boolean;
   setIsWatchingInGallery: (v: boolean) => void;
@@ -141,6 +144,7 @@ interface CinemaPlayerStageProps {
 }
 
 export function CinemaPlayerStage({
+  hub = "movies",
   detailedItem,
   isWatchingInGallery,
   setIsWatchingInGallery,
@@ -238,7 +242,7 @@ export function CinemaPlayerStage({
   return (
     <div
       className={`flex-shrink-0 flex flex-col gap-2 ${
-        isWatchingInGallery ? "p-2 sm:p-3" : "p-2.5 sm:p-3.5 pb-0"
+        isWatchingInGallery ? "p-0 sm:p-3" : "p-0 sm:p-3.5 pb-0"
       }`}
     >
       {((isWatchingInGallery && Boolean(activeGallerySource)) ||
@@ -246,7 +250,7 @@ export function CinemaPlayerStage({
         <div
           onMouseMove={bumpControlsVisibility}
           onTouchStart={bumpControlsVisibility}
-          className={`lg-cinema-gallery-top-bar flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-2xl transition-all duration-300 ${
+          className={`lg-cinema-gallery-top-bar flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap px-2.5 py-1.5 sm:flex-wrap sm:px-3 rounded-none sm:rounded-2xl transition-all duration-300 ${
             isWatchingInGallery ? "lg-cinema-gallery-top-bar--playing" : ""
           } ${
             isWatchingInGallery && !isControlsVisible
@@ -255,7 +259,7 @@ export function CinemaPlayerStage({
           }`}
           dir="ltr"
         >
-          <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:flex-wrap sm:gap-2 min-w-0 shrink-0 sm:shrink">
             {(activeImdbId || detailedItem.trailerKey) && (
               <button
                 type="button"
@@ -307,19 +311,92 @@ export function CinemaPlayerStage({
               </button>
             )}
 
-            <CinemaDownloadTriggerButton
-              item={detailedItem}
-              imdbId={activeImdbId}
-              season={selectedSeason}
-              episode={selectedEpisode}
-              episodeTitle={
-                seasonEpisodes.find(
-                  (ep) => ep.episode_number === selectedEpisode,
-                )?.name
-              }
-              currentLang={currentLang}
-              compact
-            />
+            {(!hub || hub === "movies") && (
+              <CinemaDownloadTriggerButton
+                item={detailedItem}
+                imdbId={activeImdbId}
+                season={selectedSeason}
+                episode={selectedEpisode}
+                episodeTitle={
+                  seasonEpisodes.find(
+                    (ep) => ep.episode_number === selectedEpisode,
+                  )?.name
+                }
+                currentLang={currentLang}
+                compact
+              />
+            )}
+
+            {(hub === "cartoon" || hub === "noir" || hub === "commercials") &&
+              (() => {
+                const activeStream =
+                  extractedStreams[activeExtractedIdx] || extractedStreams[0];
+                const archiveId = detailedItem.archiveIds?.[0];
+                const directMp4Url =
+                  activeStream?.directUrl ||
+                  detailedItem.directDownloadUrl ||
+                  (archiveId
+                    ? `https://archive.org/details/${encodeURIComponent(archiveId)}`
+                    : "");
+                const torrentUrl =
+                  detailedItem.torrentDownloadUrl ||
+                  (archiveId ? buildArchiveTorrentUrl(archiveId) : "");
+                return (
+                  <>
+                    {directMp4Url && (
+                      <a
+                        href={directMp4Url}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-emerald-200 hover:text-white flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                      >
+                        <Download size={13} />
+                        <span>
+                          {currentLang === "ar" ? "تحميل MP4" : "MP4"}
+                        </span>
+                      </a>
+                    )}
+                    {torrentUrl && (
+                      <a
+                        href={torrentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="lg-cinema-action-pill px-2.5 py-1.5 text-xs font-bold text-amber-200 hover:text-white flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                      >
+                        <Download size={12} />
+                        <span>.Torrent</span>
+                      </a>
+                    )}
+                  </>
+                );
+              })()}
+
+            {hub === "anime" &&
+              (() => {
+                const activeStream =
+                  extractedStreams[activeExtractedIdx] || extractedStreams[0];
+                const epUrl =
+                  activeStream?.directUrl ||
+                  detailedItem.directDownloadUrl ||
+                  activeGallerySource?.url ||
+                  "";
+                if (!epUrl) return null;
+                return (
+                  <a
+                    href={epUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="lg-cinema-action-pill px-3 py-1.5 text-xs font-bold text-sky-200 hover:text-white flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  >
+                    <Download size={13} />
+                    <span>
+                      S{selectedSeason}:E{selectedEpisode}
+                    </span>
+                  </a>
+                );
+              })()}
 
             {isWatchingInGallery &&
               activeGallerySource &&
@@ -332,7 +409,7 @@ export function CinemaPlayerStage({
               )}
 
             {isWatchingInGallery && detailPlaySources.length > 0 && (
-              <div className="flex items-center gap-1 flex-wrap">
+              <div className="flex items-center gap-1 sm:flex-wrap shrink-0">
                 {animeAudioMode && onChangeAnimeAudioMode && (
                   <div
                     className="inline-flex items-center rounded-full bg-black/55 border border-white/25 p-0.5 me-1"
@@ -879,7 +956,7 @@ export function CinemaPlayerStage({
 
         {isAnyFullscreen &&
           isWatchingInGallery &&
-          controlMode !== "none" &&
+          (playerRenderMode === "direct" || controlMode === "bridged") &&
           !allServersFailed && (
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1036,7 +1113,7 @@ export function CinemaPlayerStage({
 
       {!isAnyFullscreen &&
         isWatchingInGallery &&
-        controlMode !== "none" &&
+        (playerRenderMode === "direct" || controlMode === "bridged") &&
         !allServersFailed && (
         <div
           onClick={(e) => e.stopPropagation()}
@@ -1234,23 +1311,25 @@ export function CinemaPlayerStage({
               })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsFullSeasonEmbed((prev) => !prev);
-                setDetailServersOpen(true);
-                startGalleryWatchSession();
-              }}
-              className={`lg-cinema-tv-pill px-3 py-1 rounded-full text-xs font-extrabold inline-flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
-                isFullSeasonEmbed
-                  ? "lg-cinema-tv-pill--active"
-                  : "text-amber-200/90 hover:text-amber-100"
-              }`}
-              title="https://www.2embed.cc/embedtvfull/..."
-            >
-              <Layers size={12} />
-              <span>{t("movies.player.fullSeason")}</span>
-            </button>
+            {(detailedItem.hub || hub) === "movies" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFullSeasonEmbed((prev) => !prev);
+                  setDetailServersOpen(true);
+                  startGalleryWatchSession();
+                }}
+                className={`lg-cinema-tv-pill px-3 py-1 rounded-full text-xs font-extrabold inline-flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
+                  isFullSeasonEmbed
+                    ? "lg-cinema-tv-pill--active"
+                    : "text-amber-200/90 hover:text-amber-100"
+                }`}
+                title="https://www.2embed.cc/embedtvfull/..."
+              >
+                <Layers size={12} />
+                <span>{t("movies.player.fullSeason")}</span>
+              </button>
+            )}
           </div>
 
           {!isFullSeasonEmbed && (

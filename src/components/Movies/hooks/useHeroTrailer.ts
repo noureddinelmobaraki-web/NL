@@ -28,6 +28,7 @@ export function useHeroTrailer({
   const [trailerFallbackToYoutube, setTrailerFallbackToYoutube] = useState(false);
   const [resolvedTrailer, setResolvedTrailer] = useState<TrailerSource | null>(null);
   const [imdbTrailerLoaded, setImdbTrailerLoaded] = useState(false);
+  const [isTrailerMuted, setIsTrailerMuted] = useState(true);
 
   useEffect(() => {
     setHeroServersOpen(false);
@@ -111,5 +112,7 @@ export function useHeroTrailer({
     setResolvedTrailer,
     imdbTrailerLoaded,
     setImdbTrailerLoaded,
+    isTrailerMuted,
+    setIsTrailerMuted,
   };
 }

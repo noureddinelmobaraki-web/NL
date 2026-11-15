@@ -64,6 +64,21 @@ export const CartoonPage = lazyWithRetry(
   () => import('../features/cartoon/CartoonPage').then((m) => ({ default: m.CartoonPage })),
   'CartoonPage',
 );
+export const SharatPage = lazyWithRetry(
+  () => import('../features/sharat/SharatPage').then((m) => ({ default: m.SharatPage || m.default })),
+  'SharatPage',
+);
+export const NoirCinemaPage = lazyWithRetry(
+  () => import('../features/noir/NoirCinemaPage').then((m) => ({ default: m.NoirCinemaPage })),
+  'NoirCinemaPage',
+);
+export const NostalgiaCommercialsPage = lazyWithRetry(
+  () =>
+    import('../features/commercials/NostalgiaCommercialsPage').then((m) => ({
+      default: m.NostalgiaCommercialsPage || m.default,
+    })),
+  'NostalgiaCommercialsPage',
+);
 export const ArtHubPage = lazyWithRetry(
   () => import('../features/art/ArtHubPage').then((m) => ({ default: m.ArtHubPage })),
   'ArtHubPage',
@@ -113,6 +128,30 @@ export const PAGES: Record<Exclude<PageId, 'home'>, PageDescriptor> = {
     loaderType: 'cinema',
     wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
     component: CartoonPage,
+  },
+  sharat: {
+    id: 'sharat',
+    key: 'sharat-screen',
+    sectionName: 'sharat',
+    loaderType: 'cinema',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
+    component: SharatPage,
+  },
+  noir: {
+    id: 'noir',
+    key: 'noir-screen',
+    sectionName: 'noir',
+    loaderType: 'cinema',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
+    component: NoirCinemaPage,
+  },
+  commercials: {
+    id: 'commercials',
+    key: 'commercials-screen',
+    sectionName: 'commercials',
+    loaderType: 'cinema',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
+    component: NostalgiaCommercialsPage,
   },
   art: {
     id: 'art',

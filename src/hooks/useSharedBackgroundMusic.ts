@@ -22,35 +22,35 @@ interface SharedMusicOptions {
   key: MusicKey;
   url: string;
   volume?: number;
+  profileId?: string;
 }
 
 export function useSharedBackgroundMusic(
   isActive: boolean,
   options: SharedMusicOptions,
 ) {
-  const { key, url, volume = 0.6 } = options;
+  const { key, url, volume = 0.6, profileId } = options;
+  const shouldAutoPlay = (profileId ?? key) === "retro";
   const readyRef = useRef(false);
+  const userEnabledRef = useRef(shouldAutoPlay);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(!shouldAutoPlay);
 
-  // Keep a ref of isActive to avoid re-triggering audio initialization on state changes
   const isActiveRef = useRef(isActive);
   useEffect(() => {
     isActiveRef.current = isActive;
   }, [isActive]);
 
-  // Handle dynamic play/pause transitions when isActive state changes
   useEffect(() => {
     if (!readyRef.current) return;
     if (isActive) {
       audioManager.pause(key);
-    } else {
+    } else if (userEnabledRef.current) {
       audioManager.play(key).catch(() => {});
     }
   }, [isActive, key]);
 
-  // Audio setup and HLS binding - runs only when stream source (key/url) changes
   useEffect(() => {
     const purge = (a: HTMLAudioElement | null) => {
       if (!a) return;
@@ -69,7 +69,7 @@ export function useSharedBackgroundMusic(
     audio.crossOrigin = "anonymous";
     audioManager.register(key, audio, volume);
 
-    const onAudioError = (e: any) => {
+    const onAudioError = (e: unknown) => {
       console.error(
         `[SharedBackgroundMusic:${key}] Audio source failed:`,
         url,
@@ -79,24 +79,16 @@ export function useSharedBackgroundMusic(
     audio.addEventListener("error", onAudioError);
 
     const tryPlay = () => {
+      if (!userEnabledRef.current) return;
       if (!isActiveRef.current) {
-        audioManager.play(key).catch((err) => {
-          console.log(
-            `[SharedBackgroundMusic:${key}] Autoplay prevented, waiting user gesture.`,
-            err,
-          );
-        });
+        audioManager.play(key).catch(() => {});
       }
     };
 
-    audio.addEventListener("canplay", tryPlay);
+    if (shouldAutoPlay) {
+      audio.addEventListener("canplay", tryPlay);
+    }
 
-    // ── hls.js is now imported DYNAMICALLY so it is no longer part of the
-    //    initial/Home bundle graph. It was previously a static (eager) import
-    //    that pulled the ~160 KB hls chunk into the critical path and delayed
-    //    LCP. Setup still runs inside this post-mount effect, so the runtime
-    //    behavior (autoplay, native-HLS fallback, isSupported-first priority)
-    //    is preserved exactly — only the download timing moves past first paint.
     let cancelled = false;
     void (async () => {
       const { default: Hls } = await import("hls.js");
@@ -111,7 +103,9 @@ export function useSharedBackgroundMusic(
             data.details,
           );
         });
-        hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
+        if (shouldAutoPlay) {
+          hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
+        }
         hls.loadSource(url);
         hls.attachMedia(audio);
       } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
@@ -119,11 +113,12 @@ export function useSharedBackgroundMusic(
       }
     })();
 
-    const cleanupAutoplay = ensureAutoplay(key);
+    const cleanupAutoplay = shouldAutoPlay ? ensureAutoplay(key) : () => {};
     readyRef.current = true;
-    tryPlay();
+    if (shouldAutoPlay) {
+      tryPlay();
+    }
 
-    // ── تسجيل خلفية الصفحة كقناة "background" في السلطة المركزية (soundGovernor) ──
     const govId = `bg:${key}`;
     const offGov = soundGovernor.register({
       id: govId,
@@ -166,9 +161,6 @@ export function useSharedBackgroundMusic(
       cancelled = true;
       if (hlsRef.current) {
         try {
-          // hls.destroy() removes all attached listeners internally, so the
-          // previous explicit off(MANIFEST_PARSED) is redundant. It is removed
-          // here because Hls is now a type-only import (no runtime Events).
           hlsRef.current.stopLoad();
           hlsRef.current.detachMedia();
           hlsRef.current.destroy();
@@ -185,14 +177,16 @@ export function useSharedBackgroundMusic(
       purge(audioRef.current);
       audioRef.current = null;
     };
-  }, [key, url, volume]);
+  }, [key, url, volume, shouldAutoPlay]);
 
   const toggleMute = () => {
     if (audioRef.current) {
       if (audioManager.isSourceActive(key)) {
+        userEnabledRef.current = false;
         audioManager.pause(key);
         setIsMuted(true);
       } else {
+        userEnabledRef.current = true;
         audioManager.play(key).catch(() => {});
         setIsMuted(false);
       }

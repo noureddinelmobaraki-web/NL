@@ -35,7 +35,10 @@ import {
   type SyncController,
 } from "../../../features/cinema/player/syncController";
 import type { PlayerControlMode } from "../../../features/cinema/player/CinemaTimeline";
-import { saveProgress } from "../../../features/cinema/progress/progressStore";
+import {
+  saveProgress,
+  type CinemaHubId,
+} from "../../../features/cinema/progress/progressStore";
 import type { PlaySource } from "../MovieSourcesModal";
 import type { CinemaItem } from "../moviesDataClient";
 
@@ -65,6 +68,7 @@ export function usePlayerBridgeSync({
   iframeLoadStamp,
   setWorkerBridgeSubtitles,
   showSeekUnsupportedToast,
+  hub = "movies",
 }: {
   isWatchingInGallery: boolean;
   playerRenderMode: "extracting" | "direct" | "clean-embed" | "iframe";
@@ -97,6 +101,7 @@ export function usePlayerBridgeSync({
     React.SetStateAction<ExtractedSubtitleTrack[]>
   >;
   showSeekUnsupportedToast: () => void;
+  hub?: CinemaHubId;
 }) {
   const activeIframeUrlBase = useMemo(() => {
     if (!activeGallerySource) return "";
@@ -203,6 +208,7 @@ export function usePlayerBridgeSync({
           : 0;
     if (durationSec <= 0 || curTime <= 5) return;
     saveProgress({
+      hub: detailedItem.hub || hub,
       id: detailedItem.id,
       mediaType: detailedItem.mediaType,
       title: detailedItem.title,
@@ -213,7 +219,7 @@ export function usePlayerBridgeSync({
       time: curTime,
       duration: durationSec,
     });
-  }, [detailedItem, isWatchingInGallery, selectedSeason, selectedEpisode]);
+  }, [detailedItem, isWatchingInGallery, selectedSeason, selectedEpisode, hub]);
 
   const syncControllerRef = useRef<SyncController | null>(null);
   const canReloadStartAt = Boolean(

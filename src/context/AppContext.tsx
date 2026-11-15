@@ -13,6 +13,9 @@ const VIEW_TO_NAV: Record<string, { page: PageId; cinemaTab?: CinemaTab }> = {
   series:   { page: 'cinema', cinemaTab: 'series' },
   anime:    { page: 'anime' },
   cartoon:  { page: 'cartoon' },
+  sharat:   { page: 'sharat' },
+  noir:     { page: 'noir' },
+  commercials: { page: 'commercials' },
   art:       { page: 'art' },
   magazines: { page: 'magazines' },
   tv:        { page: 'tv' },
@@ -43,7 +46,7 @@ function resolveInitialViewFromUrl(): string {
     const params = new URLSearchParams(window.location.search);
     const explicitView = params.get('view');
     if (explicitView && VIEW_TO_NAV[explicitView]) return explicitView;
-    for (const legacyKey of ['movies', 'series', 'music', 'games', 'anime', 'cartoon'] as const) {
+    for (const legacyKey of ['movies', 'series', 'music', 'games', 'anime', 'cartoon', 'noir'] as const) {
       const val = params.get(legacyKey);
       if (val === '1' || val === 'true') return legacyKey;
     }
@@ -116,6 +119,18 @@ interface AppContextType {
   setCartoonActive: (v: boolean) => void;
   registerCartoonBack: (fn: () => void) => void;
   callCartoonBack: () => void;
+  // ── شارات Sharat ────────────────────────────────────────────────
+  isSharatOpen: boolean;
+  openSharat: () => void;
+  closeSharat: () => void;
+  // ── السينما الكلاسيكية Classic Noir & B&W ───────────────────────
+  isNoirOpen: boolean;
+  openNoir: () => void;
+  closeNoir: () => void;
+  // ── إعلانات الزمن الجميل Vintage Ads & TV ───────────────────────
+  isCommercialsOpen: boolean;
+  openCommercials: () => void;
+  closeCommercials: () => void;
   // ── التلفزيون NL TV ──────────────────────────────────────────────
   isTvOpen: boolean;
   openTv: () => void;
@@ -194,6 +209,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isSeriesOpen  = nav.activePage === 'cinema' && nav.cinemaTab === 'series';
   const isAnimeOpen   = nav.activePage === 'anime';
   const isCartoonOpen = nav.activePage === 'cartoon';
+  const isSharatOpen  = nav.activePage === 'sharat';
+  const isNoirOpen    = nav.activePage === 'noir';
+  const isCommercialsOpen = nav.activePage === 'commercials';
   const isArtOpen     = nav.activePage === 'art';
   const isMagazinesOpen = nav.activePage === 'magazines';
   const isTvOpen      = nav.activePage === 'tv';
@@ -296,6 +314,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (prev === 'cinema')  { movieBackRef.current = null; setMovieActive(false); seriesBackRef.current = null; setSeriesActive(false); try { audioManager.releaseBg('movies_mode'); audioManager.releaseBg('series_mode'); } catch {} }
     if (prev === 'anime')   { animeBackRef.current = null; setAnimeActive(false); try { audioManager.releaseBg('anime_mode'); } catch {} }
     if (prev === 'cartoon') { cartoonBackRef.current = null; setCartoonActive(false); try { audioManager.releaseBg('cartoon_mode'); } catch {} }
+    if (prev === 'sharat')  { try { audioManager.releaseBg('sharat_mode'); } catch {} }
+    if (prev === 'noir')    { try { audioManager.releaseBg('noir_mode'); } catch {} }
+    if (prev === 'commercials') { try { audioManager.releaseBg('commercials_mode'); } catch {} }
     if (prev === 'tv')      { tvBackRef.current = null; setTvActive(false); try { audioManager.releaseBg('tv_mode'); audioManager.stop('tv'); } catch {} }
     if (prev === 'retro')   { try { audioManager.releaseBg('retro_mode'); audioManager.stop('retro'); } catch {} }
     if (prev === 'xp')      { try { audioManager.releaseBg('xp_mode'); audioManager.stop('xp'); } catch {} }
@@ -373,6 +394,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeAnime  = useCallback(() => navigateTo('home'), [navigateTo]);
   const openCartoon  = useCallback(() => navigateTo('cartoon'), [navigateTo]);
   const closeCartoon = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openSharat   = useCallback(() => navigateTo('sharat'), [navigateTo]);
+  const closeSharat  = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openNoir     = useCallback(() => navigateTo('noir'), [navigateTo]);
+  const closeNoir    = useCallback(() => navigateTo('home'), [navigateTo]);
+  const openCommercials = useCallback(() => navigateTo('commercials'), [navigateTo]);
+  const closeCommercials = useCallback(() => navigateTo('home'), [navigateTo]);
   const openTv      = useCallback(() => navigateTo('tv'), [navigateTo]);
   const closeTv     = useCallback(() => navigateTo('home'), [navigateTo]);
   const openRetro   = useCallback(() => navigateTo('retro'), [navigateTo]);
@@ -524,6 +551,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isCartoonOpen, openCartoon, closeCartoon,
         isCartoonActive, setCartoonActive,
         registerCartoonBack, callCartoonBack,
+        isSharatOpen, openSharat, closeSharat,
+        isNoirOpen, openNoir, closeNoir,
+        isCommercialsOpen, openCommercials, closeCommercials,
         isTvOpen, openTv, closeTv,
         isTvActive, setTvActive,
         registerTvBack, callTvBack,

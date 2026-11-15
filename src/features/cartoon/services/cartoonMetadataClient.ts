@@ -5,7 +5,6 @@
 
 import type {
   CartoonSeriesItem,
-  SpacetoonPlanetId,
 } from '../types/cartoon.types';
 
 const PUBLIC_TMDB_KEY = '3fd2be6f0c70a2a598f084ddfb75487c';
@@ -125,31 +124,6 @@ export async function fetchAniListBatchPostersByMalIds(
 }
 
 export const resolveBatchAnimeAndCartoonPosters = fetchAniListBatchPostersByMalIds;
-
-function mapGenresToSpacetoonPlanet(genreIds: number[]): {
-  planet: SpacetoonPlanetId;
-  labelAr: string;
-} {
-  if (genreIds.includes(28) || genreIds.includes(10759)) {
-    return { planet: 'action', labelAr: 'كوكب أكشن' };
-  }
-  if (genreIds.includes(12)) {
-    return { planet: 'adventure', labelAr: 'كوكب مغامرات' };
-  }
-  if (genreIds.includes(35)) {
-    return { planet: 'comedy', labelAr: 'كوكب كوميديا' };
-  }
-  if (genreIds.includes(9648) || genreIds.includes(80)) {
-    return { planet: 'abjad', labelAr: 'كوكب أبجد' };
-  }
-  if (genreIds.includes(878)) {
-    return { planet: 'science', labelAr: 'كوكب علوم' };
-  }
-  if (genreIds.includes(36) || genreIds.includes(10752)) {
-    return { planet: 'history', labelAr: 'كوكب تاريخ' };
-  }
-  return { planet: 'zomoroda', labelAr: 'كوكب زمردة' };
-}
 
 export async function resolvePosterByTmdbOrMal(params: {
   cacheId: string;
@@ -285,80 +259,86 @@ export async function enrichCartoonCatalogPosters(
   return Promise.all(items.map((item) => enrichCartoonWithTmdbPoster(item)));
 }
 
+export const GOLDEN_AGE_CARTOON_VAULTS: CartoonSeriesItem[] = [
+  {
+    id: 'classic-toons-2025',
+    titleAr: 'Golden Age Cartoon Treasury — Fleischer, Looney Tunes, Tom & Jerry, Popeye & Droopy',
+    titleEn: 'Golden Age Cartoon Treasury — Fleischer, Looney Tunes, Tom & Jerry, Popeye & Droopy',
+    planet: 'global',
+    planetLabelAr: 'أنيميشن عالمي (العصر الذهبي)',
+    studio: 'أنيميشن عالمي',
+    year: 1940,
+    episodesCount: 55,
+    rating: 9.4,
+    posterUrl: 'https://archive.org/services/img/classic-toons-2025',
+    backdropUrl: 'https://archive.org/services/img/classic-toons-2025',
+    synopsisAr:
+      '55 restored Golden-Age theatrical animated shorts including Fleischer Studios, Looney Tunes, Tom & Jerry, Popeye the Sailor, and Tex Avery Droopy classics.',
+    mediaType: 'tv',
+    archiveIds: ['classic-toons-2025'],
+  },
+  {
+    id: 'pdcartooncollection',
+    titleAr: '124 Classic Public Domain Cartoons — Popeye, Superman, Merrie Melodies & Betty Boop',
+    titleEn: '124 Classic Public Domain Cartoons — Popeye, Superman, Merrie Melodies & Betty Boop',
+    planet: 'global',
+    planetLabelAr: 'أنيميشن عالمي (العصر الذهبي)',
+    studio: 'أنيميشن عالمي',
+    year: 1938,
+    episodesCount: 124,
+    rating: 9.5,
+    posterUrl: 'https://archive.org/services/img/pdcartooncollection',
+    backdropUrl: 'https://archive.org/services/img/pdcartooncollection',
+    synopsisAr:
+      '124 classic theatrical cartoons featuring Fleischer Superman, Popeye the Sailor, Merrie Melodies, Looney Tunes, and Betty Boop.',
+    mediaType: 'tv',
+    archiveIds: ['pdcartooncollection'],
+  },
+  {
+    id: 'cartoon-classics-vol-1-25-favorite-cartoons-3-hours',
+    titleAr: 'Cartoon Classics Vol. 1 — 25 Favorite Theatrical Shorts',
+    titleEn: 'Cartoon Classics Vol. 1 — 25 Favorite Theatrical Shorts',
+    planet: 'global',
+    planetLabelAr: 'أنيميشن عالمي (العصر الذهبي)',
+    studio: 'أنيميشن عالمي',
+    year: 1942,
+    episodesCount: 25,
+    rating: 9.1,
+    posterUrl:
+      'https://archive.org/services/img/cartoon-classics-vol-1-25-favorite-cartoons-3-hours',
+    backdropUrl:
+      'https://archive.org/services/img/cartoon-classics-vol-1-25-favorite-cartoons-3-hours',
+    synopsisAr:
+      '3-hour anthology of 25 favorite vintage theatrical cartoon shorts from the Golden Age of American animation.',
+    mediaType: 'tv',
+    archiveIds: ['cartoon-classics-vol-1-25-favorite-cartoons-3-hours'],
+  },
+  {
+    id: 'comic-toons-philip-loro-international-pictures',
+    titleAr: 'Comic Toons Classic Anthology — 22 Restored Theatrical Shorts',
+    titleEn: 'Comic Toons Classic Anthology — 22 Restored Theatrical Shorts',
+    planet: 'global',
+    planetLabelAr: 'أنيميشن عالمي (العصر الذهبي)',
+    studio: 'أنيميشن عالمي',
+    year: 1945,
+    episodesCount: 22,
+    rating: 9.0,
+    posterUrl:
+      'https://archive.org/services/img/comic-toons-philip-loro-international-pictures',
+    backdropUrl:
+      'https://archive.org/services/img/comic-toons-philip-loro-international-pictures',
+    synopsisAr:
+      '22 restored theatrical cartoon shorts curated from Philip Loro International Pictures archives.',
+    mediaType: 'tv',
+    archiveIds: ['comic-toons-philip-loro-international-pictures'],
+  },
+];
+
 /**
- * Fetches global family animation movies & series from TMDB Discover (Genre 16 = Animation)
+ * Returns the curated Golden-Age & Classic Cartoon Archive Vaults (replacing Jikan genres=15)
  */
 export async function fetchGlobalAnimationCatalog(
-  page = 1,
+  _page = 1,
 ): Promise<CartoonSeriesItem[]> {
-  try {
-    const [moviesRes, tvRes] = await Promise.all([
-      fetch(
-        `${TMDB_BASE}/discover/movie?api_key=${PUBLIC_TMDB_KEY}&with_genres=16,10751&language=ar-SA&sort_by=popularity.desc&page=${page}`,
-      ),
-      fetch(
-        `${TMDB_BASE}/discover/tv?api_key=${PUBLIC_TMDB_KEY}&with_genres=16,10762&language=ar-SA&sort_by=popularity.desc&page=${page}`,
-      ),
-    ]);
-
-    const items: CartoonSeriesItem[] = [];
-
-    if (moviesRes.ok) {
-      const mData = await moviesRes.json();
-      for (const m of (mData.results || []).slice(0, 18)) {
-        if (!m.poster_path) continue;
-        items.push({
-          id: `tmdb-anim-movie-${m.id}`,
-          titleAr: m.title || m.original_title || 'فيلم رسوم متحركة',
-          titleEn: m.original_title || m.title || 'Animation Movie',
-          planet: 'movies',
-          planetLabelAr: 'أفلام الكرتون',
-          studio: 'أنيميشن عالمي',
-          year: Number((m.release_date || '2020').slice(0, 4)) || 2020,
-          episodesCount: 1,
-          rating: Number((m.vote_average || 7.8).toFixed(1)),
-          posterUrl: `${TMDB_IMG_W500}${m.poster_path}`,
-          backdropUrl: m.backdrop_path
-            ? `${TMDB_IMG_W1280}${m.backdrop_path}`
-            : `${TMDB_IMG_W500}${m.poster_path}`,
-          synopsisAr:
-            m.overview || 'فيلم رسوم متحركة عائلي عالمي بجودة عالية.',
-          tmdbId: m.id,
-          mediaType: 'movie',
-          archiveIds: [],
-        });
-      }
-    }
-
-    if (tvRes.ok) {
-      const tData = await tvRes.json();
-      for (const t of (tData.results || []).slice(0, 18)) {
-        if (!t.poster_path) continue;
-        const mapped = mapGenresToSpacetoonPlanet(t.genre_ids || []);
-        items.push({
-          id: `tmdb-anim-tv-${t.id}`,
-          titleAr: t.name || t.original_name || 'مسلسل كرتون',
-          titleEn: t.original_name || t.name || 'Animated Series',
-          planet: mapped.planet,
-          planetLabelAr: mapped.labelAr,
-          studio: 'أنيميشن عالمي',
-          year: Number((t.first_air_date || '2018').slice(0, 4)) || 2018,
-          episodesCount: 24,
-          rating: Number((t.vote_average || 8.0).toFixed(1)),
-          posterUrl: `${TMDB_IMG_W500}${t.poster_path}`,
-          backdropUrl: t.backdrop_path
-            ? `${TMDB_IMG_W1280}${t.backdrop_path}`
-            : `${TMDB_IMG_W500}${t.poster_path}`,
-          synopsisAr: t.overview || 'مسلسل رسوم متحركة عالمي ممتع.',
-          tmdbId: t.id,
-          mediaType: 'tv',
-          archiveIds: [],
-        });
-      }
-    }
-
-    return items;
-  } catch {
-    return [];
-  }
+  return GOLDEN_AGE_CARTOON_VAULTS;
 }

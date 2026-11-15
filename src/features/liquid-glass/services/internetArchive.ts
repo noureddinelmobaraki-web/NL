@@ -36,7 +36,11 @@ export async function directInternetArchiveTexts(
   page: number,
   signal?: AbortSignal,
 ): Promise<BookItem[]> {
-  const qParts = ['mediatype:texts', 'NOT collection:inlibrary'];
+  const qParts = [
+    'mediatype:texts',
+    'NOT collection:inlibrary',
+    'NOT collection:printdisabled',
+  ];
   if (query) qParts.push(`(${query})`);
   if (subject && subject !== 'all' && subject !== 'trending') qParts.push(`subject:(${subject})`);
   if (lang && lang !== 'all') {
@@ -89,7 +93,7 @@ export async function directInternetArchiveTexts(
       source: 'Internet Archive',
       downloads: Number(d.downloads) || 0,
       directReadFormats: {
-        embed: `https://archive.org/embed/${encodeURIComponent(iaId)}?ui=embed`,
+        embed: `https://archive.org/embed/${encodeURIComponent(iaId)}?ui=embed#mode/2up/page/1`,
       },
     };
   });
@@ -102,7 +106,10 @@ export async function directInternetArchiveAudiobooks(
   page: number,
   signal?: AbortSignal,
 ): Promise<AudiobookItem[]> {
-  const parts = ['mediatype:audio', 'collection:(audio_bookspoetry OR opensource_audio)'];
+  const parts = [
+    'mediatype:audio',
+    'collection:(librivoxaudio OR audio_bookspoetry OR opensource_audio OR oldtimeradio)',
+  ];
   if (q) parts.unshift(`(${q})`);
   if (genre && genre !== 'all' && genre !== 'popular') parts.push(`subject:(${genre})`);
   if (lang && lang !== 'all') parts.push(`language:(${lang})`);

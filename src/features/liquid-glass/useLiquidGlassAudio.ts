@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { audioManager } from '../../audio/audioManager';
-import { ensureAutoplay } from '../../audio/ensureAutoplay';
 import { soundGovernor } from '../../audio/soundGovernor';
 import type Hls from 'hls.js';
 
@@ -13,17 +12,21 @@ const AMBIENCE_VOLUME = 0.55;
 export function useLiquidGlassAudio(src: string = LIQUID_GLASS_BG_AUDIO_URL) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const wantAmbienceRef = useRef<boolean>(true);
+  const wantAmbienceRef = useRef<boolean>(false);
   const videoUnregisterRef = useRef<(() => void) | null>(null);
-
-  const externalMuted = useSyncExternalStore(
-    (cb) => audioManager.subscribeMuted(cb),
-    () => audioManager.isMuted(),
-    () => false,
-  );
+  const [externalMuted, setExternalMuted] = useState(true);
 
   const onToggleMute = useCallback(() => {
-    audioManager.toggleMuted();
+    setExternalMuted((prev) => {
+      const nextMuted = !prev;
+      wantAmbienceRef.current = !nextMuted;
+      if (nextMuted) {
+        audioManager.pause('liquidGlass', 150);
+      } else {
+        void audioManager.play('liquidGlass', { force: true });
+      }
+      return nextMuted;
+    });
   }, []);
 
   useEffect(() => {
@@ -53,7 +56,7 @@ export function useLiquidGlassAudio(src: string = LIQUID_GLASS_BG_AUDIO_URL) {
     audioRef.current = audio;
     audio.loop = true;
     audio.crossOrigin = 'anonymous';
-    wantAmbienceRef.current = true;
+    wantAmbienceRef.current = false;
 
     audioManager.register('liquidGlass', audio, AMBIENCE_VOLUME);
 
@@ -146,16 +149,8 @@ export function useLiquidGlassAudio(src: string = LIQUID_GLASS_BG_AUDIO_URL) {
         hls.attachMedia(audio);
       } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
         audio.src = src;
-        tryPlay();
       }
     })();
-
-    const cleanupAutoplay = ensureAutoplay('liquidGlass', {
-      force: true,
-      verify: () => !audio.paused,
-    });
-
-    tryPlay();
 
     return () => {
       cancelled = true;
@@ -184,7 +179,6 @@ export function useLiquidGlassAudio(src: string = LIQUID_GLASS_BG_AUDIO_URL) {
         videoUnregisterRef.current = null;
       }
 
-      cleanupAutoplay();
       unregisterGov();
       try {
         soundGovernor.noteStopped(CHANNEL_ID);
@@ -232,7 +226,7 @@ export function useLiquidGlassAudio(src: string = LIQUID_GLASS_BG_AUDIO_URL) {
       videoUnregisterRef.current = null;
     }
     if (el) {
-      el.muted = audioManager.isMuted();
+      el.muted = true;
       videoUnregisterRef.current = audioManager.registerExternal('video', {
         isPlaying: () => !el.paused && !el.ended,
         pause: () => el.pause(),

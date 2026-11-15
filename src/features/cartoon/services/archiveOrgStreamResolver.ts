@@ -16,6 +16,50 @@ import type {
 } from '../types/cartoon.types';
 
 const ARCHIVE_METADATA_CACHE = new Map<string, CartoonEpisodeStream[]>();
+const ARCHIVE_LOCAL_CACHE_KEY = 'nl_archive_streams_cache_v2';
+const ARCHIVE_CACHE_TTL_MS = 7 * 24 * 3600 * 1000;
+
+interface CachedArchiveStreamsEntry {
+  ts: number;
+  streams: CartoonEpisodeStream[];
+}
+
+function readPersistentArchiveCache(identifier: string): CartoonEpisodeStream[] | null {
+  try {
+    const raw = localStorage.getItem(ARCHIVE_LOCAL_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, CachedArchiveStreamsEntry>;
+    const entry = parsed?.[identifier];
+    if (!entry || !Array.isArray(entry.streams) || entry.streams.length === 0) {
+      return null;
+    }
+    if (Date.now() - Number(entry.ts || 0) > ARCHIVE_CACHE_TTL_MS) {
+      return null;
+    }
+    return entry.streams;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistentArchiveCache(
+  identifier: string,
+  streams: CartoonEpisodeStream[],
+): void {
+  try {
+    const raw = localStorage.getItem(ARCHIVE_LOCAL_CACHE_KEY);
+    const parsed: Record<string, CachedArchiveStreamsEntry> = raw
+      ? JSON.parse(raw)
+      : {};
+    parsed[identifier] = {
+      ts: Date.now(),
+      streams,
+    };
+    localStorage.setItem(ARCHIVE_LOCAL_CACHE_KEY, JSON.stringify(parsed));
+  } catch {
+    // ignore storage quota errors
+  }
+}
 
 const FRANCO_DICTIONARY: Array<[RegExp, string]> = [
   [/alknas/gi, 'القناص'],
@@ -96,112 +140,54 @@ export function normalizeArabicEpisodeTitle(
   return { episodeNumber: resolvedEp, titleAr };
 }
 
-function encodeArchivePath(fileName: string): string {
-  return fileName
-    .split('/')
-    .map((part) => encodeURIComponent(part))
-    .join('/');
-}
-
 export async function resolveArchiveIdentifierStreams(
   identifier: string,
   seriesTitleAr: string,
 ): Promise<CartoonEpisodeStream[]> {
-  const cached = ARCHIVE_METADATA_CACHE.get(identifier);
+  const cleanId = identifier.trim();
+  if (!cleanId) return [];
+
+  const cached = ARCHIVE_METADATA_CACHE.get(cleanId);
   if (cached) return cached;
 
+  const persisted = readPersistentArchiveCache(cleanId);
+  if (persisted) {
+    ARCHIVE_METADATA_CACHE.set(cleanId, persisted);
+    return persisted;
+  }
+
   try {
-    const res = await fetch(
-      `https://archive.org/metadata/${encodeURIComponent(identifier)}?extended_err=1`,
-      { signal: AbortSignal.timeout(8500) },
+    const { resolveArchiveItemMetadata } = await import(
+      '../../../services/archive/archiveMasterEngine'
     );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const files: any[] = Array.isArray(data?.files) ? data.files : [];
-    const d2: string = data?.d2 || data?.d1 || '';
-    const dir: string = data?.dir || '';
+    const meta = await resolveArchiveItemMetadata(cleanId, seriesTitleAr);
+    if (!meta || meta.videos.length === 0) return [];
 
-    // Group video files by base key so we pair .ia.mp4 (fast stream) with original .mp4 (high-res download)
-    const groups = new Map<
-      string,
-      { iaMp4?: any; originalMp4?: any; baseName: string }
-    >();
-
-    for (const f of files) {
-      const name = String(f?.name || '');
-      if (!name) continue;
-      const lower = name.toLowerCase();
-      const isIaMp4 = lower.endsWith('.ia.mp4');
-      const isOriginalVideo =
-        !isIaMp4 &&
-        (lower.endsWith('.mp4') ||
-          lower.endsWith('.mkv') ||
-          lower.endsWith('.avi'));
-
-      if (!isIaMp4 && !isOriginalVideo) continue;
-
-      const baseKey = name
-        .replace(/\.ia\.mp4$/i, '')
-        .replace(/\.(mp4|mkv|avi)$/i, '')
-        .toLowerCase();
-
-      const existing = groups.get(baseKey) || { baseName: name };
-      if (isIaMp4) {
-        existing.iaMp4 = f;
-      } else {
-        existing.originalMp4 = f;
-        existing.baseName = name;
-      }
-      groups.set(baseKey, existing);
-    }
-
-    const streams: CartoonEpisodeStream[] = [];
-    let index = 0;
-
-    for (const [, group] of groups) {
-      const streamFile = group.iaMp4 || group.originalMp4;
-      const downloadFile = group.originalMp4 || group.iaMp4;
-      if (!streamFile || !downloadFile) continue;
-
-      const streamName = String(streamFile.name);
-      const downloadName = String(downloadFile.name);
-      const encodedStream = encodeArchivePath(streamName);
-      const encodedDownload = encodeArchivePath(downloadName);
-
-      const primaryStreamUrl = `https://archive.org/download/${encodeURIComponent(identifier)}/${encodedStream}`;
-      const mirrorUrl =
-        d2 && dir ? `https://${d2}${dir}/${encodedStream}` : undefined;
-      const downloadUrl = `https://archive.org/download/${encodeURIComponent(identifier)}/${encodedDownload}`;
-
-      const sizeBytes = Number(downloadFile.size || streamFile.size) || 0;
-      const sizeMegabytes =
-        sizeBytes > 0 ? Math.max(1, Math.round(sizeBytes / (1024 * 1024))) : undefined;
-
+    const streams: CartoonEpisodeStream[] = meta.videos.map((v, index) => {
       const { episodeNumber, titleAr } = normalizeArabicEpisodeTitle(
-        downloadName,
+        v.rawFileName,
         seriesTitleAr,
         index,
       );
 
-      streams.push({
+      return {
         episodeNumber,
         titleAr,
-        rawFileName: downloadName,
-        archiveIdentifier: identifier,
-        streamUrl: primaryStreamUrl,
-        mirrorUrl,
-        downloadUrl,
-        thumbnailUrl: `https://archive.org/services/img/${encodeURIComponent(identifier)}`,
-        sizeMegabytes,
-        durationSeconds: Number(streamFile.length) || undefined,
-      });
-
-      index += 1;
-    }
+        rawFileName: v.rawFileName,
+        archiveIdentifier: cleanId,
+        streamUrl: v.directNodeUrl || v.cdnStreamUrl,
+        mirrorUrl: v.directNodeUrl ? v.cdnStreamUrl : undefined,
+        downloadUrl: v.downloadUrl,
+        thumbnailUrl: meta.thumbnailUrl,
+        sizeMegabytes: v.sizeMegabytes,
+        durationSeconds: v.durationSeconds,
+      };
+    });
 
     streams.sort((a, b) => a.episodeNumber - b.episodeNumber);
     if (streams.length > 0) {
-      ARCHIVE_METADATA_CACHE.set(identifier, streams);
+      ARCHIVE_METADATA_CACHE.set(cleanId, streams);
+      writePersistentArchiveCache(cleanId, streams);
     }
     return streams;
   } catch {

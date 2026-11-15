@@ -47,10 +47,17 @@ export function useNowPlayingNotch(): NotchTransport | null {
     return undefined;
   }, [np]);
 
-  const activeState = np?.isPlaying ? np : stickyPaused && np ? np : null;
+  const activeState =
+    np?.source === "download"
+      ? null
+      : np?.isPlaying
+        ? np
+        : stickyPaused && np
+          ? np
+          : null;
 
   return useMemo<NotchTransport | null>(() => {
-    if (!activeState) return null;
+    if (!activeState || activeState.source === "download") return null;
     const c = activeState.controls;
     const hasControls = !!c;
     const source = activeState.source;

@@ -136,30 +136,30 @@ export const FALLBACK_MOVIES: CuratedMovie[] = [
     ]
   },
   {
-    id: 569094,
-    imdb_id: "tt9362722",
+    id: 872585,
+    imdb_id: "tt15398776",
     title: {
-      en: "Spider-Man: Across the Spider-Verse",
-      ar: "Spider-Man: Across the Spider-Verse",
-      fr: "Spider-Man : Across the Spider-Verse"
+      en: "Oppenheimer",
+      ar: "Oppenheimer",
+      fr: "Oppenheimer"
     },
     overview: {
-      en: "After reuniting with Gwen Stacy, Brooklyn's full-time, friendly neighborhood Spider-Man is catapulted across the Multiverse, where he encounters a team of Spider-People.",
-      ar: "After reuniting with Gwen Stacy, Miles Morales is catapulted across the Multiverse, where he encounters a team of Spider-People charged with protecting its very existence, and faces a new devastating threat.",
-      fr: "Miles Morales est catapulté à travers le Multiverse, où il rencontre une équipe de Spider-Héros chargée de protéger l'existence même du Multiverse."
+      en: "The story of J. Robert Oppenheimer's role in the development of the atomic bomb during World War II.",
+      ar: "The story of J. Robert Oppenheimer's role in the development of the atomic bomb during World War II.",
+      fr: "L'histoire du rôle joué par J. Robert Oppenheimer dans le développement de la bombe atomique pendant la Seconde Guerre mondiale."
     },
     poster_path: "",
     backdrop_path: "",
-    release_date: "2023-05-31",
-    vote_average: 8.4,
-    genres: ["Animation", "Action", "Adventure"],
-    duration: 140,
-    certification: "PG",
-    trailer_key: "cqGjhVJWtEg",
+    release_date: "2023-07-19",
+    vote_average: 8.1,
+    genres: ["Drama", "History"],
+    duration: 181,
+    certification: "R",
+    trailer_key: "uYPbbksJxIg",
     cast: [
-      { name: "Shameik Moore", character: "Miles Morales", profile_path: "" },
-      { name: "Hailee Steinfeld", character: "Gwen Stacy", profile_path: "" },
-      { name: "Oscar Isaac", character: "Miguel O'Hara", profile_path: "" }
+      { name: "Cillian Murphy", character: "J. Robert Oppenheimer", profile_path: "" },
+      { name: "Emily Blunt", character: "Kitty Oppenheimer", profile_path: "" },
+      { name: "Matt Damon", character: "Leslie Groves", profile_path: "" }
     ]
   }
 ];

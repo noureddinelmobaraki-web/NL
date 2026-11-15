@@ -14,6 +14,9 @@ export type OpenHandler =
   | "openTv"
   | "openAnime"
   | "openCartoon"
+  | "openSharat"
+  | "openNoir"
+  | "openCommercials"
   | "openXp"
   | "openRetro"
   | "openGames"
@@ -158,6 +161,12 @@ export const ROOTS: GraphNode[] = [
             action: { kind: "open", handler: "openCartoon" },
           },
           {
+            id: "sharat",
+            label: "Sharat",
+            icon: "lucide:disc-3",
+            action: { kind: "open", handler: "openSharat" },
+          },
+          {
             id: "tv",
             label: "NL TV",
             icon: `${CDN}/ico/NL%20TV.ico`,
@@ -205,6 +214,18 @@ export const ROOTS: GraphNode[] = [
         label: "Retro",
         icon: `${CDN}/ico/Retro.png`,
         action: { kind: "open", handler: "openRetro" },
+      },
+      {
+        id: "noir",
+        label: "Classic Noir & B&W",
+        icon: "lucide:film",
+        action: { kind: "open", handler: "openNoir" },
+      },
+      {
+        id: "commercials",
+        label: "Vintage Ads & TV",
+        icon: "lucide:tv",
+        action: { kind: "open", handler: "openCommercials" },
       },
     ],
   },

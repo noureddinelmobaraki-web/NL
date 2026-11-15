@@ -23,11 +23,11 @@ export function buildCartoonPlayOptions(
   const options: CartoonPlayOption[] = [];
   const ep = Math.max(1, episodeNumber || 1);
 
-  // Tier 1: Archive.org Primary Direct MP4 Stream
+  // Tier 1: Direct Storage Node .ia.mp4 (streamUrl is now direct node https://${d2}${dir}/${file})
   if (matchedArchiveStream?.streamUrl) {
     options.push({
       id: 'archive-primary',
-      label: 'بث مباشر سبيستون (Archive MP4)',
+      label: `سيرفر الأرشيف المباشر السريع (الحلقة ${ep})`,
       kind: 'archive-primary',
       url: matchedArchiveStream.streamUrl,
       downloadUrl: matchedArchiveStream.downloadUrl,
@@ -35,11 +35,11 @@ export function buildCartoonPlayOptions(
     });
   }
 
-  // Tier 2: Archive.org Mirror CDN (d2)
+  // Tier 2: Primary Archive CDN .ia.mp4 (https://archive.org/download/${archiveId}/${file})
   if (matchedArchiveStream?.mirrorUrl) {
     options.push({
       id: 'archive-mirror',
-      label: 'سيرفر المرآة السريع (Archive Mirror)',
+      label: `بث أرشيف سبيستون الاحتياطي (الحلقة ${ep})`,
       kind: 'archive-mirror',
       url: matchedArchiveStream.mirrorUrl,
       downloadUrl: matchedArchiveStream.downloadUrl,
@@ -47,7 +47,7 @@ export function buildCartoonPlayOptions(
     });
   }
 
-  // Tier 3: YouTube Official Playlist Fallback
+  // Tier 3: Official YouTube Playlist Embed
   if (series.youtubePlaylistIds && series.youtubePlaylistIds.length > 0) {
     series.youtubePlaylistIds.forEach((plId, idx) => {
       options.push({
@@ -59,11 +59,19 @@ export function buildCartoonPlayOptions(
     });
   }
 
-  // Tier 4: TMDB / IMDb Embed Servers
-  const tmdb = series.tmdbId ? String(series.tmdbId) : '';
-  const imdb = series.imdbId || '';
-  const preferred = imdb || tmdb;
+  // Tier 4: Archive.org Theater Embed
+  if (series.archiveIds && series.archiveIds.length > 0) {
+    const primaryArchiveId = series.archiveIds[0];
+    options.push({
+      id: `archive-theater-${primaryArchiveId}`,
+      label: `مشغل أرشيف الإنترنت (الحلقة ${ep})`,
+      kind: 'embed-server',
+      url: `https://archive.org/embed/${encodeURIComponent(primaryArchiveId)}?autoplay=1`,
+    });
+  }
 
+  // Tier 5: VidLink / Videasy TMDB Fallback (only when series.tmdbId is present)
+  const tmdb = series.tmdbId ? String(series.tmdbId) : '';
   if (tmdb) {
     options.push({
       id: 'cartoon-vidlink',
@@ -76,16 +84,6 @@ export function buildCartoonPlayOptions(
     });
 
     options.push({
-      id: 'cartoon-vidsrc',
-      label: 'VidSrc Pro',
-      kind: 'embed-server',
-      url:
-        series.mediaType === 'movie'
-          ? `https://vidsrcme.ru/embed/movie/${tmdb}`
-          : `https://vidsrcme.ru/embed/tv/${tmdb}/1/${ep}?autonext=1`,
-    });
-
-    options.push({
       id: 'cartoon-videasy',
       label: 'Videasy Player',
       kind: 'embed-server',
@@ -93,28 +91,6 @@ export function buildCartoonPlayOptions(
         series.mediaType === 'movie'
           ? `https://player.videasy.net/movie/${tmdb}`
           : `https://player.videasy.net/tv/${tmdb}/1/${ep}?nextEpisode=true`,
-    });
-  }
-
-  if (preferred) {
-    options.push({
-      id: 'cartoon-server7',
-      label: 'Server 7',
-      kind: 'embed-server',
-      url:
-        series.mediaType === 'movie'
-          ? `https://streamimdb.ru/embed/movie/${preferred}`
-          : `https://streamimdb.ru/embed/tv/${preferred}/1/${ep}`,
-    });
-
-    options.push({
-      id: 'cartoon-2embed',
-      label: '2Embed',
-      kind: 'embed-server',
-      url:
-        series.mediaType === 'movie'
-          ? `https://www.2embed.cc/embed/${preferred}`
-          : `https://www.2embed.cc/embedtv/${preferred}&s=1&e=${ep}`,
     });
   }
 

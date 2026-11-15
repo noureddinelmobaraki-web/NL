@@ -16,6 +16,22 @@ import {
   type CinemaItem,
 } from "../moviesDataClient";
 
+const isLiveActionItem = (item: CinemaItem): boolean =>
+  !item.genreIds?.includes(16) &&
+  !item.genreNames?.some((g) => g.toLowerCase() === "animation");
+
+const filterLiveActionRaw = (list: any[]): any[] =>
+  (list || []).filter(
+    (r: any) =>
+      !(Array.isArray(r?.genre_ids) && r.genre_ids.includes(16)) &&
+      !(Array.isArray(r?.genres) &&
+        r.genres.some((g: any) =>
+          typeof g === "string"
+            ? g.toLowerCase() === "animation"
+            : g?.id === 16 || String(g?.name || "").toLowerCase() === "animation"
+        )),
+  );
+
 export function useCinemaCatalog({
   initialTab,
   tmdbKey,
@@ -263,14 +279,20 @@ export function useCinemaCatalog({
 
     if (!tmdbKey) {
       if (!cancelled) {
-        setTrendingMovies(FALLBACK_MOVIES.map((r) => normalizeItem(r, "movie", currentLang)));
-        setTopRatedMovies([...FALLBACK_MOVIES].reverse().map((r) => normalizeItem(r, "movie", currentLang)));
-        setPopularMovies(FALLBACK_MOVIES.map((r) => normalizeItem(r, "movie", currentLang)));
-        setActionMovies(FALLBACK_MOVIES.filter((m) => m.genres.includes("Action")).map((r) => normalizeItem(r, "movie", currentLang)));
-        setHorrorMovies(FALLBACK_MOVIES.filter((m) => m.genres.includes("Horror")).map((r) => normalizeItem(r, "movie", currentLang)));
-        setDramaMovies(FALLBACK_MOVIES.filter((m) => m.genres.includes("Drama")).map((r) => normalizeItem(r, "movie", currentLang)));
-        setSciFiMovies(FALLBACK_MOVIES.filter((m) => m.genres.includes("Sci-Fi")).map((r) => normalizeItem(r, "movie", currentLang)));
-        setMovieGenres(FALLBACK_GENRES.map((g) => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
+        const liveFallbacks = filterLiveActionRaw(FALLBACK_MOVIES);
+        setTrendingMovies(liveFallbacks.map((r) => normalizeItem(r, "movie", currentLang)));
+        setTopRatedMovies([...liveFallbacks].reverse().map((r) => normalizeItem(r, "movie", currentLang)));
+        setPopularMovies(liveFallbacks.map((r) => normalizeItem(r, "movie", currentLang)));
+        setActionMovies(liveFallbacks.filter((m) => m.genres.includes("Action")).map((r) => normalizeItem(r, "movie", currentLang)));
+        setHorrorMovies(liveFallbacks.filter((m) => m.genres.includes("Horror")).map((r) => normalizeItem(r, "movie", currentLang)));
+        setDramaMovies(liveFallbacks.filter((m) => m.genres.includes("Drama")).map((r) => normalizeItem(r, "movie", currentLang)));
+        setSciFiMovies(liveFallbacks.filter((m) => m.genres.includes("Sci-Fi")).map((r) => normalizeItem(r, "movie", currentLang)));
+        setMovieGenres(
+          FALLBACK_GENRES.filter((g) => g.id !== 16).map((g) => ({
+            id: g.id,
+            name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en,
+          })),
+        );
         setMoviesLoading(false);
       }
       return;
@@ -279,66 +301,100 @@ export function useCinemaCatalog({
     const loadMovies = async () => {
       try {
         const langParam = `&language=${tmdbLang(currentLang)}`;
+        const liveFallbacks = filterLiveActionRaw(FALLBACK_MOVIES);
 
         const results = await Promise.allSettled([
           fetchWithCache(`${TMDB_BASE_URL}/genre/movie/list?api_key=${tmdbKey}${langParam}`),
           fetchWithCache(`${TMDB_BASE_URL}/trending/movie/week?api_key=${tmdbKey}${langParam}`),
           fetchWithCache(`${TMDB_BASE_URL}/movie/top_rated?api_key=${tmdbKey}${langParam}`),
           fetchWithCache(`${TMDB_BASE_URL}/movie/popular?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=28`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=27`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=18`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=878`),
+          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=28&without_genres=16`),
+          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=27&without_genres=16`),
+          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=18&without_genres=16`),
+          fetchWithCache(`${TMDB_BASE_URL}/discover/movie?api_key=${tmdbKey}${langParam}&with_genres=878&without_genres=16`),
         ]);
 
         if (cancelled) return;
 
         if (results[0].status === "fulfilled" && results[0].value?.genres) {
-          setMovieGenres(results[0].value.genres);
+          setMovieGenres(results[0].value.genres.filter((g: any) => g.id !== 16));
         } else {
-          setMovieGenres(FALLBACK_GENRES.map((g) => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
+          setMovieGenres(
+            FALLBACK_GENRES.filter((g) => g.id !== 16).map((g) => ({
+              id: g.id,
+              name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en,
+            })),
+          );
         }
 
         if (results[1].status === "fulfilled" && results[1].value?.results?.length) {
-          setTrendingMovies(results[1].value.results.map((r: any) => normalizeItem(r, "movie", currentLang)));
+          setTrendingMovies(
+            filterLiveActionRaw(results[1].value.results)
+              .map((r: any) => normalizeItem(r, "movie", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setTrendingMovies(FALLBACK_MOVIES.map((r) => normalizeItem(r, "movie", currentLang)));
+          setTrendingMovies(liveFallbacks.map((r) => normalizeItem(r, "movie", currentLang)));
         }
 
         if (results[2].status === "fulfilled" && results[2].value?.results?.length) {
-          setTopRatedMovies(results[2].value.results.map((r: any) => normalizeItem(r, "movie", currentLang)));
+          setTopRatedMovies(
+            filterLiveActionRaw(results[2].value.results)
+              .map((r: any) => normalizeItem(r, "movie", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setTopRatedMovies([...FALLBACK_MOVIES].reverse().map((r) => normalizeItem(r, "movie", currentLang)));
+          setTopRatedMovies([...liveFallbacks].reverse().map((r) => normalizeItem(r, "movie", currentLang)));
         }
 
         if (results[3].status === "fulfilled" && results[3].value?.results?.length) {
-          setPopularMovies(results[3].value.results.map((r: any) => normalizeItem(r, "movie", currentLang)));
+          setPopularMovies(
+            filterLiveActionRaw(results[3].value.results)
+              .map((r: any) => normalizeItem(r, "movie", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setPopularMovies(FALLBACK_MOVIES.map((r) => normalizeItem(r, "movie", currentLang)));
+          setPopularMovies(liveFallbacks.map((r) => normalizeItem(r, "movie", currentLang)));
         }
 
         if (results[4].status === "fulfilled" && results[4].value?.results?.length) {
-          setActionMovies(results[4].value.results.map((r: any) => normalizeItem(r, "movie", currentLang)));
+          setActionMovies(
+            filterLiveActionRaw(results[4].value.results)
+              .map((r: any) => normalizeItem(r, "movie", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setActionMovies(FALLBACK_MOVIES.filter((m) => m.genres.includes("Action")).map((r) => normalizeItem(r, "movie", currentLang)));
+          setActionMovies(liveFallbacks.filter((m) => m.genres.includes("Action")).map((r) => normalizeItem(r, "movie", currentLang)));
         }
 
         if (results[5].status === "fulfilled" && results[5].value?.results?.length) {
-          setHorrorMovies(results[5].value.results.map((r: any) => normalizeItem(r, "movie", currentLang)));
+          setHorrorMovies(
+            filterLiveActionRaw(results[5].value.results)
+              .map((r: any) => normalizeItem(r, "movie", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setHorrorMovies(FALLBACK_MOVIES.filter((m) => m.genres.includes("Horror")).map((r) => normalizeItem(r, "movie", currentLang)));
+          setHorrorMovies(liveFallbacks.filter((m) => m.genres.includes("Horror")).map((r) => normalizeItem(r, "movie", currentLang)));
         }
 
         if (results[6].status === "fulfilled" && results[6].value?.results?.length) {
-          setDramaMovies(results[6].value.results.map((r: any) => normalizeItem(r, "movie", currentLang)));
+          setDramaMovies(
+            filterLiveActionRaw(results[6].value.results)
+              .map((r: any) => normalizeItem(r, "movie", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setDramaMovies(FALLBACK_MOVIES.filter((m) => m.genres.includes("Drama")).map((r) => normalizeItem(r, "movie", currentLang)));
+          setDramaMovies(liveFallbacks.filter((m) => m.genres.includes("Drama")).map((r) => normalizeItem(r, "movie", currentLang)));
         }
 
         if (results[7].status === "fulfilled" && results[7].value?.results?.length) {
-          setSciFiMovies(results[7].value.results.map((r: any) => normalizeItem(r, "movie", currentLang)));
+          setSciFiMovies(
+            filterLiveActionRaw(results[7].value.results)
+              .map((r: any) => normalizeItem(r, "movie", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setSciFiMovies(FALLBACK_MOVIES.filter((m) => m.genres.includes("Sci-Fi")).map((r) => normalizeItem(r, "movie", currentLang)));
+          setSciFiMovies(liveFallbacks.filter((m) => m.genres.includes("Sci-Fi")).map((r) => normalizeItem(r, "movie", currentLang)));
         }
       } catch (err) {
         console.error("Failed to fetch TMDB Live movies, using fallbacks:", err);
@@ -379,14 +435,20 @@ export function useCinemaCatalog({
 
     if (!tmdbKey) {
       if (!cancelled) {
-        setTrendingSeries(FALLBACK_SERIES.map((r) => normalizeItem(r, "tv", currentLang)));
-        setTopRatedSeries([...FALLBACK_SERIES].reverse().map((r) => normalizeItem(r, "tv", currentLang)));
-        setPopularSeries(FALLBACK_SERIES.map((r) => normalizeItem(r, "tv", currentLang)));
-        setActionSeries(FALLBACK_SERIES.filter((s) => s.genres.includes("Action") || s.genres.includes("Sci-Fi")).map((r) => normalizeItem(r, "tv", currentLang)));
-        setMysterySeries(FALLBACK_SERIES.filter((s) => s.genres.includes("Mystery")).map((r) => normalizeItem(r, "tv", currentLang)));
-        setDramaSeries(FALLBACK_SERIES.filter((s) => s.genres.includes("Drama")).map((r) => normalizeItem(r, "tv", currentLang)));
-        setAnimationSeries(FALLBACK_SERIES.filter((s) => s.genres.includes("Animation")).map((r) => normalizeItem(r, "tv", currentLang)));
-        setSeriesGenres(FALLBACK_SERIES_GENRES.map((g) => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
+        const liveSeriesFallbacks = filterLiveActionRaw(FALLBACK_SERIES);
+        setTrendingSeries(liveSeriesFallbacks.map((r) => normalizeItem(r, "tv", currentLang)));
+        setTopRatedSeries([...liveSeriesFallbacks].reverse().map((r) => normalizeItem(r, "tv", currentLang)));
+        setPopularSeries(liveSeriesFallbacks.map((r) => normalizeItem(r, "tv", currentLang)));
+        setActionSeries(liveSeriesFallbacks.filter((s) => s.genres.includes("Action") || s.genres.includes("Sci-Fi") || s.genres.includes("Adventure")).map((r) => normalizeItem(r, "tv", currentLang)));
+        setMysterySeries(liveSeriesFallbacks.filter((s) => s.genres.includes("Mystery")).map((r) => normalizeItem(r, "tv", currentLang)));
+        setDramaSeries(liveSeriesFallbacks.filter((s) => s.genres.includes("Drama")).map((r) => normalizeItem(r, "tv", currentLang)));
+        setAnimationSeries([]);
+        setSeriesGenres(
+          FALLBACK_SERIES_GENRES.filter((g) => g.id !== 16).map((g) => ({
+            id: g.id,
+            name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en,
+          })),
+        );
         setSeriesLoading(false);
       }
       return;
@@ -395,67 +457,91 @@ export function useCinemaCatalog({
     const loadSeries = async () => {
       try {
         const langParam = `&language=${tmdbLang(currentLang)}`;
+        const liveSeriesFallbacks = filterLiveActionRaw(FALLBACK_SERIES);
 
         const results = await Promise.allSettled([
           fetchWithCache(`${TMDB_BASE_URL}/genre/tv/list?api_key=${tmdbKey}${langParam}`),
           fetchWithCache(`${TMDB_BASE_URL}/trending/tv/week?api_key=${tmdbKey}${langParam}`),
           fetchWithCache(`${TMDB_BASE_URL}/tv/top_rated?api_key=${tmdbKey}${langParam}`),
           fetchWithCache(`${TMDB_BASE_URL}/tv/popular?api_key=${tmdbKey}${langParam}`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=10759`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=9648`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=18`),
-          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=16`),
+          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=10759&without_genres=16`),
+          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=9648&without_genres=16`),
+          fetchWithCache(`${TMDB_BASE_URL}/discover/tv?api_key=${tmdbKey}${langParam}&with_genres=18&without_genres=16`),
         ]);
 
         if (cancelled) return;
 
         if (results[0].status === "fulfilled" && results[0].value?.genres) {
-          setSeriesGenres(results[0].value.genres);
+          setSeriesGenres(results[0].value.genres.filter((g: any) => g.id !== 16));
         } else {
-          setSeriesGenres(FALLBACK_SERIES_GENRES.map((g) => ({ id: g.id, name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en })));
+          setSeriesGenres(
+            FALLBACK_SERIES_GENRES.filter((g) => g.id !== 16).map((g) => ({
+              id: g.id,
+              name: g.name[currentLang as "en" | "ar" | "fr"] || g.name.en,
+            })),
+          );
         }
 
         if (results[1].status === "fulfilled" && results[1].value?.results?.length) {
-          setTrendingSeries(results[1].value.results.map((r: any) => normalizeItem(r, "tv", currentLang)));
+          setTrendingSeries(
+            filterLiveActionRaw(results[1].value.results)
+              .map((r: any) => normalizeItem(r, "tv", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setTrendingSeries(FALLBACK_SERIES.map((r) => normalizeItem(r, "tv", currentLang)));
+          setTrendingSeries(liveSeriesFallbacks.map((r) => normalizeItem(r, "tv", currentLang)));
         }
 
         if (results[2].status === "fulfilled" && results[2].value?.results?.length) {
-          setTopRatedSeries(results[2].value.results.map((r: any) => normalizeItem(r, "tv", currentLang)));
+          setTopRatedSeries(
+            filterLiveActionRaw(results[2].value.results)
+              .map((r: any) => normalizeItem(r, "tv", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setTopRatedSeries([...FALLBACK_SERIES].reverse().map((r) => normalizeItem(r, "tv", currentLang)));
+          setTopRatedSeries([...liveSeriesFallbacks].reverse().map((r) => normalizeItem(r, "tv", currentLang)));
         }
 
         if (results[3].status === "fulfilled" && results[3].value?.results?.length) {
-          setPopularSeries(results[3].value.results.map((r: any) => normalizeItem(r, "tv", currentLang)));
+          setPopularSeries(
+            filterLiveActionRaw(results[3].value.results)
+              .map((r: any) => normalizeItem(r, "tv", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setPopularSeries(FALLBACK_SERIES.map((r) => normalizeItem(r, "tv", currentLang)));
+          setPopularSeries(liveSeriesFallbacks.map((r) => normalizeItem(r, "tv", currentLang)));
         }
 
         if (results[4].status === "fulfilled" && results[4].value?.results?.length) {
-          setActionSeries(results[4].value.results.map((r: any) => normalizeItem(r, "tv", currentLang)));
+          setActionSeries(
+            filterLiveActionRaw(results[4].value.results)
+              .map((r: any) => normalizeItem(r, "tv", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setActionSeries(FALLBACK_SERIES.filter((s) => s.genres.includes("Action") || s.genres.includes("Sci-Fi")).map((r) => normalizeItem(r, "tv", currentLang)));
+          setActionSeries(liveSeriesFallbacks.filter((s) => s.genres.includes("Action") || s.genres.includes("Sci-Fi") || s.genres.includes("Adventure")).map((r) => normalizeItem(r, "tv", currentLang)));
         }
 
         if (results[5].status === "fulfilled" && results[5].value?.results?.length) {
-          setMysterySeries(results[5].value.results.map((r: any) => normalizeItem(r, "tv", currentLang)));
+          setMysterySeries(
+            filterLiveActionRaw(results[5].value.results)
+              .map((r: any) => normalizeItem(r, "tv", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setMysterySeries(FALLBACK_SERIES.filter((s) => s.genres.includes("Mystery")).map((r) => normalizeItem(r, "tv", currentLang)));
+          setMysterySeries(liveSeriesFallbacks.filter((s) => s.genres.includes("Mystery")).map((r) => normalizeItem(r, "tv", currentLang)));
         }
 
         if (results[6].status === "fulfilled" && results[6].value?.results?.length) {
-          setDramaSeries(results[6].value.results.map((r: any) => normalizeItem(r, "tv", currentLang)));
+          setDramaSeries(
+            filterLiveActionRaw(results[6].value.results)
+              .map((r: any) => normalizeItem(r, "tv", currentLang))
+              .filter(isLiveActionItem),
+          );
         } else {
-          setDramaSeries(FALLBACK_SERIES.filter((s) => s.genres.includes("Drama")).map((r) => normalizeItem(r, "tv", currentLang)));
+          setDramaSeries(liveSeriesFallbacks.filter((s) => s.genres.includes("Drama")).map((r) => normalizeItem(r, "tv", currentLang)));
         }
-
-        if (results[7].status === "fulfilled" && results[7].value?.results?.length) {
-          setAnimationSeries(results[7].value.results.map((r: any) => normalizeItem(r, "tv", currentLang)));
-        } else {
-          setAnimationSeries(FALLBACK_SERIES.filter((s) => s.genres.includes("Animation")).map((r) => normalizeItem(r, "tv", currentLang)));
-        }
+        setAnimationSeries([]);
       } catch (err) {
         console.error("Failed to fetch TMDB Live series, using fallbacks:", err);
         setGlobalError(true);
@@ -499,7 +585,9 @@ export function useCinemaCatalog({
         const searchData = await fetchWithCache(
           `${TMDB_BASE_URL}/${endpoint}?api_key=${tmdbKey}&language=${tmdbLang(currentLang)}&query=${encodeURIComponent(searchQuery)}`,
         );
-        const results = (searchData?.results || []).map((r: any) => normalizeItem(r, mediaType, currentLang));
+        const results = filterLiveActionRaw(searchData?.results || [])
+          .map((r: any) => normalizeItem(r, mediaType, currentLang))
+          .filter(isLiveActionItem);
         setSearchResults(results);
       } catch (err) {
         console.error("Failed search operation:", err);

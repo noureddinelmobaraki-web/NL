@@ -37,6 +37,9 @@ export type PageKey =
   | "cinema"
   | "anime"
   | "cartoon"
+  | "sharat"
+  | "noir"
+  | "commercials"
   | "art"
   | "tv"
   | "retro"
@@ -57,6 +60,9 @@ export const PAGE_META: Record<PageKey, { icon: LucideIcon; accent: string }> = 
   cinema: { icon: Film, accent: "#ff9fc0" },
   anime: { icon: Sparkles, accent: "#f87171" },
   cartoon: { icon: Tv, accent: "#fbbf24" },
+  sharat: { icon: Disc, accent: "#f59e0b" },
+  noir: { icon: Film, accent: "#e2e8f0" },
+  commercials: { icon: Tv, accent: "#fb923c" },
   art: { icon: Palette, accent: "#38bdf8" },
   tv: { icon: Tv, accent: "#9ec9ff" },
   retro: { icon: Joystick, accent: "#ffd27f" },
@@ -87,6 +93,15 @@ export interface BuildNotchDestinationsArgs {
   isCartoonOpen?: boolean;
   openCartoon?: () => void;
   closeCartoon?: () => void;
+  isSharatOpen?: boolean;
+  openSharat?: () => void;
+  closeSharat?: () => void;
+  isNoirOpen?: boolean;
+  openNoir?: () => void;
+  closeNoir?: () => void;
+  isCommercialsOpen?: boolean;
+  openCommercials?: () => void;
+  closeCommercials?: () => void;
   isArtOpen?: boolean;
   openArt?: (tab?: "photos" | "drawings" | "avatars") => void;
   closeArt?: () => void;
@@ -130,6 +145,15 @@ export function buildNotchDestinations({
   isCartoonOpen = false,
   openCartoon = () => {},
   closeCartoon = () => {},
+  isSharatOpen = false,
+  openSharat = () => {},
+  closeSharat = () => {},
+  isNoirOpen = false,
+  openNoir = () => {},
+  closeNoir = () => {},
+  isCommercialsOpen = false,
+  openCommercials = () => {},
+  closeCommercials = () => {},
   isArtOpen = false,
   openArt = () => {},
   closeArt = () => {},
@@ -207,6 +231,30 @@ export function buildNotchDestinations({
       icon: React.createElement(Tv, { size: 16 }),
       isActive: isCartoonOpen,
       onClick: goto(isCartoonOpen, openCartoon, closeCartoon),
+    },
+    {
+      id: "sharat",
+      label: "Sharat",
+      title: "Sharat (شارات)",
+      icon: React.createElement(Disc, { size: 16 }),
+      isActive: isSharatOpen,
+      onClick: goto(isSharatOpen, openSharat, closeSharat),
+    },
+    {
+      id: "noir",
+      label: "Classic Noir",
+      title: "Classic Noir & B&W Cinema",
+      icon: React.createElement(Film, { size: 16 }),
+      isActive: isNoirOpen,
+      onClick: goto(isNoirOpen, openNoir, closeNoir),
+    },
+    {
+      id: "commercials",
+      label: "Vintage Ads",
+      title: "Vintage Ads & TV",
+      icon: React.createElement(Tv, { size: 16 }),
+      isActive: isCommercialsOpen,
+      onClick: goto(isCommercialsOpen, openCommercials, closeCommercials),
     },
     {
       id: "tv",

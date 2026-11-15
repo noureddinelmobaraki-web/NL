@@ -2,9 +2,9 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * MS-DOS Classics Engine View (.jsdos / DOSBox WASM)
- * Lazily injects js-dos v8 on demand and runs classic MS-DOS bundles inside .nl-screen
- * with automatic audio & instance cleanup on unmount.
+ * MS-DOS Classics Engine View (.jsdos / DOSBox WASM + Archive.org EM-DOSBox Embed Fallback)
+ * Lazily injects js-dos v8 on demand for .jsdos/.zip bundles, or mounts the official
+ * Archive.org EM-DOSBox iframe when resolved to https://archive.org/embed/{id}?autoplay=1.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -80,9 +80,18 @@ export function DosEngineView({
   registerController,
 }: DosEngineViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
+  const isArchiveEmbedUrl = /^https:\/\/archive\.org\/embed\//i.test(bundleUrl);
+
   useEffect(() => {
+    if (isArchiveEmbedUrl) {
+      setStatus('loading');
+      onReadyStateChange(false);
+      return;
+    }
+
     const host = hostRef.current;
     if (!host || !bundleUrl) return;
 
@@ -156,6 +165,7 @@ export function DosEngineView({
     };
   }, [
     bundleUrl,
+    isArchiveEmbedUrl,
     reloadToken,
     onReadyStateChange,
     onTargetElementChange,
@@ -164,7 +174,24 @@ export function DosEngineView({
 
   return (
     <>
-      <div className="nl-ruffle-host nl-dos-host" ref={hostRef} />
+      {isArchiveEmbedUrl ? (
+        <iframe
+          key={`${bundleUrl}-${reloadToken}`}
+          ref={iframeRef}
+          src={bundleUrl}
+          title="MS-DOS Archive Emulator"
+          allow="autoplay; fullscreen; gamepad"
+          allowFullScreen
+          onLoad={() => {
+            setStatus('ready');
+            onReadyStateChange(true);
+            onTargetElementChange(iframeRef.current);
+          }}
+          className="nl-ruffle-host nl-dos-host w-full h-full border-0"
+        />
+      ) : (
+        <div className="nl-ruffle-host nl-dos-host" ref={hostRef} />
+      )}
 
       {status === 'loading' && (
         <div className="nl-screen-overlay">
@@ -186,9 +213,9 @@ export function DosEngineView({
 
       {status === 'error' && (
         <div className="nl-screen-overlay">
-          <p className="nl-screen-hint">تعذر تشغيل حزمة MS-DOS</p>
+          <p className="nl-screen-hint">Failed to start MS-DOS bundle</p>
           <button type="button" className="nl-screen-btn" onClick={onRetry}>
-            <RotateCcw size={16} aria-hidden="true" /> إعادة المحاولة
+            <RotateCcw size={16} aria-hidden="true" /> Retry
           </button>
         </div>
       )}

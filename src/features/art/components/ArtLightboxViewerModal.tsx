@@ -1,134 +1,153 @@
-import React, { useState } from 'react';
-import { X, ZoomIn, ZoomOut, Download, ExternalLink, Landmark, User, Calendar, Layers } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  X,
+  ZoomIn,
+  ZoomOut,
+  Download,
+  ExternalLink,
+} from 'lucide-react';
 import type { ArtMuseumPiece } from '../types/art.types';
 import { getMuseumBadgeLabel } from '../services/artMuseumService';
-import { GlassVectorIcon } from '../../../components/shared/icons';
 
 export interface ArtLightboxViewerModalProps {
   artwork: ArtMuseumPiece | null;
   onClose: () => void;
 }
 
+/**
+ * 100% Fullscreen Edge-to-Edge Lightbox (`fixed inset-0 z-[10500] w-screen h-[100dvh] bg-black/95`)
+ * with windowless floating golden typography (`#f5d061`) that fades out when idle.
+ */
 export const ArtLightboxViewerModal: React.FC<ArtLightboxViewerModalProps> = ({
   artwork,
   onClose,
 }) => {
   const [zoom, setZoom] = useState(1);
+  const [hudVisible, setHudVisible] = useState(true);
+  const idleTimerRef = useRef<number | null>(null);
+
+  const wakeHud = () => {
+    setHudVisible(true);
+    if (idleTimerRef.current) {
+      window.clearTimeout(idleTimerRef.current);
+    }
+    idleTimerRef.current = window.setTimeout(() => {
+      setHudVisible(false);
+    }, 2600);
+  };
+
+  useEffect(() => {
+    if (!artwork) return;
+    setZoom(1);
+    wakeHud();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
+    };
+  }, [artwork, onClose]);
 
   if (!artwork) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-2xl flex items-center justify-center p-3 sm:p-6"
+      className="fixed inset-0 z-[10500] w-screen h-[100dvh] bg-black/95 flex items-center justify-center overflow-hidden select-none"
+      dir="ltr"
+      onPointerMove={wakeHud}
       onClick={onClose}
-      dir="rtl"
     >
+      {/* Edge-to-Edge Fullscreen High-Res Canvas */}
+      <img
+        src={artwork.highResUrl || artwork.imageUrl}
+        alt={artwork.title}
+        onClick={(e) => {
+          e.stopPropagation();
+          wakeHud();
+        }}
+        className="max-w-[96vw] max-h-[94dvh] w-auto h-auto object-contain transition-transform duration-300"
+        style={{ transform: `scale(${zoom})` }}
+      />
+
+      {/* Top-Right Floating Controls */}
       <div
-        className="relative w-full max-w-6xl max-h-[92vh] rounded-3xl bg-slate-900/85 border border-white/25 shadow-2xl overflow-hidden flex flex-col lg:flex-row"
         onClick={(e) => e.stopPropagation()}
+        className={`fixed top-5 right-6 z-20 flex items-center gap-2.5 transition-opacity duration-500 ${
+          hudVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
       >
-        {/* Top Close & Zoom Controls */}
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.min(2.5, +(z + 0.25).toFixed(2)))}
-            className="p-2.5 rounded-full bg-slate-950/75 hover:bg-white/20 text-white border border-white/25 transition cursor-pointer"
-            aria-label="Zoom in"
+        <button
+          type="button"
+          onClick={() => setZoom((z) => Math.min(3, +(z + 0.3).toFixed(2)))}
+          aria-label="Zoom in"
+          className="h-10 w-10 rounded-full bg-black/50 hover:bg-black/80 text-[#f5d061] border border-[#f5d061]/35 flex items-center justify-center transition cursor-pointer"
+        >
+          <ZoomIn size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoom((z) => Math.max(1, +(z - 0.3).toFixed(2)))}
+          aria-label="Zoom out"
+          className="h-10 w-10 rounded-full bg-black/50 hover:bg-black/80 text-[#f5d061] border border-[#f5d061]/35 flex items-center justify-center transition cursor-pointer"
+        >
+          <ZoomOut size={18} />
+        </button>
+        <a
+          href={artwork.highResUrl || artwork.imageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          download
+          aria-label="Download High-Res Masterpiece"
+          className="h-10 px-4 rounded-full bg-black/55 hover:bg-black/80 text-[#f5d061] border border-[#f5d061]/45 text-xs font-bold inline-flex items-center gap-1.5 transition"
+        >
+          <Download size={15} />
+          <span>Download CC0</span>
+        </a>
+        {artwork.externalUrl && (
+          <a
+            href={artwork.externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Museum Source"
+            className="h-10 w-10 rounded-full bg-black/50 hover:bg-black/80 text-[#f5d061] border border-[#f5d061]/35 flex items-center justify-center transition"
           >
-            <ZoomIn size={17} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2)))}
-            className="p-2.5 rounded-full bg-slate-950/75 hover:bg-white/20 text-white border border-white/25 transition cursor-pointer"
-            aria-label="Zoom out"
-          >
-            <ZoomOut size={17} />
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2.5 rounded-full bg-rose-500/80 hover:bg-rose-500 text-white border border-white/30 transition cursor-pointer"
-            aria-label="Close"
-          >
-            <X size={17} />
-          </button>
-        </div>
+            <ExternalLink size={16} />
+          </a>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="h-10 w-10 rounded-full bg-black/60 hover:bg-black/85 text-white border border-white/30 flex items-center justify-center transition cursor-pointer"
+        >
+          <X size={18} />
+        </button>
+      </div>
 
-        {/* High-Resolution IIIF Canvas Frame */}
-        <div className="flex-1 bg-black/80 flex items-center justify-center overflow-auto min-h-[300px] max-h-[60vh] lg:max-h-[92vh] p-4">
-          <img
-            src={artwork.highResUrl || artwork.imageUrl}
-            alt={artwork.title}
-            className="max-h-[82vh] w-auto object-contain rounded-xl transition-transform duration-300 select-none"
-            style={{ transform: `scale(${zoom})` }}
-          />
-        </div>
-
-        {/* Full Museum Metadata Side Panel */}
-        <div className="w-full lg:w-96 p-6 bg-slate-950/90 border-t lg:border-t-0 lg:border-r border-white/15 flex flex-col justify-between gap-5 overflow-y-auto">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/15 border border-sky-400/35 text-sky-200 text-xs font-bold">
-              <GlassVectorIcon icon={Landmark} theme="science" size={14} badge={false} />
-              <span>{getMuseumBadgeLabel(artwork.source)}</span>
-            </div>
-
-            <h2 className="text-xl font-black text-white leading-snug">{artwork.title}</h2>
-
-            <div className="space-y-2.5 pt-2 border-t border-white/10 text-xs text-slate-300">
-              <div className="flex items-center gap-2">
-                <GlassVectorIcon icon={User} theme="cosmic" size={14} badge={false} />
-                <span className="text-slate-400">الفنان:</span>
-                <span className="font-bold text-white">{artwork.artist}</span>
-              </div>
-
-              {artwork.dateDisplay && (
-                <div className="flex items-center gap-2">
-                  <GlassVectorIcon icon={Calendar} theme="comedy" size={14} badge={false} />
-                  <span className="text-slate-400">التاريخ:</span>
-                  <span className="font-semibold text-white">{artwork.dateDisplay}</span>
-                </div>
-              )}
-
-              {artwork.mediumDisplay && (
-                <div className="flex items-start gap-2">
-                  <GlassVectorIcon icon={Layers} theme="emerald" size={14} badge={false} />
-                  <span className="text-slate-400 shrink-0">الخامة:</span>
-                  <span className="text-slate-200">{artwork.mediumDisplay}</span>
-                </div>
-              )}
-
-              {artwork.dimensions && (
-                <p className="text-[11px] text-slate-400">الأبعاد: {artwork.dimensions}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2.5 pt-4 border-t border-white/10">
-            <a
-              href={artwork.highResUrl || artwork.imageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              download
-              className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 hover:brightness-110 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition"
-            >
-              <Download size={15} />
-              <span>تحميل اللوحة بدقة المتاحف الكاملة (CC0)</span>
-            </a>
-
-            {artwork.externalUrl && (
-              <a
-                href={artwork.externalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-2 px-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 transition"
-              >
-                <ExternalLink size={14} />
-                <span>صفحة الأرشيف الرسمي في المتحف</span>
-              </a>
-            )}
-          </div>
-        </div>
+      {/* Windowless Floating Golden Typography Overlay (Zero Card/Box Frame) */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`fixed bottom-7 left-7 right-7 z-20 pointer-events-none flex flex-col items-start gap-1 transition-opacity duration-500 ${
+          hudVisible ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{
+          textShadow: '0 2px 18px rgba(0,0,0,0.95), 0 1px 4px rgba(0,0,0,0.9)',
+        }}
+      >
+        <span className="text-[11px] uppercase tracking-[0.22em] font-bold text-[#f5d061]/85">
+          {getMuseumBadgeLabel(artwork.source)}
+        </span>
+        <h2 className="text-xl sm:text-3xl font-serif font-bold text-[#f5d061] tracking-wide max-w-4xl">
+          {artwork.title}
+        </h2>
+        <p className="text-xs sm:text-sm font-medium text-[#f5d061]/90">
+          {artwork.artist}
+          {artwork.dateDisplay ? ` · ${artwork.dateDisplay}` : ''}
+          {artwork.mediumDisplay ? ` · ${artwork.mediumDisplay}` : ''}
+          {artwork.dimensions ? ` · ${artwork.dimensions}` : ''}
+        </p>
       </div>
     </div>
   );

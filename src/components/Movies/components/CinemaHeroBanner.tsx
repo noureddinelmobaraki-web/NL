@@ -192,10 +192,12 @@ export function CinemaHeroBanner({
               }
             />
 
-            <CinemaDownloadTriggerButton
-              item={activeHeroItem}
-              currentLang={currentLang}
-            />
+            {(!activeHeroItem.hub || activeHeroItem.hub === "movies") && (
+              <CinemaDownloadTriggerButton
+                item={activeHeroItem}
+                currentLang={currentLang}
+              />
+            )}
 
             {slideshowSlidesLength > 1 && !heroServersOpen && (
               <div className="ms-1 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md">

@@ -8,6 +8,7 @@ import {
   WireframeSphereOrbButton,
 } from './OrbTriggers';
 import { LIQUID_GLASS_HLS_VIDEOS, useOrbsHlsVideo } from './useOrbsHlsVideo';
+import type { XFeedVideoItem } from '../../services/xInfiniteFeedService';
 import type { LiquidGlassMode } from './useQuadLensWebGL';
 
 export { LIQUID_GLASS_HLS_VIDEOS };
@@ -27,6 +28,7 @@ export interface OrbsStageProps {
   webglReady: boolean;
   effectiveMuted: boolean;
   currentVideoIndex: number | null;
+  activeFeedItem?: XFeedVideoItem | null;
   glassBoxRef: React.RefObject<HTMLDivElement | null>;
   sunGlassBoxRef: React.RefObject<HTMLDivElement | null>;
   booksGlassBoxRef: React.RefObject<HTMLDivElement | null>;
@@ -48,6 +50,7 @@ export const OrbsStage: React.FC<OrbsStageProps> = ({
   webglReady,
   effectiveMuted,
   currentVideoIndex,
+  activeFeedItem,
   glassBoxRef,
   sunGlassBoxRef,
   booksGlassBoxRef,
@@ -77,6 +80,7 @@ export const OrbsStage: React.FC<OrbsStageProps> = ({
     mode,
     effectiveMuted,
     currentVideoIndex,
+    activeFeedItem,
     onTriggerRandomVideo,
     onVideoAspectChange,
     onVideoAudioActiveChange,

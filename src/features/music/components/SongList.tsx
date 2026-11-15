@@ -14,9 +14,10 @@ import styles from '../music.module.css';
 import { Search, X, CheckSquare, ListPlus, DownloadCloud, Lightbulb } from 'lucide-react';
 import {SuggestSongModal} from './SuggestSongModal';
 import {useTopSongs} from '../hooks/useTopSongs';
+import { searchOpenMusicDiscovery } from '../services/openMusicDiscoveryService';
 
 const ROW_HEIGHT = 64;
-type Tab = 'all' | 'top' | 'favorites' | 'downloaded' | 'playlists';
+type Tab = 'all' | 'top' | 'favorites' | 'downloaded' | 'playlists' | 'open-archive';
 
 function formatTime(sec?: number): string {
   if (!sec || !isFinite(sec)) return '--:--';
@@ -36,6 +37,7 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
 
   const [tab, setTab] = useState<Tab>('all');
   const [query, setQuery] = useState('');
+  const [openArchiveTracks, setOpenArchiveTracks] = useState<Track[]>([]);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showAdd, setShowAdd] = useState(false);
@@ -50,8 +52,27 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
     if (!online && tab !== 'downloaded' && tab !== 'playlists') setTab('downloaded');
   }, [online, tab]);
 
+  useEffect(() => {
+    if (tab !== 'open-archive' || !online) return;
+    let cancelled = false;
+    searchOpenMusicDiscovery(query).then((discovered) => {
+      if (cancelled) return;
+      setOpenArchiveTracks(discovered);
+      if (discovered.length > 0) {
+        const existingIds = new Set(tracks.map((t) => t.id));
+        const toMerge = discovered.filter((d) => !existingIds.has(d.id));
+        if (toMerge.length > 0) {
+          actions.setTracks([...tracks, ...toMerge]);
+        }
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, query, online]);
+
   const tabsToShow: Tab[] = online
-    ? ['all', 'top', 'favorites', 'downloaded', 'playlists']
+    ? ['all', 'top', 'favorites', 'downloaded', 'playlists', 'open-archive']
     : ['downloaded', 'playlists'];
 
   const exitSelect = useCallback(() => { setSelectMode(false); setSelected(new Set()); }, []);
@@ -66,14 +87,15 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
 
   // Base list per tab (before search).
   const baseList = useMemo<Track[]>(() => {
+    if (tab === 'open-archive') return openArchiveTracks;
     if (tab === 'favorites') return tracks.filter((t) => favSet.has(t.id));
     if (tab === 'downloaded') return tracks.filter((t) => dlSet.has(t.id));
     if (tab === 'top') {
       const map = new Map(tracks.map((t) => [t.id, t] as const));
       return topIds.map((id) => map.get(id)).filter((t): t is Track => !!t);
     }
-    return tracks; // 'all'
-  }, [tracks, tab, favSet, dlSet, topIds]);
+    return tracks.filter((t) => t.source !== 'remote'); // 'all' keeps NL's original library primary
+  }, [tracks, tab, favSet, dlSet, topIds, openArchiveTracks]);
 
   const filtered = useMemo(() => {
     let list = baseList;
@@ -146,7 +168,9 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
             {t === 'all' ? 'All'
               : t === 'top' ? 'Top'
               : t === 'favorites' ? 'Favorites'
-              : t === 'downloaded' ? 'Downloaded' : 'Playlists'}
+              : t === 'downloaded' ? 'Downloaded'
+              : t === 'open-archive' ? 'Open Audio'
+              : 'Playlists'}
           </button>
         ))}
         {!online && <span className="ml-auto text-xs font-bold text-[#00B894] whitespace-nowrap px-2">Offline</span>}

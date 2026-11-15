@@ -29,13 +29,12 @@ export function buildAnimeSources({
 }): AnimePlayServer[] {
   const ep = Math.max(1, Math.floor(courEpisode || 1));
   const season = Math.max(1, Math.floor(ids.resolvedSeason || 1));
-  const globalEp = Math.max(1, Math.floor((ids.episodeOffset || 0) + ep));
   const isDub = mode === 'dub';
   const subOrDub = isDub ? 'dub' : 'sub';
 
   const servers: AnimePlayServer[] = [];
 
-  // 1. VidLink Pro Anime (Uses MAL ID — Primary fast HLS server)
+  // 1. VidLink Anime (Requires MAL ID)
   if (ids.malId) {
     servers.push({
       id: `anime-vidlink-${subOrDub}`,
@@ -48,11 +47,11 @@ export function buildAnimeSources({
     });
   }
 
-  // 2. VidPlus Anime (Uses AniList ID — High-availability Sub/Dub)
+  // 2. VidPlus Anime (Requires AniList ID)
   if (ids.anilistId) {
     servers.push({
       id: `anime-vidplus-${subOrDub}`,
-      label: `VidPlus Pro (${isDub ? 'Dub' : 'Sub'})`,
+      label: `VidPlus Anime (${isDub ? 'Dub' : 'Sub'})`,
       host: 'player.vidplus.to',
       url: `https://player.vidplus.to/embed/anime/${ids.anilistId}/${ep}?dub=${isDub ? 'true' : 'false'}&autoplay=true&autonext=true`,
       mode,
@@ -61,7 +60,20 @@ export function buildAnimeSources({
     });
   }
 
-  // 3. VidSrc.icu Anime (Uses AniList ID: 0 = sub, 1 = dub)
+  // 3. Videasy Anime (Requires AniList ID)
+  if (ids.anilistId) {
+    servers.push({
+      id: `anime-videasy-${subOrDub}`,
+      label: `Videasy Anime (${isDub ? 'Dub' : 'Sub'})`,
+      host: 'player.videasy.net',
+      url: `https://player.videasy.net/anime/${ids.anilistId}/${ep}?dub=${isDub ? 'true' : 'false'}`,
+      mode,
+      quality: '1080p',
+      timeoutMs: 12000,
+    });
+  }
+
+  // 4. VidSrc.icu Anime (Requires AniList ID: 0 = sub, 1 = dub)
   if (ids.anilistId) {
     servers.push({
       id: `anime-vidsrc-icu-${subOrDub}`,
@@ -74,86 +86,30 @@ export function buildAnimeSources({
     });
   }
 
-  // 4. Videasy Anime (Uses AniList ID or TMDB ID)
-  if (ids.anilistId || ids.tmdbId) {
+  // 5. Official YouTube Anime Fallback (Muse Asia / Ani-One / TMS Official playlist when matched)
+  if (ids.youtubePlaylistId) {
     servers.push({
-      id: `anime-videasy-${subOrDub}`,
-      label: `Videasy Anime (${isDub ? 'Dub' : 'Sub'})`,
-      host: 'player.videasy.net',
-      url: ids.anilistId
-        ? `https://player.videasy.net/anime/${ids.anilistId}/${ep}?dub=${isDub ? 'true' : 'false'}`
-        : isMovie
-          ? `https://player.videasy.net/movie/${ids.tmdbId}`
-          : `https://player.videasy.net/tv/${ids.tmdbId}/${season}/${ep}?nextEpisode=true&episodeSelector=true`,
+      id: 'anime-youtube-official',
+      label: 'Official YouTube Anime',
+      host: 'www.youtube-nocookie.com',
+      url: `https://www.youtube-nocookie.com/embed/videoseries?list=${encodeURIComponent(ids.youtubePlaylistId)}&index=${Math.max(0, ep - 1)}&autoplay=1&rel=0`,
       mode,
       quality: '1080p',
       timeoutMs: 12000,
     });
   }
 
-  // 5. VidSrcMe (Uses IMDb or TMDB ID)
-  if (ids.imdbId || ids.tmdbId) {
-    const preferredId = ids.imdbId || ids.tmdbId;
+  // Only include Videasy TMDB fallback if BOTH malId and anilistId are completely unavailable
+  if (!ids.malId && !ids.anilistId && ids.tmdbId) {
     servers.push({
-      id: 'anime-vidsrcme',
-      label: 'VidSrcMe Multi',
-      host: 'vidsrcme.ru',
+      id: `anime-videasy-tmdb-${subOrDub}`,
+      label: `Videasy Anime (${isDub ? 'Dub' : 'Sub'})`,
+      host: 'player.videasy.net',
       url: isMovie
-        ? `https://vidsrcme.ru/embed/movie/${preferredId}`
-        : `https://vidsrcme.ru/embed/tv/${preferredId}/${season}/${ep}?autonext=1`,
+        ? `https://player.videasy.net/movie/${ids.tmdbId}`
+        : `https://player.videasy.net/tv/${ids.tmdbId}/${season}/${ep}?nextEpisode=true&episodeSelector=true`,
       mode,
-      quality: 'HD',
-      timeoutMs: 12000,
-    });
-  }
-
-  // 6. AutoEmbed (Uses TMDB or IMDb ID)
-  if (ids.tmdbId || ids.imdbId) {
-    const preferredId = ids.tmdbId || ids.imdbId;
-    servers.push({
-      id: 'anime-autoembed',
-      label: 'AutoEmbed Pro',
-      host: 'player.autoembed.cc',
-      url: isMovie
-        ? `https://player.autoembed.cc/embed/movie/${preferredId}`
-        : `https://player.autoembed.cc/embed/tv/${preferredId}/${season}/${ep}`,
-      mode,
-      quality: 'HD',
-      timeoutMs: 12000,
-    });
-  }
-
-  // 7. MultiEmbed VIP (Uses IMDb or TMDB ID)
-  if (ids.imdbId || ids.tmdbId) {
-    const isTmdb = !ids.imdbId && Boolean(ids.tmdbId);
-    const idParam = ids.imdbId
-      ? `video_id=${ids.imdbId}`
-      : `video_id=${ids.tmdbId}&tmdb=1`;
-    servers.push({
-      id: 'anime-multiembed',
-      label: 'MultiEmbed VIP',
-      host: 'multiembed.mov',
-      url: isMovie
-        ? `https://multiembed.mov/directstream.php?${idParam}`
-        : `https://multiembed.mov/directstream.php?${idParam}&s=${season}&e=${ isTmdb ? ep : globalEp }`,
-      mode,
-      quality: 'HD',
-      timeoutMs: 12000,
-    });
-  }
-
-  // 8. 2Embed TV (Uses IMDb or TMDB ID)
-  if (ids.imdbId || ids.tmdbId) {
-    const preferredId = ids.imdbId || ids.tmdbId;
-    servers.push({
-      id: 'anime-2embed',
-      label: '2Embed Global',
-      host: '2embed.cc',
-      url: isMovie
-        ? `https://www.2embed.cc/embed/${preferredId}`
-        : `https://www.2embed.cc/embedtv/${preferredId}&s=${season}&e=${ep}`,
-      mode,
-      quality: 'HD',
+      quality: '1080p',
       timeoutMs: 12000,
     });
   }

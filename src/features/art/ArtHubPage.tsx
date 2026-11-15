@@ -69,7 +69,7 @@ export const ArtHubPage: React.FC<ArtHubPageProps> = ({
               e.stopPropagation();
               onClose();
             }}
-            aria-label="العودة"
+            aria-label="Back"
           >
             <ArrowLeft size={18} strokeWidth={2.3} />
           </button>
@@ -110,7 +110,7 @@ export const ArtHubPage: React.FC<ArtHubPageProps> = ({
               <GlassTopBar
                 query={catalog.query}
                 onQueryChange={catalog.setQuery}
-                placeholder="ابحث عن لوحة، فنان (Van Gogh, Monet, Hokusai)، متحف، أو فوتوغرافيا..."
+                placeholder="Search masterpieces, artists (Van Gogh, Monet, Hokusai), museums, or photography..."
                 language={catalog.museumFilter}
                 languages={MUSEUM_FILTER_OPTIONS}
                 onLanguageChange={catalog.setMuseumFilter}

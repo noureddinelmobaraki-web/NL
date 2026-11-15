@@ -2,12 +2,13 @@
  * @license
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  *
- * AnimePage — Unified Liquid Glass Cinema Experience (100% matched with Books & Movies Stage)
- * Uses LiquidGlassBooksBackdrop, CinemaHeroBanner, MovieRow, MoviePosterCard, CinemaDetailModal,
- * CinemaPlayerStage, and CinemaHeaderDownloadButton with Sub/Dub switching.
+ * AnimePage — Unified Liquid Glass Cinema Experience
+ * - Clean English UI (dir="ltr")
+ * - 14 Orthogonal Virtualized Shelves powered by AniList GraphQL v2, Jikan v4 & Early Japanese Animation Archive
+ * - Zero top-bar icon clutter or duplicate bottom catalog grid
  */
 
-import React, { useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Languages, X } from 'lucide-react';
 import '../../styles/components/cinema.css';
@@ -15,19 +16,27 @@ import '../../styles/components/cinema.css';
 import { CinemaHeroBanner } from '../../components/Movies/components/CinemaHeroBanner';
 import { CinemaDetailModal } from '../../components/Movies/components/CinemaDetailModal';
 import { MovieRow, MoviePosterCard } from '../../components/Movies/MovieGridComponents';
+import {
+  MOVIE_ROW_SCROLL_STYLE,
+  type CinemaItem,
+} from '../../components/Movies/moviesDataClient';
 import { ActorProfileModal } from '../../components/Movies/ActorProfileModal';
-import { CinemaHeaderDownloadButton } from '../cinemaDownload';
-import { GlassVectorIcon } from '../../components/shared/icons';
+import {
+  removeProgress,
+  useContinueWatching,
+} from '../cinema/progress/progressStore';
 import { useOverlayPageFrame } from '../../hooks/useOverlayPageFrame';
+import { useVirtualizedShelves } from '../../hooks/useVirtualizedShelves';
 import { LiquidGlassBooksBackdrop } from '../liquid-glass/shared/LiquidGlassBooksBackdrop';
 
 import { ANIME_TABS } from './constants/animeTabs';
+import type { AnimeItem } from './types/anime.types';
 import {
   useAnimeBrowseState,
   useAnimeCategoryFeed,
   useAnimeCinemaBridge,
-  useAnimeGenreRows,
 } from './hooks';
+import { createAnimeOrthogonalShelves } from './catalog/animeShelvesConfig';
 
 export interface AnimePageProps {
   onClose?: () => void;
@@ -44,13 +53,44 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
     debouncedQuery,
   } = useAnimeBrowseState();
 
+  const extraAnimeMapRef = useRef<Map<number, AnimeItem>>(new Map());
+  const registerAnimeItem = useCallback((numId: number, item: AnimeItem) => {
+    extraAnimeMapRef.current.set(numId, item);
+  }, []);
+
+  const shelfDefs = useMemo(
+    () => createAnimeOrthogonalShelves(registerAnimeItem),
+    [registerAnimeItem],
+  );
+
+  const {
+    visibleShelves,
+    hasMoreShelves,
+    sentinelRef,
+    fetchNextShelfPage,
+  } = useVirtualizedShelves<CinemaItem>({
+    shelves: shelfDefs,
+    getItemKey: (it) =>
+      String(it.anilistId || it.malId || it.archiveIds?.[0] || it.id),
+    initialShelfCount: 4,
+    batchShelfCount: 3,
+  });
+
+  const extraCinemaItems = useMemo(
+    () => visibleShelves.flatMap((s) => s.items),
+    [visibleShelves],
+  );
+
   const { animeList, loading } = useAnimeCategoryFeed(activeTab, debouncedQuery);
   const { controller, cinemaItems, activeHeroItem } = useAnimeCinemaBridge(
     animeList,
     audioMode,
     setAudioMode,
+    extraAnimeMapRef,
+    extraCinemaItems,
   );
-  const { shonenRow, seinenMysteryRow } = useAnimeGenreRows(cinemaItems);
+
+  const continueWatchingAnime = useContinueWatching('anime');
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useOverlayPageFrame({
@@ -59,10 +99,12 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
       controller.selectedItemId !== null || controller.selectedActor !== null,
   });
 
+  const showShelvesView = !debouncedQuery && activeTab === 'trending';
+
   const content = (
     <div
       className="nl-cinema-root fixed inset-0 z-[10050] w-full h-[100dvh] text-white select-none overflow-hidden pointer-events-auto bg-transparent"
-      dir="rtl"
+      dir="ltr"
     >
       <LiquidGlassBooksBackdrop dimmerOpacity={0.52} />
 
@@ -70,8 +112,8 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
         className="nl-cinema-scroll absolute inset-0 z-20 h-full w-full overflow-y-auto overflow-x-hidden overscroll-contain pb-24 pointer-events-auto"
         style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
       >
-        {/* Top Floating Liquid Glass Navigation Bar */}
-        <header className="sticky top-0 z-40 px-4 sm:px-8 py-3.5 bg-slate-950/45 backdrop-blur-2xl border-b border-white/15 flex flex-wrap items-center justify-between gap-3">
+        {/* Clean Top Floating Liquid Glass Navigation Bar — Text Pills Only */}
+        <header className="sticky top-0 z-40 px-4 sm:px-8 py-3 bg-slate-950/45 backdrop-blur-2xl border-b border-white/15 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
             {ANIME_TABS.map((tab) => {
               const active = activeTab === tab.id;
@@ -80,20 +122,13 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all shrink-0 cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-extrabold transition-all shrink-0 cursor-pointer ${
                     active
                       ? 'bg-white/20 text-white border border-white/45 shadow-lg'
                       : 'bg-white/8 text-slate-200 hover:bg-white/15 border border-white/15'
                   }`}
                 >
-                  <GlassVectorIcon
-                    icon={tab.icon}
-                    theme={tab.theme}
-                    size={15}
-                    active={active}
-                    badge={false}
-                  />
-                  <span>{tab.labelAr}</span>
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
@@ -111,7 +146,7 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
                 }`}
               >
                 <Languages size={12} />
-                <span>SUB مترجم</span>
+                <span>SUB</span>
               </button>
               <button
                 type="button"
@@ -122,40 +157,38 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
                     : 'text-slate-200 hover:text-white'
                 }`}
               >
-                <span>DUB مدبلج</span>
+                <span>DUB</span>
               </button>
             </div>
 
             <div className="relative w-44 sm:w-64">
               <Search
                 size={14}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
               />
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ابحث عن أنمي (One Piece, Attack)..."
-                className="w-full pr-9 pl-7 py-2 rounded-2xl bg-white/12 border border-white/25 text-xs text-white placeholder:text-slate-300 focus:outline-none focus:border-sky-400 backdrop-blur-md"
+                placeholder="Search anime (One Piece, Attack on Titan)..."
+                className="w-full pl-9 pr-7 py-2 rounded-2xl bg-white/12 border border-white/25 text-xs text-white placeholder:text-slate-300 focus:outline-none focus:border-sky-400 backdrop-blur-md"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white cursor-pointer"
                 >
                   <X size={13} />
                 </button>
               )}
             </div>
 
-            <CinemaHeaderDownloadButton currentLang="ar" />
-
             {onClose && (
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="إغلاق"
+                aria-label="Close"
                 className="p-2 rounded-2xl bg-white/12 hover:bg-white/22 border border-white/25 text-slate-200 hover:text-white transition cursor-pointer shrink-0 backdrop-blur-md"
               >
                 <X size={16} />
@@ -170,7 +203,7 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
             isMobile={controller.isMobile}
             heroIndex={controller.heroTrailer.heroIndex}
             setHeroIndex={controller.heroTrailer.setHeroIndex}
-            currentLang="ar"
+            currentLang="en"
             localizedHeroTitle={activeHeroItem.title}
             heroServersOpen={controller.heroTrailer.heroServersOpen}
             setHeroServersOpen={controller.heroTrailer.setHeroServersOpen}
@@ -181,94 +214,131 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
           />
         )}
 
-        <div className="relative z-20 px-4 sm:px-10 pt-6 space-y-8">
-          {!debouncedQuery && cinemaItems.length > 0 && (
-            <>
-              <MovieRow
-                title="أقوى أنميات الموسم والرائج عالمياً"
-                items={cinemaItems}
-                setSelectedItemId={controller.setSelectedItemId}
-                onQuickWatch={controller.handleQuickWatch}
-                isTouch={controller.isTouch}
-                activeHoverId={controller.activeHoverId}
-                setActiveHoverId={controller.setActiveHoverId}
-                hoverTimer={hoverTimerRef}
-                t={controller.t}
-                isFavoriteFn={(id: number, mediaType: 'movie' | 'tv') =>
-                  controller.has(id, mediaType, 'favorite')
-                }
-              />
-
-              {shonenRow.length > 0 && (
-                <MovieRow
-                  title="ملحمة الشونين والقتال الخارق"
-                  items={shonenRow}
-                  setSelectedItemId={controller.setSelectedItemId}
-                  onQuickWatch={controller.handleQuickWatch}
-                  isTouch={controller.isTouch}
-                  activeHoverId={controller.activeHoverId}
-                  setActiveHoverId={controller.setActiveHoverId}
-                  hoverTimer={hoverTimerRef}
-                  t={controller.t}
-                  isFavoriteFn={(id: number, mediaType: 'movie' | 'tv') =>
-                    controller.has(id, mediaType, 'favorite')
-                  }
-                />
-              )}
-
-              {seinenMysteryRow.length > 0 && (
-                <MovieRow
-                  title="الغموض والخيال العلمي والسينيين"
-                  items={seinenMysteryRow}
-                  setSelectedItemId={controller.setSelectedItemId}
-                  onQuickWatch={controller.handleQuickWatch}
-                  isTouch={controller.isTouch}
-                  activeHoverId={controller.activeHoverId}
-                  setActiveHoverId={controller.setActiveHoverId}
-                  hoverTimer={hoverTimerRef}
-                  t={controller.t}
-                  isFavoriteFn={(id: number, mediaType: 'movie' | 'tv') =>
-                    controller.has(id, mediaType, 'favorite')
-                  }
-                />
-              )}
-            </>
+        <div className="relative z-20 px-4 sm:px-10 pt-6 space-y-6">
+          {!debouncedQuery && continueWatchingAnime.length > 0 && (
+            <div className="relative z-20 flex flex-col gap-1.5 py-2.5">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-sm sm:text-lg font-extrabold text-white tracking-tight drop-shadow">
+                  Continue Watching
+                </h2>
+              </div>
+              <div
+                className="nl-cinema-row flex gap-4 overflow-x-auto select-none px-3 scroll-smooth scrollbar-none snap-x snap-mandatory"
+                style={MOVIE_ROW_SCROLL_STYLE}
+              >
+                {continueWatchingAnime.map((entry) => {
+                  const cwItem: CinemaItem =
+                    cinemaItems.find((it) => it.id === entry.id) || {
+                      id: entry.id,
+                      hub: 'anime',
+                      mediaType: entry.mediaType,
+                      title: entry.title,
+                      overview: '',
+                      posterPath: entry.posterPath || '',
+                      backdropPath: entry.backdropPath || '',
+                      year: '',
+                      rating: 0,
+                      genreIds: [16],
+                      genreNames: ['Anime'],
+                      trailerKey: '',
+                      cast: [],
+                      similar: [],
+                    };
+                  const ratio =
+                    entry.duration > 0 ? entry.time / entry.duration : 0;
+                  const epBadge =
+                    entry.mediaType === 'tv' && entry.season && entry.episode
+                      ? `S${entry.season}:E${entry.episode}`
+                      : undefined;
+                  return (
+                    <div key={entry.key} className="flex-shrink-0 snap-start">
+                      <MoviePosterCard
+                        item={cwItem}
+                        isTouch={controller.isTouch}
+                        activeHoverId={controller.activeHoverId}
+                        setActiveHoverId={controller.setActiveHoverId}
+                        hoverTimer={hoverTimerRef}
+                        setSelectedItemId={controller.setSelectedItemId}
+                        onQuickWatch={controller.handleQuickWatch}
+                        t={controller.t}
+                        progressRatio={ratio}
+                        episodeBadge={epBadge}
+                        onRemoveProgress={() =>
+                          removeProgress(entry.mediaType, entry.id, 'anime')
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
-          <section className="pt-2">
-            <h2 className="text-lg sm:text-xl font-black text-white mb-4 px-2 drop-shadow">
-              {debouncedQuery
-                ? `نتائج البحث عن "${debouncedQuery}"`
-                : 'مكتبة الأنمي الكاملة'}
-            </h2>
-            {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {Array.from({ length: 12 }).map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="aspect-[2/3] rounded-2xl bg-white/10 border border-white/15 animate-pulse backdrop-blur-md"
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-4 px-2">
-                {cinemaItems.map((item) => (
-                  <MoviePosterCard
-                    key={item.id}
-                    item={item}
-                    setSelectedItemId={controller.setSelectedItemId}
-                    onQuickWatch={controller.handleQuickWatch}
-                    isTouch={controller.isTouch}
-                    activeHoverId={controller.activeHoverId}
-                    setActiveHoverId={controller.setActiveHoverId}
-                    hoverTimer={hoverTimerRef}
-                    t={controller.t}
-                    isFavorite={controller.has(item.id, item.mediaType, 'favorite')}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+          {showShelvesView ? (
+            <>
+              {visibleShelves.map((shelf) => (
+                <MovieRow
+                  key={shelf.id}
+                  title={shelf.title}
+                  items={shelf.items}
+                  onReachEnd={() => void fetchNextShelfPage(shelf.id)}
+                  setSelectedItemId={controller.setSelectedItemId}
+                  onQuickWatch={controller.handleQuickWatch}
+                  isTouch={controller.isTouch}
+                  activeHoverId={controller.activeHoverId}
+                  setActiveHoverId={controller.setActiveHoverId}
+                  hoverTimer={hoverTimerRef}
+                  t={controller.t}
+                  isFavoriteFn={(id: number, mediaType: 'movie' | 'tv') =>
+                    controller.has(id, mediaType, 'favorite')
+                  }
+                />
+              ))}
+              {hasMoreShelves && (
+                <div
+                  ref={sentinelRef}
+                  className="w-full h-16 flex items-center justify-center text-xs text-slate-400 font-semibold"
+                >
+                  Loading more anime shelves...
+                </div>
+              )}
+            </>
+          ) : (
+            <section className="pt-2">
+              <h2 className="text-lg sm:text-xl font-black text-white mb-4 px-2 drop-shadow">
+                {debouncedQuery
+                  ? `Search Results for "${debouncedQuery}"`
+                  : ANIME_TABS.find((t) => t.id === activeTab)?.label || 'Anime Catalog'}
+              </h2>
+              {loading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {Array.from({ length: 12 }).map((_, idx) => (
+                    <div
+                      key={idx}
+                      className="aspect-[2/3] rounded-2xl bg-white/10 border border-white/15 animate-pulse backdrop-blur-md"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-4 px-2">
+                  {cinemaItems.map((item) => (
+                    <MoviePosterCard
+                      key={item.id}
+                      item={item}
+                      setSelectedItemId={controller.setSelectedItemId}
+                      onQuickWatch={controller.handleQuickWatch}
+                      isTouch={controller.isTouch}
+                      activeHoverId={controller.activeHoverId}
+                      setActiveHoverId={controller.setActiveHoverId}
+                      hoverTimer={hoverTimerRef}
+                      t={controller.t}
+                      isFavorite={controller.has(item.id, item.mediaType, 'favorite')}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </div>
 
@@ -289,7 +359,7 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
         setShowHeroTrailer={controller.heroTrailer.setShowHeroTrailer}
         setTrailerFallbackToYoutube={controller.heroTrailer.setTrailerFallbackToYoutube}
         persistCurrentProgress={controller.persistCurrentProgress}
-        currentLang="ar"
+        currentLang="en"
         t={controller.t}
         user={controller.user}
         has={controller.has}
@@ -302,7 +372,7 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
         selectedActor={controller.selectedActor}
         isWatchingInGallery={controller.isWatchingInGallery}
         tmdbKey={controller.tmdbKey}
-        currentLang="ar"
+        currentLang="en"
         onClose={() => controller.setSelectedActor(null)}
         onSelectWork={(id, mediaType) => controller.setSelectedItemId(id, mediaType)}
       />

@@ -41,6 +41,7 @@ import { fetchArabicManuscriptsAndTurath } from './services/manuscriptsAndTurath
 import { fetchStandardEbooksCatalog } from './services/standardEbooksClient';
 import { searchMangaDexCatalog } from './services/mangadexClient';
 import { fetchPoetryAndSacredBooks } from './services/poetryAndSacredTexts';
+import { fetchHathiTrustAndLocBooks } from './services/hathiTrustAndLocBooks';
 
 export {
   type AudiobookChapter,
@@ -289,6 +290,7 @@ export async function fetchTrendingBooks(params: {
       ),
       directGoogleBooksSearch(googleTrendingQuery, lang, params.signal),
       directOpenLibrarySearch(olSearchQuery, lang, page, params.signal),
+      fetchHathiTrustAndLocBooks(subject, page, params.signal),
     ]);
 
     const lists = settled.map((s) => (s.status === 'fulfilled' ? s.value : []));
@@ -378,6 +380,7 @@ export async function searchAllBooks(params: {
     directGutendexBooks(q, lang, '', page, params.signal),
     directInternetArchiveTexts(q, '', lang, page, params.signal),
     directOpenAlexSearch(q, page, params.signal),
+    fetchHathiTrustAndLocBooks(q, page, params.signal),
   ]);
 
   const lists = settled.map((s) => (s.status === 'fulfilled' ? s.value : []));

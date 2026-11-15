@@ -21,6 +21,15 @@ export function warmLauncherAction(action: NodeAction): void {
     case 'openCartoon':
       void import('../../features/cartoon/CartoonPage').catch(() => undefined);
       break;
+    case 'openSharat':
+      void import('../../features/sharat/SharatPage').catch(() => undefined);
+      break;
+    case 'openNoir':
+      void import('../../features/noir/NoirCinemaPage').catch(() => undefined);
+      break;
+    case 'openCommercials':
+      void import('../../features/commercials/NostalgiaCommercialsPage').catch(() => undefined);
+      break;
     case 'openTv':
       void import('../NlTv/NlTvPage').catch(() => undefined);
       break;

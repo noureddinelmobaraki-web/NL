@@ -49,6 +49,7 @@ export function useServerFailover({
   setActiveExtractedIdx,
   extractedStreams,
   resolveServerIdForStream,
+  disableSpeedSort = false,
 }: {
   detailPlaySources: PlaySource[];
   detailPlaySourcesRef: MutableRefObject<PlaySource[]>;
@@ -86,21 +87,27 @@ export function useServerFailover({
   setActiveExtractedIdx: (v: number) => void;
   extractedStreams: ExtractedVideoStream[];
   resolveServerIdForStream: (stream?: ExtractedVideoStream | null) => string;
+  disableSpeedSort?: boolean;
 }) {
   const startGalleryWatchSession = useCallback(
     (explicitServerIdx?: number) => {
-      const speedOrdered = buildSpeedSortedQueue(
-        detailPlaySources,
-        detailItemStorageKey,
-      );
-      let ordered = speedOrdered.length > 0 ? speedOrdered : [0, 1, 2, 3, 4];
+      const currentSources = detailPlaySourcesRef.current.length
+        ? detailPlaySourcesRef.current
+        : detailPlaySources;
+      const defaultOrder = currentSources.length
+        ? currentSources.map((_, idx) => idx)
+        : [0, 1, 2, 3, 4];
+      const speedOrdered = disableSpeedSort
+        ? defaultOrder
+        : buildSpeedSortedQueue(currentSources, detailItemStorageKey);
+      let ordered = speedOrdered.length > 0 ? speedOrdered : defaultOrder;
 
       if (typeof explicitServerIdx === "number" && explicitServerIdx >= 0) {
-        const total = detailPlaySources.length || 5;
+        const total = currentSources.length || 5;
         const startIdx = explicitServerIdx % Math.max(1, total);
         ordered = [startIdx, ...ordered.filter((i) => i !== startIdx)];
-      } else if (detailPlaySources.length > 0) {
-        void probeAllServersSpeed(detailPlaySources, detailItemStorageKey).then(() => {
+      } else if (!disableSpeedSort && currentSources.length > 0) {
+        void probeAllServersSpeed(currentSources, detailItemStorageKey).then(() => {
           const updatedQueue = buildSpeedSortedQueue(
             detailPlaySourcesRef.current,
             detailItemStorageKey,
@@ -112,7 +119,7 @@ export function useServerFailover({
       }
 
       const firstIdx = ordered[0] ?? 0;
-      const targetSource = detailPlaySources[firstIdx] || detailPlaySources[0];
+      const targetSource = currentSources[firstIdx] || currentSources[0];
       const initialAnchorSec = targetSource?.capabilities?.startAt
         ? (resumeStartAtSec ?? 0)
         : 0;
@@ -146,6 +153,7 @@ export function useServerFailover({
       detailPlaySources,
       detailPlaySourcesRef,
       detailItemStorageKey,
+      disableSpeedSort,
       cleanupDirectVideoPlayer,
       resumeStartAtSec,
       detailedItem?.runtime,
