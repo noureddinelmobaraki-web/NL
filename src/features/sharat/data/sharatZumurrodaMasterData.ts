@@ -1,0 +1,30 @@
+import type { SharatTrack } from '../types/sharat.types';
+import { mkSharat } from './sharatMasterHelper';
+
+export const SHARAT_ZUMURRODA_MASTER_DATA: SharatTrack[] = [
+  mkSharat({ n: 81, seriesAr: 'دروب ريمي', titleAr: 'مررت بخاطري فكرة', originalTitle: 'Ie Naki Ko Remi', artistAr: 'رشا رزق', youtubeId: '8yHf-RIEiOU', slug: 'ie_naki_ko_remi', malId: 2829 }),
+  mkSharat({ n: 82, seriesAr: 'دروب ريمي', titleAr: 'أمي كم أهواها', originalTitle: 'Ie Naki Ko Remi Insert', artistAr: 'رشا رزق', youtubeId: 'DjSdU7gCPd0', slug: 'ie_naki_ko_remi', malId: 2829 }),
+  mkSharat({ n: 83, seriesAr: 'أنا وأخي', titleAr: 'شوق يدفعني لأراها', originalTitle: 'Akachan to Boku', artistAr: 'رشا رزق', youtubeId: '7t_Ht6v4GkQ', slug: 'akachan_to_boku', malId: 1485 }),
+  mkSharat({ n: 84, seriesAr: 'أنا وأخي', titleAr: 'حلمي الصغير (وسيم)', originalTitle: 'Akachan to Boku Ending', artistAr: 'رشا رزق', youtubeId: 'YTR7yP7PF4E', slug: 'akachan_to_boku', malId: 1485 }),
+  mkSharat({ n: 85, seriesAr: 'أنا وأختي', titleAr: 'ضميني يا أختي', originalTitle: 'Mama wa Shougaku 4 Nensei', artistAr: 'رشا رزق', youtubeId: 'dB95J8Pa49c', slug: 'mama_wa_shougaku_4_nensei', malId: 333 }),
+  mkSharat({ n: 86, seriesAr: 'أنستازيا', titleAr: 'في ديسمبر / أغنية عن شهر ديسمبر', originalTitle: 'Anastasia (1997)', artistAr: 'رشا رزق', youtubeId: '3ZBv1Q9vf0k', tmdbId: 9444, tmdbMediaType: 'movie' }),
+  mkSharat({ n: 87, seriesAr: 'إيروكا', titleAr: 'بيتي الصغير (البداية)', originalTitle: 'Idol Densetsu Eriko', artistAr: 'رشا رزق', youtubeId: 'X1Hu_ms7BuE', slug: 'idol_densetsu_eriko', malId: 2938 }),
+  mkSharat({ n: 88, seriesAr: 'إيروكا', titleAr: 'لن أعود للوراء (النهاية)', originalTitle: 'Idol Densetsu Eriko Ending', artistAr: 'رشا رزق', youtubeId: 'JXAvFEsCaEg', slug: 'idol_densetsu_eriko', malId: 2938 }),
+  mkSharat({ n: 89, seriesAr: 'الحديقة السرية', titleAr: 'في يوم همست في أذني', originalTitle: 'Anime Himitsu no Hanazono', artistAr: 'هالة الصباغ / رشا رزق', youtubeId: 'KyWUlkKD_yY', slug: 'anime_himitsu_no_hanazono', malId: 2810 }),
+  mkSharat({ n: 90, seriesAr: 'سندريلا', titleAr: 'سندريلا الحلوة', originalTitle: 'Cinderella Monogatari', artistAr: 'رشا رزق', youtubeId: 'IctskdnjslM', slug: 'cinderella_monogatari', malId: 2817 }),
+  mkSharat({ n: 91, seriesAr: 'سالي', titleAr: 'أنا قصة إنسان، أنا جرح الزمان', originalTitle: 'Shoukoujo Sara', artistAr: 'سهير عودة', youtubeId: '3l0PBWCCjv8', slug: 'shoukoujo_sara', malId: 2547 }),
+  mkSharat({ n: 92, seriesAr: 'ليدي ليدي', titleAr: 'ليدي ليدي ما أروعها', originalTitle: 'Lady Lady!!', artistAr: 'سونيا بيطار', youtubeId: 'YxlAucJgDkQ', slug: 'lady_lady', malId: 2227 }),
+  mkSharat({ n: 93, seriesAr: 'صاحب الظل الطويل', titleAr: 'جودي أبوت', originalTitle: 'Watashi no Ashinaga Ojisan', artistAr: 'عايدة أبو نوار', youtubeId: 'QX3V2jUbk5w', slug: 'watashi_no_ashinaga_ojisan', malId: 1375 }),
+  mkSharat({ n: 94, seriesAr: 'لحن الحياة', titleAr: 'الموسيقى', originalTitle: 'Trapp Ikka Monogatari', artistAr: 'هالة الصباغ', youtubeId: 'Mh85CCQ_BTk', slug: 'trapp_ikka_monogatari', malId: 2557 }),
+  mkSharat({ n: 95, seriesAr: 'نوار', titleAr: 'أصدقاء للأبد', originalTitle: 'Kaze no Naka no Shoujo', artistAr: 'رشا رزق', youtubeId: 'b11ERcjWzEs', slug: 'kaze_no_naka_no_shoujo_kinpatsu_no_jeanie', malId: 2811 }),
+  mkSharat({ n: 96, seriesAr: 'مغامرات حنين', titleAr: 'صديقتي حنين', originalTitle: 'Minky Momo', artistAr: 'طارق العربي طرقان / رشا رزق', youtubeId: 'U7sM1CSSWIY', slug: 'mahou_no_princess_minky_momo', malId: 518 }),
+  mkSharat({ n: 97, seriesAr: 'همتارو', titleAr: 'هل تعرفون من هو همتارو', originalTitle: 'Tottoko Hamtarou', artistAr: 'رشا رزق', youtubeId: 'eeOlXP63S1g', slug: 'tottoko_hamtarou', malId: 508 }),
+  mkSharat({ n: 98, seriesAr: 'هايدي', titleAr: 'هايدي الجميلة', originalTitle: 'Alps no Shoujo Heidi', artistAr: 'كورس الزمن الجميل', youtubeId: 'qIPaf0SPjj4', slug: 'alps_no_shoujo_heidi', malId: 2225 }),
+  mkSharat({ n: 99, seriesAr: 'سيمبا', titleAr: 'سيمبا قادم', originalTitle: 'Simba the King Lion', artistAr: 'طارق العربي طرقان', youtubeId: 'EQuHkjt4WhQ', tmdbId: 44606, tmdbMediaType: 'tv' }),
+  mkSharat({ n: 100, seriesAr: 'بابار فيل', titleAr: 'بابار فيل ذكي نبيل', originalTitle: 'Babar', artistAr: 'طارق العربي طرقان', youtubeId: 'BwRtzDVS84U', tmdbId: 656, tmdbMediaType: 'tv' }),
+  mkSharat({ n: 101, seriesAr: 'باص المدرسة العجيب', titleAr: 'في باص المدرسة', originalTitle: 'The Magic School Bus', artistAr: 'طارق طرقان ورشا رزق', youtubeId: 'pctpiLeVZAU', tmdbId: 4239, tmdbMediaType: 'tv' }),
+  mkSharat({ n: 102, seriesAr: 'أكاديمية الشرطة', titleAr: 'حماة القانون', originalTitle: 'Police Academy', artistAr: 'طارق العربي طرقان', youtubeId: '0IeH_seQXC0', tmdbId: 3050, tmdbMediaType: 'tv' }),
+  mkSharat({ n: 103, seriesAr: 'كاليميرو', titleAr: 'كاليميرو الصغير', originalTitle: 'Calimero', artistAr: 'طارق العربي طرقان', youtubeId: '5bkTb_Xvrcw', slug: 'calimero', malId: 2827 }),
+  mkSharat({ n: 104, seriesAr: 'زينة ونحول', titleAr: 'زينة ونحول في الحقول', originalTitle: 'Mitsubachi Maya no Bouken', artistAr: 'وئام الصعيدي', youtubeId: 'lXDxnDqOO8Y', slug: 'mitsubachi_maya_no_bouken', malId: 2571 }),
+  mkSharat({ n: 105, seriesAr: 'سنان', titleAr: 'ما أحلى أن نعيش في خير وسلام', originalTitle: 'Don Chuck Monogatari', artistAr: 'وعد (إلهام أحمد)', youtubeId: 'EwRJK0XC5Ck', slug: 'don_chuck_monogatari', malId: 6447 }),
+];

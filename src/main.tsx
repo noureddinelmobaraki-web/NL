@@ -35,7 +35,7 @@ try {
 } catch (e) {}
 
 initSentry();
-applyDirection(i18n.resolvedLanguage || 'ar');
+applyDirection(i18n.resolvedLanguage || i18n.language || 'en');
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

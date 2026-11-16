@@ -153,7 +153,7 @@ export function MainHomeScreen() {
     if (resolvedTheme !== 'light') return null;
     return (
       <div
-        className="fixed top-4 right-4 z-[var(--z-toast)]"
+        className="fixed top-3.5 left-16 z-30 hidden sm:block"
         style={{
           fontFamily: 'Geneva, "Lucida Sans Unicode", monospace',
           fontSize: '11px',

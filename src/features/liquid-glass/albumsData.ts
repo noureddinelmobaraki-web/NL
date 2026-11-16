@@ -20,6 +20,8 @@ export interface LiquidGlassAlbum {
   readonly title: string;
   readonly artist: string;
   readonly coverUrl: string;
+  readonly fallbackCoverUrl?: string;
+  readonly subtitle?: string;
   readonly tracks: readonly LiquidGlassTrack[];
 }
 

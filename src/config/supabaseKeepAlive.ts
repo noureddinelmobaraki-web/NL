@@ -10,6 +10,7 @@ let intervalId: ReturnType<typeof setInterval> | null = null;
 
 /** Sends a lightweight SELECT to keep the Supabase connection alive. */
 async function ping(): Promise<void> {
+  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
   try {
     // Cheapest possible query — selects nothing meaningful
     await supabase.from('profiles').select('id').limit(1).maybeSingle();

@@ -3,7 +3,6 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import arLocales from './locales/ar.json';
 import enLocales from './locales/en.json';
-import frLocales from './locales/fr.json';
 
 export function applyDirection(lng: string): void {
   const base = (lng || 'en').split('-')[0];
@@ -15,8 +14,25 @@ export function applyDirection(lng: string): void {
 const resources = {
   ar: { translation: arLocales },
   en: { translation: enLocales },
-  fr: { translation: frLocales },
 };
+
+let frBundlePromise: Promise<void> | null = null;
+
+function ensureFrenchBundleLoaded(): Promise<void> {
+  if (i18n.hasResourceBundle('fr', 'translation')) {
+    return Promise.resolve();
+  }
+  if (!frBundlePromise) {
+    frBundlePromise = import('./locales/fr.json')
+      .then((m) => {
+        i18n.addResourceBundle('fr', 'translation', m.default ?? m, true, true);
+      })
+      .catch(() => {
+        frBundlePromise = null;
+      });
+  }
+  return frBundlePromise;
+}
 
 i18n
   .use(LanguageDetector)
@@ -39,9 +55,19 @@ i18n
     },
   });
 
-// Apply layout direction when language changes
+const initialLng = (i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
+if (initialLng === 'fr') {
+  void ensureFrenchBundleLoaded().then(() => {
+    void i18n.changeLanguage('fr');
+  });
+}
+
+// Apply layout direction and lazy-load French bundle when language changes
 i18n.on('languageChanged', (lng) => {
   applyDirection(lng);
+  if ((lng || '').split('-')[0] === 'fr') {
+    void ensureFrenchBundleLoaded();
+  }
 });
 
 // Apply initial language direction on module load

@@ -6,6 +6,8 @@ export function useParallax(intensity = 20) {
   const mousePos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
+    if (intensity <= 0) return undefined;
+
     const updateParallax = () => {
       if (ref.current) {
         ref.current.style.transform = `translate3d(${mousePos.current.x}px, ${mousePos.current.y}px, 0)`;

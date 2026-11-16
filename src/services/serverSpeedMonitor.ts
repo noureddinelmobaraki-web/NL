@@ -99,6 +99,28 @@ export function recordServerSuccess(
   writeStorage(state);
 }
 
+function recordServerProbeLatency(serverId: string, durationMs: number): void {
+  if (!serverId) return;
+  const clampedMs = Math.max(40, Math.min(25_000, Math.round(durationMs || 1200)));
+  const state = readStorage();
+  const prev = state.metrics[serverId];
+
+  const ewmaLatencyMs = prev
+    ? Math.round(EWMA_ALPHA * clampedMs + (1 - EWMA_ALPHA) * prev.ewmaLatencyMs)
+    : clampedMs;
+
+  state.metrics[serverId] = {
+    serverId,
+    ewmaLatencyMs,
+    lastLatencyMs: clampedMs,
+    successCount: prev?.successCount || 0,
+    failureCount: prev?.failureCount || 0,
+    lastUpdatedAt: Date.now(),
+  };
+
+  writeStorage(state);
+}
+
 export function recordServerFailure(serverId: string): void {
   if (!serverId) return;
   const state = readStorage();
@@ -226,7 +248,6 @@ export async function probeAllServersSpeed(
 
   const probePromise = (async () => {
     try {
-      let fastestWinnerRecorded = false;
       await Promise.allSettled(
         effectiveSources.map(async (src) => {
           const probeUrl = src.origins?.[0] || src.url;
@@ -246,11 +267,7 @@ export async function probeAllServersSpeed(
             const end =
               typeof performance !== "undefined" ? performance.now() : Date.now();
             const latencyMs = Math.max(40, Math.round(end - start));
-            const effectiveLatency = !fastestWinnerRecorded
-              ? latencyMs
-              : latencyMs + 15;
-            fastestWinnerRecorded = true;
-            recordServerSuccess(src.id, effectiveLatency, titleKey);
+            recordServerProbeLatency(src.id, latencyMs);
           } catch {
             recordServerFailure(src.id);
           } finally {

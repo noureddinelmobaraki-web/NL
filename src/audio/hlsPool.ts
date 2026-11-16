@@ -5,9 +5,9 @@ import type { HlsConfig } from 'hls.js';
 // Single source of truth used by every Hls instance in the pool.
 const HLS_CONFIG: Partial<HlsConfig> = {
   enableWorker:           true,
-  lowLatencyMode:         true,       // Enable Low Latency mode
-  maxBufferLength:        10,         // buffer 10s ahead 
-  maxMaxBufferLength:     30,
+  lowLatencyMode:         false,      // VOD music streaming mode
+  maxBufferLength:        30,         // buffer 30s ahead for smooth mobile playback
+  maxMaxBufferLength:     60,
   backBufferLength:       15,         // reduce back buffer for streams
   startLevel:             -1,         // auto quality
   startFragPrefetch:      true,       // begin fetching first fragment immediately after manifest

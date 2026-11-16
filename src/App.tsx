@@ -4,7 +4,7 @@
  */
 
 import { m, AnimatePresence } from "framer-motion";
-import { useEffect, Suspense } from "react";
+import { useEffect, Suspense, lazy } from "react";
 import { savePrefs } from './utils/userPrefs';
 import { applyTheme as applyThemeUtil } from './utils/themeSwitcher';
 import { SectionErrorBoundary } from './components/SectionErrorBoundary';
@@ -13,12 +13,17 @@ import { PAGES } from './context/pages';
 import { NotchIsland } from "./components/notch/NotchIsland";
 import { NowPlayingBridge } from './audio/NowPlayingBridge';
 import { MusicEngineHost } from './features/music/MusicEngineHost';
-import { CinemaDownloadHost } from './features/cinemaDownload';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { isAutomatedEnv } from './utils/env';
 import { usePendingSongDeepLink } from './hooks/usePendingSongDeepLink';
 import { initLiquidGlassPhysics } from './utils/liquidGlassPhysics';
 import { MainHomeScreen } from './components/app/MainHomeScreen';
+
+const LazyCinemaDownloadHost = lazy(() =>
+  import('./features/cinemaDownload').then((m) => ({
+    default: m.CinemaDownloadHost,
+  })),
+);
 
 const NL_ENTER_FADE = { opacity: 0 } as const;
 
@@ -170,7 +175,9 @@ function AppStageRouter() {
           <NotchIsland />
           <NowPlayingBridge />
           <MusicEngineHost />
-          <CinemaDownloadHost />
+          <Suspense fallback={null}>
+            <LazyCinemaDownloadHost />
+          </Suspense>
         </>
       )}
       <AnimatePresence mode="wait" onExitComplete={endTransition}>

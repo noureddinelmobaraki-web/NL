@@ -109,9 +109,8 @@ body.standalone-app {
   scrollbar-width: none;  /* Firefox */
 }
 
-/* Focus Mode CSS targeting edit */
-
-div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(6) {
+/* Focus Mode semantic span button */
+.nl-focus-span-btn {
   grid-column: span 2 / span 2;
   white-space: normal;
   text-align: center;
@@ -119,12 +118,12 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-t
   font-size: 0.65rem;
 }
 
-div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(6) > svg {
+.nl-focus-span-btn > svg {
   flex-shrink: 0;
 }
 
 @media (min-width: 640px) {
-  div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(6) {
+  .nl-focus-span-btn {
     grid-column: auto;
   }
 }

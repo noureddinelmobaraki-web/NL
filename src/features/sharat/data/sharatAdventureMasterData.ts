@@ -1,0 +1,31 @@
+import type { SharatTrack } from '../types/sharat.types';
+import { mkSharat } from './sharatMasterHelper';
+
+export const SHARAT_ADVENTURE_MASTER_DATA: SharatTrack[] = [
+  mkSharat({ n: 37, seriesAr: 'المحقق كونان', titleAr: 'يكتشف الغامض والمثير', originalTitle: 'Detective Conan', artistAr: 'طارق العربي طرقان / رشا رزق', youtubeId: 'RL2ObWV8pnI', slug: 'detective_conan', malId: 235 }),
+  mkSharat({ n: 38, seriesAr: 'عهد الأصدقاء', titleAr: 'حان الوقت', originalTitle: 'Romeo no Aoi Sora', artistAr: 'رشا رزق', youtubeId: 'BYmcd8I4qcQ', slug: 'romeo_no_aoi_sora', malId: 2559 }),
+  mkSharat({ n: 39, seriesAr: 'أبطال الديجيتال (الجزء 1)', titleAr: 'في فخ غريب وقعنا', originalTitle: 'Digimon Adventure', artistAr: 'عنان الخياط وطارق طرقان', youtubeId: '-DH8UAlS5io', slug: 'digimon_adventure', malId: 552 }),
+  mkSharat({ n: 40, seriesAr: 'أبطال الديجيتال', titleAr: 'لا تبكِ يا صغيري', originalTitle: 'Digimon Adventure Ending', artistAr: 'رشا رزق', youtubeId: '0fKox9_pGK8', slug: 'digimon_adventure', malId: 552 }),
+  mkSharat({ n: 41, seriesAr: 'أبطال الديجيتال (الجزء 2)', titleAr: 'هيا يا أبطال', originalTitle: 'Digimon Adventure 02', artistAr: 'رشا رزق وعنان الخياط', youtubeId: 'ZWdg7QYjZcE', slug: 'digimon_adventure_02', malId: 1313 }),
+  mkSharat({ n: 42, seriesAr: 'أبطال الديجيتال (الجزء 3)', titleAr: 'أكبر قفزة / دوري يا أرضنا', originalTitle: 'Digimon Tamers', artistAr: 'رشا رزق وسونيا بيطار', youtubeId: '-BVg2AU7p0o', slug: 'digimon_tamers', malId: 874 }),
+  mkSharat({ n: 43, seriesAr: 'أبطال الديجيتال (الجزء 4)', titleAr: 'نداء الرقمية', originalTitle: 'Digimon Frontier', artistAr: 'رشا رزق', youtubeId: '5qKg6PKWBtA', slug: 'digimon_frontier', malId: 1132 }),
+  mkSharat({ n: 44, seriesAr: 'أدغال الديجيتال', titleAr: 'من لا يحتمل الصعاب', originalTitle: 'Monster Rancher (Monster Farm)', artistAr: 'رشا رزق', youtubeId: 'EMGjiPvo89I', slug: 'monster_farm_the_animation', malId: 1469 }),
+  mkSharat({ n: 45, seriesAr: 'ون بيس', titleAr: 'لمعان الذهب', originalTitle: 'One Piece', artistAr: 'محمد وطارق العربي طرقان', youtubeId: 'MT_Aks3Kye0', slug: 'one_piece', malId: 21 }),
+  mkSharat({ n: 46, seriesAr: 'ناروتو (سبيس باور)', titleAr: 'Good Person / شارة العمل', originalTitle: 'Naruto', artistAr: 'رشا رزق وطارق العربي طرقان', youtubeId: 'VVKgljbT2p4', slug: 'naruto', malId: 20 }),
+  mkSharat({ n: 47, seriesAr: 'بوكيمون', titleAr: 'أحلم دوماً أن أكون', originalTitle: 'Pokémon', artistAr: 'رشا رزق وطارق العربي طرقان', youtubeId: 'MCU3Bya2v9A', slug: 'pokemon', malId: 527 }),
+  mkSharat({ n: 48, seriesAr: 'ينبوع الأحلام', titleAr: 'نور صبري', originalTitle: 'Ranma ½', artistAr: 'طارق العربي طرقان ومحمد وديمة', youtubeId: 'gJpMyls9_6Y', slug: 'ranma', malId: 210 }),
+  mkSharat({ n: 49, seriesAr: 'السراب', titleAr: 'من يصدق الأحلام / قصتي والخيال', originalTitle: 'Fushigi Yuugi', artistAr: 'رشا رزق', youtubeId: 'lPqr54zsNH4', slug: 'fushigi_yuugi', malId: 123 }),
+  mkSharat({ n: 50, seriesAr: 'أيرون كيد', titleAr: 'عبر الصحراء مشينا', originalTitle: 'Eon Kid (Iron Kid)', artistAr: 'رشا رزق', youtubeId: 'uWnJeu_csk0', tmdbId: 18248, tmdbMediaType: 'tv' }),
+  mkSharat({ n: 51, seriesAr: 'باكوغان', titleAr: 'من عالم غريب', originalTitle: 'Bakugan Battle Brawlers', artistAr: 'رشا رزق', youtubeId: 'DMZunn7aM4k', slug: 'bakugan_battle_brawlers', malId: 2156 }),
+  mkSharat({ n: 52, seriesAr: 'جزيرة الكنز', titleAr: 'ها نحن يا جزيرة الكنز', originalTitle: 'Takarajima (Treasure Island)', artistAr: 'سامي كلارك', youtubeId: '_DEz0ng4m_c', slug: 'takarajima', malId: 2618 }),
+  mkSharat({ n: 53, seriesAr: 'عدنان ولينا', titleAr: 'جمعتهم أماني جميلة', originalTitle: 'Mirai Shounen Conan', artistAr: 'فلاح هاشم (مؤسسة الخليج)', youtubeId: 'ye0Wc9FDyGU', slug: 'mirai_shounen_conan', malId: 302 }),
+  mkSharat({ n: 54, seriesAr: 'مغامرات سندباد', titleAr: 'سندباد من بغداد', originalTitle: 'Arabian Nights: Sindbad no Bouken', artistAr: 'شحرورة الأرز', youtubeId: 'ZoI6Fl_EC9g', slug: 'arabian_nights_sindbad_no_bouken', malId: 2825 }),
+  mkSharat({ n: 55, seriesAr: 'ماوكلي فتى الأدغال', titleAr: 'في الغابة قانون يسري', originalTitle: 'Jungle Book Shounen Mowgli', artistAr: 'طارق طرقان', youtubeId: '3mUjLIbOUjU', slug: 'jungle_book_shounen_mowgli', malId: 2569 }),
+  mkSharat({ n: 56, seriesAr: 'روبن هود (السهم الناري)', titleAr: 'يمضي في الغابات', originalTitle: 'Robin Hood no Daibouken', artistAr: 'محمد العربي طرقان', youtubeId: 'IbfnefJ_LdM', slug: 'robin_hood_no_daibouken', malId: 2543 }),
+  mkSharat({ n: 57, seriesAr: 'مغامرات توم سوير', titleAr: 'توم توم كالأحلام', originalTitle: 'Tom Sawyer no Bouken', artistAr: 'طارق العربي طرقان', youtubeId: 'WVB-NgP62Nk', slug: 'tom_sawyer_no_bouken', malId: 2577 }),
+  mkSharat({ n: 58, seriesAr: 'مغامرات فلونة', titleAr: 'فلونة اللطيفة', originalTitle: 'Kazoku Robinson Hyouryuuki', artistAr: 'هالة الصباغ', youtubeId: 'laUzzxg-sIg', slug: 'kazoku_robinson_hyouryuuki', malId: 2544 }),
+  mkSharat({ n: 59, seriesAr: 'بيل وسبستيان', titleAr: 'بيل وسبستيان صديقان', originalTitle: 'Meiken Jolie', artistAr: 'سحر فاضل', youtubeId: '2-zp138I2SU', slug: 'meiken_jolie', malId: 3836 }),
+  mkSharat({ n: 60, seriesAr: 'فرسان الكوكب', titleAr: 'الكابتن فارس', originalTitle: 'Captain Planet', artistAr: 'طارق العربي طرقان', youtubeId: 'Lqh9ZTw2A_c', tmdbId: 2001, tmdbMediaType: 'tv' }),
+  mkSharat({ n: 61, seriesAr: 'أسرار المحيط', titleAr: 'غواصون في الأعماق', originalTitle: 'Nanatsu no Umi no Tico', artistAr: 'طارق العربي طرقان', youtubeId: 'a259sXecaRQ', slug: 'nanatsu_no_umi_no_tico', malId: 2579 }),
+  mkSharat({ n: 62, seriesAr: 'أسطورة زورو', titleAr: 'زورو زورو', originalTitle: 'Kaiketsu Zorro', artistAr: 'شادي شمص / سبيستون', youtubeId: 'sam3DXZxSCk', slug: 'kaiketsu_zorro', malId: 3010 }),
+];

@@ -206,7 +206,7 @@ export const PAGES: Record<Exclude<PageId, 'home'>, PageDescriptor> = {
     key: 'portrait',
     sectionName: 'portrait',
     loaderType: 'retro',
-    wrapperClassName: 'fixed inset-0 z-50',
+    wrapperClassName: 'fixed inset-0 w-full h-full z-[8500]',
     component: PortraitPage,
   },
   liquidGlass: {

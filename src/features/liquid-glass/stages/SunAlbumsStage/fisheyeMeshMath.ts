@@ -18,6 +18,7 @@ let activeImageLoads = 0;
 const pendingLoadQueue: LiquidGlassAlbum[] = [];
 const queuedAlbumIds = new Set<string>();
 const loadedAlbumIds = new Set<string>();
+const cachedCoverUrlById = new Map<string, string>();
 const readyBakeQueue: Array<{ album: LiquidGlassAlbum; img: HTMLImageElement }> = [];
 
 export function bumpAlbumTextureVersion(): void {
@@ -100,6 +101,8 @@ export function extractCoverRgbFromImage(img: HTMLImageElement, albumId: string)
 
 export const BAKED_TEX_SIZE = 320;
 
+const ARABIC_CHAR_RE = /[\u0600-\u06FF]/;
+
 function truncateCanvasText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -124,7 +127,12 @@ function renderBakedAlbumTexture(
   ctx.clearRect(0, 0, S, S);
 
   if (img && img.complete && img.naturalWidth > 0) {
-    ctx.drawImage(img, 0, 0, S, S);
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+    const scale = Math.max(S / iw, S / ih);
+    const dw = iw * scale;
+    const dh = ih * scale;
+    ctx.drawImage(img, (S - dw) * 0.5, (S - dh) * 0.5, dw, dh);
   } else {
     const rgb = coverRgbCache.get(album.id) ?? getInitialAlbumRgb(album.index);
     const grad = ctx.createLinearGradient(0, 0, S, S);
@@ -142,33 +150,44 @@ function renderBakedAlbumTexture(
   ctx.fillStyle = sheen;
   ctx.fillRect(0, 0, S, S);
 
-  const shade = ctx.createLinearGradient(0, S * 0.44, 0, S);
+  const shade = ctx.createLinearGradient(0, S * 0.42, 0, S);
   shade.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  shade.addColorStop(0.55, 'rgba(3, 5, 12, 0.56)');
-  shade.addColorStop(1, 'rgba(2, 4, 9, 0.90)');
+  shade.addColorStop(0.55, 'rgba(3, 5, 12, 0.62)');
+  shade.addColorStop(1, 'rgba(2, 4, 9, 0.94)');
   ctx.fillStyle = shade;
-  ctx.fillRect(0, S * 0.44, S, S * 0.56);
+  ctx.fillRect(0, S * 0.42, S, S * 0.58);
 
   const padX = Math.round(S * 0.085);
   const maxTextW = S - padX * 2;
+  const isArabic = ARABIC_CHAR_RE.test(album.title) || ARABIC_CHAR_RE.test(album.subtitle ?? '');
 
   ctx.save();
-  ctx.textAlign = 'left';
+  if (isArabic) {
+    ctx.direction = 'rtl';
+    ctx.textAlign = 'right';
+  } else {
+    ctx.textAlign = 'left';
+  }
   ctx.textBaseline = 'alphabetic';
+  const anchorX = isArabic ? S - padX : padX;
 
   ctx.font = '800 22px "Plus Jakarta Sans", "Outfit", system-ui, -apple-system, sans-serif';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.92)';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
   ctx.shadowBlur = 8;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 2;
   ctx.fillStyle = '#ffffff';
   const fittedTitle = truncateCanvasText(ctx, album.title, maxTextW);
-  ctx.fillText(fittedTitle, padX, S - 46);
+  ctx.fillText(fittedTitle, anchorX, S - 46);
 
-  ctx.font = '700 15.5px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif';
-  ctx.fillStyle = 'rgba(255, 244, 205, 0.92)';
-  const countLabel = `${album.tracks.length} ${album.tracks.length === 1 ? 'Song' : 'Songs'}`;
-  ctx.fillText(countLabel, padX, S - 22);
+  ctx.font = '700 15px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255, 244, 205, 0.94)';
+  const subRaw =
+    album.subtitle !== undefined
+      ? album.subtitle
+      : `${album.tracks.length} ${album.tracks.length === 1 ? 'Song' : 'Songs'}`;
+  const fittedSub = truncateCanvasText(ctx, subRaw, maxTextW);
+  ctx.fillText(fittedSub, anchorX, S - 21);
   ctx.restore();
 }
 
@@ -201,6 +220,7 @@ function pumpImageLoadQueue(): void {
     img.crossOrigin = 'anonymous';
     img.referrerPolicy = 'no-referrer';
     img.decoding = 'async';
+    let triedFallback = false;
 
     const finishLoad = (resolvedImg: HTMLImageElement | null) => {
       activeImageLoads = Math.max(0, activeImageLoads - 1);
@@ -212,7 +232,47 @@ function pumpImageLoadQueue(): void {
       pumpImageLoadQueue();
     };
 
+    const loadFallbackWithoutCors = () => {
+      const fallbackSrc =
+        album.fallbackCoverUrl ||
+        (album.coverUrl.includes('maxresdefault.jpg')
+          ? album.coverUrl.replace('maxresdefault.jpg', 'hqdefault.jpg')
+          : album.coverUrl);
+      const fallbackImg = new Image();
+      fallbackImg.referrerPolicy = 'no-referrer';
+      fallbackImg.decoding = 'async';
+      fallbackImg.onload = () => {
+        if (
+          fallbackImg.src.includes('maxresdefault.jpg') &&
+          fallbackImg.naturalWidth <= 120 &&
+          !triedFallback
+        ) {
+          triedFallback = true;
+          fallbackImg.src = fallbackSrc.replace('maxresdefault.jpg', 'hqdefault.jpg');
+          return;
+        }
+        finishLoad(fallbackImg);
+      };
+      fallbackImg.onerror = () => {
+        if (!triedFallback && fallbackSrc !== album.coverUrl) {
+          triedFallback = true;
+          fallbackImg.src = fallbackSrc;
+          return;
+        }
+        finishLoad(null);
+      };
+      fallbackImg.src = album.coverUrl;
+    };
+
     img.onload = () => {
+      if (img.src.includes('maxresdefault.jpg') && img.naturalWidth <= 120) {
+        const hqSrc = album.fallbackCoverUrl || img.src.replace('maxresdefault.jpg', 'hqdefault.jpg');
+        if (!triedFallback && hqSrc !== img.src) {
+          triedFallback = true;
+          img.src = hqSrc;
+          return;
+        }
+      }
       if (typeof img.decode === 'function') {
         img.decode().then(() => finishLoad(img)).catch(() => finishLoad(img));
       } else {
@@ -221,12 +281,12 @@ function pumpImageLoadQueue(): void {
     };
 
     img.onerror = () => {
-      const fallbackImg = new Image();
-      fallbackImg.referrerPolicy = 'no-referrer';
-      fallbackImg.decoding = 'async';
-      fallbackImg.onload = () => finishLoad(fallbackImg);
-      fallbackImg.onerror = () => finishLoad(null);
-      fallbackImg.src = album.coverUrl;
+      if (!triedFallback && album.fallbackCoverUrl && album.fallbackCoverUrl !== img.src) {
+        triedFallback = true;
+        img.src = album.fallbackCoverUrl;
+        return;
+      }
+      loadFallbackWithoutCors();
     };
 
     img.src = album.coverUrl;
@@ -234,6 +294,15 @@ function pumpImageLoadQueue(): void {
 }
 
 export function getOrEnsureAlbumTexture(album: LiquidGlassAlbum): HTMLCanvasElement {
+  const previousCoverUrl = cachedCoverUrlById.get(album.id);
+  if (previousCoverUrl !== undefined && previousCoverUrl !== album.coverUrl) {
+    bakedTileCanvasCache.delete(album.id);
+    coverRgbCache.delete(album.id);
+    queuedAlbumIds.delete(album.id);
+    loadedAlbumIds.delete(album.id);
+  }
+  cachedCoverUrlById.set(album.id, album.coverUrl);
+
   let baked = bakedTileCanvasCache.get(album.id);
   if (!baked) {
     baked = document.createElement('canvas');
@@ -252,140 +321,11 @@ export function getOrEnsureAlbumTexture(album: LiquidGlassAlbum): HTMLCanvasElem
   return baked;
 }
 
-export function formatTrackTime(sec: number): string {
-  if (!Number.isFinite(sec) || sec < 0) return '00:00';
-  const total = Math.floor(sec);
-  const mins = Math.floor(total / 60);
-  const secs = total % 60;
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-}
-
-export function getAlbumForInfiniteCell(
-  row: number,
-  col: number,
-  albums: LiquidGlassAlbum[],
-): LiquidGlassAlbum {
-  const total = Math.max(1, albums.length);
-  // 2D Torus Lattice with stride 10: coprime to 99 (gcd(10, 99) = 1), guaranteeing
-  // every album in any 10x9 window is 100% unique and identical albums are separated
-  // by at least 9.55 tiles (>2,000px) in every direction.
-  const stride = 10;
-  const idx = (((row * stride + col) % total) + total) % total;
-  return albums[idx];
-}
-
-export function warpSphericalFisheyePoint(
-  ux: number,
-  uy: number,
-  focusX: number,
-  focusY: number,
-  lensRadius: number,
-  tileSize: number,
-  isPhone: boolean,
-  out: { x: number; y: number; scale: number },
-): void {
-  const dx = ux - focusX;
-  const dy = uy - focusY;
-  const r = Math.hypot(dx, dy);
-  const u = r / Math.max(lensRadius, 1);
-  const u2 = u * u;
-
-  const maxMag = isPhone ? 1.54 : 1.58;
-  const minMag = isPhone ? 0.54 : 0.52;
-  const radialScale = minMag + (maxMag - minMag) / Math.pow(1 + u2, 0.92);
-
-  const waveFreq = 1 / Math.max(lensRadius * 0.62, 1);
-  const waveAmp = (tileSize * 0.068) / (1 + 0.35 * u2);
-  const curveX = Math.sin(dy * waveFreq) * Math.cos(dx * waveFreq * 0.82) * waveAmp;
-  const curveY = -Math.sin(dx * waveFreq) * Math.cos(dy * waveFreq * 0.82) * waveAmp;
-
-  out.x = focusX + dx * radialScale + curveX;
-  out.y = focusY + dy * radialScale + curveY;
-  out.scale = radialScale;
-}
-
-export function drawWarpedTexturedTriangle(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLCanvasElement,
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  u0: number,
-  v0: number,
-  u1: number,
-  v1: number,
-  u2: number,
-  v2: number,
-): void {
-  const cx = (x0 + x1 + x2) / 3;
-  const cy = (y0 + y1 + y2) / 3;
-
-  const d0 = Math.hypot(x0 - cx, y0 - cy) || 1;
-  const d1 = Math.hypot(x1 - cx, y1 - cy) || 1;
-  const d2 = Math.hypot(x2 - cx, y2 - cy) || 1;
-  const pad = 0.55;
-
-  const ex0 = x0 + ((x0 - cx) / d0) * pad;
-  const ey0 = y0 + ((y0 - cy) / d0) * pad;
-  const ex1 = x1 + ((x1 - cx) / d1) * pad;
-  const ey1 = y1 + ((y1 - cy) / d1) * pad;
-  const ex2 = x2 + ((x2 - cx) / d2) * pad;
-  const ey2 = y2 + ((y2 - cy) / d2) * pad;
-
-  const du1 = u1 - u0;
-  const dv1 = v1 - v0;
-  const du2 = u2 - u0;
-  const dv2 = v2 - v0;
-  const det = du1 * dv2 - du2 * dv1;
-  if (Math.abs(det) < 1e-5) return;
-
-  const invDet = 1 / det;
-  const dx1 = x1 - x0;
-  const dy1 = y1 - y0;
-  const dx2 = x2 - x0;
-  const dy2 = y2 - y0;
-
-  const a = (dx1 * dv2 - dx2 * dv1) * invDet;
-  const b = (dy1 * dv2 - dy2 * dv1) * invDet;
-  const c = (dx2 * du1 - dx1 * du2) * invDet;
-  const d = (dy2 * du1 - dy1 * du2) * invDet;
-  const e = x0 - a * u0 - c * v0;
-  const f = y0 - b * u0 - d * v0;
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(ex0, ey0);
-  ctx.lineTo(ex1, ey1);
-  ctx.lineTo(ex2, ey2);
-  ctx.closePath();
-  ctx.clip();
-  ctx.transform(a, b, c, d, e, f);
-  ctx.drawImage(img, 0, 0);
-  ctx.restore();
-}
-
-export function pointInPolygon(
-  px: number,
-  py: number,
-  poly: ReadonlyArray<{ x: number; y: number }>,
-): boolean {
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const xi = poly[i].x;
-    const yi = poly[i].y;
-    const xj = poly[j].x;
-    const yj = poly[j].y;
-    const intersect =
-      yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi + 1e-7) + xi;
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-export interface WarpedCellHitRegion {
-  album: LiquidGlassAlbum;
-  boundary: Array<{ x: number; y: number }>;
-}
+export {
+  drawWarpedTexturedTriangle,
+  formatTrackTime,
+  getAlbumForInfiniteCell,
+  pointInPolygon,
+  warpSphericalFisheyePoint,
+  type WarpedCellHitRegion,
+} from './fisheyeMeshGeometry';

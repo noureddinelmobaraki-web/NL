@@ -254,6 +254,8 @@ class CinemaDownloadManager {
     bridgeHealthy: false,
   };
 
+  private initialized = false;
+
   constructor() {
     if (typeof window !== 'undefined') {
       const rnd = new Uint8Array(16);
@@ -263,14 +265,27 @@ class CinemaDownloadManager {
       this.sessionToken = Array.from(rnd, (b) =>
         b.toString(16).padStart(2, '0'),
       ).join('');
-      this.initWorker();
-      this.registerStreamServiceWorker();
-      void this.refreshQuota();
-      void this.checkBridgeHealth();
     }
   }
 
+  private ensureInitialized(): void {
+    if (this.initialized || typeof window === 'undefined') return;
+    this.initialized = true;
+    this.initWorker();
+    this.registerStreamServiceWorker();
+    void this.refreshQuota();
+    void this.checkBridgeHealth();
+  }
+
   private async checkBridgeHealth(): Promise<boolean> {
+    if (
+      typeof window === 'undefined' ||
+      import.meta.env.PROD ||
+      window.location.hostname.endsWith('github.io')
+    ) {
+      this.state.bridgeHealthy = false;
+      return false;
+    }
     try {
       const res = await fetch('/api/cinema-download/health', {
         signal: AbortSignal.timeout(2000),
@@ -1558,7 +1573,7 @@ class CinemaDownloadManager {
   }
 
   public openModalForMedia = (media: DownloadMediaContext): void => {
-    this.initWorker();
+    this.ensureInitialized();
     void this.refreshQuota();
     void this.checkBridgeHealth();
 
@@ -1608,8 +1623,12 @@ class CinemaDownloadManager {
       });
   };
 
+  public openModal = (): void => {
+    this.openTasksModal();
+  };
+
   public openTasksModal = (): void => {
-    this.initWorker();
+    this.ensureInitialized();
     void this.refreshQuota();
     void this.checkBridgeHealth();
     this.state = {
@@ -1780,7 +1799,7 @@ class CinemaDownloadManager {
     release: DiscoveredReleaseOption,
     enableInstantStream = false,
   ): Promise<void> => {
-    this.initWorker();
+    this.ensureInitialized();
     await this.ensurePersistentStorage();
     await this.refreshQuota();
 

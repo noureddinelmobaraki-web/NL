@@ -79,33 +79,34 @@ self.addEventListener('activate', (event) => {
     );
     await Promise.all(staleOwnedCaches.map((key) => caches.delete(key)));
 
-    // Pre-warm critical CDN images in background
+    await self.clients.claim();
+
+    // Pre-warm critical CDN images non-blockingly in background
     const CDN_PREWARM = [
       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp',
       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/nordine_portrait.webp',
       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp',
       'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/playlist_cover.webp',
     ];
-    const imgCache = await caches.open(CACHE_IMAGES);
-    for (const url of CDN_PREWARM) {
+    void (async () => {
       try {
-        const existing = await imgCache.match(url);
-        if (!existing) {
-          const resp = await fetch(url, { mode: 'cors' });
-          if (resp.ok) {
-            const withTs = await (async (r) => {
-              const headers = new Headers(r.headers);
-              headers.append('x-cached-at', Date.now().toString());
-              const blob = await r.blob();
-              return new Response(blob, { headers });
-            })(resp);
-            await imgCache.put(url, withTs);
-          }
+        const imgCache = await caches.open(CACHE_IMAGES);
+        for (const url of CDN_PREWARM) {
+          try {
+            const existing = await imgCache.match(url);
+            if (!existing) {
+              const resp = await fetch(url, { mode: 'cors' });
+              if (resp.ok) {
+                const headers = new Headers(resp.headers);
+                headers.append('x-cached-at', Date.now().toString());
+                const blob = await resp.blob();
+                await imgCache.put(url, new Response(blob, { headers }));
+              }
+            }
+          } catch {} // non-blocking
         }
-      } catch {} // non-blocking
-    }
-    
-    await self.clients.claim();
+      } catch {}
+    })();
 
     // Check storage estimates on activate
     if (self.navigator && self.navigator.storage && self.navigator.storage.estimate) {
@@ -129,19 +130,19 @@ async function handleRangeRequest(request, responseOverride = null) {
   const range = request.headers.get('range');
   if (!range) return response;
 
-  const arrayBuffer = await response.arrayBuffer();
+  const blob = await response.blob();
   const parts = range.replace(/bytes=/, "").split("-");
   const start = parseInt(parts[0], 10);
-  const end = parts[1] ? parseInt(parts[1], 10) : arrayBuffer.byteLength - 1;
+  const end = parts[1] ? parseInt(parts[1], 10) : blob.size - 1;
 
-  const slicedBuffer = arrayBuffer.slice(start, end + 1);
-  return new Response(slicedBuffer, {
+  const slicedBlob = blob.slice(start, end + 1);
+  return new Response(slicedBlob, {
     status: 206,
     statusText: 'Partial Content',
     headers: {
       ...Object.fromEntries(response.headers),
-      'Content-Range': `bytes ${start}-${end}/${arrayBuffer.byteLength}`,
-      'Content-Length': slicedBuffer.byteLength,
+      'Content-Range': `bytes ${start}-${end}/${blob.size}`,
+      'Content-Length': String(slicedBlob.size),
     },
   });
 }
@@ -229,10 +230,17 @@ function tpHandleStream(event, match) {
     }
     const client = await tpPickClient(event);
     if (!client || !(total > 0)) {
+      const directUrl = url.searchParams.get('directUrl');
+      if (directUrl) {
+        return Response.redirect(directUrl, 302);
+      }
+      if (self.location.hostname.endsWith('github.io')) {
+        return new Response('Torrent stream session not active', { status: 503 });
+      }
       const qs = new URLSearchParams({
         infoHash,
         magnet: url.searchParams.get('magnet') || '',
-        directUrl: url.searchParams.get('directUrl') || '',
+        directUrl: '',
       });
       const h = new Headers();
       const r = event.request.headers.get('Range');

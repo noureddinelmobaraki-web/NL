@@ -113,7 +113,7 @@ const LIQUID_SURFACE_SELECTOR = [
   '.nl-inbox-panel'
 ].join(', ');
 
-const MOBILE_FRAME_MS = 1000 / 24; // 24 FPS cap on mobile for smooth battery/GPU performance
+const RECT_CACHE_TTL_MS = 180;
 
 export function initLiquidGlassPhysics(): () => void {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -122,11 +122,38 @@ export function initLiquidGlassPhysics(): () => void {
 
   let rafId: number | null = null;
   let lastPointerEvent: PointerEvent | null = null;
-  let lastProcessTime = 0;
+  let rectCacheEpoch = 0;
+  const rectCache = new WeakMap<
+    HTMLElement,
+    { rect: DOMRect; ts: number; epoch: number }
+  >();
   const activePressedElements = new Set<HTMLElement>();
 
-  const updateLightPosition = (el: HTMLElement, clientX: number, clientY: number) => {
+  const invalidateRectCache = () => {
+    rectCacheEpoch += 1;
+  };
+
+  const getCachedRect = (el: HTMLElement, now: number): DOMRect => {
+    const cached = rectCache.get(el);
+    if (
+      cached &&
+      cached.epoch === rectCacheEpoch &&
+      now - cached.ts < RECT_CACHE_TTL_MS
+    ) {
+      return cached.rect;
+    }
     const rect = el.getBoundingClientRect();
+    rectCache.set(el, { rect, ts: now, epoch: rectCacheEpoch });
+    return rect;
+  };
+
+  const updateLightPosition = (
+    el: HTMLElement,
+    clientX: number,
+    clientY: number,
+    now: number,
+  ) => {
+    const rect = getCachedRect(el, now);
     if (rect.width <= 0 || rect.height <= 0) return;
 
     const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
@@ -146,23 +173,17 @@ export function initLiquidGlassPhysics(): () => void {
     rafId = null;
     if (!lastPointerEvent) return;
 
-    const isMobile = window.innerWidth < 768;
-    if (isMobile && now - lastProcessTime < MOBILE_FRAME_MS) {
-      return;
-    }
-    lastProcessTime = now;
-
     const { clientX, clientY, target } = lastPointerEvent;
     if (!(target instanceof Element)) return;
 
     const interactiveEl = target.closest<HTMLElement>(LIQUID_SELECTOR);
     if (interactiveEl) {
-      updateLightPosition(interactiveEl, clientX, clientY);
+      updateLightPosition(interactiveEl, clientX, clientY, now);
     }
 
     const surfaceEl = target.closest<HTMLElement>(LIQUID_SURFACE_SELECTOR);
     if (surfaceEl && surfaceEl !== interactiveEl) {
-      updateLightPosition(surfaceEl, clientX, clientY);
+      updateLightPosition(surfaceEl, clientX, clientY, now);
     }
   };
 
@@ -189,11 +210,12 @@ export function initLiquidGlassPhysics(): () => void {
     if (!(e.target instanceof Element)) return;
 
     const isTouchOrMobile = e.pointerType === 'touch' || window.innerWidth < 768;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
     const interactiveEl = e.target.closest<HTMLElement>(LIQUID_SELECTOR);
     if (interactiveEl) {
       if (!isTouchOrMobile) {
-        updateLightPosition(interactiveEl, e.clientX, e.clientY);
+        updateLightPosition(interactiveEl, e.clientX, e.clientY, now);
       }
       interactiveEl.removeAttribute('data-liquid-rebound');
       interactiveEl.setAttribute('data-liquid-pressed', 'true');
@@ -203,7 +225,7 @@ export function initLiquidGlassPhysics(): () => void {
     if (!isTouchOrMobile) {
       const surfaceEl = e.target.closest<HTMLElement>(LIQUID_SURFACE_SELECTOR);
       if (surfaceEl && surfaceEl !== interactiveEl) {
-        updateLightPosition(surfaceEl, e.clientX, e.clientY);
+        updateLightPosition(surfaceEl, e.clientX, e.clientY, now);
       }
     }
   };
@@ -219,6 +241,8 @@ export function initLiquidGlassPhysics(): () => void {
   window.addEventListener('pointerup', handlePointerUp, { passive: true });
   window.addEventListener('pointercancel', handlePointerUp, { passive: true });
   window.addEventListener('blur', handlePointerUp, { passive: true });
+  window.addEventListener('scroll', invalidateRectCache, { passive: true, capture: true });
+  window.addEventListener('resize', invalidateRectCache, { passive: true });
 
   return () => {
     if (rafId !== null) {
@@ -229,6 +253,8 @@ export function initLiquidGlassPhysics(): () => void {
     window.removeEventListener('pointerup', handlePointerUp);
     window.removeEventListener('pointercancel', handlePointerUp);
     window.removeEventListener('blur', handlePointerUp);
+    window.removeEventListener('scroll', invalidateRectCache, true);
+    window.removeEventListener('resize', invalidateRectCache);
   };
 }
 

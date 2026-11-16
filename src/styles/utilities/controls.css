@@ -129,15 +129,12 @@
   .mobile-w-full { width: 100% !important; max-width: 100% !important; }
   .mobile-h-auto { height: auto !important; }
 
-  *, *::before, *::after {
-    transition: none !important;
-  }
   :where(button, a, [role="button"], input, .manga-card, .manga-button, h1, h2, h3, .nav-item) {
-    transition: background-color 0.25s, color 0.25s, border-color 0.25s !important;
+    transition: background-color 0.25s, color 0.25s, border-color 0.25s, transform 0.2s !important;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   /* Full screen modals/panels on mobile */
   .mobile-fullscreen {
     position: fixed !important;
@@ -194,7 +191,7 @@
   }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 768px) {
   .mobile-back-btn {
     display: none !important;
   }

@@ -99,6 +99,16 @@ function NotchIslandInner() {
 
   const anchorRef = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const hoverIntentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverIntentTimerRef.current) {
+        clearTimeout(hoverIntentTimerRef.current);
+        hoverIntentTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const {
     offset,
@@ -275,8 +285,20 @@ function NotchIslandInner() {
           onPointerUp={onPointerUp}
           onMouseEnter={() => {
             if (isDesktop) {
-              openPanel();
-              schedule();
+              if (hoverIntentTimerRef.current) {
+                clearTimeout(hoverIntentTimerRef.current);
+              }
+              hoverIntentTimerRef.current = setTimeout(() => {
+                hoverIntentTimerRef.current = null;
+                openPanel();
+                schedule();
+              }, 180);
+            }
+          }}
+          onMouseLeave={() => {
+            if (hoverIntentTimerRef.current) {
+              clearTimeout(hoverIntentTimerRef.current);
+              hoverIntentTimerRef.current = null;
             }
           }}
           onMouseMove={() => {
@@ -284,6 +306,10 @@ function NotchIslandInner() {
           }}
           onClick={() => {
             if (movedRef.current) return;
+            if (hoverIntentTimerRef.current) {
+              clearTimeout(hoverIntentTimerRef.current);
+              hoverIntentTimerRef.current = null;
+            }
             if (isDesktop) {
               openPanel();
               schedule();

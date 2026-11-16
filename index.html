@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   object-src 'none';
-  script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-kwOTmlDcJErA+Ke+b7qQhRE5zYpCBEZcekVyFNpQhW0=' blob: https://noureddinelmobaraki-web.github.io https://cdn.jsdelivr.net https://unpkg.com https://plausible.io https://www.google.com https://www.gstatic.com https://www.youtube.com https://esm.sh https://v8.js-dos.com;
+  script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' 'sha256-8Tn1AggvzJyYqBUthcdbuldUHuwc55gUwHX4yiBtFuk=' blob: https://noureddinelmobaraki-web.github.io https://cdn.jsdelivr.net https://unpkg.com https://plausible.io https://www.google.com https://www.gstatic.com https://www.youtube.com https://esm.sh https://v8.js-dos.com;
   frame-src 'self' https://noureddinelmobaraki-web.github.io https://www.google.com https://recaptcha.google.com https://www.youtube.com https://www.youtube-nocookie.com https://www.imdb.com https://vidlink.pro https://player.vidlink.pro https://cloud.vidlink.pro https://player.vidplus.to https://vidsrcme.ru https://player.videasy.net https://vidrock.net https://moviesapi.club https://streamimdb.ru https://player.imdb.su https://www.2embed.cc https://2embed.cc https://www.2embed.skin https://2embed.skin https://2vcdn.skin https://multiembed.mov https://streamingnow.mov https://broad-block-7bd7.nordinegb2018.workers.dev https://archive.org https://www.gutenberg.org https://books.google.com https://lichess.org https://vidsrc.icu https://autoembed.co https://player.autoembed.cc https://player.twitch.tv https://slowroads.io https://hexgl.bkcore.com https://princejs.com https://gabrielecirulli.github.io https://hextris.github.io https://ellisonleao.github.io https://doublespeakgames.github.io https://sausi-7.github.io https://html5.gamedistribution.com https://itch.io;
   style-src 'self' 'unsafe-inline' https://v8.js-dos.com https://cdn.jsdelivr.net;
   style-src-elem 'self' 'unsafe-inline' https://v8.js-dos.com https://cdn.jsdelivr.net;
@@ -76,15 +76,19 @@
     <!-- LCP: preload the hero background for the default (midnight) theme.
          Must byte-match --hero-bg-image-url in src/styles/themes/midnight.css.
          No crossorigin: CSS background-image fetches are no-CORS and must match. -->
-    <link rel="preload" as="image" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp" fetchpriority="high">
+    <link rel="preload" as="image" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/header_bg.webp" fetchpriority="low">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
     <meta name="referrer" content="strict-origin-when-cross-origin">
 
 
     <script>
-      // FOUC Fix: Synchronously apply saved theme before paint
+      // FOUC Fix: Synchronously apply saved theme and language direction before paint
       (function() {
         try {
+          const savedLng = new URLSearchParams(location.search).get('lng') || localStorage.getItem('i18nextLng') || 'en';
+          const baseLng = savedLng.split('-')[0];
+          document.documentElement.setAttribute('lang', baseLng);
+          document.documentElement.setAttribute('dir', baseLng === 'ar' ? 'rtl' : 'ltr');
           const raw = localStorage.getItem('nl-prefs-v1');
           if (raw) {
             const saved = JSON.parse(raw);
@@ -258,7 +262,7 @@
       rel="preload" 
       as="image" 
       href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/hero_bg.webp"
-      fetchpriority="high"
+      fetchpriority="low"
       type="image/webp"
       crossorigin
     >
