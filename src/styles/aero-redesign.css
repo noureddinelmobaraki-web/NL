@@ -364,9 +364,8 @@
 }
 
 /* الأزرار والعناصر التفاعلية: انضغاط وتمدد سائل حقيقي عند اللمس أو النقر */
-button:not(:disabled),
-a[href],
-[role="button"],
+[data-liquid-pressed="true"],
+[data-liquid-rebound="true"],
 .nl-top-nav__button,
 .nl-bottom-nav__item,
 .nl-lattice-glass,
@@ -378,24 +377,28 @@ a[href],
     transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
     box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
     background 240ms ease,
-    border-color 240ms ease !important;
+    border-color 240ms ease;
 }
 
 button:not(:disabled)[data-liquid-pressed="true"],
 a[href][data-liquid-pressed="true"],
+[role="button"][data-liquid-pressed="true"],
 .nl-top-nav__button[data-liquid-pressed="true"],
 .nl-bottom-nav__item[data-liquid-pressed="true"],
 .nl-lattice-glass[data-liquid-pressed="true"],
 .manga-button[data-liquid-pressed="true"],
 .mid-nav-tab[data-liquid-pressed="true"],
-button:not(:disabled):active,
 .nl-top-nav__button:active,
-.nl-lattice-glass:active {
+.nl-bottom-nav__item:active,
+.nl-lattice-glass:active,
+.manga-button:active,
+.mid-nav-tab:active {
   transform: scale3d(0.92, 1.06, 1) translateY(1px) !important;
 }
 
 button:not(:disabled)[data-liquid-rebound="true"],
 a[href][data-liquid-rebound="true"],
+[role="button"][data-liquid-rebound="true"],
 .nl-top-nav__button[data-liquid-rebound="true"],
 .nl-lattice-glass[data-liquid-rebound="true"] {
   animation: nl-liquid-rebound-spring 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;

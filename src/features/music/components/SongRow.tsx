@@ -3,6 +3,7 @@ import { Heart, Activity, Download, Loader2, CheckCircle2, Check, Share2 } from 
 import { Track } from '../engine/types';
 import { useMusicStore } from '../store/musicStore';
 import { shareSong } from '../data/shareSong';
+import { prefetchAudio } from '../data/audioPrefetch';
 import styles from '../music.module.css';
 
 interface SongRowProps {
@@ -29,6 +30,18 @@ export function SongRow({
   const isSaved = useMusicStore((s) => s.downloaded.includes(song.id));
   const offlineActions = useMusicStore((s) => s.actions);
 
+  const handleActivate = () => {
+    if (selectable) onToggleSelect?.(song.id);
+    else onPlay(song.id);
+  };
+
+  const handleRowKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleActivate();
+    }
+  };
+
   const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const res = await shareSong(song);
@@ -38,7 +51,7 @@ export function SongRow({
 
   return (
     <div
-      onClick={() => (selectable ? onToggleSelect?.(song.id) : onPlay(song.id))}
+      onMouseEnter={() => prefetchAudio(song.src)}
       style={{
         position: 'absolute',
         top: 0,
@@ -49,21 +62,31 @@ export function SongRow({
       }}
       className="px-1 py-0.5"
     >
-      <div className={`group flex items-center h-full gap-4 p-3 rounded-2xl cursor-pointer transition-all duration-200 ${styles['nlp-row']} ${
+      <div className={`group flex items-center h-full gap-4 p-3 rounded-2xl transition-all duration-200 ${styles['nlp-row']} ${
         isSelected 
           ? 'bg-white/80 shadow-[0_4px_15px_rgba(52,232,158,0.25)] border border-[#34E89E]/60 scale-[1.02] translate-x-1' 
           : 'hover:bg-white/40 border border-transparent'
       }`}>
         {selectable && (
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onToggleSelect?.(song.id); }}
             className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'bg-[#FF7A1A] border-[#FF7A1A] text-white' : 'border-slate-400 text-transparent hover:border-[#FF7A1A]'}`}
-            aria-label={selected ? 'Deselect' : 'Select'}
+            aria-label={selected ? `Deselect ${song.title}` : `Select ${song.title}`}
+            aria-pressed={selected}
           >
             <Check size={14} />
           </button>
         )}
-        <div className="flex-grow overflow-hidden px-1">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`Play ${song.title} by ${song.artist}`}
+          onClick={handleActivate}
+          onKeyDown={handleRowKeyDown}
+          onFocus={() => prefetchAudio(song.src)}
+          className="flex-grow overflow-hidden px-1 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A1A] rounded-lg"
+        >
           <div className="flex items-center gap-2">
             {isSelected && <Activity size={16} className="text-[#34E89E] shrink-0 animate-pulse" />}
             <h4 className={`text-sm font-bold truncate ${isSaved ? 'text-[#00B894]' : isSelected ? 'text-slate-900' : 'text-slate-800'}`}>{song.title}</h4>
@@ -75,15 +98,20 @@ export function SongRow({
           </div>
           <p className={`text-xs truncate ${isSelected ? 'text-slate-700' : 'text-slate-600'}`}>{song.artist}</p>
         </div>
-        <div className="flex items-center gap-2 pr-2">
-          <button 
+        <div className="flex items-center gap-2 pr-2 shrink-0">
+          <button
+            type="button"
+            aria-label={`Favorite ${song.title}`}
+            aria-pressed={isFav}
             onClick={(e) => { e.stopPropagation(); onToggleFav(song.id); }} 
-            className={`p-1.5 rounded-full transition-colors ${isFav ? 'text-red-500' : 'text-slate-700 opacity-30 group-hover:opacity-100 hover:text-slate-900'}`}
+            className={`p-1.5 rounded-full transition-colors ${isFav ? 'text-red-500 opacity-100' : 'text-slate-400 hover:text-white opacity-85 sm:opacity-60 sm:group-hover:opacity-100'}`}
           >
             <Heart size={16} fill={isFav ? "currentColor" : "none"} />
           </button>
           <button
-            className={`p-1.5 transition-colors disabled:opacity-50 ${isSaved ? 'text-[#00E676] opacity-100' : 'text-slate-700 opacity-30 group-hover:opacity-100 hover:text-[#FF7A1A]'}`}
+            type="button"
+            aria-label={isSaved ? `Remove ${song.title} from offline storage` : `Download ${song.title} for offline`}
+            className={`p-1.5 transition-colors disabled:opacity-50 ${isSaved ? 'text-[#00E676] opacity-100' : 'text-slate-400 hover:text-white opacity-85 sm:opacity-60 sm:group-hover:opacity-100 hover:text-[#FF7A1A]'}`}
             title={isSaved ? 'Saved offline — tap to remove' : 'Save offline'}
             disabled={dl === 'start'}
             onClick={(e) => {
@@ -98,8 +126,10 @@ export function SongRow({
               : isSaved ? <CheckCircle2 size={16} /> : <Download size={16} />}
           </button>
           <button
+            type="button"
+            aria-label={`Share ${song.title}`}
             onClick={handleShareClick}
-            className={`p-1.5 transition-colors rounded-full text-slate-700 opacity-30 group-hover:opacity-100 hover:text-[#34E89E] ${
+            className={`p-1.5 transition-colors rounded-full text-slate-400 hover:text-white opacity-85 sm:opacity-60 sm:group-hover:opacity-100 hover:text-[#34E89E] ${
               shareState !== 'idle' ? 'text-[#00E676] opacity-100 scale-110' : ''
             }`}
             title="Share song"

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchRadioStationsByCountry, type RadioStation } from '../services/radioBrowserService';
 
-export function useRadioCatalog(selectedCountryCode: string | null) {
+export function useRadioCatalog(selectedCountryCode: string | null, enabled = true) {
   const [stations, setStations] = useState<RadioStation[]>([]);
   const [activeStation, setActiveStation] = useState<RadioStation | null>(null);
   const [isLoadingRadio, setIsLoadingRadio] = useState(false);
@@ -9,6 +9,7 @@ export function useRadioCatalog(selectedCountryCode: string | null) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const code = selectedCountryCode || 'MA';
     let cancelled = false;
     setIsLoadingRadio(true);
@@ -28,7 +29,7 @@ export function useRadioCatalog(selectedCountryCode: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [selectedCountryCode]);
+  }, [selectedCountryCode, enabled]);
 
   const playStation = useCallback((station: RadioStation) => {
     setActiveStation(station);

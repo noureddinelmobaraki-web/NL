@@ -34,24 +34,19 @@ const FV_JSDELIVR_PREFIX =
 function toTrack(raw: FvRow): Track {
   const id = String(raw.id ?? raw.key ?? Math.random().toString(36).slice(2));
   const trackId = id.startsWith('fv-') ? id : 'fv-' + id;
-  const numericId = id.replace(/^fv-/, '');
   const title = String(raw.title ?? 'Unknown title').trim();
-  const file = raw.file
-    ? String(raw.file).trim()
-    : /^\d+$/.test(numericId)
-      ? `song_${numericId.padStart(3, '0')}.m4a`
-      : '';
-  const urlStr = String(
-    raw.url ?? raw.src ?? (file ? `${FV_MEDIA_PREFIX}/${file}` : ''),
-  );
+  const file = raw.file ? String(raw.file).trim() : '';
+  const explicitUrl = String(raw.url ?? raw.src ?? '').trim();
+  const urlStr = explicitUrl || (file ? `${FV_MEDIA_PREFIX}/${file}` : '');
+  const isCdnFvTrack = !explicitUrl || explicitUrl.includes('/nl-fv-songs/');
   const fallbackStr = raw.urlJsdelivr
     ? String(raw.urlJsdelivr)
-    : file
+    : file && isCdnFvTrack
       ? `${FV_JSDELIVR_PREFIX}/${file}`
       : urlStr;
   const coverUrlStr = raw.coverUrl
     ? String(raw.coverUrl)
-    : file
+    : file && isCdnFvTrack
       ? `${FV_MEDIA_PREFIX}/${file.replace(/\.[^.]+$/, '.webp')}`
       : undefined;
 
@@ -93,7 +88,10 @@ export function loadFvTracks(): Promise<Track[]> {
       return res.json() as Promise<FvRow[]>;
     })
     .then((rows) => {
-      _cache = (Array.isArray(rows) ? rows : []).map(toTrack).filter((t) => t.src);
+      _cache = (Array.isArray(rows) ? rows : [])
+        .filter((r) => Boolean(r && (r.file || r.url || r.src)))
+        .map(toTrack)
+        .filter((t) => Boolean(t.src));
       return _cache;
     })
     .catch((err) => {

@@ -19,8 +19,16 @@ const read = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 const yt = (id, size) => 'https://i.ytimg.com/vi/' + id + '/' + size + '.jpg';
 
+const EXCLUDED_SITEMAP_SLUGS = new Set([
+  'بث-تجريبي',
+  '20260916-184153275',
+]);
+
 function slugify(str, fallback) {
-  const s = String(str || '').toLowerCase()
+  const s = String(str || '')
+    .normalize('NFC')
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .toLowerCase()
     .replace(/[\u2019'"]/g, '')
     .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
     .replace(/^-+|-+$/g, '')
@@ -64,12 +72,15 @@ for (const s of songs) {
   let slug = slugify(s.title, 'song-' + s.id);
   if (usedSlugs.has(slug)) slug = slug + '-' + s.id;
   usedSlugs.add(slug);
-  const pageUrl = DOMAIN + '/song/' + slug + '/';
+  const encodedSlug = encodeURIComponent(slug);
+  const pageUrl = DOMAIN + '/song/' + encodedSlug + '/';
   const deepLink = BASE + '/?song=' + s.id;
   const ytid = ytMap[String(s.id)];
   const cover = ytid ? yt(ytid, 'hqdefault') : ORIGIN + '/nl-audio-cdn/playlist_cover.webp';
   const snippet = lyricSnippet(s.lrcFile, 5);
   const desc = 'استمع إلى «' + s.title + '» للفنان ' + ARTIST + ' (NL) — راب/هيب هوب من الدار البيضاء.' + (snippet ? ' مقطع من الكلمات: ' + snippet : '');
+  const isDraftOrTest = EXCLUDED_SITEMAP_SLUGS.has(slug);
+  const robotsMeta = isDraftOrTest ? 'noindex, nofollow' : 'index, follow, max-image-preview:large';
   const ld = {
     '@context': 'https://schema.org', '@type': 'MusicRecording',
     name: s.title,
@@ -78,9 +89,11 @@ for (const s of songs) {
     ...(ytid ? { sameAs: 'https://www.youtube.com/watch?v=' + ytid } : {}),
     potentialAction: { '@type': 'ListenAction', target: DOMAIN + '/?song=' + s.id },
   };
-  const html = '<!DOCTYPE html>\n<html lang="ar" dir="rtl">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(s.title) + ' — ' + esc(ARTIST) + ' (NL)</title>\n<meta name="description" content="' + esc(desc) + '">\n<meta name="robots" content="index, follow, max-image-preview:large">\n<link rel="canonical" href="' + pageUrl + '">\n<meta property="og:type" content="music.song">\n<meta property="og:title" content="' + esc(s.title) + ' — ' + esc(ARTIST) + '">\n<meta property="og:description" content="' + esc(desc) + '">\n<meta property="og:image" content="' + cover + '">\n<meta property="og:url" content="' + pageUrl + '">\n<meta name="twitter:card" content="summary_large_image">\n<link rel="icon" href="' + BASE + '/favicon.ico" sizes="any">\n<script type="application/ld+json">' + JSON.stringify(ld) + '</script>\n<style>body{margin:0;background:#080a14;color:#e8eaf0;font-family:system-ui,Cairo,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px}main{max-width:640px}img{width:220px;height:220px;object-fit:cover;border-radius:16px}h1{font-size:1.6rem;margin:16px 0 4px}p{color:#aab;line-height:1.9}a.btn{display:inline-block;margin-top:18px;background:#fff;color:#000;padding:12px 28px;border-radius:100px;font-weight:700;text-decoration:none}</style>\n</head>\n<body>\n<main>\n<img src="' + cover + '" alt="' + esc(s.title) + ' — ' + esc(ARTIST) + '" width="220" height="220">\n<h1>' + esc(s.title) + '</h1>\n<p><strong>' + esc(ARTIST) + ' — NL</strong><br>راب/هيب هوب مستقل من الدار البيضاء، المغرب.</p>\n' + (snippet ? '<p>' + esc(snippet) + '</p>\n' : '') + '<a class="btn" href="' + deepLink + '">▶ استمع الآن على NL</a>\n</main>\n</body>\n</html>';
+  const html = '<!DOCTYPE html>\n<html lang="ar" dir="rtl">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(s.title) + ' — ' + esc(ARTIST) + ' (NL)</title>\n<meta name="description" content="' + esc(desc) + '">\n<meta name="robots" content="' + robotsMeta + '">\n<link rel="canonical" href="' + pageUrl + '">\n<meta property="og:type" content="music.song">\n<meta property="og:title" content="' + esc(s.title) + ' — ' + esc(ARTIST) + '">\n<meta property="og:description" content="' + esc(desc) + '">\n<meta property="og:image" content="' + cover + '">\n<meta property="og:url" content="' + pageUrl + '">\n<meta name="twitter:card" content="summary_large_image">\n<link rel="icon" href="' + BASE + '/favicon.ico" sizes="any">\n<script type="application/ld+json">' + JSON.stringify(ld) + '</script>\n<style>body{margin:0;background:#080a14;color:#e8eaf0;font-family:system-ui,Cairo,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px}main{max-width:640px}img{width:220px;height:220px;object-fit:cover;border-radius:16px}h1{font-size:1.6rem;margin:16px 0 4px}p{color:#aab;line-height:1.9}a.btn{display:inline-block;margin-top:18px;background:#fff;color:#000;padding:12px 28px;border-radius:100px;font-weight:700;text-decoration:none}</style>\n</head>\n<body>\n<main>\n<img src="' + cover + '" alt="' + esc(s.title) + ' — ' + esc(ARTIST) + '" width="220" height="220">\n<h1>' + esc(s.title) + '</h1>\n<p><strong>' + esc(ARTIST) + ' — NL</strong><br>راب/هيب هوب مستقل من الدار البيضاء، المغرب.</p>\n' + (snippet ? '<p>' + esc(snippet) + '</p>\n' : '') + '<a class="btn" href="' + deepLink + '">▶ استمع الآن على NL</a>\n</main>\n</body>\n</html>';
   write('song/' + slug + '/index.html', html);
-  songUrls.push({ loc: pageUrl, image: cover, title: s.title });
+  if (!isDraftOrTest) {
+    songUrls.push({ loc: pageUrl, image: cover, title: s.title });
+  }
 }
 
 // ---------- section hub pages ----------
@@ -172,8 +185,8 @@ for (const s of songs) {
   index.push({ id: 'own-' + s.id, t: 'song', title: s.title, artist: 'NL', link: BASE + '/?song=' + s.id, cover: ytid ? yt(ytid, 'mqdefault') : '' });
 }
 for (const r of fv) {
-  const sid = String(r.id);
-  const fileStr = r.file || (/^\d+$/.test(sid) ? `song_${sid.padStart(3, '0')}.m4a` : '');
+  if (!r.file && !r.url && !r.src) continue;
+  const fileStr = r.file || '';
   const cover =
     r.coverUrl ||
     (fileStr

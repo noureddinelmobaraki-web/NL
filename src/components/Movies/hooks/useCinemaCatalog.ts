@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { FALLBACK_MOVIES, FALLBACK_GENRES } from "../CuratedFallback";
 import { FALLBACK_SERIES, FALLBACK_SERIES_GENRES } from "../../Series/CuratedFallback";
 import { tmdbLang } from "../../../utils/lang";
@@ -556,14 +556,18 @@ export function useCinemaCatalog({
   }, [tmdbKey, currentLang, seriesLoadTriggered]);
 
   // Search Debounce
+  const searchSeqRef = useRef(0);
   useEffect(() => {
+    const seq = ++searchSeqRef.current;
     if (!searchQuery.trim()) {
       setIsSearching(false);
       setSearchResults([]);
       return;
     }
 
+    const abortCtrl = new AbortController();
     const delayDebounce = setTimeout(async () => {
+      if (seq !== searchSeqRef.current || abortCtrl.signal.aborted) return;
       setIsSearching(true);
       try {
         const isTv = activeTab === "series";
@@ -576,28 +580,39 @@ export function useCinemaCatalog({
           const matched = normalizedList.filter((item) => {
             return item.title.toLowerCase().includes(query) || item.overview.toLowerCase().includes(query);
           });
-          setSearchResults(matched);
-          setIsSearching(false);
+          if (seq === searchSeqRef.current && !abortCtrl.signal.aborted) {
+            setSearchResults(matched);
+            setIsSearching(false);
+          }
           return;
         }
 
         const endpoint = isTv ? "search/tv" : "search/movie";
         const searchData = await fetchWithCache(
           `${TMDB_BASE_URL}/${endpoint}?api_key=${tmdbKey}&language=${tmdbLang(currentLang)}&query=${encodeURIComponent(searchQuery)}`,
+          abortCtrl.signal,
         );
+        if (seq !== searchSeqRef.current || abortCtrl.signal.aborted) return;
         const results = filterLiveActionRaw(searchData?.results || [])
           .map((r: any) => normalizeItem(r, mediaType, currentLang))
           .filter(isLiveActionItem);
         setSearchResults(results);
       } catch (err) {
-        console.error("Failed search operation:", err);
+        if ((err as { name?: string })?.name !== "AbortError") {
+          console.error("Failed search operation:", err);
+        }
       } finally {
-        setIsSearching(false);
+        if (seq === searchSeqRef.current && !abortCtrl.signal.aborted) {
+          setIsSearching(false);
+        }
       }
     }, 400);
 
-    return () => clearTimeout(delayDebounce);
-  }, [searchQuery, activeTab, tmdbKey, currentLang]);
+    return () => {
+      clearTimeout(delayDebounce);
+      abortCtrl.abort();
+    };
+  }, [searchQuery, activeTab, tmdbKey, currentLang, searchSeqRef]);
 
   const activeGenres = activeTab === "movies" ? movieGenres : seriesGenres;
   const activeFallbackSelected = activeTab === "movies" ? FALLBACK_MOVIES : FALLBACK_SERIES;

@@ -20,29 +20,38 @@ export class CatalogOrchestrator {
   private seenNormalizedTitles = new Set<string>();
   private shelfPageTrackers = new Map<string, number>();
 
-  private normalizeTitle(title: string): string {
-    return (title || '')
+  private normalizeTitle(title: string, year?: string | number): string {
+    const cleaned = (title || '')
       .toLowerCase()
-      .replace(/\(.*?\)|\[.*?\]/g, '')
-      .replace(/\b(19\d\d|20\d\d|restored|remastered|hd|720p|1080p|film noir|edition)\b/g, '')
-      .replace(/[^a-z0-9\u0600-\u06FF]/g, '')
+      .replace(/\b(restored|remastered|hd|720p|1080p|film noir|edition)\b/gi, '')
+      .replace(/[^\p{L}\p{N}]+/gu, '')
       .trim();
+    const yearSuffix = year ? String(year).trim() : '';
+    return yearSuffix && !cleaned.includes(yearSuffix) ? `${cleaned}_${yearSuffix}` : cleaned;
   }
 
-  public filterUniqueItems<T extends { id: string | number; title: string }>(
+  public filterUniqueItems<T extends { id: string | number; title: string; year?: string | number }>(
     sourcePrefix: string,
     items: T[],
     getKey?: (item: T) => string,
   ): T[] {
     const unique: T[] = [];
     for (const item of items) {
+      const hasValidId =
+        item.id !== undefined &&
+        item.id !== null &&
+        String(item.id).trim() !== '';
       const customKey = getKey ? getKey(item) : `${sourcePrefix}:${item.id}`;
-      const normTitle = this.normalizeTitle(item.title);
-      if (this.seenIds.has(customKey)) continue;
-      if (normTitle && this.seenNormalizedTitles.has(normTitle)) continue;
+      const normTitle = this.normalizeTitle(item.title, item.year);
+      if (hasValidId && this.seenIds.has(customKey)) continue;
+      if (!hasValidId && normTitle && this.seenNormalizedTitles.has(normTitle)) continue;
 
-      this.seenIds.add(customKey);
-      if (normTitle) this.seenNormalizedTitles.add(normTitle);
+      if (hasValidId) {
+        this.seenIds.add(customKey);
+      }
+      if (normTitle) {
+        this.seenNormalizedTitles.add(normTitle);
+      }
       unique.push(item);
     }
     return unique;

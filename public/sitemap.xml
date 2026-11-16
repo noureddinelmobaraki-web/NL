@@ -12,12 +12,6 @@
     <image:image><image:loc>https://i.ytimg.com/vi/-sDZtcRZEag/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/song/20260916-184153275/</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/lfnKMMFeu5k/hqdefault.jpg</image:loc></image:image>
-  </url>
-  <url>
     <loc>https://noureddinelmobaraki-web.github.io/NL/song/apologize-for-my-weird-mix/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -72,19 +66,13 @@
     <image:image><image:loc>https://i.ytimg.com/vi/JttVnQPRM_E/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/song/ألا-كل-ماشية-الخيزلى/</loc>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/%D8%A3%D9%84%D8%A7-%D9%83%D9%84-%D9%85%D8%A7%D8%B4%D9%8A%D8%A9-%D8%A7%D9%84%D8%AE%D9%8A%D8%B2%D9%84%D9%89/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <image:image><image:loc>https://i.ytimg.com/vi/9S9R872FJaM/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/song/بث-تجريبي/</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <image:image><image:loc>https://i.ytimg.com/vi/pCZVGsM2Ywk/hqdefault.jpg</image:loc></image:image>
-  </url>
-  <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/song/غَيْرُ-مُجْدٍ-فِي-مِلَّتِي-وَاعْتِقَادِي/</loc>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/%D8%BA%D9%8A%D8%B1-%D9%85%D8%AC%D8%AF-%D9%81%D9%8A-%D9%85%D9%84%D8%AA%D9%8A-%D9%88%D8%A7%D8%B9%D8%AA%D9%82%D8%A7%D8%AF%D9%8A/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <image:image><image:loc>https://i.ytimg.com/vi/w_PFK6wS_84/hqdefault.jpg</image:loc></image:image>
@@ -366,7 +354,7 @@
     <image:image><image:loc>https://i.ytimg.com/vi/mPm6yIKjKqY/hqdefault.jpg</image:loc></image:image>
   </url>
   <url>
-    <loc>https://noureddinelmobaraki-web.github.io/NL/song/عبلة/</loc>
+    <loc>https://noureddinelmobaraki-web.github.io/NL/song/%D8%B9%D8%A8%D9%84%D8%A9/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <image:image><image:loc>https://i.ytimg.com/vi/XfO0HVtJEmU/hqdefault.jpg</image:loc></image:image>

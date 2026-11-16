@@ -13,7 +13,6 @@ import { registerServiceWorker } from './utils/registerSW';
 import { reportWebVitals } from './utils/vitals';
 import { isAutomatedEnv } from './utils/env';
 import { initSentry } from './utils/sentry';
-import './i18n';
 import i18n, { applyDirection } from './i18n';
 
 // Dynamic preconnect to Supabase endpoint

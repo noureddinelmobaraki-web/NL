@@ -58,6 +58,8 @@
 @import "./styles/aero-redesign.css"                 layer(liquid);
 @import "./styles/components/mobile-modals.css"      layer(mobile);
 @import "./styles/components/profile-mobile-fit.css" layer(mobile);
+@import "./styles/components/perf-lite.css"          layer(mobile);
+@import "./styles/mobile/backdrop-policy.css"        layer(mobile);
 
 /* MOBILE-ONLY GALLERY AND LENS IMMERSIVE STYLES */
 body.gallery-immersive nav[aria-label="Mobile Navigation"],
@@ -81,13 +83,6 @@ body.lens-immersive .app-mobile-nav {
   .song-card:active {
     transform: scale(0.97);
     transition: transform 120ms ease-out;
-  }
-}
-
-/* Remove hover stickiness on mobile */
-@media (hover: hover) {
-  .song-card:hover {
-    /* Hover effects applied via tailwind anyway, keeping this empty just in case */
   }
 }
 
@@ -133,12 +128,16 @@ body.standalone-app {
   --lyric-active-color:    #ffffff;
   --lyric-inactive-color:  rgba(255, 255, 255, 0.45);
   --lyric-active-shadow:   rgba(167, 139, 250, 0.6);
+  --skeleton-base:         rgba(24, 24, 27, 0.85);
+  --skeleton-highlight:    rgba(39, 39, 42, 0.95);
 }
 
 [data-theme="light"] {
   --lyric-active-color:    #000000;
   --lyric-inactive-color:  rgba(0, 0, 0, 0.35);
   --lyric-active-shadow:   rgba(0, 0, 0, 0.15);
+  --skeleton-base:         rgba(226, 232, 240, 0.85);
+  --skeleton-highlight:    rgba(241, 245, 249, 0.98);
 }
 
 /* === NEW-4: توافقية الأجهزة + لمس آمن (إضافة فقط) === */
@@ -172,7 +171,12 @@ button, a, [role="button"], input, select, textarea, label {
 }
 
 .nl-skeleton-card {
-  background-image: linear-gradient(90deg, #18181b 0px, #27272a 40px, #18181b 80px);
+  background-image: linear-gradient(
+    90deg,
+    var(--skeleton-base, rgba(148, 163, 184, 0.14)) 0px,
+    var(--skeleton-highlight, rgba(148, 163, 184, 0.28)) 40px,
+    var(--skeleton-base, rgba(148, 163, 184, 0.14)) 80px
+  );
   background-size: 200% 100%;
   animation: nl-skeleton-loading 1.5s infinite ease-in-out;
 }
@@ -187,7 +191,3 @@ html.nl-modal-open body {
   height: 100% !important;
   position: relative !important;
 }
-
-
-@import "./styles/components/perf-lite.css"   layer(mobile);
-@import "./styles/mobile/backdrop-policy.css" layer(mobile);

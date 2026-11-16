@@ -158,7 +158,8 @@ class AudioManager {
     }
 
     const generation = (existing?.generation ?? 0) + 1;
-    const entry: AudioEntry = { source, element, volume, pendingPlay: false, generation };
+    const playGen = (existing?.playGen ?? 0) + 1;
+    const entry: AudioEntry = { source, element, volume, pendingPlay: false, generation, playGen };
     this.registry.set(source, entry);
 
     const onCanPlay = () => {
@@ -246,6 +247,7 @@ class AudioManager {
       if (!entry) return;
 
       entry.generation += 1;
+      entry.playGen = (entry.playGen ?? 0) + 1;
       const myGeneration = entry.generation;
 
       if (this.active && this.active !== source) {
@@ -302,6 +304,7 @@ class AudioManager {
 
     if (isStale()) return;
 
+    entry.playGen = (entry.playGen ?? 0) + 1;
     this.clearFade(entry.element);
 
     if (entry.element.paused) {
@@ -334,6 +337,7 @@ class AudioManager {
     if (!entry) return;
 
     entry.pendingPlay = false;
+    const pauseGen = entry.playGen ?? 0;
 
     if (source === 'song') {
       this.clearFade(entry.element);
@@ -343,6 +347,10 @@ class AudioManager {
     } else {
       const ms = fadeMs ?? (source === 'intro' ? 800 : 200);
       this.fadeOut(entry.element, ms).then(() => {
+        const current = this.registry.get(source);
+        if ((current?.playGen ?? 0) !== pauseGen || this.active === source) {
+          return;
+        }
         entry.element.pause();
         entry.element.volume = 0;
         if (source !== 'bg') {
@@ -446,6 +454,9 @@ class AudioManager {
     if (typeof document !== 'undefined' && document.documentElement.hasAttribute('data-page-active')) return;
     const bg = this.registry.get('bg');
     if (!bg || this.bgUserPaused || this.bgSuppressors.size > 0 || this.active) return;
+
+    bg.playGen = (bg.playGen ?? 0) + 1;
+    this.clearFade(bg.element);
 
     if (bg.element.paused) {
       bg.element.volume = 0;

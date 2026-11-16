@@ -9,7 +9,7 @@ import { SongRow } from './SongRow';
 import { PlaylistsPanel } from './PlaylistsPanel';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
 import { Track } from '../engine/types';
-import { prefetchTracks } from '../data/audioPrefetch';
+import { prefetchAudio } from '../data/audioPrefetch';
 import styles from '../music.module.css';
 import { Search, X, CheckSquare, ListPlus, DownloadCloud, Lightbulb } from 'lucide-react';
 import {SuggestSongModal} from './SuggestSongModal';
@@ -124,7 +124,18 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
     if (isEndless) deck.ensureIndex(endIndex);
   }, [isEndless, deck, endIndex]);
 
-  useEffect(() => { prefetchTracks(tracks, 6); }, [tracks]);
+  useEffect(() => {
+    if (!currentId || tracks.length === 0) return;
+    const s = useMusicStore.getState();
+    const activeQueue = s.shuffle ? s.shuffleQueue : s.queue;
+    const idx = activeQueue.indexOf(currentId);
+    const nextId = idx >= 0 ? activeQueue[idx + 1] : undefined;
+    if (!nextId) return;
+    const nextTrack = tracks.find((t) => t.id === nextId);
+    if (nextTrack?.src) {
+      prefetchAudio(nextTrack.src);
+    }
+  }, [currentId, tracks]);
 
   const rowAt = useCallback((virtualIndex: number): Track | undefined => {
     if (isEndless) return tracks[deck.resolve(virtualIndex)];
@@ -159,7 +170,7 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
             key={t}
             onClick={() => { setTab(t); if (t === 'playlists') exitSelect(); }}
             className={
-              'rounded-full font-bold whitespace-nowrap transition-all duration-300 ease-out transform origin-center ' +
+              'shrink-0 rounded-full font-bold whitespace-nowrap transition-all duration-300 ease-out transform origin-center ' +
               (tab === t
                 ? 'bg-[#FF7A1A] text-white shadow-md scale-100 px-4 py-1.5 text-xs sm:text-sm font-extrabold ring-2 ring-[#FF7A1A]/20'
                 : 'bg-white/50 text-slate-700 hover:bg-white/80 border border-white/60 shadow-sm scale-90 px-2.5 py-1 text-[11px] sm:text-xs opacity-70 hover:opacity-100 hover:scale-95')
@@ -173,7 +184,7 @@ export function SongList({ onOpenPlayer }: { onOpenPlayer?: () => void }) {
               : 'Playlists'}
           </button>
         ))}
-        {!online && <span className="ml-auto text-xs font-bold text-[#00B894] whitespace-nowrap px-2">Offline</span>}
+        {!online && <span className="ml-auto shrink-0 text-xs font-bold text-[#00B894] whitespace-nowrap px-2">Offline</span>}
       </div>
 
       {tab === 'playlists' ? (

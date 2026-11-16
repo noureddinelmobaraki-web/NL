@@ -20,22 +20,22 @@ export class SafeFetchError extends Error {
 export interface SafeFetchOptions extends RequestInit {
   timeoutMs?: number;
   retryOnFailure?: boolean;
+  keepTimeoutForBody?: boolean;
 }
 
-/**
- * Executes a fetch request with an integrated timeout, abort integration, and optional retry.
- * 
- * @param url The resource URL to fetch.
- * @param options Custom setup including timeout and retry parameters.
- * @returns Fully loaded Response object.
- * @throws SafeFetchError
- */
-export async function safeFetch(
+interface InternalFetchContext {
+  response: Response;
+  cleanup: () => void;
+  isTimeout: () => boolean;
+}
+
+async function safeFetchInternal(
   url: string | URL,
   options?: SafeFetchOptions
-): Promise<Response> {
+): Promise<InternalFetchContext> {
   const timeoutMs = options?.timeoutMs ?? 10000;
   const retryOnFailure = options?.retryOnFailure ?? false;
+  const keepTimeoutForBody = options?.keepTimeoutForBody ?? false;
   const externalSignal = options?.signal;
 
   let attempt = 0;
@@ -44,12 +44,25 @@ export async function safeFetch(
   while (attempt < maxAttempts) {
     attempt++;
     let isTimeout = false;
-    let timeoutId: any = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const controller = new AbortController();
 
-    const cleanup = () => {
+    const cleanupTimer = () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    const onExternalAbort = () => {
+      cleanupTimer();
+      controller.abort();
+    };
+
+    const fullCleanup = () => {
+      cleanupTimer();
+      if (externalSignal) {
+        externalSignal.removeEventListener('abort', onExternalAbort);
       }
     };
 
@@ -60,32 +73,27 @@ export async function safeFetch(
       }, timeoutMs);
     }
 
-    const onExternalAbort = () => {
-      cleanup();
-      controller.abort();
-    };
-
     if (externalSignal) {
       if (externalSignal.aborted) {
-        cleanup();
+        fullCleanup();
         throw new SafeFetchError('Request aborted', 'abort');
       }
       externalSignal.addEventListener('abort', onExternalAbort);
     }
 
     try {
-      const mergedOptions = {
+      const mergedOptions: RequestInit = {
         ...options,
         signal: controller.signal,
       };
 
       const response = await fetch(url, mergedOptions);
-      cleanup();
-      if (externalSignal) {
-        externalSignal.removeEventListener('abort', onExternalAbort);
+      if (!keepTimeoutForBody) {
+        fullCleanup();
       }
 
       if (!response.ok) {
+        fullCleanup();
         throw new SafeFetchError(
           `Server responded with status ${response.status}`,
           'server',
@@ -93,12 +101,13 @@ export async function safeFetch(
         );
       }
 
-      return response;
+      return {
+        response,
+        cleanup: fullCleanup,
+        isTimeout: () => isTimeout,
+      };
     } catch (err: unknown) {
-      cleanup();
-      if (externalSignal) {
-        externalSignal.removeEventListener('abort', onExternalAbort);
-      }
+      fullCleanup();
 
       let errorToThrow: SafeFetchError;
 
@@ -124,15 +133,42 @@ export async function safeFetch(
         throw errorToThrow;
       }
 
+      // Do not retry 4xx client errors (400, 401, 403, 404, etc.) except 429 Too Many Requests
+      if (
+        errorToThrow.status &&
+        errorToThrow.status >= 400 &&
+        errorToThrow.status < 500 &&
+        errorToThrow.status !== 429
+      ) {
+        throw errorToThrow;
+      }
+
       if (attempt >= maxAttempts) {
         throw errorToThrow;
       }
 
-      // Loop continues to next attempt for network/server/timeout
+      // Exponential backoff before next attempt for network/5xx/429/timeout
+      await new Promise((r) => setTimeout(r, 150 * Math.pow(2, attempt - 1)));
     }
   }
 
   throw new SafeFetchError('Unknown fetch error', 'network');
+}
+
+/**
+ * Executes a fetch request with an integrated timeout, abort integration, and optional retry.
+ * 
+ * @param url The resource URL to fetch.
+ * @param options Custom setup including timeout and retry parameters.
+ * @returns Fully loaded Response object.
+ * @throws SafeFetchError
+ */
+export async function safeFetch(
+  url: string | URL,
+  options?: SafeFetchOptions
+): Promise<Response> {
+  const { response } = await safeFetchInternal(url, options);
+  return response;
 }
 
 /**
@@ -147,11 +183,23 @@ export async function safeFetchJson<T>(
   url: string | URL,
   options?: SafeFetchOptions
 ): Promise<T> {
-  const response = await safeFetch(url, options);
+  const { response, cleanup, isTimeout } = await safeFetchInternal(url, {
+    ...options,
+    keepTimeoutForBody: true,
+  });
   try {
-    return await response.json() as T;
+    return (await response.json()) as T;
   } catch (err: unknown) {
+    const errorObj = err as { name?: string };
+    if (errorObj?.name === 'AbortError') {
+      if (isTimeout()) {
+        throw new SafeFetchError('Request timed out', 'timeout', response.status, err);
+      }
+      throw new SafeFetchError('Request aborted', 'abort', response.status, err);
+    }
     throw new SafeFetchError('Failed to parse response as JSON', 'parse', response.status, err);
+  } finally {
+    cleanup();
   }
 }
 
@@ -167,10 +215,22 @@ export async function safeFetchText(
   url: string | URL,
   options?: SafeFetchOptions
 ): Promise<string> {
-  const response = await safeFetch(url, options);
+  const { response, cleanup, isTimeout } = await safeFetchInternal(url, {
+    ...options,
+    keepTimeoutForBody: true,
+  });
   try {
     return await response.text();
   } catch (err: unknown) {
+    const errorObj = err as { name?: string };
+    if (errorObj?.name === 'AbortError') {
+      if (isTimeout()) {
+        throw new SafeFetchError('Request timed out', 'timeout', response.status, err);
+      }
+      throw new SafeFetchError('Request aborted', 'abort', response.status, err);
+    }
     throw new SafeFetchError('Failed to parse response as text', 'parse', response.status, err);
+  } finally {
+    cleanup();
   }
 }

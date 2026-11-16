@@ -10,12 +10,49 @@ export interface CacheEntry {
 }
 export const MEMORY_CACHE: Record<string, CacheEntry> = {};
 export const IN_FLIGHT: Record<string, Promise<any> | undefined> = {};
+const MAX_MEMORY_CACHE_ENTRIES = 120;
+
+function setMemoryCache(key: string, entry: CacheEntry): void {
+  if (!(key in MEMORY_CACHE)) {
+    const keys = Object.keys(MEMORY_CACHE);
+    if (keys.length >= MAX_MEMORY_CACHE_ENTRIES) {
+      delete MEMORY_CACHE[keys[0]];
+    }
+  }
+  MEMORY_CACHE[key] = entry;
+}
+
+function raceWithSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) {
+    return Promise.reject(new DOMException("Aborted", "AbortError"));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (val) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(val);
+      },
+      (err) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(err);
+      }
+    );
+  });
+}
 
 export async function fetchWithCache(
   url: string,
   signal?: AbortSignal,
   ttlMs = 3600_000 * 24,
 ): Promise<any> {
+  if (signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
   const key = `cache_v2_${url.replace(/([?&])api_key=[^&]*/i, "$1api_key=_")}`;
   const now = Date.now();
   const fresh = (t: number) => now - t < ttlMs;
@@ -25,12 +62,12 @@ export async function fetchWithCache(
     const p = (async () => {
       try {
         const res = await fetch(url, {
-          signal: signal ?? AbortSignal.timeout(10_000),
+          signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) throw new Error("TMDB network response failed");
         const d = await res.json();
         const entry = { d, t: Date.now() };
-        MEMORY_CACHE[key] = entry;
+        setMemoryCache(key, entry);
         if (!/\/search\//.test(url)) {
           try {
             localStorage.setItem(key, JSON.stringify(entry));
@@ -54,13 +91,13 @@ export async function fetchWithCache(
     const local = localStorage.getItem(key);
     if (local) {
       const parsed = JSON.parse(local) as CacheEntry;
-      MEMORY_CACHE[key] = parsed;
+      setMemoryCache(key, parsed);
       if (!fresh(parsed.t)) revalidate().catch(() => {});
       return parsed.d;
     }
   } catch {}
 
-  return revalidate();
+  return raceWithSignal(revalidate(), signal);
 }
 
 export type Media = "movie" | "tv";

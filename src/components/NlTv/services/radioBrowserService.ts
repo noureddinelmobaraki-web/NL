@@ -122,7 +122,8 @@ export async function fetchRadioStationsByCountry(countryCode: string): Promise<
   for (const base of RADIO_MIRRORS) {
     try {
       const res = await fetch(
-        `${base}/stations/bycountrycodeexact/${encodeURIComponent(code)}?limit=60&order=votes&reverse=true&hidebroken=true`
+        `${base}/stations/bycountrycodeexact/${encodeURIComponent(code)}?limit=60&order=votes&reverse=true&hidebroken=true`,
+        { signal: AbortSignal.timeout(7000) }
       );
       if (!res.ok) continue;
       const raw: any[] = await res.json();

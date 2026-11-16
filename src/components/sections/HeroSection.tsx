@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { m } from "framer-motion";
 import { ASSETS, getThemedImage } from "../../constants/assets";
 import { ResponsiveImage } from "../ResponsiveImage";
@@ -21,6 +21,10 @@ export const HeroSection = memo(() => {
   const isAutomated = isAutomatedEnv();
   const headerRef = useFadeInOnView<HTMLElement>();
   const bioVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(
+    () => isAutomated || typeof IntersectionObserver === 'undefined'
+  );
+  const [isInView, setIsInView] = useState(true);
 
   useEffect(() => {
     const video = bioVideoRef.current;
@@ -28,11 +32,57 @@ export const HeroSection = memo(() => {
     video.defaultMuted = true;
     video.muted = true;
     video.playsInline = true;
-    const playPromise = video.play();
-    if (playPromise && typeof playPromise.catch === 'function') {
-      playPromise.catch(() => {});
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setShouldLoadVideo(true);
+      return;
     }
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        if (entry.isIntersecting) {
+          setShouldLoadVideo(true);
+          setIsInView(true);
+        } else {
+          setIsInView(false);
+        }
+      },
+      { rootMargin: '150px 0px', threshold: 0.05 }
+    );
+    io.observe(video);
+
+    return () => {
+      io.disconnect();
+    };
   }, []);
+
+  useEffect(() => {
+    const video = bioVideoRef.current;
+    if (!video || !shouldLoadVideo) return;
+
+    const syncPlayback = () => {
+      if (isInView && document.visibilityState === 'visible') {
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(() => {});
+        }
+      } else {
+        try {
+          video.pause();
+        } catch {}
+      }
+    };
+
+    video.load();
+    syncPlayback();
+
+    document.addEventListener('visibilitychange', syncPlayback);
+    return () => {
+      document.removeEventListener('visibilitychange', syncPlayback);
+    };
+  }, [shouldLoadVideo, isInView]);
 
   // Light theme profile switching logic
   const lightProfileSrc = useLightProfileImage(resolvedTheme);
@@ -121,13 +171,17 @@ export const HeroSection = memo(() => {
               loop
               muted
               playsInline
-              preload="auto"
+              preload="none"
               poster={bioPosterUrl}
               className="hero-bio-video"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             >
-              <source src={bioWebmUrl} type="video/webm" />
-              <source src={bioMp4Url} type="video/mp4" />
+              {shouldLoadVideo && (
+                <>
+                  <source src={bioWebmUrl} type="video/webm" />
+                  <source src={bioMp4Url} type="video/mp4" />
+                </>
+              )}
             </video>
           </div>
 

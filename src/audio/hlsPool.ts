@@ -20,6 +20,7 @@ const HLS_CONFIG: Partial<HlsConfig> = {
 // ─── Persistent Instance Pool (LRU implementation) ──────────────────────
 const MAX_POOL_SIZE = 4;
 const pool = new Map<string, Hls>();
+const pendingCreations = new Map<string, Promise<Hls>>();
 const lruOrder: string[] = [];
 
 let HlsModule: typeof import('hls.js') | null = null;
@@ -48,30 +49,51 @@ export async function getOrCreateHls(url: string): Promise<Hls> {
     return existing;
   }
 
-  // Enforce pool size limit by destroying and purging the oldest instance
-  if (pool.size >= MAX_POOL_SIZE) {
-    const oldestUrl = lruOrder.shift();
-    if (oldestUrl) {
-      const oldestHls = pool.get(oldestUrl);
-      if (oldestHls) {
-        try {
-          oldestHls.stopLoad();
-          oldestHls.detachMedia();
-          oldestHls.destroy();
-        } catch (e) {
-          console.error('[hlsPool] Failed to destroy oldest HLS instance:', e);
-        }
-        pool.delete(oldestUrl);
-      }
-    }
+  const pending = pendingCreations.get(url);
+  if (pending) {
+    return pending;
   }
 
-  const HlsConstructor = await getHlsClass();
-  const hls = new HlsConstructor(HLS_CONFIG);
-  hls.loadSource(url);
-  pool.set(url, hls);
-  lruOrder.push(url);
-  return hls;
+  const creationPromise = (async () => {
+    try {
+      const HlsConstructor = await getHlsClass();
+
+      // Re-check pool in case it was populated while awaiting HlsClass
+      const alreadyInPool = pool.get(url);
+      if (alreadyInPool) {
+        return alreadyInPool;
+      }
+
+      // Enforce pool size limit by destroying and purging the oldest instance
+      if (pool.size >= MAX_POOL_SIZE) {
+        const oldestUrl = lruOrder.shift();
+        if (oldestUrl) {
+          const oldestHls = pool.get(oldestUrl);
+          if (oldestHls) {
+            try {
+              oldestHls.stopLoad();
+              oldestHls.detachMedia();
+              oldestHls.destroy();
+            } catch (e) {
+              console.error('[hlsPool] Failed to destroy oldest HLS instance:', e);
+            }
+            pool.delete(oldestUrl);
+          }
+        }
+      }
+
+      const hls = new HlsConstructor(HLS_CONFIG);
+      hls.loadSource(url);
+      pool.set(url, hls);
+      lruOrder.push(url);
+      return hls;
+    } finally {
+      pendingCreations.delete(url);
+    }
+  })();
+
+  pendingCreations.set(url, creationPromise);
+  return creationPromise;
 }
 
 /**
@@ -79,6 +101,7 @@ export async function getOrCreateHls(url: string): Promise<Hls> {
  * Only needed for cleanup on full unmount (e.g. page navigation away).
  */
 export function destroyHls(url: string): void {
+  pendingCreations.delete(url);
   const hls = pool.get(url);
   if (hls) {
     try {
@@ -99,6 +122,7 @@ export function destroyHls(url: string): void {
  * Call on app unmount / page unload if needed.
  */
 export function destroyAllHls(): void {
+  pendingCreations.clear();
   pool.forEach(hls => {
     try {
       hls.stopLoad();

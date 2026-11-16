@@ -80,16 +80,36 @@ ${lastmodLine}
   }
 }
 
+const EXCLUDED_SITEMAP_SLUGS = new Set([
+  'بث-تجريبي',
+  '20260916-184153275',
+]);
+
+export function slugifySongTitle(str, fallback = '') {
+  const s = String(str || '')
+    .normalize('NFC')
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .toLowerCase()
+    .replace(/[\u2019'"]/g, '')
+    .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+  return s || fallback;
+}
+
 function generateSongsJsonLd() {
+  const indexableSongs = songs.filter(
+    (song) => !EXCLUDED_SITEMAP_SLUGS.has(slugifySongTitle(song.title, `song-${song.id}`))
+  );
   const ldData = {
     '@context': 'https://schema.org',
-    '@graph': songs.map((song) => ({
+    '@graph': indexableSongs.map((song) => ({
       '@type': 'MusicRecording',
       name: song.title,
       byArtist: { '@type': 'MusicGroup', name: 'NL' },
       duration: 'PT3M00S',
       inAlbum: { '@type': 'MusicAlbum', name: 'NL Singles' },
-      url: `${DOMAIN}/#song-${song.id}`,
+      url: `${DOMAIN}/song/${encodeURIComponent(slugifySongTitle(song.title, `song-${song.id}`))}/`,
       audio: song.url,
     })),
   };
@@ -98,7 +118,7 @@ function generateSongsJsonLd() {
 
   const publicJsonLd = path.resolve(process.cwd(), 'public', 'songs-jsonld.json');
   fs.writeFileSync(publicJsonLd, jsonString);
-  console.log(`✅ Updated public/songs-jsonld.json (${songs.length} songs)`);
+  console.log(`✅ Updated public/songs-jsonld.json (${indexableSongs.length} songs)`);
 
   const distDir = path.resolve(process.cwd(), 'dist');
   if (fs.existsSync(distDir)) {

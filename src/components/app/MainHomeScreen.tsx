@@ -289,157 +289,159 @@ export function MainHomeScreen() {
           />
         ))}
 
-      <div
-        style={{
-          opacity: loaded ? 1 : 0,
-          visibility: loaded ? 'visible' : 'hidden',
-          transition: isAutomated ? 'none' : 'opacity 500ms ease-in',
-        }}
-      >
-        {renderClock()}
-        <div className="min-h-screen w-full relative flex flex-col items-center py-10 px-4 sm:px-8 md:px-10 lg:px-10 overflow-x-hidden">
-          <audio id="bg-audio" ref={audioRef} loop preload="auto" crossOrigin="anonymous" aria-hidden="true" />
+      <audio id="bg-audio" ref={audioRef} loop preload="none" crossOrigin="anonymous" aria-hidden="true" />
 
-          <AeroImageViewer
-            open={isGalleryOpen || isLensGalleryOpen}
-            album={isLensGalleryOpen ? 'lens' : 'mebit'}
-            images={isLensGalleryOpen ? ASSETS.profile.lens : ME_BIT_IMAGES}
-            startIndex={selectedImageIndex ?? 0}
-            onClose={() => {
-              if (isLensGalleryOpen) closeLens();
-              else handleGalleryClose();
-            }}
-          />
+      {loaded && (
+        <div
+          style={{
+            opacity: loaded ? 1 : 0,
+            visibility: loaded ? 'visible' : 'hidden',
+            transition: isAutomated ? 'none' : 'opacity 500ms ease-in',
+          }}
+        >
+          {renderClock()}
+          <div className="min-h-screen w-full relative flex flex-col items-center py-10 px-4 sm:px-8 md:px-10 lg:px-10 overflow-x-hidden">
+            <AeroImageViewer
+              open={isGalleryOpen || isLensGalleryOpen}
+              album={isLensGalleryOpen ? 'lens' : 'mebit'}
+              images={isLensGalleryOpen ? ASSETS.profile.lens : ME_BIT_IMAGES}
+              startIndex={selectedImageIndex ?? 0}
+              onClose={() => {
+                if (isLensGalleryOpen) closeLens();
+                else handleGalleryClose();
+              }}
+            />
 
-          <AeroGalleryHub
-            album={hubAlbum}
-            meBitImages={ME_BIT_IMAGES}
-            lensImages={ASSETS.profile.lens}
-            isGalleryOpen={isGalleryOpen}
-            isLensGalleryOpen={isLensGalleryOpen}
-            onSwitchAlbum={setHubAlbum}
-            onClose={() => {
-              setHubAlbum(null);
-              handleGalleryClose();
-              closeLens();
-            }}
-            onOpenMeBit={handleGalleryOpen}
-            onOpenLens={(index?: number) => openLens(index ?? 0)}
-            onPrefetchMeBit={ensureMeBitLoaded}
-          />
+            <AeroGalleryHub
+              album={hubAlbum}
+              meBitImages={ME_BIT_IMAGES}
+              lensImages={ASSETS.profile.lens}
+              isGalleryOpen={isGalleryOpen}
+              isLensGalleryOpen={isLensGalleryOpen}
+              onSwitchAlbum={setHubAlbum}
+              onClose={() => {
+                setHubAlbum(null);
+                handleGalleryClose();
+                closeLens();
+              }}
+              onOpenMeBit={handleGalleryOpen}
+              onOpenLens={(index?: number) => openLens(index ?? 0)}
+              onPrefetchMeBit={ensureMeBitLoaded}
+            />
 
-          <m.div
-            variants={containerVariants}
-            initial={isAutomated ? 'visible' : 'hidden'}
-            animate="visible"
-            className="relative z-10 w-full max-w-7xl flex flex-col gap-14"
-            style={{ paddingBottom: isMobile || isTablet ? '80px' : undefined }}
-          >
-            {!isMobile && (
-              <AppNavGrid
-                resolvedTheme={resolvedTheme}
-                onScrollToSection={scrollToSection}
-                onOpenLens={() => setHubAlbum('lens')}
-              />
-            )}
+            <m.div
+              variants={containerVariants}
+              initial={isAutomated ? 'visible' : 'hidden'}
+              animate="visible"
+              className="relative z-10 w-full max-w-7xl flex flex-col gap-14"
+              style={{ paddingBottom: isMobile || isTablet ? '80px' : undefined }}
+            >
+              {!isMobile && (
+                <AppNavGrid
+                  resolvedTheme={resolvedTheme}
+                  onScrollToSection={scrollToSection}
+                  onOpenLens={() => setHubAlbum('lens')}
+                />
+              )}
 
-            <div id="main-content" className="flex flex-col gap-14" tabIndex={-1}>
-              <HomeInteractiveMap
-                stations={[
-                  { id: 'profile', node: <HeroSection /> },
-                  {
-                    id: 'streaming',
-                    node: (
-                      <div className="nl-home-hub">
-                        <StationLattice items={streamingItems} lite={false} cordId="streaming-hub" />
-                        <StationLattice items={socialItems} lite={false} cordId="social-hub" />
-                      </div>
-                    ),
-                  },
-                  {
-                    id: 'highlights',
-                    node: (
-                      <HighlightsSection
-                        vaultPlaylistCoverUrl={CONFIG_ASSETS.vaultPlaylistCover}
-                        youtubeHighlightsBgUrl={CONFIG_ASSETS.youtubeHighlightsBg}
-                        onOpenTube={() => openTube()}
-                      />
-                    ),
-                  },
-                  {
-                    id: 'gallery',
-                    node: (
-                      <div className="nl-home-hub">
-                        <Suspense fallback={<SkeletonSection type="drawings" />}>
-                          <GallerySection
-                            resolvedTheme={resolvedTheme}
-                            onGalleryOpen={() => setHubAlbum('mebit')}
-                            onLensOpen={() => setHubAlbum('lens')}
-                            onPrefetchMeBit={ensureMeBitLoaded}
-                          />
-                        </Suspense>
-                      </div>
-                    ),
-                  },
-                  {
-                    id: 'songs',
-                    node: (
-                      <section ref={songsRef} className="fade-in-section nl-home-songs" aria-label="My Favorite Songs">
-                        <SectionErrorBoundary sectionName="MySongs">
-                          <Suspense fallback={<SkeletonSection type="songs" />}>
-                            <MySongs
-                              onSongPlay={handleSongPlay}
-                              onSongStop={handleSongStop}
-                              onActiveSongChange={setActiveSong}
-                              onAmbientColorChange={setAmbientColor}
+              <div id="main-content" className="flex flex-col gap-14" tabIndex={-1}>
+                <HomeInteractiveMap
+                  stations={[
+                    { id: 'profile', node: <HeroSection /> },
+                    {
+                      id: 'streaming',
+                      node: (
+                        <div className="nl-home-hub">
+                          <StationLattice items={streamingItems} lite={false} cordId="streaming-hub" />
+                          <StationLattice items={socialItems} lite={false} cordId="social-hub" />
+                        </div>
+                      ),
+                    },
+                    {
+                      id: 'highlights',
+                      node: (
+                        <HighlightsSection
+                          vaultPlaylistCoverUrl={CONFIG_ASSETS.vaultPlaylistCover}
+                          youtubeHighlightsBgUrl={CONFIG_ASSETS.youtubeHighlightsBg}
+                          onOpenTube={() => openTube()}
+                        />
+                      ),
+                    },
+                    {
+                      id: 'gallery',
+                      node: (
+                        <div className="nl-home-hub">
+                          <Suspense fallback={<SkeletonSection type="drawings" />}>
+                            <GallerySection
+                              resolvedTheme={resolvedTheme}
+                              onGalleryOpen={() => setHubAlbum('mebit')}
+                              onLensOpen={() => setHubAlbum('lens')}
+                              onPrefetchMeBit={ensureMeBitLoaded}
                             />
                           </Suspense>
-                        </SectionErrorBoundary>
-                      </section>
-                    ),
-                  },
-                  {
-                    id: 'contact',
-                    node: (
-                      <section
-                        id="contact-section"
-                        ref={contactRef}
-                        className="fade-in-section"
-                        style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}
-                        aria-label="Contact Me"
-                      >
-                        <SectionErrorBoundary sectionName="ContactForm">
-                          <Suspense fallback={<SkeletonSection type="contact" />}>
-                            <ContactForm />
-                          </Suspense>
-                        </SectionErrorBoundary>
-                      </section>
-                    ),
-                  },
-                  {
-                    id: 'drawings',
-                    bare: true,
-                    node: (
-                      <section
-                        id="drawings-section"
-                        ref={drawingsRef}
-                        className="fade-in-section"
-                        aria-label="My Drawings"
-                      >
-                        <SectionErrorBoundary sectionName="DrawingsPage">
-                          <Suspense fallback={<SkeletonSection type="drawings" />}>
-                            <DrawingsPage onSongPlay={handleSongPlay} />
-                          </Suspense>
-                        </SectionErrorBoundary>
-                      </section>
-                    ),
-                  },
-                ]}
-              />
-            </div>
-          </m.div>
+                        </div>
+                      ),
+                    },
+                    {
+                      id: 'songs',
+                      node: (
+                        <section ref={songsRef} className="fade-in-section nl-home-songs" aria-label="My Favorite Songs">
+                          <SectionErrorBoundary sectionName="MySongs">
+                            <Suspense fallback={<SkeletonSection type="songs" />}>
+                              <MySongs
+                                onSongPlay={handleSongPlay}
+                                onSongStop={handleSongStop}
+                                onActiveSongChange={setActiveSong}
+                                onAmbientColorChange={setAmbientColor}
+                              />
+                            </Suspense>
+                          </SectionErrorBoundary>
+                        </section>
+                      ),
+                    },
+                    {
+                      id: 'contact',
+                      node: (
+                        <section
+                          id="contact-section"
+                          ref={contactRef}
+                          className="fade-in-section"
+                          style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}
+                          aria-label="Contact Me"
+                        >
+                          <SectionErrorBoundary sectionName="ContactForm">
+                            <Suspense fallback={<SkeletonSection type="contact" />}>
+                              <ContactForm />
+                            </Suspense>
+                          </SectionErrorBoundary>
+                        </section>
+                      ),
+                    },
+                    {
+                      id: 'drawings',
+                      bare: true,
+                      node: (
+                        <section
+                          id="drawings-section"
+                          ref={drawingsRef}
+                          className="fade-in-section"
+                          aria-label="My Drawings"
+                        >
+                          <SectionErrorBoundary sectionName="DrawingsPage">
+                            <Suspense fallback={<SkeletonSection type="drawings" />}>
+                              <DrawingsPage onSongPlay={handleSongPlay} />
+                            </Suspense>
+                          </SectionErrorBoundary>
+                        </section>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+            </m.div>
+          </div>
         </div>
-      </div>
+      )}
 
       {loaded && (
         <AppMobileNav

@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Noureddin El Mobaraki (NL). All Rights Reserved.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type Country,
   type TvChannel,
@@ -29,16 +29,22 @@ export function useTvNavigation({
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<TvChannel | null>(null);
 
+  const countryReqIdRef = useRef(0);
+  const channelAbortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
+    const abortCtrl = new AbortController();
     let active = true;
-    fetchCountries().then((data) => {
-      if (active) {
+    fetchCountries(abortCtrl.signal).then((data) => {
+      if (active && !abortCtrl.signal.aborted) {
         setCountries(data);
         setLoadingCountries(false);
       }
     });
     return () => {
       active = false;
+      abortCtrl.abort();
+      channelAbortRef.current?.abort();
     };
   }, []);
 
@@ -50,13 +56,19 @@ export function useTvNavigation({
       name: string,
       logo?: string
     ) => {
+      const reqId = ++countryReqIdRef.current;
+      channelAbortRef.current?.abort();
+      const abortCtrl = new AbortController();
+      channelAbortRef.current = abortCtrl;
+
       const matched = countries.find((c) => c.code === countryCode);
       if (matched) {
         setSelectedCountry(matched);
         setLoadingChannels(true);
         setChannels([]);
         try {
-          const loaded = await fetchCountryChannels(countryCode);
+          const loaded = await fetchCountryChannels(countryCode, abortCtrl.signal);
+          if (reqId !== countryReqIdRef.current || abortCtrl.signal.aborted) return;
           setChannels(loaded);
           const resolved = loaded.find((c) => c.id === channelId) || {
             id: channelId,
@@ -68,13 +80,16 @@ export function useTvNavigation({
           setIsPlaying(true);
           setIsVideoError(false);
         } catch {
+          if (reqId !== countryReqIdRef.current || abortCtrl.signal.aborted) return;
           const fallback: TvChannel = { id: channelId, name, url, logo: logo || "" };
           setChannels([fallback]);
           setSelectedChannel(fallback);
           setIsPlaying(true);
           setIsVideoError(false);
         } finally {
-          setLoadingChannels(false);
+          if (reqId === countryReqIdRef.current && !abortCtrl.signal.aborted) {
+            setLoadingChannels(false);
+          }
         }
       } else {
         const fallback: TvChannel = { id: channelId, name, url, logo: logo || "" };
@@ -87,16 +102,25 @@ export function useTvNavigation({
   );
 
   const handleSelectCountry = useCallback(async (country: Country) => {
+    const reqId = ++countryReqIdRef.current;
+    channelAbortRef.current?.abort();
+    const abortCtrl = new AbortController();
+    channelAbortRef.current = abortCtrl;
+
     setSelectedCountry(country);
     setLoadingChannels(true);
     setChannels([]);
     try {
-      const data = await fetchCountryChannels(country.code);
+      const data = await fetchCountryChannels(country.code, abortCtrl.signal);
+      if (reqId !== countryReqIdRef.current || abortCtrl.signal.aborted) return;
       setChannels(data);
     } catch {
+      if (reqId !== countryReqIdRef.current || abortCtrl.signal.aborted) return;
       setChannels([]);
     } finally {
-      setLoadingChannels(false);
+      if (reqId === countryReqIdRef.current && !abortCtrl.signal.aborted) {
+        setLoadingChannels(false);
+      }
     }
   }, []);
 

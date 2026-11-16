@@ -24,12 +24,14 @@ export const EpgProgramRibbon: React.FC<EpgProgramRibbonProps> = ({ epg, program
             {activeProgram.categoryLabel}
           </span>
         </div>
-        <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-sky-400 to-rose-500 transition-all duration-500"
-            style={{ width: `${activeProgram.progressPercent}%` }}
-          />
-        </div>
+        {!activeProgram.isSynthetic && activeProgram.progressPercent > 0 && (
+          <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-sky-400 to-rose-500 transition-all duration-500"
+              style={{ width: `${activeProgram.progressPercent}%` }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -91,7 +91,7 @@ export default defineConfig(({ mode }) => {
           manualChunks(id) {
             if (id.includes('@supabase/supabase-js'))       return 'supabase';
             if (id.includes('node_modules/react-dom'))      return 'react-dom';
-            if (id.includes('node_modules/react'))          return 'react-core';
+            if (/node_modules\/(react|scheduler)\//.test(id)) return 'react-core';
             if (id.includes('node_modules/zustand'))        return 'zustand';
             if (id.includes('node_modules/framer-motion'))  return 'framer';
             if (id.includes('node_modules/hls.js'))         return 'hls';

@@ -194,22 +194,26 @@ export function useAudioController({
     if (audioIntent !== 'initial' && !(audioIntent === 'user-playing' && needsUserGesture())) return;
 
     let active = true;
+    const cleanupGestureListeners = () => {
+      window.removeEventListener('pointerdown', onInteraction);
+      window.removeEventListener('keydown', onInteraction);
+      window.removeEventListener('touchend', onInteraction);
+    };
     const onInteraction = () => {
       if (!active) return;
       active = false;
       audio.muted = false;
       setAudioIntent('user-playing');
       audioManager.unpauseBg();
-      window.removeEventListener('click', onInteraction);
-      window.removeEventListener('scroll', onInteraction);
+      cleanupGestureListeners();
     };
-    window.addEventListener('click', onInteraction, { once: true });
-    window.addEventListener('scroll', onInteraction, { once: true, passive: true });
+    window.addEventListener('pointerdown', onInteraction, { once: true, passive: true });
+    window.addEventListener('keydown', onInteraction, { once: true });
+    window.addEventListener('touchend', onInteraction, { once: true, passive: true });
 
     return () => {
       active = false;
-      window.removeEventListener('click', onInteraction);
-      window.removeEventListener('scroll', onInteraction);
+      cleanupGestureListeners();
     };
   }, [audioIntent, loaded, setAudioIntent]);
 
@@ -235,11 +239,7 @@ export function useAudioController({
     };
 
     const onVisibility = () => trigger();
-    const onPageShow = (e: PageTransitionEvent) => {
-      // bfcache restore — always retry.
-      if (e.persisted) trigger();
-      else trigger();
-    };
+    const onPageShow = () => trigger();
 
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pageshow', onPageShow);

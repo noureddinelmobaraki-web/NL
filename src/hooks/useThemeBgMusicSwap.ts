@@ -42,6 +42,8 @@ export function useThemeBgMusicSwap({
     }
   }, [setAudioIntent]);
 
+  const hlsErrCleanupRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -78,8 +80,14 @@ export function useThemeBgMusicSwap({
     const abort = new AbortController();
     themeSwapAbortRef.current = abort;
 
+    hlsErrCleanupRef.current?.();
+    hlsErrCleanupRef.current = null;
+
+    // Capture intent BEFORE pausing 'bg' so we never auto-start music when paused/initial
+    const wasUserPlaying = audioIntentRef.current === 'user-playing';
+
     audioManager.pause('bg');
-    themeSwapBgPausedRef.current = true;
+    themeSwapBgPausedRef.current = wasUserPlaying;
 
     const swapHls = async () => {
       const checkAbort = () => abort.signal.aborted;
@@ -112,18 +120,23 @@ export function useThemeBgMusicSwap({
             return;
           }
 
+          hlsErrCleanupRef.current?.();
           const errHandler = (_event: Events.ERROR, data: ErrorData) => {
             if (!data.fatal) return;
             if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) newHls.startLoad();
             else if (data.type === HlsClass.ErrorTypes.MEDIA_ERROR) newHls.recoverMediaError();
           };
           newHls.on(HlsClass.Events.ERROR, errHandler);
-          newHls.attachMedia(audio);
-
-          if (checkAbort()) {
+          hlsErrCleanupRef.current = () => {
             try {
               newHls.off(HlsClass.Events.ERROR, errHandler);
             } catch {}
+          };
+          newHls.attachMedia(audio);
+
+          if (checkAbort()) {
+            hlsErrCleanupRef.current?.();
+            hlsErrCleanupRef.current = null;
             safeDetach(newUrl);
             return;
           }
@@ -136,10 +149,12 @@ export function useThemeBgMusicSwap({
       themeSwapTimerRef.current = setTimeout(() => {
         themeSwapTimerRef.current = null;
         if (checkAbort()) return;
-        audioManager.unpauseBg();
         themeSwapBgPausedRef.current = false;
         themeSwapInFlightUrlRef.current = null;
-        promoteIntentToPlaying();
+        if (wasUserPlaying) {
+          audioManager.unpauseBg();
+          promoteIntentToPlaying();
+        }
       }, 400);
     };
 
@@ -147,12 +162,16 @@ export function useThemeBgMusicSwap({
 
     return () => {
       abort.abort();
+      hlsErrCleanupRef.current?.();
+      hlsErrCleanupRef.current = null;
       if (themeSwapTimerRef.current) {
         clearTimeout(themeSwapTimerRef.current);
         themeSwapTimerRef.current = null;
       }
-      if (themeSwapBgPausedRef.current) {
+      if (themeSwapBgPausedRef.current && wasUserPlaying) {
         audioManager.unpauseBg();
+        themeSwapBgPausedRef.current = false;
+      } else {
         themeSwapBgPausedRef.current = false;
       }
       themeSwapInFlightUrlRef.current = null;

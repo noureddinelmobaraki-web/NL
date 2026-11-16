@@ -101,7 +101,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
     playStation,
     toggleRadioPlay,
     setIsRadioPlaying,
-  } = useRadioCatalog(selectedCountry?.code || "MA");
+  } = useRadioCatalog(selectedCountry?.code || "MA", broadcastMode === "radio");
   const { stremioChannels, isLoadingStremio } = useStremioLiveResolver(
     broadcastMode === "stremio"
   );
@@ -165,17 +165,17 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="absolute top-0 inset-x-0 p-5 flex items-center justify-between z-[40] pointer-events-none"
+            className="absolute top-0 inset-x-0 p-3 sm:p-5 flex items-center justify-between gap-2 z-[40] pointer-events-none"
           >
             {/* Branding title & indicator */}
-            <div className="nl-tv-badge flex items-center gap-3 bg-neutral-950/45 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl pointer-events-auto">
-              <Tv className="w-5 h-5 text-red-500" />
+            <div className="nl-tv-badge shrink-0 flex items-center gap-2 sm:gap-3 bg-neutral-950/45 backdrop-blur-md border border-white/10 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl pointer-events-auto">
+              <Tv className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />
               <div className="text-left">
-                <h1 className="text-sm font-black text-zinc-100 tracking-wide font-sans">
+                <h1 className="text-xs sm:text-sm font-black text-zinc-100 tracking-wide font-sans whitespace-nowrap">
                   NL TV
                 </h1>
                 {selectedChannel && (
-                  <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="hidden sm:flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
                     <span className="text-[9px] font-bold text-red-500 tracking-wider uppercase font-mono">
                       Live Playback
@@ -186,26 +186,30 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
             </div>
 
             {/* Broadcast Mode Switcher: Live TV | Live Radio | Stremio HD */}
-            <NlTvModeSwitcher
-              mode={broadcastMode}
-              onChangeMode={(nextMode) => {
-                setBroadcastMode(nextMode);
-                if (nextMode === "radio") {
-                  setIsPlaying(false);
-                }
-              }}
-            />
+            <div className="min-w-0 flex-1 flex justify-center overflow-x-auto no-scrollbar pointer-events-auto">
+              <NlTvModeSwitcher
+                mode={broadcastMode}
+                onChangeMode={(nextMode) => {
+                  setBroadcastMode(nextMode);
+                  if (nextMode === "radio") {
+                    setIsPlaying(false);
+                  }
+                }}
+              />
+            </div>
 
             {/* Close button with focus guidelines */}
-            <button
-              onClick={onClose}
-              role="button"
-              aria-label={t("movies.close") || "Close"}
-              tabIndex={0}
-              className="nl-tv-close p-3 bg-neutral-950/45 hover:bg-red-600/20 hover:border-red-600/40 border border-white/10 rounded-full text-zinc-400 hover:text-white transition duration-300 pointer-events-auto active:scale-95 cursor-pointer backdrop-blur-md"
-            >
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={onClose}
+                role="button"
+                aria-label={t("movies.close") || "Close"}
+                tabIndex={0}
+                className="nl-tv-close shrink-0 p-2.5 sm:p-3 bg-neutral-950/45 hover:bg-red-600/20 hover:border-red-600/40 border border-white/10 rounded-full text-zinc-400 hover:text-white transition duration-300 pointer-events-auto active:scale-95 cursor-pointer backdrop-blur-md"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </m.div>
         )}
       </AnimatePresence>

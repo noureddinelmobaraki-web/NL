@@ -47,7 +47,7 @@ export default function MusicPage() {
       useMusicStore.getState().actions.setDownloaded(ids);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [allTracks]);
 
   // Layer 1 (reliable): whenever the current track changes, fetch its lyrics now.
   useEffect(() => {
@@ -68,23 +68,15 @@ export default function MusicPage() {
 
   return (
     <div className={'nl-music-root h-[100dvh] w-full overflow-hidden ' + styles['nlp-root']}>
-      {/* سطح مكتبي: عمودان — القائمة يساراً، المشغّل يميناً */}
-      <div className="hidden lg:grid grid-cols-[minmax(360px,1fr)_minmax(380px,520px)] gap-4 h-full p-4">
-        <div className="nl-music-list-panel h-full min-h-0 p-3 rounded-3xl overflow-hidden">
-          <SongList />
+      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(360px,1fr)_minmax(380px,520px)] lg:gap-4 h-full p-3 pb-0 lg:p-4">
+        <div className="nl-music-list-panel flex-1 lg:h-full min-h-0 lg:p-3 lg:rounded-3xl overflow-hidden">
+          <SongList onOpenPlayer={isMobile ? () => setNowPlayingOpen(true) : undefined} />
         </div>
-        <div className="nl-music-player-panel h-full rounded-3xl overflow-hidden shadow-2xl">
+        <div className="hidden lg:block nl-music-player-panel h-full rounded-3xl overflow-hidden shadow-2xl">
           <PlayerScreen />
         </div>
-      </div>
-
-      {/* الهاتف: القائمة + شريط مصغّر + طبقة تشغيل */}
-      <div className="lg:hidden flex flex-col h-full p-3 pb-0">
-        <div className="flex-1 min-h-0">
-          <SongList onOpenPlayer={() => setNowPlayingOpen(true)} />
-        </div>
-        {hasCurrent && !nowPlayingOpen && (
-          <div className="shrink-0 py-2">
+        {isMobile && hasCurrent && !nowPlayingOpen && (
+          <div className="lg:hidden shrink-0 py-2">
             <MiniPlayer onOpen={() => setNowPlayingOpen(true)} />
           </div>
         )}

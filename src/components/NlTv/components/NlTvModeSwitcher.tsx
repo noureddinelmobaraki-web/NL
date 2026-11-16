@@ -18,7 +18,7 @@ export const NlTvModeSwitcher: React.FC<NlTvModeSwitcherProps> = ({ mode, onChan
 
   return (
     <div
-      className="pointer-events-auto inline-flex items-center gap-1.5 p-1.5 rounded-2xl bg-neutral-950/75 backdrop-blur-xl border border-white/15 shadow-2xl"
+      className="pointer-events-auto inline-flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-neutral-950/75 backdrop-blur-xl border border-white/15 shadow-2xl max-w-full overflow-x-auto no-scrollbar"
       role="tablist"
       aria-label="Broadcast Mode"
     >
@@ -31,7 +31,7 @@ export const NlTvModeSwitcher: React.FC<NlTvModeSwitcherProps> = ({ mode, onChan
             role="tab"
             aria-selected={active}
             onClick={() => onChangeMode(tab.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               active
                 ? 'bg-white/15 text-white border border-white/30 shadow-lg'
                 : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'

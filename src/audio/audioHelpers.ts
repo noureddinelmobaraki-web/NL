@@ -49,6 +49,7 @@ export interface AudioEntry {
   volume: number;
   pendingPlay: boolean;
   generation: number;
+  playGen?: number;
   _cleanup?: () => void;
 }
 

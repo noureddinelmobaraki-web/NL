@@ -23,7 +23,16 @@ export interface TvChannel {
 // Low resource caching using localStorage with TTL or in-memory
 const CACHE_TTL = 3600_000 * 4; // 4 hours TTL for loaded playlists
 
-export async function fetchCountries(): Promise<Country[]> {
+function withTimeoutSignal(signal?: AbortSignal, ms = 7000): AbortSignal {
+  const timeoutSig = AbortSignal.timeout(ms);
+  if (!signal) return timeoutSig;
+  if (typeof AbortSignal.any === "function") {
+    return AbortSignal.any([signal, timeoutSig]);
+  }
+  return signal;
+}
+
+export async function fetchCountries(signal?: AbortSignal): Promise<Country[]> {
   const cacheKey = "nltv_countries_v1";
   try {
     const cached = localStorage.getItem(cacheKey);
@@ -36,7 +45,9 @@ export async function fetchCountries(): Promise<Country[]> {
   } catch {}
 
   try {
-    const res = await fetch("https://iptv-org.github.io/api/countries.json");
+    const res = await fetch("https://iptv-org.github.io/api/countries.json", {
+      signal: withTimeoutSignal(signal, 7000),
+    });
     if (!res.ok) throw new Error("fetch failed");
     const json = await res.json();
     // Sort countries by name and filter valid structures
@@ -60,7 +71,10 @@ export async function fetchCountries(): Promise<Country[]> {
   }
 }
 
-export async function fetchCountryChannels(countryCode: string): Promise<TvChannel[]> {
+export async function fetchCountryChannels(
+  countryCode: string,
+  signal?: AbortSignal
+): Promise<TvChannel[]> {
   const code = countryCode.toLowerCase();
   const cacheKey = `nltv_channels_${code}_v1`;
   try {
@@ -74,7 +88,9 @@ export async function fetchCountryChannels(countryCode: string): Promise<TvChann
   } catch {}
 
   try {
-    const res = await fetch(`https://iptv-org.github.io/iptv/countries/${code}.m3u`);
+    const res = await fetch(`https://iptv-org.github.io/iptv/countries/${code}.m3u`, {
+      signal: withTimeoutSignal(signal, 7000),
+    });
     if (!res.ok) throw new Error(`Status ${res.status}`);
     const text = await res.text();
     const channels = parseM3u(text);
@@ -85,7 +101,9 @@ export async function fetchCountryChannels(countryCode: string): Promise<TvChann
     
     return channels;
   } catch (err) {
-    console.error(`Error loading channels for country ${countryCode}:`, err);
+    if ((err as { name?: string })?.name !== "AbortError") {
+      console.error(`Error loading channels for country ${countryCode}:`, err);
+    }
     throw err;
   }
 }

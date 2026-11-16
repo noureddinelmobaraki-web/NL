@@ -15,6 +15,7 @@ export interface EpgNowNextProgram {
   nextTitle: string;
   progressPercent: number;
   categoryLabel: string;
+  isSynthetic?: boolean;
 }
 
 export const IPTV_CATEGORIES: IptvCategoryMeta[] = [
@@ -49,7 +50,7 @@ export async function fetchChannelsByCategory(categoryId: string): Promise<TvCha
     meta?.customUrl ||
     `https://iptv-org.github.io/iptv/categories/${encodeURIComponent(categoryId.toLowerCase())}.m3u`;
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(7000) });
     if (!res.ok) return [];
     const text = await res.text();
     return parseM3u(text).slice(0, 140);
@@ -60,16 +61,14 @@ export async function fetchChannelsByCategory(categoryId: string): Promise<TvCha
 
 export function buildRealtimeEpgSlot(channel: TvChannel | null): EpgNowNextProgram | null {
   if (!channel) return null;
-  const now = new Date();
-  const minutes = now.getMinutes();
-  const progressPercent = Math.min(98, Math.max(6, Math.round(((minutes % 30) / 30) * 100)));
   const group = channel.group || 'Live Broadcast';
 
   return {
     channelId: channel.id,
-    nowTitle: `${channel.name} — البث المباشر (${group})`,
-    nextTitle: `البرنامج القادم على ${channel.name}`,
-    progressPercent,
+    nowTitle: `${channel.name} — Live Stream — Schedule Unavailable`,
+    nextTitle: '',
+    progressPercent: 0,
     categoryLabel: group,
+    isSynthetic: true,
   };
 }
