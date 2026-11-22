@@ -1,58 +1,73 @@
 {
   "channelId": "UCbsSmEzYZvL24C2S75Rq4Og",
   "channelHandle": "@nourdin_el_mobaraki",
-  "updatedAt": "2026-11-22T06:46:28.241Z",
-  "count": 122,
+  "updatedAt": "2026-11-22T19:38:53.273Z",
+  "count": 124,
   "videos": [
+    {
+      "id": "RsoMJHHg_1k",
+      "title": "Nordine  GB - Kelb Pavlov",
+      "publishedAt": "2026-11-22T18:30:06Z",
+      "duration": 296,
+      "viewCount": 1
+    },
+    {
+      "id": "5c8cGWivIdc",
+      "title": "Nordine  GB - Huis Clos",
+      "publishedAt": "2026-11-22T12:00:25Z",
+      "thumbnail": "https://i.ytimg.com/vi/5c8cGWivIdc/hqdefault.jpg",
+      "duration": 285,
+      "viewCount": 40
+    },
     {
       "id": "9qfPzpd3RaU",
       "title": "Nordine  GB - kill 3",
       "publishedAt": "2026-11-21T16:00:23Z",
       "thumbnail": "https://i.ytimg.com/vi/9qfPzpd3RaU/hqdefault.jpg",
       "duration": 352,
-      "viewCount": 35
+      "viewCount": 55
     },
     {
       "id": "cNFQd743QUw",
       "title": "Nordine  GB - Sucré Salé",
       "publishedAt": "2026-11-20T16:00:27Z",
       "duration": 422,
-      "viewCount": 121
+      "viewCount": 132
     },
     {
       "id": "6sUH1il4DEc",
       "title": "Nobody knows",
       "publishedAt": "2026-11-15T11:30:24Z",
       "duration": 236,
-      "viewCount": 1745
+      "viewCount": 1749
     },
     {
       "id": "xuYwqHjLwD4",
       "title": "Nordine  GB - L’Morphiniya 18",
       "publishedAt": "2026-11-14T14:30:15Z",
       "duration": 356,
-      "viewCount": 112
+      "viewCount": 115
     },
     {
       "id": "vLSuVXtcq-s",
       "title": "Nordine  GB - L’Morphiniya 35",
       "publishedAt": "2026-11-13T12:00:02Z",
       "duration": 376,
-      "viewCount": 559
+      "viewCount": 565
     },
     {
       "id": "uyh3nKi_3ZU",
       "title": "Nordine  GB - L’Morphiniya 2",
       "publishedAt": "2026-11-08T11:00:06Z",
       "duration": 203,
-      "viewCount": 142
+      "viewCount": 144
     },
     {
       "id": "uqYhWyxMy88",
       "title": "Nordine  GB - KOUN NADDI",
       "publishedAt": "2026-11-07T18:00:36Z",
       "duration": 254,
-      "viewCount": 94
+      "viewCount": 95
     },
     {
       "id": "lfnKMMFeu5k",
@@ -81,35 +96,35 @@
       "title": "ألا كل ماشية الخيزلى",
       "publishedAt": "2026-11-01T12:00:10Z",
       "duration": 338,
-      "viewCount": 248
+      "viewCount": 249
     },
     {
       "id": "DTaCNsj8h-E",
       "title": "Nordine  GB -  Ohio",
       "publishedAt": "2026-10-31T12:30:21Z",
       "duration": 385,
-      "viewCount": 66
+      "viewCount": 67
     },
     {
       "id": "EIZOoOAOuF4",
       "title": "Nordine  GB -  Albania",
       "publishedAt": "2026-10-30T16:45:27Z",
       "duration": 508,
-      "viewCount": 218
+      "viewCount": 219
     },
     {
       "id": "8YCr-D18FrI",
       "title": "Nordine  GB -  Money Call",
       "publishedAt": "2026-10-25T11:30:15Z",
       "duration": 217,
-      "viewCount": 191
+      "viewCount": 192
     },
     {
       "id": "vaqmePOZh7E",
       "title": "Nordine  GB -  les rimes riches",
       "publishedAt": "2026-10-24T16:00:25Z",
       "duration": 232,
-      "viewCount": 160
+      "viewCount": 162
     },
     {
       "id": "bnWwrj-7h4c",
@@ -123,14 +138,14 @@
       "title": "Nordine  GB -  Sommaire",
       "publishedAt": "2026-10-23T16:00:04Z",
       "duration": 365,
-      "viewCount": 448
+      "viewCount": 449
     },
     {
       "id": "OD8lM-cu4TA",
       "title": "Nordine  GB - M.P.S.Y",
       "publishedAt": "2026-10-18T10:15:21Z",
       "duration": 280,
-      "viewCount": 139
+      "viewCount": 141
     },
     {
       "id": "QvhkgA3cN4Y",
@@ -152,7 +167,7 @@
       "title": "Nordine  GB -  100 ans",
       "publishedAt": "2026-10-09T13:45:06Z",
       "duration": 293,
-      "viewCount": 442
+      "viewCount": 443
     },
     {
       "id": "w_PFK6wS_84",
@@ -166,7 +181,7 @@
       "title": "Nordine  GB - Pyramid",
       "publishedAt": "2026-09-11T17:00:15Z",
       "duration": 254,
-      "viewCount": 503
+      "viewCount": 506
     },
     {
       "id": "9sbkfd12gI4",
@@ -335,21 +350,21 @@
       "title": "Nordine  GB -  The Way I Am",
       "publishedAt": "2026-06-20T18:00:00Z",
       "duration": 280,
-      "viewCount": 120
+      "viewCount": 121
     },
     {
       "id": "nyOEc-NJCzo",
       "title": "Nordine  GB -  HADI LOGHATI",
       "publishedAt": "2026-06-20T15:49:44Z",
       "duration": 229,
-      "viewCount": 126
+      "viewCount": 128
     },
     {
       "id": "kMV9eDsSmRI",
       "title": "Nordine  GB -  Deal With The Devil",
       "publishedAt": "2026-06-14T17:00:20Z",
       "duration": 308,
-      "viewCount": 280
+      "viewCount": 283
     },
     {
       "id": "VZz224Chy0s",
@@ -364,7 +379,7 @@
       "title": "Nordine  GB - 7elmet Ado 5/None Shall Pass",
       "publishedAt": "2026-06-12T17:00:05Z",
       "duration": 497,
-      "viewCount": 163
+      "viewCount": 165
     },
     {
       "id": "Ue32w-0mlcM",
@@ -472,7 +487,7 @@
       "title": "Nordine  GB -  Nanar",
       "publishedAt": "2026-05-09T17:00:28Z",
       "duration": 268,
-      "viewCount": 3487
+      "viewCount": 3489
     },
     {
       "id": "QpqT66o7hfM",
@@ -494,7 +509,7 @@
       "title": "Nordine  GB -  Tri9 Tbawe9",
       "publishedAt": "2026-04-30T16:30:23Z",
       "duration": 219,
-      "viewCount": 6688
+      "viewCount": 6693
     },
     {
       "id": "XB9fSmREVyA",
@@ -515,7 +530,7 @@
       "title": "Nordine  GB - 7chaychi Dimo9rati",
       "publishedAt": "2026-02-08T11:00:48Z",
       "duration": 301,
-      "viewCount": 365
+      "viewCount": 366
     },
     {
       "id": "46MqyLACTVA",
@@ -630,7 +645,7 @@
       "publishedAt": "2025-06-25T15:05:06Z",
       "duration": 241,
       "viewCount": 411,
-      "likeCount": 13
+      "likeCount": 12
     },
     {
       "id": "8Mv0oG6ZLyY",
@@ -662,7 +677,7 @@
       "publishedAt": "2025-06-01T11:30:40Z",
       "thumbnail": "https://i.ytimg.com/vi/lOwsYLNCsJg/hqdefault.jpg",
       "duration": 199,
-      "viewCount": 762,
+      "viewCount": 763,
       "likeCount": 11
     },
     {
@@ -782,7 +797,7 @@
       "title": "rooftop",
       "publishedAt": "2025-03-06T19:00:45Z",
       "duration": 159,
-      "viewCount": 1658,
+      "viewCount": 1659,
       "likeCount": 36
     },
     {
@@ -847,7 +862,7 @@
       "publishedAt": "2025-02-10T11:00:00Z",
       "thumbnail": "https://i.ytimg.com/vi/-3NYnhtpkdg/hqdefault.jpg",
       "duration": 225,
-      "viewCount": 26706,
+      "viewCount": 26713,
       "likeCount": 370
     },
     {
@@ -873,7 +888,7 @@
       "publishedAt": "2025-02-04T22:44:00Z",
       "thumbnail": "https://i.ytimg.com/vi/tViBRv1E7fw/hqdefault.jpg",
       "duration": 187,
-      "viewCount": 3923,
+      "viewCount": 3925,
       "likeCount": 64
     },
     {
@@ -882,7 +897,7 @@
       "publishedAt": "2025-01-31T23:00:59Z",
       "thumbnail": "https://i.ytimg.com/vi/vMXzMpq8jmI/hqdefault.jpg",
       "duration": 235,
-      "viewCount": 1063,
+      "viewCount": 1064,
       "likeCount": 19
     },
     {
