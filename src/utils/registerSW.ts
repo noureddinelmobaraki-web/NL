@@ -1,3 +1,5 @@
+import { isMobileSuperCacheDevice } from './mobileCacheGuard';
+
 const STREAM_SW_FILES = ['torrent-stream-sw.js', 'sw.js'];
 
 function saveCurrentPlaybackState() {
@@ -162,6 +164,40 @@ export function registerServiceWorker(): () => void {
     if (!reg) return;
     reg.update().catch(() => {});
     attachProdUpdateListeners(reg, cleanupFns);
+
+    if (isMobileSuperCacheDevice()) {
+      const targetSw = reg.active || navigator.serviceWorker.controller;
+      targetSw?.postMessage({ type: 'SET_MOBILE_SUPER_CACHE', enabled: true });
+
+      const scheduleMobilePrecache = () => {
+        void import('./mobileSuperCache')
+          .then((m) => m.startMobileHomeSongsPrecache(reg))
+          .catch(() => {});
+      };
+
+      let idleId: number | null = null;
+      const delayTimer = window.setTimeout(() => {
+        const ric = (window as unknown as {
+          requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        }).requestIdleCallback;
+        if (typeof ric === 'function') {
+          idleId = ric(scheduleMobilePrecache, { timeout: 5000 });
+        } else {
+          scheduleMobilePrecache();
+        }
+      }, 3500);
+
+      cleanupFns.push(() => {
+        window.clearTimeout(delayTimer);
+        if (idleId !== null) {
+          const cic = (window as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+          cic?.(idleId);
+        }
+      });
+    } else {
+      const targetSw = reg.active || navigator.serviceWorker.controller;
+      targetSw?.postMessage({ type: 'SET_MOBILE_SUPER_CACHE', enabled: false });
+    }
   };
 
   if (document.readyState === 'complete') void start();

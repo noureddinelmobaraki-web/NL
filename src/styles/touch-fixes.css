@@ -2,8 +2,10 @@
   /* Remove stuck hover states on touch */
   *:hover { transition: none !important; }
   
-  /* Minimum 44×44px tap target (Apple HIG + WCAG 2.5.5) */
-  button, a, [role="button"] {
+  /* Minimum 44×44px tap target (Apple HIG + WCAG 2.5.5) — exclude compact dots & micro-controls */
+  button:not([data-compact-touch]):not(.nl-dot-btn),
+  a:not([data-compact-touch]),
+  [role="button"]:not([data-compact-touch]) {
     min-width: 44px;
     min-height: 44px;
   }

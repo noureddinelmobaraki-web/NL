@@ -272,6 +272,7 @@ export const NowPlayingBarMobile = ({
         border: '1px solid rgba(255, 255, 255, 0.05)',
       }}>
         <button
+          data-compact-touch="true"
           onClick={onShuffleToggle}
           aria-label="Shuffle"
           aria-pressed={isShuffle}
@@ -331,6 +332,7 @@ export const NowPlayingBarMobile = ({
         }}>{formatTime(duration || 0)}</span>
 
         <button
+          data-compact-touch="true"
           onClick={onRepeatToggle}
           aria-label={`Repeat: ${repeatMode}`}
           aria-pressed={repeatMode !== 'off'}

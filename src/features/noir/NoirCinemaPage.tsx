@@ -11,7 +11,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X } from 'lucide-react';
-import '../../styles/components/cinema.css';
 
 import { CinemaHeroBanner } from '../../components/Movies/components/CinemaHeroBanner';
 import { CinemaDetailModal } from '../../components/Movies/components/CinemaDetailModal';
@@ -295,7 +294,7 @@ export const NoirCinemaPage: React.FC<NoirCinemaPageProps> = ({ onClose }) => {
       >
         {/* Clean Top Floating Header — Only Category Filter Pills, Search Input & Close Button */}
         <header className="sticky top-0 z-40 px-4 sm:px-8 py-3 bg-zinc-950/65 backdrop-blur-2xl border-b border-zinc-300/20 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 w-full sm:w-auto">
             {NOIR_CATEGORIES.map((cat) => {
               const active = activeCategory === cat.id;
               return (
@@ -303,7 +302,7 @@ export const NoirCinemaPage: React.FC<NoirCinemaPageProps> = ({ onClose }) => {
                   key={cat.id}
                   type="button"
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer border backdrop-blur-md ${
+                  className={`shrink-0 px-3.5 py-1.5 rounded-2xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer border backdrop-blur-md ${
                     active
                       ? 'bg-zinc-100 text-zinc-950 border-white shadow-[0_0_20px_rgba(228,228,231,0.35)]'
                       : 'bg-zinc-900/55 text-zinc-200 border-zinc-400/25 hover:bg-zinc-800/70 hover:border-zinc-300/40'
@@ -315,8 +314,8 @@ export const NoirCinemaPage: React.FC<NoirCinemaPageProps> = ({ onClose }) => {
             })}
           </div>
 
-          <div className="flex items-center gap-2.5 flex-1 sm:flex-initial justify-end">
-            <div className="relative w-48 sm:w-72">
+          <div className="flex items-center gap-2.5 flex-1 sm:flex-initial justify-end w-full sm:w-auto">
+            <div className="relative flex-1 min-w-0 sm:flex-initial sm:w-72">
               <Search
                 size={14}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
@@ -331,6 +330,7 @@ export const NoirCinemaPage: React.FC<NoirCinemaPageProps> = ({ onClose }) => {
               {searchQuery && (
                 <button
                   type="button"
+                  data-compact-touch="true"
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white cursor-pointer"
                 >
@@ -366,6 +366,8 @@ export const NoirCinemaPage: React.FC<NoirCinemaPageProps> = ({ onClose }) => {
             setSelectedItemId={controller.setSelectedItemId}
             handleQuickWatch={controller.handleQuickWatch}
             t={controller.t}
+            mobileVariant="editorial16x9"
+            editorialSubline={getFilmByNumericId(activeHeroItem.id)?.director}
           />
         )}
 

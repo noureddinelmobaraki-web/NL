@@ -634,6 +634,22 @@
 }
 
 @media (max-width: 639px) {
+  .nl-cinema-header {
+    padding-inline: 10px !important;
+    gap: 6px !important;
+  }
+  .nl-cinema-header .lg-cinema-pill-group button {
+    padding-inline: 10px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    min-width: unset !important;
+  }
+  .nl-cinema-header .lg-cinema-icon-pill {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+  }
   .nl-detail-wrap {
     padding: 8px !important;
   }
@@ -655,6 +671,8 @@
     margin: 0 !important;
     border-radius: 0 !important;
     border: none !important;
+    justify-content: center !important;
+    background: #000000 !important;
   }
   .nl-detail-card--theater .lg-cinema-gallery-stage {
     border-radius: 0 !important;

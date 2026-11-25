@@ -195,6 +195,7 @@ export const GlassTopBar: React.FC<GlassTopBarProps> = ({
           {query && (
             <button
               type="button"
+              data-compact-touch="true"
               onClick={() => onQueryChange('')}
               className="lg-glass-pill lg-search-capsule__clear"
               aria-label="Clear search"

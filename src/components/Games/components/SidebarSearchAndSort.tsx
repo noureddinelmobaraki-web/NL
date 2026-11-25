@@ -33,6 +33,7 @@ export function SidebarSearchAndSort({
         {searchQuery ? (
           <button
             type="button"
+            data-compact-touch="true"
             className="nl-sidebar-search-clear"
             onClick={() => onSearchChange('')}
             aria-label="Clear search"

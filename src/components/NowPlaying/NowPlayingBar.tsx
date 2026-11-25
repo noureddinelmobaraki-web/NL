@@ -65,6 +65,7 @@ export const NowPlayingBar = ({
         <m.div
           key="now-playing-bar"
           className="mid-player-shell"
+          data-mobile-bottom-bar={isMobileOrTablet && !isActuallyHidden ? "true" : undefined}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => {
             setIsHovered(false);

@@ -100,6 +100,7 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
     >
       <button
         type="button"
+        data-compact-touch="true"
         className={pill}
         onClick={handleTogglePlay}
         aria-label={
@@ -113,6 +114,7 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
 
       <button
         type="button"
+        data-compact-touch="true"
         className={pill}
         onClick={() => commitSeek(time - 10)}
         title="-10s"
@@ -123,6 +125,7 @@ export const CinemaTimeline = React.memo(function CinemaTimeline({
 
       <button
         type="button"
+        data-compact-touch="true"
         className={pill}
         onClick={() => commitSeek(time + 10)}
         title="+10s"

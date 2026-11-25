@@ -39,14 +39,14 @@ export const DownloadFloatingPill: React.FC<Props> = ({ visible, task, isAr, onO
               </div>
             </button>
             {task.status === 'downloading' && (
-              <button type="button" onClick={() => onPause(task.infoHash)} aria-label={isAr ? 'إيقاف مؤقت' : 'Pause'}
+              <button type="button" data-compact-touch="true" onClick={() => onPause(task.infoHash)} aria-label={isAr ? 'إيقاف مؤقت' : 'Pause'}
                 className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center cursor-pointer"><Pause size={13} /></button>
             )}
             {task.status === 'paused' && !fallback && (
-              <button type="button" onClick={() => onResume(task.infoHash)} aria-label={isAr ? 'استئناف' : 'Resume'}
+              <button type="button" data-compact-touch="true" onClick={() => onResume(task.infoHash)} aria-label={isAr ? 'استئناف' : 'Resume'}
                 className="w-8 h-8 rounded-full bg-sky-500/30 border border-sky-300/40 flex items-center justify-center cursor-pointer"><Play size={13} /></button>
             )}
-            <button type="button" onClick={onOpenModal} aria-label={isAr ? 'فتح نافذة التحميل' : 'Open downloads'}
+            <button type="button" data-compact-touch="true" onClick={onOpenModal} aria-label={isAr ? 'فتح نافذة التحميل' : 'Open downloads'}
               className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center cursor-pointer"><Download size={13} /></button>
           </div>
         </m.div>

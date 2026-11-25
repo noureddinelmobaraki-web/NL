@@ -26,7 +26,6 @@ import { useDocumentMeta } from "../../hooks/useDocumentMeta";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { usePreconnect } from "../../hooks/usePreconnect";
 import { PUBLIC_TMDB_KEY, PUBLIC_OMDB_KEY } from "../../config/publicKeys";
-import "../../styles/components/cinema.css";
 import {
   useResolvedImdbSources,
   type PlaySource,
@@ -694,6 +693,7 @@ export function MoviesPage({
                 selectedGenreId !== null) && (
                 <button
                   type="button"
+                  data-compact-touch="true"
                   onClick={() => {
                     if (selectedItemId !== null) setSelectedItemId(null);
                     else if (showWatchlist) setShowWatchlist(false);
@@ -795,6 +795,7 @@ export function MoviesPage({
                     </m.div>
                     <button
                       type="button"
+                      data-compact-touch="true"
                       onClick={() => setSearchOpen(!searchOpen)}
                       className={`lg-cinema-icon-pill ${
                         searchOpen || searchQuery ? "border-white/40 bg-white/15" : ""
@@ -843,6 +844,7 @@ export function MoviesPage({
               {user && (
                 <button
                   type="button"
+                  data-compact-touch="true"
                   onClick={() => setShowWatchlist((v) => !v)}
                   aria-pressed={showWatchlist}
                   aria-label={currentLang === "ar" ? "قائمتي" : "Watchlist"}
@@ -864,6 +866,7 @@ export function MoviesPage({
 
               <button
                 type="button"
+                data-compact-touch="true"
                 onClick={toggleMute}
                 className="lg-cinema-icon-pill"
                 aria-label={
@@ -894,6 +897,7 @@ export function MoviesPage({
 
               <button
                 type="button"
+                data-compact-touch="true"
                 onClick={onClose}
                 className="lg-cinema-icon-pill hover:!bg-rose-600/40 hover:!border-rose-400/60"
                 aria-label={currentLang === "ar" ? "إغلاق" : "Close"}
@@ -1100,6 +1104,7 @@ export function MoviesPage({
                   setSelectedItemId={setSelectedItemId}
                   handleQuickWatch={handleQuickWatch}
                   t={t}
+                  mobileVariant="portrait"
                 />
               )}
 

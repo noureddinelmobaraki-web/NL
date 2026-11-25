@@ -19,6 +19,11 @@ const VERSIONED_CACHE_PREFIXES = [
 // Persistent library for user-saved songs. NOT version-suffixed, so it
 // survives redeploys. Never trimmed (not present in LIMITS).
 const CACHE_SAVED = 'nl-saved-audio';
+// Persistent mobile-only super caches (NOT version-suffixed — survive redeploys)
+const CACHE_MOBILE_SONGS = 'nl-mobile-songs-v1';
+const CACHE_MOBILE_API = 'nl-mobile-api-v1';
+const CACHE_MOBILE_POSTERS = 'nl-mobile-posters-v1';
+const CACHE_MOBILE_META = 'nl-mobile-meta-v1';
 
 const PRECACHE_URLS = [
   '/NL/',
@@ -26,6 +31,63 @@ const PRECACHE_URLS = [
 ];
 
 const HLS_ORIGIN = 'noureddinelmobaraki-web.github.io';
+
+const PERSONAL_AUDIO_ORIGINS = new Set([
+  'noureddinelmobaraki-web.github.io',
+  'pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev',
+]);
+
+const MOBILE_API_ORIGINS = new Set([
+  'api.themoviedb.org',
+  'api.jikan.moe',
+  'api.tvmaze.com',
+  'archive.org',
+  'openlibrary.org',
+  'gutendex.com',
+  'iptv-org.github.io',
+  'api.artic.edu',
+  'collectionapi.metmuseum.org',
+  'openaccess-api.clevelandart.org',
+]);
+
+const MOBILE_POSTER_ORIGINS = new Set([
+  'image.tmdb.org',
+  's4.anilist.co',
+  'cdn.myanimelist.net',
+  'i.ytimg.com',
+  'covers.openlibrary.org',
+  'pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev',
+]);
+
+let mobileSuperCacheEnabled = null;
+
+async function cacheExists(name) {
+  try {
+    if (typeof caches.has === 'function') {
+      return await caches.has(name);
+    }
+    const keys = await caches.keys();
+    return keys.includes(name);
+  } catch {
+    return false;
+  }
+}
+
+async function isMobileSuperCacheOn() {
+  if (mobileSuperCacheEnabled !== null) return mobileSuperCacheEnabled;
+  try {
+    if (!(await cacheExists(CACHE_MOBILE_META))) {
+      mobileSuperCacheEnabled = false;
+      return false;
+    }
+    const meta = await caches.open(CACHE_MOBILE_META);
+    const flag = await meta.match('/__nl_mobile_super_cache__');
+    mobileSuperCacheEnabled = Boolean(flag);
+  } catch {
+    mobileSuperCacheEnabled = false;
+  }
+  return mobileSuperCacheEnabled;
+}
 
 // Pathnames are compared percent-encoded, exactly as URL.pathname reports them
 // and exactly as PORTRAIT_ASSETS in src/features/portrait/constants.ts spells
@@ -39,8 +101,32 @@ const PORTRAIT_MEDIA = new Set([
 ]);
 
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
+  const type = event.data?.type;
+  if (type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  if (type === 'SET_MOBILE_SUPER_CACHE') {
+    const enabled = Boolean(event.data?.enabled);
+    mobileSuperCacheEnabled = enabled;
+    const op = (async () => {
+      if (enabled) {
+        const meta = await caches.open(CACHE_MOBILE_META);
+        await meta.put('/__nl_mobile_super_cache__', new Response('1', { status: 200 }));
+      } else if (await cacheExists(CACHE_MOBILE_META)) {
+        await caches.delete(CACHE_MOBILE_META);
+      }
+    })().catch(() => {});
+    if (typeof event.waitUntil === 'function') event.waitUntil(op);
+    return;
+  }
+  if (type === 'CLEAR_MOBILE_SUPER_CACHE') {
+    const op = Promise.all([
+      caches.delete(CACHE_MOBILE_SONGS),
+      caches.delete(CACHE_MOBILE_API),
+      caches.delete(CACHE_MOBILE_POSTERS),
+    ]).catch(() => {});
+    if (typeof event.waitUntil === 'function') event.waitUntil(op);
   }
 });
 
@@ -166,6 +252,19 @@ async function trimCache(cacheName) {
       await cache.delete(keys[i]);
     }
   }
+}
+
+async function trimNamedCache(cacheName, maxEntries) {
+  if (!maxEntries || maxEntries <= 0) return;
+  try {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    if (keys.length > maxEntries) {
+      for (let i = 0; i < keys.length - maxEntries; i++) {
+        await cache.delete(keys[i]);
+      }
+    }
+  } catch {}
 }
 
 const TP_MIME_BY_EXT = {
@@ -345,6 +444,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Never cache POST or other mutating HTTP requests
+  if (request.method !== 'GET') {
+    return;
+  }
+
   // ⛔️ Bypass صارم: ماشي مسموح للـ SW يخدم ملفات XML/TXT/manifest عبر fallback القشرة.
   // هاد الملفات خاص تُخدَم native (GitHub Pages / السيرفر) بالـ Content-Type الصحيح
   // (application/xml للـ sitemap، text/plain للـ robots) باش الزواحف والمتصفّح يقراوها مزيان.
@@ -517,10 +621,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. HLS Segments (.ts)
-  if (url.hostname === HLS_ORIGIN && url.pathname.endsWith('.ts')) {
+  // 1. HLS Segments (.ts, .m4s, .aac) across BOTH personal audio origins (GitHub CDN + R2)
+  if (PERSONAL_AUDIO_ORIGINS.has(url.hostname) && /\.(ts|m4s|aac)$/i.test(url.pathname)) {
     event.respondWith(
       (async () => {
+        const mobileOn = await isMobileSuperCacheOn();
+        const hasMobileSongs = mobileOn || (await cacheExists(CACHE_MOBILE_SONGS));
+        const mobileSongs = hasMobileSongs ? await caches.open(CACHE_MOBILE_SONGS) : null;
+        // Mobile Super Cache first: 0ms offline playback, never trimmed
+        if (mobileSongs) {
+          const mobileHit = await mobileSongs.match(event.request, { ignoreVary: true });
+          if (mobileHit) return mobileHit;
+        }
+
         const cache = await caches.open(CACHE_HLS);
         const cached = await cache.match(event.request);
         if (cached) {
@@ -530,32 +643,51 @@ self.addEventListener('fetch', (event) => {
           }
         }
         const response = await fetch(event.request);
-        const cloned = response.clone();
-        const headers = new Headers(cloned.headers);
-        headers.append('x-cached-at', Date.now().toString());
-        const body = await cloned.blob();
-        await cache.put(event.request, new Response(body, { headers }));
-        event.waitUntil(trimCache(CACHE_HLS));
-        return response;
-      })()
-    );
-    return;
-  }
-
-  // 2. HLS Manifests (.m3u8) — network-first, cache fallback
-  if (url.hostname === HLS_ORIGIN && url.pathname.endsWith('.m3u8')) {
-    event.respondWith(
-      (async () => {
-        const cache = await caches.open(CACHE_HLS);
-        try {
-          const response = await fetch(event.request);
-          if (response.ok) {
+        if (response && response.ok) {
+          if (mobileOn && mobileSongs) {
+            await mobileSongs.put(event.request, response.clone());
+          } else {
             const cloned = response.clone();
             const headers = new Headers(cloned.headers);
             headers.append('x-cached-at', Date.now().toString());
             const body = await cloned.blob();
             await cache.put(event.request, new Response(body, { headers }));
             event.waitUntil(trimCache(CACHE_HLS));
+          }
+        }
+        return response;
+      })()
+    );
+    return;
+  }
+
+  // 2. HLS Manifests (.m3u8) across BOTH personal audio origins (GitHub CDN + R2)
+  if (PERSONAL_AUDIO_ORIGINS.has(url.hostname) && /\.m3u8$/i.test(url.pathname)) {
+    event.respondWith(
+      (async () => {
+        const mobileOn = await isMobileSuperCacheOn();
+        const hasMobileSongs = mobileOn || (await cacheExists(CACHE_MOBILE_SONGS));
+        const mobileSongs = hasMobileSongs ? await caches.open(CACHE_MOBILE_SONGS) : null;
+        // Mobile Super Cache first: instant 0ms start & 100% offline support
+        if (mobileSongs) {
+          const mobileHit = await mobileSongs.match(event.request, { ignoreVary: true });
+          if (mobileHit) return mobileHit;
+        }
+
+        const cache = await caches.open(CACHE_HLS);
+        try {
+          const response = await fetch(event.request);
+          if (response && response.ok) {
+            if (mobileOn && mobileSongs) {
+              await mobileSongs.put(event.request, response.clone());
+            } else {
+              const cloned = response.clone();
+              const headers = new Headers(cloned.headers);
+              headers.append('x-cached-at', Date.now().toString());
+              const body = await cloned.blob();
+              await cache.put(event.request, new Response(body, { headers }));
+              event.waitUntil(trimCache(CACHE_HLS));
+            }
           }
           return response;
         } catch {
@@ -628,35 +760,162 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2b. JSON data files (songs.json, videos.json)
-  if (sameOrigin && url.pathname.startsWith('/NL/data/') && url.pathname.endsWith('.json')) {
+  // 2b. Local JSON data files (/NL/data/*.json) — SWR + persistent mobile mirror
+  if (
+    sameOrigin &&
+    (url.pathname.startsWith('/NL/data/') || url.pathname.startsWith('/data/')) &&
+    url.pathname.endsWith('.json')
+  ) {
     event.respondWith(
       (async () => {
-        const cache = await caches.open(CACHE_SHELL);
-        const cached = await cache.match(event.request);
-        const fetchPromise = fetch(event.request).then(response => {
-          if (response.ok) cache.put(event.request, response.clone());
-          return response;
-        }).catch(() => cached || new Response('[]', {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }));
-        return cached || fetchPromise;
+        const mobileOn = await isMobileSuperCacheOn();
+        const shellCache = await caches.open(CACHE_SHELL);
+        const mobileApi = mobileOn ? await caches.open(CACHE_MOBILE_API) : null;
+        const cached =
+          (await shellCache.match(event.request)) ||
+          (mobileApi ? await mobileApi.match(event.request, { ignoreVary: true }) : null);
+
+        const fetchPromise = fetch(event.request)
+          .then(async (response) => {
+            if (response && response.ok) {
+              await shellCache.put(event.request, response.clone());
+              if (mobileApi) {
+                await mobileApi.put(event.request, response.clone());
+              }
+            }
+            return response;
+          })
+          .catch(
+            () =>
+              cached ||
+              new Response('[]', {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              })
+          );
+
+        if (cached) {
+          event.waitUntil(fetchPromise);
+          return cached;
+        }
+        return fetchPromise;
       })()
     );
     return;
   }
 
-  // 2c. Lyric/subtitle files (.lrc / .sbv / .srt)
-  if (sameOrigin && url.pathname.startsWith('/NL/lrc/') && /\.(lrc|sbv|srt)$/i.test(url.pathname)) {
+  // 2c. Lyric/subtitle files (.lrc / .sbv / .srt) — local + BOTH personal audio origins
+  if (
+    (sameOrigin &&
+      (url.pathname.startsWith('/NL/lrc/') || url.pathname.startsWith('/lrc/')) &&
+      /\.(lrc|sbv|srt)$/i.test(url.pathname)) ||
+    (PERSONAL_AUDIO_ORIGINS.has(url.hostname) && /\.(lrc|sbv|srt)$/i.test(url.pathname))
+  ) {
     event.respondWith(
       (async () => {
-        const cache = await caches.open(CACHE_SHELL);
-        const cached = await cache.match(event.request);
-        if (cached) return cached;
+        const mobileOn = await isMobileSuperCacheOn();
+        const hasMobileSongs = mobileOn || (await cacheExists(CACHE_MOBILE_SONGS));
+        const mobileSongs = hasMobileSongs ? await caches.open(CACHE_MOBILE_SONGS) : null;
+        if (mobileSongs) {
+          const mobileHit = await mobileSongs.match(event.request, { ignoreVary: true });
+          if (mobileHit) return mobileHit;
+        }
+
+        const shellCache = sameOrigin ? await caches.open(CACHE_SHELL) : null;
+        if (shellCache) {
+          const cached = await shellCache.match(event.request);
+          if (cached) return cached;
+        }
+
         const response = await fetch(event.request);
-        if (response.ok) await cache.put(event.request, response.clone());
+        if (response && response.ok) {
+          if (mobileOn && mobileSongs) {
+            await mobileSongs.put(event.request, response.clone());
+          }
+          if (shellCache) {
+            await shellCache.put(event.request, response.clone());
+          }
+        }
         return response;
+      })()
+    );
+    return;
+  }
+
+  // 2d. Mobile-Only Persistent Catalog API Cache (Stale-While-Revalidate, max 350 entries)
+  // Strictly read-only JSON/API metadata — never caches video/audio/binary streams or desktop traffic.
+  if (
+    MOBILE_API_ORIGINS.has(url.hostname) &&
+    !/\.(mp4|m4v|mkv|webm|avi|mov|m3u8|ts|m4s|aac|mp3|m4a|ogg|wav|flac|zip|iso|swf|jsdos|pdf|epub|webp|jpg|jpeg|png|gif|avif)$/i.test(url.pathname)
+  ) {
+    event.respondWith(
+      (async () => {
+        if (!(await isMobileSuperCacheOn())) {
+          return fetch(event.request);
+        }
+        const apiCache = await caches.open(CACHE_MOBILE_API);
+        const cached = await apiCache.match(event.request, { ignoreVary: true });
+
+        const refreshPromise = fetch(event.request)
+          .then(async (response) => {
+            if (response && response.ok) {
+              await apiCache.put(event.request, response.clone());
+              event.waitUntil(trimNamedCache(CACHE_MOBILE_API, 350));
+            }
+            return response;
+          })
+          .catch((err) => {
+            if (cached) return cached;
+            throw err;
+          });
+
+        if (cached) {
+          event.waitUntil(refreshPromise);
+          return cached;
+        }
+        return refreshPromise;
+      })()
+    );
+    return;
+  }
+
+  // 2e. Mobile-Only Persistent Poster & Cover Cache (Cache-First, 30-day TTL, max 450 entries)
+  if (
+    MOBILE_POSTER_ORIGINS.has(url.hostname) &&
+    (url.hostname !== 'pub-5c31533ba4144f3cae2fd56daa14c951.r2.dev' ||
+      /\.(webp|gif|jpg|jpeg|png|avif)$/i.test(url.pathname))
+  ) {
+    event.respondWith(
+      (async () => {
+        if (!(await isMobileSuperCacheOn())) {
+          return fetch(event.request);
+        }
+        const posterCache = await caches.open(CACHE_MOBILE_POSTERS);
+        const cached = await posterCache.match(event.request, { ignoreVary: true });
+        if (cached) {
+          const cachedAt = cached.headers.get('x-cached-at');
+          if (!cachedAt || Date.now() - parseInt(cachedAt, 10) < 30 * 24 * 60 * 60 * 1000) {
+            return cached;
+          }
+        }
+        try {
+          const response = await fetch(event.request);
+          if (response && response.ok) {
+            const cloned = response.clone();
+            const headers = new Headers(cloned.headers);
+            headers.set('x-cached-at', Date.now().toString());
+            const body = await cloned.blob();
+            await posterCache.put(event.request, new Response(body, { headers }));
+            event.waitUntil(trimNamedCache(CACHE_MOBILE_POSTERS, 450));
+          } else if (response && response.type === 'opaque') {
+            await posterCache.put(event.request, response.clone());
+            event.waitUntil(trimNamedCache(CACHE_MOBILE_POSTERS, 450));
+          }
+          return response;
+        } catch (err) {
+          if (cached) return cached;
+          throw err;
+        }
       })()
     );
     return;

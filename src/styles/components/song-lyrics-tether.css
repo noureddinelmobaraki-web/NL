@@ -139,6 +139,18 @@
   letter-spacing: 0.12em;
 }
 
+@media (max-width: 767px) {
+  .nl-lyr-box {
+    overflow-x: hidden;
+  }
+  .nl-lyr-line {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .nl-lw {
+    white-space: pre-wrap;
+  }
+}
 @media (max-width: 479px) {
   .nl-lyr-line { font-size: 15px; }
   .nl-lyr-inner { gap: 10px; padding: 44% 2px; }

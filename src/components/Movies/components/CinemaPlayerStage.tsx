@@ -492,7 +492,7 @@ export function CinemaPlayerStage({
             <div
               onClick={(e) => e.stopPropagation()}
               onMouseMove={bumpControlsVisibility}
-              className={`absolute top-0 inset-x-0 z-30 px-3 sm:px-5 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 bg-gradient-to-b from-black/85 via-black/45 to-transparent transition-all duration-300 ${
+              className={`absolute top-0 inset-x-0 z-30 px-3 sm:px-5 py-2.5 sm:py-3.5 max-md:px-2 max-md:py-2 max-md:gap-1.5 flex items-center justify-between gap-2 bg-gradient-to-b from-black/85 via-black/45 to-transparent transition-all duration-300 ${
                 isControlsVisible || isEpisodesDrawerOpen
                   ? "opacity-100 translate-y-0 pointer-events-auto"
                   : "opacity-0 -translate-y-3 pointer-events-none"
@@ -500,7 +500,7 @@ export function CinemaPlayerStage({
               dir="ltr"
             >
               {/* Left: Title + Season/Episode Badge */}
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="hidden sm:flex items-center gap-2 min-w-0">
                 <h4 className="text-xs sm:text-sm font-black text-white truncate max-w-[160px] sm:max-w-[320px] drop-shadow">
                   {detailedItem.title}
                 </h4>
@@ -514,7 +514,7 @@ export function CinemaPlayerStage({
               </div>
 
               {/* Right: Servers Popover + Episodes Drawer Button + Download + Exit Player + Close */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 max-w-full overflow-x-auto no-scrollbar">
                 {/* Compact Server Switcher Popover */}
                 {detailPlaySources.length > 0 && (
                   <div className="relative">
@@ -533,7 +533,7 @@ export function CinemaPlayerStage({
                     </button>
 
                     {isServerPopoverOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-64 max-h-80 overflow-y-auto rounded-2xl bg-slate-950/95 backdrop-blur-2xl border border-white/20 p-2.5 shadow-2xl z-50 flex flex-col gap-2">
+                      <div className="fixed inset-x-3 bottom-4 sm:bottom-auto sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-64 max-h-[65dvh] sm:max-h-80 overflow-y-auto rounded-2xl bg-slate-950/95 backdrop-blur-2xl border border-white/20 p-2.5 shadow-2xl z-[10600] sm:z-50 flex flex-col gap-2">
                         {animeAudioMode && onChangeAnimeAudioMode && (
                           <div className="flex items-center justify-between gap-1 rounded-xl bg-white/5 border border-white/15 p-1">
                             <button
@@ -702,6 +702,7 @@ export function CinemaPlayerStage({
 
                 <button
                   type="button"
+                  data-compact-touch="true"
                   onClick={handleToggleGalleryFullscreen}
                   className="lg-cinema-icon-pill !w-9 !h-9 !min-w-[36px] !min-h-[36px] cursor-pointer"
                   aria-label={
@@ -720,6 +721,7 @@ export function CinemaPlayerStage({
 
                 <button
                   type="button"
+                  data-compact-touch="true"
                   onClick={() => {
                     persistCurrentProgress();
                     if (playerIframeRef.current) {
@@ -746,7 +748,7 @@ export function CinemaPlayerStage({
             {detailedItem.mediaType === "tv" && isEpisodesDrawerOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute inset-y-0 right-0 z-40 w-72 sm:w-80 bg-slate-950/92 backdrop-blur-2xl border-l border-white/15 p-3.5 flex flex-col gap-3 shadow-2xl overflow-y-auto"
+                className="fixed sm:absolute inset-y-0 right-0 z-[10600] sm:z-40 w-[86vw] max-w-xs sm:w-80 bg-slate-950/92 backdrop-blur-2xl border-l border-white/15 p-3.5 flex flex-col gap-3 shadow-2xl overflow-y-auto"
                 dir="ltr"
               >
                 <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
@@ -758,6 +760,7 @@ export function CinemaPlayerStage({
                   </div>
                   <button
                     type="button"
+                    data-compact-touch="true"
                     onClick={() => setIsEpisodesDrawerOpen(false)}
                     className="lg-cinema-icon-pill !w-7 !h-7 !min-w-[28px] !min-h-[28px]"
                   >
@@ -1235,7 +1238,7 @@ export function CinemaPlayerStage({
                           </button>
 
                           {isSubtitleMenuOpen && (
-                            <div className="absolute bottom-full right-0 mb-2 z-50">
+                            <div className="fixed inset-x-3 bottom-16 sm:absolute sm:inset-x-auto sm:bottom-full sm:right-0 sm:mb-2 z-[10600] sm:z-50 flex justify-center sm:block">
                               <SubtitleSettingsPanel
                                 tracks={activeSubtitlesList}
                                 activeIdx={activeSubtitleIdx}
@@ -1256,6 +1259,7 @@ export function CinemaPlayerStage({
 
                         <button
                           type="button"
+                          data-compact-touch="true"
                           onClick={handleToggleGalleryFullscreen}
                           className="lg-cinema-icon-pill !w-8 !h-8 !min-w-[32px] !min-h-[32px] cursor-pointer"
                           aria-label={

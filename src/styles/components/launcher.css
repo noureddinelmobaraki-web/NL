@@ -487,3 +487,9 @@
     transform: scaleY(0.65);
   }
 }
+
+@media (max-width: 639px) {
+  .nl-sound-btn {
+    bottom: calc(env(safe-area-inset-bottom, 12px) + 36px);
+  }
+}

@@ -65,7 +65,7 @@ export const SharatAscendedWorkspace: React.FC<SharatAscendedWorkspaceProps> = (
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl rounded-3xl border border-white/15 bg-slate-950/90 p-4 sm:p-6 shadow-2xl space-y-4"
+        className="relative w-full max-w-4xl rounded-3xl border border-white/15 bg-slate-950/90 p-4 sm:p-6 max-md:max-h-[94dvh] max-md:overflow-y-auto max-md:pb-[calc(env(safe-area-inset-bottom,0px)+16px)] shadow-2xl space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Clean Minimal Title Header — zero technical/source metadata */}

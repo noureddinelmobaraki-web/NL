@@ -43,7 +43,7 @@ export const DownloadCustomInputBar: React.FC<{ ctl: Ctl; isAr: boolean }> = ({ 
                 </p>
               </div>
               <div className="flex gap-1.5 shrink-0">
-                <button type="button" onClick={ctl.reset} aria-label={isAr ? 'إلغاء' : 'Cancel'}
+                <button type="button" data-compact-touch="true" onClick={ctl.reset} aria-label={isAr ? 'إلغاء' : 'Cancel'}
                   className="w-8 h-8 rounded-lg bg-white/8 border border-white/15 flex items-center justify-center cursor-pointer"><X size={13} /></button>
                 <button type="button" onClick={() => void ctl.confirmStart()} disabled={ctl.isSubmitting}
                   className="px-3.5 py-1.5 rounded-lg bg-sky-500 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer disabled:opacity-50">

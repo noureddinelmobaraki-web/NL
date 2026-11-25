@@ -19,7 +19,7 @@ function checkFullscreenActive(): boolean {
 
   if (
     document.querySelector(
-      '.lg-reader-workspace--fullscreen, .lg-cinema-gallery-stage--css-fullscreen, [data-fullscreen="true"]',
+      '.lg-reader-workspace--fullscreen, .lg-cinema-gallery-stage--css-fullscreen, .nl-detail-wrap--watching, .nl-detail-card--theater, [data-fullscreen="true"]',
     )
   ) {
     return true;

@@ -1436,3 +1436,22 @@ html[data-island-open="true"] body *:not(.notch-portal-root, .notch-portal-root 
 .notch-mobile-cc-overlay[data-theme-skin="light"] .notch-cc__dock-btn--exit {
   color: #be123c;
 }
+
+/* Mobile-only collapsed orb docking: clears top headers and auto-lifts above active bottom bars */
+@media (max-width: 767px) {
+  .notch-anchor:has(.notch-island[data-state="orb"]) {
+    top: auto;
+    bottom: max(18px, env(safe-area-inset-bottom, 0px));
+    left: auto;
+    right: max(16px, env(safe-area-inset-right, 0px));
+    transform: none;
+  }
+
+  .notch-anchor[data-fullscreen-hidden="true"]:has(.notch-island[data-state="orb"]) {
+    transform: scale(0.6) !important;
+  }
+
+  body:has([data-mobile-bottom-bar="true"]) .notch-anchor:has(.notch-island[data-state="orb"]) {
+    bottom: calc(max(18px, env(safe-area-inset-bottom, 0px)) + 74px);
+  }
+}

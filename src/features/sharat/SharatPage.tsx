@@ -116,7 +116,7 @@ export const SharatPage: React.FC = () => {
         <div className="lg-sun-backdrop-dim" aria-hidden="true" />
 
         {/* Clean Floating Top Bar — Search + Close Only (No Lists, No Planets) */}
-        <div className="fixed top-4 inset-x-4 z-[120] flex items-center justify-between gap-3 pointer-events-none">
+        <div className="fixed top-4 max-md:top-[calc(env(safe-area-inset-top,0px)+12px)] inset-x-4 z-[120] flex items-center justify-between gap-3 pointer-events-none">
           <button
             type="button"
             onClick={handleBack}
@@ -141,6 +141,7 @@ export const SharatPage: React.FC = () => {
             {searchQuery && (
               <button
                 type="button"
+                data-compact-touch="true"
                 onClick={() => setSearchQuery('')}
                 aria-label="مسح البحث"
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full text-white/60 hover:text-white flex items-center justify-center cursor-pointer"

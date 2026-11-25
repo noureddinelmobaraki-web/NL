@@ -40,7 +40,7 @@
 .nl-games-main--full{flex:1;min-width:0;display:flex;height:100%}
 
 /* ===== الشاشة ===== */
-.nl-screen-wrap{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.nl-screen-wrap{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
 .nl-screen-bar{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;gap:8px}
 .nl-screen-bar-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
 .nl-screen-title{font-size:.8rem;color:#cfe0f5;letter-spacing:.08em;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -94,6 +94,12 @@
   .nl-screen-wrap.is-touch{gap:0;height:100%}
   .nl-screen-wrap.is-touch .nl-screen{flex:1;min-height:0;border-radius:0;border:none}
   .nl-screen-wrap.is-touch .nl-desktop-notice{position:absolute;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:6;max-width:80%}
+}
+
+@media (max-width:767px) and (orientation:portrait){
+  .nl-screen-wrap.is-touch.has-touch-controls{background:#070a14}
+  .nl-screen-wrap.is-touch.has-touch-controls .nl-screen{flex:0 0 auto;width:100%;aspect-ratio:4 / 3;max-height:52dvh;margin-top:calc(44px + env(safe-area-inset-top));border-radius:14px;border:1px solid rgba(255,255,255,.14)}
+  .nl-screen-wrap.is-touch.has-touch-controls .nl-touch{position:relative;inset:auto;flex:1 1 auto;min-height:0;align-items:center;justify-content:space-between;padding:12px 14px calc(18px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(14,20,34,.72),rgba(7,10,18,.94));border-top:1px solid rgba(255,255,255,.16);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);pointer-events:auto}
 }
 
 @media (prefers-reduced-motion:reduce){

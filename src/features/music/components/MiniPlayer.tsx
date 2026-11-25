@@ -22,6 +22,7 @@ export function MiniPlayer({ onOpen }: MiniPlayerProps) {
 
   return (
     <div 
+      data-mobile-bottom-bar="true"
       className={`h-20 flex items-center px-4 gap-3 z-[8600] active:scale-[0.98] transition-transform ${styles['nlp-mini']}`}
       onClick={onOpen}
     >

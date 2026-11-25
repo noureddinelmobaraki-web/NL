@@ -70,6 +70,7 @@ export function SongRow({
         {selectable && (
           <button
             type="button"
+            data-compact-touch="true"
             onClick={(e) => { e.stopPropagation(); onToggleSelect?.(song.id); }}
             className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'bg-[#FF7A1A] border-[#FF7A1A] text-white' : 'border-slate-400 text-transparent hover:border-[#FF7A1A]'}`}
             aria-label={selected ? `Deselect ${song.title}` : `Select ${song.title}`}

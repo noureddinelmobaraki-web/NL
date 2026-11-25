@@ -17,6 +17,8 @@ export function useForceDesktopViewport(desktopWidth: number = 1024, enabled: bo
     const ORIGINAL_ATTR = 'data-original-viewport';
     const FORCE_ATTR = 'data-force-desktop-viewport';
     const CLASS_NAME = 'force-desktop-mode';
+    const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1, viewport-fit=cover';
+    let savedOriginalContent: string | null = null;
 
     const cleanup = () => {
       try {
@@ -25,7 +27,10 @@ export function useForceDesktopViewport(desktopWidth: number = 1024, enabled: bo
         head.querySelectorAll(`meta[${FORCE_ATTR}]`).forEach((tag) => tag.remove());
         const saved = head.querySelector(`meta[${ORIGINAL_ATTR}]`);
         const originalContent =
-          saved?.getAttribute('content') || 'width=device-width, initial-scale=1, viewport-fit=cover';
+          savedOriginalContent ||
+          saved?.getAttribute(ORIGINAL_ATTR) ||
+          saved?.getAttribute('content') ||
+          DEFAULT_VIEWPORT;
         let originalTag = head.querySelector('meta[name="viewport"]');
         if (!originalTag) {
           originalTag = document.createElement('meta');
@@ -45,7 +50,7 @@ export function useForceDesktopViewport(desktopWidth: number = 1024, enabled: bo
       document.documentElement?.classList.add(CLASS_NAME);
       document.body?.classList.add(CLASS_NAME);
       const originalTag = head.querySelector<HTMLMetaElement>('meta[name="viewport"]');
-      let originalContent = 'width=device-width, initial-scale=1, viewport-fit=cover';
+      let originalContent = DEFAULT_VIEWPORT;
       if (originalTag) {
         if (!originalTag.hasAttribute(ORIGINAL_ATTR)) {
           originalContent = originalTag.getAttribute('content') || originalContent;
@@ -53,7 +58,10 @@ export function useForceDesktopViewport(desktopWidth: number = 1024, enabled: bo
         } else {
           originalContent = originalTag.getAttribute(ORIGINAL_ATTR) || originalContent;
         }
+        savedOriginalContent = originalContent;
         originalTag.remove();
+      } else {
+        savedOriginalContent = originalContent;
       }
       let forceTag = head.querySelector<HTMLMetaElement>(`meta[${FORCE_ATTR}]`);
       if (!forceTag) {

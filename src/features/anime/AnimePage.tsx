@@ -11,7 +11,6 @@
 import React, { useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Languages, X } from 'lucide-react';
-import '../../styles/components/cinema.css';
 
 import { CinemaHeroBanner } from '../../components/Movies/components/CinemaHeroBanner';
 import { CinemaDetailModal } from '../../components/Movies/components/CinemaDetailModal';
@@ -109,12 +108,12 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
       <LiquidGlassBooksBackdrop dimmerOpacity={0.52} />
 
       <div
-        className="nl-cinema-scroll absolute inset-0 z-20 h-full w-full overflow-y-auto overflow-x-hidden overscroll-contain pb-24 pointer-events-auto"
+        className="nl-cinema-scroll absolute inset-0 z-20 h-full w-full overflow-y-auto overflow-x-hidden overscroll-contain pb-24 max-md:pb-32 pointer-events-auto"
         style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
       >
         {/* Clean Top Floating Liquid Glass Navigation Bar — Text Pills Only */}
         <header className="sticky top-0 z-40 px-4 sm:px-8 py-3 bg-slate-950/45 backdrop-blur-2xl border-b border-white/15 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+          <div className="hidden md:flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 w-full sm:w-auto">
             {ANIME_TABS.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -134,10 +133,11 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
             })}
           </div>
 
-          <div className="flex items-center gap-2.5 flex-1 sm:flex-initial justify-end">
-            <div className="inline-flex items-center rounded-2xl bg-white/10 border border-white/25 p-1 backdrop-blur-md">
+          <div className="flex items-center gap-2.5 flex-1 sm:flex-initial justify-end w-full sm:w-auto">
+            <div className="inline-flex items-center rounded-2xl bg-white/10 border border-white/25 p-1 backdrop-blur-md shrink-0">
               <button
                 type="button"
+                data-compact-touch="true"
                 onClick={() => setAudioMode('sub')}
                 className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition cursor-pointer flex items-center gap-1 ${
                   audioMode === 'sub'
@@ -150,6 +150,7 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
               </button>
               <button
                 type="button"
+                data-compact-touch="true"
                 onClick={() => setAudioMode('dub')}
                 className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition cursor-pointer ${
                   audioMode === 'dub'
@@ -161,7 +162,7 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
               </button>
             </div>
 
-            <div className="relative w-44 sm:w-64">
+            <div className="relative flex-1 min-w-0 sm:flex-initial sm:w-64">
               <Search
                 size={14}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
@@ -176,6 +177,7 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
               {searchQuery && (
                 <button
                   type="button"
+                  data-compact-touch="true"
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white cursor-pointer"
                 >
@@ -341,6 +343,50 @@ export const AnimePage: React.FC<AnimePageProps> = ({ onClose }) => {
           )}
         </div>
       </div>
+
+      {/* Mobile-Only Crunchyroll-Style Liquid Glass Bottom Tab Bar */}
+      {controller.selectedItemId === null && (
+        <nav
+          aria-label="Anime categories"
+          data-mobile-bottom-bar="true"
+          className="md:hidden fixed bottom-3 inset-x-3 z-40 rounded-full bg-slate-950/75 backdrop-blur-2xl border border-white/20 px-1.5 py-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar shadow-[0_14px_38px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.22)]"
+          style={{
+            bottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
+          }}
+        >
+          {ANIME_TABS.map((tab) => {
+            const active = activeTab === tab.id;
+            const shortLabel =
+              tab.id === 'trending'
+                ? 'Trending'
+                : tab.id === 'seasonal'
+                  ? 'Seasonal'
+                  : tab.id === 'top_rated'
+                    ? 'Top Rated'
+                    : tab.id === 'arabic_dub'
+                      ? 'Dubs'
+                      : 'Movies';
+            return (
+              <button
+                key={`mobile-tab-${tab.id}`}
+                type="button"
+                data-compact-touch="true"
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (searchQuery) setSearchQuery('');
+                }}
+                className={`flex-1 min-w-fit px-3 py-2 rounded-full text-[11px] font-extrabold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                  active
+                    ? 'bg-white/22 text-white border border-white/40 shadow-[0_4px_14px_rgba(255,255,255,0.16)]'
+                    : 'text-slate-300 hover:text-white border border-transparent'
+                }`}
+              >
+                {shortLabel}
+              </button>
+            );
+          })}
+        </nav>
+      )}
 
       <CinemaDetailModal
         selectedItemId={controller.selectedItemId}

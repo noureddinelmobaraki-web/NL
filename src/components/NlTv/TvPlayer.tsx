@@ -13,6 +13,7 @@ interface TvPlayerProps {
   isPlaying: boolean;
   muted: boolean;
   volume: number;
+  isFullscreen?: boolean;
   onVideoRefReady: (video: HTMLVideoElement | null) => void;
   onErrorState: (hasError: boolean) => void;
 }
@@ -25,6 +26,7 @@ export function TvPlayer({
   isPlaying,
   muted,
   volume,
+  isFullscreen = false,
   onVideoRefReady,
   onErrorState
 }: TvPlayerProps) {
@@ -143,7 +145,13 @@ export function TvPlayer({
   }, [muted, volume, isIframe]);
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-black z-[1] select-none flex items-center justify-center pointer-events-none">
+    <div
+      className={
+        isFullscreen
+          ? "fixed inset-0 w-full h-full bg-black z-[1] select-none flex items-center justify-center pointer-events-none"
+          : "max-sm:relative max-sm:inset-auto max-sm:w-full max-sm:aspect-video max-sm:h-auto max-sm:shrink-0 max-sm:z-20 max-sm:border-y max-sm:border-white/10 sm:fixed sm:inset-0 sm:w-full sm:h-full bg-black z-[1] select-none flex items-center justify-center pointer-events-none"
+      }
+    >
       {isIframe ? (
         <iframe
           key={url}

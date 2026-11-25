@@ -103,6 +103,8 @@ export const LyricsDisplay = ({
           justifyContent: 'center',
           borderTop: '1px solid var(--card-border-line)',
           paddingTop: '12px',
+          maxWidth: '100%',
+          overflowX: 'hidden',
         }}
       >
         <p
@@ -113,6 +115,9 @@ export const LyricsDisplay = ({
             letterSpacing: '0.05em',
             lineHeight: 1.4,
             padding: '0 16px',
+            maxWidth: '100%',
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
           }}
         >
           {activeLine ? (
@@ -128,7 +133,9 @@ export const LyricsDisplay = ({
                 // MOBILE-LYRICS: smooth 200ms coloring + gradient sliding wiper overlay
                 const style: React.CSSProperties = isMobile ? {
                   display: 'inline-block',
-                  whiteSpace: 'pre' as const,
+                  whiteSpace: 'pre-wrap' as const,
+                  maxWidth: '100%',
+                  overflowWrap: 'anywhere',
                   transition: 'color 200ms ease-out, opacity 200ms ease-out',
                   color: isCurrent ? 'transparent' : (isPlayed ? 'var(--lyric-active-color)' : 'var(--lyric-inactive-color)'),
                   opacity: isPlayed ? 1 : 0.45,

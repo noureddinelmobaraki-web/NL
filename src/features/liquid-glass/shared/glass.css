@@ -439,9 +439,10 @@
   }
 
   .lg-topbar-primary-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
     width: 100%;
   }
 
@@ -453,11 +454,14 @@
 
   .lg-glass-pill.lg-mobile-filter-trigger {
     display: inline-flex !important;
+    flex-shrink: 0;
   }
 
   .lg-search-capsule {
+    flex: 1 1 0;
+    min-width: 0;
     max-width: 100%;
-    width: 100%;
+    width: auto;
   }
 
   .lg-topbar-genres-row {

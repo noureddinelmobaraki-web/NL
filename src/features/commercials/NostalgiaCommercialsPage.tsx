@@ -172,7 +172,7 @@ export const NostalgiaCommercialsPage: React.FC<NostalgiaCommercialsPageProps> =
                   key={pill.id}
                   type="button"
                   onClick={() => setActiveCategoryId(pill.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                     active
                       ? 'bg-amber-400 text-slate-950 shadow-md'
                       : 'bg-white/[0.07] hover:bg-white/15 text-white/85 border border-white/15'
@@ -237,11 +237,11 @@ export const NostalgiaCommercialsPage: React.FC<NostalgiaCommercialsPageProps> =
       {/* Continuous TV Playlist Modal with Auto-Advance & MP4 Download */}
       {activeClip && (
         <div
-          className="fixed inset-0 z-[10600] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-2xl"
+          className="fixed inset-0 z-[10600] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-2xl"
           onClick={() => setPlaylistQueue([])}
         >
           <div
-            className="relative w-full max-w-4xl rounded-3xl border border-white/25 bg-slate-950/95 p-5 sm:p-6 shadow-2xl space-y-4"
+            className="relative w-full max-w-4xl rounded-3xl border border-white/25 bg-slate-950/95 p-4 sm:p-6 max-md:max-h-[92dvh] max-md:overflow-y-auto max-md:pb-[calc(env(safe-area-inset-bottom,0px)+16px)] shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">

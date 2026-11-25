@@ -117,9 +117,11 @@ export function GameScreen({
     setReloadToken((x) => x + 1);
   }, []);
 
+  const touchControlsVisible = isTouch && hasGame && showTouchControls && engineReady;
+
   return (
     <div
-      className={`nl-screen-wrap${isTouch ? ' is-touch' : ''}${isPseudoFullscreen ? ' is-pseudo-fs' : ''}`}
+      className={`nl-screen-wrap${isTouch ? ' is-touch' : ''}${touchControlsVisible ? ' has-touch-controls' : ''}${isPseudoFullscreen ? ' is-pseudo-fs' : ''}`}
     >
       {isTouch && !barVisible && (
         <button
@@ -247,13 +249,14 @@ export function GameScreen({
           </>
         )}
 
-        {isTouch && hasGame && showTouchControls && engineReady && (
-          <TouchControls
-            playerRef={targetElementRef}
-            profile={controlProfile}
-          />
-        )}
       </div>
+
+      {touchControlsVisible && (
+        <TouchControls
+          playerRef={targetElementRef}
+          profile={controlProfile}
+        />
+      )}
 
       <MobileLandscapePrompt
         isTouch={isTouch}

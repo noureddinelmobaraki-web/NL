@@ -105,7 +105,7 @@ export function SubtitleSettingsPanel(p: SubtitleSettingsPanelProps) {
             </label>
             <div className="flex items-center gap-2">{t("movies.subs.color", "Color")}
               {COLORS.map((c) => (
-                <button key={c} type="button" aria-label={c} onClick={() => setSubtitlePrefs({ textColor: c })}
+                <button key={c} type="button" data-compact-touch="true" aria-label={c} onClick={() => setSubtitlePrefs({ textColor: c })}
                   className={`w-6 h-6 rounded-full border-2 ${prefs.textColor === c ? "border-red-500" : "border-white/30"}`} style={{ background: c }} />
               ))}
             </div>

@@ -9,6 +9,7 @@ import { AnimatePresence, m } from "framer-motion";
 
 import { useIdle } from "../../hooks/useIdle";
 import { useDocumentMeta } from "../../hooks/useDocumentMeta";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 import { TvStatic } from "./TvStatic";
 import { TvPlayer } from "./TvPlayer";
@@ -126,9 +127,16 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
     onClose,
   });
 
+  const isPhoneViewport = useMediaQuery("(max-width: 639px)");
+
   // Idle timeout detector (Auto-hide overlay in 3 seconds of inactivty)
   const isIdle = useIdle(3000);
-  const hideOverlays = isIdle && selectedChannel && isPlaying && !isVideoError;
+  const hideOverlays =
+    isIdle &&
+    selectedChannel &&
+    isPlaying &&
+    !isVideoError &&
+    (!isPhoneViewport || isFullscreen);
 
   useTvMusic(Boolean(selectedChannel && isPlaying && !isVideoError));
 
@@ -138,24 +146,12 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
   return (
     <div
       ref={containerRef}
-      className={`nl-tv-root fixed inset-0 w-full h-full bg-black z-[9999] overflow-hidden flex flex-col font-sans transition-all duration-300 ${
+      className={`nl-tv-root fixed inset-0 w-full h-[100dvh] sm:h-full bg-black z-[9999] overflow-hidden flex flex-col font-sans transition-all duration-300 ${
         hideOverlays ? "cursor-none" : "cursor-default"
       }`}
     >
       {/* 1. Canvas Static noise background */}
       <TvStatic active={!!selectedChannel} />
-
-      {/* 2. Live HLS Video Stream Player */}
-      {selectedChannel && (
-        <TvPlayer
-          url={selectedChannel.url}
-          isPlaying={isPlaying}
-          muted={isMuted}
-          volume={volume}
-          onVideoRefReady={handleVideoRefReady}
-          onErrorState={handleVideoErrorState}
-        />
-      )}
 
       {/* 3. Top navigation header dock (auto hides on idle) */}
       <AnimatePresence>
@@ -165,7 +161,7 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="absolute top-0 inset-x-0 p-3 sm:p-5 flex items-center justify-between gap-2 z-[40] pointer-events-none"
+            className="max-sm:relative max-sm:top-auto max-sm:inset-x-auto max-sm:shrink-0 max-sm:pt-[calc(env(safe-area-inset-top,0px)+8px)] max-sm:pb-2 sm:absolute sm:top-0 sm:inset-x-0 p-3 sm:p-5 flex items-center justify-between gap-2 z-[40] pointer-events-none"
           >
             {/* Branding title & indicator */}
             <div className="nl-tv-badge shrink-0 flex items-center gap-2 sm:gap-3 bg-neutral-950/45 backdrop-blur-md border border-white/10 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl pointer-events-auto">
@@ -213,6 +209,19 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
           </m.div>
         )}
       </AnimatePresence>
+
+      {/* 2. Live HLS Video Stream Player (desktop: fixed full-bleed; mobile: pinned 16:9 top stage) */}
+      {selectedChannel && broadcastMode !== "radio" && (
+        <TvPlayer
+          url={selectedChannel.url}
+          isPlaying={isPlaying}
+          muted={isMuted}
+          volume={volume}
+          isFullscreen={isFullscreen}
+          onVideoRefReady={handleVideoRefReady}
+          onErrorState={handleVideoErrorState}
+        />
+      )}
 
       {/* Radio Broadcast Stage */}
       {broadcastMode === "radio" && (
@@ -340,10 +349,10 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
         )}
       </AnimatePresence>
 
-      {/* Mobile-only responsive drawer when not in idle view */}
+      {/* Mobile-only responsive guide drawer below pinned 16:9 live feed */}
       <AnimatePresence>
         {!hideOverlays && broadcastMode !== "radio" && (
-          <div className="absolute top-24 bottom-28 inset-x-4 z-30 flex flex-col sm:hidden overflow-hidden pointer-events-none">
+          <div className="max-sm:relative max-sm:flex-1 max-sm:min-h-0 max-sm:px-3 max-sm:pt-2 max-sm:pb-2 z-30 flex flex-col sm:hidden overflow-hidden pointer-events-none">
             {broadcastMode === "tv" && (
               <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-1 px-1 pointer-events-auto no-scrollbar">
                 {categories.map((cat) => {
@@ -442,9 +451,9 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
         )}
       </AnimatePresence>
 
-      {/* 5. Center display notice if no channel is active */}
+      {/* 5. Center display notice if no channel is active (desktop only on initial browse so mobile guide is unobstructed) */}
       {!selectedChannel && broadcastMode !== "radio" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 px-6">
+        <div className="hidden sm:flex absolute inset-0 flex-col items-center justify-center pointer-events-none z-10 px-6">
           <div className="nl-tv-empty-card bg-neutral-950/65 backdrop-blur-md border border-white/5 p-8 rounded-3xl max-w-sm text-center shadow-2xl">
             <Tv className="w-16 h-16 text-zinc-650 mx-auto mb-4 animate-pulse" />
             <h2 className="text-xl font-bold text-zinc-100 mb-2">
@@ -483,11 +492,12 @@ export default function NlTvPage({ onClose }: NlTvPageProps) {
       <AnimatePresence>
         {!hideOverlays && selectedChannel && broadcastMode !== "radio" && (
           <m.div
+            data-mobile-bottom-bar="true"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 30 }}
             transition={{ duration: 0.3 }}
-            className="absolute bottom-5 inset-x-0 z-40 pointer-events-none"
+            className="max-sm:relative max-sm:bottom-auto max-sm:inset-x-auto max-sm:shrink-0 max-sm:pt-1 max-sm:pb-[calc(env(safe-area-inset-bottom,0px)+8px)] sm:absolute sm:bottom-5 sm:inset-x-0 z-40 pointer-events-none"
           >
             <EpgProgramRibbon epg={currentEpg} program={currentEpg} />
             <TvControls

@@ -72,6 +72,7 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
     <>
       <div
         className="lg-mini-player"
+        data-mobile-bottom-bar="true"
         role="region"
         aria-label="Mini Audiobook Player"
         onClick={(e) => {

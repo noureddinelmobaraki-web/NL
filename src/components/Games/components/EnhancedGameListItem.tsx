@@ -69,6 +69,7 @@ export function EnhancedGameListItem({
         </div>
         <button
           type="button"
+          data-compact-touch="true"
           className={`nl-game-fav${isFavorite ? ' is-fav' : ''}`}
           onClick={(e) => onToggleFavorite(game.id, e)}
           aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}

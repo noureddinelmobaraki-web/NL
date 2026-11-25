@@ -236,7 +236,7 @@ export function ReaderToolbar(p: ReaderToolbarProps) {
               </button>
             )}
             {mirrorsOpen && p.mirrors.length > 0 && (
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-slate-950/95 backdrop-blur-2xl border border-white/20 p-2 shadow-2xl z-50 flex flex-col gap-1">
+              <div className="max-sm:fixed max-sm:inset-x-3 max-sm:bottom-16 max-sm:top-auto max-sm:w-auto sm:absolute sm:right-0 sm:top-full sm:mt-2 sm:w-56 rounded-2xl bg-slate-950/95 backdrop-blur-2xl border border-white/20 p-2 shadow-2xl z-50 flex flex-col gap-1">
                 {p.mirrors.map((m) => (
                   <a
                     key={m.id}
