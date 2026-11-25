@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { m, type MotionStyle, type Transition } from 'framer-motion';
 import {
   Sun,
@@ -67,12 +67,25 @@ const LITE_TAP = {
 };
 const INSTANT_TRANSITION: Transition = { type: 'tween', duration: 0 };
 
-function NodeIcon({ icon, label, eager }: { icon: string; label: string; eager: boolean }) {
+const REVEAL_PLAY_DURATION_MS = 2800;
+
+function NodeIcon({
+  icon,
+  iconMobile,
+  label,
+  eager,
+}: {
+  icon: string;
+  iconMobile?: string;
+  label: string;
+  eager: boolean;
+}) {
   if (icon.startsWith('lucide:')) {
     const Icon = LUCIDE[icon.slice(7)] ?? MoonStar;
     return <Icon className="nl-node-glyph" strokeWidth={1.9} aria-hidden="true" />;
   }
-  return (
+
+  const imgEl = (
     <img
       src={icon}
       alt=""
@@ -89,7 +102,117 @@ function NodeIcon({ icon, label, eager }: { icon: string; label: string; eager: 
       }}
     />
   );
+
+  if (iconMobile) {
+    return (
+      <picture className="nl-node-picture">
+        <source media="(max-width: 767px)" srcSet={iconMobile} type="image/webp" />
+        {imgEl}
+      </picture>
+    );
+  }
+
+  return imgEl;
 }
+
+interface NodeVideoBackdropProps {
+  src: string;
+  poster: string;
+  shouldPlay: boolean;
+  isLiteOrReduced: boolean;
+}
+
+const NodeVideoBackdrop = memo(function NodeVideoBackdrop({
+  src,
+  poster,
+  shouldPlay,
+  isLiteOrReduced,
+}: NodeVideoBackdropProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const shouldPlayRef = useRef(shouldPlay);
+  shouldPlayRef.current = shouldPlay;
+
+  const handleFirstFrameFreeze = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (!shouldPlayRef.current) {
+      if (video.currentTime === 0) {
+        try {
+          video.currentTime = 0.01;
+        } catch {
+          // Ignore seek errors before metadata is fully ready
+        }
+      }
+      video.pause();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLiteOrReduced) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (shouldPlay && !document.hidden) {
+      void video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
+  }, [shouldPlay, isLiteOrReduced]);
+
+  useEffect(() => {
+    if (isLiteOrReduced) return;
+    const onVisibilityChange = () => {
+      const video = videoRef.current;
+      if (!video) return;
+      if (document.hidden) {
+        video.pause();
+      } else if (shouldPlayRef.current) {
+        void video.play().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [isLiteOrReduced]);
+
+  if (isLiteOrReduced) {
+    return (
+      <span className="nl-node-bg-media-wrap" aria-hidden="true">
+        <img
+          src={poster}
+          alt=""
+          aria-hidden="true"
+          className="nl-node-bg-fallback"
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          draggable={false}
+        />
+        <span className="nl-node-bg-scrim" />
+      </span>
+    );
+  }
+
+  return (
+    <span className="nl-node-bg-media-wrap" aria-hidden="true">
+      <video
+        ref={videoRef}
+        className="nl-node-bg-video"
+        src={src}
+        poster={poster}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        disablePictureInPicture
+        disableRemotePlayback
+        onLoadedData={handleFirstFrameFreeze}
+      />
+      <span className="nl-node-bg-scrim" />
+    </span>
+  );
+});
 
 interface NodePillProps {
   placed: PlacedNode;
@@ -114,6 +237,30 @@ export const NodePill = memo(function NodePill({
     (motionProfile === 'reduced' ? 'lite' : motionProfile === 'balanced' ? 'frost' : 'liquid');
 
   const { node, level, pos, origin, dimmed, active, compact, hasChildren } = placed;
+  const hasBgVideo = Boolean(node.bgVideo);
+  const isLiteOrReduced = resolvedTier === 'lite' || motionProfile === 'reduced';
+  const [isInteracting, setIsInteracting] = useState(false);
+  const [isRevealPlaying, setIsRevealPlaying] = useState(
+    () => hasBgVideo && level > 0 && !compact && !isLiteOrReduced,
+  );
+
+  useEffect(() => {
+    if (!hasBgVideo || level === 0 || compact || isLiteOrReduced) {
+      setIsRevealPlaying(false);
+      return;
+    }
+    setIsRevealPlaying(true);
+    const timer = window.setTimeout(() => {
+      setIsRevealPlaying(false);
+    }, REVEAL_PLAY_DURATION_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [hasBgVideo, level, compact, isLiteOrReduced]);
+
+  const shouldPlay =
+    hasBgVideo && !compact && !isLiteOrReduced && (isInteracting || active || isRevealPlaying);
+
   const fromX = origin.x - pos.x;
   const fromY = origin.y - pos.y;
   const targetOpacity = dimmed ? 0.5 : 1;
@@ -189,6 +336,8 @@ export const NodePill = memo(function NodePill({
     active ? 'is-active' : '',
     dimmed ? 'is-dim' : '',
     compact ? 'is-compact' : '',
+    hasBgVideo ? 'has-bg-video' : '',
+    shouldPlay ? 'is-video-playing' : '',
     node.tint ? `nl-tint-${node.tint}` : '',
   ]
     .filter(Boolean)
@@ -241,13 +390,47 @@ export const NodePill = memo(function NodePill({
         whileTap={whileTapProps}
         onAnimationStart={handleAnimationStart}
         onAnimationComplete={handleAnimationComplete}
-        onMouseEnter={() => onIntent(placed)}
-        onPointerDown={() => onIntent(placed)}
+        onMouseEnter={() => {
+          onIntent(placed);
+          if (hasBgVideo) setIsInteracting(true);
+        }}
+        onMouseLeave={() => {
+          if (hasBgVideo) setIsInteracting(false);
+        }}
+        onFocus={() => {
+          if (hasBgVideo) setIsInteracting(true);
+        }}
+        onBlur={() => {
+          if (hasBgVideo) setIsInteracting(false);
+        }}
+        onPointerDown={() => {
+          onIntent(placed);
+          if (hasBgVideo) setIsInteracting(true);
+        }}
+        onPointerUp={() => {
+          if (hasBgVideo) setIsInteracting(false);
+        }}
+        onPointerCancel={() => {
+          if (hasBgVideo) setIsInteracting(false);
+        }}
         onClick={(event) => onClick(event, placed)}
         aria-expanded={hasChildren ? active : undefined}
       >
+        {node.bgVideo ? (
+          <NodeVideoBackdrop
+            src={node.bgVideo}
+            poster={node.iconMobile ?? node.icon}
+            shouldPlay={shouldPlay}
+            isLiteOrReduced={isLiteOrReduced}
+          />
+        ) : null}
         <span className="nl-node-ico">
-          <NodeIcon icon={node.icon} label={node.label} eager={level === 0} />
+          <NodeIcon
+            icon={node.icon}
+            iconMobile={node.iconMobile}
+            label={node.label}
+            eager={level === 0}
+          />
         </span>
         {compact ? null : (
           <span className="nl-node-text">

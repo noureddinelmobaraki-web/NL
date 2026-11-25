@@ -39,8 +39,12 @@ export type NodeAction =
 export interface GraphNode {
   id: string;
   label: string;
-  /** Full URL (glass icon) OR 'lucide:<name>' fallback. */
+  /** Full URL (desktop glass icon) OR 'lucide:<name>' fallback. */
   icon: string;
+  /** Optional lightweight mobile WebP icon (64x64) used on viewports <= 767px. */
+  iconMobile?: string;
+  /** Optional lightweight muted MP4 video used as the capsule's ambient glass background. */
+  bgVideo?: string;
   action: NodeAction;
   /** Only shown on root pills. */
   tagline?: string;
@@ -65,7 +69,9 @@ export const ROOTS: GraphNode[] = [
       {
         id: "home",
         label: "Home",
-        icon: "lucide:home",
+        icon: `${CDN}/desktop/home.webp`,
+        iconMobile: `${CDN}/mobile/home.webp`,
+        bgVideo: `${CDN}/video/home.mp4`,
         tint: "midnight",
         action: { kind: "me" },
       },
@@ -81,25 +87,33 @@ export const ROOTS: GraphNode[] = [
       {
         id: "listen",
         label: "Listen",
-        icon: `${CDN}/ico/Listen.ico`,
+        icon: `${CDN}/desktop/listen.webp`,
+        iconMobile: `${CDN}/mobile/listen.webp`,
+        bgVideo: `${CDN}/video/listen.mp4`,
         action: { kind: "branch" },
         children: [
           {
             id: "music",
             label: "NL Music",
-            icon: `${CDN}/ico/NL%20music.ico`,
+            icon: `${CDN}/desktop/nl-music.webp`,
+            iconMobile: `${CDN}/mobile/nl-music.webp`,
+            bgVideo: `${CDN}/video/nl-music.mp4`,
             action: { kind: "open", handler: "openMusic" },
           },
           {
             id: "og-albums",
             label: "OG ALBUMS",
-            icon: `${CDN}/ALBUMS.webp`,
+            icon: `${CDN}/desktop/og-albums.webp`,
+            iconMobile: `${CDN}/mobile/og-albums.webp`,
+            bgVideo: `${CDN}/video/og-albums.mp4`,
             action: { kind: "open", handler: "openLiquidAlbums" },
           },
           {
             id: "audiobooks",
             label: "Audio Books",
-            icon: "lucide:headphones",
+            icon: `${CDN}/desktop/audiobooks.webp`,
+            iconMobile: `${CDN}/mobile/audiobooks.webp`,
+            bgVideo: `${CDN}/video/audiobooks.mp4`,
             action: { kind: "open", handler: "openLiquidAudiobooks" },
           },
         ],
@@ -113,25 +127,33 @@ export const ROOTS: GraphNode[] = [
           {
             id: "books",
             label: "Books",
-            icon: "lucide:book",
+            icon: `${CDN}/desktop/books.webp`,
+            iconMobile: `${CDN}/mobile/books.webp`,
+            bgVideo: `${CDN}/video/books.mp4`,
             action: { kind: "open", handler: "openLiquidBooks" },
           },
           {
             id: "magazines",
             label: "Magazines",
-            icon: "lucide:newspaper",
+            icon: `${CDN}/desktop/magazines.webp`,
+            iconMobile: `${CDN}/mobile/magazines.webp`,
+            bgVideo: `${CDN}/video/magazines.mp4`,
             action: { kind: "open", handler: "openMagazines" },
           },
           {
             id: "audiobooks",
             label: "Audio Books",
-            icon: "lucide:headphones",
+            icon: `${CDN}/desktop/audiobooks.webp`,
+            iconMobile: `${CDN}/mobile/audiobooks.webp`,
+            bgVideo: `${CDN}/video/audiobooks.mp4`,
             action: { kind: "open", handler: "openLiquidAudiobooks" },
           },
           {
             id: "art",
             label: "Photos & Museums",
-            icon: "lucide:palette",
+            icon: `${CDN}/desktop/photos-museums.webp`,
+            iconMobile: `${CDN}/mobile/photos-museums.webp`,
+            bgVideo: `${CDN}/video/photos-museums.mp4`,
             action: { kind: "open", handler: "openArtPhotos" },
           },
         ],
@@ -139,25 +161,33 @@ export const ROOTS: GraphNode[] = [
       {
         id: "watch",
         label: "Watch",
-        icon: `${CDN}/ico/Watch.png`,
+        icon: `${CDN}/desktop/watch.webp`,
+        iconMobile: `${CDN}/mobile/watch.webp`,
+        bgVideo: `${CDN}/video/watch.mp4`,
         action: { kind: "branch" },
         children: [
           {
             id: "movies",
             label: "Movies & Series",
-            icon: "lucide:clapperboard",
+            icon: `${CDN}/desktop/movies-series.webp`,
+            iconMobile: `${CDN}/mobile/movies-series.webp`,
+            bgVideo: `${CDN}/video/movies-series.mp4`,
             action: { kind: "open", handler: "openMovies" },
           },
           {
             id: "anime",
             label: "Anime",
-            icon: "lucide:sparkles",
+            icon: `${CDN}/desktop/anime.webp`,
+            iconMobile: `${CDN}/mobile/anime.webp`,
+            bgVideo: `${CDN}/video/anime.mp4`,
             action: { kind: "open", handler: "openAnime" },
           },
           {
             id: "cartoon",
             label: "Cartoon",
-            icon: "lucide:tv",
+            icon: `${CDN}/desktop/cartoon.webp`,
+            iconMobile: `${CDN}/mobile/cartoon.webp`,
+            bgVideo: `${CDN}/video/cartoon.mp4`,
             action: { kind: "open", handler: "openCartoon" },
           },
           {

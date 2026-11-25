@@ -189,11 +189,51 @@
   border-radius: 50%;
   overflow: hidden;
 }
+.nl-node-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 .nl-node-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* ---- Living Ambient Video Capsule Layer (z-index: 0, behind glass rim & foreground) ---- */
+.nl-node-bg-media-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.nl-node-bg-video,
+.nl-node-bg-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  pointer-events: none;
+  /* Slight overscale prevents blurred edge bleed inside rounded pill corners */
+  transform: scale(1.14) translateZ(0);
+  transition: opacity 0.28s ease, filter 0.28s ease;
+}
+/* Balanced glass scrim so white labels remain crisp over vibrant video colors */
+.nl-node-bg-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(8, 12, 18, 0.56) 0%,
+    rgba(8, 12, 18, 0.36) 48%,
+    rgba(8, 12, 18, 0.50) 100%
+  );
 }
 .nl-node-glyph {
   color: #eafff5;
@@ -479,7 +519,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nl-launcher-bg-media {
+  .nl-launcher-bg-media,
+  .nl-node-bg-video,
+  .nl-node-bg-fallback {
     transition: none;
   }
   .nl-sound-eq i {
