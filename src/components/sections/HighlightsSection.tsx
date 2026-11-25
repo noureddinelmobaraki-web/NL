@@ -13,13 +13,26 @@ interface HighlightsSectionProps {
 
 const S = {
   SHADOW: { textShadow: '2px 2px 0 var(--manga-shadow-color)' },
-  VAULT_BG: { backgroundImage: 'var(--vault-playlist-bg)' },
-  YT_BG: { backgroundImage: 'var(--yt-highlights-bg)' },
 };
+
+function YouTubeBrandIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 28 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect width="28" height="20" rx="5" fill="#FF0000" />
+      <path d="M11.5 6.1L18.2 10L11.5 13.9V6.1Z" fill="#FFFFFF" />
+    </svg>
+  );
+}
 
 export const HighlightsSection = memo(function HighlightsSection({
   vaultPlaylistCoverUrl,
-  youtubeHighlightsBgUrl: _y,
+  youtubeHighlightsBgUrl,
   onOpenTube,
 }: HighlightsSectionProps) {
   const resolvedTheme = useResolvedTheme();
@@ -29,6 +42,10 @@ export const HighlightsSection = memo(function HighlightsSection({
 
   const vaultBgStyle = {
     backgroundImage: `var(--vault-playlist-bg, url('${vaultPlaylistCoverUrl || '/images/vault-playlist.webp'}'))`,
+  };
+
+  const ytBgStyle = {
+    backgroundImage: `var(--yt-highlights-bg, url('${youtubeHighlightsBgUrl}'))`,
   };
 
   return (
@@ -77,16 +94,22 @@ export const HighlightsSection = memo(function HighlightsSection({
             <span className="nl-hl-dot nl-hl-dot--r" />
             <span className="nl-hl-dot nl-hl-dot--y" />
             <span className="nl-hl-dot nl-hl-dot--g" />
-            <span className="nl-hl-chrome-title">NL YOUTUBE</span>
+            <span className="nl-hl-chrome-title">
+              <YouTubeBrandIcon className="nl-hl-yt-icon" />
+              <span>NL YOUTUBE</span>
+            </span>
           </span>
 
           <span className="nl-hl-screen">
-            <span className="nl-hl-thumb" style={S.YT_BG} aria-hidden="true" />
+            <span className="nl-hl-thumb" style={ytBgStyle} aria-hidden="true" />
             <span className="nl-hl-scrim" aria-hidden="true" />
             <span className="nl-hl-play" aria-hidden="true">
               <Play className="nl-hl-play-icon" />
             </span>
-            <span className="nl-hl-badge" style={S.SHADOW}>Watch on YouTube</span>
+            <span className="nl-hl-badge" style={S.SHADOW}>
+              <YouTubeBrandIcon className="nl-hl-yt-icon" />
+              <span>Watch on YouTube</span>
+            </span>
           </span>
 
           <span className="nl-hl-controls" aria-hidden="true">
