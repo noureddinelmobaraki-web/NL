@@ -144,318 +144,249 @@ html[data-island-open="true"] body *:not(.notch-portal-root, .notch-portal-root 
   display: none;
 }
 
-.orb {
+/* =====================================================================
+   Bloom Crystal Glass Orb (`data-state="orb"`) — GPU-Only Lightweight
+   Applies to BOTH Desktop (top-center / 8-slot dock) & Mobile (bottom-right)
+   - Dual-bevel rotated crystal chamber + sliding specular sheen
+   - Nested refractive inner core with active page icon (`OrbIcon`)
+   - Twin pinpoint specular blooms + GPU transform-only prismatic rim
+   ===================================================================== */
+
+.nl-crystal-orb {
+  --orb-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --orb-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
-  display: block;
-  width: var(--orb-size);
-  height: var(--orb-size);
+  width: var(--orb-size, 48px);
+  height: var(--orb-size, 48px);
   border-radius: 50%;
+  display: grid;
+  place-items: center;
   isolation: isolate;
   transform: translate3d(0, 0, 0);
-  transition: transform 380ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 280ms var(--orb-bounce);
 }
-.notch-island[data-state="orb"]:active .orb {
-  transform: scale3d(0.9, 0.9, 1);
+
+.notch-island[data-state="orb"]:hover .nl-crystal-orb {
+  transform: scale3d(1.1, 1.1, 1);
 }
-.orb > span {
+
+.notch-island[data-state="orb"]:active .nl-crystal-orb,
+.notch-island[data-state="orb"].is-dragging .nl-crystal-orb {
+  transform: scale3d(0.88, 0.88, 1);
+}
+
+/* GPU-only rotating prismatic micro-rim (zero filter animation) */
+.nl-crystal-orb__rim {
   position: absolute;
+  inset: -2px;
+  border-radius: 50%;
   pointer-events: none;
-}
-
-.orb__shadow {
-  left: 8%; right: 8%; bottom: -18%; height: 34%;
-  border-radius: 50%;
-  background:
-    radial-gradient(closest-side at 50% 42%, rgba(255,255,255,0.28), rgba(255,255,255,0) 55%),
-    radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0));
-  z-index: -2;
-}
-
-.orb__aura-wrap { inset: -40%; z-index: -1; }
-.orb__aura {
-  position: absolute; inset: 0; border-radius: 50%;
-  background: radial-gradient(closest-side, var(--accent-soft), transparent 72%);
-  opacity: 0;
-  transform: scale3d(0.75, 0.75, 1);
-  transition: opacity 500ms ease, transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.orb__lens { inset: 0; border-radius: 50%; display: none; }
-.has-svg-backdrop .orb__lens {
-  display: block;
-  backdrop-filter: url(#notch-orb-lens);
-  -webkit-backdrop-filter: url(#notch-orb-lens);
-}
-
-.orb__back {
-  inset: 0; border-radius: 50%;
-  background:
-    radial-gradient(120% 60% at 50% 104%, rgba(255,255,255,0.28), rgba(255,255,255,0) 46%),
-    radial-gradient(circle closest-side, rgba(255,255,255,0) calc(100% - var(--orb-wall) - 3px),
-                    rgba(255,255,255,0.08) calc(100% - var(--orb-wall)), rgba(255,255,255,0) 100%);
-  -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - var(--orb-wall) - 4px), #000 calc(100% - var(--orb-wall) - 1px));
-          mask: radial-gradient(circle closest-side, transparent calc(100% - var(--orb-wall) - 4px), #000 calc(100% - var(--orb-wall) - 1px));
-}
-
-.orb__shell {
-  inset: 0; border-radius: 50%;
-  background:
-    radial-gradient(circle closest-side,
-      rgba(255,255,255,0)   0 calc(100% - var(--orb-wall) - 2px),
-      rgba(0,0,0,0.22)        calc(100% - var(--orb-wall)),
-      rgba(255,255,255,0.14)  calc(100% - var(--orb-wall) + 1.5px),
-      rgba(255,255,255,0.52)  calc(100% - 1px),
-      rgba(255,255,255,0)     100%);
-  box-shadow:
-    inset 0 0 0 0.5px rgba(255,255,255,0.58),
-    inset 0 1px 1px rgba(255,255,255,0.68),
-    inset 0 -1px 2px rgba(255,255,255,0.18),
-    0 1px 2px rgba(0,0,0,0.22),
-    0 8px 22px rgba(0,0,0,0.24);
-}
-
-.orb__shell::before {
-  content: ""; position: absolute; inset: 0; border-radius: 50%;
-  background: conic-gradient(from 200deg, #ff7ad9, #7afcff, #b7ff7a, #ffd27a, #b77aff, #ff7ad9);
-  -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2px), #000 calc(100% - 0.75px), transparent 100%);
-          mask: radial-gradient(circle closest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2px), #000 calc(100% - 0.75px), transparent 100%);
-  opacity: 0.36;
-  animation: iris-spin 16s linear infinite;
-}
-
-.orb__shell::after {
-  content: ""; position: absolute; inset: 0; border-radius: 50%;
-  background:
-    radial-gradient(circle 1.6px at 25% 30%, #fff 0 60%, rgba(255,255,255,0) 100%),
-    radial-gradient(ellipse 24% 13% at 34% 20%, rgba(255,255,255,0.95) 0 28%, rgba(255,255,255,0.32) 62%, rgba(255,255,255,0) 100%),
-    radial-gradient(ellipse 28% 12% at 66% 87%, rgba(255,255,255,0.22), rgba(255,255,255,0) 100%);
-}
-
-.orb__tint {
-  inset: 0; border-radius: 50%;
-  background: conic-gradient(from 140deg, var(--accent-edge), transparent 30%, var(--notch-accent) 55%, transparent 80%, var(--accent-edge));
-  -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - var(--orb-wall) - 0.5px), #000 calc(100% - var(--orb-wall) + 1px), #000 calc(100% - 1px), transparent 100%);
-          mask: radial-gradient(circle closest-side, transparent calc(100% - var(--orb-wall) - 0.5px), #000 calc(100% - var(--orb-wall) + 1px), #000 calc(100% - 1px), transparent 100%);
-  opacity: 0;
-  transition: opacity 450ms ease;
-  animation: iris-spin 9s linear infinite reverse;
-}
-
-/* Mercury / Ferrofluid Core (26px suspended black liquid metal droplet) */
-.orb__core {
-  left: 50%; top: 50%;
-  width: var(--core-size); height: var(--core-size);
-  margin: calc(var(--core-size) / -2) 0 0 calc(var(--core-size) / -2);
-}
-.orb__core span { position: absolute; display: block; }
-
-.merc__float  { inset: 0; animation: merc-float 5.2s ease-in-out infinite; will-change: transform; }
-.merc__react, .merc__beat, .merc__squash { inset: 0; }
-.merc__beat   { animation: merc-beat 1.15s ease-in-out infinite; animation-play-state: paused; }
-.merc__squash { animation: merc-squash 3.7s ease-in-out infinite; will-change: transform; }
-.merc__spin   { inset: 0; animation: merc-spin 11s linear infinite; will-change: transform; }
-
-.merc__body {
-  inset: 0;
-  border-radius: 47% 53% 44% 56% / 52% 45% 55% 48%;
-  background: radial-gradient(circle at 50% 50%, #0b0b0e 0 52%, #030304 78%, #000 100%);
-  box-shadow:
-    inset 0 0 0 0.5px rgba(210,220,255,0.16),
-    inset 0 0 4px rgba(150,160,190,0.2),
-    0 2px 5px rgba(0,0,0,0.42);
-}
-
-.merc__lobe-orbit { inset: 0; animation: merc-spin 7.3s linear infinite reverse; will-change: transform; }
-.merc__lobe {
-  left: 30%; top: 6%; width: 64%; height: 64%;
-  border-radius: 50% 50% 46% 54% / 55% 48% 52% 45%;
-  background: #000;
-}
-
-.merc__shade {
-  inset: 11%; border-radius: 50%;
-  background:
-    radial-gradient(circle 1.5px at 30% 27%, #fff 0 55%, rgba(255,255,255,0) 100%),
-    radial-gradient(ellipse 34% 22% at 34% 28%, rgba(235,240,255,0.6), rgba(235,240,255,0) 100%),
-    radial-gradient(ellipse 48% 20% at 55% 90%, rgba(170,180,205,0.28), rgba(170,180,205,0) 100%);
-  animation: merc-parallax 3.7s ease-in-out infinite;
-}
-
-.merc__accent {
-  inset: 6%; border-radius: 50%;
-  background:
-    radial-gradient(ellipse 58% 26% at 62% 90%, var(--accent-hot), transparent 72%),
-    radial-gradient(ellipse 30% 16% at 30% 22%, color-mix(in oklab, var(--notch-accent) 35%, white), transparent 80%);
-  opacity: 0;
-  transition: opacity 450ms ease;
-}
-
-.notch-island[data-audio-active="true"] .orb__aura {
-  opacity: 0.9;
-  transform: scale3d(1, 1, 1);
-  animation: aura-pulse 2.4s ease-in-out infinite;
-}
-.notch-island[data-audio-active="true"] .orb__tint    { opacity: 0.85; }
-.notch-island[data-audio-active="true"] .merc__accent { opacity: 0.6; }
-.notch-island[data-audio-active="true"] .merc__beat   { animation-play-state: running; }
-
-@keyframes iris-spin   { to { transform: rotate(360deg); } }
-@keyframes merc-spin   { to { transform: rotate(360deg); } }
-@keyframes merc-float {
-  0%, 100% { transform: translate3d(0, -0.6px, 0); }
-  50%      { transform: translate3d(0.4px, 0.8px, 0); }
-}
-@keyframes merc-squash {
-  0%, 100% { transform: scale3d(1.06, 0.95, 1); }
-  33%      { transform: scale3d(0.95, 1.06, 1); }
-  66%      { transform: scale3d(1.03, 0.98, 1); }
-}
-@keyframes merc-parallax {
-  0%, 100% { transform: translate3d(-0.3px, 0.2px, 0); }
-  50%      { transform: translate3d(0.3px, -0.3px, 0); }
-}
-@keyframes merc-beat {
-  0%, 100% { transform: scale3d(1, 1, 1); }
-  45%      { transform: scale3d(1.05, 0.97, 1); }
-}
-@keyframes aura-pulse {
-  0%, 100% { opacity: 0.9;  transform: scale3d(1, 1, 1); }
-  50%      { opacity: 0.55; transform: scale3d(1.12, 1.12, 1); }
-}
-
-/* ── Molten Polygon Mask Orb (Collapsed Notch Island) ── */
-.nl-molten-orb-wrap {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-  position: relative;
-}
-
-.nl-molten-orb {
-  --color-one: #ffbf48;
-  --color-two: #be4a1d;
-  --color-three: #ffbf4780;
-  --color-four: #bf4a1d80;
-  --color-five: #ffbf4740;
-  --time-animation: 2s;
-  --size: 0.44;
-  position: relative;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  transform: scale(var(--size));
-  box-shadow:
-    0 0 25px 0 var(--color-three),
-    0 20px 50px 0 var(--color-four);
-  animation: nl-notch-colorize calc(var(--time-animation) * 3) ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-.nl-molten-orb::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  border-top: solid 1px var(--color-one);
-  border-bottom: solid 1px var(--color-two);
-  background: linear-gradient(180deg, var(--color-five), var(--color-four));
-  box-shadow:
-    inset 0 10px 10px 0 var(--color-three),
-    inset 0 -10px 10px 0 var(--color-four);
-}
-
-.nl-molten-orb .nl-molten-orb__box {
-  width: 100px;
-  height: 100px;
-  background: linear-gradient(
-    180deg,
-    var(--color-one) 30%,
-    var(--color-two) 70%
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.72) 45deg,
+    color-mix(in srgb, var(--notch-accent) 92%, #ffffff) 110deg,
+    transparent 175deg,
+    rgba(255, 255, 255, 0.28) 255deg,
+    transparent 360deg
   );
-  mask: url(#nl-notch-clipping);
-  -webkit-mask: url(#nl-notch-clipping);
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 2px),
+    #000 calc(100% - 0.8px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 2px),
+    #000 calc(100% - 0.8px)
+  );
+  opacity: 0.72;
+  animation: nl-crystal-rim-spin 13s linear infinite;
 }
 
-.nl-molten-orb svg {
+.notch-island[data-audio-active="true"] .nl-crystal-orb__rim {
+  opacity: 0.96;
+  animation-duration: 7.5s;
+}
+
+.notch-island[data-theme-skin="lite"] .nl-crystal-orb__rim {
+  animation: none;
+  opacity: 0.36;
+}
+
+/* Rotated dual-bevel frosted crystal chamber */
+.nl-crystal-orb__chamber {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  transform: rotate(-34deg);
+  border-right: 2.5px solid rgba(255, 255, 255, 0.88);
+  border-left: 2.5px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.32);
+  border-bottom: 1px solid color-mix(in srgb, var(--notch-accent) 42%, transparent);
+  background:
+    radial-gradient(circle at 68% 26%, rgba(255, 255, 255, 0.24) 0%, transparent 56%),
+    radial-gradient(
+      circle at 32% 76%,
+      color-mix(in srgb, var(--notch-accent) 38%, transparent) 0%,
+      transparent 62%
+    ),
+    rgba(16, 20, 32, 0.56);
+  -webkit-backdrop-filter: blur(16px) saturate(185%);
+  backdrop-filter: blur(16px) saturate(185%);
+  box-shadow:
+    inset 0 0 2px 0 rgba(255, 255, 255, 0.55),
+    inset 0 0 10px -4px rgba(255, 255, 255, 0.22),
+    inset 0 -7px 14px -6px color-mix(in srgb, var(--notch-accent) 44%, transparent),
+    0 10px 26px -6px rgba(0, 0, 0, 0.56),
+    0 0 20px -4px color-mix(in srgb, var(--notch-accent) 46%, transparent);
+  transition: box-shadow 260ms ease, border-color 260ms ease;
+}
+
+.notch-island[data-theme-skin="light"] .nl-crystal-orb__chamber {
+  border-right-color: #ffffff;
+  border-left-color: rgba(15, 23, 42, 0.12);
+  background:
+    radial-gradient(circle at 68% 26%, rgba(255, 255, 255, 0.92) 0%, transparent 58%),
+    radial-gradient(
+      circle at 32% 76%,
+      color-mix(in srgb, var(--notch-accent) 34%, transparent) 0%,
+      transparent 64%
+    ),
+    rgba(255, 255, 255, 0.66);
+  box-shadow:
+    inset 0 0 2px 0 #ffffff,
+    inset 0 0 12px -4px rgba(255, 255, 255, 0.85),
+    inset 0 -6px 14px -6px color-mix(in srgb, var(--notch-accent) 34%, transparent),
+    0 10px 24px -6px rgba(15, 23, 42, 0.22);
+}
+
+.notch-island[data-theme-skin="lite"] .nl-crystal-orb__chamber {
+  -webkit-backdrop-filter: blur(8px) saturate(125%);
+  backdrop-filter: blur(8px) saturate(125%);
+}
+
+/* Sliding diagonal glass sheen curtain */
+.nl-crystal-orb__sheen {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.62) 100%
+  );
+  transform: translate3d(0, -56%, 0);
+  transform-origin: bottom center;
   pointer-events: none;
+  opacity: 0.64;
+  transition: transform 420ms var(--orb-spring), opacity 300ms ease;
 }
 
-.nl-molten-orb svg #nl-notch-clipping {
-  filter: contrast(15);
-  animation: nl-notch-roundness calc(var(--time-animation) / 2) linear infinite;
+.notch-island[data-state="orb"]:hover .nl-crystal-orb__sheen {
+  transform: translate3d(0, -38%, 0);
+  opacity: 0.86;
 }
 
-.nl-molten-orb svg #nl-notch-clipping polygon {
-  filter: blur(7px);
+/* Nested dual-layer inner core */
+.nl-crystal-orb__core-ring {
+  position: relative;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(
+    60deg,
+    color-mix(in srgb, var(--notch-accent) 46%, transparent) 0%,
+    rgba(255, 255, 255, 0.86) 100%
+  );
+  box-shadow: -3px 3px 8px rgba(0, 0, 0, 0.4);
+  transition: transform 320ms var(--orb-bounce);
 }
 
-.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(1) {
-  transform-origin: 75% 25%;
-  transform: rotate(90deg);
+.notch-island[data-state="orb"]:active .nl-crystal-orb__core-ring {
+  transform: scale3d(1.16, 1.16, 1);
 }
 
-.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(2) {
-  transform-origin: 50% 50%;
-  animation: nl-notch-rotation var(--time-animation) linear infinite reverse;
+.nl-crystal-orb__core {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  transform: rotate(34deg);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.28) 0%, transparent 55%),
+    linear-gradient(
+      145deg,
+      rgba(12, 16, 28, 0.88),
+      color-mix(in srgb, var(--notch-accent) 36%, rgba(12, 16, 28, 0.9))
+    );
+  color: #ffffff;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.45);
 }
 
-.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(3) {
-  transform-origin: 50% 60%;
-  animation: nl-notch-rotation var(--time-animation) linear infinite;
-  animation-delay: calc(var(--time-animation) / -3);
+.notch-island[data-theme-skin="light"] .nl-crystal-orb__core {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.94) 0%, transparent 55%),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--notch-accent) 44%, #ffffff),
+      rgba(255, 255, 255, 0.88)
+    );
+  color: #171226;
 }
 
-.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(4) {
-  transform-origin: 40% 40%;
-  animation: nl-notch-rotation var(--time-animation) linear infinite reverse;
+.nl-crystal-orb__core svg {
+  opacity: 0.88;
+  transition: opacity 200ms ease, transform 220ms var(--orb-spring);
 }
 
-.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(5) {
-  transform-origin: 40% 40%;
-  animation: nl-notch-rotation var(--time-animation) linear infinite reverse;
-  animation-delay: calc(var(--time-animation) / -2);
+.notch-island[data-state="orb"]:hover .nl-crystal-orb__core svg {
+  opacity: 1;
+  transform: scale3d(1.08, 1.08, 1);
 }
 
-.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(6) {
-  transform-origin: 60% 40%;
-  animation: nl-notch-rotation var(--time-animation) linear infinite;
+/* Twin pinpoint specular blooms */
+.nl-crystal-orb__bloom {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #ffffff;
+  pointer-events: none;
+  z-index: 4;
+  transition: transform 240ms ease, opacity 240ms ease;
 }
 
-.nl-molten-orb svg #nl-notch-clipping polygon:nth-child(7) {
-  transform-origin: 60% 40%;
-  animation: nl-notch-rotation var(--time-animation) linear infinite;
-  animation-delay: calc(var(--time-animation) / -1.5);
+.nl-crystal-orb__bloom--1 {
+  top: 6px;
+  right: 9px;
+  box-shadow:
+    0 0 5px 2px rgba(255, 255, 255, 0.9),
+    0 0 12px 4px color-mix(in srgb, var(--notch-accent) 55%, transparent);
 }
 
-@keyframes nl-notch-rotation {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.nl-crystal-orb__bloom--2 {
+  bottom: 7px;
+  left: 9px;
+  opacity: 0.72;
+  box-shadow:
+    0 0 4px 1.5px rgba(255, 255, 255, 0.65),
+    0 0 10px 3px color-mix(in srgb, var(--notch-accent) 35%, transparent);
 }
 
-@keyframes nl-notch-roundness {
-  0% { filter: contrast(15); }
-  20% { filter: contrast(3); }
-  40% { filter: contrast(3); }
-  60% { filter: contrast(15); }
-  100% { filter: contrast(15); }
+.notch-island[data-state="orb"]:hover .nl-crystal-orb__bloom--1 {
+  transform: scale3d(1.25, 1.25, 1);
 }
 
-@keyframes nl-notch-colorize {
-  0% { filter: hue-rotate(0deg); }
-  20% { filter: hue-rotate(-30deg); }
-  40% { filter: hue-rotate(-60deg); }
-  60% { filter: hue-rotate(-90deg); }
-  80% { filter: hue-rotate(-45deg); }
-  100% { filter: hue-rotate(0deg); }
+@keyframes nl-crystal-rim-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 /* =====================================================================
@@ -856,21 +787,133 @@ html[data-island-open="true"] body *:not(.notch-portal-root, .notch-portal-root 
 .notch-tool--exit { color: #fda4af; }
 .notch-island[data-theme-skin="light"] .notch-tool--exit { color: #be123c; }
 
+/* ── Liquid Glass Depth & Edge-Lit Neon Refinements (Desktop + Mobile Shared) ── */
+.notch-island[data-state="open"] {
+  background:
+    radial-gradient(
+      115% 65% at 50% 0%,
+      color-mix(in srgb, var(--notch-accent) 16%, transparent) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.02) 32%,
+      transparent 100%
+    ),
+    rgba(14, 18, 30, 0.74);
+  -webkit-backdrop-filter: blur(22px) saturate(185%);
+  backdrop-filter: blur(22px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.42),
+    inset 0 0 14px -6px rgba(255, 255, 255, 0.14),
+    0 24px 52px -12px rgba(0, 0, 0, 0.66),
+    0 0 34px -10px color-mix(in srgb, var(--notch-accent) 34%, transparent);
+}
+
+.notch-island[data-state="open"][data-theme-skin="light"] {
+  background:
+    radial-gradient(
+      115% 65% at 50% 0%,
+      rgba(255, 255, 255, 0.94) 0%,
+      rgba(251, 207, 232, 0.28) 54%,
+      transparent 78%
+    ),
+    linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.88) 0%,
+      rgba(253, 236, 246, 0.82) 48%,
+      rgba(218, 248, 234, 0.84) 100%
+    );
+  border-color: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    inset 0 1.5px 0 #ffffff,
+    inset 0 0 14px -6px rgba(255, 255, 255, 0.9),
+    0 24px 52px -12px rgba(15, 23, 42, 0.24),
+    0 0 30px -10px color-mix(in srgb, var(--notch-accent) 28%, transparent);
+}
+
+.notch-island[data-state="open"][data-theme-skin="lite"] {
+  -webkit-backdrop-filter: blur(10px) saturate(125%);
+  backdrop-filter: blur(10px) saturate(125%);
+}
+
+/* Diagonal Glass Glint Sweep on Desktop & Mobile Tiles */
+.notch-tree__leaf::before,
+.notch-cc__mode-tile::before,
+.notch-cc__dest-tile::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -70%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.22), transparent);
+  transform: skewX(38deg) translate3d(0, 0, 0);
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.notch-tree__leaf:hover::before,
+.notch-cc__mode-tile:hover::before,
+.notch-cc__dest-tile:hover::before {
+  transform: skewX(38deg) translate3d(270%, 0, 0);
+}
+
+/* Edge-Lit Bottom Neon Energy Bar on Visual Mode Tiles (Desktop + Mobile) */
+.notch-tree__leaf--mode,
+.notch-cc__mode-tile {
+  --mode-glow: var(--notch-accent);
+}
+.notch-tree__leaf--mode[data-mode-id="dark"],
+.notch-cc__mode-tile[data-mode-id="dark"]  { --mode-glow: #38bdf8; }
+.notch-tree__leaf--mode[data-mode-id="light"],
+.notch-cc__mode-tile[data-mode-id="light"] { --mode-glow: #ff1f71; }
+.notch-tree__leaf--mode[data-mode-id="bit"],
+.notch-cc__mode-tile[data-mode-id="bit"]   { --mode-glow: #34d399; }
+.notch-tree__leaf--mode[data-mode-id="lite"],
+.notch-cc__mode-tile[data-mode-id="lite"]  { --mode-glow: #e2e8f0; }
+
+.notch-tree__leaf--mode::after,
+.notch-cc__mode-tile::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 24px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--mode-glow);
+  box-shadow: 0 0 8px var(--mode-glow), 0 0 16px var(--mode-glow);
+  transform: translateX(-50%);
+  opacity: 0.45;
+  transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.notch-tree__leaf--mode:hover::after,
+.notch-tree__leaf--mode.is-active::after,
+.notch-cc__mode-tile:hover::after,
+.notch-cc__mode-tile.is-active::after {
+  width: 72%;
+  opacity: 0.95;
+}
+
 .notch-island.is-dragging { cursor: grabbing; transition: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .notch-eq__bar { animation: none; transform: scaleY(0.7); }
-  .notch-island { transition: none; }
-  .orb__shell::before,
-  .orb__tint,
-  .merc__float,
-  .merc__beat,
-  .merc__squash,
-  .merc__spin,
-  .merc__lobe-orbit,
-  .merc__shade {
-    animation: none !important;
-  }
+  .notch-island,
+  .nl-crystal-orb,
+  .nl-crystal-orb__sheen,
+  .nl-crystal-orb__core-ring { transition: none; }
+  .nl-crystal-orb__rim { animation: none; }
+  .notch-tree__leaf::before,
+  .notch-cc__mode-tile::before,
+  .notch-cc__dest-tile::before { display: none; }
 }
 
 .notch-live.is-name-only { gap: 8px; }
@@ -1453,5 +1496,159 @@ html[data-island-open="true"] body *:not(.notch-portal-root, .notch-portal-root 
 
   body:has([data-mobile-bottom-bar="true"]) .notch-anchor:has(.notch-island[data-state="orb"]) {
     bottom: calc(max(18px, env(safe-area-inset-bottom, 0px)) + 74px);
+  }
+}
+
+/* =====================================================================
+   Mobile Liquid Crystal Glass Redesign (`<= 767px` + Control Center)
+   Strictly preserves `backdrop-filter: none` on full-screen CC overlay
+   ===================================================================== */
+
+/* Mobile Control Center: Nested Synthetic Crystal Glass Surfaces */
+.notch-mobile-cc-card {
+  background:
+    radial-gradient(
+      115% 48% at 50% 0%,
+      color-mix(in srgb, var(--notch-accent) 26%, rgba(255, 255, 255, 0.14)) 0%,
+      rgba(255, 255, 255, 0.03) 48%,
+      transparent 76%
+    ),
+    radial-gradient(
+      88% 42% at 50% 100%,
+      color-mix(in srgb, var(--notch-accent) 18%, rgba(16, 22, 38, 0.55)) 0%,
+      transparent 74%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(16, 20, 32, 0.96) 0%,
+      rgba(9, 12, 20, 0.98) 54%,
+      rgba(5, 7, 13, 0.99) 100%
+    );
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.28);
+}
+
+.notch-cc__brand-orb {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 6px 16px -4px color-mix(in srgb, var(--notch-accent) 52%, rgba(0, 0, 0, 0.5));
+}
+
+/* Detached Floating Pill Look for Mobile Now-Playing Bar */
+.notch-cc__now-playing {
+  border-radius: 999px;
+  padding: 9px 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(14, 18, 30, 0.84) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 10px 24px -8px rgba(0, 0, 0, 0.52);
+}
+
+.notch-mobile-cc-overlay[data-theme-skin="light"] .notch-cc__now-playing {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.94) 0%,
+      rgba(253, 234, 244, 0.82) 56%,
+      rgba(214, 248, 232, 0.86) 100%
+    );
+  border-color: rgba(236, 72, 153, 0.26);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 10px 24px -8px rgba(15, 23, 42, 0.16);
+}
+
+/* Nested 3D Refractive Glass Bento Modules on Mobile */
+.notch-cc__module {
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(14, 18, 30, 0.78) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 0 14px -6px rgba(255, 255, 255, 0.12),
+    0 12px 26px -8px rgba(0, 0, 0, 0.48);
+}
+
+/* Mobile 2x2 Mode Tiles + 4-Column Destination Tiles */
+.notch-cc__mode-tile,
+.notch-cc__dest-tile {
+  border-color: rgba(255, 255, 255, 0.20);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(18, 24, 38, 0.72) 55%, rgba(10, 14, 24, 0.90) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 6px 14px -4px rgba(0, 0, 0, 0.42);
+}
+
+.notch-cc__mode-tile.is-active,
+.notch-cc__dest-tile.is-active {
+  border-color: color-mix(in srgb, var(--notch-accent) 76%, #ffffff);
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--notch-accent) 32%, rgba(255, 255, 255, 0.16)) 0%,
+      rgba(12, 18, 30, 0.88) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    0 8px 18px -6px color-mix(in srgb, var(--notch-accent) 55%, transparent);
+}
+
+.notch-mobile-cc-overlay[data-theme-skin="light"] .notch-cc__mode-tile.is-active,
+.notch-mobile-cc-overlay[data-theme-skin="light"] .notch-cc__dest-tile.is-active {
+  border-color: color-mix(in srgb, var(--notch-accent) 68%, #ec4899);
+  background:
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.98) 0%,
+      color-mix(in srgb, var(--notch-accent) 26%, rgba(253, 234, 244, 0.92)) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 8px 18px -6px color-mix(in srgb, var(--notch-accent) 38%, rgba(15, 23, 42, 0.18));
+}
+
+/* Mobile Bottom Split-Style Pill Dock & Detached Circular Close Orb */
+.notch-cc__dock-btn {
+  border-radius: 999px;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 8px 18px -6px rgba(0, 0, 0, 0.46);
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.notch-cc__dock-btn:active {
+  transform: scale3d(0.94, 0.94, 1);
+}
+
+.notch-cc__close {
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 6px 16px -4px rgba(0, 0, 0, 0.48);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.notch-cc__close:active {
+  transform: scale3d(0.9, 0.9, 1);
+}
+
+/* Mobile-only lightweight tuning for the collapsed Bloom Crystal Orb */
+@media (max-width: 767px) {
+  .nl-crystal-orb__chamber {
+    -webkit-backdrop-filter: blur(10px) saturate(155%);
+    backdrop-filter: blur(10px) saturate(155%);
+    box-shadow:
+      inset 0 0 2px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -6px 12px -5px color-mix(in srgb, var(--notch-accent) 42%, transparent),
+      0 8px 20px -6px rgba(0, 0, 0, 0.52);
+  }
+  .nl-crystal-orb__bloom--2 {
+    opacity: 0.55;
   }
 }

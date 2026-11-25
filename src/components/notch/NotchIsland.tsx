@@ -7,7 +7,6 @@ import {
   Component,
   useRef,
   useEffect,
-  useMemo,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -34,22 +33,6 @@ import {
   DesktopNotchPanel,
   MobileControlCenterOverlay,
 } from "./NotchExpandedControls";
-
-const ORB_LENS_DISPLACEMENT_URI =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
-      '<defs>' +
-      '<radialGradient id="g" cx="50%" cy="50%" r="50%">' +
-      '<stop offset="0%" stop-color="#808000"/>' +
-      '<stop offset="70%" stop-color="#808000"/>' +
-      '<stop offset="92%" stop-color="#b84800"/>' +
-      '<stop offset="100%" stop-color="#48b800"/>' +
-      "</radialGradient>" +
-      "</defs>" +
-      '<rect width="64" height="64" fill="url(#g)"/>' +
-      "</svg>",
-  );
 
 class Boundary extends Component<
   { children: ReactNode },
@@ -155,14 +138,6 @@ function NotchIslandInner() {
   const OrbIcon = pageMeta.icon;
   const accent = transport?.accent ?? pageMeta.accent;
 
-  const hasSvgBackdrop = useMemo(() => {
-    if (!isDesktop || typeof navigator === "undefined") return false;
-    const nav = navigator as Navigator & {
-      userAgentData?: { brands?: Array<{ brand: string }> };
-    };
-    return Boolean(nav.userAgentData?.brands?.some((b) => /Chromium/.test(b.brand)));
-  }, [isDesktop]);
-
   const conflict = useAudioConflict();
 
   useEffect(() => {
@@ -225,41 +200,10 @@ function NotchIslandInner() {
   return createPortal(
     <div
       ref={anchorRef}
-      className={`notch-portal-root${hasSvgBackdrop ? " has-svg-backdrop" : ""}`}
+      className="notch-portal-root"
       data-device={device}
       data-page={pageKey}
     >
-      {hasSvgBackdrop && (
-        <svg
-          width="0"
-          height="0"
-          style={{ position: "absolute" }}
-          aria-hidden="true"
-        >
-          <filter
-            id="notch-orb-lens"
-            x="0%"
-            y="0%"
-            width="100%"
-            height="100%"
-            colorInterpolationFilters="sRGB"
-          >
-            <feImage
-              href={ORB_LENS_DISPLACEMENT_URI}
-              result="lensMap"
-              preserveAspectRatio="none"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="lensMap"
-              scale={10}
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-        </svg>
-      )}
-
       <div
         className="notch-anchor"
         data-device={device}
@@ -343,23 +287,18 @@ function NotchIslandInner() {
             ))}
 
           {islandState === "orb" && (
-            <div className="nl-molten-orb-wrap" aria-hidden="true">
-              <div className="nl-molten-orb">
-                <div className="nl-molten-orb__box" />
-                <svg width="100" height="100" viewBox="0 0 100 100" aria-hidden="true">
-                  <defs>
-                    <mask id="nl-notch-clipping">
-                      <polygon points="0,0 100,0 100,100 0,100" fill="black" />
-                      <polygon points="25,25 75,25 50,75" fill="white" />
-                      <polygon points="50,25 75,75 25,75" fill="white" />
-                      <polygon points="35,35 65,35 50,65" fill="white" />
-                      <polygon points="35,35 65,35 50,65" fill="white" />
-                      <polygon points="35,35 65,35 50,65" fill="white" />
-                      <polygon points="35,35 65,35 50,65" fill="white" />
-                    </mask>
-                  </defs>
-                </svg>
-              </div>
+            <div className="nl-crystal-orb" aria-hidden="true">
+              <span className="nl-crystal-orb__rim" />
+              <span className="nl-crystal-orb__chamber">
+                <span className="nl-crystal-orb__core-ring">
+                  <span className="nl-crystal-orb__core">
+                    <OrbIcon size={16} strokeWidth={2.2} />
+                  </span>
+                </span>
+                <span className="nl-crystal-orb__sheen" />
+              </span>
+              <span className="nl-crystal-orb__bloom nl-crystal-orb__bloom--1" />
+              <span className="nl-crystal-orb__bloom nl-crystal-orb__bloom--2" />
             </div>
           )}
 
