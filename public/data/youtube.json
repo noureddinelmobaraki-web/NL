@@ -1,30 +1,45 @@
 {
   "channelId": "UCbsSmEzYZvL24C2S75Rq4Og",
   "channelHandle": "@nourdin_el_mobaraki",
-  "updatedAt": "2026-11-28T07:47:31.111Z",
-  "count": 119,
+  "updatedAt": "2026-11-28T20:00:57.142Z",
+  "count": 121,
   "videos": [
+    {
+      "id": "nPHwj-ENrBE",
+      "title": "Nordine  GB -  حُلْمٍ",
+      "publishedAt": "2026-11-28T17:30:09Z",
+      "thumbnail": "https://i.ytimg.com/vi/nPHwj-ENrBE/hqdefault.jpg",
+      "duration": 330,
+      "viewCount": 1
+    },
+    {
+      "id": "-nNHTWxEFqA",
+      "title": "Nordine  GB - Subway Surfer",
+      "publishedAt": "2026-11-28T15:45:25Z",
+      "duration": 203,
+      "viewCount": 18
+    },
     {
       "id": "pCZVGsM2Ywk",
       "title": "Nordine  GB - Batt Tajribi (بث تجريبي)",
       "publishedAt": "2026-11-27T16:00:34Z",
       "thumbnail": "https://i.ytimg.com/vi/pCZVGsM2Ywk/hqdefault.jpg",
       "duration": 178,
-      "viewCount": 256
+      "viewCount": 276
     },
     {
       "id": "HRbpOpBUnOg",
       "title": "Nordine  GB - L’Morphiniya 33",
       "publishedAt": "2026-11-26T13:35:49Z",
       "duration": 307,
-      "viewCount": 164
+      "viewCount": 213
     },
     {
       "id": "RsoMJHHg_1k",
       "title": "Nordine  GB - Kelb Pavlov",
       "publishedAt": "2026-11-22T18:30:06Z",
       "duration": 296,
-      "viewCount": 220
+      "viewCount": 221
     },
     {
       "id": "5c8cGWivIdc",
@@ -32,7 +47,7 @@
       "publishedAt": "2026-11-22T12:00:25Z",
       "thumbnail": "https://i.ytimg.com/vi/5c8cGWivIdc/hqdefault.jpg",
       "duration": 285,
-      "viewCount": 274
+      "viewCount": 275
     },
     {
       "id": "9qfPzpd3RaU",
@@ -40,21 +55,21 @@
       "publishedAt": "2026-11-21T16:00:23Z",
       "thumbnail": "https://i.ytimg.com/vi/9qfPzpd3RaU/hqdefault.jpg",
       "duration": 352,
-      "viewCount": 128
+      "viewCount": 131
     },
     {
       "id": "cNFQd743QUw",
       "title": "Nordine  GB - Sucré Salé",
       "publishedAt": "2026-11-20T16:00:27Z",
       "duration": 422,
-      "viewCount": 174
+      "viewCount": 175
     },
     {
       "id": "6sUH1il4DEc",
       "title": "Nobody knows",
       "publishedAt": "2026-11-15T11:30:24Z",
       "duration": 236,
-      "viewCount": 1790
+      "viewCount": 1794
     },
     {
       "id": "xuYwqHjLwD4",
@@ -68,14 +83,14 @@
       "title": "Nordine  GB - L’Morphiniya 35",
       "publishedAt": "2026-11-13T12:00:02Z",
       "duration": 376,
-      "viewCount": 613
+      "viewCount": 618
     },
     {
       "id": "uyh3nKi_3ZU",
       "title": "Nordine  GB - L’Morphiniya 2",
       "publishedAt": "2026-11-08T11:00:06Z",
       "duration": 203,
-      "viewCount": 151
+      "viewCount": 152
     },
     {
       "id": "lfnKMMFeu5k",
@@ -104,7 +119,7 @@
       "title": "ألا كل ماشية الخيزلى",
       "publishedAt": "2026-11-01T12:00:10Z",
       "duration": 338,
-      "viewCount": 270
+      "viewCount": 272
     },
     {
       "id": "8YCr-D18FrI",
@@ -125,7 +140,7 @@
       "title": "Nordine  GB -  Sommaire",
       "publishedAt": "2026-10-23T16:00:04Z",
       "duration": 365,
-      "viewCount": 480
+      "viewCount": 481
     },
     {
       "id": "OD8lM-cu4TA",
@@ -154,21 +169,21 @@
       "title": "Nordine  GB -  100 ans",
       "publishedAt": "2026-10-09T13:45:06Z",
       "duration": 293,
-      "viewCount": 464
+      "viewCount": 466
     },
     {
       "id": "w_PFK6wS_84",
       "title": "غَيْرُ مُجْدٍ فِي مِلَّتِي وَاعْتِقَادِي",
       "publishedAt": "2026-09-23T17:09:29Z",
       "duration": 540,
-      "viewCount": 369
+      "viewCount": 374
     },
     {
       "id": "Wy6OjKvXkYE",
       "title": "Nordine  GB - Pyramid",
       "publishedAt": "2026-09-11T17:00:15Z",
       "duration": 254,
-      "viewCount": 529
+      "viewCount": 531
     },
     {
       "id": "9sbkfd12gI4",
@@ -474,7 +489,7 @@
       "title": "Nordine  GB -  Tri9 Tbawe9",
       "publishedAt": "2026-04-30T16:30:23Z",
       "duration": 219,
-      "viewCount": 6738
+      "viewCount": 6742
     },
     {
       "id": "XB9fSmREVyA",
@@ -503,7 +518,7 @@
       "publishedAt": "2026-02-01T09:00:06Z",
       "thumbnail": "https://i.ytimg.com/vi/46MqyLACTVA/hqdefault.jpg",
       "duration": 340,
-      "viewCount": 465,
+      "viewCount": 466,
       "likeCount": 7
     },
     {
@@ -511,7 +526,7 @@
       "title": "Nordine  GB - LMORPHINIYA 33",
       "publishedAt": "2026-01-09T16:01:07Z",
       "duration": 286,
-      "viewCount": 595,
+      "viewCount": 596,
       "likeCount": 6
     },
     {
@@ -658,7 +673,7 @@
       "title": "Morphiniya 9",
       "publishedAt": "2025-04-30T11:30:36Z",
       "duration": 236,
-      "viewCount": 863,
+      "viewCount": 864,
       "likeCount": 13
     },
     {
@@ -674,7 +689,7 @@
       "title": "l'Morphiniya 33",
       "publishedAt": "2025-04-27T09:40:00Z",
       "duration": 241,
-      "viewCount": 3121,
+      "viewCount": 3122,
       "likeCount": 30
     },
     {
@@ -827,7 +842,7 @@
       "publishedAt": "2025-02-10T11:00:00Z",
       "thumbnail": "https://i.ytimg.com/vi/-3NYnhtpkdg/hqdefault.jpg",
       "duration": 225,
-      "viewCount": 26786,
+      "viewCount": 26788,
       "likeCount": 371
     },
     {
